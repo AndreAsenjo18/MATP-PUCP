@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  color: #1c1917;
+  font-size: 1rem;
+}

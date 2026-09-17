@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matp-api"
+version = "0.1.0"
+description = "MATP collections management API (FastAPI)"
+readme = "README.md"
+requires-python = ">=3.13"
+# Minimum versions = stable releases checked on 2026-09-17 (see docs/adr/ADR-003-herramientas-base.md).
+dependencies = [
+    "fastapi>=0.141.1,<1",
+    "uvicorn[standard]>=0.53.0,<1",
+    "pydantic>=2.13.5,<3",
+    "pydantic-settings>=2.15.0,<3",
+    "sqlalchemy>=2.0.54,<2.1",
+    "psycopg[binary]>=3.3.5,<4",
+    "alembic>=1.20.0,<2",
+    "boto3>=1.43.96,<2",
+    "pwdlib[argon2]>=0.3.1,<1",
+    "pillow>=12.3.0,<13",
+    "openpyxl>=3.1.5,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1,<10",
+    "httpx2>=2.13.0,<3",  # Starlette TestClient backend (httpx is deprecated there)
+    "ruff>=0.16.8,<1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "BLE", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # Spanish user-facing strings use accents and typographic quotes
+
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]
+# Synthetic data tables are kept one record per line (# fmt: skip) for readability.
+"app/seed/fixtures.py" = ["E501"]
+"app/seed/synthetic.py" = ["E501"]

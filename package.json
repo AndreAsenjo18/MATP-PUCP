@@ -1,0 +1,35 @@
+{
+  "name": "matp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de Gestión y Digitalización de Colecciones Museográficas del MATP (PUCP) - monorepo",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "docker compose up --build -d",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "ps": "docker compose ps",
+    "dev:api": "node scripts/py.mjs apps/api -m uvicorn app.main:create_app --factory --reload --port 8000",
+    "dev:ai": "node scripts/py.mjs services/ai -m uvicorn app.main:create_app --factory --reload --port 8100",
+    "dev:web": "npm run dev -w apps/web",
+    "lint": "npm run lint:api && npm run lint:ai && npm run lint:web",
+    "lint:api": "node scripts/py.mjs apps/api -m ruff check . && node scripts/py.mjs apps/api -m ruff format --check .",
+    "lint:ai": "node scripts/py.mjs services/ai -m ruff check . && node scripts/py.mjs services/ai -m ruff format --check .",
+    "lint:web": "npm run lint -w apps/web && npm run typecheck -w apps/web",
+    "format": "node scripts/py.mjs apps/api -m ruff format . && node scripts/py.mjs services/ai -m ruff format .",
+    "test": "npm run test:api && npm run test:ai && npm run test:web",
+    "test:api": "node scripts/py.mjs apps/api -m pytest",
+    "test:ai": "node scripts/py.mjs services/ai -m pytest",
+    "test:web": "npm run test -w apps/web",
+    "build:web": "npm run build -w apps/web",
+    "migrate": "docker compose exec api alembic upgrade head",
+    "seed": "docker compose exec api python -m app.seed",
+    "validate:specs": "openspec validate --all --strict"
+  }
+}

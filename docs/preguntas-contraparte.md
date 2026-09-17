@@ -48,3 +48,17 @@
 | C7 | ¿Umbral de intentos fallidos de inicio de sesión y tiempo de expiración por inactividad? | 5 intentos; expiración configurable | usuarios-roles (RNF-012) |
 | C8 | ¿Qué tamaño de exportación a Excel se espera habitualmente? | Umbral configurable para exportación en segundo plano | busqueda-reportes (RF-036) |
 | C9 | ¿Interesan la descripción preliminar (RIA-04) y el asistente de consulta (RIA-05) en fase 1? | RIA-04 por validar; RIA-05 desactivado | ia-asistiva (RIA-04, RIA-05) |
+
+## D. Supuestos añadidos al implementar el modelo de datos (change `modelo-datos-nucleo`, 2026-09-17)
+
+Detalle de las reglas en `apps/api/app/modules/identification/normalization.py` (N1–N7) y en `docs/modelo-datos.md`.
+
+| # | Pregunta | Supuesto vigente | Spec / IDs | Prioridad |
+|---|---|---|---|---|
+| D1 | ¿Un número sin prefijo (`236`) registrado en la columna de código I debe entenderse como `I-236`? | Sí, se normaliza a `I-236` y se registra el formato `SOLO_NUMERO` | identificacion-piezas (RF-023) | A |
+| D2 | En los códigos INC/RN, ¿los ceros a la izquierda y los separadores (`12.345-6`) son significativos? | Separadores irrelevantes; ceros **significativos** (ancho fijo de 4 o 6 dígitos); otras longitudes quedan "no normalizables" para revisión | identificacion-piezas (RF-023) | A |
+| D3 | ¿Cómo se escribe el sufijo de los componentes de un conjunto (`MBB 40.1`, `MBB 40-01`, `MBB 40a`)? | Se normaliza a `SIGLA NÚMERO.SUFIJO` sin ceros a la izquierda (`MBB 40.1`) | catalogo-piezas (RF-009), identificacion-piezas (RF-023) | B |
+| D4 | ¿Un contenedor (caja) puede estar directamente en un mueble sin nivel? ¿Puede una caja estar en el piso de un depósito sin mueble? | Contenedor dentro de nivel o de mueble; no directamente en un espacio | ubicacion-movimientos (RF-016) | B |
+| D5 | ¿Qué tipos de restricción de uso de imágenes existen (sin restricción, solo uso interno, no publicar, requiere autorización del comodante)? | Esos cuatro términos, configurables | multimedia (RF-014, RN-008) | B |
+| D6 | ¿Se debe registrar un código I con formato no reconocido para revisarlo después, o se rechaza al ingresarlo manualmente? | En ingreso manual se rechaza (el código I se bloquea al asignarse); en importación queda para revisión | identificacion-piezas (RF-003, RF-023) | B |
+| D7 | ¿Qué vocabularios iniciales usan hoy (categorías, materiales, técnicas, formas de adquisición, disponibilidad)? | Listas ilustrativas cargadas por el seed, editables como datos | colecciones-vocabularios (RF-011, RN-010) | C |

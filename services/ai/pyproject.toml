@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matp-ai"
+version = "0.1.0"
+description = "MATP AI assistant service (decoupled, mock provider by default)"
+readme = "README.md"
+requires-python = ">=3.13"
+# Minimum versions = stable releases checked on 2026-09-17 (see docs/adr/ADR-003-herramientas-base.md).
+dependencies = [
+    "fastapi>=0.141.1,<1",
+    "uvicorn[standard]>=0.53.0,<1",
+    "pydantic>=2.13.5,<3",
+    "pydantic-settings>=2.15.0,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1,<10",
+    "httpx2>=2.13.0,<3",  # Starlette TestClient backend (httpx is deprecated there)
+    "ruff>=0.16.8,<1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "BLE", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]

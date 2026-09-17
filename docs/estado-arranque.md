@@ -34,14 +34,40 @@
 - 36 marcas `[SUPUESTO]` en specs, consolidadas en `docs/preguntas-contraparte.md` (8 prioridad A, 12 B, 9 C).
 - Decisiones de reparto: regla de alertas RF-019 en `calidad-datos` (ubicación solo define "sin ubicación"); RF-023 en `identificacion-piezas`; RIA-02 como puntaje auxiliar en `ia-asistiva` con cola en `calidad-datos`; RNF-010 asignado a `plataforma` (no estaba en la tabla del prompt base) [SUPUESTO].
 
+### Fase 3 — Change `setup-monorepo-base` — IMPLEMENTADA, verificación con contenedores PENDIENTE (no archivado)
+- Change propuesto (proposal, design con Mermaid, delta `plataforma` con 2 requirements ADDED, tasks) y aplicado: 15/16 tareas `[x]`; `openspec validate setup-monorepo-base --strict` OK.
+- Monorepo: `apps/web` (create-next-app: Next 16.3.5, React 19.2.8, Tailwind 4, ESLint 9, TS 5; Vitest 5.0.1; `output: standalone`; sin Google Fonts), `apps/api` (FastAPI 0.141.1, config pydantic-settings con fallo temprano en español, `/health` 200/503 sin secretos, `/health/live`, S3 vía boto3), `services/ai` (FastAPI, `AI_PROVIDER=mock` por defecto, rechaza proveedores desconocidos), 11 paquetes por capacidad en `apps/api/app/modules/`.
+- Comandos (sin Makefile, ADR-000): `package.json` raíz con npm workspaces y scripts `setup|dev|down|logs|ps|dev:api|dev:ai|dev:web|lint(:api|:ai|:web)|format|test(:api|:ai|:web)|build:web|migrate|seed|validate:specs`; `scripts/py.mjs` (runner multiplataforma del venv) y `scripts/setup.mjs`; envoltorios `scripts/setup.ps1`, `dev.ps1`, `test.ps1` (CRLF, ASCII).
+- Python: **pip + venv** (no se instaló `uv`, ver ADR-003); Python 3.14 en local, CI e imágenes. Cliente de pruebas `httpx2` (Starlette depreca `httpx`).
+- `docker-compose.yml` (db `postgres:18-alpine`, storage `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772`, api, ai, web con healthchecks), Dockerfiles, `.env.example` completo (test que verifica que toda variable de `Settings` está documentada), `.github/workflows/ci.yml` (jobs api, ai, web, openspec con `actions/*@v7` y OpenSpec 1.13.0).
+- ADR-001 (estructura) y ADR-003 (herramientas/versiones/imágenes) en estado Propuesto. README raíz y tabla de comandos de CLAUDE.md actualizados.
+- Verificado sin Docker: `npm install`, `npm run setup`, `npm run lint` (ruff + eslint + tsc) y `npm test` en verde; `npm run build:web` OK; `docker compose config` válido; smoke test local sin contenedores: api `/health/live` 200, `/health` 503 degradado con storage caído, ia `/health` 200 proveedor mock, página web mostrando ambos estados; arranque sin `DATABASE_URL` falla con mensaje claro.
+- [SUPUESTO] MinIO retiró `minio/minio` de Docker Hub y la edición comunitaria no publica imágenes nuevas: se fija la última etiqueta de quay.io; contingencia RustFS/Garage (ADR-003).
+
+### Fase 4 — Change `modelo-datos-nucleo` — IMPLEMENTADA, migración/seed contra PostgreSQL PENDIENTES (no archivado)
+- Change propuesto (proposal, design con ER y secuencia en Mermaid, deltas `auditoria-trazabilidad` y `plataforma` con 1 requirement ADDED cada uno, tasks) y aplicado: 12/14 tareas `[x]`; validación estricta OK.
+- 23 tablas (SQLAlchemy 2): piece, piece_identifier, identifier_type, collection, vocabulary, term, piece_material, piece_source_record, conservation_assessment, location, piece_movement, media_asset, import_mapping_template, import_batch, import_row, duplicate_candidate, ai_suggestion, app_user, role, permission, role_permission, user_role, audit_log. UUIDv7, enums VARCHAR+CHECK, JSONB.
+- Reglas: índice único parcial del código I vigente; guardas `before_flush` (borrado físico prohibido, tablas de solo inserción, I bloqueado salvo corrección auditada por Administrador, comodato/préstamo temporal sin I, cambio de tenencia con I); auditoría campo a campo automática con `AuditContext` obligatorio; filtro global de eliminados; CHECK de RN-009 en `ai_suggestion`; triggers de solo inserción (PostgreSQL y SQLite).
+- Normalizador `apps/api/app/modules/identification/normalization.py` (reglas N1–N7 [SUPUESTO]) con ~100 casos de prueba.
+- Alembic: `0001_core_data_model` (+ `pg_trgm`, índices GIN de trigramas, triggers). Verificado: upgrade/downgrade en SQLite, `compare_metadata` sin diferencias, SQL de PostgreSQL generado offline con índice parcial/JSONB/triggers, UPDATE/DELETE directo de `audit_log` rechazado por trigger.
+- Seed `python -m app.seed` (`npm run seed`): 300 piezas sintéticas (54 % sin I, 47 en comodato, 5 préstamos temporales, 33 sueltas, 202 ubicadas), 6 colecciones ficticias (MMZ, RA, RAB, MBB, AJB comodato, LRM), 433 fotos placeholder a S3, 10 pares de duplicados, lote de importación en previsualización, 3 sugerencias IA pendientes, corrección de I y 2 eliminaciones lógicas; ~20 000 filas de auditoría; determinista; se niega sobre catálogo con datos. Excel sintético `data/fixtures/sabana_sintetica_v1.xlsx` con imágenes incrustadas.
+- Pruebas API: 194 en verde (normalizador, identificadores, auditoría/soft-delete, ficha/colecciones/ubicaciones, migraciones, seed); IA 4; web 4.
+- Docs: `docs/modelo-datos.md` (ER + tablas generadas desde los modelos), ADR-004 (Propuesto), ADR-003 ampliado (pwdlib[argon2] 0.3.1, Pillow 12.3.0, openpyxl 3.1.5), supuestos D1–D7 en `docs/preguntas-contraparte.md`.
+
+### Decisión de proceso (Fases 3–4)
+- **Los changes `setup-monorepo-base` y `modelo-datos-nucleo` NO se archivaron**: cada uno conserva tareas de verificación con contenedores sin marcar (8.2; 4.2 y 5.3) y CLAUDE.md indica no archivar antes de la aprobación del PR. Archivar tras verificar con Docker: `openspec archive setup-monorepo-base -y && openspec archive modelo-datos-nucleo -y` (en ese orden; ambos añaden requirements a `plataforma`).
+
 ### Supuestos registrados en Fases 0–2
 - [SUPUESTO] Catálogo basado en el resumen del prompt base, no en los `.docx` (no disponibles). Si difieren, manda el Expediente y se ajusta vía change `MODIFIED`.
 - [SUPUESTO] Métrica RF-038: p95 ≤ 2 s con 20 000 piezas y 10 usuarios.
 - [SUPUESTO] Formatos de códigos, marcadores de ausencia, vocabularios, niveles de ubicación, campos sensibles y matriz de permisos: ver `docs/preguntas-contraparte.md`.
 
-### Pendientes / bloqueos tras Fases 0–2
-- BLOQUEO (entorno): daemon de Docker no responde → afecta Fases 3–4 (compose, migraciones, seed).
-- PENDIENTE (entorno): instalar `uv` (opcional) y `pandoc` (solo si llegan los `.docx`).
-- PENDIENTE: commit de Fases 0–2 (lo realiza el orquestador; no se hicieron commits en esta ejecución).
-- PENDIENTE: ratificación de ADR-000 y ADR-002 por el Arquitecto; respuestas de la contraparte a `docs/preguntas-contraparte.md`.
-- Siguiente: Fase 3 (`setup-monorepo-base`).
+### Pendientes / bloqueos tras Fases 0–4
+- BLOQUEO (entorno): daemon de Docker no responde → PENDIENTE ejecutar y verificar: `cp .env.example .env && npm run dev` (5 servicios healthy, http://localhost:3000, `:8000/health`, `:8100/health`), `npm run migrate` (revisar en `psql` índice parcial, `pg_trgm` y triggers), `npm run seed` (fotos en MinIO), y luego marcar tareas 8.2 / 4.2 / 5.3 y archivar ambos changes.
+- PENDIENTE: construir las imágenes Docker (no probado; posible ajuste si alguna dependencia no tiene wheel para Python 3.14 en Linux; contingencia 3.13).
+- PENDIENTE: primer run de GitHub Actions (el workflow solo se validó como YAML).
+- PENDIENTE (entorno, opcional): `uv` (decisión uv vs pip-tools y lockfile de Python en ADR-003), `pandoc` solo si llegan los `.docx`.
+- PENDIENTE: commit de Fases 3–4 (lo realiza el orquestador; no se hicieron commits en esta ejecución).
+- PENDIENTE: ratificación de ADR-000..ADR-004 por el Arquitecto; respuestas de la contraparte (secciones A–D de `docs/preguntas-contraparte.md`).
+- Riesgo: supuestos de normalización (A2, A4, A8, D1–D3) y matriz de permisos (B7) sin validar; las pruebas los fijan explícitamente para que un cambio sea visible.
+- Siguiente: Fase 5 (`contratos-api-borrador`).
