@@ -52,3 +52,15 @@ class MissingAuditContext(BusinessRuleViolation):
     """Every write must identify who performs it and its origin."""
 
     code = "missing_audit_context"
+
+
+class AuthenticationRequired(DomainError):
+    """RF-042: no catalog data without an identified user."""
+
+    code = "authentication_required"
+
+
+class ConflictError(BusinessRuleViolation):
+    """The operation conflicts with the current state (e.g. deleting a term still in use)."""
+
+    code = "conflict"

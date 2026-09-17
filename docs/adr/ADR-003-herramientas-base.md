@@ -26,6 +26,7 @@ El guardrail 7 exige consultar la versión estable vigente de cada dependencia a
 | Hash de contraseñas (seed; auth futura) | pwdlib[argon2] | 0.3.1 |
 | Imágenes placeholder del seed | Pillow | 12.3.0 |
 | Excel sintético / importación futura | openpyxl | 3.1.5 |
+| Formularios multipart (subida de Excel en la API) | python-multipart | 0.0.32 |
 
 - **Gestor**: `pip` + `venv` con `pyproject.toml` PEP 621 y extra `dev` (`pip install -e ".[dev]"`), orquestado por `npm run setup` (`scripts/setup.mjs`). `uv` sigue siendo compatible (`uv pip install -e ".[dev]"`) y puede adoptarse después. **No se instaló `uv`** en el arranque para no introducir una herramienta que el resto del equipo tendría que instalar; la decisión uv vs pip-tools (y el lockfile) queda para el Arquitecto.
 - Versiones declaradas como `>=estable_vigente,<siguiente_mayor`.
@@ -36,7 +37,8 @@ El guardrail 7 exige consultar la versión estable vigente de cada dependencia a
 - Generado con `create-next-app@latest` (Next.js 16.3.5, React 19.2.8, Tailwind CSS 4, ESLint 9, TypeScript 5). Se respetan las versiones que elige el generador aunque npm publique mayores más nuevas (TypeScript 7, ESLint 10, React 19.3): `eslint-config-next` y Next aún fijan esas líneas. Revisar al actualizar Next.
 - Pruebas unitarias: **Vitest** 5.0.1. `@types/node` ^24 (Node 24 LTS).
 - Sin fuentes de Google (`next/font/google`) para que el build no dependa de internet (RNF-008).
-- shadcn/ui, TanStack Query, React Hook Form + Zod y `openapi-typescript` se añaden en changes posteriores.
+- Cliente tipado (change `contratos-api-borrador`, ADR-005): `openapi-typescript` 7.13.0 (dev) y `openapi-fetch` 0.17.0.
+- shadcn/ui, TanStack Query y React Hook Form + Zod se añaden en changes posteriores.
 
 ### Imágenes de contenedor
 

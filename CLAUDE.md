@@ -84,7 +84,8 @@ No hay `make` en el entorno de referencia (Windows). Los comandos se exponen com
 | Lint | `npm run lint` (`lint:api`, `lint:ai`, `lint:web`) | disponible |
 | Migraciones | `npm run migrate` (= `docker compose exec api alembic upgrade head`) | disponible (requiere Docker) |
 | Datos semilla | `npm run seed` (= `docker compose exec api python -m app.seed`) | disponible (requiere Docker) |
-| Exportar OpenAPI | `npm run openapi` | pendiente (contratos-api-borrador) |
+| Exportar OpenAPI (sin Docker) | `npm run openapi` · `npm run openapi:check` | disponible (`docs/api/`) |
+| Regenerar cliente tipado web | `npm run openapi:client` | disponible |
 | Ver changes | `openspec list` / `openspec list --specs` | disponible |
 | Ver un change/spec | `openspec show <nombre>` | disponible |
 | Validar | `openspec validate --all --strict` (= `npm run validate:specs`) | disponible |

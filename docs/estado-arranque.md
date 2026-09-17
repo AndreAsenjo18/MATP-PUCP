@@ -54,6 +54,20 @@
 - Pruebas API: 194 en verde (normalizador, identificadores, auditoría/soft-delete, ficha/colecciones/ubicaciones, migraciones, seed); IA 4; web 4.
 - Docs: `docs/modelo-datos.md` (ER + tablas generadas desde los modelos), ADR-004 (Propuesto), ADR-003 ampliado (pwdlib[argon2] 0.3.1, Pillow 12.3.0, openpyxl 3.1.5), supuestos D1–D7 en `docs/preguntas-contraparte.md`.
 
+### Fase 5 — Change `contratos-api-borrador` — IMPLEMENTADO, verificación en compose PENDIENTE (no archivado)
+- Change propuesto (proposal, design con Mermaid y tabla de rutas D2, deltas ADDED en `plataforma`, `usuarios-roles` e `ia-asistiva`, tasks) y aplicado: 15/16 tareas `[x]`; `openspec validate --all --strict` → 15 passed.
+- API `/api/v1`: 57 rutas / 76 operaciones de todos los módulos (piezas, identificadores, multimedia, movimientos, colecciones, vocabularios, tipos de identificador, ubicaciones, importación, plantillas, calidad, búsqueda, reportes, exportación, IA, auth, usuarios, roles, auditoría) con esquemas Pydantic y ejemplos sintéticos.
+  - **Implementadas (28)**: CRUD de colecciones (eliminación lógica, rechazo si no está vacía), vocabularios/términos (alta, edición, desactivación, eliminación lógica si no están en uso), tipos de identificador, ubicaciones, piezas (filtros AND, paginación, ficha con enmascarado RF-041), identificadores, fotos (metadatos), movimientos, datos de origen, búsqueda básica por cualquier código (normalizador N1–N7) o denominación, `/identifiers/normalize`, `/auth/me`, roles/permisos, sugerencias IA (lectura), auditoría (lectura).
+  - **Stubs (48)**: 501 `not_implemented` + `x-status: stub` + `x-change` (change del backlog) + ejemplo validado contra el esquema.
+- Errores uniformes `{code, message, details}` en español; `operationId` = nombre del handler.
+- Identidad **provisional** `X-MATP-User` (usuario sintético activo), rechazada con `APP_ENV=production`; permisos de la matriz sembrada; ADR-005 (Propuesto).
+- Contratos exportados sin Docker importando la app: `docs/api/openapi.json` y `docs/api/ai-openapi.json` (`npm run openapi`, `npm run openapi:check`); `docs/api/README.md`. CI verifica que estén actualizados.
+- Cliente web: `openapi-typescript` 7.13.0 + `openapi-fetch` 0.17.0 (versiones consultadas en npm); `apps/web/src/lib/api/schema.d.ts` (con hash del contrato) y `client.ts` (`npm run openapi:client`). Nueva dependencia API: `python-multipart` 0.0.32 (instalada en el venv; `npm run setup` la instala en otros equipos).
+- Servicio IA: `AIProvider` (`extract_structured`, `suggest_terms`, `describe`), `MockProvider` determinista, `LLMProvider` stub (503 `ai_provider_unavailable`), endpoints `/v1/extract-structured|suggest-terms|describe` con `status: PENDING_REVIEW` y `PieceContext` que rechaza campos sensibles.
+- Verificado: `npm run lint` y `npm test` en verde (API 237, IA 20, web 8), `npm run build:web` OK, smoke test local con uvicorn + SQLite sembrada (401 anónimo, listado filtrado, búsqueda `mmz 15` por identificador, `/docs` 200, stub 501).
+- Supuestos nuevos E1–E6 en `docs/preguntas-contraparte.md` (campos sensibles por rol, ubicación exacta, baja de términos y colecciones, integraciones, orden de medidas).
+- [SUPUESTO] FastAPI 0.141 incluye routers de forma diferida (`app.routes` no expone `APIRoute`); las pruebas leen las rutas desde cada módulo `app/api/v1/*`.
+
 ### Decisión de proceso (Fases 3–4)
 - **Los changes `setup-monorepo-base` y `modelo-datos-nucleo` NO se archivaron**: cada uno conserva tareas de verificación con contenedores sin marcar (8.2; 4.2 y 5.3) y CLAUDE.md indica no archivar antes de la aprobación del PR. Archivar tras verificar con Docker: `openspec archive setup-monorepo-base -y && openspec archive modelo-datos-nucleo -y` (en ese orden; ambos añaden requirements a `plataforma`).
 
@@ -62,7 +76,7 @@
 - [SUPUESTO] Métrica RF-038: p95 ≤ 2 s con 20 000 piezas y 10 usuarios.
 - [SUPUESTO] Formatos de códigos, marcadores de ausencia, vocabularios, niveles de ubicación, campos sensibles y matriz de permisos: ver `docs/preguntas-contraparte.md`.
 
-### Pendientes / bloqueos tras Fases 0–4
+### Pendientes / bloqueos tras Fases 0–5
 - BLOQUEO (entorno): daemon de Docker no responde → PENDIENTE ejecutar y verificar: `cp .env.example .env && npm run dev` (5 servicios healthy, http://localhost:3000, `:8000/health`, `:8100/health`), `npm run migrate` (revisar en `psql` índice parcial, `pg_trgm` y triggers), `npm run seed` (fotos en MinIO), y luego marcar tareas 8.2 / 4.2 / 5.3 y archivar ambos changes.
 - PENDIENTE: construir las imágenes Docker (no probado; posible ajuste si alguna dependencia no tiene wheel para Python 3.14 en Linux; contingencia 3.13).
 - PENDIENTE: primer run de GitHub Actions (el workflow solo se validó como YAML).
@@ -70,4 +84,7 @@
 - PENDIENTE: commit de Fases 3–4 (lo realiza el orquestador; no se hicieron commits en esta ejecución).
 - PENDIENTE: ratificación de ADR-000..ADR-004 por el Arquitecto; respuestas de la contraparte (secciones A–D de `docs/preguntas-contraparte.md`).
 - Riesgo: supuestos de normalización (A2, A4, A8, D1–D3) y matriz de permisos (B7) sin validar; las pruebas los fijan explícitamente para que un cambio sea visible.
-- Siguiente: Fase 5 (`contratos-api-borrador`).
+- PENDIENTE (Docker): tarea 5.3 de `contratos-api-borrador` (API en compose contra PostgreSQL con seed; validar consultas `ilike`/`exists` y conteos paginados en PostgreSQL). No archivar hasta verificar y aprobar el PR; archivar después de los dos changes anteriores (los tres añaden requirements a `plataforma`).
+- PENDIENTE: commit de Fase 5 (lo realiza el orquestador).
+- Riesgo: la identidad provisional `X-MATP-User` debe eliminarse o limitarse a `APP_ENV=test` en `autenticacion-y-matriz-permisos` (ADR-005).
+- Siguiente: Fase 6 (`maqueta-ui-navegable`), que puede usar `apps/web/src/lib/api/client.ts` y los ejemplos del contrato como fixtures.

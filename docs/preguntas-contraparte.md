@@ -62,3 +62,14 @@ Detalle de las reglas en `apps/api/app/modules/identification/normalization.py` 
 | D5 | ¿Qué tipos de restricción de uso de imágenes existen (sin restricción, solo uso interno, no publicar, requiere autorización del comodante)? | Esos cuatro términos, configurables | multimedia (RF-014, RN-008) | B |
 | D6 | ¿Se debe registrar un código I con formato no reconocido para revisarlo después, o se rechaza al ingresarlo manualmente? | En ingreso manual se rechaza (el código I se bloquea al asignarse); en importación queda para revisión | identificacion-piezas (RF-003, RF-023) | B |
 | D7 | ¿Qué vocabularios iniciales usan hoy (categorías, materiales, técnicas, formas de adquisición, disponibilidad)? | Listas ilustrativas cargadas por el seed, editables como datos | colecciones-vocabularios (RF-011, RN-010) | C |
+
+## E. Supuestos añadidos al definir los contratos de API (change `contratos-api-borrador`, 2026-09-17)
+
+| # | Pregunta | Supuesto vigente | Spec / IDs | Prioridad |
+|---|---|---|---|---|
+| E1 | ¿Hay integraciones previstas (SURDOC, Getty AAT, otros sistemas PUCP) con requisitos de formato o versión de API? | API REST `/api/v1` con OpenAPI 3.1; sin integraciones en fase 1 | plataforma (RNF-009) | C |
+| E2 | ¿Qué roles pueden ver el nombre del comodante, la referencia del contrato de comodato y el origen/donante de una colección? | Solo roles con `sensitive.donor_data` / `sensitive.loan_terms` (Administrador y Gestora de colecciones) | usuarios-roles (RF-041, RN-008) | A |
+| E3 | ¿El personal de Consulta interna debe ver solo sede y espacio, o también mueble, nivel y contenedor? | Solo sede y espacio; niveles inferiores requieren `sensitive.exact_location` | usuarios-roles (RF-041), ubicacion-movimientos (RF-016) | B |
+| E4 | ¿Se puede eliminar un término de vocabulario ya asignado a piezas, o solo desactivarlo? | Solo desactivarlo; la eliminación lógica se rechaza si está en uso | colecciones-vocabularios (RF-011, RN-005) | B |
+| E5 | ¿Una colección con piezas o subcolecciones puede darse de baja? | No: primero se reasignan las piezas o se desactiva la colección | colecciones-vocabularios (RF-010, RN-007) | B |
+| E6 | En medidas escritas como "35 x 20 x 12 cm", ¿el orden habitual es alto × ancho × profundidad? | Sí (solo para la sugerencia simulada de IA, siempre revisada por una persona) | ia-asistiva (RIA-01) | C |

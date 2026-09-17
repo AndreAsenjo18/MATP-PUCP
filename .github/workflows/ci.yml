@@ -32,6 +32,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: node scripts/setup.mjs apps/api
       - run: npm run lint:api
+      - run: node scripts/py.mjs apps/api -m app.openapi_export --check
       - run: npm run test:api
 
   ai:
@@ -47,6 +48,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: node scripts/setup.mjs services/ai
       - run: npm run lint:ai
+      - run: node scripts/py.mjs services/ai -m app.openapi_export --check
       - run: npm run test:ai
 
   web:
