@@ -1,3 +1,45 @@
+# Para leer al despertar
+
+> Arranque desatendido del 2026-09-17, de 03:00 a ~06:30. Rama `chore/bootstrap`, sin push.
+> **El daemon de Docker no respondió en toda la noche**: no se ejecutó nada en contenedores. Todo lo demás se verificó en local.
+
+## Estado por bloque
+| Bloque | Fases | Verificador | Nota |
+|---|---|---|---|
+| 1 | 0, 1, 2 — OpenSpec, config, specs base | **OK** | 12 capacidades, 69 requisitos, 205 escenarios; `establecer-specs-base` archivado |
+| 2 | 3, 4 — monorepo, modelo de datos | **OK**\* | Tests y lint en verde; migración probada en SQLite; sin archivar (Docker) |
+| 3 | 5 — contratos API, IA mock | **OK**\* | 76 operaciones (28 implementadas, 48 stubs 501); OpenAPI y cliente tipado al día |
+| 4 | 6 — maqueta navegable | **OK**\* | 11 pantallas en modo mock; `next start` responde 200 en todas |
+| 5 | 7, 8 — backlog, documentación | **OK** | 15 changes propuestos (ninguno aplicado); ONBOARDING, ownership, ADR-007 a ADR-011 |
+
+\* OK con pendientes documentados que dependen de Docker. Validación global: `openspec validate --all --strict` pasa 31 de 31; `npm test` pasa 280 tests (API 237, IA 20, web 23).
+
+## Qué verificar manualmente
+1. Arranca Docker Desktop y ejecuta `cp .env.example .env` y `npm run dev`. Comprueba que `/health` responde en la API y en la IA, y que la web carga.
+2. Ejecuta `npm run migrate` contra PostgreSQL real. Revisa el índice parcial del código I, la extensión `pg_trgm` y los triggers de solo inserción de `audit_log`.
+3. Ejecuta `npm run seed`: deben quedar 300 piezas y sus fotos en MinIO. Después prueba `GET /api/v1/pieces` con la cabecera `X-MATP-User`.
+4. Si todo pasa, marca las tareas pendientes: 8.2 de `setup-monorepo-base`, 4.2 y 5.3 de `modelo-datos-nucleo` y 5.3 de `contratos-api-borrador`. Luego archiva en este orden: `setup-monorepo-base` → `modelo-datos-nucleo` → `contratos-api-borrador` → `maqueta-ui-navegable`.
+5. Recorre la maqueta con `docs/maqueta/recorrido-demo.md` y revisa `git log --oneline` y `logs/resumen.md`.
+6. Ratifica los ADR-000 a ADR-011 (todos están en estado «Propuesto») y `docs/ownership.md`.
+
+## Supuestos más riesgosos
+- **Fuente de requisitos**: no había `.docx` en `docs/fuentes/`. El catálogo y las specs se basan solo en el resumen de `PROMPT_BASE.md`.
+- **Normalizador de códigos** (I, INC/RN y sus variantes): las reglas son [SUPUESTO], sin una muestra real. De él dependen la unicidad del código I y la detección de duplicados.
+- **Identidad provisional con la cabecera `X-MATP-User`** (ADR-005): no es segura fuera de desarrollo, aunque ya se rechaza con `APP_ENV=production`. El change `autenticacion-y-matriz-permisos` debe eliminarla.
+- **Campos sensibles y matriz de permisos** (`apps/api/app/modules/users/sensitive.py`): son supuestos.
+- **Imágenes Docker sin probar**: puede que Python 3.14 no tenga wheels para Linux. MinIO dejó de publicar en Docker Hub, así que la imagen está fijada en quay.io; las alternativas son RustFS o Garage (ADR-003). `uv` no está instalado y se usa pip con venv.
+
+## Las 5 preguntas más urgentes para la contraparte
+1. (A1, G6) Muestra anonimizada de la sábana de la consultoría (cabeceras reales, 20–50 filas), su tamaño y qué otras fuentes hay.
+2. (A2, A4, D1, D2) Formato exacto del código I y del código INC/RN: prefijos, ceros y separadores.
+3. (A3, G7) Lista oficial de colecciones, con siglas, variantes históricas y cuáles están en comodato.
+4. (B6, B7, E2) Campos sensibles y matriz de permisos por rol: quién aprueba cargas y quién ve los comodantes y la ubicación exacta.
+5. (G14) Datos de la VM PUCP y política de respaldos, necesarios para el avance integrado S12.
+
+El detalle completo está en `docs/preguntas-contraparte.md`.
+
+---
+
 # Estado del arranque MATP
 
 ## Entorno detectado (preparación, 2026-09-17 03:00)
