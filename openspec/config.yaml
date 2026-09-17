@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  Language: es
+  All artifacts must be written in es.
+  Keep OpenSpec structural headings (## Purpose, ## ADDED Requirements, ### Requirement:,
+  #### Scenario:) and SHALL/MUST/WHEN/THEN keywords in English.
+
+  Proyecto: Sistema de Gestión y Digitalización de Colecciones Museográficas
+  Cliente: Museo de Artes y Tradiciones Populares "Luis Repetto Málaga" (MATP - PUCP)
+  Fase 1: herramienta de control INTERNO. Nada público.
+  Stack: Next.js + TypeScript (frontend), FastAPI + Python (backend), PostgreSQL,
+         object storage S3-compatible (MinIO local / Cloudflare R2), servicio de IA desacoplado.
+  Despliegue: Docker Compose en VM Linux PUCP; contingencia free tier (Vercel, Render, Neon, R2).
+  Dominio: piezas con múltiples códigos históricos (I, colección, INC/RN, PUCP, otro);
+           ningún código externo es PK; código I inmutable; ~6000 piezas sin I;
+           comodato nunca recibe I; nunca se borra información (soft-delete + auditoría);
+           importación de Excel = pipeline de reconciliación con aprobación humana;
+           toda salida de IA requiere aprobación humana antes de persistirse.
+  Trazabilidad: IDs RF-001..RF-044, RNF-001..RNF-015, RIA-01..RIA-05, RN-001..RN-010
+  (ver openspec/specs y docs/requisitos/catalogo.md).
+  Datos: solo sintéticos; todo supuesto sobre el museo se marca [SUPUESTO] y se registra
+  en docs/preguntas-contraparte.md.
+  Entorno de desarrollo: sin `make`; los comandos van en scripts de package.json
+  (raíz) y scripts/*.ps1 (ver docs/adr/ADR-000-herramientas-y-comandos.md).
+  Idioma: specs, UI y docs en español; código en inglés.
+
+rules:
+  proposal:
+    - Indicar los IDs de requisitos (RF/RNF/RIA/RN) que cubre el change
+    - Indicar la célula dueña y los changes de los que depende
+    - Declarar explícitamente qué queda fuera del change
+  specs:
+    - Cada requirement incluye la palabra normativa MUST o SHALL (validación de OpenSpec) y cita sus IDs
+    - Escenarios en formato WHEN / THEN (GIVEN opcional), en español
+    - Incluir al menos un escenario de error o caso límite por requirement
+    - Marcar con [SUPUESTO] todo detalle del museo no validado con la contraparte
+  design:
+    - Diagramas en Mermaid cuando haya flujos o modelo de datos
+    - Justificar toda dependencia nueva y su alternativa de contingencia
+  tasks:
+    - Tareas pequeñas (<= medio día), verificables, con test asociado
+    - Referenciar el requirement que cumple cada tarea
