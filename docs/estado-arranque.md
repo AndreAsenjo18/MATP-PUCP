@@ -105,4 +105,50 @@
 - PENDIENTE (Docker): conectar `app/busqueda` y `app/piezas/[id]` a `lib/data/pieces.ts` (modo `live`) y probarlas contra `apps/api` con PostgreSQL real; hoy solo se verificó que el módulo tipa correctamente contra el contrato (`tsc`) y su rama mock (`lib/data/pieces.test.ts`). Verificar también el build de `apps/web/Dockerfile` con los nuevos build args `NEXT_PUBLIC_API_MODE`/`NEXT_PUBLIC_API_URL`.
 - PENDIENTE: ratificación de ADR-006 por el Arquitecto; respuestas de la contraparte a las preguntas F1–F5 (`docs/preguntas-contraparte.md`) tras el recorrido de demostración (`docs/maqueta/recorrido-demo.md`).
 - Riesgo (bajo): el manejo de estado de la maqueta (`useReducer` en memoria) no persiste entre recargas por diseño; si la contraparte pide que sí persista para poder repetir una demo sin re-hacer las decisiones, es un cambio de alcance a discutir, no una corrección de bug.
-- Siguiente: Fase 7 (backlog como changes de OpenSpec, solo proponer, sin aplicar) y Fase 8 (documentación de cierre).
+- Fases 7 y 8 ejecutadas el 2026-09-17 (ver secciones siguientes).
+
+### Fase 7 — Backlog como changes de OpenSpec — COMPLETADA (solo propuestos, ninguno aplicado)
+- 15 changes creados con `openspec new change` y artefactos escritos siguiendo `openspec instructions` (proposal, design con Mermaid, specs delta, tasks): `ficha-pieza-crud`, `colecciones-y-vocabularios-admin`, `fotografias-multiples-por-pieza`, `ubicacion-jerarquica-y-movimientos`, `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion`, `deteccion-duplicados-y-cola-revision`, `alertas-y-reporte-incompletas`, `busqueda-avanzada-y-exportacion`, `reportes-inventario`, `autenticacion-y-matriz-permisos`, `auditoria-y-soft-delete-transversal`, `despliegue-vm-y-respaldos`, `ia-extraccion-texto-libre`, `ia-sugerencia-terminos`.
+- Validación: `openspec validate <change> --strict` uno por uno y `openspec validate --all --strict` → **31 passed, 0 failed** (12 specs + 4 changes de arranque + 15 del backlog). `openspec list` muestra los 15 con 0/N tareas (228 tareas en total).
+- Cada change modifica una capacidad principal; solo `ficha-pieza-crud` y `plantillas-mapeo-y-normalizacion` tocan además `identificacion-piezas` (declarado en el proposal). Specs delta **solo `ADDED`**, con nombres de requirement únicos por capacidad (verificado por script contra specs vigentes y entre changes) para poder archivarlos en cualquier orden.
+- Cada proposal indica IDs, célula dueña, dependencias y qué queda fuera; cada design justifica dependencias nuevas con contingencia; cada requirement tiene escenario de error o caso límite; cada tarea referencia su requirement y su verificación. Todos los `tasks.md` terminan con: tests requeridos (incluida verificación en PostgreSQL con Docker), actualización de OpenAPI y cliente tipado, sección de `docs/manual-usuario/` y `openspec archive`.
+- Los proposals se alinearon con los stubs reales del contrato (`x-change` de `docs/api/openapi.json`): las 48 operaciones stub tienen change responsable.
+- Trazabilidad verificada por script: todos los IDs RF-001..044, RNF-001..015, RIA-01..05 y RN-001..010 aparecen en al menos un change del backlog. **Sin change implementador** (solo citados como fuera de alcance): RF-015 documentos asociados (*Could*), RF-018 préstamos y exposiciones (*Should*), RIA-02 puntaje semántico de IA, RIA-04 y RIA-05 (por validar) → changes futuros sugeridos `documentos-asociados`, `prestamos-y-exposiciones`, `ia-descripcion-preliminar`.
+- `docs/ownership.md`: **propuesta a validar por el Líder y el Arquitecto** de 5 células (Catálogo, Importación, Consulta y control, Plataforma, IA) con líder, implementadores, revisor de specs y revisor de PR; tabla de changes con dependencias y orden sugerido; reglas de coordinación (deltas ADDED, migraciones, interfaces con dueño).
+- Dependencias bloqueantes dentro del backlog: `ia-sugerencia-terminos` → `ia-extraccion-texto-libre`; la tarea de reversión de `importacion-pipeline-reconciliacion` → `auditoria-y-soft-delete-transversal`. Las demás son interfaces con implementación provisional (ADR-010).
+- Coherencia con el código y supuestos previos revisada al proponer: ubicaciones respetan D4 (una caja no cuelga de un espacio); se usan los nombres reales (`AuditOrigin.AI`, `NormalizationStatus.UNPARSEABLE`, tipos de identificador `I`/`COLECCION`, `DuplicateStatus.POSTPONED` ya existente, sin relación de técnicas por pieza).
+- [SUPUESTO] Modo desatendido sin commits: los hace el orquestador.
+
+### Fase 8 — Documentación de cierre — COMPLETADA
+- `docs/ONBOARDING.md`: setup en 5 comandos con scripts reales (`cp .env.example .env`, `npm install`, `npm run setup`, `npm run dev`, `npm run migrate && npm run seed`), alternativa sin Docker, OpenSpec en 1 minuto, flujo diario, cómo proponer y manejar cambios de alcance, reglas de negocio y el prompt corto de la sección 5 **adaptado** (`npm run lint`, `npm test` y `openspec validate <CHANGE> --strict` en lugar de `make test`).
+- ADRs nuevos (todos **Propuesto**): ADR-007 almacenamiento S3-compatible y URL prefirmadas; ADR-008 IA desacoplada con proveedor simulado y aprobación humana; ADR-009 autenticación con sesiones opacas y CSRF; ADR-010 organización del backlog paralelo; ADR-011 despliegue con Caddy, restic y systemd (**sin versiones fijadas**: se consultan al implementar). Con ADR-000..006 quedan cubiertas estructura, librerías, auth, storage, IA mock e idioma.
+- `docs/preguntas-contraparte.md`: sección G con 15 supuestos nuevos del backlog (G1–G15) y lista de **las 5 preguntas más urgentes**.
+- `README.md`: visión, diagrama Mermaid de contenedores, enlaces a ONBOARDING, ownership, ADR-006..011, estado y backlog. `CLAUDE.md`: sección de backlog por célula.
+- `docs/manual-usuario/README.md`: índice de las secciones que escribe cada change y convenciones de redacción (las secciones se crean al aplicar cada change).
+- Verificado: `openspec validate --all --strict` 31/31; sin `make` como comando en la documentación nueva. No se modificó código, por lo que no se re-ejecutaron `npm test`/`npm run lint` (último resultado verde: Fase 6).
+
+## Definición de terminado (sección 4 del prompt base) — estado al cierre
+- [x] `openspec list` muestra los changes del backlog; `openspec validate --all --strict` pasa en todo (31/31).
+- [x] `openspec/specs/` con las 12 capacidades y todos los IDs Must cubiertos.
+- [ ] Compose + seed navegable con datos sintéticos — **BLOQUEADO por entorno** (daemon de Docker no responde). Equivalente con scripts: `npm run dev`, `npm run migrate`, `npm run seed` (no hay `make seed`).
+- [x] Tests del normalizador y reglas de dominio en verde (Fases 4–6: 237 api + 20 ai + 23 web).
+- [x] Maqueta con las 11 pantallas navegable en modo mock.
+- [x] `docs/api/openapi.json` generado.
+- [x] CI configurado (primer run en GitHub pendiente).
+- [x] ONBOARDING, ADRs, preguntas a contraparte, ownership y estado de arranque escritos.
+- [ ] Todo commiteado en `chore/bootstrap` — lo realiza el orquestador (Fases 7–8 sin commit en esta ejecución).
+
+## Pendientes, bloqueos y riesgos consolidados (al cierre de Fase 8)
+- **BLOQUEO (entorno)**: daemon de Docker no disponible. Pendiente con Docker: `cp .env.example .env && npm run dev` (5 servicios healthy), `npm run migrate`, `npm run seed`; tareas 8.2 (`setup-monorepo-base`), 4.2 y 5.3 (`modelo-datos-nucleo`), 5.3 (`contratos-api-borrador`); conexión `live` de búsqueda y ficha; build de imágenes. Luego, tras aprobar el PR, archivar en orden: `openspec archive setup-monorepo-base -y`, `openspec archive modelo-datos-nucleo -y`, `openspec archive contratos-api-borrador -y`, `openspec archive maqueta-ui-navegable -y`.
+- **PENDIENTE**: commit de Fases 7 y 8 (orquestador) y PR de `chore/bootstrap`.
+- **PENDIENTE (decisión humana)**: ratificar ADR-000..011; validar `docs/ownership.md` (Líder + Arquitecto); respuestas de la contraparte (A–G), empezando por las 5 urgentes.
+- **PENDIENTE (externo)**: datos de la VM PUCP y destino de respaldos (G14) para `despliegue-vm-y-respaldos`.
+- **Riesgos**: supuestos de normalización (A2, A4, A8, D1–D3) y de matriz de permisos (B7) sin validar; columnas reales de las sábanas (A1/G6) desconocidas, por lo que pesos/umbrales de duplicados y plantillas se calibrarán tarde; varios changes introducen trabajos en segundo plano (mitigado con un único `app/core/jobs.py`, ADR-010); rendimiento (RF-038) y SQL específico de PostgreSQL (`unaccent`, CTE recursivas, `FOR UPDATE`, `REPEATABLE READ`) solo verificables con Docker.
+
+## Próximos pasos recomendados por célula
+- **Plataforma** (Álvaro Vargas, Manuel Barrantes): 1) Docker operativo, cerrar verificaciones del arranque y archivar los 4 changes; 2) `auditoria-y-soft-delete-transversal` empezando por la prueba transversal (protege a todas las células); 3) `autenticacion-y-matriz-permisos` en paralelo; 4) pedir a la DTI los datos de la VM (G14) y luego `despliegue-vm-y-respaldos` antes de S12.
+- **Catálogo** (Camilo Gomez, Yessica Ochante): `ficha-pieza-crud` y `colecciones-y-vocabularios-admin` en paralelo; después `fotografias-multiples-por-pieza`. Llevar a la contraparte A2, A3, A5, B1, B3 y G1.
+- **Importación** (Franz Vilcapoma, Germán Asenjo): `plantillas-mapeo-y-normalizacion` (fijar primero `MappingSpec`) y `deteccion-duplicados-y-cola-revision` en paralelo; luego `importacion-pipeline-reconciliacion`. Priorizar conseguir la muestra A1/G6.
+- **Consulta y control** (Josué Moreno, Mathias Medina, Sergio Huamán): `ubicacion-jerarquica-y-movimientos` y `alertas-y-reporte-incompletas` en paralelo; luego `busqueda-avanzada-y-exportacion` (dueña de `app/core/xlsx.py` y `export_job`) y por último `reportes-inventario`.
+- **IA** (José Ávalos, Sergio Chumbimuni): `ia-extraccion-texto-libre` (flujo genérico de aprobación) y después `ia-sugerencia-terminos`; mantener `AI_PROVIDER=mock` hasta resolver B12/G15.
+- **Líder y Arquitecto**: validar ownership y ADRs en la primera planificación; usar `docs/maqueta/recorrido-demo.md` en la reunión con la contraparte y registrar respuestas en `docs/preguntas-contraparte.md`; decidir si se proponen `prestamos-y-exposiciones`, `documentos-asociados` e `ia-descripcion-preliminar`.

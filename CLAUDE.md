@@ -111,3 +111,15 @@ PowerShell: `scripts/setup.ps1`, `scripts/dev.ps1 [-Down]`, `scripts/test.ps1`.
 - **Soft-delete y auditoría** en la capa de servicio, nunca dependiendo de cada endpoint.
 - **Nada de binarios en la BD**: archivos en object storage.
 - Final de línea LF (forzado por `.gitattributes`, salvo `*.ps1`).
+
+## Backlog (changes propuestos, sin aplicar)
+
+15 changes en `openspec/changes/`, uno por épica, con proposal, design, specs delta (solo `ADDED`) y tasks. Asignación por célula, dependencias y orden sugerido: `docs/ownership.md`. Reglas de trabajo paralelo (deltas `ADDED`, interfaces con dueño, migraciones, trabajos en segundo plano): `docs/adr/ADR-010-organizacion-backlog-paralelo.md`.
+
+- **Catálogo**: `ficha-pieza-crud`, `colecciones-y-vocabularios-admin`, `fotografias-multiples-por-pieza`
+- **Importación**: `plantillas-mapeo-y-normalizacion`, `deteccion-duplicados-y-cola-revision`, `importacion-pipeline-reconciliacion`
+- **Consulta y control**: `ubicacion-jerarquica-y-movimientos`, `alertas-y-reporte-incompletas`, `busqueda-avanzada-y-exportacion`, `reportes-inventario`
+- **Plataforma**: `auditoria-y-soft-delete-transversal`, `autenticacion-y-matriz-permisos`, `despliegue-vm-y-respaldos`
+- **IA**: `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` (este último depende del primero)
+
+Cada `tasks.md` termina con: pruebas requeridas (incluida verificación en PostgreSQL con Docker), actualización de OpenAPI y cliente tipado, sección del manual de usuario (`docs/manual-usuario/`) y `openspec archive` tras aprobar el PR. Guía para integrantes nuevos: `docs/ONBOARDING.md`.
