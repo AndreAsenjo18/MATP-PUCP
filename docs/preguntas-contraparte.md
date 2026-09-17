@@ -73,3 +73,15 @@ Detalle de las reglas en `apps/api/app/modules/identification/normalization.py` 
 | E4 | ¿Se puede eliminar un término de vocabulario ya asignado a piezas, o solo desactivarlo? | Solo desactivarlo; la eliminación lógica se rechaza si está en uso | colecciones-vocabularios (RF-011, RN-005) | B |
 | E5 | ¿Una colección con piezas o subcolecciones puede darse de baja? | No: primero se reasignan las piezas o se desactiva la colección | colecciones-vocabularios (RF-010, RN-007) | B |
 | E6 | En medidas escritas como "35 x 20 x 12 cm", ¿el orden habitual es alto × ancho × profundidad? | Sí (solo para la sugerencia simulada de IA, siempre revisada por una persona) | ia-asistiva (RIA-01) | C |
+
+## F. Supuestos añadidos al construir la maqueta navegable (change `maqueta-ui-navegable`, 2026-09-17)
+
+Estos supuestos son de **interfaz/flujo**, no de datos: se validan en la reunión de demostración (ver `docs/maqueta/recorrido-demo.md`).
+
+| # | Pregunta | Supuesto vigente | Spec / IDs | Prioridad |
+|---|---|---|---|---|
+| F1 | En el asistente de importación, ¿las filas se deciden una por una o hay una acción "aceptar todas las filas nuevas sin conflicto"? | Una por una en esta maqueta (aceptar/excluir/rechazar); una acción masiva queda para el change de importación real | importacion-datos (RF-025..027) | B |
+| F2 | Al fusionar dos posibles duplicados, ¿cuál de los dos registros queda como "principal" (denominación, foto de portada)? ¿Se pide elegir campo por campo? | La maqueta solo registra la decisión y el motivo; la fusión campo a campo queda para el change de calidad de datos | calidad-datos (RF-030) | B |
+| F3 | ¿"Posponer" un duplicado debe quedar guardado (para que reaparezca luego) o basta con que vuelva a aparecer si no se decide en la sesión? | Pendiente: en la maqueta "posponer" no persiste (sin backend); a definir si necesita un estado propio o basta con "no decidir" | calidad-datos (RF-030) | C |
+| F4 | En el editor de pieza, ¿qué campos deben poder editarse en línea recta (sin pasar por aprobación) y cuáles requieren revisión de un rol superior? | La maqueta permite editar denominación/descripción/procedencia/medidas/observaciones con el permiso `pieces.update`; el código I y el régimen de tenencia no son editables ahí (RN-002/RN-003) | catalogo-piezas (RF-043) | B |
+| F5 | En la vista móvil de depósito, ¿alcanza con "movimiento" y "verificación física", o se necesita registrar incidencias (pieza dañada, faltante) desde ahí mismo? | Solo movimiento/verificación en esta maqueta; incidencias quedan para un change de backlog si se confirma la necesidad | ubicacion-movimientos (RF-017, RF-020) | C |
