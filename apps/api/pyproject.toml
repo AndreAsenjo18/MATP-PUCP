@@ -30,6 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1,<10",
+    "pyyaml>=6.0.3,<7",  # lee docs/fuentes/endpoints-api-v1.yaml en la prueba de conformidad
     "httpx2>=2.13.0,<3",  # Starlette TestClient backend (httpx is deprecated there)
     "ruff>=0.16.8,<1",
 ]

@@ -65,6 +65,14 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - **Verificado sin Docker**: `npm run lint` y `npm run lint:web` en verde; `npm test` 282 pruebas (API 239 —dos nuevas comprueban que `/ai/health` y `/ai/v1/describe` responden dentro del proceso de la API—, IA 20, web 23); `npm run openapi:check` al día; `npm run build:web` correcto; `openspec validate --all --strict` 31/31; `docker compose config` válido y sin servicio `ai`.
 - **PENDIENTE (requiere Docker)**: construir la imagen de la API con la IA dentro (`npm run dev`) y comprobar `/health` y `/ai/health` en el contenedor.
 
+### 2026-09-22 — Contrato de interfaces del equipo (`endpoints-api-v1.yaml`)
+
+- El equipo entregó `docs/fuentes/endpoints-api-v1.yaml` (OpenAPI 3.0.3, 30 rutas y 45 operaciones en 3 fases de prioridad) como especificación de las interfaces. Pasa a ser la fuente de verdad: `docs/api/openapi.json` se conforma a él.
+- Estado medido hoy: de las 45 operaciones del documento, **14 coinciden** en ruta y verbo, **5 coinciden pero con otro `operationId`**, **31 faltan** (renombradas o nuevas) y la API expone **62 operaciones** que el documento no contempla.
+- Creado el change `alinear-api-endpoints-v1` (proposal, design, tasks, spec delta de `plataforma`), con el mapeo completo en `docs/api/mapeo-endpoints-v1.md` y los conflictos C1 a C6 registrados como preguntas I1 a I6.
+- Añadida la prueba `apps/api/tests/api/test_contract_conformance.py`: congela las diferencias conocidas, falla ante cualquier divergencia nueva y obliga a vaciar las listas a medida que se implementan las tareas.
+- **Pendiente de decisión antes de tocar código de la API**: C1 (numeración de requisitos, choca con la trazabilidad de las 12 specs y los 15 changes), C2 (`/public/catalog` sin autenticación frente a «solo uso interno»), C4 (modelo de datos: `code_i` en la pieza, categorías y estados como tablas, rol único) e I5 (¿se eliminan las 62 operaciones añadidas?).
+
 ### 2026-09-22 — Diagrama entidad-relación de la contraparte
 
 - El PDF entregado por el equipo quedó versionado en `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades: COLLECTIONS, PIECES, CATEGORIES, CONSERVATION_STATES, IDENTIFIERS, MEDIA_ASSETS, LOCATIONS, PIECE_LOCATION_HISTORY, USERS, IMPORT_BATCHES, IMPORT_ROW_DIFFS, LOANS, AUDIT_LOGS).

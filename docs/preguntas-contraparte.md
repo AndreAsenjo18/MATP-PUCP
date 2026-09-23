@@ -128,3 +128,16 @@ Fuente: `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades). Comparació
 | H4 | ¿Dónde se guardan las sugerencias de IA pendientes y su aprobación, y la cola de duplicados, si no existen en el diagrama? RN-009 exige aprobación registrada. | Tablas `ai_suggestion` y `duplicate_candidate`, añadidas al diagrama | `ia-extraccion-texto-libre`, `deteccion-duplicados-y-cola-revision` (RN-009, RF-030) | A |
 | H5 | ¿`LOANS` entra en la fase 1? Hoy no existe tabla y RF-018 (préstamos y exposiciones) quedó fuera del backlog. | Fuera de alcance de la fase 1 | Nuevo change por proponer (RF-018) | B |
 | H6 | ¿El borrado lógico se limita a `PIECES` (como en el diagrama) o se mantiene en todas las tablas? RN-005 dice que nunca se borra información. | Borrado lógico y auditoría en todas las tablas de negocio | Transversal (RN-005) | A |
+
+## I. Contrato de interfaces del equipo (`endpoints-api-v1.yaml`, 2026-09-22)
+
+Fuente: `docs/fuentes/endpoints-api-v1.yaml`. Mapeo operación por operación y conflictos C1 a C6: `docs/api/mapeo-endpoints-v1.md`. Change que ejecuta la alineación: `alinear-api-endpoints-v1`. Preguntas **internas del equipo** (Arquitecto e Integradores), salvo I2, que necesita también la opinión del museo.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| I1 | El documento usa su propia numeración de requisitos, distinta de `docs/requisitos/catalogo.md` (en el documento RF-041 es el login; en el catálogo, la restricción de campos sensibles). ¿Cuál es la numeración oficial? | Las specs y los 15 changes siguen citando el catálogo; el mapeo registra la correspondencia | Trazabilidad de las 12 specs y los 15 changes | A |
+| I2 | `GET /public/catalog` es un endpoint abierto sin autenticación. ¿Entra en la fase 1, pese a que RF-042 y `CLAUDE.md` dicen «solo uso interno, nada público»? ¿Qué campos serían públicos con comodato y Ley 29733 de por medio? | No se implementa ni se expone hasta que se decida | `busqueda-reportes`, nuevo change de catálogo público (RF-042, RN-008, RNF-014) | A |
+| I3 | `DELETE /pieces/{id}/identifiers/{identifier_id}` habla de «remover» un código. ¿Se acepta implementarlo como baja lógica (queda en el historial y la auditoría) para respetar RN-005? | Baja lógica; 409 si el identificador es de tipo I (RN-002) | `ficha-pieza-crud` (RN-002, RN-005) | A |
+| I4 | ¿Los valores de enumerado en español (`Propiedad`, `Comodato`, `Préstamo Temporal`) se guardan así en la base o solo se traducen en la frontera de la API? | Traducción en la frontera; la base conserva códigos en inglés (ADR-002) | Transversal | B |
+| I5 | El documento no incluye 62 operaciones que la API ya expone (aprobación de sugerencias de IA, cola de duplicados, vocabularios, plantillas de mapeo, restauración de piezas…). ¿Se conservan como añadidos o hay que eliminarlas? | Se conservan y quedan declaradas como añadidos justificados | Transversal (RN-005, RN-009, RN-010, RF-030) | A |
+| I6 | El documento menciona AWS S3 y un staging en AWS Academy; ADR-007 y ADR-011 asumen MinIO en local, Cloudflare R2 de contingencia y la VM de la PUCP. ¿Qué se usa en staging? | MinIO en local y VM de la PUCP; S3 es compatible por API | `despliegue-vm-y-respaldos` (RNF-002) | B |
