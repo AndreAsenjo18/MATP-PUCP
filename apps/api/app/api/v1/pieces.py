@@ -31,6 +31,7 @@ from app.modules.catalog.queries import (
     get_piece,
 )
 from app.modules.catalog.schemas import (
+    PieceChildLink,
     PieceCreate,
     PieceDetail,
     PieceSort,
@@ -159,12 +160,12 @@ def validate_piece(
     tags=["Piezas"],
     **implemented(),
 )
-def get_piece_detail(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> PieceDetail:
+def get_piece_by_id(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> PieceDetail:
     piece = get_piece(session, piece_id)
     return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
 
-@router.patch(
+@router.put(
     "/{piece_id}",
     response_model=PieceDetail,
     summary="Editar la ficha (auditoría campo a campo)",
@@ -182,7 +183,7 @@ def update_piece(piece_id: uuid.UUID, body: PieceUpdate, user: Editor) -> PieceD
     tags=["Piezas"],
     **stub(CHANGE_PIECE_CRUD),
 )
-def delete_piece(
+def soft_delete_piece(
     piece_id: uuid.UUID,
     reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio.")],
     user: Annotated[CurrentUser, Depends(require_permission("pieces.delete"))],
@@ -274,6 +275,23 @@ def add_piece_identifier(
     body: IdentifierCreate,
     user: Annotated[CurrentUser, Depends(require_permission("identifiers.manage"))],
 ) -> IdentifierOut:
+    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+
+
+@router.delete(
+    "/{piece_id}/identifiers/{identifier_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Dar de baja un código histórico mal asignado (baja lógica, RN-005)",
+    tags=["Identificadores"],
+    **stub(CHANGE_PIECE_CRUD),
+)
+def delete_piece_identifier(
+    piece_id: uuid.UUID,
+    identifier_id: uuid.UUID,
+    reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio (RN-005).")],
+    user: Editor,
+) -> IdentifierOut:
+    """El identificador queda en el historial y en la auditoría; el de tipo I responde 409."""
     raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
 
 
@@ -408,16 +426,44 @@ def retire_media(
     raise not_implemented(CHANGE_MEDIA)
 
 
+# ---------------------------------------------------------------------- conjuntos
+@router.get(
+    "/{piece_id}/children",
+    response_model=list[PieceSummary],
+    responses=NOT_FOUND,
+    summary="Listar las piezas componentes de un conjunto (RF-009)",
+    tags=["Piezas"],
+    **implemented(),
+)
+def get_piece_children(
+    piece_id: uuid.UUID, session: SessionDep, user: Reader
+) -> list[PieceSummary]:
+    get_piece(session, piece_id)
+    reader = CatalogReader(session, Viewer(user.permissions))
+    return reader.children_of(piece_id)
+
+
+@router.post(
+    "/{piece_id}/children",
+    response_model=PieceSummary,
+    summary="Asociar una pieza existente como componente de un conjunto (RF-009)",
+    tags=["Piezas"],
+    **stub(CHANGE_PIECE_CRUD),
+)
+def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> PieceSummary:
+    raise not_implemented(CHANGE_PIECE_CRUD, PieceSummary)
+
+
 # ---------------------------------------------------------------------- movements
 @router.get(
-    "/{piece_id}/movements",
+    "/{piece_id}/location-history",
     response_model=list[MovementOut],
     responses=NOT_FOUND,
     summary="Historial de movimientos y verificaciones (más reciente primero)",
     tags=["Ubicaciones"],
     **implemented(),
 )
-def list_piece_movements(
+def get_piece_location_history(
     piece_id: uuid.UUID, session: SessionDep, user: Reader
 ) -> list[MovementOut]:
     get_piece(session, piece_id)
@@ -448,14 +494,14 @@ def list_piece_movements(
 
 
 @router.post(
-    "/{piece_id}/movements",
+    "/{piece_id}/move",
     response_model=MovementOut,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un movimiento o verificación física",
     tags=["Ubicaciones"],
     **stub(CHANGE_LOCATIONS),
 )
-def register_movement(
+def move_piece(
     piece_id: uuid.UUID,
     body: MovementCreate,
     user: Annotated[CurrentUser, Depends(require_permission("movements.register"))],

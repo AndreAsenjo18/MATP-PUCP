@@ -16,7 +16,7 @@ from app.api.stubs import CHANGE_COLLECTIONS_ADMIN, implemented, not_implemented
 from app.core.errors import NotFound
 from app.modules.catalog.models import Piece
 from app.modules.collections import vocabulary_service
-from app.modules.collections.models import Collection, Term, Vocabulary
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.collections.schemas import (
     CollectionCreate,
     CollectionOut,
@@ -28,7 +28,9 @@ from app.modules.collections.schemas import (
     VocabularyOut,
 )
 from app.modules.collections.service import (
-    create_collection,
+    create_collection as create_collection_service,
+)
+from app.modules.collections.service import (
     delete_collection,
     update_collection,
 )
@@ -97,10 +99,10 @@ def list_collections(
     tags=["Colecciones"],
     **implemented(),
 )
-def create_collection_endpoint(
+def create_collection(
     body: CollectionCreate, session: SessionDep, user: CollectionManager
 ) -> CollectionOut:
-    collection = create_collection(writer(session, user), **body.model_dump())
+    collection = create_collection_service(writer(session, user), **body.model_dump())
     session.commit()
     return _collection_out(session, collection, user)
 
@@ -152,6 +154,49 @@ def delete_collection_endpoint(
     delete_collection(writer(session, user, reason), collection, reason)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ------------------------------------------------------------- categorías y estados
+# Rutas del contrato del equipo (`listCategories`, `createCategory`, `listConservationStates`).
+# Se sirven desde los vocabularios controlados `CATEGORY` y `CONSERVATION_STATUS`, que siguen
+# siendo datos parametrizables (RN-010); ver conflicto C4 en docs/api/mapeo-endpoints-v1.md.
+@router.get(
+    "/categories",
+    response_model=list[TermOut],
+    summary="Listar las líneas artesanales y categorías del catálogo (RF-011)",
+    tags=["Vocabularios"],
+    **implemented(),
+)
+def list_categories(
+    session: SessionDep, user: Reader, include_inactive: bool = False
+) -> list[TermOut]:
+    return list_terms(VocabularyCode.CATEGORY, session, user, include_inactive)
+
+
+@router.post(
+    "/categories",
+    response_model=TermOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=CONFLICT,
+    summary="Crear una línea artesanal o categoría (RF-011)",
+    tags=["Vocabularios"],
+    **implemented(),
+)
+def create_category(body: TermCreate, session: SessionDep, user: VocabularyManager) -> TermOut:
+    return create_term(VocabularyCode.CATEGORY, body, session, user)
+
+
+@router.get(
+    "/conservation-states",
+    response_model=list[TermOut],
+    summary="Listar la escala de estados de conservación (RF-012)",
+    tags=["Vocabularios"],
+    **implemented(),
+)
+def list_conservation_states(
+    session: SessionDep, user: Reader, include_inactive: bool = False
+) -> list[TermOut]:
+    return list_terms(VocabularyCode.CONSERVATION_STATUS, session, user, include_inactive)
 
 
 # ------------------------------------------------------------------- vocabularies

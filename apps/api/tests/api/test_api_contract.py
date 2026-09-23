@@ -36,28 +36,28 @@ REQUIRED_PATHS = [
     ("get", "/api/v1/pieces"),
     ("get", "/api/v1/pieces/{piece_id}/identifiers"),
     ("post", "/api/v1/pieces/{piece_id}/media/upload-url"),
-    ("get", "/api/v1/pieces/{piece_id}/movements"),
+    ("get", "/api/v1/pieces/{piece_id}/location-history"),
     ("get", "/api/v1/collections"),
     ("get", "/api/v1/vocabularies/{vocabulary_code}/terms"),
     ("get", "/api/v1/locations"),
-    ("post", "/api/v1/imports"),
+    ("post", "/api/v1/imports/upload"),
     ("put", "/api/v1/imports/{batch_id}/mapping"),
     ("post", "/api/v1/imports/{batch_id}/validate"),
-    ("get", "/api/v1/imports/{batch_id}/preview"),
-    ("post", "/api/v1/imports/{batch_id}/approve"),
+    ("get", "/api/v1/imports/{batch_id}/diffs"),
+    ("post", "/api/v1/imports/{batch_id}/confirm"),
     ("get", "/api/v1/imports/{batch_id}/log"),
     ("get", "/api/v1/quality/incomplete"),
     ("get", "/api/v1/quality/duplicates"),
     ("get", "/api/v1/reports/{report_type}"),
     ("get", "/api/v1/exports/full"),
-    ("post", "/api/v1/ai/suggestions"),
+    ("post", "/api/v1/ai/suggest-cataloging"),
     ("get", "/api/v1/ai/suggestions"),
     ("post", "/api/v1/ai/suggestions/{suggestion_id}/approve"),
     ("post", "/api/v1/ai/suggestions/{suggestion_id}/reject"),
     ("post", "/api/v1/auth/login"),
     ("get", "/api/v1/users"),
     ("get", "/api/v1/roles"),
-    ("get", "/api/v1/audit"),
+    ("get", "/api/v1/audit-logs"),
 ]
 
 
@@ -94,7 +94,7 @@ def test_operation_ids_are_unique_and_stable(spec: dict) -> None:
     ids = [op["operationId"] for ops in spec["paths"].values() for op in ops.values()]
     duplicated = [name for name, count in Counter(ids).items() if count > 1]
     assert not duplicated
-    assert "list_pieces" in ids
+    assert "listPieces" in ids, "operationId en camelCase (contrato del equipo)"
 
 
 def test_routes_are_versioned_and_health_stays_at_root(spec: dict) -> None:
@@ -123,7 +123,7 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
 
 def test_stub_over_http_returns_501_with_change_and_example(client: TestClient) -> None:
     response = client.post(
-        f"/api/v1/imports/{uuid.uuid4()}/approve",
+        f"/api/v1/imports/{uuid.uuid4()}/confirm",
         json={"confirm_counts": {"rows": 10}},
         headers=as_user(ADMIN),
     )
@@ -136,7 +136,7 @@ def test_stub_over_http_returns_501_with_change_and_example(client: TestClient) 
 
 
 def test_stub_still_requires_identity(client: TestClient) -> None:
-    response = client.get("/api/v1/quality/kpis")
+    response = client.get("/api/v1/reports/dashboard-stats")
     assert response.status_code == 401
 
 

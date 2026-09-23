@@ -25,7 +25,7 @@ def test_create_collection_is_audited_with_user(seeded_api: SeededApi) -> None:
     assert created["piece_count"] == 0
     me = client.get("/api/v1/auth/me", headers=H).json()
     audit = client.get(
-        "/api/v1/audit",
+        "/api/v1/audit-logs",
         params={"entity_type": "collection", "entity_id": created["id"]},
         headers=H,
     ).json()

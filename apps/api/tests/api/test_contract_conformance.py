@@ -23,39 +23,16 @@ CONTRACT = REPO_ROOT / "docs" / "fuentes" / "endpoints-api-v1.yaml"
 MAPPING_DOC = "docs/api/mapeo-endpoints-v1.md"
 PREFIX = "/api/v1"
 
-# --- Diferencias congeladas (tareas 4 y 5 del change alinear-api-endpoints-v1) ---------------
-# Operaciones del documento que la API todavía no expone en esa ruta y verbo.
+# --- Diferencias congeladas (tareas 5.2 y 5.3 del change alinear-api-endpoints-v1) ----------
+# Operaciones del documento que la API todavía no expone. Las cinco de la fase 3 esperan que se
+# propongan sus changes de backlog (préstamos y exposiciones; descargas masivas y enriquecimiento
+# por lote), porque cada stub debe citar un change existente.
 PENDIENTES: set[tuple[str, str]] = {
-    ("post", "/ai/batch-enrich"),
-    ("post", "/ai/suggest-cataloging"),
-    ("post", "/ai/validate-data"),
-    ("get", "/audit-logs"),
-    ("get", "/audit-logs/pieces/{}"),
-    ("get", "/categories"),
-    ("post", "/categories"),
-    ("get", "/conservation-states"),
-    ("post", "/imports/upload"),
-    ("post", "/imports/{}/confirm"),
-    ("get", "/imports/{}/diffs"),
-    ("post", "/imports/{}/rollback"),
     ("get", "/loans"),
     ("post", "/loans"),
     ("put", "/loans/{}/status"),
-    ("get", "/locations/tree"),
-    ("put", "/locations/{}"),
-    ("get", "/locations/{}/pieces"),
     ("post", "/media/bulk-download"),
-    ("post", "/media/upload"),
-    ("put", "/pieces/{}"),
-    ("get", "/pieces/{}/children"),
-    ("post", "/pieces/{}/children"),
-    ("delete", "/pieces/{}/identifiers/{}"),
-    ("get", "/pieces/{}/location-history"),
-    ("post", "/pieces/{}/move"),
-    ("get", "/reports/dashboard-stats"),
-    ("post", "/reports/export-excel"),
-    ("get", "/reports/piece-card/{}/pdf"),
-    ("put", "/users/{}/role"),
+    ("post", "/ai/batch-enrich"),
 }
 
 # `GET /public/catalog` queda fuera de PENDIENTES a propósito: el conflicto C2 del mapeo
@@ -64,22 +41,15 @@ PENDIENTES: set[tuple[str, str]] = {
 BLOQUEADAS: set[tuple[str, str]] = {("get", "/public/catalog")}
 
 # Operaciones que coinciden en ruta y verbo, pero cuyo identificador aún no es el del documento.
-PENDIENTES_OPERATION_ID: set[tuple[str, str]] = {
-    ("post", "/collections"),
-    ("get", "/imports"),
-    ("delete", "/pieces/{}"),
-    ("get", "/pieces/{}"),
-    ("get", "/search"),
-}
+# Vacía desde la tarea 1.4: `operation_id()` convierte el nombre del handler a camelCase.
+PENDIENTES_OPERATION_ID: set[tuple[str, str]] = set()
 
 # Operaciones propias que el documento no contempla, justificadas en el mapeo.
 ANADIDOS: set[tuple[str, str]] = {
     ("get", "/ai/suggestions"),
-    ("post", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),
     ("post", "/ai/suggestions/{}/reject"),
-    ("get", "/audit"),
     ("post", "/audit/change-sets/{}/revert"),
     ("post", "/auth/logout"),
     ("delete", "/collections/{}"),
@@ -92,21 +62,15 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/identifiers/normalize"),
     ("get", "/import-templates"),
     ("post", "/import-templates"),
-    ("post", "/imports"),
     ("get", "/imports/{}"),
-    ("post", "/imports/{}/approve"),
     ("get", "/imports/{}/log"),
     ("put", "/imports/{}/mapping"),
-    ("get", "/imports/{}/preview"),
-    ("post", "/imports/{}/revert"),
     ("patch", "/imports/{}/rows/{}"),
     ("post", "/imports/{}/validate"),
     ("get", "/locations"),
     ("get", "/locations/{}"),
-    ("patch", "/locations/{}"),
     ("get", "/permissions"),
     ("post", "/pieces/validate"),
-    ("patch", "/pieces/{}"),
     ("get", "/pieces/{}/alerts"),
     ("get", "/pieces/{}/identifiers"),
     ("post", "/pieces/{}/identifiers/{}/correction"),
@@ -115,18 +79,14 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/pieces/{}/media/upload-url"),
     ("delete", "/pieces/{}/media/{}"),
     ("patch", "/pieces/{}/media/{}"),
-    ("get", "/pieces/{}/movements"),
-    ("post", "/pieces/{}/movements"),
     ("post", "/pieces/{}/restore"),
     ("get", "/pieces/{}/source-records"),
     ("get", "/quality/duplicates"),
     ("post", "/quality/duplicates/{}/resolve"),
     ("get", "/quality/incomplete"),
-    ("get", "/quality/kpis"),
     ("get", "/reports/{}"),
     ("get", "/roles"),
     ("put", "/roles/{}/permissions"),
-    ("post", "/search/export"),
     ("get", "/users/{}"),
     ("patch", "/users/{}"),
     ("get", "/vocabularies"),

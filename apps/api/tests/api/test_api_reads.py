@@ -49,9 +49,9 @@ def test_ai_suggestions_are_listed_as_pending(seeded_api: SeededApi) -> None:
 
 
 def test_audit_requires_permission_and_filters(client: TestClient) -> None:
-    assert client.get("/api/v1/audit", headers=as_user(VIEWER)).status_code == 403
+    assert client.get("/api/v1/audit-logs", headers=as_user(VIEWER)).status_code == 403
     body = client.get(
-        "/api/v1/audit", params={"origin": "SYSTEM", "page_size": 5}, headers=as_user(ADMIN)
+        "/api/v1/audit-logs", params={"origin": "SYSTEM", "page_size": 5}, headers=as_user(ADMIN)
     ).json()
     assert body["total"] > 0
     assert len(body["items"]) == 5

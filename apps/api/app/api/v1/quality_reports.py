@@ -62,13 +62,13 @@ def list_incomplete_pieces(
 
 
 @router.get(
-    "/quality/kpis",
+    "/reports/dashboard-stats",
     response_model=CompletenessKpis,
     summary="KPI de completitud general y por colección (RF-035)",
     tags=["Calidad"],
     **stub(CHANGE_INCOMPLETE),
 )
-def get_completeness_kpis(user: ReportViewer) -> CompletenessKpis:
+def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
     raise not_implemented(CHANGE_INCOMPLETE, CompletenessKpis)
 
 
@@ -111,7 +111,7 @@ def resolve_duplicate_candidate(
     tags=["Búsqueda"],
     **implemented(),
 )
-def search(
+def search_pieces(
     q: Annotated[str, Query(min_length=1, max_length=200, description="Código o texto.")],
     session: SessionDep,
     user: Reader,
@@ -128,13 +128,13 @@ def search(
 
 
 @router.post(
-    "/search/export",
+    "/reports/export-excel",
     response_model=ExportJob,
-    summary="Exportar a Excel los resultados de una búsqueda (RF-036)",
-    tags=["Búsqueda"],
+    summary="Exportar a Excel los resultados de la consulta actual (RF-036)",
+    tags=["Reportes"],
     **stub(CHANGE_SEARCH_EXPORT),
 )
-def export_search_results(body: SearchExportRequest, user: Exporter) -> ExportJob:
+def export_excel_report(body: SearchExportRequest, user: Exporter) -> ExportJob:
     raise not_implemented(CHANGE_SEARCH_EXPORT, ExportJob)
 
 
@@ -154,6 +154,17 @@ def get_report(
     export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
 ) -> ReportOut:
     raise not_implemented(CHANGE_REPORTS, ReportOut)
+
+
+@router.get(
+    "/reports/piece-card/{piece_id}/pdf",
+    response_model=ExportJob,
+    summary="Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+    tags=["Reportes"],
+    **stub(CHANGE_REPORTS),
+)
+def export_piece_pdf(piece_id: uuid.UUID, user: ReportViewer) -> ExportJob:
+    raise not_implemented(CHANGE_REPORTS, ExportJob)
 
 
 @router.get(

@@ -48,6 +48,37 @@ class LocationOut(ORMModel):
     path: list[LocationRef] = Field(default_factory=list, description="Ruta desde la sede.")
 
 
+class LocationNode(BaseModel):
+    """Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": _SITE_REF["id"],
+                    "name": _SITE_REF["name"],
+                    "level_type": "Sede",
+                    "children": [
+                        {
+                            "id": _SPACE_REF["id"],
+                            "name": _SPACE_REF["name"],
+                            "level_type": "Depósito",
+                            "children": [],
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    id: uuid.UUID
+    name: str
+    level_type: str = Field(
+        description="Nivel jerárquico: Sede, Depósito, Mueble, Nivel o Contenedor."
+    )
+    children: list["LocationNode"] = Field(default_factory=list)
+
+
 class LocationCreate(BaseModel):
     parent_id: uuid.UUID | None = None
     level: LocationLevel

@@ -286,6 +286,15 @@ class CatalogReader:
         term = terms.get(term_id) if term_id else None
         return TermRef.model_validate(term) if term else None
 
+    def children_of(self, piece_id: uuid.UUID) -> list[PieceSummary]:
+        """Piezas componentes de un conjunto, sin las eliminadas lógicamente (RF-009)."""
+        children = self.session.scalars(
+            select(Piece)
+            .where(Piece.parent_piece_id == piece_id, Piece.deleted_at.is_(None))
+            .order_by(Piece.title)
+        )
+        return self.summaries(list(children))
+
     def summaries(self, pieces: Sequence[Piece]) -> list[PieceSummary]:
         ids = [piece.id for piece in pieces]
         identifiers = self.current_identifiers(ids)

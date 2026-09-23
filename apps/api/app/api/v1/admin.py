@@ -143,6 +143,17 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> User
     raise not_implemented(CHANGE_AUTH, UserOut)
 
 
+@router.put(
+    "/users/{user_id}/role",
+    response_model=UserOut,
+    summary="Cambiar el rol o el estado de un usuario (RF-039)",
+    tags=["Usuarios y roles"],
+    **stub(CHANGE_AUTH),
+)
+def update_user_role(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> UserOut:
+    raise not_implemented(CHANGE_AUTH, UserOut)
+
+
 @router.get(
     "/roles",
     response_model=list[RoleOut],
@@ -247,14 +258,14 @@ def get_ai_suggestion(
 
 
 @router.post(
-    "/ai/suggestions",
+    "/ai/suggest-cataloging",
     response_model=AiSuggestionOut,
     status_code=status.HTTP_201_CREATED,
     summary="Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009)",
     tags=["IA asistiva"],
     **stub(CHANGE_AI_EXTRACTION),
 )
-def request_ai_suggestion(body: AiSuggestionCreate, user: AiRequester) -> AiSuggestionOut:
+def suggest_cataloging(body: AiSuggestionCreate, user: AiRequester) -> AiSuggestionOut:
     raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
 
 
@@ -286,13 +297,13 @@ def reject_ai_suggestion(
 
 # -------------------------------------------------------------------------- audit
 @router.get(
-    "/audit",
+    "/audit-logs",
     response_model=Page[AuditEntryOut],
     summary="Consultar la auditoría campo a campo (más reciente primero)",
     tags=["Auditoría"],
     **implemented(),
 )
-def list_audit_entries(
+def get_audit_logs(
     session: SessionDep,
     user: AuditReader,
     params: Annotated[PageParams, Depends(page_params)],
@@ -326,6 +337,32 @@ def list_audit_entries(
         page=params.page,
         page_size=params.page_size,
     )
+
+
+@router.get(
+    "/audit-logs/pieces/{piece_id}",
+    response_model=Page[AuditEntryOut],
+    summary="Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)",
+    tags=["Auditoría"],
+    **stub(CHANGE_AUDIT),
+)
+def get_piece_audit_timeline(
+    piece_id: uuid.UUID,
+    user: AuditReader,
+    params: Annotated[PageParams, Depends(page_params)],
+) -> Page[AuditEntryOut]:
+    raise not_implemented(CHANGE_AUDIT, page_example(AuditEntryOut))
+
+
+@router.post(
+    "/ai/validate-data",
+    response_model=AiSuggestionOut,
+    summary="Escaneo de calidad e inconsistencias asistido por IA (queda PENDIENTE, RN-009)",
+    tags=["IA asistiva"],
+    **stub(CHANGE_AI_EXTRACTION),
+)
+def validate_data_quality(body: AiSuggestionCreate, user: AiRequester) -> AiSuggestionOut:
+    raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
 
 
 @router.post(

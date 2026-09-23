@@ -1,9 +1,26 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 946f9f8b4488036422d626be52609f55dae009676f63e48b1534fcd12ce763a3
+ * openapi-sha256: 3ecdf011034d98793c230cc8caf2b0fcfb9a90f2d2a52dd2d4967ae8ba57ee08
  */
 export interface paths {
+    "/api/v1/ai/suggest-cataloging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009) */
+        post: operations["suggestCataloging"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/suggestions": {
         parameters: {
             query?: never;
@@ -12,10 +29,9 @@ export interface paths {
             cookie?: never;
         };
         /** Sugerencias de IA (pendientes por defecto) */
-        get: operations["list_ai_suggestions"];
+        get: operations["listAiSuggestions"];
         put?: never;
-        /** Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009) */
-        post: operations["request_ai_suggestion"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -30,7 +46,7 @@ export interface paths {
             cookie?: never;
         };
         /** Detalle de una sugerencia de IA */
-        get: operations["get_ai_suggestion"];
+        get: operations["getAiSuggestion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -49,7 +65,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Aprobar (total, parcial o editada) y aplicar con auditoría de origen IA */
-        post: operations["approve_ai_suggestion"];
+        post: operations["approveAiSuggestion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -66,14 +82,31 @@ export interface paths {
         get?: never;
         put?: never;
         /** Rechazar una sugerencia con motivo */
-        post: operations["reject_ai_suggestion"];
+        post: operations["rejectAiSuggestion"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/audit": {
+    "/api/v1/ai/validate-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Escaneo de calidad e inconsistencias asistido por IA (queda PENDIENTE, RN-009) */
+        post: operations["validateDataQuality"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-logs": {
         parameters: {
             query?: never;
             header?: never;
@@ -81,7 +114,24 @@ export interface paths {
             cookie?: never;
         };
         /** Consultar la auditoría campo a campo (más reciente primero) */
-        get: operations["list_audit_entries"];
+        get: operations["getAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-logs/pieces/{piece_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040) */
+        get: operations["getPieceAuditTimeline"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,7 +150,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007) */
-        post: operations["revert_change_set"];
+        post: operations["revertChangeSet"];
         delete?: never;
         options?: never;
         head?: never;
@@ -149,9 +199,27 @@ export interface paths {
             cookie?: never;
         };
         /** Usuario actual con roles y permisos efectivos */
-        get: operations["get_me"];
+        get: operations["getMe"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar las líneas artesanales y categorías del catálogo (RF-011) */
+        get: operations["listCategories"];
+        put?: never;
+        /** Crear una línea artesanal o categoría (RF-011) */
+        post: operations["createCategory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -166,10 +234,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar colecciones y subcolecciones (plano, con parent_id) */
-        get: operations["list_collections"];
+        get: operations["listCollections"];
         put?: never;
         /** Crear una colección o subcolección (sigla normalizada única) */
-        post: operations["create_collection_endpoint"];
+        post: operations["createCollection"];
         delete?: never;
         options?: never;
         head?: never;
@@ -184,15 +252,32 @@ export interface paths {
             cookie?: never;
         };
         /** Detalle de una colección */
-        get: operations["get_collection"];
+        get: operations["getCollection"];
         put?: never;
         post?: never;
         /** Eliminar lógicamente una colección vacía, con motivo (RN-005) */
-        delete: operations["delete_collection_endpoint"];
+        delete: operations["deleteCollectionEndpoint"];
         options?: never;
         head?: never;
         /** Editar o mover una colección (sin ciclos) */
-        patch: operations["update_collection_endpoint"];
+        patch: operations["updateCollectionEndpoint"];
+        trace?: never;
+    };
+    "/api/v1/conservation-states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar la escala de estados de conservación (RF-012) */
+        get: operations["listConservationStates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/exports/full": {
@@ -203,7 +288,7 @@ export interface paths {
             cookie?: never;
         };
         /** Exportación completa de la base en formato abierto (RF-044) */
-        get: operations["export_full_database"];
+        get: operations["exportFullDatabase"];
         put?: never;
         post?: never;
         delete?: never;
@@ -220,10 +305,10 @@ export interface paths {
             cookie?: never;
         };
         /** Tipos de identificador parametrizables (RN-010) */
-        get: operations["list_identifier_types"];
+        get: operations["listIdentifierTypes"];
         put?: never;
         /** Crear un tipo de identificador */
-        post: operations["create_identifier_type"];
+        post: operations["createIdentifierType"];
         delete?: never;
         options?: never;
         head?: never;
@@ -244,7 +329,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Editar o desactivar un tipo de identificador */
-        patch: operations["update_identifier_type"];
+        patch: operations["updateIdentifierType"];
         trace?: never;
     };
     "/api/v1/identifiers/normalize": {
@@ -257,7 +342,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Vista previa de la normalización de una celda de códigos (RF-023) */
-        post: operations["normalize_identifiers"];
+        post: operations["normalizeIdentifiers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -272,10 +357,10 @@ export interface paths {
             cookie?: never;
         };
         /** Plantillas de mapeo reutilizables (RF-022) */
-        get: operations["list_import_templates"];
+        get: operations["listImportTemplates"];
         put?: never;
         /** Guardar una plantilla de mapeo */
-        post: operations["create_import_template"];
+        post: operations["createImportTemplate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -290,10 +375,9 @@ export interface paths {
             cookie?: never;
         };
         /** Listar lotes de importación */
-        get: operations["list_imports"];
+        get: operations["listImportBatches"];
         put?: never;
-        /** 1. Ingesta: subir un Excel y crear el lote */
-        post: operations["upload_import"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -308,7 +392,7 @@ export interface paths {
             cookie?: never;
         };
         /** Estado de un lote */
-        get: operations["get_import"];
+        get: operations["getImport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -317,7 +401,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/imports/{batch_id}/approve": {
+    "/api/v1/imports/{batch_id}/confirm": {
         parameters: {
             query?: never;
             header?: never;
@@ -327,7 +411,24 @@ export interface paths {
         get?: never;
         put?: never;
         /** 6. Aprobación explícita por rol autorizado (RF-027) */
-        post: operations["approve_import"];
+        post: operations["confirmImportBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/diffs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 5. Previsualización con diff y clasificación de filas */
+        get: operations["getImportBatchDiffs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -342,7 +443,7 @@ export interface paths {
             cookie?: never;
         };
         /** 7. Bitácora de carga con motivos de rechazo (RF-028) */
-        get: operations["get_import_log"];
+        get: operations["getImportLog"];
         put?: never;
         post?: never;
         delete?: never;
@@ -360,7 +461,7 @@ export interface paths {
         };
         get?: never;
         /** 2. Mapeo: asignar columnas (o aplicar una plantilla) */
-        put: operations["set_import_mapping"];
+        put: operations["setImportMapping"];
         post?: never;
         delete?: never;
         options?: never;
@@ -368,24 +469,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/imports/{batch_id}/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 5. Previsualización con diff y clasificación de filas */
-        get: operations["preview_import"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/imports/{batch_id}/revert": {
+    "/api/v1/imports/{batch_id}/rollback": {
         parameters: {
             query?: never;
             header?: never;
@@ -395,7 +479,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Revertir un lote aplicado (RNF-007) */
-        post: operations["revert_import"];
+        post: operations["rollbackImportBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -416,7 +500,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Decidir sobre una fila (aceptar, excluir o rechazar con motivo) */
-        patch: operations["decide_import_row"];
+        patch: operations["decideImportRow"];
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/validate": {
@@ -429,7 +513,24 @@ export interface paths {
         get?: never;
         put?: never;
         /** 3-4. Normalizar, validar y hacer matching multi-código */
-        post: operations["validate_import"];
+        post: operations["validateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 1. Ingesta: subir un Excel y crear el lote */
+        post: operations["uploadImportBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -444,10 +545,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar ubicaciones (sin niveles de ubicación exacta si el rol no lo permite) */
-        get: operations["list_locations"];
+        get: operations["listLocations"];
         put?: never;
         /** Crear una ubicación en la jerarquía sede › espacio › mueble › nivel › contenedor */
-        post: operations["create_location"];
+        post: operations["createLocation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -462,14 +563,68 @@ export interface paths {
             cookie?: never;
         };
         /** Detalle de una ubicación con su ruta */
-        get: operations["get_location"];
+        get: operations["getLocation"];
+        /** Editar o desactivar una ubicación */
+        put: operations["updateLocation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/{location_id}/pieces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025) */
+        get: operations["getPiecesInLocation"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar o desactivar una ubicación */
-        patch: operations["update_location"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/locations/tree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Árbol jerárquico de ubicaciones, de la sede al contenedor (RF-016)
+         * @description Contrato: `getLocationsTree`. Poda los niveles que el rol no puede ver (RF-041).
+         */
+        get: operations["getLocationsTree"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subir una fotografía de una pieza al almacenamiento de objetos (RF-013) */
+        post: operations["uploadMediaAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/permissions": {
@@ -480,7 +635,7 @@ export interface paths {
             cookie?: never;
         };
         /** Catálogo de permisos */
-        get: operations["list_permissions"];
+        get: operations["listPermissions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -497,10 +652,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar piezas con filtros combinados (AND) y paginación */
-        get: operations["list_pieces"];
+        get: operations["listPieces"];
         put?: never;
         /** Registrar una pieza */
-        post: operations["create_piece"];
+        post: operations["createPiece"];
         delete?: never;
         options?: never;
         head?: never;
@@ -515,15 +670,15 @@ export interface paths {
             cookie?: never;
         };
         /** Ficha de una pieza (campos sensibles según rol) */
-        get: operations["get_piece_detail"];
-        put?: never;
+        get: operations["getPieceById"];
+        /** Editar la ficha (auditoría campo a campo) */
+        put: operations["updatePiece"];
         post?: never;
         /** Eliminar lógicamente una pieza con motivo (RN-005) */
-        delete: operations["delete_piece"];
+        delete: operations["softDeletePiece"];
         options?: never;
         head?: never;
-        /** Editar la ficha (auditoría campo a campo) */
-        patch: operations["update_piece"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/pieces/{piece_id}/alerts": {
@@ -534,9 +689,27 @@ export interface paths {
             cookie?: never;
         };
         /** Alertas de información incompleta de la pieza (RF-019) */
-        get: operations["list_piece_alerts"];
+        get: operations["listPieceAlerts"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar las piezas componentes de un conjunto (RF-009) */
+        get: operations["getPieceChildren"];
+        put?: never;
+        /** Asociar una pieza existente como componente de un conjunto (RF-009) */
+        post: operations["addPieceChild"];
         delete?: never;
         options?: never;
         head?: never;
@@ -551,11 +724,31 @@ export interface paths {
             cookie?: never;
         };
         /** Identificadores de la pieza (vigentes y, opcionalmente, históricos) */
-        get: operations["list_piece_identifiers"];
+        get: operations["listPieceIdentifiers"];
         put?: never;
         /** Registrar un identificador externo (I bloqueado; comodato sin I) */
-        post: operations["add_piece_identifier"];
+        post: operations["addPieceIdentifier"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Dar de baja un código histórico mal asignado (baja lógica, RN-005)
+         * @description El identificador queda en el historial y en la auditoría; el de tipo I responde 409.
+         */
+        delete: operations["deletePieceIdentifier"];
         options?: never;
         head?: never;
         patch?: never;
@@ -571,7 +764,24 @@ export interface paths {
         get?: never;
         put?: never;
         /** Corregir un código I con procedimiento auditado (Administrador, RN-002) */
-        post: operations["correct_inventory_code"];
+        post: operations["correctInventoryCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/location-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historial de movimientos y verificaciones (más reciente primero) */
+        get: operations["getPieceLocationHistory"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -586,10 +796,10 @@ export interface paths {
             cookie?: never;
         };
         /** Fotografías de la pieza ordenadas (metadatos) */
-        get: operations["list_piece_media"];
+        get: operations["listPieceMedia"];
         put?: never;
         /** Registrar una foto ya subida (tipo de vista, orden, restricciones) */
-        post: operations["register_media"];
+        post: operations["registerMedia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -607,11 +817,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** Retirar una foto (eliminación lógica con motivo) */
-        delete: operations["retire_media"];
+        delete: operations["retireMedia"];
         options?: never;
         head?: never;
         /** Editar metadatos, orden o restricción de una foto */
-        patch: operations["update_media"];
+        patch: operations["updateMedia"];
         trace?: never;
     };
     "/api/v1/pieces/{piece_id}/media/upload-url": {
@@ -624,25 +834,24 @@ export interface paths {
         get?: never;
         put?: never;
         /** Obtener URL prefirmada para subir una foto al almacenamiento */
-        post: operations["create_media_upload_url"];
+        post: operations["createMediaUploadUrl"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/pieces/{piece_id}/movements": {
+    "/api/v1/pieces/{piece_id}/move": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Historial de movimientos y verificaciones (más reciente primero) */
-        get: operations["list_piece_movements"];
+        get?: never;
         put?: never;
         /** Registrar un movimiento o verificación física */
-        post: operations["register_movement"];
+        post: operations["movePiece"];
         delete?: never;
         options?: never;
         head?: never;
@@ -659,7 +868,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Restaurar una pieza eliminada (Administrador) */
-        post: operations["restore_piece"];
+        post: operations["restorePiece"];
         delete?: never;
         options?: never;
         head?: never;
@@ -674,7 +883,7 @@ export interface paths {
             cookie?: never;
         };
         /** Datos de origen sin mapeo (payload, solo lectura) */
-        get: operations["list_source_records"];
+        get: operations["listSourceRecords"];
         put?: never;
         post?: never;
         delete?: never;
@@ -693,7 +902,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Validar en tiempo real un formulario de ficha (RF-043) */
-        post: operations["validate_piece"];
+        post: operations["validatePiece"];
         delete?: never;
         options?: never;
         head?: never;
@@ -708,7 +917,7 @@ export interface paths {
             cookie?: never;
         };
         /** Cola de posibles duplicados por revisar (RF-030) */
-        get: operations["list_duplicate_candidates"];
+        get: operations["listDuplicateCandidates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -727,7 +936,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar) */
-        post: operations["resolve_duplicate_candidate"];
+        post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -742,24 +951,7 @@ export interface paths {
             cookie?: never;
         };
         /** Piezas con información incompleta (RF-019, RF-035) */
-        get: operations["list_incomplete_pieces"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/quality/kpis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** KPI de completitud general y por colección (RF-035) */
-        get: operations["get_completeness_kpis"];
+        get: operations["listIncompletePieces"];
         put?: never;
         post?: never;
         delete?: never;
@@ -776,7 +968,58 @@ export interface paths {
             cookie?: never;
         };
         /** Reportes: inventario, por colección, por ubicación, incompletas, valorización */
-        get: operations["get_report"];
+        get: operations["getReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/dashboard-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** KPI de completitud general y por colección (RF-035) */
+        get: operations["getDashboardStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/export-excel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exportar a Excel los resultados de la consulta actual (RF-036) */
+        post: operations["exportExcelReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/piece-card/{piece_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-033) */
+        get: operations["exportPiecePdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -793,7 +1036,7 @@ export interface paths {
             cookie?: never;
         };
         /** Roles y su matriz de permisos [SUPUESTO] */
-        get: operations["list_roles"];
+        get: operations["listRoles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -811,7 +1054,7 @@ export interface paths {
         };
         get?: never;
         /** Actualizar los permisos de un rol */
-        put: operations["update_role_permissions"];
+        put: operations["updateRolePermissions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -827,26 +1070,9 @@ export interface paths {
             cookie?: never;
         };
         /** Búsqueda básica por cualquier código o denominación (RF-031) */
-        get: operations["search"];
+        get: operations["searchPieces"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/search/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Exportar a Excel los resultados de una búsqueda (RF-036) */
-        post: operations["export_search_results"];
         delete?: never;
         options?: never;
         head?: never;
@@ -861,10 +1087,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar usuarios */
-        get: operations["list_users"];
+        get: operations["listUsers"];
         put?: never;
         /** Crear un usuario individual con roles */
-        post: operations["create_user"];
+        post: operations["createUser"];
         delete?: never;
         options?: never;
         head?: never;
@@ -879,14 +1105,31 @@ export interface paths {
             cookie?: never;
         };
         /** Detalle de un usuario */
-        get: operations["get_user"];
+        get: operations["getUser"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** Editar, desactivar o cambiar roles de un usuario */
-        patch: operations["update_user"];
+        patch: operations["updateUser"];
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Cambiar el rol o el estado de un usuario (RF-039) */
+        put: operations["updateUserRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/vocabularies": {
@@ -897,10 +1140,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar vocabularios controlados */
-        get: operations["list_vocabularies"];
+        get: operations["listVocabularies"];
         put?: never;
         /** Crear un vocabulario nuevo */
-        post: operations["create_vocabulary"];
+        post: operations["createVocabulary"];
         delete?: never;
         options?: never;
         head?: never;
@@ -915,7 +1158,7 @@ export interface paths {
             cookie?: never;
         };
         /** Detalle de un vocabulario */
-        get: operations["get_vocabulary"];
+        get: operations["getVocabulary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -932,10 +1175,10 @@ export interface paths {
             cookie?: never;
         };
         /** Términos de un vocabulario (activos por defecto) */
-        get: operations["list_terms"];
+        get: operations["listTerms"];
         put?: never;
         /** Agregar un término (sin duplicar código ni etiqueta) */
-        post: operations["create_term"];
+        post: operations["createTerm"];
         delete?: never;
         options?: never;
         head?: never;
@@ -953,11 +1196,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** Eliminar lógicamente un término no usado (si está en uso, desactívelo) */
-        delete: operations["delete_term"];
+        delete: operations["deleteTerm"];
         options?: never;
         head?: never;
         /** Editar o desactivar un término */
-        patch: operations["update_term"];
+        patch: operations["updateTerm"];
         trace?: never;
     };
     "/health": {
@@ -1232,8 +1475,8 @@ export interface components {
          * @enum {string}
          */
         AuditOrigin: "MANUAL" | "IMPORT" | "AI" | "SYSTEM";
-        /** Body_upload_import */
-        Body_upload_import: {
+        /** Body_uploadImportBatch */
+        Body_uploadImportBatch: {
             /**
              * File
              * @description Archivo .xlsx de origen.
@@ -1241,6 +1484,25 @@ export interface components {
             file: string;
             /** Source Name */
             source_name: string;
+        };
+        /** Body_uploadMediaAsset */
+        Body_uploadMediaAsset: {
+            /**
+             * File
+             * @description Imagen (JPEG, PNG o TIFF).
+             */
+            file: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description Pieza a la que pertenece la fotografía.
+             */
+            piece_id: string;
+            /**
+             * View Type
+             * @description Tipo de vista: Frontal, Perfil, Posterior, Detalle, Abierto, Cerrado.
+             */
+            view_type: string;
         };
         /** CodeBrief */
         CodeBrief: {
@@ -2017,6 +2279,39 @@ export interface components {
          */
         LocationLevel: "SITE" | "SPACE" | "FURNITURE" | "SHELF_LEVEL" | "CONTAINER";
         /**
+         * LocationNode
+         * @description Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).
+         * @example {
+         *       "children": [
+         *         {
+         *           "children": [],
+         *           "id": "01920000-0000-7000-8000-000000000401",
+         *           "level_type": "Depósito",
+         *           "name": "Depósito A (ficticio)"
+         *         }
+         *       ],
+         *       "id": "01920000-0000-7000-8000-000000000400",
+         *       "level_type": "Sede",
+         *       "name": "Sede 1 (ficticia)"
+         *     }
+         */
+        LocationNode: {
+            /** Children */
+            children?: components["schemas"]["LocationNode"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Level Type
+             * @description Nivel jerárquico: Sede, Depósito, Mueble, Nivel o Contenedor.
+             */
+            level_type: string;
+            /** Name */
+            name: string;
+        };
+        /**
          * LocationOut
          * @example {
          *       "code": "SEDE1-DEP-A",
@@ -2713,6 +3008,21 @@ export interface components {
              * @enum {string}
              */
             type: "WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE";
+        };
+        /**
+         * PieceChildLink
+         * @description Vincula una pieza existente como componente de un conjunto (contrato fase 2; RF-009).
+         * @example {
+         *       "child_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
+         */
+        PieceChildLink: {
+            /**
+             * Child Piece Id
+             * Format: uuid
+             * @description Pieza que pasa a ser componente del conjunto.
+             */
+            child_piece_id: string;
         };
         /**
          * PieceCreate
@@ -3643,62 +3953,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_ai_suggestions: {
-        parameters: {
-            query?: {
-                function_code?: components["schemas"]["AiFunction"] | null;
-                /** @description Número de página (desde 1). */
-                page?: number;
-                /** @description Resultados por página (máx. 100). */
-                page_size?: number;
-                piece_id?: string | null;
-                status?: components["schemas"]["SuggestionStatus"] | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_AiSuggestionOut_"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    request_ai_suggestion: {
+    suggestCataloging: {
         parameters: {
             query?: never;
             header?: never;
@@ -3758,7 +4013,62 @@ export interface operations {
             };
         };
     };
-    get_ai_suggestion: {
+    listAiSuggestions: {
+        parameters: {
+            query?: {
+                function_code?: components["schemas"]["AiFunction"] | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                piece_id?: string | null;
+                status?: components["schemas"]["SuggestionStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AiSuggestionOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAiSuggestion: {
         parameters: {
             query?: never;
             header?: never;
@@ -3816,7 +4126,7 @@ export interface operations {
             };
         };
     };
-    approve_ai_suggestion: {
+    approveAiSuggestion: {
         parameters: {
             query?: never;
             header?: never;
@@ -3878,7 +4188,7 @@ export interface operations {
             };
         };
     };
-    reject_ai_suggestion: {
+    rejectAiSuggestion: {
         parameters: {
             query?: never;
             header?: never;
@@ -3940,7 +4250,67 @@ export interface operations {
             };
         };
     };
-    list_audit_entries: {
+    validateDataQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSuggestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getAuditLogs: {
         parameters: {
             query?: {
                 entity_id?: string | null;
@@ -4000,7 +4370,70 @@ export interface operations {
             };
         };
     };
-    revert_change_set: {
+    getPieceAuditTimeline: {
+        parameters: {
+            query?: {
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditEntryOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    revertChangeSet: {
         parameters: {
             query?: never;
             header?: never;
@@ -4176,7 +4609,7 @@ export interface operations {
             };
         };
     };
-    get_me: {
+    getMe: {
         parameters: {
             query?: never;
             header?: never;
@@ -4223,7 +4656,116 @@ export interface operations {
             };
         };
     };
-    list_collections: {
+    listCategories: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicto con el estado actual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCollections: {
         parameters: {
             query?: {
                 /** @description Incluye colecciones inactivas. */
@@ -4273,7 +4815,7 @@ export interface operations {
             };
         };
     };
-    create_collection_endpoint: {
+    createCollection: {
         parameters: {
             query?: never;
             header?: never;
@@ -4324,7 +4866,7 @@ export interface operations {
             };
         };
     };
-    get_collection: {
+    getCollection: {
         parameters: {
             query?: never;
             header?: never;
@@ -4382,7 +4924,7 @@ export interface operations {
             };
         };
     };
-    delete_collection_endpoint: {
+    deleteCollectionEndpoint: {
         parameters: {
             query: {
                 /** @description Motivo obligatorio. */
@@ -4450,7 +4992,7 @@ export interface operations {
             };
         };
     };
-    update_collection_endpoint: {
+    updateCollectionEndpoint: {
         parameters: {
             query?: never;
             header?: never;
@@ -4521,7 +5063,56 @@ export interface operations {
             };
         };
     };
-    export_full_database: {
+    listConservationStates: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportFullDatabase: {
         parameters: {
             query?: {
                 format?: components["schemas"]["ExportFormat"];
@@ -4579,7 +5170,7 @@ export interface operations {
             };
         };
     };
-    list_identifier_types: {
+    listIdentifierTypes: {
         parameters: {
             query?: never;
             header?: never;
@@ -4626,7 +5217,7 @@ export interface operations {
             };
         };
     };
-    create_identifier_type: {
+    createIdentifierType: {
         parameters: {
             query?: never;
             header?: never;
@@ -4686,7 +5277,7 @@ export interface operations {
             };
         };
     };
-    update_identifier_type: {
+    updateIdentifierType: {
         parameters: {
             query?: never;
             header?: never;
@@ -4748,7 +5339,7 @@ export interface operations {
             };
         };
     };
-    normalize_identifiers: {
+    normalizeIdentifiers: {
         parameters: {
             query?: never;
             header?: never;
@@ -4799,7 +5390,7 @@ export interface operations {
             };
         };
     };
-    list_import_templates: {
+    listImportTemplates: {
         parameters: {
             query?: {
                 /** @description Sugiere plantillas para estos encabezados. */
@@ -4858,7 +5449,7 @@ export interface operations {
             };
         };
     };
-    create_import_template: {
+    createImportTemplate: {
         parameters: {
             query?: never;
             header?: never;
@@ -4918,7 +5509,7 @@ export interface operations {
             };
         };
     };
-    list_imports: {
+    listImportBatches: {
         parameters: {
             query?: {
                 /** @description Número de página (desde 1). */
@@ -4980,67 +5571,7 @@ export interface operations {
             };
         };
     };
-    upload_import: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_import"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ImportBatchOut"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    get_import: {
+    getImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -5098,7 +5629,7 @@ export interface operations {
             };
         };
     };
-    approve_import: {
+    confirmImportBatch: {
         parameters: {
             query?: never;
             header?: never;
@@ -5160,127 +5691,7 @@ export interface operations {
             };
         };
     };
-    get_import_log: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                batch_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ImportLog"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    set_import_mapping: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                batch_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MappingRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ImportBatchOut"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    preview_import: {
+    getImportBatchDiffs: {
         parameters: {
             query?: {
                 classification?: components["schemas"]["RowClassification"] | null;
@@ -5345,7 +5756,127 @@ export interface operations {
             };
         };
     };
-    revert_import: {
+    getImportLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportLog"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    setImportMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    rollbackImportBatch: {
         parameters: {
             query?: never;
             header?: never;
@@ -5407,7 +5938,7 @@ export interface operations {
             };
         };
     };
-    decide_import_row: {
+    decideImportRow: {
         parameters: {
             query?: never;
             header?: never;
@@ -5470,7 +6001,7 @@ export interface operations {
             };
         };
     };
-    validate_import: {
+    validateImport: {
         parameters: {
             query?: never;
             header?: never;
@@ -5528,7 +6059,67 @@ export interface operations {
             };
         };
     };
-    list_locations: {
+    uploadImportBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadImportBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listLocations: {
         parameters: {
             query?: {
                 level?: components["schemas"]["LocationLevel"] | null;
@@ -5579,7 +6170,7 @@ export interface operations {
             };
         };
     };
-    create_location: {
+    createLocation: {
         parameters: {
             query?: never;
             header?: never;
@@ -5639,7 +6230,7 @@ export interface operations {
             };
         };
     };
-    get_location: {
+    getLocation: {
         parameters: {
             query?: never;
             header?: never;
@@ -5697,7 +6288,7 @@ export interface operations {
             };
         };
     };
-    update_location: {
+    updateLocation: {
         parameters: {
             query?: never;
             header?: never;
@@ -5759,7 +6350,172 @@ export interface operations {
             };
         };
     };
-    list_permissions: {
+    getPiecesInLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceSummary"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getLocationsTree: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationNode"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    uploadMediaAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadMediaAsset"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listPermissions: {
         parameters: {
             query?: never;
             header?: never;
@@ -5806,7 +6562,7 @@ export interface operations {
             };
         };
     };
-    list_pieces: {
+    listPieces: {
         parameters: {
             query?: {
                 author?: string | null;
@@ -5876,7 +6632,7 @@ export interface operations {
             };
         };
     };
-    create_piece: {
+    createPiece: {
         parameters: {
             query?: never;
             header?: never;
@@ -5936,7 +6692,7 @@ export interface operations {
             };
         };
     };
-    get_piece_detail: {
+    getPieceById: {
         parameters: {
             query?: never;
             header?: never;
@@ -5994,66 +6750,7 @@ export interface operations {
             };
         };
     };
-    delete_piece: {
-        parameters: {
-            query: {
-                /** @description Motivo obligatorio. */
-                reason: string;
-            };
-            header?: never;
-            path: {
-                piece_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    update_piece: {
+    updatePiece: {
         parameters: {
             query?: never;
             header?: never;
@@ -6115,7 +6812,66 @@ export interface operations {
             };
         };
     };
-    list_piece_alerts: {
+    softDeletePiece: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio. */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listPieceAlerts: {
         parameters: {
             query?: never;
             header?: never;
@@ -6173,7 +6929,127 @@ export interface operations {
             };
         };
     };
-    list_piece_identifiers: {
+    getPieceChildren: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceSummary"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addPieceChild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PieceChildLink"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceSummary"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listPieceIdentifiers: {
         parameters: {
             query?: {
                 /** @description Incluye códigos no vigentes. */
@@ -6234,7 +7110,7 @@ export interface operations {
             };
         };
     };
-    add_piece_identifier: {
+    addPieceIdentifier: {
         parameters: {
             query?: never;
             header?: never;
@@ -6296,7 +7172,69 @@ export interface operations {
             };
         };
     };
-    correct_inventory_code: {
+    deletePieceIdentifier: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio (RN-005). */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                identifier_id: string;
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentifierOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    correctInventoryCode: {
         parameters: {
             query?: never;
             header?: never;
@@ -6359,7 +7297,65 @@ export interface operations {
             };
         };
     };
-    list_piece_media: {
+    getPieceLocationHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPieceMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -6417,7 +7413,7 @@ export interface operations {
             };
         };
     };
-    register_media: {
+    registerMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -6479,7 +7475,7 @@ export interface operations {
             };
         };
     };
-    retire_media: {
+    retireMedia: {
         parameters: {
             query: {
                 reason: string;
@@ -6538,7 +7534,7 @@ export interface operations {
             };
         };
     };
-    update_media: {
+    updateMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -6601,7 +7597,7 @@ export interface operations {
             };
         };
     };
-    create_media_upload_url: {
+    createMediaUploadUrl: {
         parameters: {
             query?: never;
             header?: never;
@@ -6663,65 +7659,7 @@ export interface operations {
             };
         };
     };
-    list_piece_movements: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                piece_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementOut"][];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description La pieza no existe o fue eliminada. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    register_movement: {
+    movePiece: {
         parameters: {
             query?: never;
             header?: never;
@@ -6783,7 +7721,7 @@ export interface operations {
             };
         };
     };
-    restore_piece: {
+    restorePiece: {
         parameters: {
             query?: {
                 reason?: string | null;
@@ -6843,7 +7781,7 @@ export interface operations {
             };
         };
     };
-    list_source_records: {
+    listSourceRecords: {
         parameters: {
             query?: never;
             header?: never;
@@ -6901,7 +7839,7 @@ export interface operations {
             };
         };
     };
-    validate_piece: {
+    validatePiece: {
         parameters: {
             query?: {
                 /** @description Pieza en edición. */
@@ -6964,7 +7902,7 @@ export interface operations {
             };
         };
     };
-    list_duplicate_candidates: {
+    listDuplicateCandidates: {
         parameters: {
             query?: {
                 min_score?: number | null;
@@ -7027,7 +7965,7 @@ export interface operations {
             };
         };
     };
-    resolve_duplicate_candidate: {
+    resolveDuplicateCandidate: {
         parameters: {
             query?: never;
             header?: never;
@@ -7089,7 +8027,7 @@ export interface operations {
             };
         };
     };
-    list_incomplete_pieces: {
+    listIncompletePieces: {
         parameters: {
             query?: {
                 /** @description Tipos de alerta (AND). */
@@ -7153,63 +8091,7 @@ export interface operations {
             };
         };
     };
-    get_completeness_kpis: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompletenessKpis"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    get_report: {
+    getReport: {
         parameters: {
             query?: {
                 collection_id?: string | null;
@@ -7271,7 +8153,181 @@ export interface operations {
             };
         };
     };
-    list_roles: {
+    getDashboardStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessKpis"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    exportExcelReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    exportPiecePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `reportes-inventario`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listRoles: {
         parameters: {
             query?: never;
             header?: never;
@@ -7318,7 +8374,7 @@ export interface operations {
             };
         };
     };
-    update_role_permissions: {
+    updateRolePermissions: {
         parameters: {
             query?: never;
             header?: never;
@@ -7380,7 +8436,7 @@ export interface operations {
             };
         };
     };
-    search: {
+    searchPieces: {
         parameters: {
             query: {
                 /** @description Número de página (desde 1). */
@@ -7434,67 +8490,7 @@ export interface operations {
             };
         };
     };
-    export_search_results: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SearchExportRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExportJob"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
-        };
-    };
-    list_users: {
+    listUsers: {
         parameters: {
             query?: {
                 include_inactive?: boolean;
@@ -7556,7 +8552,7 @@ export interface operations {
             };
         };
     };
-    create_user: {
+    createUser: {
         parameters: {
             query?: never;
             header?: never;
@@ -7616,7 +8612,7 @@ export interface operations {
             };
         };
     };
-    get_user: {
+    getUser: {
         parameters: {
             query?: never;
             header?: never;
@@ -7674,7 +8670,7 @@ export interface operations {
             };
         };
     };
-    update_user: {
+    updateUser: {
         parameters: {
             query?: never;
             header?: never;
@@ -7736,7 +8732,69 @@ export interface operations {
             };
         };
     };
-    list_vocabularies: {
+    updateUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listVocabularies: {
         parameters: {
             query?: never;
             header?: never;
@@ -7783,7 +8841,7 @@ export interface operations {
             };
         };
     };
-    create_vocabulary: {
+    createVocabulary: {
         parameters: {
             query?: never;
             header?: never;
@@ -7843,7 +8901,7 @@ export interface operations {
             };
         };
     };
-    get_vocabulary: {
+    getVocabulary: {
         parameters: {
             query?: never;
             header?: never;
@@ -7901,7 +8959,7 @@ export interface operations {
             };
         };
     };
-    list_terms: {
+    listTerms: {
         parameters: {
             query?: {
                 include_inactive?: boolean;
@@ -7961,7 +9019,7 @@ export interface operations {
             };
         };
     };
-    create_term: {
+    createTerm: {
         parameters: {
             query?: never;
             header?: never;
@@ -8023,7 +9081,7 @@ export interface operations {
             };
         };
     };
-    delete_term: {
+    deleteTerm: {
         parameters: {
             query: {
                 /** @description Motivo obligatorio. */
@@ -8092,7 +9150,7 @@ export interface operations {
             };
         };
     };
-    update_term: {
+    updateTerm: {
         parameters: {
             query?: never;
             header?: never;

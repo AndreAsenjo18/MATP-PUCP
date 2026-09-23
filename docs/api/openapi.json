@@ -513,7 +513,7 @@
         "title": "AuditOrigin",
         "type": "string"
       },
-      "Body_upload_import": {
+      "Body_uploadImportBatch": {
         "properties": {
           "file": {
             "contentMediaType": "application/octet-stream",
@@ -532,7 +532,35 @@
           "file",
           "source_name"
         ],
-        "title": "Body_upload_import",
+        "title": "Body_uploadImportBatch",
+        "type": "object"
+      },
+      "Body_uploadMediaAsset": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "Imagen (JPEG, PNG o TIFF).",
+            "title": "File",
+            "type": "string"
+          },
+          "piece_id": {
+            "description": "Pieza a la que pertenece la fotografía.",
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "view_type": {
+            "description": "Tipo de vista: Frontal, Perfil, Posterior, Detalle, Abierto, Cerrado.",
+            "title": "View Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id",
+          "view_type",
+          "file"
+        ],
+        "title": "Body_uploadMediaAsset",
         "type": "object"
       },
       "CodeBrief": {
@@ -2415,6 +2443,54 @@
         "title": "LocationLevel",
         "type": "string"
       },
+      "LocationNode": {
+        "description": "Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).",
+        "examples": [
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "01920000-0000-7000-8000-000000000401",
+                "level_type": "Depósito",
+                "name": "Depósito A (ficticio)"
+              }
+            ],
+            "id": "01920000-0000-7000-8000-000000000400",
+            "level_type": "Sede",
+            "name": "Sede 1 (ficticia)"
+          }
+        ],
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/LocationNode"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "level_type": {
+            "description": "Nivel jerárquico: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "title": "Level Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "level_type"
+        ],
+        "title": "LocationNode",
+        "type": "object"
+      },
       "LocationOut": {
         "examples": [
           {
@@ -4043,6 +4119,27 @@
           "message"
         ],
         "title": "PieceAlert",
+        "type": "object"
+      },
+      "PieceChildLink": {
+        "description": "Vincula una pieza existente como componente de un conjunto (contrato fase 2; RF-009).",
+        "examples": [
+          {
+            "child_piece_id": "01920000-0000-7000-8000-000000000101"
+          }
+        ],
+        "properties": {
+          "child_piece_id": {
+            "description": "Pieza que pasa a ser componente del conjunto.",
+            "format": "uuid",
+            "title": "Child Piece Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "child_piece_id"
+        ],
+        "title": "PieceChildLink",
         "type": "object"
       },
       "PieceCreate": {
@@ -6369,9 +6466,87 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/ai/suggest-cataloging": {
+      "post": {
+        "operationId": "suggestCataloging",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSuggestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009)",
+        "tags": [
+          "IA asistiva"
+        ],
+        "x-change": "ia-extraccion-texto-libre",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/ai/suggestions": {
       "get": {
-        "operationId": "list_ai_suggestions",
+        "operationId": "listAiSuggestions",
         "parameters": [
           {
             "in": "query",
@@ -6503,87 +6678,11 @@
           "IA asistiva"
         ],
         "x-status": "implemented"
-      },
-      "post": {
-        "operationId": "request_ai_suggestion",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AiSuggestionCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AiSuggestionOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
-          }
-        },
-        "security": [
-          {
-            "DevUserHeader": []
-          }
-        ],
-        "summary": "Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009)",
-        "tags": [
-          "IA asistiva"
-        ],
-        "x-change": "ia-extraccion-texto-libre",
-        "x-status": "stub"
       }
     },
     "/api/v1/ai/suggestions/{suggestion_id}": {
       "get": {
-        "operationId": "get_ai_suggestion",
+        "operationId": "getAiSuggestion",
         "parameters": [
           {
             "in": "path",
@@ -6662,7 +6761,7 @@
     },
     "/api/v1/ai/suggestions/{suggestion_id}/approve": {
       "post": {
-        "operationId": "approve_ai_suggestion",
+        "operationId": "approveAiSuggestion",
         "parameters": [
           {
             "in": "path",
@@ -6752,7 +6851,7 @@
     },
     "/api/v1/ai/suggestions/{suggestion_id}/reject": {
       "post": {
-        "operationId": "reject_ai_suggestion",
+        "operationId": "rejectAiSuggestion",
         "parameters": [
           {
             "in": "path",
@@ -6840,9 +6939,87 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/audit": {
+    "/api/v1/ai/validate-data": {
+      "post": {
+        "operationId": "validateDataQuality",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSuggestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Escaneo de calidad e inconsistencias asistido por IA (queda PENDIENTE, RN-009)",
+        "tags": [
+          "IA asistiva"
+        ],
+        "x-change": "ia-extraccion-texto-libre",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/audit-logs": {
       "get": {
-        "operationId": "list_audit_entries",
+        "operationId": "getAuditLogs",
         "parameters": [
           {
             "description": "p. ej. piece, collection.",
@@ -7044,9 +7221,116 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/audit-logs/pieces/{piece_id}": {
+      "get": {
+        "operationId": "getPieceAuditTimeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditEntryOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-change": "auditoria-y-soft-delete-transversal",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/audit/change-sets/{change_set_id}/revert": {
       "post": {
-        "operationId": "revert_change_set",
+        "operationId": "revertChangeSet",
         "parameters": [
           {
             "in": "path",
@@ -7270,7 +7554,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "operationId": "get_me",
+        "operationId": "getMe",
         "responses": {
           "200": {
             "content": {
@@ -7325,9 +7609,157 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TermOut"
+                  },
+                  "title": "Response Listcategories",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Listar las líneas artesanales y categorías del catálogo (RF-011)",
+        "tags": [
+          "Vocabularios"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "operationId": "createCategory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicto con el estado actual."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Crear una línea artesanal o categoría (RF-011)",
+        "tags": [
+          "Vocabularios"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/collections": {
       "get": {
-        "operationId": "list_collections",
+        "operationId": "listCollections",
         "parameters": [
           {
             "description": "Incluye colecciones inactivas.",
@@ -7350,7 +7782,7 @@
                   "items": {
                     "$ref": "#/components/schemas/CollectionOut"
                   },
-                  "title": "Response List Collections",
+                  "title": "Response Listcollections",
                   "type": "array"
                 }
               }
@@ -7400,7 +7832,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_collection_endpoint",
+        "operationId": "createCollection",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7467,7 +7899,7 @@
     },
     "/api/v1/collections/{collection_id}": {
       "delete": {
-        "operationId": "delete_collection_endpoint",
+        "operationId": "deleteCollectionEndpoint",
         "parameters": [
           {
             "in": "path",
@@ -7559,7 +7991,7 @@
         "x-status": "implemented"
       },
       "get": {
-        "operationId": "get_collection",
+        "operationId": "getCollection",
         "parameters": [
           {
             "in": "path",
@@ -7636,7 +8068,7 @@
         "x-status": "implemented"
       },
       "patch": {
-        "operationId": "update_collection_endpoint",
+        "operationId": "updateCollectionEndpoint",
         "parameters": [
           {
             "in": "path",
@@ -7733,9 +8165,82 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/conservation-states": {
+      "get": {
+        "operationId": "listConservationStates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TermOut"
+                  },
+                  "title": "Response Listconservationstates",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Listar la escala de estados de conservación (RF-012)",
+        "tags": [
+          "Vocabularios"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/exports/full": {
       "get": {
-        "operationId": "export_full_database",
+        "operationId": "exportFullDatabase",
         "parameters": [
           {
             "in": "query",
@@ -7814,7 +8319,7 @@
     },
     "/api/v1/identifier-types": {
       "get": {
-        "operationId": "list_identifier_types",
+        "operationId": "listIdentifierTypes",
         "responses": {
           "200": {
             "content": {
@@ -7823,7 +8328,7 @@
                   "items": {
                     "$ref": "#/components/schemas/IdentifierTypeOut"
                   },
-                  "title": "Response List Identifier Types",
+                  "title": "Response Listidentifiertypes",
                   "type": "array"
                 }
               }
@@ -7873,7 +8378,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_identifier_type",
+        "operationId": "createIdentifierType",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7951,7 +8456,7 @@
     },
     "/api/v1/identifier-types/{type_code}": {
       "patch": {
-        "operationId": "update_identifier_type",
+        "operationId": "updateIdentifierType",
         "parameters": [
           {
             "in": "path",
@@ -8040,7 +8545,7 @@
     },
     "/api/v1/identifiers/normalize": {
       "post": {
-        "operationId": "normalize_identifiers",
+        "operationId": "normalizeIdentifiers",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8107,7 +8612,7 @@
     },
     "/api/v1/import-templates": {
       "get": {
-        "operationId": "list_import_templates",
+        "operationId": "listImportTemplates",
         "parameters": [
           {
             "description": "Sugiere plantillas para estos encabezados.",
@@ -8136,7 +8641,7 @@
                   "items": {
                     "$ref": "#/components/schemas/MappingTemplateOut"
                   },
-                  "title": "Response List Import Templates",
+                  "title": "Response Listimporttemplates",
                   "type": "array"
                 }
               }
@@ -8197,7 +8702,7 @@
         "x-status": "stub"
       },
       "post": {
-        "operationId": "create_import_template",
+        "operationId": "createImportTemplate",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8275,7 +8780,7 @@
     },
     "/api/v1/imports": {
       "get": {
-        "operationId": "list_imports",
+        "operationId": "listImportBatches",
         "parameters": [
           {
             "in": "query",
@@ -8384,14 +8889,16 @@
         ],
         "x-change": "importacion-pipeline-reconciliacion",
         "x-status": "stub"
-      },
+      }
+    },
+    "/api/v1/imports/upload": {
       "post": {
-        "operationId": "upload_import",
+        "operationId": "uploadImportBatch",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_import"
+                "$ref": "#/components/schemas/Body_uploadImportBatch"
               }
             }
           },
@@ -8464,7 +8971,7 @@
     },
     "/api/v1/imports/{batch_id}": {
       "get": {
-        "operationId": "get_import",
+        "operationId": "getImport",
         "parameters": [
           {
             "in": "path",
@@ -8542,9 +9049,9 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/imports/{batch_id}/approve": {
+    "/api/v1/imports/{batch_id}/confirm": {
       "post": {
-        "operationId": "approve_import",
+        "operationId": "confirmImportBatch",
         "parameters": [
           {
             "in": "path",
@@ -8632,179 +9139,9 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/imports/{batch_id}/log": {
+    "/api/v1/imports/{batch_id}/diffs": {
       "get": {
-        "operationId": "get_import_log",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportLog"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
-          }
-        },
-        "security": [
-          {
-            "DevUserHeader": []
-          }
-        ],
-        "summary": "7. Bitácora de carga con motivos de rechazo (RF-028)",
-        "tags": [
-          "Importación"
-        ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
-      }
-    },
-    "/api/v1/imports/{batch_id}/mapping": {
-      "put": {
-        "operationId": "set_import_mapping",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MappingRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportBatchOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
-          }
-        },
-        "security": [
-          {
-            "DevUserHeader": []
-          }
-        ],
-        "summary": "2. Mapeo: asignar columnas (o aplicar una plantilla)",
-        "tags": [
-          "Importación"
-        ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
-      }
-    },
-    "/api/v1/imports/{batch_id}/preview": {
-      "get": {
-        "operationId": "preview_import",
+        "operationId": "getImportBatchDiffs",
         "parameters": [
           {
             "in": "path",
@@ -8935,9 +9272,179 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/imports/{batch_id}/revert": {
+    "/api/v1/imports/{batch_id}/log": {
+      "get": {
+        "operationId": "getImportLog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportLog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "7. Bitácora de carga con motivos de rechazo (RF-028)",
+        "tags": [
+          "Importación"
+        ],
+        "x-change": "importacion-pipeline-reconciliacion",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/imports/{batch_id}/mapping": {
+      "put": {
+        "operationId": "setImportMapping",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "2. Mapeo: asignar columnas (o aplicar una plantilla)",
+        "tags": [
+          "Importación"
+        ],
+        "x-change": "importacion-pipeline-reconciliacion",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/imports/{batch_id}/rollback": {
       "post": {
-        "operationId": "revert_import",
+        "operationId": "rollbackImportBatch",
         "parameters": [
           {
             "in": "path",
@@ -9027,7 +9534,7 @@
     },
     "/api/v1/imports/{batch_id}/rows/{row_id}": {
       "patch": {
-        "operationId": "decide_import_row",
+        "operationId": "decideImportRow",
         "parameters": [
           {
             "in": "path",
@@ -9127,7 +9634,7 @@
     },
     "/api/v1/imports/{batch_id}/validate": {
       "post": {
-        "operationId": "validate_import",
+        "operationId": "validateImport",
         "parameters": [
           {
             "in": "path",
@@ -9207,7 +9714,7 @@
     },
     "/api/v1/locations": {
       "get": {
-        "operationId": "list_locations",
+        "operationId": "listLocations",
         "parameters": [
           {
             "description": "Solo hijos directos.",
@@ -9253,7 +9760,7 @@
                   "items": {
                     "$ref": "#/components/schemas/LocationOut"
                   },
-                  "title": "Response List Locations",
+                  "title": "Response Listlocations",
                   "type": "array"
                 }
               }
@@ -9303,7 +9810,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_location",
+        "operationId": "createLocation",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9379,9 +9886,71 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/locations/tree": {
+      "get": {
+        "description": "Contrato: `getLocationsTree`. Poda los niveles que el rol no puede ver (RF-041).",
+        "operationId": "getLocationsTree",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LocationNode"
+                  },
+                  "title": "Response Getlocationstree",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Árbol jerárquico de ubicaciones, de la sede al contenedor (RF-016)",
+        "tags": [
+          "Ubicaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/locations/{location_id}": {
       "get": {
-        "operationId": "get_location",
+        "operationId": "getLocation",
         "parameters": [
           {
             "in": "path",
@@ -9457,8 +10026,8 @@
         ],
         "x-status": "implemented"
       },
-      "patch": {
-        "operationId": "update_location",
+      "put": {
+        "operationId": "updateLocation",
         "parameters": [
           {
             "in": "path",
@@ -9546,9 +10115,171 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/locations/{location_id}/pieces": {
+      "get": {
+        "operationId": "getPiecesInLocation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PieceSummary"
+                  },
+                  "title": "Response Getpiecesinlocation",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+        "tags": [
+          "Ubicaciones"
+        ],
+        "x-change": "ubicacion-jerarquica-y-movimientos",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/media/upload": {
+      "post": {
+        "operationId": "uploadMediaAsset",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_uploadMediaAsset"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Subir una fotografía de una pieza al almacenamiento de objetos (RF-013)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-change": "fotografias-multiples-por-pieza",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/permissions": {
       "get": {
-        "operationId": "list_permissions",
+        "operationId": "listPermissions",
         "responses": {
           "200": {
             "content": {
@@ -9557,7 +10288,7 @@
                   "items": {
                     "$ref": "#/components/schemas/PermissionOut"
                   },
-                  "title": "Response List Permissions",
+                  "title": "Response Listpermissions",
                   "type": "array"
                 }
               }
@@ -9609,7 +10340,7 @@
     },
     "/api/v1/pieces": {
       "get": {
-        "operationId": "list_pieces",
+        "operationId": "listPieces",
         "parameters": [
           {
             "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
@@ -9920,7 +10651,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_piece",
+        "operationId": "createPiece",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9998,7 +10729,7 @@
     },
     "/api/v1/pieces/validate": {
       "post": {
-        "operationId": "validate_piece",
+        "operationId": "validatePiece",
         "parameters": [
           {
             "description": "Pieza en edición.",
@@ -10097,7 +10828,7 @@
     },
     "/api/v1/pieces/{piece_id}": {
       "delete": {
-        "operationId": "delete_piece",
+        "operationId": "softDeletePiece",
         "parameters": [
           {
             "in": "path",
@@ -10180,7 +10911,7 @@
         "x-status": "stub"
       },
       "get": {
-        "operationId": "get_piece_detail",
+        "operationId": "getPieceById",
         "parameters": [
           {
             "in": "path",
@@ -10256,8 +10987,8 @@
         ],
         "x-status": "implemented"
       },
-      "patch": {
-        "operationId": "update_piece",
+      "put": {
+        "operationId": "updatePiece",
         "parameters": [
           {
             "in": "path",
@@ -10347,7 +11078,7 @@
     },
     "/api/v1/pieces/{piece_id}/alerts": {
       "get": {
-        "operationId": "list_piece_alerts",
+        "operationId": "listPieceAlerts",
         "parameters": [
           {
             "in": "path",
@@ -10368,7 +11099,7 @@
                   "items": {
                     "$ref": "#/components/schemas/PieceAlert"
                   },
-                  "title": "Response List Piece Alerts",
+                  "title": "Response Listpiecealerts",
                   "type": "array"
                 }
               }
@@ -10429,9 +11160,180 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/pieces/{piece_id}/children": {
+      "get": {
+        "operationId": "getPieceChildren",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PieceSummary"
+                  },
+                  "title": "Response Getpiecechildren",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Listar las piezas componentes de un conjunto (RF-009)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "operationId": "addPieceChild",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PieceChildLink"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PieceSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Asociar una pieza existente como componente de un conjunto (RF-009)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-change": "ficha-pieza-crud",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/pieces/{piece_id}/identifiers": {
       "get": {
-        "operationId": "list_piece_identifiers",
+        "operationId": "listPieceIdentifiers",
         "parameters": [
           {
             "in": "path",
@@ -10464,7 +11366,7 @@
                   "items": {
                     "$ref": "#/components/schemas/IdentifierOut"
                   },
-                  "title": "Response List Piece Identifiers",
+                  "title": "Response Listpieceidentifiers",
                   "type": "array"
                 }
               }
@@ -10524,7 +11426,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "add_piece_identifier",
+        "operationId": "addPieceIdentifier",
         "parameters": [
           {
             "in": "path",
@@ -10612,9 +11514,112 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}": {
+      "delete": {
+        "description": "El identificador queda en el historial y en la auditoría; el de tipo I responde 409.",
+        "operationId": "deletePieceIdentifier",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "identifier_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identifier Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo obligatorio (RN-005).",
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "description": "Motivo obligatorio (RN-005).",
+              "minLength": 3,
+              "title": "Reason",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifierOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Dar de baja un código histórico mal asignado (baja lógica, RN-005)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-change": "ficha-pieza-crud",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction": {
       "post": {
-        "operationId": "correct_inventory_code",
+        "operationId": "correctInventoryCode",
         "parameters": [
           {
             "in": "path",
@@ -10712,9 +11717,92 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/pieces/{piece_id}/location-history": {
+      "get": {
+        "operationId": "getPieceLocationHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MovementOut"
+                  },
+                  "title": "Response Getpiecelocationhistory",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Historial de movimientos y verificaciones (más reciente primero)",
+        "tags": [
+          "Ubicaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/pieces/{piece_id}/media": {
       "get": {
-        "operationId": "list_piece_media",
+        "operationId": "listPieceMedia",
         "parameters": [
           {
             "in": "path",
@@ -10735,7 +11823,7 @@
                   "items": {
                     "$ref": "#/components/schemas/MediaAssetOut"
                   },
-                  "title": "Response List Piece Media",
+                  "title": "Response Listpiecemedia",
                   "type": "array"
                 }
               }
@@ -10795,7 +11883,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "register_media",
+        "operationId": "registerMedia",
         "parameters": [
           {
             "in": "path",
@@ -10885,7 +11973,7 @@
     },
     "/api/v1/pieces/{piece_id}/media/upload-url": {
       "post": {
-        "operationId": "create_media_upload_url",
+        "operationId": "createMediaUploadUrl",
         "parameters": [
           {
             "in": "path",
@@ -10975,7 +12063,7 @@
     },
     "/api/v1/pieces/{piece_id}/media/{media_id}": {
       "delete": {
-        "operationId": "retire_media",
+        "operationId": "retireMedia",
         "parameters": [
           {
             "in": "path",
@@ -11066,7 +12154,7 @@
         "x-status": "stub"
       },
       "patch": {
-        "operationId": "update_media",
+        "operationId": "updateMedia",
         "parameters": [
           {
             "in": "path",
@@ -11164,90 +12252,9 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/pieces/{piece_id}/movements": {
-      "get": {
-        "operationId": "list_piece_movements",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "piece_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Piece Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/MovementOut"
-                  },
-                  "title": "Response List Piece Movements",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "La pieza no existe o fue eliminada."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          }
-        },
-        "security": [
-          {
-            "DevUserHeader": []
-          }
-        ],
-        "summary": "Historial de movimientos y verificaciones (más reciente primero)",
-        "tags": [
-          "Ubicaciones"
-        ],
-        "x-status": "implemented"
-      },
+    "/api/v1/pieces/{piece_id}/move": {
       "post": {
-        "operationId": "register_movement",
+        "operationId": "movePiece",
         "parameters": [
           {
             "in": "path",
@@ -11337,7 +12344,7 @@
     },
     "/api/v1/pieces/{piece_id}/restore": {
       "post": {
-        "operationId": "restore_piece",
+        "operationId": "restorePiece",
         "parameters": [
           {
             "in": "path",
@@ -11433,7 +12440,7 @@
     },
     "/api/v1/pieces/{piece_id}/source-records": {
       "get": {
-        "operationId": "list_source_records",
+        "operationId": "listSourceRecords",
         "parameters": [
           {
             "in": "path",
@@ -11454,7 +12461,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SourceRecordOut"
                   },
-                  "title": "Response List Source Records",
+                  "title": "Response Listsourcerecords",
                   "type": "array"
                 }
               }
@@ -11516,7 +12523,7 @@
     },
     "/api/v1/quality/duplicates": {
       "get": {
-        "operationId": "list_duplicate_candidates",
+        "operationId": "listDuplicateCandidates",
         "parameters": [
           {
             "in": "query",
@@ -11647,7 +12654,7 @@
     },
     "/api/v1/quality/duplicates/{candidate_id}/resolve": {
       "post": {
-        "operationId": "resolve_duplicate_candidate",
+        "operationId": "resolveDuplicateCandidate",
         "parameters": [
           {
             "in": "path",
@@ -11737,7 +12744,7 @@
     },
     "/api/v1/quality/incomplete": {
       "get": {
-        "operationId": "list_incomplete_pieces",
+        "operationId": "listIncompletePieces",
         "parameters": [
           {
             "description": "Tipos de alerta (AND).",
@@ -11877,9 +12884,9 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/quality/kpis": {
+    "/api/v1/reports/dashboard-stats": {
       "get": {
-        "operationId": "get_completeness_kpis",
+        "operationId": "getDashboardStats",
         "responses": {
           "200": {
             "content": {
@@ -11945,9 +12952,167 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/reports/export-excel": {
+      "post": {
+        "operationId": "exportExcelReport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Exportar a Excel los resultados de la consulta actual (RF-036)",
+        "tags": [
+          "Reportes"
+        ],
+        "x-change": "busqueda-avanzada-y-exportacion",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/reports/piece-card/{piece_id}/pdf": {
+      "get": {
+        "operationId": "exportPiecePdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `reportes-inventario`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+        "tags": [
+          "Reportes"
+        ],
+        "x-change": "reportes-inventario",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/reports/{report_type}": {
       "get": {
-        "operationId": "get_report",
+        "operationId": "getReport",
         "parameters": [
           {
             "in": "path",
@@ -12075,7 +13240,7 @@
     },
     "/api/v1/roles": {
       "get": {
-        "operationId": "list_roles",
+        "operationId": "listRoles",
         "responses": {
           "200": {
             "content": {
@@ -12084,7 +13249,7 @@
                   "items": {
                     "$ref": "#/components/schemas/RoleOut"
                   },
-                  "title": "Response List Roles",
+                  "title": "Response Listroles",
                   "type": "array"
                 }
               }
@@ -12136,7 +13301,7 @@
     },
     "/api/v1/roles/{role_code}/permissions": {
       "put": {
-        "operationId": "update_role_permissions",
+        "operationId": "updateRolePermissions",
         "parameters": [
           {
             "in": "path",
@@ -12225,7 +13390,7 @@
     },
     "/api/v1/search": {
       "get": {
-        "operationId": "search",
+        "operationId": "searchPieces",
         "parameters": [
           {
             "description": "Código o texto.",
@@ -12322,87 +13487,9 @@
         "x-status": "implemented"
       }
     },
-    "/api/v1/search/export": {
-      "post": {
-        "operationId": "export_search_results",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchExportRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExportJob"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
-          }
-        },
-        "security": [
-          {
-            "DevUserHeader": []
-          }
-        ],
-        "summary": "Exportar a Excel los resultados de una búsqueda (RF-036)",
-        "tags": [
-          "Búsqueda"
-        ],
-        "x-change": "busqueda-avanzada-y-exportacion",
-        "x-status": "stub"
-      }
-    },
     "/api/v1/users": {
       "get": {
-        "operationId": "list_users",
+        "operationId": "listUsers",
         "parameters": [
           {
             "in": "query",
@@ -12507,7 +13594,7 @@
         "x-status": "stub"
       },
       "post": {
-        "operationId": "create_user",
+        "operationId": "createUser",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12585,7 +13672,7 @@
     },
     "/api/v1/users/{user_id}": {
       "get": {
-        "operationId": "get_user",
+        "operationId": "getUser",
         "parameters": [
           {
             "in": "path",
@@ -12663,7 +13750,7 @@
         "x-status": "stub"
       },
       "patch": {
-        "operationId": "update_user",
+        "operationId": "updateUser",
         "parameters": [
           {
             "in": "path",
@@ -12751,9 +13838,99 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/users/{user_id}/role": {
+      "put": {
+        "operationId": "updateUserRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Cambiar el rol o el estado de un usuario (RF-039)",
+        "tags": [
+          "Usuarios y roles"
+        ],
+        "x-change": "autenticacion-y-matriz-permisos",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/vocabularies": {
       "get": {
-        "operationId": "list_vocabularies",
+        "operationId": "listVocabularies",
         "responses": {
           "200": {
             "content": {
@@ -12762,7 +13939,7 @@
                   "items": {
                     "$ref": "#/components/schemas/VocabularyOut"
                   },
-                  "title": "Response List Vocabularies",
+                  "title": "Response Listvocabularies",
                   "type": "array"
                 }
               }
@@ -12812,7 +13989,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_vocabulary",
+        "operationId": "createVocabulary",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12890,7 +14067,7 @@
     },
     "/api/v1/vocabularies/{vocabulary_code}": {
       "get": {
-        "operationId": "get_vocabulary",
+        "operationId": "getVocabulary",
         "parameters": [
           {
             "in": "path",
@@ -12968,7 +14145,7 @@
     },
     "/api/v1/vocabularies/{vocabulary_code}/terms": {
       "get": {
-        "operationId": "list_terms",
+        "operationId": "listTerms",
         "parameters": [
           {
             "in": "path",
@@ -12998,7 +14175,7 @@
                   "items": {
                     "$ref": "#/components/schemas/TermOut"
                   },
-                  "title": "Response List Terms",
+                  "title": "Response Listterms",
                   "type": "array"
                 }
               }
@@ -13058,7 +14235,7 @@
         "x-status": "implemented"
       },
       "post": {
-        "operationId": "create_term",
+        "operationId": "createTerm",
         "parameters": [
           {
             "in": "path",
@@ -13146,7 +14323,7 @@
     },
     "/api/v1/vocabularies/{vocabulary_code}/terms/{term_id}": {
       "delete": {
-        "operationId": "delete_term",
+        "operationId": "deleteTerm",
         "parameters": [
           {
             "in": "path",
@@ -13247,7 +14424,7 @@
         "x-status": "implemented"
       },
       "patch": {
-        "operationId": "update_term",
+        "operationId": "updateTerm",
         "parameters": [
           {
             "in": "path",

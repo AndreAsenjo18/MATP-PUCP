@@ -57,6 +57,14 @@ class CodeBrief(BaseModel):
     normalized_value: str | None
 
 
+class PieceChildLink(BaseModel):
+    """Vincula una pieza existente como componente de un conjunto (contrato fase 2; RF-009)."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"child_piece_id": EX_PIECE_ID}]})
+
+    child_piece_id: uuid.UUID = Field(description="Pieza que pasa a ser componente del conjunto.")
+
+
 class PieceSummary(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

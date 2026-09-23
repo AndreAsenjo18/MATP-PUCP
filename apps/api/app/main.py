@@ -53,8 +53,14 @@ OPENAPI_TAGS = [
 
 
 def operation_id(route: APIRoute) -> str:
-    """Stable operationId = handler name (unique across the API; checked by tests)."""
-    return route.name
+    """`operationId` en camelCase, como el contrato del equipo (`endpoints-api-v1.yaml`).
+
+    El nombre del handler sigue en snake_case (ADR-002, estilo de Python) y se convierte aquí,
+    de modo que la conformidad con el contrato se comprueba en un único punto
+    (`tests/api/test_contract_conformance.py`).
+    """
+    head, *rest = route.name.split("_")
+    return head + "".join(word.capitalize() for word in rest)
 
 
 def create_app(

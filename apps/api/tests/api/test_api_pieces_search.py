@@ -133,7 +133,7 @@ def test_piece_detail_and_sub_resources(seeded_api: SeededApi) -> None:
     assert len(media) == detail["media_count"]
     assert [m["sort_order"] for m in media] == sorted(m["sort_order"] for m in media)
 
-    assert client.get(f"/api/v1/pieces/{piece_id}/movements", headers=H).status_code == 200
+    assert client.get(f"/api/v1/pieces/{piece_id}/location-history", headers=H).status_code == 200
     assert client.get(f"/api/v1/pieces/{piece_id}/source-records", headers=H).status_code == 200
 
 

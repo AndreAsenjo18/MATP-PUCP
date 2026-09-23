@@ -13,10 +13,12 @@
 
 ## 3. Traducción de enumerados en la frontera
 
-- [ ] 3.1 Crear `app/api/enums.py` con la tabla única de equivalencias (régimen de tenencia, tipo de vista, estado de lote e importación) y pruebas de ida y vuelta para cada valor (Req: Valores de enumerado del contrato en la API; RF-005, RF-013)
+- [x] 3.1 Crear `app/api/enums.py` con la tabla única de equivalencias (régimen de tenencia, tipo de vista, estado de lote e importación) y pruebas de ida y vuelta para cada valor (Req: Valores de enumerado del contrato en la API; RF-005, RF-013)
 - [ ] 3.2 Aplicar la traducción en todos los esquemas de entrada y salida; prueba de que ninguna respuesta de la API contiene los códigos internos en inglés (Req: Valores de enumerado del contrato en la API)
 
 ## 4. Operaciones de la fase 1 del documento (1 a 20)
+
+- [x] 4.0 Primera tanda de alineación de rutas, verbos e `operationId` (39 de 45 operaciones conformes): `operationId` en camelCase desde el nombre del handler; `/audit-logs`, `/imports/upload`, `/imports/{batch_id}/diffs`, `/imports/{batch_id}/confirm`, `/imports/{batch_id}/rollback`, `/pieces/{id}/move`, `/pieces/{id}/location-history`, `PUT /pieces/{id}`, `PUT /locations/{id}`, `/reports/export-excel`, `/reports/dashboard-stats`, `/ai/suggest-cataloging`; nuevas `/locations/tree`, `/locations/{id}/pieces`, `/categories`, `/conservation-states`, `/pieces/{id}/children`, `/media/upload`, `/reports/piece-card/{id}/pdf`, `/users/{id}/role`, `/audit-logs/pieces/{id}`, `/ai/validate-data` y `DELETE /pieces/{id}/identifiers/{identifier_id}` (Req: Conformidad con el contrato de interfaces del equipo)
 
 - [ ] 4.1 Piezas: `POST /pieces`, `GET /pieces` (`page`/`limit`), `GET /pieces/{id}`, `PUT /pieces/{id}`, `DELETE /pieces/{id}` con los esquemas `PieceCreate`, `PieceSummary`, `PieceDetail` y `PieceSearchResponse`; pruebas por operación, incluida la de comodato con código I (409) (Req: Campos de la ficha con los nombres del contrato; RF-006, RN-002, RN-003)
 - [ ] 4.2 Colecciones, `GET /categories`, `POST /categories` y `GET /conservation-states` con `CollectionItem`; pruebas de listado y alta (Req: Catálogos de categorías y estados de conservación; RF-010, RF-011, RF-012)
@@ -29,7 +31,7 @@
 ## 5. Operaciones de las fases 2 y 3 del documento (21 a 45)
 
 - [ ] 5.1 Renombrar y exponer con su forma definitiva las operaciones de la fase 2 (identificadores, conjuntos, espacios, lotes, reportes, usuarios, auditoría e IA), manteniendo `501` con su `x-change`; prueba de que cada stub cita un change existente del backlog (Req: Conformidad con el contrato de interfaces del equipo)
-- [ ] 5.2 Exponer las operaciones de la fase 3 (`/loans`, `/loans/{id}/status`, `/media/bulk-download`, `/audit-logs/pieces/{id}`, `/ai/batch-enrich`) como stubs con su esquema; **sin** `/public/catalog` hasta resolver C2 (Req: Conformidad con el contrato de interfaces del equipo)
+- [ ] 5.2 Proponer los changes que faltan para la fase 3 (préstamos y exposiciones; descargas masivas y enriquecimiento por lote) y luego exponer sus operaciones (`/loans`, `/loans/{id}/status`, `/media/bulk-download`, `/audit-logs/pieces/{id}`, `/ai/batch-enrich`) como stubs con su esquema; **sin** `/public/catalog` hasta resolver C2 (Req: Conformidad con el contrato de interfaces del equipo)
 - [ ] 5.3 Baja lógica del identificador en `DELETE /pieces/{id}/identifiers/{identifier_id}` según D1, con pruebas: identificador secundario dado de baja queda en el historial; identificador de tipo I responde 409 (Req: Conformidad con el contrato de interfaces del equipo; RN-002, RN-005)
 
 ## 6. Cliente tipado, maqueta y documentación

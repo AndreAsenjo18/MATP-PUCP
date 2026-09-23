@@ -10,11 +10,19 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
+from app.api.enums import LOCATION_LEVEL_LABELS, label_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.refs import LocationRef
-from app.api.stubs import CHANGE_LOCATIONS, implemented, not_implemented, stub
+from app.api.stubs import (
+    CHANGE_LOCATIONS,
+    example_of,
+    implemented,
+    not_implemented,
+    stub,
+)
 from app.core.errors import NotFound
 from app.modules.catalog.queries import CatalogReader, Viewer
+from app.modules.catalog.schemas import PieceSummary
 from app.modules.identification.normalization import is_absence_marker, propose_identifiers
 from app.modules.identification.schemas import (
     NormalizedProposal,
@@ -22,7 +30,12 @@ from app.modules.identification.schemas import (
     NormalizeResponse,
 )
 from app.modules.locations.models import Location, LocationLevel
-from app.modules.locations.schemas import LocationCreate, LocationOut, LocationUpdate
+from app.modules.locations.schemas import (
+    LocationCreate,
+    LocationNode,
+    LocationOut,
+    LocationUpdate,
+)
 from app.modules.users.sensitive import PERM_EXACT_LOCATION, PUBLIC_LOCATION_LEVELS
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
@@ -62,6 +75,36 @@ def list_locations(
 
 
 @router.get(
+    "/locations/tree",
+    response_model=list[LocationNode],
+    summary="Árbol jerárquico de ubicaciones, de la sede al contenedor (RF-016)",
+    tags=["Ubicaciones"],
+    **implemented(),
+)
+def get_locations_tree(session: SessionDep, user: Reader) -> list[LocationNode]:
+    """Contrato: `getLocationsTree`. Poda los niveles que el rol no puede ver (RF-041)."""
+    statement = select(Location).where(Location.deleted_at.is_(None)).order_by(Location.code)
+    if not user.can(PERM_EXACT_LOCATION):
+        statement = statement.where(Location.level.in_(PUBLIC_LOCATION_LEVELS))
+    locations = list(session.scalars(statement))
+    nodes = {
+        location.id: LocationNode(
+            id=location.id,
+            name=location.name,
+            level_type=label_of(LOCATION_LEVEL_LABELS, location.level) or str(location.level),
+        )
+        for location in locations
+    }
+    roots: list[LocationNode] = []
+    for location in locations:
+        node = nodes[location.id]
+        parent = nodes.get(location.parent_id) if location.parent_id else None
+        # Un nodo cuyo padre se podó por permisos cuelga de la raíz, no desaparece.
+        (parent.children if parent else roots).append(node)
+    return roots
+
+
+@router.get(
     "/locations/{location_id}",
     response_model=LocationOut,
     responses={404: {"model": ErrorResponse, "description": "No existe o no es visible."}},
@@ -92,7 +135,7 @@ def create_location(body: LocationCreate, user: LocationManager) -> LocationOut:
     raise not_implemented(CHANGE_LOCATIONS, LocationOut)
 
 
-@router.patch(
+@router.put(
     "/locations/{location_id}",
     response_model=LocationOut,
     summary="Editar o desactivar una ubicación",
@@ -103,6 +146,17 @@ def update_location(
     location_id: uuid.UUID, body: LocationUpdate, user: LocationManager
 ) -> LocationOut:
     raise not_implemented(CHANGE_LOCATIONS, LocationOut)
+
+
+@router.get(
+    "/locations/{location_id}/pieces",
+    response_model=list[PieceSummary],
+    summary="Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+    tags=["Ubicaciones"],
+    **stub(CHANGE_LOCATIONS),
+)
+def get_pieces_in_location(location_id: uuid.UUID, user: Reader) -> list[PieceSummary]:
+    raise not_implemented(CHANGE_LOCATIONS, [example_of(PieceSummary)])
 
 
 @router.post(
