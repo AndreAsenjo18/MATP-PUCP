@@ -1,10 +1,10 @@
 # services/ai — Servicio de IA asistiva del MATP
 
-Servicio FastAPI independiente. Por defecto usa `AI_PROVIDER=mock` (determinista, sin red), de modo que
+Aplicación FastAPI propia (paquete `matp_ai`) que **corre dentro del contenedor y el proceso de la API**, montada en `AI_MOUNT_PATH` (`/ai`; ADR-008). No tiene contenedor ni puerto propios. Por defecto usa `AI_PROVIDER=mock` (determinista, sin red), de modo que
 las demos nunca dependen de una API externa (RN-009, riesgo RA04). Ninguna salida se persiste aquí: la API
 guarda las sugerencias como pendientes de aprobación humana.
 
-Interfaz `AIProvider` (`app/providers/`, change `contratos-api-borrador`):
+Interfaz `AIProvider` (`matp_ai/providers/`, change `contratos-api-borrador`). Las rutas de la tabla son relativas al montaje: en ejecución responden bajo `/ai`.
 
 | Operación | Endpoint | Función |
 |---|---|---|

@@ -16,7 +16,6 @@
     "logs": "docker compose logs -f",
     "ps": "docker compose ps",
     "dev:api": "node scripts/py.mjs apps/api -m uvicorn app.main:create_app --factory --reload --port 8000",
-    "dev:ai": "node scripts/py.mjs services/ai -m uvicorn app.main:create_app --factory --reload --port 8100",
     "dev:web": "npm run dev -w apps/web",
     "lint": "npm run lint:api && npm run lint:ai && npm run lint:web",
     "lint:api": "node scripts/py.mjs apps/api -m ruff check . && node scripts/py.mjs apps/api -m ruff format --check .",
@@ -31,8 +30,8 @@
     "migrate": "docker compose exec api alembic upgrade head",
     "seed": "docker compose exec api python -m app.seed",
     "validate:specs": "openspec validate --all --strict",
-    "openapi": "node scripts/py.mjs apps/api -m app.openapi_export && node scripts/py.mjs services/ai -m app.openapi_export",
-    "openapi:check": "node scripts/py.mjs apps/api -m app.openapi_export --check && node scripts/py.mjs services/ai -m app.openapi_export --check",
+    "openapi": "node scripts/py.mjs apps/api -m app.openapi_export && node scripts/py.mjs services/ai -m matp_ai.openapi_export",
+    "openapi:check": "node scripts/py.mjs apps/api -m app.openapi_export --check && node scripts/py.mjs services/ai -m matp_ai.openapi_export --check",
     "openapi:client": "npm run openapi:client -w apps/web"
   }
 }

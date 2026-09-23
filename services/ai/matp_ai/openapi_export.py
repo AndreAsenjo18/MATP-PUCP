@@ -1,6 +1,6 @@
 """Export the AI service OpenAPI contract (design D7). From services/ai:
 
-python -m app.openapi_export [--check]
+python -m matp_ai.openapi_export [--check]
 """
 
 import argparse
@@ -9,13 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from app.config import load_settings
+from matp_ai.config import load_settings
 
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "docs" / "api" / "ai-openapi.json"
 
 
 def build_spec() -> dict[str, Any]:
-    from app.main import create_app
+    from matp_ai.main import create_app
 
     return create_app(load_settings(ai_provider="mock", app_version="0.1.0")).openapi()
 

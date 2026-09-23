@@ -1,6 +1,6 @@
 ## 1. Contrato del servicio IA
 
-- [ ] 1.1 Ampliar `services/ai/app/schemas.py` y `/v1/suggest-terms` con `candidates` y `max_per_vocabulary` (compatible si faltan) y actualizar `AIProvider.suggest_terms`, `MockProvider` (coincidencia determinista por etiqueta/alt_labels sin tildes, etiquetas libres de ejemplo) y `LLMProvider` stub; pruebas en `services/ai/tests/`: determinismo, término existente, etiqueta libre, sin candidatos (Req: Sugerencia de términos restringida a candidatos activos; RNF-008)
+- [ ] 1.1 Ampliar `services/ai/matp_ai/schemas.py` y `/v1/suggest-terms` con `candidates` y `max_per_vocabulary` (compatible si faltan) y actualizar `AIProvider.suggest_terms`, `MockProvider` (coincidencia determinista por etiqueta/alt_labels sin tildes, etiquetas libres de ejemplo) y `LLMProvider` stub; pruebas en `services/ai/tests/`: determinismo, término existente, etiqueta libre, sin candidatos (Req: Sugerencia de términos restringida a candidatos activos; RNF-008)
 - [ ] 1.2 Regenerar `docs/api/ai-openapi.json` con `npm run openapi` y verificar `npm run openapi:check` (RNF-009)
 
 ## 2. API

@@ -23,11 +23,11 @@ Desde la raíz del repositorio clonado:
 cp .env.example .env                 # 1. variables locales (nunca subas .env)
 npm install                          # 2. dependencias del frontend (npm workspaces)
 npm run setup                        # 3. entornos virtuales Python de apps/api y services/ai
-npm run dev                          # 4. docker compose up --build -d (db, storage, api, ai, web)
+npm run dev                          # 4. docker compose up --build -d (db, storage, api, web)
 npm run migrate && npm run seed      # 5. esquema (Alembic) + ~300 piezas sintéticas con fotos placeholder
 ```
 
-Comprueba: http://localhost:3000 (web), http://localhost:8000/health y http://localhost:8000/docs (API), http://localhost:8100/health (IA simulada).
+Comprueba: http://localhost:3000 (web), http://localhost:8000/health y http://localhost:8000/docs (API), http://localhost:8000/ai/health (IA simulada, dentro del contenedor de la API).
 
 En PowerShell: `scripts/setup.ps1` (pasos 1–3), `scripts/dev.ps1` (paso 4; `-Down` para detener) y `scripts/test.ps1`.
 

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Contrato del proveedor de IA
-El servicio de IA MUST definir una interfaz de proveedor con las operaciones `extract_structured(text)` (RIA-01), `suggest_terms(piece)` (RIA-03) y `describe(piece)` (RIA-04), seleccionada por la variable `AI_PROVIDER`, con un proveedor simulado determinista por defecto y un proveedor de modelo de lenguaje configurable. Toda respuesta SHALL identificar el proveedor y el modelo, y MUST declararse como propuesta pendiente de aprobación humana; el servicio no escribe en el catálogo. (RIA-01, RIA-03, RIA-04, RN-009, RNF-008)
+La IA asistiva, que se ejecuta dentro de la aplicación de la API (ADR-008), MUST definir una interfaz de proveedor con las operaciones `extract_structured(text)` (RIA-01), `suggest_terms(piece)` (RIA-03) y `describe(piece)` (RIA-04), seleccionada por la variable `AI_PROVIDER`, con un proveedor simulado determinista por defecto y un proveedor de modelo de lenguaje configurable. Toda respuesta SHALL identificar el proveedor y el modelo, y MUST declararse como propuesta pendiente de aprobación humana; la IA no escribe en el catálogo ni accede a la base de datos. (RIA-01, RIA-03, RIA-04, RN-009, RNF-008)
 
 #### Scenario: Extracción simulada determinista
 - **GIVEN** el servicio configurado con `AI_PROVIDER=mock`

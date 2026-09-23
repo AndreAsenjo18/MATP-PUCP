@@ -1,6 +1,6 @@
 ## 1. Imágenes y configuración de producción
 
-- [ ] 1.1 Ajustar `apps/api/Dockerfile`, `services/ai/Dockerfile` y `apps/web/Dockerfile` para usuario no root y etiquetas OCI; verificar con `docker build` y `docker run --rm <img> id -u` distinto de 0 (requiere Docker) (Req: Despliegue reproducible con contenedores endurecidos)
+- [ ] 1.1 Ajustar `apps/api/Dockerfile` (incluye la IA asistiva) y `apps/web/Dockerfile` para usuario no root y etiquetas OCI; verificar con `docker build` y `docker run --rm <img> id -u` distinto de 0 (requiere Docker) (Req: Despliegue reproducible con contenedores endurecidos)
 - [ ] 1.2 Crear `deploy/vm/docker-compose.prod.yml` (sin puertos internos, `restart`, límites, `read_only`, redes, rotación de logs) y sección de producción en `.env.example`; verificar con `docker compose -f docker-compose.yml -f deploy/vm/docker-compose.prod.yml config` y prueba que falla si falta una variable obligatoria (Req: Despliegue reproducible…; Req: Monitoreo básico de operación)
 - [ ] 1.3 Consultar versiones estables vigentes de Caddy y restic, crear `deploy/vm/Caddyfile` (redirección, HSTS, CSP, rutas `/api`, `/media-store`, límite de cuerpo) y registrar las versiones consultadas en `docs/adr/ADR-011-despliegue-proxy-respaldos.md` (ya Propuesto); verificar con `caddy validate` en contenedor (Req: Proxy inverso con HTTPS y cabeceras de seguridad)
 

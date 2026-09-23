@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from app.schemas import DescriptionResult, ExtractionResult, PieceContext, TermSuggestionResult
+from matp_ai.schemas import DescriptionResult, ExtractionResult, PieceContext, TermSuggestionResult
 
 
 class ProviderUnavailable(RuntimeError):

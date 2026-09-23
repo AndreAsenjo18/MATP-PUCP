@@ -52,7 +52,7 @@ Catálogo completo de IDs: `docs/requisitos/catalogo.md` (RF-001..044, RNF-001..
 
 ## Stack (Alternativa 2, decidido)
 
-Next.js + TypeScript (frontend) · FastAPI + Python (backend) · PostgreSQL · object storage S3-compatible (MinIO local / Cloudflare R2) · servicio de IA independiente · Docker Compose · GitHub Actions · GitHub Projects.
+Next.js + TypeScript (frontend) · FastAPI + Python (backend) · PostgreSQL · object storage S3-compatible (MinIO local / Cloudflare R2) · IA asistiva montada dentro del backend (ADR-008) · Docker Compose · GitHub Actions · GitHub Projects.
 Despliegue en VM Linux PUCP; contingencia free tier (Vercel, Render, Neon, R2). Todo parametrizado por variables de entorno.
 
 ## Estructura del repo (ver ADR-001)
@@ -63,7 +63,7 @@ docs/                requisitos/, adr/, api/, maqueta/, ONBOARDING.md, estado-ar
                      preguntas-contraparte.md, ownership.md
 apps/web/            Next.js (App Router)
 apps/api/            FastAPI (app/core, app/modules/<capacidad>, alembic, tests)
-services/ai/         servicio de IA (interfaz AIProvider + MockProvider)
+services/ai/         paquete matp_ai: IA asistiva (AIProvider + MockProvider) montada por la API en /ai
 data/fixtures/       Excel y fotos sintéticas
 scripts/             scripts PowerShell equivalentes a los comandos
 ```
@@ -79,7 +79,7 @@ No hay `make` en el entorno de referencia (Windows). Los comandos se exponen com
 | Preparar entornos Python (venv + pip) | `npm install` y `npm run setup` | disponible |
 | Levantar entorno | `npm run dev` (= `docker compose up --build -d`) | disponible (requiere Docker) |
 | Detener / logs | `npm run down` · `npm run logs` | disponible (requiere Docker) |
-| Servicios sin contenedor | `npm run dev:api` · `npm run dev:ai` · `npm run dev:web` | disponible |
+| Servicios sin contenedor | `npm run dev:api` (incluye la IA en `/ai`) · `npm run dev:web` | disponible |
 | Tests | `npm test` (`test:api`, `test:ai`, `test:web`) | disponible |
 | Lint | `npm run lint` (`lint:api`, `lint:ai`, `lint:web`) | disponible |
 | Migraciones | `npm run migrate` (= `docker compose exec api alembic upgrade head`) | disponible (requiere Docker) |

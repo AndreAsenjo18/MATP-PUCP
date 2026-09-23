@@ -115,3 +115,16 @@ Estos supuestos están en los `design.md` y specs delta de `openspec/changes/<ch
 3. **A3 + G7** — Lista oficial de colecciones, siglas, variantes históricas y cuáles están en comodato.
 4. **B6 + B7 + E2** — Campos sensibles y matriz de permisos por rol (quién aprueba cargas, quién ve comodantes y ubicación exacta).
 5. **G14** — Datos de la VM PUCP y política de respaldos: sin ellos no se puede desplegar para el avance integrado (S12).
+
+## H. Diagrama entidad-relación del equipo frente al modelo implementado (2026-09-22)
+
+Fuente: `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades). Comparación completa en `docs/estado-arranque.md`, sección «Diagrama ER frente al modelo implementado». Estas preguntas son **internas del equipo** (Arquitecto y Líder), no para el museo, salvo H3.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| H1 | ¿El código I se guarda como columna de `PIECES` (como en el diagrama) o solo como identificador 1:N (como está implementado)? Si es columna, ¿los códigos I históricos de una pieza fusionada dónde quedan? | Sigue en `piece_identifier`, con índice parcial de unicidad entre vigentes | `modelo-datos-nucleo`, `ficha-pieza-crud`, `importacion-pipeline-reconciliacion` (RN-001, RN-002) | A |
+| H2 | ¿Se acepta un solo rol por usuario en texto (diagrama) o se mantiene la matriz de roles y permisos? RF-041 y RF-042 piden matriz y campos sensibles por rol. | Se mantiene la matriz (`role`, `permission`, `user_role`, `role_permission`) | `autenticacion-y-matriz-permisos` (RF-041, RF-042) | A |
+| H3 | ¿`CATEGORIES` y `CONSERVATION_STATES` deben ser tablas propias, o vocabularios parametrizables como el resto (materiales, técnicas, tipos de vista)? RN-010 pide parametrizables. | Vocabulario genérico `vocabulary` + `term` | `colecciones-y-vocabularios-admin` (RN-010) | A |
+| H4 | ¿Dónde se guardan las sugerencias de IA pendientes y su aprobación, y la cola de duplicados, si no existen en el diagrama? RN-009 exige aprobación registrada. | Tablas `ai_suggestion` y `duplicate_candidate`, añadidas al diagrama | `ia-extraccion-texto-libre`, `deteccion-duplicados-y-cola-revision` (RN-009, RF-030) | A |
+| H5 | ¿`LOANS` entra en la fase 1? Hoy no existe tabla y RF-018 (préstamos y exposiciones) quedó fuera del backlog. | Fuera de alcance de la fase 1 | Nuevo change por proponer (RF-018) | B |
+| H6 | ¿El borrado lógico se limita a `PIECES` (como en el diagrama) o se mantiene en todas las tablas? RN-005 dice que nunca se borra información. | Borrado lógico y auditoría en todas las tablas de negocio | Transversal (RN-005) | A |

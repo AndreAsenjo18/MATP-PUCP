@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["matp_ai*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

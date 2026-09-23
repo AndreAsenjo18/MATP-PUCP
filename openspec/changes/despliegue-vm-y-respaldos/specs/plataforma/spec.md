@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Despliegue reproducible con contenedores endurecidos
-El sistema MUST poder desplegarse en la VM institucional con un procedimiento documentado y un único script a partir de imágenes versionadas, SHALL ejecutar los contenedores sin privilegios de superusuario, con reinicio automático y límites de recursos, y MUST exponer hacia fuera únicamente el proxy inverso, manteniendo base de datos, almacenamiento y servicio de IA solo en la red interna de contenedores. (RNF-002, RNF-008, RNF-004, RNF-013)
+El sistema MUST poder desplegarse en la VM institucional con un procedimiento documentado y un único script a partir de imágenes versionadas, SHALL ejecutar los contenedores sin privilegios de superusuario, con reinicio automático y límites de recursos, y MUST exponer hacia fuera únicamente el proxy inverso, manteniendo base de datos y almacenamiento solo en la red interna de contenedores. (RNF-002, RNF-008, RNF-004, RNF-013)
 
 #### Scenario: Despliegue de una versión
 - **WHEN** el Implantador ejecuta el script de despliegue con la versión `v0.3.0` en la VM

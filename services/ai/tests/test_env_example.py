@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.config import Settings
+from matp_ai.config import Settings
 
 ENV_EXAMPLE = Path(__file__).resolve().parents[3] / ".env.example"
 

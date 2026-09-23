@@ -2,9 +2,9 @@
 
 import pytest
 
-from app.config import load_settings
-from app.providers import LLMProvider, MockProvider, ProviderUnavailable, get_provider
-from app.schemas import PieceContext
+from matp_ai.config import load_settings
+from matp_ai.providers import LLMProvider, MockProvider, ProviderUnavailable, get_provider
+from matp_ai.schemas import PieceContext
 
 TEXT = "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998. Regular estado."
 

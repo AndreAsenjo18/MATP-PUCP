@@ -43,23 +43,11 @@ services:
       timeout: 5s
       retries: 20
 
-  ai:
-    build:
-      context: ./services/ai
-    restart: unless-stopped
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      APP_VERSION: ${APP_VERSION:-0.1.0}
-      AI_PROVIDER: ${AI_PROVIDER:-mock}
-      LLM_BASE_URL: ${LLM_BASE_URL:-}
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-}
-    ports:
-      - "${AI_PORT:-8100}:8100"
-
+  # La IA asistiva no tiene contenedor propio: corre dentro de este servicio, montada en /ai (ADR-008).
   api:
     build:
-      context: ./apps/api
+      context: .
+      dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file:
       - path: .env
@@ -68,8 +56,6 @@ services:
       db:
         condition: service_healthy
       storage:
-        condition: service_healthy
-      ai:
         condition: service_healthy
     ports:
       - "${API_PORT:-8000}:8000"
@@ -85,7 +71,7 @@ services:
     restart: unless-stopped
     environment:
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
-      AI_INTERNAL_URL: ${AI_INTERNAL_URL:-http://ai:8100}
+      AI_MOUNT_PATH: ${AI_MOUNT_PATH:-/ai}
     depends_on:
       api:
         condition: service_healthy

@@ -38,7 +38,7 @@ flowchart LR
     ORM --> DB[(PostgreSQL)]
     Export["python -m app.openapi_export"] --> Spec["docs/api/openapi.json"]
     Spec --> Gen["openapi-typescript"] --> Web
-    Router -. "change ia-extraccion-texto-libre" .-> AI["services/ai<br/>/v1/extract-structured<br/>/v1/suggest-terms · /v1/describe"]
+    Router -. "change ia-extraccion-texto-libre" .-> AI["IA asistiva (matp_ai) montada en /ai<br/>/ai/v1/extract-structured<br/>/ai/v1/suggest-terms · /ai/v1/describe"]
     AI --> Provider{{"AIProvider<br/>MockProvider | LLMProvider"}}
 ```
 
@@ -116,7 +116,7 @@ Estado: **I** = implementado, **S** = stub (change del backlog que lo implementa
 
 ### D7. Exportación del contrato y cliente tipado
 
-- `python -m app.openapi_export [--check]` construye la app con configuración ficticia (sin conexión a BD ni S3; el engine es perezoso) y escribe JSON con claves ordenadas, indentación 2 y salto final. `services/ai` tiene el mismo módulo. Scripts raíz: `npm run openapi` (ambos contratos) y `npm run openapi:client`.
+- `python -m app.openapi_export [--check]` construye la app con configuración ficticia (sin conexión a BD ni S3; el engine es perezoso) y escribe JSON con claves ordenadas, indentación 2 y salto final. `services/ai` tiene el mismo módulo (`matp_ai.openapi_export`). Scripts raíz: `npm run openapi` (ambos contratos) y `npm run openapi:client`.
 - Prueba `test_openapi_contract.py` compara el archivo commiteado con la app (falla con instrucción de regenerar). La web tiene una prueba equivalente que verifica que `schema.d.ts` se generó desde el `openapi.json` actual (hash en cabecera).
 - Dependencias web: `openapi-typescript` (dev) y `openapi-fetch` (runtime, ~6 kB). Alternativas: `orval`/`@hey-api/openapi-ts` (más pesadas, generan código), o solo tipos con `fetch` nativo (contingencia).
 - `apps/web/src/lib/api/client.ts`: `createApiClient({ baseUrl, devUser })` que añade `X-MATP-User` y traduce `ErrorResponse`.

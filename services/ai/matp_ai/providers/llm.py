@@ -4,9 +4,9 @@ The real client (endpoint, prompts, redaction of sensitive data) is implemented 
 ``ia-extraccion-texto-libre``. Until then every call reports the provider as unavailable (503).
 """
 
-from app.config import Settings
-from app.providers.base import AIProvider, ProviderUnavailable
-from app.schemas import DescriptionResult, ExtractionResult, PieceContext, TermSuggestionResult
+from matp_ai.config import Settings
+from matp_ai.providers.base import AIProvider, ProviderUnavailable
+from matp_ai.schemas import DescriptionResult, ExtractionResult, PieceContext, TermSuggestionResult
 
 _MESSAGE = (
     "El proveedor de IA 'llm' aún no está implementado (change ia-extraccion-texto-libre). "

@@ -5,7 +5,7 @@ Generados por el change `contratos-api-borrador` (ADR-005). **No se editan a man
 | Archivo | Servicio | Cómo verlo en vivo |
 |---|---|---|
 | [`openapi.json`](openapi.json) | API de colecciones (`apps/api`) | http://localhost:8000/docs |
-| [`ai-openapi.json`](ai-openapi.json) | Servicio de IA (`services/ai`) | http://localhost:8100/docs |
+| [`ai-openapi.json`](ai-openapi.json) | IA asistiva (`services/ai`), montada dentro de la API en `/ai` (ADR-008); sus rutas efectivas son `/ai/v1/...` | http://localhost:8000/ai/docs |
 
 ## Convenciones
 

@@ -1,9 +1,9 @@
 """AI providers selectable with AI_PROVIDER (mock by default)."""
 
-from app.config import Settings
-from app.providers.base import AIProvider, ProviderUnavailable
-from app.providers.llm import LLMProvider
-from app.providers.mock import MockProvider
+from matp_ai.config import Settings
+from matp_ai.providers.base import AIProvider, ProviderUnavailable
+from matp_ai.providers.llm import LLMProvider
+from matp_ai.providers.mock import MockProvider
 
 __all__ = ["AIProvider", "LLMProvider", "MockProvider", "ProviderUnavailable", "get_provider"]
 

@@ -30,7 +30,8 @@ function ServiceCard({ health }: { health: ServiceHealth }) {
 export default async function EstadoPage() {
   await connection(); // always render at request time: health must be live
   const apiUrl = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
-  const aiUrl = process.env.AI_INTERNAL_URL ?? "http://localhost:8100";
+  // La IA asistiva corre dentro de la API, bajo AI_MOUNT_PATH (ADR-008): misma URL base.
+  const aiUrl = `${apiUrl.replace(/\/$/, "")}${process.env.AI_MOUNT_PATH ?? "/ai"}`;
   const services = await Promise.all([fetchHealth("api", apiUrl), fetchHealth("ai", aiUrl)]);
 
   return (

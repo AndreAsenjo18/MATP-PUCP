@@ -109,4 +109,19 @@ def create_app(
     install_error_handlers(app)
     app.include_router(health_router)
     app.include_router(api_router)
+    mount_ai_app(app, settings)
     return app
+
+
+def mount_ai_app(app: FastAPI, settings: Settings) -> None:
+    """Monta la IA asistiva en el mismo proceso y contenedor que la API (ADR-008).
+
+    Sigue siendo una aplicación ASGI aparte, con su propio contrato
+    (`docs/api/ai-openapi.json`) y su interfaz `AIProvider`, de modo que puede volver a
+    desplegarse por separado sin cambiar el código de la API.
+    """
+    from matp_ai.config import load_settings as load_ai_settings
+    from matp_ai.main import create_app as create_ai_app
+
+    ai_settings = load_ai_settings(app_env=settings.app_env, app_version=settings.app_version)
+    app.mount(settings.ai_mount_path, create_ai_app(ai_settings), name="ai")

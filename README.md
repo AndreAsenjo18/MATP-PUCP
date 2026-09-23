@@ -26,11 +26,10 @@ El MATP custodia más de 10 000 piezas registradas durante décadas en libros, W
 flowchart LR
     U[Personal del museo<br/>navegador escritorio / móvil] -->|HTTPS| P[proxy inverso<br/>Caddy · solo producción]
     P --> W[web<br/>Next.js + TypeScript]
-    P --> A[api<br/>FastAPI · /api/v1]
+    P --> A[api<br/>FastAPI · /api/v1<br/>+ IA asistiva en /ai]
     W -->|cliente tipado OpenAPI| A
     A -->|SQLAlchemy + Alembic| D[(db<br/>PostgreSQL)]
     A -->|S3 · URL prefirmadas| S[(storage<br/>MinIO / Cloudflare R2)]
-    A -->|propuestas pendientes de aprobación| I[ai<br/>FastAPI · AI_PROVIDER=mock]
     U -.->|subida y lectura de fotos<br/>con URL firmada| S
     B[respaldos restic<br/>systemd · solo producción] --> D
     B --> S
@@ -42,8 +41,7 @@ Servicios web desacoplados y contenerizados (Docker Compose), parametrizados por
 | Servicio | Tecnología | Puerto local |
 |---|---|---|
 | `web` | Next.js + TypeScript (`apps/web`) | 3000 |
-| `api` | FastAPI + SQLAlchemy (`apps/api`) | 8000 |
-| `ai` | FastAPI, proveedor `mock` por defecto (`services/ai`) | 8100 |
+| `api` | FastAPI + SQLAlchemy (`apps/api`), con la IA asistiva montada en `/ai` (`services/ai`, proveedor `mock` por defecto) | 8000 |
 | `db` | PostgreSQL 18 | 5432 |
 | `storage` | MinIO (API S3) | 9000 (consola 9001) |
 
@@ -59,7 +57,7 @@ Estructura y motivos: [ADR-001](docs/adr/ADR-001-estructura-repo.md). Herramient
 ```bash
 cp .env.example .env        # revise los valores; nunca suba .env
 npm install                 # dependencias del frontend (npm workspaces)
-npm run setup               # crea .venv de apps/api y services/ai e instala dependencias
+npm run setup               # crea .venv de apps/api y services/ai (la IA se instala también en el de la API)
 npm run dev                 # docker compose up --build -d
 npm run migrate             # crea el esquema (Alembic)
 npm run seed                # ~300 piezas sintéticas con fotos placeholder
@@ -74,7 +72,7 @@ En PowerShell existen equivalentes: `scripts/setup.ps1`, `scripts/dev.ps1`, `scr
 |---|---|
 | Preparar entornos Python | `npm run setup` |
 | Levantar / detener / logs | `npm run dev` · `npm run down` · `npm run logs` |
-| Desarrollo sin contenedores de app | `npm run dev:api` · `npm run dev:ai` · `npm run dev:web` (con `docker compose up -d db storage`; exporte las variables de `.env` cambiando los hosts `db`/`storage`/`ai` por `localhost`) |
+| Desarrollo sin contenedores de app | `npm run dev:api` (sirve también la IA en `/ai`) · `npm run dev:web` (con `docker compose up -d db storage`; exporte las variables de `.env` cambiando los hosts `db` y `storage` por `localhost`) |
 | Lint (ruff, eslint, tsc) | `npm run lint` |
 | Pruebas (pytest, vitest) | `npm test` |
 | Formatear Python | `npm run format` |

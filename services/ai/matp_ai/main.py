@@ -1,4 +1,4 @@
-"""AI service application factory. Run with: uvicorn app.main:create_app --factory --port 8100"""
+"""Aplicación de IA asistiva. Se monta dentro de la API (`/ai`); ver ADR-008."""
 
 from typing import Literal
 
@@ -8,9 +8,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from app.config import Settings, get_settings
-from app.providers import AIProvider, ProviderUnavailable, get_provider
-from app.schemas import (
+from matp_ai.config import Settings, get_settings
+from matp_ai.providers import AIProvider, ProviderUnavailable, get_provider
+from matp_ai.schemas import (
     DescriptionResult,
     ErrorResponse,
     ExtractionResult,

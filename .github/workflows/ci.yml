@@ -36,7 +36,7 @@ jobs:
       - run: npm run test:api
 
   ai:
-    name: Servicio IA (ruff + pytest)
+    name: IA asistiva (ruff + pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -48,7 +48,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: node scripts/setup.mjs services/ai
       - run: npm run lint:ai
-      - run: node scripts/py.mjs services/ai -m app.openapi_export --check
+      - run: node scripts/py.mjs services/ai -m matp_ai.openapi_export --check
       - run: npm run test:ai
 
   web:

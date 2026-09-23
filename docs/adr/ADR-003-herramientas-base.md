@@ -46,7 +46,7 @@ El guardrail 7 exige consultar la versión estable vigente de cada dependencia a
 |---|---|---|
 | db | `postgres:18-alpine` | PostgreSQL 18 guarda datos en `/var/lib/postgresql` |
 | storage | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772` | MinIO retiró `minio/minio` de Docker Hub y la edición comunitaria no publica nuevas imágenes; es la última etiqueta activa en quay.io |
-| api, ai | `python:3.14-slim` | |
+| api (incluye la IA asistiva; ADR-008) | `python:3.14-slim` | |
 | web | `node:24-alpine` | Node 24 = LTS vigente (Node 26 aún no es LTS) |
 
 **Contingencia S3**: `rustfs/rustfs` (Apache 2.0, 1.0.0 publicado 2026-09-16) o `dxflrs/garage` (v2.4.1), cambiando solo `docker-compose.yml`/variables; en la nube, Cloudflare R2. El código solo usa la API S3 con direccionamiento por ruta.

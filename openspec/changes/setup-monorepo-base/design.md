@@ -29,14 +29,14 @@ Ver `proposal.md` (Why). Restricciones que condicionan el enfoque:
 flowchart LR
   subgraph compose[docker-compose.yml]
     web[web · Next.js :3000] -->|HTTP server-side| api[api · FastAPI :8000]
-    web -->|HTTP server-side| ai[ai · FastAPI :8100]
+    api -->|en proceso · AIProvider| ai[IA asistiva · matp_ai montada en /ai]
     api --> db[(db · PostgreSQL :5432)]
     api --> storage[(storage · MinIO S3 :9000)]
     api -->|HTTP| ai
   end
 ```
 
-Directorios: `apps/web`, `apps/api` (`app/core`, `app/modules/<capacidad>`, `alembic`, `tests`), `services/ai` (`app/`, `tests`), `data/fixtures`, `scripts`. Los módulos se nombran en inglés (ADR-002): `identification`, `catalog`, `collections`, `media`, `locations`, `imports`, `quality`, `search`, `users`, `audit`, `ai_suggestions`.
+Directorios: `apps/web`, `apps/api` (`app/core`, `app/modules/<capacidad>`, `alembic`, `tests`), `services/ai` (`matp_ai/`, `tests`), `data/fixtures`, `scripts`. Los módulos se nombran en inglés (ADR-002): `identification`, `catalog`, `collections`, `media`, `locations`, `imports`, `quality`, `search`, `users`, `audit`, `ai_suggestions`.
 *Alternativas*: repos separados por servicio (más fricción para 11 personas y para specs compartidas); Nx/Turborepo (sobredimensionado para 3 proyectos).
 
 ### D2. Orquestación de comandos: npm workspaces + runner de Python multiplataforma

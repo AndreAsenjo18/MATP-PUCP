@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
 
-    # Internal services.
-    ai_service_url: str = "http://ai:8100"
+    # IA asistiva: se ejecuta dentro de este mismo proceso, montada en AI_MOUNT_PATH (ADR-008).
+    ai_mount_path: str = "/ai"
     cors_origins: str = "http://localhost:3000"
     health_check_timeout_seconds: float = 2.0
 

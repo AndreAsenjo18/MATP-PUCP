@@ -6,8 +6,8 @@ Rules and keyword lists are [SUPUESTO]: they only exist to make demos coherent.
 import re
 import unicodedata
 
-from app.providers.base import AIProvider
-from app.schemas import (
+from matp_ai.providers.base import AIProvider
+from matp_ai.schemas import (
     DescriptionResult,
     ExtractionResult,
     PieceContext,

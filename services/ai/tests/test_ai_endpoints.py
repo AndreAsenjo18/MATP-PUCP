@@ -3,9 +3,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import load_settings
-from app.main import create_app
-from app.openapi_export import DEFAULT_OUTPUT, build_spec, render
+from matp_ai.config import load_settings
+from matp_ai.main import create_app
+from matp_ai.openapi_export import DEFAULT_OUTPUT, build_spec, render
 
 TEXT = "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998"
 

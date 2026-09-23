@@ -27,7 +27,7 @@ flowchart LR
     P -->|/*| W[web :3000]
     A --> D[(db PostgreSQL)]
     A --> S[(storage MinIO)]
-    A --> I[ai :8100]
+    A -.-> I[IA asistiva en el mismo contenedor de la API]
     B[backup restic<br/>job programado] --> D
     B --> S
     B -->|cifrado| R[(destino externo<br/>S3 institucional o R2)]

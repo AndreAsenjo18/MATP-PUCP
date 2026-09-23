@@ -4,13 +4,13 @@ Las 12 capacidades base ya están especificadas, pero no existe código ni un en
 
 ## What Changes
 
-- Estructura de monorepo: `apps/web` (Next.js + TypeScript, App Router), `apps/api` (FastAPI, paquete por capacidad en `app/modules/`), `services/ai` (FastAPI independiente con proveedor simulado por defecto), `data/fixtures/`, `scripts/`.
+- Estructura de monorepo: `apps/web` (Next.js + TypeScript, App Router), `apps/api` (FastAPI, paquete por capacidad en `app/modules/`), `services/ai` (paquete `matp_ai`: aplicación FastAPI con proveedor simulado por defecto, montada por la API en `/ai`, sin contenedor propio; ADR-008), `data/fixtures/`, `scripts/`.
 - `docker-compose.yml` con los servicios `db` (PostgreSQL), `storage` (MinIO, API S3), `api`, `ai` y `web`, con healthchecks y todo parametrizado por variables de entorno.
 - Endpoint `GET /health` en `api` y en `ai`; página inicial de `web` que muestra el estado de los servicios.
 - Configuración tipada que **falla al arrancar** si falta una variable obligatoria, indicando cuál (RNF-002).
 - `.env.example` que documenta todas las variables (BD, S3, JWT, `AI_PROVIDER`, URLs entre servicios).
 - Comandos del proyecto como scripts de `package.json` en la raíz (`npm run setup|dev|down|logs|lint|test|migrate|seed`) y `scripts/*.ps1` de conveniencia; **sin Makefile** (ADR-000).
-- Workflow de GitHub Actions `ci.yml`: lint y tests de backend, servicio de IA y frontend, y `openspec validate --all --strict` en cada PR.
+- Workflow de GitHub Actions `ci.yml`: lint y tests de backend, IA asistiva y frontend, y `openspec validate --all --strict` en cada PR.
 - ADR-001 (estructura del repo) y ADR-003 (herramientas y librerías base: pip+venv, ruff, pytest, MinIO/alternativas S3, versiones de imágenes).
 - `README.md` raíz con instalación rápida.
 

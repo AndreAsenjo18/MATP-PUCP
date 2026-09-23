@@ -22,6 +22,9 @@ dependencies = [
     "pillow>=12.3.0,<13",
     "openpyxl>=3.1.5,<4",
     "python-multipart>=0.0.32,<1",  # multipart uploads (FastAPI Form/File)
+    # La IA asistiva (paquete matp-ai, carpeta services/ai) corre dentro de esta aplicación
+    # (ADR-008). No se publica en PyPI: la instalan scripts/setup.mjs y apps/api/Dockerfile
+    # desde el repositorio, por eso no figura aquí como dependencia con versión.
 ]
 
 [project.optional-dependencies]

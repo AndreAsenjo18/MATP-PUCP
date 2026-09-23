@@ -64,3 +64,28 @@ def test_liveness_has_no_dependencies(settings: Settings) -> None:
         response = client.get("/health/live")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "api"}
+
+
+def test_ai_application_is_mounted_in_the_same_process(settings: Settings) -> None:
+    """ADR-008: la IA asistiva no tiene contenedor propio; responde bajo AI_MOUNT_PATH."""
+    app = create_app(settings, health_checks={"database": _ok, "storage": _ok})
+    with TestClient(app) as client:
+        response = client.get(f"{settings.ai_mount_path}/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["service"] == "ai"
+    assert body["provider"] == "mock"
+
+
+def test_ai_suggestion_endpoint_answers_without_a_separate_service(settings: Settings) -> None:
+    app = create_app(settings, health_checks={"database": _ok, "storage": _ok})
+    with TestClient(app) as client:
+        response = client.post(
+            f"{settings.ai_mount_path}/v1/describe",
+            json={"title": "Retablo ayacuchano", "materials": ["madera", "yeso"]},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["function_code"] == "RIA_04"
+    assert body["requires_human_approval"] is True
+    assert body["status"] == "PENDING_REVIEW"

@@ -53,6 +53,23 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - [SUPUESTO] Sin `make`: comandos equivalentes en `package.json` y `scripts/*.ps1`.
 - [SUPUESTO] Docker no disponible: se avanza en specs, código, OpenAPI y maqueta en modo mock; migraciones/seed/compose sin ejecutar.
 
+## Cambios posteriores al arranque
+
+### 2026-09-22 — La IA asistiva pasa al contenedor del backend (petición del equipo)
+
+- **Qué cambió**: la IA ya no tiene contenedor ni puerto propios. `services/ai` sigue siendo un proyecto aparte, pero su paquete pasó a llamarse `matp_ai` y la API lo monta como aplicación ASGI en `AI_MOUNT_PATH` (`/ai`), en el mismo proceso: `GET /ai/health`, `POST /ai/v1/extract-structured`, `/ai/v1/suggest-terms`, `/ai/v1/describe`.
+- **Infraestructura**: eliminado el servicio `ai` de `docker-compose.yml` (quedan 4: `db`, `storage`, `api`, `web`) y `services/ai/Dockerfile`. El contexto de build de `apps/api/Dockerfile` es ahora la raíz del repositorio, porque la imagen instala también `services/ai`. `.dockerignore` unificado en la raíz.
+- **Variables**: fuera `AI_PORT`, `AI_SERVICE_URL` y `AI_INTERNAL_URL`; entra `AI_MOUNT_PATH=/ai`. `AI_PROVIDER` y `LLM_*` los lee ahora el contenedor de la API.
+- **Comandos**: `npm run dev:ai` desaparece (la IA se sirve desde `npm run dev:api`). `npm run setup` instala `services/ai` también en el entorno de la API. El contrato de la IA se exporta con `matp_ai.openapi_export`.
+- **Documentación**: ADR-008 revisado (motivo, reversibilidad y el riesgo de compartir CPU con el catálogo), ADR-001 y ADR-003 actualizados, más README, CLAUDE.md, ONBOARDING, `docs/api/README.md` y los artefactos de `setup-monorepo-base`, `contratos-api-borrador`, `ia-*` y `despliegue-vm-y-respaldos`.
+- **Verificado sin Docker**: `npm run lint` y `npm run lint:web` en verde; `npm test` 282 pruebas (API 239 —dos nuevas comprueban que `/ai/health` y `/ai/v1/describe` responden dentro del proceso de la API—, IA 20, web 23); `npm run openapi:check` al día; `npm run build:web` correcto; `openspec validate --all --strict` 31/31; `docker compose config` válido y sin servicio `ai`.
+- **PENDIENTE (requiere Docker)**: construir la imagen de la API con la IA dentro (`npm run dev`) y comprobar `/health` y `/ai/health` en el contenedor.
+
+### 2026-09-22 — Diagrama entidad-relación de la contraparte
+
+- El PDF entregado por el equipo quedó versionado en `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades: COLLECTIONS, PIECES, CATEGORIES, CONSERVATION_STATES, IDENTIFIERS, MEDIA_ASSETS, LOCATIONS, PIECE_LOCATION_HISTORY, USERS, IMPORT_BATCHES, IMPORT_ROW_DIFFS, LOANS, AUDIT_LOGS).
+- Alinear el modelo implementado (23 tablas) con ese diagrama **está pendiente de decisión**: ver la sección «Diagrama ER frente al modelo implementado» más abajo.
+
 ## Registro por fase
 
 ### Fase 0 — Preparación y verificación (2026-09-17) — COMPLETADA con observaciones
@@ -79,7 +96,7 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 ### Fase 3 — Change `setup-monorepo-base` — IMPLEMENTADA, verificación con contenedores PENDIENTE (no archivado)
 - Change propuesto (proposal, design con Mermaid, delta `plataforma` con 2 requirements ADDED, tasks) y aplicado: 15/16 tareas `[x]`; `openspec validate setup-monorepo-base --strict` OK.
 - Monorepo: `apps/web` (create-next-app: Next 16.3.5, React 19.2.8, Tailwind 4, ESLint 9, TS 5; Vitest 5.0.1; `output: standalone`; sin Google Fonts), `apps/api` (FastAPI 0.141.1, config pydantic-settings con fallo temprano en español, `/health` 200/503 sin secretos, `/health/live`, S3 vía boto3), `services/ai` (FastAPI, `AI_PROVIDER=mock` por defecto, rechaza proveedores desconocidos), 11 paquetes por capacidad en `apps/api/app/modules/`.
-- Comandos (sin Makefile, ADR-000): `package.json` raíz con npm workspaces y scripts `setup|dev|down|logs|ps|dev:api|dev:ai|dev:web|lint(:api|:ai|:web)|format|test(:api|:ai|:web)|build:web|migrate|seed|validate:specs`; `scripts/py.mjs` (runner multiplataforma del venv) y `scripts/setup.mjs`; envoltorios `scripts/setup.ps1`, `dev.ps1`, `test.ps1` (CRLF, ASCII).
+- Comandos (sin Makefile, ADR-000): `package.json` raíz con npm workspaces y scripts `setup|dev|down|logs|ps|dev:api|dev:web|lint(:api|:ai|:web)|format|test(:api|:ai|:web)|build:web|migrate|seed|validate:specs`; `scripts/py.mjs` (runner multiplataforma del venv) y `scripts/setup.mjs`; envoltorios `scripts/setup.ps1`, `dev.ps1`, `test.ps1` (CRLF, ASCII).
 - Python: **pip + venv** (no se instaló `uv`, ver ADR-003); Python 3.14 en local, CI e imágenes. Cliente de pruebas `httpx2` (Starlette depreca `httpx`).
 - `docker-compose.yml` (db `postgres:18-alpine`, storage `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772`, api, ai, web con healthchecks), Dockerfiles, `.env.example` completo (test que verifica que toda variable de `Settings` está documentada), `.github/workflows/ci.yml` (jobs api, ai, web, openspec con `actions/*@v7` y OpenSpec 1.13.0).
 - ADR-001 (estructura) y ADR-003 (herramientas/versiones/imágenes) en estado Propuesto. README raíz y tabla de comandos de CLAUDE.md actualizados.
@@ -133,7 +150,7 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - [SUPUESTO] Formatos de códigos, marcadores de ausencia, vocabularios, niveles de ubicación, campos sensibles y matriz de permisos: ver `docs/preguntas-contraparte.md`.
 
 ### Pendientes / bloqueos tras Fases 0–6
-- BLOQUEO (entorno): daemon de Docker no responde → PENDIENTE ejecutar y verificar: `cp .env.example .env && npm run dev` (5 servicios healthy, http://localhost:3000, `:8000/health`, `:8100/health`), `npm run migrate` (revisar en `psql` índice parcial, `pg_trgm` y triggers), `npm run seed` (fotos en MinIO), y luego marcar tareas 8.2 / 4.2 / 5.3 y archivar ambos changes.
+- BLOQUEO (entorno): daemon de Docker no responde → PENDIENTE ejecutar y verificar: `cp .env.example .env && npm run dev` (4 servicios healthy, http://localhost:3000, `:8000/health`, `:8000/ai/health`), `npm run migrate` (revisar en `psql` índice parcial, `pg_trgm` y triggers), `npm run seed` (fotos en MinIO), y luego marcar tareas 8.2 / 4.2 / 5.3 y archivar ambos changes.
 - PENDIENTE: construir las imágenes Docker (no probado; posible ajuste si alguna dependencia no tiene wheel para Python 3.14 en Linux; contingencia 3.13).
 - PENDIENTE: primer run de GitHub Actions (el workflow solo se validó como YAML).
 - PENDIENTE (entorno, opcional): `uv` (decisión uv vs pip-tools y lockfile de Python en ADR-003), `pandoc` solo si llegan los `.docx`.
@@ -194,3 +211,33 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - **Consulta y control** (Josué Moreno, Mathias Medina, Sergio Huamán): `ubicacion-jerarquica-y-movimientos` y `alertas-y-reporte-incompletas` en paralelo; luego `busqueda-avanzada-y-exportacion` (dueña de `app/core/xlsx.py` y `export_job`) y por último `reportes-inventario`.
 - **IA** (José Ávalos, Sergio Chumbimuni): `ia-extraccion-texto-libre` (flujo genérico de aprobación) y después `ia-sugerencia-terminos`; mantener `AI_PROVIDER=mock` hasta resolver B12/G15.
 - **Líder y Arquitecto**: validar ownership y ADRs en la primera planificación; usar `docs/maqueta/recorrido-demo.md` en la reunión con la contraparte y registrar respuestas en `docs/preguntas-contraparte.md`; decidir si se proponen `prestamos-y-exposiciones`, `documentos-asociados` e `ia-descripcion-preliminar`.
+
+## Diagrama ER frente al modelo implementado (2026-09-22) — PENDIENTE DE DECISIÓN
+
+Fuente: `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades). Modelo implementado en `modelo-datos-nucleo`: 23 tablas (`docs/modelo-datos.md`). Correspondencia:
+
+| Entidad del diagrama | Tabla implementada | Diferencia principal |
+|---|---|---|
+| `COLLECTIONS` | `collection` | Equivalente. En el diagrama `acquisition_type` es texto; implementado apunta a un término de vocabulario. |
+| `PIECES` | `piece` | El diagrama pone `code_i` como columna única e inmutable de la pieza; lo implementado guarda **todos** los códigos en `piece_identifier` (1:N). También difieren nombres: `denomination`/`description` frente a `title`, y `epoch_*` frente a `period_*`. |
+| `CATEGORIES`, `CONSERVATION_STATES` | `vocabulary` + `term` | El diagrama usa una tabla por vocabulario; lo implementado usa un vocabulario genérico parametrizable (RN-010). |
+| `IDENTIFIERS` | `piece_identifier` + `identifier_type` | Lo implementado añade el tipo como tabla con reglas (unicidad, bloqueo, permitido en comodato) en lugar de texto libre. |
+| `MEDIA_ASSETS` | `media_asset` | Equivalente. `view_type` es texto en el diagrama y término en lo implementado. |
+| `LOCATIONS` | `location` | Equivalente. |
+| `PIECE_LOCATION_HISTORY` | `piece_movement` | Mismo concepto, otro nombre. |
+| `USERS` (con `role` como texto) | `app_user` + `role` + `permission` + `user_role` + `role_permission` | El diagrama pone un solo rol por usuario en una columna; lo implementado tiene matriz de permisos (RF-041, RF-042). |
+| `IMPORT_BATCHES` | `import_batch` + `import_mapping_template` | Lo implementado separa la plantilla de mapeo reutilizable. |
+| `IMPORT_ROW_DIFFS` | `import_row` | Mismo concepto, otro nombre. |
+| `LOANS` | **no existe** | Falta en lo implementado (préstamos y exposiciones, RF-018, quedaron fuera del backlog). |
+| `AUDIT_LOGS` | `audit_log` | Equivalente, con más campos (conjunto de cambios, acción, origen, motivo). |
+| — | `piece_material`, `piece_source_record`, `duplicate_candidate`, `ai_suggestion`, `conservation_assessment` | Tablas que no están en el diagrama y que hoy sostienen requisitos: materiales, datos de origen del Excel, cola de duplicados y sugerencias de IA pendientes de aprobación (RN-009). |
+
+Conflictos a resolver antes de tocar el modelo, porque chocan con reglas que `CLAUDE.md` marca como no negociables:
+
+1. **RN-009**: sin una tabla de sugerencias de IA no hay dónde guardar una propuesta pendiente ni su aprobación.
+2. **RF-041 / RF-042**: con un solo rol en texto no hay matriz de permisos ni campos sensibles por rol.
+3. **RN-005**: el diagrama solo tiene `is_active` en `PIECES`; el resto de las tablas se borrarían de verdad.
+4. **RN-010**: `CATEGORIES` y `CONSERVATION_STATES` como tablas fijas dejan fuera materiales, técnicas y tipos de vista como vocabularios parametrizables.
+5. **Cola de duplicados** (importación): sin `duplicate_candidate` no hay dónde registrar los pares en revisión.
+
+Estas cinco preguntas están registradas también en `docs/preguntas-contraparte.md` (sección H).

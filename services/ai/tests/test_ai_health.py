@@ -3,8 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import ConfigurationError, load_settings
-from app.main import create_app
+from matp_ai.config import ConfigurationError, load_settings
+from matp_ai.main import create_app
 
 
 @pytest.fixture(autouse=True)

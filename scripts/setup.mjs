@@ -30,6 +30,11 @@ for (const project of projects) {
   }
   run(venvPython, ["-m", "pip", "install", "--upgrade", "pip"], cwd);
   run(venvPython, ["-m", "pip", "install", "-e", ".[dev]"], cwd);
+  // La IA asistiva corre dentro del proceso de la API (ADR-008): su paquete se instala en el
+  // entorno de la API, no en un contenedor propio.
+  if (project === "apps/api") {
+    run(venvPython, ["-m", "pip", "install", "-e", path.resolve(root, "services/ai")], cwd);
+  }
 }
 
 console.log("Entornos de Python listos. Para el frontend ejecute: npm install");
