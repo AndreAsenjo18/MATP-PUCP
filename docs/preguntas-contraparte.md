@@ -141,3 +141,13 @@ Fuente: `docs/fuentes/endpoints-api-v1.yaml`. Mapeo operación por operación y 
 | I4 | ¿Los valores de enumerado en español (`Propiedad`, `Comodato`, `Préstamo Temporal`) se guardan así en la base o solo se traducen en la frontera de la API? | Traducción en la frontera; la base conserva códigos en inglés (ADR-002) | Transversal | B |
 | I5 | El documento no incluye 62 operaciones que la API ya expone (aprobación de sugerencias de IA, cola de duplicados, vocabularios, plantillas de mapeo, restauración de piezas…). ¿Se conservan como añadidos o hay que eliminarlas? | Se conservan y quedan declaradas como añadidos justificados | Transversal (RN-005, RN-009, RN-010, RF-030) | A |
 | I6 | El documento menciona AWS S3 y un staging en AWS Academy; ADR-007 y ADR-011 asumen MinIO en local, Cloudflare R2 de contingencia y la VM de la PUCP. ¿Qué se usa en staging? | MinIO en local y VM de la PUCP; S3 es compatible por API | `despliegue-vm-y-respaldos` (RNF-002) | B |
+
+## J. Sistema de diseño del frontend (2026-09-23)
+
+Fuente: `docs/fuentes/system-design-frontend.md` (documento del equipo). Change: `sistema-diseno-frontend`. Decisión: ADR-012. J1 y J2 son para el museo (Dirección de Cultura); J3 es interna del equipo (Arquitecto).
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| J1 | ¿Los colores Terracota (`#A23C16`), Tinta (`#0C0F14`) y Crema (`#F5F0DA`) y las tipografías Poppins e Inter corresponden a la identidad visual oficial del museo o de la Dirección de Cultura? ¿Hay un manual de marca? | Se usan los valores del documento del equipo, declarados como tokens para poder cambiarlos en un solo lugar | `plataforma` (RNF-004, RNF-010) | C |
+| J2 | ¿Hay un logotipo autorizado del MATP o de la PUCP para la barra lateral de una herramienta interna? | Solo el texto «MATP · Colecciones», sin logotipo | `plataforma` | C |
+| J3 | ¿Los nombres de los tokens de color se mantienen en español (`terracota`, `tinta`, `crema`) como en el documento o se traducen al inglés (ADR-002)? | Se mantienen en español porque nombran la identidad visual | Interna (ADR-002, ADR-012) | C |

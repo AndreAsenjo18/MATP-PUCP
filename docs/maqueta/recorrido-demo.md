@@ -9,6 +9,8 @@
 
 Aclarar en voz alta: "Todo lo que ven es de mentira: nombres, códigos, fotos. Ningún cambio que hagamos hoy se guarda al recargar la página — es a propósito, para poder repetir la demo las veces que haga falta sin ensuciar nada." Esto evita que alguien piense que ya se cargaron datos reales.
 
+Navegación (sistema de diseño, change `sistema-diseno-frontend`): en escritorio las secciones están en la barra lateral oscura de la izquierda; en un teléfono, en el botón «Menú» de la cabecera. Solo aparecen las secciones que permite el rol elegido.
+
 ## 1. Login y roles (1 min) — pantalla 1
 
 Entrar como **Administrador**, mostrar el listado de roles y señalar que "Consulta externa/investigador" está deshabilitado (fase 1 es de uso interno, RF-042).
@@ -37,7 +39,7 @@ Abrir "Toro de Pucará": recorrer las 7 pestañas. Detenerse en:
 
 ## 5. Asistente de importación (2 min) — pantalla 6, prioridad alta
 
-Recorrer los 6 pasos con el lote de ejemplo (mismo tipo de sábana Excel "sucia" descrita en la reunión inicial). Detenerse en la previsualización: mostrar la fila marcada como "Conflicto" (comodato con código I) y la de "Posible duplicado".
+Recorrer los 6 pasos con el lote de ejemplo (mismo tipo de sábana Excel "sucia" descrita en la reunión inicial). Detenerse en la previsualización: mostrar la fila marcada como "Conflicto" (comodato con código I) y la de "Posible duplicado", y abrir «Revisar diferencias» para comparar el valor del catálogo con el de la fila antes de aceptar, excluir o rechazar.
 
 **Preguntar:** cuando hay decenas de filas nuevas sin ningún conflicto, ¿alcanza con aceptarlas una por una, o necesitan una acción de "aceptar todas las que no tengan advertencias"? (F1)
 
@@ -61,7 +63,7 @@ Mostrar el reporte "por colección" y la pestaña de vocabularios en Administrac
 
 ## 9. Vista móvil de depósito (30 s) — pantalla 11
 
-Achicar la ventana (o mostrar en un teléfono) y buscar un código para registrar una verificación física con un botón grande.
+Achicar la ventana (o mostrar en un teléfono), abrir «Menú» → «Vista de depósito» y buscar un código para registrar una verificación física con un botón grande.
 
 **Preguntar:** ¿alcanza con "movimiento" y "verificación física" desde el celular, o necesitan poder reportar una incidencia (pieza dañada o faltante) ahí mismo? (F5)
 

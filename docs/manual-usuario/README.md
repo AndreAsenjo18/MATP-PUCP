@@ -18,6 +18,13 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
 | Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | pendiente |
 
+## Cómo moverse por el sistema
+
+- **En computadora**: las secciones (Inicio, Búsqueda, Importación, Duplicados, Sugerencias IA, Reportes, Administración, Vista de depósito) están en la **barra lateral oscura** de la izquierda. La sección en la que está aparece resaltada.
+- **En teléfono o tablet**: pulse **Menú** arriba a la izquierda para ver las secciones; el menú se cierra al elegir una sección, al pulsar **Cerrar menú** o con la tecla Escape.
+- Solo aparecen las secciones que su rol permite usar.
+- Los colores tienen siempre el mismo significado y van acompañados de texto: verde = correcto o aprobado; terracota claro = comodato o préstamo; ámbar = falta información o está pendiente de revisión; rojo = conflicto, rechazo o error.
+
 ## Convenciones de redacción
 
 - Instrucciones en pasos numerados, un verbo por paso ("Pulse **Guardar**").
