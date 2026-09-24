@@ -5,12 +5,16 @@
  * normalizado o tal como está escrito) o denominación (RF-031), filtros combinados en AND
  * (RF-032) y exportación de resultados a Excel (RF-036).
  */
-import Link from "next/link";
+import { Eraser, FileSpreadsheet, SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
-import { AlertBadge, TenureBadge } from "@/components/Badges";
-import { RequireSession } from "@/components/RequireSession";
+import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
+import { RequireSession } from "@/components/layout/RequireSession";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { alertsForPiece, COLLECTIONS, getPieceDetail, listPieces, termsByVocabulary } from "@/lib/fixtures";
 
@@ -47,30 +51,36 @@ function BusquedaContent() {
   const materials = termsByVocabulary("MATERIAL");
   const conservationStatuses = termsByVocabulary("CONSERVATION_STATUS");
 
+  const clearFilters = () => {
+    setQ("");
+    setCollectionId("");
+    setCategoryCode("");
+    setMaterialCode("");
+    setConservationStatusCode("");
+    setTenureRegime("");
+    setIncompleteOnly(false);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-stone-900">Búsqueda</h1>
-        <p className="text-base text-stone-700">
+        <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
+        <p className="text-base text-gris-texto">
           Busque por cualquier código —vigente o histórico, con o sin formato (&quot;I 236&quot;, &quot;M.M.Z. 015&quot;,
           &quot;mmz 15&quot;)— o por denominación.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-4">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="q" className="text-sm font-medium text-stone-900">
-              Código o denominación
-            </label>
-            <input
-              id="q"
-              value={q}
-              onChange={(event) => setQ(event.target.value)}
-              placeholder="p. ej. I-0236, mmz 15, &quot;Toro de Pucará&quot;"
-              className="rounded-md border border-stone-300 p-2.5 text-base text-stone-900"
-            />
-          </div>
+        <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
+          <Input
+            id="q"
+            label="Código o denominación"
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+            placeholder="p. ej. I-0236, mmz 15, &quot;Toro de Pucará&quot;"
+            className="p-2.5"
+          />
 
           <FilterSelect label="Colección" value={collectionId} onChange={setCollectionId} options={COLLECTIONS.map((c) => ({ value: c.id, label: c.name }))} />
           <FilterSelect label="Categoría" value={categoryCode} onChange={setCategoryCode} options={categories.map((c) => ({ value: c.code, label: c.label }))} />
@@ -87,45 +97,29 @@ function BusquedaContent() {
             ]}
           />
 
-          <label className="flex items-center gap-2 text-sm text-stone-900">
-            <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} />
+          <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
+            <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} className="size-5 accent-terracota" />
             Solo piezas incompletas
           </label>
 
-          <button
-            type="button"
-            onClick={() => {
-              setQ("");
-              setCollectionId("");
-              setCategoryCode("");
-              setMaterialCode("");
-              setConservationStatusCode("");
-              setTenureRegime("");
-              setIncompleteOnly(false);
-            }}
-            className="rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700 hover:bg-stone-100"
-          >
+          <Button variant="secondary" icon={Eraser} onClick={clearFilters}>
             Limpiar filtros
-          </button>
-        </aside>
+          </Button>
+        </Card>
 
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-3" aria-label="Resultados">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-base text-stone-700">
-              <strong>{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
+            <p className="text-base text-gris-texto">
+              <strong className="text-tinta">{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
             </p>
             {hasPermission("exports.run") && (
-              <button
-                type="button"
-                onClick={() => setExported(true)}
-                className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-900 hover:bg-stone-100"
-              >
+              <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
                 Exportar a Excel
-              </button>
+              </Button>
             )}
           </div>
           {exported && (
-            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
               Descarga simulada: en modo mock no se genera un archivo real; en modo conectado se descargaría
               {" "}
               <code>resultados-busqueda.xlsx</code> (RF-036).
@@ -135,36 +129,13 @@ function BusquedaContent() {
           <div className="grid gap-3 sm:grid-cols-2">
             {result.items.map((piece) => {
               const detail = getPieceDetail(piece.id);
-              const alerts = detail ? alertsForPiece(detail).filter((a) => a.applies) : [];
-              return (
-                <Link
-                  key={piece.id}
-                  href={`/piezas/${piece.id}`}
-                  className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4 hover:border-stone-400"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-stone-900">{piece.title}</h3>
-                    <TenureBadge regime={piece.tenure_regime} />
-                  </div>
-                  <p className="text-sm text-stone-600">{piece.collection?.name ?? "Sin colección"}</p>
-                  <p className="text-sm text-stone-700">
-                    Código I: <strong>{piece.inventory_code ?? "Sin código I"}</strong>
-                  </p>
-                  <p className="text-sm text-stone-700">{piece.location_label ?? "Sin ubicación"}</p>
-                  {alerts.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {alerts.map((alert) => (
-                        <AlertBadge key={alert.type} alert={alert} />
-                      ))}
-                    </div>
-                  )}
-                </Link>
-              );
+              return <PieceCard key={piece.id} {...pieceCardProps(piece, detail ? alertsForPiece(detail) : [])} />;
             })}
             {result.items.length === 0 && (
-              <p className="col-span-2 rounded-lg border border-dashed border-stone-300 p-6 text-center text-base text-stone-600">
+              <Card className="flex flex-col items-center gap-2 border-dashed text-center text-base text-gris-texto sm:col-span-2">
+                <SearchX size={24} aria-hidden="true" />
                 No se encontraron piezas con estos filtros.
-              </p>
+              </Card>
             )}
           </div>
         </section>
@@ -185,17 +156,14 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-stone-900">{label}</label>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="rounded-md border border-stone-300 p-2 text-base text-stone-900">
-        <option value="">Todas</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">Todas</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
   );
 }
 

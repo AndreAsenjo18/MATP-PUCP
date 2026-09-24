@@ -5,12 +5,16 @@
  * fusionar o marcar como distinto. Nunca se borra ninguna de las dos piezas (RN-005): fusionar
  * en esta maqueta solo registra la decisión en la auditoría.
  */
+import { ArrowRight, Clock, GitMerge, Split } from "lucide-react";
 import Link from "next/link";
 
-import { PermissionNotice } from "@/components/AppShell";
-import { StatusBadge, TenureBadge } from "@/components/Badges";
-import { ConfirmButton } from "@/components/ConfirmButton";
-import { RequireSession } from "@/components/RequireSession";
+import { ConfirmButton } from "@/components/domain/ConfirmButton";
+import { duplicateStatus } from "@/components/domain/status-intents";
+import { StatusBadge, TenureBadge } from "@/components/domain/StatusBadges";
+import { PermissionNotice } from "@/components/layout/PermissionNotice";
+import { RequireSession } from "@/components/layout/RequireSession";
+import { Button } from "@/components/ui/Button";
+import { Card, cardClassName } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
 import { getPieceDetail } from "@/lib/fixtures";
@@ -25,12 +29,13 @@ function DuplicadosContent() {
 
   const pending = store.duplicateCandidates.filter((c) => c.status === "PENDING");
   const resolved = store.duplicateCandidates.filter((c) => c.status !== "PENDING");
+  const actor = currentUser?.full_name ?? currentRole?.name ?? "Persona sintética";
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-stone-900">Cola de posibles duplicados</h1>
-        <p className="text-base text-stone-700">
+        <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>
+        <p className="text-base text-gris-texto">
           Candidatos detectados por similitud de título, colección e identificadores normalizados. Compare lado a
           lado y decida: nunca se elimina ninguna pieza, solo se registra la decisión (RN-005).
         </p>
@@ -41,23 +46,24 @@ function DuplicadosContent() {
           const pieceA = getPieceDetail(candidate.piece_a_id);
           const pieceB = candidate.piece_b_id ? getPieceDetail(candidate.piece_b_id) : undefined;
           return (
-            <div key={candidate.id} className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+            <Card key={candidate.id} className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm text-stone-600">
-                  Similitud: <strong>{Math.round(candidate.score * 100)} %</strong> · coincide en: {candidate.matched_fields.join(", ")}
+                <span className="text-sm text-gris-texto">
+                  Similitud: <strong className="text-tinta">{Math.round(candidate.score * 100)} %</strong> · coincide en: {candidate.matched_fields.join(", ")}
                 </span>
-                <StatusBadge label="Pendiente" tone="pending" />
+                <StatusBadge status={duplicateStatus(candidate.status)} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <PieceSummaryCard title="Pieza A" piece={pieceA} />
                 {pieceB ? (
                   <PieceSummaryCard title="Pieza B" piece={pieceB} />
                 ) : (
-                  <div className="rounded-md border border-dashed border-stone-300 p-3 text-base text-stone-700">
-                    <p className="font-medium text-stone-900">Fila de importación {candidate.import_row_id}</p>
-                    <p className="text-sm text-stone-600">Aún no forma parte del catálogo: viene del lote en previsualización.</p>
-                    <Link href="/importacion" className="text-sm underline">
-                      Ver en el asistente de importación →
+                  <div className="rounded-md border border-dashed border-borde p-3 text-base text-tinta">
+                    <p className="font-medium">Fila de importación {candidate.import_row_id}</p>
+                    <p className="text-sm text-gris-texto">Aún no forma parte del catálogo: viene del lote en previsualización.</p>
+                    <Link href="/importacion" className="inline-flex items-center gap-1 text-sm text-terracota underline">
+                      Ver en el asistente de importación
+                      <ArrowRight size={16} aria-hidden="true" />
                     </Link>
                   </div>
                 )}
@@ -65,44 +71,50 @@ function DuplicadosContent() {
               <div className="flex flex-wrap gap-3">
                 <ConfirmButton
                   label="Fusionar"
-                  tone="primary"
+                  variant="primary"
+                  icon={GitMerge}
                   confirmTitle="Fusionar como la misma pieza"
                   confirmDescription="Se registra que ambos registros corresponden a la misma pieza física. Ninguno de los dos se elimina; la fusión queda en la auditoría con su usuario y motivo (RN-005)."
                   requireReason
                   reasonLabel="Motivo / criterio de fusión"
-                  onConfirm={(reason) => store.resolveDuplicate(candidate.id, "MERGED", reason, currentUser?.full_name ?? currentRole?.name ?? "Persona sintética", currentUser?.id ?? "")}
+                  onConfirm={(reason) => store.resolveDuplicate(candidate.id, "MERGED", reason, actor, currentUser?.id ?? "")}
                 />
                 <ConfirmButton
                   label="Marcar como distinto"
+                  variant="outline"
+                  icon={Split}
                   confirmTitle="Marcar como piezas distintas"
                   confirmDescription="Se registra que, a pesar de la similitud, son piezas distintas. Queda documentado en la auditoría."
                   requireReason
                   reasonLabel="Motivo"
-                  onConfirm={(reason) => store.resolveDuplicate(candidate.id, "DISTINCT", reason, currentUser?.full_name ?? currentRole?.name ?? "Persona sintética", currentUser?.id ?? "")}
+                  onConfirm={(reason) => store.resolveDuplicate(candidate.id, "DISTINCT", reason, actor, currentUser?.id ?? "")}
                 />
-                <button
-                  type="button"
-                  className="rounded-md border border-stone-300 px-4 py-2 text-base text-stone-700 hover:bg-stone-100"
+                <Button
+                  variant="secondary"
+                  icon={Clock}
                   onClick={() => window.alert("Pospuesto: esta maqueta no guarda el estado \"pospuesto\" entre recargas.")}
                 >
                   Posponer
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
-        {pending.length === 0 && <p className="rounded-lg border border-dashed border-stone-300 p-6 text-center text-base text-stone-600">No hay duplicados pendientes de revisión.</p>}
+        {pending.length === 0 && <Card className="border-dashed text-center text-base text-gris-texto">No hay duplicados pendientes de revisión.</Card>}
       </div>
 
       {resolved.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-stone-900">Ya resueltos en esta sesión</h2>
+          <h2 className="text-lg font-semibold text-tinta">Ya resueltos en esta sesión</h2>
           <ul className="flex flex-col gap-2">
             {resolved.map((c) => (
-              <li key={c.id} className="flex items-center justify-between rounded-md border border-stone-200 bg-white p-3 text-base">
-                <span>{getPieceDetail(c.piece_a_id)?.title}{c.piece_b_id ? ` ↔ ${getPieceDetail(c.piece_b_id)?.title}` : ""}</span>
-                <StatusBadge label={c.status === "MERGED" ? "Fusionado" : "Distinto"} tone={c.status === "MERGED" ? "approved" : "neutral"} />
-              </li>
+              <Card as="li" key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-base text-tinta">
+                <span>
+                  {getPieceDetail(c.piece_a_id)?.title}
+                  {c.piece_b_id ? ` ↔ ${getPieceDetail(c.piece_b_id)?.title}` : ""}
+                </span>
+                <StatusBadge status={duplicateStatus(c.status)} />
+              </Card>
             ))}
           </ul>
         </section>
@@ -114,15 +126,17 @@ function DuplicadosContent() {
 function PieceSummaryCard({ title, piece }: { title: string; piece: ReturnType<typeof getPieceDetail> }) {
   if (!piece) return null;
   return (
-    <Link href={`/piezas/${piece.id}`} className="flex flex-col gap-1 rounded-md border border-stone-200 p-3 hover:border-stone-400">
-      <p className="text-sm font-medium text-stone-600">{title}</p>
-      <p className="text-lg font-semibold text-stone-900">{piece.title}</p>
+    <Link href={`/piezas/${piece.id}`} className={cardClassName({ interactive: true, className: "flex flex-col gap-1 p-3 shadow-none" })}>
+      <p className="text-sm font-medium text-gris-texto">{title}</p>
+      <p className="text-lg font-semibold text-tinta">{piece.title}</p>
       <div className="flex flex-wrap gap-1">
         <TenureBadge regime={piece.tenure_regime} />
       </div>
-      <p className="text-sm text-stone-700">{piece.collection?.name ?? "Sin colección"}</p>
-      <p className="text-sm text-stone-700">Código I: {piece.inventory_code ?? "Sin código I"}</p>
-      <p className="text-sm text-stone-700">{piece.location.path.length > 0 ? piece.location.path.map((l) => l.name).join(" / ") : "Sin ubicación"}</p>
+      <p className="text-sm text-gris-texto">{piece.collection?.name ?? "Sin colección"}</p>
+      <p className="text-sm text-gris-texto">
+        Código I: <span className="font-mono font-bold text-terracota">{piece.inventory_code ?? "Sin código I"}</span>
+      </p>
+      <p className="text-sm text-gris-texto">{piece.location.path.length > 0 ? piece.location.path.map((l) => l.name).join(" / ") : "Sin ubicación"}</p>
     </Link>
   );
 }

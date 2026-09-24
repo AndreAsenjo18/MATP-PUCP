@@ -1,25 +1,27 @@
 import { connection } from "next/server";
 
+import { Badge, type BadgeIntent } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { fetchHealth, type ServiceHealth, type ServiceState } from "@/lib/health";
 
-const STATE_STYLES: Record<ServiceState, { text: string; className: string }> = {
-  ok: { text: "Operativo", className: "bg-emerald-100 text-emerald-900" },
-  degraded: { text: "Con problemas", className: "bg-amber-100 text-amber-900" },
-  unreachable: { text: "Sin conexión", className: "bg-red-100 text-red-900" },
+const STATE_STYLES: Record<ServiceState, { text: string; intent: BadgeIntent }> = {
+  ok: { text: "Operativo", intent: "success" },
+  degraded: { text: "Con problemas", intent: "warning" },
+  unreachable: { text: "Sin conexión", intent: "danger" },
 };
 
 function ServiceCard({ health }: { health: ServiceHealth }) {
   const style = STATE_STYLES[health.state];
   return (
-    <li className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card as="li" className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="text-lg font-semibold text-stone-900">{health.label}</p>
-        <p className="text-base text-stone-700">{health.detail}</p>
+        <p className="text-lg font-semibold text-tinta">{health.label}</p>
+        <p className="text-base text-gris-texto">{health.detail}</p>
       </div>
-      <span className={`self-start rounded-full px-3 py-1 text-sm font-medium ${style.className}`}>
+      <Badge intent={style.intent} className="self-start">
         {style.text}
-      </span>
-    </li>
+      </Badge>
+    </Card>
   );
 }
 
@@ -37,16 +39,16 @@ export default async function EstadoPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <header className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-wide text-stone-600">
+        <p className="text-sm font-medium uppercase tracking-wide text-terracota">
           Uso interno · Fase 1
         </p>
-        <h1 className="text-3xl font-bold text-stone-900">Estado de los servicios</h1>
-        <p className="text-base text-stone-700">
+        <h1 className="text-3xl font-bold text-tinta">Estado de los servicios</h1>
+        <p className="text-base text-gris-texto">
           Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot; — entorno de desarrollo.
         </p>
       </header>
       <section aria-labelledby="estado-servicios" className="flex flex-col gap-3">
-        <h2 id="estado-servicios" className="text-xl font-semibold text-stone-900">
+        <h2 id="estado-servicios" className="text-xl font-semibold text-tinta">
           Servicios backend (modo conectado)
         </h2>
         <ul className="flex flex-col gap-3">

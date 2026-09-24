@@ -1,10 +1,45 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/*
+ * Tokens del sistema de diseño MATP (docs/system-design.md, ADR-012).
+ * Único lugar donde se definen colores y tipografías: los componentes usan solo estas clases
+ * (bg-terracota, text-tinta, font-heading...). Los pares de texto sobre fondo permitidos están en
+ * src/lib/design/contrast-pairs.ts y se verifican con design-tokens.test.ts (contraste >= 4.5:1).
+ */
+@theme {
+  --color-terracota: #a23c16;
+  --color-terracota-dark: #852f0f;
+  --color-terracota-light: #f0dad0;
+  --color-tinta: #0c0f14;
+  --color-crema: #f5f0da;
+  --color-crema-light: #faf7ee;
+  --color-borde: #e3decb;
+  --color-gris-texto: #5b534c;
+  --color-verde-exito: #007438;
+  --color-verde-bg: #e1efd8;
+  --color-ambar-alerta: #c8791e;
+  --color-ambar-bg: #f5e4cc;
+  --color-ambar-texto: #8a4f0c;
+  --color-carmin-peligro: #da2a4e;
+  --color-carmin-bg: #f7d9df;
+  --color-carmin-texto: #a3183a;
+
+  --font-heading: var(--font-poppins), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Familias autoalojadas con Fontsource (importadas en app/layout.tsx; sin Google Fonts, RNF-008). */
+:root {
+  --font-inter: "Inter Variable";
+  --font-poppins: "Poppins";
 }
 
 body {
-  color: #1c1917;
   font-size: 1rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
 }

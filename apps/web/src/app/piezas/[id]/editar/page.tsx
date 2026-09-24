@@ -5,12 +5,17 @@
  * como editable (RN-002): su corrección vive en la pestaña Identificadores de la ficha, con
  * procedimiento auditado y solo para el rol Administrador.
  */
+import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { use, useMemo, useState } from "react";
 
-import { PermissionNotice } from "@/components/AppShell";
-import { RequireSession } from "@/components/RequireSession";
+import { PermissionNotice } from "@/components/layout/PermissionNotice";
+import { RequireSession } from "@/components/layout/RequireSession";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
 
@@ -66,134 +71,83 @@ function EditorContent({ pieceId }: { pieceId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href={`/piezas/${pieceId}`} className="text-sm text-stone-600 underline">
-          ← Volver a la ficha
+        <Link href={`/piezas/${pieceId}`} className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
+          <ArrowLeft size={16} aria-hidden="true" />
+          Volver a la ficha
         </Link>
-        <h1 className="text-2xl font-bold text-stone-900">Editar: {piece.title}</h1>
-        <p className="text-base text-stone-700">
+        <h1 className="text-2xl font-bold text-tinta">Editar: {piece.title}</h1>
+        <p className="text-base text-gris-texto">
           El código I no se edita aquí (RN-002): use la pestaña Identificadores de la ficha si necesita una
           corrección auditada.
         </p>
       </header>
 
-      <form
-        className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setTouched({ title: true, description: true, provenance: true, dimensionsText: true, notes: true });
-          if (!isValid) return;
-          store.updatePiece(
-            pieceId,
-            { title: form.title.trim(), description: form.description || null, provenance: form.provenance || null, dimensions_text: form.dimensionsText || null, notes: form.notes || null },
-            currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
-            currentUser?.id ?? "",
-          );
-          setSaved(true);
-        }}
-      >
-        <TextField
-          id="title"
-          label="Denominación"
-          value={form.title}
-          onChange={(value) => setForm((f) => ({ ...f, title: value }))}
-          onBlur={() => setTouched((t) => ({ ...t, title: true }))}
-          error={touched.title ? errors.title : undefined}
-          required
-        />
-        <TextAreaField
-          id="description"
-          label="Descripción"
-          value={form.description}
-          onChange={(value) => setForm((f) => ({ ...f, description: value }))}
-          onBlur={() => setTouched((t) => ({ ...t, description: true }))}
-          error={touched.description ? errors.description : undefined}
-          hint={`${form.description.length}/600 caracteres`}
-        />
-        <TextField id="provenance" label="Procedencia" value={form.provenance} onChange={(value) => setForm((f) => ({ ...f, provenance: value }))} />
-        <TextField id="dimensions" label="Medidas (texto original)" value={form.dimensionsText} onChange={(value) => setForm((f) => ({ ...f, dimensionsText: value }))} />
-        <TextAreaField id="notes" label="Observaciones" value={form.notes} onChange={(value) => setForm((f) => ({ ...f, notes: value }))} />
+      <Card as="section" aria-label="Formulario de edición">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setTouched({ title: true, description: true, provenance: true, dimensionsText: true, notes: true });
+            if (!isValid) return;
+            store.updatePiece(
+              pieceId,
+              { title: form.title.trim(), description: form.description || null, provenance: form.provenance || null, dimensions_text: form.dimensionsText || null, notes: form.notes || null },
+              currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
+              currentUser?.id ?? "",
+            );
+            setSaved(true);
+          }}
+        >
+          <Input
+            id="title"
+            label={
+              <>
+                Denominación <span className="text-carmin-texto">*</span>
+              </>
+            }
+            value={form.title}
+            onChange={(event) => setForm((f) => ({ ...f, title: event.target.value }))}
+            onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+            error={touched.title ? errors.title : undefined}
+            required
+            className="p-2.5"
+          />
+          <Textarea
+            id="description"
+            label="Descripción"
+            value={form.description}
+            onChange={(event) => setForm((f) => ({ ...f, description: event.target.value }))}
+            onBlur={() => setTouched((t) => ({ ...t, description: true }))}
+            error={touched.description ? errors.description : undefined}
+            hint={touched.description && errors.description ? undefined : `${form.description.length}/600 caracteres`}
+            rows={3}
+            className="p-2.5"
+          />
+          <Input id="provenance" label="Procedencia" value={form.provenance} onChange={(event) => setForm((f) => ({ ...f, provenance: event.target.value }))} className="p-2.5" />
+          <Input
+            id="dimensions"
+            label="Medidas (texto original)"
+            value={form.dimensionsText}
+            onChange={(event) => setForm((f) => ({ ...f, dimensionsText: event.target.value }))}
+            className="p-2.5"
+          />
+          <Textarea id="notes" label="Observaciones" value={form.notes} onChange={(event) => setForm((f) => ({ ...f, notes: event.target.value }))} rows={3} className="p-2.5" />
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-stone-100 pt-4">
-          <button type="submit" disabled={!isValid} className="rounded-md bg-stone-900 px-4 py-2 text-base font-medium text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50">
-            Guardar cambios
-          </button>
-          <button type="button" onClick={() => router.push(`/piezas/${pieceId}`)} className="rounded-md border border-stone-300 px-4 py-2 text-base text-stone-900 hover:bg-stone-100">
-            Cancelar
-          </button>
-          {saved && <span className="text-base text-emerald-800">Cambios guardados en esta sesión de demostración.</span>}
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  onChange,
-  onBlur,
-  error,
-  required,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  error?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium text-stone-900">
-        {label} {required && <span className="text-red-700">*</span>}
-      </label>
-      <input
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={onBlur}
-        aria-invalid={Boolean(error)}
-        className={`rounded-md border p-2.5 text-base text-stone-900 ${error ? "border-red-500" : "border-stone-300"}`}
-      />
-      {error && <p className="text-sm text-red-700">{error}</p>}
-    </div>
-  );
-}
-
-function TextAreaField({
-  id,
-  label,
-  value,
-  onChange,
-  onBlur,
-  error,
-  hint,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  error?: string;
-  hint?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium text-stone-900">
-        {label}
-      </label>
-      <textarea
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={onBlur}
-        rows={3}
-        aria-invalid={Boolean(error)}
-        className={`rounded-md border p-2.5 text-base text-stone-900 ${error ? "border-red-500" : "border-stone-300"}`}
-      />
-      {error ? <p className="text-sm text-red-700">{error}</p> : hint && <p className="text-sm text-stone-600">{hint}</p>}
+          <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-4">
+            <Button type="submit" icon={Save} disabled={!isValid}>
+              Guardar cambios
+            </Button>
+            <Button variant="secondary" onClick={() => router.push(`/piezas/${pieceId}`)}>
+              Cancelar
+            </Button>
+            {saved && (
+              <span role="status" className="text-base font-medium text-verde-exito">
+                Cambios guardados en esta sesión de demostración.
+              </span>
+            )}
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

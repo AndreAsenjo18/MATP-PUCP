@@ -4,10 +4,14 @@
  * Pantalla 9 — Reportes: inventario general, por colección, por ubicación, incompletas
  * (RF-033..035) y exportación completa de la base en formato abierto (RF-044).
  */
+import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
-import { PermissionNotice } from "@/components/AppShell";
-import { RequireSession } from "@/components/RequireSession";
+import { PermissionNotice } from "@/components/layout/PermissionNotice";
+import { RequireSession } from "@/components/layout/RequireSession";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import {
   computeByCollectionReport,
@@ -37,45 +41,45 @@ function ReportesContent() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-stone-900">Reportes</h1>
-        <p className="text-base text-stone-700">Calculados en el momento a partir del catálogo sintético.</p>
+        <h1 className="text-2xl font-bold text-tinta">Reportes</h1>
+        <p className="text-base text-gris-texto">Calculados en el momento a partir del catálogo sintético.</p>
       </header>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de reporte">
         {REPORTS.map((r) => (
           <button
             key={r.key}
             type="button"
+            aria-pressed={selected === r.key}
             onClick={() => setSelected(r.key)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ${selected === r.key ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+            className={cn(
+              "min-h-11 rounded-full px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+              selected === r.key ? "bg-terracota text-white" : "bg-crema text-tinta hover:bg-borde",
+            )}
           >
             {r.label}
           </button>
         ))}
       </div>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+      <Card as="section" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-stone-900">{report.title}</h2>
+          <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
           {hasPermission("exports.run") && (
-            <button
-              type="button"
-              onClick={() => setExported(true)}
-              className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-900 hover:bg-stone-100"
-            >
+            <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
               Exportar a Excel
-            </button>
+            </Button>
           )}
         </div>
         {exported && (
-          <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
             Descarga simulada de <code>{report.report_type}.xlsx</code> (RF-036). En modo conectado se generaría un
             archivo real.
           </p>
         )}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-base">
-            <thead className="text-sm text-stone-600">
+            <thead className="text-sm text-gris-texto">
               <tr>
                 {report.columns.map((col) => (
                   <th key={col} className="py-2 pr-4 font-medium">
@@ -86,9 +90,9 @@ function ReportesContent() {
             </thead>
             <tbody>
               {report.rows.map((row, index) => (
-                <tr key={index} className="border-t border-stone-100">
+                <tr key={index} className="border-t border-borde">
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="py-2 pr-4 text-stone-900">
+                    <td key={cellIndex} className="py-2 pr-4 text-tinta">
                       {String(cell)}
                     </td>
                   ))}
@@ -97,26 +101,26 @@ function ReportesContent() {
             </tbody>
           </table>
         </div>
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-gris-texto">
           Totales: {Object.entries(report.totals).map(([k, v]) => `${k}: ${v}`).join(" · ")}
         </p>
-      </section>
+      </Card>
 
       {hasPermission("exports.full") && (
-        <section className="rounded-lg border border-stone-200 bg-white p-4">
-          <h2 className="text-lg font-semibold text-stone-900">Exportación completa de la base (RF-044)</h2>
-          <p className="mt-1 text-base text-stone-700">
+        <Card as="section">
+          <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base (RF-044)</h2>
+          <p className="mt-1 text-base text-gris-texto">
             Genera un archivo abierto (Excel/CSV) con todas las piezas y sus identificadores, para no depender de
             este sistema.
           </p>
-          <button
-            type="button"
+          <Button
+            icon={Download}
             onClick={() => window.alert("Descarga simulada: en modo mock no se genera un archivo real (exportacion-completa.xlsx).")}
-            className="mt-2 rounded-md bg-stone-900 px-4 py-2 text-base font-medium text-white hover:bg-stone-800"
+            className="mt-2"
           >
             Exportar base completa
-          </button>
-        </section>
+          </Button>
+        </Card>
       )}
     </div>
   );

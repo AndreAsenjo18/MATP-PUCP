@@ -6,10 +6,13 @@
  */
 import { useState } from "react";
 
-import { PermissionNotice } from "@/components/AppShell";
-import { StatusBadge } from "@/components/Badges";
-import { RequireSession } from "@/components/RequireSession";
+import { StatusBadge } from "@/components/domain/StatusBadges";
+import { PermissionNotice } from "@/components/layout/PermissionNotice";
+import { RequireSession } from "@/components/layout/RequireSession";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
+import { cn } from "@/lib/cn";
 import { IDENTIFIER_TYPES, LOCATIONS, locationPath, ROLES, USERS, VOCABULARIES, termsByVocabulary } from "@/lib/fixtures";
 
 const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones"] as const;
@@ -27,30 +30,35 @@ function AdministracionContent() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-stone-900">Administración</h1>
-        <p className="text-base text-stone-700">Datos parametrizables (RN-010): se pueden ajustar sin cambiar código.</p>
+        <h1 className="text-2xl font-bold text-tinta">Administración</h1>
+        <p className="text-base text-gris-texto">Datos parametrizables (RN-010): se pueden ajustar sin cambiar código.</p>
       </header>
 
-      <nav className="flex flex-wrap gap-1 border-b border-stone-200">
+      <div role="tablist" aria-label="Secciones de administración" className="flex flex-wrap gap-1 border-b border-borde">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`rounded-t-md px-3 py-2 text-base font-medium ${tab === t ? "border-b-2 border-stone-900 text-stone-900" : "text-stone-600 hover:text-stone-900"}`}
+            className={cn(
+              "min-h-11 rounded-t-md px-3 py-2 text-base font-medium focus-visible:outline-2 focus-visible:outline-terracota",
+              tab === t ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
+            )}
           >
             {t}
           </button>
         ))}
-      </nav>
+      </div>
 
       {tab === "Usuarios y roles" &&
         (hasPermission("users.manage") ? (
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg border border-stone-200 bg-white p-4">
-              <h2 className="text-lg font-semibold text-stone-900">Usuarios</h2>
+            <Card className="overflow-x-auto">
+              <h2 className="text-lg font-semibold text-tinta">Usuarios</h2>
               <table className="mt-2 w-full text-left text-base">
-                <thead className="text-sm text-stone-600">
+                <thead className="text-sm text-gris-texto">
                   <tr>
                     <th className="py-1 pr-2 font-medium">Nombre</th>
                     <th className="py-1 pr-2 font-medium">Rol</th>
@@ -59,30 +67,32 @@ function AdministracionContent() {
                 </thead>
                 <tbody>
                   {USERS.map((u) => (
-                    <tr key={u.id} className="border-t border-stone-100">
-                      <td className="py-1 pr-2 text-stone-900">{u.full_name}</td>
-                      <td className="py-1 pr-2 text-stone-700">{ROLES.find((r) => r.code === u.roles[0])?.name}</td>
+                    <tr key={u.id} className="border-t border-borde">
+                      <td className="py-1 pr-2 text-tinta">{u.full_name}</td>
+                      <td className="py-1 pr-2 text-gris-texto">{ROLES.find((r) => r.code === u.roles[0])?.name}</td>
                       <td className="py-1 pr-2">
-                        <StatusBadge label={u.is_active ? "Activo" : "Desactivado"} tone={u.is_active ? "approved" : "neutral"} />
+                        <StatusBadge status={u.is_active ? { label: "Activo", intent: "success" } : { label: "Desactivado", intent: "default" }} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="rounded-lg border border-stone-200 bg-white p-4">
-              <h2 className="text-lg font-semibold text-stone-900">Roles y permisos</h2>
+            </Card>
+            <Card>
+              <h2 className="text-lg font-semibold text-tinta">Roles y permisos</h2>
               <ul className="mt-2 flex flex-col gap-3">
                 {ROLES.map((role) => (
                   <li key={role.code}>
-                    <p className="font-medium text-stone-900">
-                      {role.name} {!role.is_enabled && <span className="text-sm text-stone-500">(desactivado en fase 1)</span>}
+                    <p className="flex flex-wrap items-center gap-2 font-medium text-tinta">
+                      {role.name} {!role.is_enabled && <Badge>Desactivado en fase 1</Badge>}
                     </p>
-                    <p className="text-sm text-stone-600">{role.permissions.length} permisos — {role.description}</p>
+                    <p className="text-sm text-gris-texto">
+                      {role.permissions.length} permisos — {role.description}
+                    </p>
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           </div>
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar usuarios y roles.</PermissionNotice>
@@ -96,24 +106,28 @@ function AdministracionContent() {
                 <li key={v.code}>
                   <button
                     type="button"
+                    aria-pressed={selectedVocabulary === v.code}
                     onClick={() => setSelectedVocabulary(v.code)}
-                    className={`w-full rounded-md px-3 py-2 text-left text-base ${selectedVocabulary === v.code ? "bg-stone-900 text-white" : "text-stone-900 hover:bg-stone-100"}`}
+                    className={cn(
+                      "min-h-11 w-full rounded-md px-3 py-2 text-left text-base focus-visible:outline-2 focus-visible:outline-terracota",
+                      selectedVocabulary === v.code ? "bg-terracota text-white" : "text-tinta hover:bg-crema",
+                    )}
                   >
                     {v.name} ({v.term_count})
                   </button>
                 </li>
               ))}
             </ul>
-            <div className="rounded-lg border border-stone-200 bg-white p-4">
-              <h2 className="text-lg font-semibold text-stone-900">{VOCABULARIES.find((v) => v.code === selectedVocabulary)?.name}</h2>
+            <Card>
+              <h2 className="text-lg font-semibold text-tinta">{VOCABULARIES.find((v) => v.code === selectedVocabulary)?.name}</h2>
               <ul className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-3">
                 {termsByVocabulary(selectedVocabulary).map((term) => (
-                  <li key={term.id} className="rounded-md bg-stone-50 px-2 py-1 text-base text-stone-900">
+                  <li key={term.id} className="rounded-md bg-crema-light px-2 py-1 text-base text-tinta">
                     {term.label}
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           </div>
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar vocabularios.</PermissionNotice>
@@ -121,9 +135,9 @@ function AdministracionContent() {
 
       {tab === "Tipos de identificador" &&
         (hasPermission("vocabularies.manage") ? (
-          <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white p-4">
+          <Card className="overflow-x-auto">
             <table className="w-full text-left text-base">
-              <thead className="text-sm text-stone-600">
+              <thead className="text-sm text-gris-texto">
                 <tr>
                   <th className="py-1 pr-4 font-medium">Código</th>
                   <th className="py-1 pr-4 font-medium">Etiqueta</th>
@@ -132,11 +146,11 @@ function AdministracionContent() {
                   <th className="py-1 pr-4 font-medium">Solo piezas propias</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-tinta">
                 {IDENTIFIER_TYPES.map((type) => (
-                  <tr key={type.code} className="border-t border-stone-100">
-                    <td className="py-1 pr-4 font-medium text-stone-900">{type.code}</td>
-                    <td className="py-1 pr-4 text-stone-700">{type.label}</td>
+                  <tr key={type.code} className="border-t border-borde">
+                    <td className="py-1 pr-4 font-medium">{type.code}</td>
+                    <td className="py-1 pr-4 text-gris-texto">{type.label}</td>
                     <td className="py-1 pr-4">{type.is_unique_when_current ? "Sí" : "No"}</td>
                     <td className="py-1 pr-4">{type.locks_on_assignment ? "Sí (RN-002)" : "No"}</td>
                     <td className="py-1 pr-4">{type.owned_pieces_only ? "Sí (RN-003)" : "No"}</td>
@@ -144,20 +158,22 @@ function AdministracionContent() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar tipos de identificador.</PermissionNotice>
         ))}
 
       {tab === "Ubicaciones" &&
         (hasPermission("locations.manage") ? (
-          <ul className="flex flex-col gap-1 rounded-lg border border-stone-200 bg-white p-4">
-            {LOCATIONS.map((location) => (
-              <li key={location.id} className="text-base text-stone-900" style={{ paddingLeft: `${(locationPath(location.id).length - 1) * 16}px` }}>
-                {location.name} <span className="text-sm text-stone-500">({location.level})</span>
-              </li>
-            ))}
-          </ul>
+          <Card as="section" aria-label="Ubicaciones">
+            <ul className="flex flex-col gap-1">
+              {LOCATIONS.map((location) => (
+                <li key={location.id} className="text-base text-tinta" style={{ paddingLeft: `${(locationPath(location.id).length - 1) * 16}px` }}>
+                  {location.name} <span className="text-sm text-gris-texto">({location.level})</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar ubicaciones.</PermissionNotice>
         ))}
