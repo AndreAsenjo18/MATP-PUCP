@@ -1,0 +1,1000 @@
+openapi: 3.0.3
+info:
+  title: API RESTful MATP - Sistema de Gestión y Digitalización de Colecciones
+  description: >
+    Especificación OpenAPI v3.0.3 completa para el backend del Museo de Artes y Tradiciones Populares (MATP - PUCP).
+    Incluye los 44 endpoints del sistema organizados en 3 Fases de Prioridad (Fase 1: Alta/MVP, Fase 2: Media, Fase 3: Baja/Post-MVP).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Servidor Local de Desarrollo (Docker / FastAPI)
+  - url: https://api-staging.matp-pucp.org/api/v1
+    description: Servidor de Staging (AWS Academy)
+
+tags:
+  - name: "Fase 1: Alta - Colecciones & Piezas (MVP)"
+    description: Operaciones fundamentales de registro, lectura, actualización y borrado lógico.
+  - name: "Fase 1: Alta - Depósitos & Ubicación (MVP)"
+    description: Control e historial de movimiento físico en depósitos y estantes.
+  - name: "Fase 1: Alta - Pipeline Excel (MVP)"
+    description: Carga, previsualización y conciliación masiva de planillas Excel.
+  - name: "Fase 1: Alta - Búsqueda & Multimedia (MVP)"
+    description: Búsquedas avanzadas y almacenamiento de archivos/fotos 3D en AWS S3.
+  - name: "Fase 1: Alta - Autenticación (MVP)"
+    description: Inicio de sesión y perfil de usuario autenticado.
+  - name: "Fase 2: Media - Identificadores & Conjuntos"
+    description: Códigos históricos secundarios y piezas compuestas (padre-hijo).
+  - name: "Fase 2: Media - Gestión de Espacios & Lotes"
+    description: Administración de estructura de depósitos y rollback de importaciones.
+  - name: "Fase 2: Media - Reportes, Usuarios & Auditoría"
+    description: Exportaciones PDF/Excel, control de accesos RBAC y bitácora transaccional.
+  - name: "Fase 2: Media - Asistentes de IA"
+    description: Microservicios asistenciales de catálogo y validación de calidad.
+  - name: "Fase 3: Baja - Préstamos & Exposiciones"
+    description: Control de actas de préstamos temporales e itinerantes.
+  - name: "Fase 3: Baja - Extensibilidad & Catálogo Público"
+    description: Descargas masivas, taxonomía avanzada y API pública de lectura.
+
+paths:
+  # ==========================================
+  # FASE 1: PRIORIDAD ALTA (MVP / Sprint 1)
+  # ==========================================
+  /pieces:
+    post:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-001/002] Registrar nueva pieza museográfica"
+      description: >
+        Crea un nuevo registro de pieza. Aplica la Regla de Negocio RN-002: Si `tenure_regime` es 'Comodato', `code_i` debe ser NULL.
+      operationId: createPiece
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PieceCreate'
+      responses:
+        '201':
+          description: Pieza registrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceSummary'
+        '422':
+          description: Error de regla de negocio (ej. Código I asignado a Comodato)
+        '409':
+          description: Conflicto - Código I duplicado
+
+    get:
+      tags:
+        - "Fase 1: Alta - Búsqueda & Multimedia (MVP)"
+      summary: "[RF-014] Listado paginado de piezas"
+      description: Retorna la lista general de piezas registradas con paginación básica.
+      operationId: listPieces
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de piezas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceSearchResponse'
+
+  /pieces/{id}:
+    get:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-003] Obtener ficha técnica integral de una pieza"
+      description: Obtiene todos los metadatos de la pieza, códigos históricos, ubicación actual, galería S3 y payload original.
+      operationId: getPieceById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ficha técnica integral
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceDetail'
+        '404':
+          description: Pieza no encontrada
+
+    put:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-004] Actualizar metadatos de una pieza"
+      description: Permite actualizar los metadatos editables de una pieza. Preserva la inmutabilidad del Código I.
+      operationId: updatePiece
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PieceCreate'
+      responses:
+        '200':
+          description: Pieza actualizada exitosamente
+
+    delete:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-005] Borrado lógico de una pieza (Soft Delete)"
+      description: Desactiva el registro (`is_active = false`) sin eliminar los datos ni el historial de la base de datos.
+      operationId: softDeletePiece
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pieza desactivada exitosamente
+
+  /collections:
+    get:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-006] Listar colecciones parametrizadas"
+      description: Obtiene el catálogo de colecciones (MMZ, AJB, FL, etc.) para selectores de la interfaz.
+      operationId: listCollections
+      responses:
+        '200':
+          description: Lista de colecciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectionItem'
+
+    post:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-039] Crear nueva colección o subcolección"
+      description: Permite agregar una nueva colección al catálogo parametrizable.
+      operationId: createCollection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectionItem'
+      responses:
+        '201':
+          description: Colección creada
+
+  /categories:
+    get:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-007] Listar líneas artesanales y categorías"
+      description: Obtiene las categorías del catálogo para la clasificación de obras.
+      operationId: listCategories
+      responses:
+        '200':
+          description: Lista de categorías
+
+    post:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-040] Crear nueva línea artesanal / categoría"
+      description: Agrega una nueva categoría al catálogo.
+      operationId: createCategory
+      responses:
+        '201':
+          description: Categoría creada
+
+  /conservation-states:
+    get:
+      tags:
+        - "Fase 1: Alta - Colecciones & Piezas (MVP)"
+      summary: "[RF-008] Listar estados de conservación"
+      description: Obtiene la escala de estados de conservación (Excelente, Bueno, Regular, Malo, etc.).
+      operationId: listConservationStates
+      responses:
+        '200':
+          description: Lista de estados de conservación
+
+  /locations/tree:
+    get:
+      tags:
+        - "Fase 1: Alta - Depósitos & Ubicación (MVP)"
+      summary: "[RF-016] Obtener árbol jerárquico de ubicaciones"
+      description: Retorna la estructura jerárquica de Sedes > Depósitos > Muebles > Niveles > Contenedores.
+      operationId: getLocationsTree
+      responses:
+        '200':
+          description: Árbol de ubicaciones recuperado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationNode'
+
+  /pieces/{id}/move:
+    post:
+      tags:
+        - "Fase 1: Alta - Depósitos & Ubicación (MVP)"
+      summary: "[RF-017] Registrar movimiento físico de pieza"
+      description: Traslada una pieza a un nuevo espacio y genera una entrada en la bitácora de trazabilidad.
+      operationId: movePiece
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovePieceRequest'
+      responses:
+        '200':
+          description: Movimiento registrado exitosamente
+
+  /pieces/{id}/location-history:
+    get:
+      tags:
+        - "Fase 1: Alta - Depósitos & Ubicación (MVP)"
+      summary: "[RF-018] Consultar historial de ubicaciones de una pieza"
+      description: Obtiene la línea de tiempo de traslados físicos de una obra.
+      operationId: getPieceLocationHistory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Historial de movimientos recuperado
+
+  /imports/upload:
+    post:
+      tags:
+        - "Fase 1: Alta - Pipeline Excel (MVP)"
+      summary: "[RF-021/022] Cargar archivo Excel para previsualización"
+      description: Sube la sábana de Excel, valida la estructura y genera la previsualización sin alterar la base de datos.
+      operationId: uploadImportBatch
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Lote cargado y procesado preliminarmente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchSummary'
+
+  /imports/{batch_id}/diffs:
+    get:
+      tags:
+        - "Fase 1: Alta - Pipeline Excel (MVP)"
+      summary: "[RF-023] Obtener diffs y lista de conciliación campo a campo"
+      description: Muestra los registros clasificados como nuevos, actualizaciones y conflictos antes de la aprobación final.
+      operationId: getImportBatchDiffs
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de diffs del lote
+
+  /imports/{batch_id}/confirm:
+    post:
+      tags:
+        - "Fase 1: Alta - Pipeline Excel (MVP)"
+      summary: "[RF-024] Confirmar y aplicar lote de importación"
+      description: Consolida transaccionalmente los cambios aprobados en la base de datos de producción.
+      operationId: confirmImportBatch
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lote consolidado exitosamente
+
+  /search:
+    get:
+      tags:
+        - "Fase 1: Alta - Búsqueda & Multimedia (MVP)"
+      summary: "[RF-031] Buscador avanzado con filtros combinados"
+      description: Búsqueda flexible por texto libre, código, colección, régimen, época y depósito.
+      operationId: searchPieces
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: collection_code
+          in: query
+          schema:
+            type: string
+        - name: tenure_regime
+          in: query
+          schema:
+            type: string
+            enum: [Propiedad, Comodato, Préstamo Temporal]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Resultados paginados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PieceSearchResponse'
+
+  /media/upload:
+    post:
+      tags:
+        - "Fase 1: Alta - Búsqueda & Multimedia (MVP)"
+      summary: "[RF-032] Cargar fotografía o evidencia 3D a AWS S3"
+      description: Sube una imagen al bucket de S3 y guarda la referencia URL en `media_assets`.
+      operationId: uploadMediaAsset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [piece_id, view_type, file]
+              properties:
+                piece_id:
+                  type: string
+                  format: uuid
+                view_type:
+                  type: string
+                  enum: [Frontal, Perfil, Posterior, Detalle, Abierto, Cerrado]
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Imagen subida y registrada exitosamente
+
+  /auth/login:
+    post:
+      tags:
+        - "Fase 1: Alta - Autenticación (MVP)"
+      summary: "[RF-041] Autenticación de usuario"
+      description: Valida credenciales y retorna un token JWT.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login exitoso
+
+  /auth/me:
+    get:
+      tags:
+        - "Fase 1: Alta - Autenticación (MVP)"
+      summary: "[RF-042] Consultar perfil del usuario autenticado"
+      description: Retorna la información y rol del usuario actual.
+      operationId: getMe
+      responses:
+        '200':
+          description: Perfil recuperado
+
+  # ==========================================
+  # FASE 2: PRIORIDAD MEDIA (Sprints 2 y 3)
+  # ==========================================
+  /pieces/{id}/identifiers:
+    post:
+      tags:
+        - "Fase 2: Media - Identificadores & Conjuntos"
+      summary: "[RF-009] Agregar código histórico secundario"
+      description: Asocia un código INC, PUCP o externo adicional a la pieza.
+      operationId: addPieceIdentifier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Código secundario registrado
+
+  /pieces/{id}/identifiers/{identifier_id}:
+    delete:
+      tags:
+        - "Fase 2: Media - Identificadores & Conjuntos"
+      summary: "[RF-010] Eliminar código histórico secundario"
+      description: Remueve un código alternativo mal asignado.
+      operationId: deletePieceIdentifier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: identifier_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Código eliminado
+
+  /pieces/{id}/children:
+    get:
+      tags:
+        - "Fase 2: Media - Identificadores & Conjuntos"
+      summary: "[RF-011] Listar piezas componentes / hijas"
+      description: Obtiene las piezas asociadas a un conjunto o pieza compuesta.
+      operationId: getPieceChildren
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de piezas hijas
+
+    post:
+      tags:
+        - "Fase 2: Media - Identificadores & Conjuntos"
+      summary: "[RF-012] Asociar pieza hija a un conjunto padre"
+      description: Vincula un objeto como componente de otra obra.
+      operationId: addPieceChild
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pieza vinculada al conjunto
+
+  /locations:
+    post:
+      tags:
+        - "Fase 2: Media - Gestión de Espacios & Lotes"
+      summary: "[RF-019] Crear nuevo espacio o depósito"
+      description: Agrega una nueva ubicación al árbol jerárquico.
+      operationId: createLocation
+      responses:
+        '201':
+          description: Espacio creado
+
+  /locations/{id}:
+    put:
+      tags:
+        - "Fase 2: Media - Gestión de Espacios & Lotes"
+      summary: "[RF-020] Editar datos de un espacio físico"
+      description: Actualiza el nombre o nivel de un depósito o mueble.
+      operationId: updateLocation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Espacio modificado
+
+  /locations/{id}/pieces:
+    get:
+      tags:
+        - "Fase 2: Media - Gestión de Espacios & Lotes"
+      summary: "[RF-025] Listar piezas en un espacio específico"
+      description: Consulta todo el contenido de un estante, depósito o contenedor.
+      operationId: getPiecesInLocation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Piezas encontradas en la ubicación
+
+  /imports:
+    get:
+      tags:
+        - "Fase 2: Media - Gestión de Espacios & Lotes"
+      summary: "[RF-026] Listar historial de lotes importados"
+      description: Consulta la lista de ejecuciones del pipeline de importación.
+      operationId: listImportBatches
+      responses:
+        '200':
+          description: Historial de lotes
+
+  /imports/{batch_id}/rollback:
+    post:
+      tags:
+        - "Fase 2: Media - Gestión de Espacios & Lotes"
+      summary: "[RF-027] Revertir / deshacer lote importado"
+      description: Deshace masivamente los registros creados por un lote en caso de error.
+      operationId: rollbackImportBatch
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lote revertido exitosamente
+
+  /reports/export-excel:
+    post:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-033] Exportar reporte general a Excel"
+      description: Genera una planilla Excel con los resultados de la consulta actual.
+      operationId: exportExcelReport
+      responses:
+        '200':
+          description: Archivo Excel generado
+
+  /reports/piece-card/{id}/pdf:
+    get:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-034] Generar Ficha Museográfica en PDF"
+      description: Genera el documento PDF oficial imprimible de una pieza.
+      operationId: exportPiecePdf
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Documento PDF generado
+
+  /reports/dashboard-stats:
+    get:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-035] Obtener estadísticas para el dashboard principal"
+      description: Retorna métricas cuantitativas del acervo (totales por colección, régimen y estado).
+      operationId: getDashboardStats
+      responses:
+        '200':
+          description: Estadísticas recuperadas
+
+  /users:
+    get:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-036] Listar usuarios del sistema"
+      description: Obtiene la lista de usuarios para administración.
+      operationId: listUsers
+      responses:
+        '200':
+          description: Lista de usuarios
+
+    post:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-037] Registrar nuevo usuario"
+      description: Crea una cuenta de usuario y asigna rol de acceso.
+      operationId: createUser
+      responses:
+        '201':
+          description: Usuario creado
+
+  /users/{id}/role:
+    put:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-038] Cambiar rol o estado de usuario"
+      description: Actualiza los permisos RBAC de un usuario.
+      operationId: updateUserRole
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rol actualizado
+
+  /audit-logs:
+    get:
+      tags:
+        - "Fase 2: Media - Reportes, Usuarios & Auditoría"
+      summary: "[RF-043] Consultar bitácora de auditoría"
+      description: Permite revisar el historial de cambios campo por campo realizados en el sistema.
+      operationId: getAuditLogs
+      responses:
+        '200':
+          description: Logs de auditoría recuperados
+
+  /ai/suggest-cataloging:
+    post:
+      tags:
+        - "Fase 2: Media - Asistentes de IA"
+      summary: "[RF-028] Generar sugerencias de catalogación con IA"
+      description: Sugiere descripciones o etiquetas para una pieza (requiere validación humana).
+      operationId: suggestCataloging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [piece_id]
+              properties:
+                piece_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Sugerencias generadas por la IA
+
+  /ai/validate-data:
+    post:
+      tags:
+        - "Fase 2: Media - Asistentes de IA"
+      summary: "[RF-029] Escaneo de calidad e inconsistencias mediante IA"
+      description: Detecta anomalías o vacíos en la información catalogada de las piezas.
+      operationId: validateDataQuality
+      responses:
+        '200':
+          description: Reporte de calidad generado
+
+  # ==========================================
+  # FASE 3: PRIORIDAD BAJA (Sprint 4 / Post-MVP)
+  # ==========================================
+  /loans:
+    get:
+      tags:
+        - "Fase 3: Baja - Préstamos & Exposiciones"
+      summary: "[RF-013] Listar préstamos y exposiciones temporales"
+      description: Consulta el estado de obras prestadas o recibidas.
+      operationId: listLoans
+      responses:
+        '200':
+          description: Lista de préstamos
+
+    post:
+      tags:
+        - "Fase 3: Baja - Préstamos & Exposiciones"
+      summary: "[RF-015] Registrar nuevo préstamo / salida de exhibición"
+      description: Genera un acta de préstamo temporal de piezas.
+      operationId: createLoan
+      responses:
+        '201':
+          description: Préstamo registrado
+
+  /loans/{id}/status:
+    put:
+      tags:
+        - "Fase 3: Baja - Préstamos & Exposiciones"
+      summary: "[RF-028-B] Actualizar estado de préstamo"
+      description: Registra el retorno o cambio de fase de una exhibición itinerante.
+      operationId: updateLoanStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estado de préstamo actualizado
+
+  /media/bulk-download:
+    post:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-030-B] Generar paquete ZIP de imágenes masivas"
+      description: Empaqueta y descarga las fotografías HD/3D de un grupo seleccionado de piezas.
+      operationId: bulkDownloadMedia
+      responses:
+        '200':
+          description: Archivo ZIP generado
+
+  /public/catalog:
+    get:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-044] Catálogo público de lectura para investigación"
+      description: Endpoint abierto de consulta sin autenticación para portales académicos o de investigación.
+      operationId: getPublicCatalog
+      responses:
+        '200':
+          description: Catálogo público recuperado
+
+  /audit-logs/pieces/{id}:
+    get:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-043-B] Trazabilidad histórica completa de una sola pieza"
+      description: Muestra la línea de tiempo completa de ediciones de una pieza específica.
+      operationId: getPieceAuditTimeline
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Línea de tiempo de auditoría
+
+  /ai/batch-enrich:
+    post:
+      tags:
+        - "Fase 3: Baja - Extensibilidad & Catálogo Público"
+      summary: "[RF-029-B] Enriquecimiento masivo asistido por IA"
+      description: Ejecuta la generación en lote de borradores de catálogo para piezas sin descripción.
+      operationId: batchAiEnrichment
+      responses:
+        '200':
+          description: Proceso en lote iniciado
+
+components:
+  schemas:
+    PieceCreate:
+      type: object
+      required:
+        - denomination
+        - tenure_regime
+        - category_id
+        - conservation_state_id
+      properties:
+        code_i:
+          type: string
+          nullable: true
+          example: "I-10245"
+        denomination:
+          type: string
+          example: "Retablo Ayacuchano de la Nochebuena"
+        description:
+          type: string
+          example: "Retablo de madera policromada con dos puertas abisagradas."
+        tenure_regime:
+          type: string
+          enum: [Propiedad, Comodato, Préstamo Temporal]
+          example: "Propiedad"
+        collection_id:
+          type: string
+          format: uuid
+          nullable: true
+        category_id:
+          type: string
+          format: uuid
+        conservation_state_id:
+          type: string
+          format: uuid
+        epoch_original_text:
+          type: string
+          example: "Mitad del Siglo XX (c. 1950)"
+        epoch_start_year:
+          type: integer
+          example: 1945
+        epoch_end_year:
+          type: integer
+          example: 1955
+        parent_piece_id:
+          type: string
+          format: uuid
+          nullable: true
+        unmapped_payload:
+          type: object
+          additionalProperties: true
+
+    PieceSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code_i:
+          type: string
+          nullable: true
+        denomination:
+          type: string
+        tenure_regime:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    PieceDetail:
+      allOf:
+        - $ref: '#/components/schemas/PieceSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+            collection:
+              $ref: '#/components/schemas/CollectionItem'
+            identifiers:
+              type: array
+              items:
+                type: object
+                properties:
+                  identifier_type:
+                    type: string
+                  value:
+                    type: string
+            current_location:
+              type: object
+              properties:
+                location_id:
+                  type: string
+                  format: uuid
+                full_path:
+                  type: string
+            media_assets:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  file_url:
+                    type: string
+                  view_type:
+                    type: string
+            unmapped_payload:
+              type: object
+
+    CollectionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "FL"
+        name:
+          type: string
+          example: "Colección Florentino Jiménez"
+
+    LocationNode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        level_type:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationNode'
+
+    MovePieceRequest:
+      type: object
+      required:
+        - destination_location_id
+      properties:
+        destination_location_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          example: "Traslado por mantenimiento de estantería"
+
+    ImportBatchSummary:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        total_rows:
+          type: integer
+        summary:
+          type: object
+          properties:
+            new_records:
+              type: integer
+            updates:
+              type: integer
+            conflicts:
+              type: integer
+        status:
+          type: string
+
+    PieceSearchResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PieceSummary'

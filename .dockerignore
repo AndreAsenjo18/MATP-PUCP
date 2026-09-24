@@ -1,0 +1,16 @@
+# Contexto de construcción de apps/web/Dockerfile y apps/api/Dockerfile = raíz del repositorio.
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
+**/build
+**/tests/.artifacts
+.git
+logs
+docs
+openspec
+data
+.env

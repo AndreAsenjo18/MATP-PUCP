@@ -1,0 +1,77 @@
+# CI del MATP (spec plataforma: integración continua obligatoria).
+# Invoca los mismos scripts de npm que se usan en local (ADR-000).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24"
+
+jobs:
+  api:
+    name: API (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/setup.mjs apps/api
+      - run: npm run lint:api
+      - run: node scripts/py.mjs apps/api -m app.openapi_export --check
+      - run: npm run test:api
+
+  ai:
+    name: IA asistiva (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/setup.mjs services/ai
+      - run: npm run lint:ai
+      - run: node scripts/py.mjs services/ai -m matp_ai.openapi_export --check
+      - run: npm run test:ai
+
+  web:
+    name: Web (eslint + tsc + vitest + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:web
+      - run: npm run test:web
+      - run: npm run build:web
+
+  openspec:
+    name: OpenSpec (validate --strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm install -g @fission-ai/openspec@1.13.0
+      - run: openspec validate --all --strict --no-interactive
