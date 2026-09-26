@@ -20,18 +20,25 @@ class ObjectStorage:
     @classmethod
     def from_settings(cls, settings: Settings) -> ObjectStorage:
         timeout = settings.health_check_timeout_seconds
+        # Explicit keys only when configured; otherwise boto3 uses its default credential
+        # chain (AWS_* variables, shared profile or EC2 instance role — ADR-013).
+        credentials: dict[str, Any] = {}
+        if settings.s3_access_key_id is not None and settings.s3_secret_access_key is not None:
+            credentials = {
+                "aws_access_key_id": settings.s3_access_key_id,
+                "aws_secret_access_key": settings.s3_secret_access_key,
+            }
         client = boto3.client(
             "s3",
             endpoint_url=settings.s3_endpoint_url,
             region_name=settings.s3_region,
-            aws_access_key_id=settings.s3_access_key_id,
-            aws_secret_access_key=settings.s3_secret_access_key,
             config=Config(
                 connect_timeout=timeout,
                 read_timeout=max(timeout, 5),
                 retries={"max_attempts": 1},
                 s3={"addressing_style": "path"},
             ),
+            **credentials,
         )
         return cls(client, settings.s3_bucket)
 

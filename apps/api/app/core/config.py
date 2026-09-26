@@ -7,7 +7,7 @@ and reports, in Spanish, which variables are missing (spec plataforma, RNF-002).
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,11 +26,13 @@ class Settings(BaseSettings):
     database_url: str = Field(min_length=1)
 
     # S3-compatible object storage (MinIO locally, Cloudflare R2 / S3 elsewhere).
+    # Credentials are optional: when both are empty boto3 falls back to its default
+    # credential chain (AWS_* variables, shared profile or EC2 instance role — ADR-013).
     s3_endpoint_url: str | None = None
     s3_public_endpoint_url: str | None = None
     s3_region: str = "us-east-1"
-    s3_access_key_id: str = Field(min_length=1)
-    s3_secret_access_key: str = Field(min_length=1)
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
     s3_bucket: str = Field(min_length=1)
     s3_auto_create_bucket: bool = False
 
@@ -48,6 +50,22 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    @field_validator("s3_access_key_id", "s3_secret_access_key", mode="before")
+    @classmethod
+    def _empty_string_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def _s3_credentials_both_or_neither(self) -> "Settings":
+        if (self.s3_access_key_id is None) != (self.s3_secret_access_key is None):
+            raise ValueError(
+                "S3_ACCESS_KEY_ID y S3_SECRET_ACCESS_KEY deben definirse ambas o ninguna "
+                "(dejarlas vacías usa la cadena de credenciales por defecto de AWS)"
+            )
+        return self
+
 
 def _format_errors(exc: ValidationError) -> str:
     missing: list[str] = []
@@ -56,6 +74,9 @@ def _format_errors(exc: ValidationError) -> str:
         name = str(error["loc"][0]).upper() if error["loc"] else "?"
         if error["type"] == "missing":
             missing.append(name)
+        elif error["type"] == "value_error" and not error["loc"]:
+            # Model-level validation (e.g. S3 credentials both-or-neither): message already clear.
+            invalid.append(str(error["msg"]).removeprefix("Value error, "))
         else:
             invalid.append(f"{name} ({error['msg']})")
     parts: list[str] = []

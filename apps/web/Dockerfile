@@ -12,10 +12,15 @@ WORKDIR /repo
 ENV NEXT_TELEMETRY_DISABLED=1
 # Modo de datos de la maqueta (change maqueta-ui-navegable): NEXT_PUBLIC_* se incrusta en el
 # bundle del navegador en tiempo de build, por eso son build args y no variables de runtime.
+# NEXT_PUBLIC_API_URL vacía = mismo origen (recomendado; design D9): el navegador llama a
+# /api/v1 y las rewrites de next.config.ts (fijadas en build time con output standalone) o
+# Caddy enrutan a la API. API_INTERNAL_URL es el destino de esas rewrites en este build.
 ARG NEXT_PUBLIC_API_MODE=live
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_API_URL=
+ARG API_INTERNAL_URL=http://api:8000
 ENV NEXT_PUBLIC_API_MODE=$NEXT_PUBLIC_API_MODE \
-    NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+    NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    API_INTERNAL_URL=$API_INTERNAL_URL
 COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY apps/web ./apps/web
