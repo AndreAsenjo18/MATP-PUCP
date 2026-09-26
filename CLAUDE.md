@@ -72,7 +72,7 @@ scripts/             scripts PowerShell equivalentes a los comandos
 
 ## Contrato de interfaces
 
-`docs/fuentes/endpoints-api-v1.yaml` (entregado por el equipo el 2026-09-22) es la **fuente de verdad de las interfaces**: rutas, verbos, `operationId`, esquemas y valores de enumerado. `docs/api/openapi.json` debe conformarse a él; la prueba `apps/api/tests/api/test_contract_conformance.py` compara ambos y falla ante cualquier divergencia nueva. El mapeo operación por operación, las operaciones añadidas y los conflictos abiertos están en `docs/api/mapeo-endpoints-v1.md`; la alineación la ejecuta el change `alinear-api-endpoints-v1`. El modelo de datos se guía por `docs/fuentes/diagrama-entidad-relacion.pdf`.
+`docs/fuentes/endpoints-api-v1.yaml` (entregado por el equipo el 2026-09-22) es la **fuente de verdad de las interfaces**: rutas, verbos, `operationId`, esquemas y valores de enumerado. `docs/api/openapi.json` debe conformarse a él; la prueba `apps/api/tests/api/test_contract_conformance.py` compara ambos y falla ante cualquier divergencia nueva. El mapeo operación por operación, las operaciones añadidas y los conflictos abiertos están en `docs/api/mapeo-endpoints-v1.md`; la alineación la ejecuta el change `alinear-api-endpoints-v1`. El modelo de datos vigente es el de los modelos SQLAlchemy y su migración; su diagrama se genera en `docs/diagramas/modelo-datos/er.puml` (`npm run diagrams:er`, verificado en CI con `npm run diagrams:check`). El PDF de `docs/fuentes/` es la versión inicial del equipo y se conserva solo como referencia histórica.
 
 ## Comandos
 
