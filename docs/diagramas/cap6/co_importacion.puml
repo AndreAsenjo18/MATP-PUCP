@@ -1,0 +1,28 @@
+@startuml co_importacion
+!include _header.iuml
+left to right direction
+skinparam nodesep 60
+skinparam ranksep 90
+object ":Curadora" as U <<actor>>
+object ":AsistenteImportacion" as W <<boundary>>
+object ":ImportsRouter" as R <<controller>>
+object "lote:ImportBatch" as B
+object ":ImportPipelineService" as IP <<service>>
+object ":QualityService" as QS <<service>>
+object ":CatalogService" as CS <<service>>
+object ":Bucket S3" as S3
+object ":PostgreSQL" as DB
+U -- W : "1: subirSabana()  →\n3: decidirFilas()  →\n4: aprobarCarga()  →"
+W -- R : "1.1: POST /imports/upload  →\n2: POST /validate  →\n3.1: PATCH /rows/{id}  →\n4.1: POST /confirm(token)  →"
+R -- IP : "1.1.1: upload()  →\n2.1: validate() [async]  →\n3.1.1: decide_row()  →\n4.1.1: approve(token)  →"
+IP -- S3 : "1.1.1.1: guardar original  →"
+IP -- QS : "2.1.1*: score(fila)  →"
+IP -- B : "1.1.1.2: crear  →\n2.1.2: IN_PREVIEW  →\n4.1.1.2: APPLIED | FAILED_APPLY  →"
+IP -- CS : "4.1.1.1*: create/update pieza\n(origin=IMPORT)  →"
+IP -- DB : "2.1.1*: INSERT import_row  →\n4.1.1.1*: INSERT piece_source_record  →"
+note bottom of IP
+  El sufijo (*) indica iteración por fila.
+  4.1.1.1 se ejecuta en una única
+  transacción (todo o nada).
+end note
+@enduml

@@ -1,0 +1,18 @@
+@startuml st_duplicado
+!include _header.iuml
+hide empty description
+state "PENDING\nPendiente de revisión" as P
+state "MERGED\nFusionadas" as M
+state "DISTINCT\nPiezas distintas" as D
+state "POSTPONED\nPospuesto" as PO
+state "SUPERSEDED\nSuperado (planificado)" as S #FDF6E3
+[*] --> P : score() ≥ umbral\n/ guardar matched_fields
+P --> M : resolve(merge, motivo)\n[sin bloqueo por código I\nni régimen distinto]\n/ fusionar en una transacción
+P --> D : resolve(distinct, motivo)\n/ guardar huella comparada
+P --> PO : resolve(postpone, hasta)\n[hasta ≤ 180 días]
+PO --> P : [fecha vencida]\n(al leer la cola)
+D --> P : [huella de datos cambió]\n/ reabrir
+P --> S : otra fusión absorbió\nuna de las piezas
+M --> [*]
+S --> [*]
+@enduml

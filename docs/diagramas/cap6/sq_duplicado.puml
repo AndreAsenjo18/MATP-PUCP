@@ -1,0 +1,31 @@
+@startuml sq_duplicado
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Curadora" as U
+boundary "Cola de duplicados\n/duplicados" as W
+control "QualityRouter\n/quality/duplicates" as R
+participant "QualityService" as QS
+participant "CatalogService /\nIdentificationService" as CS
+database "PostgreSQL" as DB
+
+U -> W : abre la cola
+W -> R : GET /quality/duplicates?status=PENDING
+R -> QS : listar candidatos por puntaje
+R --> W : pares con matched_fields
+U -> W : compara lado a lado y elige\n"Fusionar" (conservar A) + motivo
+W -> R : POST /quality/duplicates/{id}/resolve\n{action: merge, keep_piece_id, field_choices, reason}
+R -> QS : resolve(candidate, merge, reason)
+QS -> DB : SELECT ambas piezas FOR UPDATE
+alt códigos I vigentes distintos o regímenes distintos
+  R --> W : 409 merge_blocked_*
+else fusión permitida
+  QS -> CS : copiar campos elegidos a la pieza conservada
+  QS -> CS : trasladar identificadores\n(duplicados exactos → no vigentes)
+  QS -> DB : reasignar fotos, movimientos, datos de origen,\nevaluaciones y sugerencias
+  QS -> CS : soft_delete(absorbida, "fusionada en <id>")\n+ merged_into_id
+  QS -> DB : candidate.status = MERGED;\notros pares de la absorbida → SUPERSEDED
+  QS -> DB : audit_log action=MERGE (un change_set)
+  R --> W : 200 {pieza conservada}
+end
+@enduml

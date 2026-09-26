@@ -1,0 +1,88 @@
+@startuml cls_general
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam packageStyle folder
+package "Catálogo e identificación" as P0 #FBEFE9 {
+class Piece <<soft-delete>> {
+}
+class PieceIdentifier <<soft-delete>> {
+}
+class IdentifierType <<soft-delete>> {
+}
+class PieceMaterial <<soft-delete>> {
+}
+class ConservationAssessment <<solo inserción>> {
+}
+class PieceSourceRecord <<solo inserción>> {
+}
+}
+package "Colecciones, vocabularios y multimedia" as P1 #F3EEF8 {
+class Collection <<soft-delete>> {
+}
+class Vocabulary <<soft-delete>> {
+}
+class Term <<soft-delete>> {
+}
+class MediaAsset <<soft-delete>> {
+}
+}
+package "Ubicación y control" as P2 #FDF6E3 {
+class Location <<soft-delete>> {
+}
+class PieceMovement <<solo inserción>> {
+}
+}
+package "Importación, calidad e IA" as P3 #EEF6EC {
+class ImportMappingTemplate <<soft-delete>> {
+}
+class ImportBatch <<soft-delete>> {
+}
+class ImportRow {
+}
+class DuplicateCandidate {
+}
+class AiSuggestion {
+}
+}
+package "Usuarios, seguridad y auditoría" as P4 #EDF0F7 {
+class AppUser <<soft-delete>> {
+}
+class Role <<soft-delete>> {
+}
+class Permission {
+}
+class RolePermission <<soft-delete>> {
+}
+class UserRole <<soft-delete>> {
+}
+class AuditLog <<solo inserción>> {
+}
+}
+P3 ..> P0 : <<depende>>
+P3 ..> P4 : <<depende>>
+P0 ..> P1 : <<depende>>
+P0 ..> P2 : <<depende>>
+P0 ..> P3 : <<depende>>
+P0 ..> P4 : <<depende>>
+P2 ..> P0 : <<depende>>
+P2 ..> P4 : <<depende>>
+P1 ..> P0 : <<depende>>
+@enduml

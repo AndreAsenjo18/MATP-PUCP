@@ -1,0 +1,46 @@
+@startuml sq_registro_pieza
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Catalogador" as U
+boundary "Editor de pieza\n(Next.js)" as W
+control "PiecesRouter\n/api/v1/pieces" as R
+participant "Deps" as DP
+participant "CatalogService" as CS
+participant "IdentificationService" as IS
+participant "AuditTracker\n(before_flush)" as AT
+database "PostgreSQL" as DB
+
+U -> W : completa ficha (denominación, régimen,\ncódigo I "I-0236", época, medidas)
+loop cada campo modificado (debounce ~400 ms)
+  W -> R : POST /pieces/validate {payload}
+  R -> CS : validate_piece_payload(payload)
+  CS -> IS : normalize("I", "I-0236")
+  CS -> DB : SELECT identificador I vigente normalizado
+  CS --> R : {errors[], warnings[]}\n(transacción revertida)
+  R --> W : 200 {errors, warnings}
+  W --> U : aviso junto al campo
+end
+U -> W : Guardar
+W -> R : POST /pieces {payload}\n(cookie de sesión + X-CSRF-Token)
+R -> DP : current_user(); require_permission("pieces.create")
+DP --> R : AppUser + AuditContext(origin=MANUAL)
+R -> CS : create_piece(payload, ctx)
+CS -> CS : validar reglas (RN-003, RN-004, rango de época)
+CS -> IS : add_identifier(piece, "I", "I-0236", ctx)
+IS -> IS : normalizar, verificar unicidad y\nrégimen (owned_pieces_only)
+CS -> AT : flush
+AT -> AT : ejecutar FlushGuards\n(IdentifierRulesGuard, TenureChangeGuard)
+alt guarda viola una regla
+  AT --> CS : DomainError
+  CS --> R : error
+  R --> W : 409/422 {code, details}
+  W --> U : mensaje de corrección
+else reglas cumplidas
+  AT -> DB : INSERT piece, piece_identifier (is_locked)\n+ audit_log por campo (mismo change_set)
+  DB --> AT : OK
+  CS --> R : Piece
+  R --> W : 201 {pieza}
+  W --> U : ficha creada; código I con candado
+end
+@enduml

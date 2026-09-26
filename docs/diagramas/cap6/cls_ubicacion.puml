@@ -1,0 +1,63 @@
+@startuml cls_ubicacion
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+top to bottom direction
+package "Ubicación y control" #FBF8F0 {
+class Location <<soft-delete>> {
+  +level : LocationLevel
+  +code : String
+  +name : String
+  +description : String [0..1]
+  +is_active : Boolean
+}
+class PieceMovement <<solo inserción>> {
+  +movement_type : MovementType
+  +reason : String [0..1]
+  +performed_by_label : String [0..1]
+  +occurred_at : DateTime
+}
+enum LocationLevel {
+  SITE
+  SPACE
+  FURNITURE
+  SHELF_LEVEL
+  CONTAINER
+}
+enum MovementType {
+  MOVE
+  VERIFICATION
+  CORRECTION
+}
+}
+class Piece #EEEEEE
+class LocationService <<service>> {
+  +create_location(data, ctx) : Location
+  +location_path(loc) : List
+  +move_piece(piece, to, expected_from, reason) : PieceMovement
+  +verify_location(piece) : PieceMovement
+  +correct_movement(mov, reason)
+  +move_batch(items, to, reason)
+}
+
+Location "0..1" -- "0..*" Location : contenida en
+Piece "1" -- "0..*" PieceMovement : movimientos
+Location "0..1" -- "0..*" PieceMovement : origen
+Location "0..1" -- "0..*" PieceMovement : destino
+LocationService ..> PieceMovement : <<usa>>
+@enduml

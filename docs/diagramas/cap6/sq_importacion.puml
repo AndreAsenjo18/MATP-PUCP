@@ -1,0 +1,64 @@
+@startuml sq_importacion
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Curadora\n(Gestor)" as U
+boundary "Asistente de importación\n(Next.js)" as W
+control "ImportsRouter\n/api/v1/imports" as R
+participant "ImportPipelineService" as IP
+participant "QualityService\n(SimilarityScorer)" as QS
+participant "CatalogService /\nIdentificationService" as CS
+database "Bucket S3" as S3
+database "PostgreSQL" as DB
+
+== Etapa 1: carga ==
+U -> W : sube sábana .xlsx
+W -> R : POST /imports/upload (multipart)
+R -> IP : upload(file, source)
+IP -> S3 : guardar imports/<batch>/original.xlsx
+IP -> DB : INSERT import_batch (UPLOADED)
+R --> W : 201 {batch_id}
+== Etapa 2: mapeo ==
+W -> R : PUT /imports/{id}/mapping {template_id}
+R -> IP : set_mapping(batch, template)
+IP -> DB : UPDATE status = MAPPED
+== Etapa 3: validación y matching (en segundo plano) ==
+W -> R : POST /imports/{id}/validate
+R ->> IP : validate(batch) [BackgroundTask]
+R --> W : 202 Accepted
+loop por fila
+  IP -> IP : apply_mapping(), normalizar códigos
+  IP -> DB : buscar piece_identifier por\nvalor normalizado (vigentes e históricos)
+  IP -> QS : score(fila)
+  IP -> IP : clasificar: NEW / UPDATE /\nPOSSIBLE_DUPLICATE / CONFLICT + diff
+  IP -> DB : INSERT import_row
+end
+IP -> DB : UPDATE status = IN_PREVIEW, counts
+== Etapa 4: previsualización y decisiones ==
+W -> R : GET /imports/{id}/diffs
+R --> W : filas con semáforo y diff actual vs. entrante
+U -> W : acepta, excluye o rechaza filas\n(resuelve conflictos)
+W -> R : PATCH /imports/{id}/rows/{row_id} {decision, reason}
+== Etapa 5: aprobación y aplicación atómica ==
+U -> W : "Aprobar carga" (confirma resumen)
+W -> R : POST /imports/{id}/confirm {summary_token}
+R -> IP : approve(batch, token) [imports.approve]
+alt resumen cambió
+  R --> W : 409 summary_changed {nuevo resumen}
+else resumen vigente
+  IP -> DB : BEGIN
+  loop filas ACCEPTED (flush cada 500)
+    IP -> CS : create/update pieza e identificadores\n(AuditContext origin=IMPORT, change_set=lote)
+    IP -> DB : INSERT piece_source_record (columnas no mapeadas)
+  end
+  alt excepción
+    IP -> DB : ROLLBACK
+    IP -> DB : status = FAILED_APPLY + motivo
+    R --> W : 409 {fila, motivo}
+  else éxito
+    IP -> DB : COMMIT, status = APPLIED
+    R --> W : 200 {resumen}
+    W --> U : bitácora y reporte de rechazos
+  end
+end
+@enduml

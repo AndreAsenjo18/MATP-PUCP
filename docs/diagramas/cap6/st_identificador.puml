@@ -1,0 +1,28 @@
+@startuml st_identificador
+!include _header.iuml
+hide empty description
+state c <<choice>>
+[*] --> c : add_identifier(tipo, valor)\n/ normalizar
+c --> Bloqueado : [tipo.locks_on_assignment\n(código I)]
+c --> Vigente : [otro tipo]
+c --> Rechazado : [valor duplicado vigente o\nrégimen no admite el tipo]
+state "Vigente\n(is_current)" as Vigente
+state "Vigente bloqueado\n(is_current, is_locked)" as Bloqueado
+state "Histórico\n(no vigente)" as Hist
+state "Reemplazado\n(replaced_by_id)" as Repl
+state "Eliminado lógicamente" as Del
+state "Rechazado" as Rechazado
+Vigente --> Hist : marcar no vigente\n/ auditoría UPDATE
+Vigente --> Del : soft_delete(motivo)
+Bloqueado --> Repl : correct_locked_identifier(nuevo, motivo)\n[permiso identifiers.correct_inventory_code]\n/ crear nuevo Bloqueado,\nauditoría CORRECTION
+Bloqueado --> Bloqueado : update()\n/ rechazado por guarda (RN-002)
+Hist --> Vigente : reactivar\n[sin conflicto de unicidad]
+Rechazado --> [*]
+Repl --> [*]
+note right of Del
+  Si la pieza se elimina, su código I
+  sigue reservado: el índice único
+  parcial solo ignora filas eliminadas
+  del propio identificador.
+end note
+@enduml

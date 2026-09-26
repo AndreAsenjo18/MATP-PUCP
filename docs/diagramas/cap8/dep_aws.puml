@@ -1,0 +1,41 @@
+@startuml dep_aws
+!include _header.iuml
+top to bottom direction
+skinparam nodesep 45
+skinparam ranksep 55
+actor "Equipo del proyecto\n(QA, analistas, líder)" as U
+node "AWS Academy Learner Lab — región us-east-1\n<<nube académica, sesiones de 4 h>>" as AWS #FDF6E3 {
+  node "VPC por defecto" as VPC {
+    node "EC2 t3.medium · Amazon Linux 2023\n<<IP elástica · LabInstanceProfile>>\n[sg-matp-web: 443/80 abiertos, 22 solo IPs del equipo]" as EC2 {
+      node "Docker Compose (mismo archivo que producción)" as DC {
+        artifact "proxy · Caddy\n(certificado ACME con <ip>.sslip.io)" as PX
+        artifact "web · matp-web:vX.Y.Z-rc" as WEB
+        artifact "api · matp-api:vX.Y.Z-rc\n(AI_PROVIDER=mock)" as API
+      }
+    }
+    node "Amazon RDS for PostgreSQL · db.t3.micro\n[sg-matp-db: 5432 solo desde sg-matp-web]\n<<sin acceso público>>" as RDS {
+      database "matp_staging\n(datos sintéticos)" as DB
+    }
+  }
+  node "Amazon S3" as S3N {
+    database "bucket matp-staging-media\n(Block Public Access, CORS del dominio)" as S3
+  }
+}
+node "GitHub" as GH #EEEEEE {
+  artifact "GHCR (release candidate)" as GHCR
+}
+U --> PX : HTTPS
+PX --> WEB
+PX --> API
+WEB --> API
+API --> DB : TCP 5432 (sslmode=require)
+API --> S3 : S3 API (credenciales temporales\ndel rol de instancia)
+U ..> S3 : URL prefirmadas
+EC2 ..> GHCR : docker pull
+note bottom of RDS
+  Solo datos sintéticos (seed):
+  los recursos del Learner Lab se
+  eliminan al cierre del curso y no
+  se someten datos reales del museo.
+end note
+@enduml
