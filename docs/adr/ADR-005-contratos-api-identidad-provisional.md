@@ -1,6 +1,6 @@
 # ADR-005 — Convenciones de la API REST, stubs explícitos e identidad provisional de desarrollo
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17
 - **Change de origen**: `contratos-api-borrador`
 

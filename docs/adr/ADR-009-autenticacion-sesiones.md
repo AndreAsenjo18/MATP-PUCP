@@ -1,6 +1,6 @@
 # ADR-009 — Autenticación con sesiones opacas de servidor, CSRF de doble envío y preparación para cuenta PUCP
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software; se implementa en el change `autenticacion-y-matriz-permisos`)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26) — se implementa en el change `autenticacion-y-matriz-permisos`
 - **Fecha**: 2026-09-17
 - **Reemplaza parcialmente**: ADR-005 (identidad provisional `X-MATP-User`), al aplicarse el change
 

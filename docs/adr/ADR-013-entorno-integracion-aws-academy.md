@@ -1,6 +1,6 @@
 # ADR-013 — Entorno de integración en AWS Academy (staging, no producción)
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-26
 - **Origen**: pregunta I6 de `docs/preguntas-contraparte.md` (staging en AWS Academy vs ADR-007/ADR-011)
 

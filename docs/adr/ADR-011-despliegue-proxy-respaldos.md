@@ -1,6 +1,6 @@
 # ADR-011 — Despliegue en VM con proxy Caddy, respaldos cifrados con restic y tareas programadas con systemd
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software; se implementa en el change `despliegue-vm-y-respaldos`)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26) — se implementa en el change `despliegue-vm-y-respaldos`
 - **Fecha**: 2026-09-17
 - **Versiones**: **no fijadas en este ADR**. Se consultan las versiones estables vigentes de Caddy, restic y del cliente de MinIO/rclone al implementar el change y se registran aquí en ese momento (guardrail 7).
 
