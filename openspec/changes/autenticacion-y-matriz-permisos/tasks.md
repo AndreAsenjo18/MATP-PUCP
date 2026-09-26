@@ -2,6 +2,7 @@
 
 - [ ] 1.1 Migración: `user_session`, `auth_event`, `sensitive_access_log`, `app_user.must_change_password`; `tests/test_migrations.py` en verde (Req: Sesiones de servidor revocables; Req: Bloqueo temporal…; Req: Registro de accesos a datos sensibles)
 - [ ] 1.2 Añadir a `Settings` y `.env.example`: `SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`, `WEB_ORIGIN`, `COOKIE_SECURE`, `SEED_DEV_PASSWORD`; prueba existente de documentación de variables en verde (RNF-004)
+- [ ] 1.3 Eliminar `JWT_SECRET`, `JWT_ALGORITHM` y `JWT_EXPIRE_MINUTES` de `app/core/config.py` y `.env.example` y reemplazarlos por los parámetros de sesión de ADR-009 (expiración por inactividad y absoluta); actualizar `tests/test_env_example.py` y el comentario de `apps/web/src/lib/api/client.ts` que menciona JWT (ADR-009)
 
 ## 2. Autenticación
 
