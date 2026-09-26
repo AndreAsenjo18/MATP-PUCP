@@ -1,6 +1,6 @@
 # ADR-004 — Convenciones del modelo de datos, auditoría automática y soft-delete
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17
 - **Change de origen**: `modelo-datos-nucleo`
 

@@ -1,6 +1,6 @@
 # ADR-003 — Herramientas, librerías base e imágenes de contenedor
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17
 - **Change de origen**: `setup-monorepo-base` (ampliado en `modelo-datos-nucleo`: pwdlib, Pillow, openpyxl; ver ADR-004)
 

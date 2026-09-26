@@ -1,6 +1,6 @@
 # ADR-008 — IA desacoplada con proveedor simulado por defecto y aprobación humana obligatoria
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17 · **Revisado el 2026-09-22**: la IA deja de tener contenedor propio y pasa a ejecutarse dentro del contenedor del backend (decisión del equipo).
 - **Origen**: `setup-monorepo-base` y `contratos-api-borrador` (servicio `services/ai`, `AIProvider`, `MockProvider`), ampliado por `ia-extraccion-texto-libre` e `ia-sugerencia-terminos`
 

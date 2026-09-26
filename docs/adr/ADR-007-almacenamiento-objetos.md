@@ -1,6 +1,6 @@
 # ADR-007 — Almacenamiento de archivos en object storage S3-compatible con acceso por URL prefirmadas
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17
 - **Origen**: decisiones de `setup-monorepo-base` (ADR-003) consolidadas y ampliadas por el backlog (`fotografias-multiples-por-pieza`, `importacion-pipeline-reconciliacion`, `busqueda-avanzada-y-exportacion`, `despliegue-vm-y-respaldos`)
 

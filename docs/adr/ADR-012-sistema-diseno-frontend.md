@@ -1,6 +1,6 @@
 # ADR-012 — Sistema de diseño del frontend: Atomic Design, tokens institucionales, Fontsource y lucide-react
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-23
 - **Change de origen**: `sistema-diseno-frontend`
 - **Sustituye**: el punto 1 de [ADR-006](ADR-006-maqueta-arquitectura-frontend.md) («sin librería de componentes»). Los puntos 2 a 6 de ADR-006 siguen vigentes.

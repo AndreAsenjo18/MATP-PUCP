@@ -1,6 +1,6 @@
 # ADR-000 — Herramientas de desarrollo y ejecución de comandos
 
-- **Estado**: Propuesto (a ratificar por el Arquitecto de Software)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
 - **Fecha**: 2026-09-17
 - **Contexto de origen**: Fase 0 del arranque (`docs/PROMPT_BASE.md`)
 
