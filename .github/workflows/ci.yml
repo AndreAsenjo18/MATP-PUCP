@@ -33,6 +33,7 @@ jobs:
       - run: node scripts/setup.mjs apps/api
       - run: npm run lint:api
       - run: node scripts/py.mjs apps/api -m app.openapi_export --check
+      - run: node scripts/py.mjs apps/api -m app.tools.er_diagram --check ../../docs/diagramas/modelo-datos/er.puml
       - run: npm run test:api
 
   ai:

@@ -32,6 +32,8 @@
     "validate:specs": "openspec validate --all --strict",
     "openapi": "node scripts/py.mjs apps/api -m app.openapi_export && node scripts/py.mjs services/ai -m matp_ai.openapi_export",
     "openapi:check": "node scripts/py.mjs apps/api -m app.openapi_export --check && node scripts/py.mjs services/ai -m matp_ai.openapi_export --check",
-    "openapi:client": "npm run openapi:client -w apps/web"
+    "openapi:client": "npm run openapi:client -w apps/web",
+    "diagrams:er": "node scripts/py.mjs apps/api -m app.tools.er_diagram --output ../../docs/diagramas/modelo-datos/er.puml",
+    "diagrams:check": "node scripts/py.mjs apps/api -m app.tools.er_diagram --check ../../docs/diagramas/modelo-datos/er.puml"
   }
 }

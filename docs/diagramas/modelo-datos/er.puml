@@ -1,0 +1,421 @@
+@startuml MATP_ER
+' Generado automáticamente desde apps/api/app/models.py — no editar a mano.
+hide circle
+skinparam dpi 150
+skinparam linetype ortho
+skinparam nodesep 55
+skinparam ranksep 65
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  HeaderBackgroundColor #F5F0DA
+  BackgroundColor #FFFFFF
+}
+skinparam package {
+  BorderColor #5B534C
+  FontSize 13
+  FontStyle bold
+}
+
+package "Gestión de Colecciones y Piezas (EP-01)" #FBEFE9 {
+entity COLLECTION {
+  * id : uuid <<PK>>
+  --
+    parent_id : uuid <<FK>>
+  * name : varchar(300)
+    acronym : varchar(40)
+    acronym_normalized : varchar(40) <<UK>>
+    description : text
+  * default_tenure_regime : varchar(40)
+    origin_description : text
+  * is_active : boolean
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity PIECE {
+  * id : uuid <<PK>>
+  --
+  * title : varchar(500)
+    description : text
+    collection_id : uuid <<FK>>
+  * tenure_regime : varchar(40)
+    legal_owner : varchar(200)
+    lender_name : varchar(300)
+    loan_agreement_ref : varchar(200)
+    temporary_inventory_number : varchar(60)
+    acquisition_method_term_id : uuid <<FK>>
+    entry_date : date
+    author : varchar(300)
+    provenance : varchar(300)
+    period_text : varchar(200)
+    period_type : varchar(40)
+    period_from : integer
+    period_to : integer
+    object_type_term_id : uuid <<FK>>
+    category_term_id : uuid <<FK>>
+    dimensions_text : text
+    dimensions : jsonb
+    conservation_status_term_id : uuid <<FK>>
+    recorded_by : varchar(200)
+    notes : text
+    parent_piece_id : uuid <<FK>>
+    merged_into_id : uuid <<FK>>
+    availability_term_id : uuid <<FK>>
+    current_location_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity PIECE_IDENTIFIER {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * identifier_type_code : varchar(40) <<FK>>
+  * original_value : text
+    normalized_value : varchar(200) <<UK>>
+  * normalization_status : varchar(40)
+    detected_format : varchar(40)
+  * is_current : boolean
+  * is_locked : boolean
+    source : varchar(200)
+  * recorded_at : timestamptz
+    replaced_by_id : uuid <<FK>>
+    notes : text
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity IDENTIFIER_TYPE {
+  * id : uuid <<PK>>
+  --
+  * code : varchar(40) <<UK>>
+  * label : varchar(200)
+    description : text
+  * normalization_rule : varchar(40)
+  * is_unique_when_current : boolean
+  * locks_on_assignment : boolean
+  * owned_pieces_only : boolean
+  * allowed_for_temporary_loan : boolean
+  * sort_order : integer
+  * is_active : boolean
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity PIECE_MATERIAL {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * term_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity CONSERVATION_ASSESSMENT <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * status_term_id : uuid <<FK>>
+  * assessed_at : timestamptz
+    assessed_by_user_id : uuid <<FK>>
+    assessed_by_label : varchar(200)
+    notes : text
+}
+entity PIECE_SOURCE_RECORD <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+    import_batch_id : uuid <<FK>>
+  * source_name : varchar(200)
+    source_file_name : varchar(300)
+    source_row_number : integer
+  * payload : jsonb
+  * recorded_at : timestamptz
+}
+entity MEDIA_ASSET {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * storage_key : varchar(500) <<UK>>
+    original_filename : varchar(300)
+  * content_type : varchar(100)
+  * size_bytes : bigint
+  * content_sha256 : varchar(64)
+    width_px : integer
+    height_px : integer
+    view_type_term_id : uuid <<FK>>
+  * sort_order : integer
+  * is_primary : boolean
+    photographer : varchar(200)
+    taken_on : date
+    usage_restriction_term_id : uuid <<FK>>
+    restriction_note : text
+    extra_metadata : jsonb
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+}
+
+package "Vocabularios controlados (RN-010)" #F3EEF8 {
+entity VOCABULARY {
+  * id : uuid <<PK>>
+  --
+  * code : varchar(60) <<UK>>
+  * name : varchar(200)
+    description : text
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity TERM {
+  * id : uuid <<PK>>
+  --
+  * vocabulary_id : uuid <<FK>>
+  * code : varchar(80)
+  * label : varchar(200)
+    description : text
+  * sort_order : integer
+  * is_active : boolean
+    external_uri : varchar(500)
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+}
+
+package "Ubicación y Control (EP-02)" #FDF6E3 {
+entity LOCATION {
+  * id : uuid <<PK>>
+  --
+    parent_id : uuid <<FK>>
+  * level : varchar(40)
+  * code : varchar(80) <<UK>>
+  * name : varchar(200)
+    description : text
+  * is_active : boolean
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity PIECE_MOVEMENT <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * movement_type : varchar(40)
+    from_location_id : uuid <<FK>>
+    to_location_id : uuid <<FK>>
+    reason : text
+    performed_by_user_id : uuid <<FK>>
+    performed_by_label : varchar(200)
+  * occurred_at : timestamptz
+}
+}
+
+package "Importación y Calidad de Datos (EP-03)" #EEF6EC {
+entity IMPORT_MAPPING_TEMPLATE {
+  * id : uuid <<PK>>
+  --
+  * name : varchar(200)
+  * source_name : varchar(200)
+  * header_signature : varchar(64)
+  * mapping : jsonb
+    description : text
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity IMPORT_BATCH {
+  * id : uuid <<PK>>
+  --
+  * source_name : varchar(200)
+  * file_name : varchar(300)
+    file_storage_key : varchar(500)
+    file_sha256 : varchar(64)
+    template_id : uuid <<FK>>
+  * status : varchar(40)
+    status_reason : text
+    uploaded_by_id : uuid <<FK>>
+    approved_by_id : uuid <<FK>>
+    approved_at : timestamptz
+    stage_timestamps : jsonb
+    counts : jsonb
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity IMPORT_ROW {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * source_row_number : integer
+  * raw_data : jsonb
+    mapped_data : jsonb
+    classification : varchar(40)
+  * has_validation_errors : boolean
+    validation_errors : jsonb
+    matches : jsonb
+    diff : jsonb
+  * decision : varchar(40)
+    decision_reason : text
+    target_piece_id : uuid <<FK>>
+  ..
+  <i>+ timestamps</i>
+}
+entity DUPLICATE_CANDIDATE {
+  * id : uuid <<PK>>
+  --
+  * piece_a_id : uuid <<FK>>
+    piece_b_id : uuid <<FK>>
+    import_row_id : uuid <<FK>>
+  * score : numeric(5, 4)
+  * matched_fields : jsonb
+  * status : varchar(40)
+    compared_fingerprint : varchar(64)
+  * detected_by : varchar(40)
+    reviewed_by_id : uuid <<FK>>
+    reviewed_at : timestamptz
+    resolution_note : text
+  ..
+  <i>+ timestamps</i>
+}
+entity AI_SUGGESTION {
+  * id : uuid <<PK>>
+  --
+  * function_code : varchar(40)
+  * status : varchar(40)
+  * provider : varchar(60)
+    model : varchar(120)
+    piece_id : uuid <<FK>>
+    import_batch_id : uuid <<FK>>
+  * input_data : jsonb
+  * output_data : jsonb
+    approved_data : jsonb
+    requested_by_id : uuid <<FK>>
+    reviewed_by_id : uuid <<FK>>
+    reviewed_at : timestamptz
+    rejection_reason : text
+  ..
+  <i>+ timestamps</i>
+}
+}
+
+package "Usuarios, Seguridad y Auditoría (EP-05)" #EDF0F7 {
+entity APP_USER {
+  * id : uuid <<PK>>
+  --
+  * email : varchar(254)
+  * full_name : varchar(200)
+    password_hash : varchar(255)
+  * is_active : boolean
+  * is_synthetic : boolean
+    external_subject : varchar(255)
+    last_login_at : timestamptz
+  * failed_login_count : integer
+    locked_until : timestamptz
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity ROLE {
+  * id : uuid <<PK>>
+  --
+  * code : varchar(40) <<UK>>
+  * name : varchar(120)
+    description : text
+  * is_enabled : boolean
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity PERMISSION {
+  * id : uuid <<PK>>
+  --
+  * code : varchar(80) <<UK>>
+  * description : text
+  ..
+  <i>+ timestamps</i>
+}
+entity ROLE_PERMISSION {
+  * id : uuid <<PK>>
+  --
+  * role_id : uuid <<FK>>
+  * permission_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity USER_ROLE {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * role_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity AUDIT_LOG <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * change_set_id : uuid
+  * entity_type : varchar(60)
+  * entity_id : uuid
+    field : varchar(100)
+    old_value : jsonb
+    new_value : jsonb
+  * action : varchar(40)
+  * origin : varchar(40)
+    origin_ref : varchar(100)
+    user_id : uuid <<FK>>
+    actor_label : varchar(100)
+    reason : text
+}
+}
+
+APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
+COLLECTION |o--o{ COLLECTION : "subcolección de"
+LOCATION |o--o{ LOCATION : "jerarquía espacial"
+IMPORT_MAPPING_TEMPLATE |o--o{ IMPORT_BATCH : "plantilla"
+APP_USER |o--o{ IMPORT_BATCH : "carga"
+APP_USER |o--o{ IMPORT_BATCH : "aprueba"
+ROLE ||--o{ ROLE_PERMISSION
+PERMISSION ||--o{ ROLE_PERMISSION
+VOCABULARY ||--o{ TERM : "contiene"
+APP_USER ||--o{ USER_ROLE
+ROLE ||--o{ USER_ROLE
+COLLECTION |o--o{ PIECE : "contiene"
+TERM |o--o{ PIECE : "forma de adquisición"
+TERM |o--o{ PIECE : "tipo de bien"
+TERM |o--o{ PIECE : "categoría"
+TERM |o--o{ PIECE : "estado de conservación"
+PIECE |o--o{ PIECE : "conjunto / componente"
+PIECE |o--o{ PIECE : "fusionada en"
+TERM |o--o{ PIECE : "disponibilidad"
+LOCATION |o--o{ PIECE : "ubicación actual"
+PIECE |o--o{ AI_SUGGESTION : "sugerencias"
+IMPORT_BATCH |o--o{ AI_SUGGESTION : "sobre lote"
+APP_USER |o--o{ AI_SUGGESTION : "solicita"
+APP_USER |o--o{ AI_SUGGESTION : "revisa"
+PIECE ||--o{ CONSERVATION_ASSESSMENT : "historial de estado"
+TERM ||--o{ CONSERVATION_ASSESSMENT : "estado"
+APP_USER |o--o{ CONSERVATION_ASSESSMENT : "evalúa"
+IMPORT_BATCH ||--o{ IMPORT_ROW : "filas / diffs"
+PIECE |o--o{ IMPORT_ROW : "pieza objetivo"
+PIECE ||--o{ MEDIA_ASSET : "fotografías"
+TERM |o--o{ MEDIA_ASSET : "tipo de vista"
+TERM |o--o{ MEDIA_ASSET : "restricción de uso"
+PIECE ||--o{ PIECE_IDENTIFIER : "posee códigos"
+IDENTIFIER_TYPE ||--o{ PIECE_IDENTIFIER : "tipifica"
+PIECE_IDENTIFIER |o--o{ PIECE_IDENTIFIER : "reemplazado por"
+PIECE ||--o{ PIECE_MATERIAL : "materiales"
+TERM ||--o{ PIECE_MATERIAL : "material"
+PIECE ||--o{ PIECE_MOVEMENT : "movimientos"
+LOCATION |o--o{ PIECE_MOVEMENT : "origen"
+LOCATION |o--o{ PIECE_MOVEMENT : "destino"
+APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
+PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
+IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
+PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
+PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
+IMPORT_ROW |o--o{ DUPLICATE_CANDIDATE : "fila vs pieza"
+APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
+
+note as N1
+  <b>Convenciones</b>
+  * = obligatorio (NOT NULL) | PK/FK/UK = clave primaria/foránea/única
+  <<solo inserción>> = triggers bloquean UPDATE/DELETE/TRUNCATE (ADR-004)
+  soft-delete = deleted_at, deleted_by_id -> APP_USER, deletion_reason (RN-005)
+  Enumerados: VARCHAR(40) + CHECK | Claves: UUIDv7
+  Código I: fila de PIECE_IDENTIFIER (tipo I), único entre vigentes
+  (índice parcial) y bloqueado al asignarse (RN-002)
+end note
+@enduml
