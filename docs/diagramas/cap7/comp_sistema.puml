@@ -1,0 +1,46 @@
+@startuml comp_sistema
+!include _header.iuml
+top to bottom direction
+skinparam nodesep 60
+skinparam ranksep 60
+
+actor "Personal del museo\n(escritorio, tablet, móvil)" as U
+component "Navegador" as NAV <<cliente>>
+
+node "Proxy inverso" #FBEFE9 {
+  component "Caddy" as PX <<TLS, HSTS, cabeceras>>
+}
+
+together {
+node "Contenedor web" #F3EEF8 {
+  component "Aplicación web\nNext.js + TypeScript + Tailwind" as WEB <<frontend>>
+}
+node "Contenedor api" #FDF6E3 {
+  component "API REST\nFastAPI · /api/v1" as API <<backend>>
+  component "Servicio de IA\nmatp_ai · montado en /ai" as AI <<ASGI independiente>>
+}
+}
+
+database "PostgreSQL 18" as DB #EEF6EC
+database "Almacenamiento de objetos\nS3-compatible (MinIO)" as S3 #EEF6EC
+component "Proveedor de identidad PUCP\nOIDC (futuro)" as IDP <<externo>> #EEEEEE
+component "Proveedor LLM\n(futuro, ADR propio)" as LLM <<externo>> #EEEEEE
+
+U --> NAV
+NAV --> PX : HTTPS
+PX --> WEB : "/ (páginas)"
+PX --> API : "/api/* (REST, cookie de sesión + CSRF)"
+WEB ..> API : REST /api/v1 · OpenAPI 3\n(cliente tipado openapi-fetch)
+API --> DB : SQL (SQLAlchemy 2 + psycopg 3)
+API --> S3 : S3 API (boto3):\nfirmar, verificar, copiar
+NAV ..> S3 : PUT/GET con URL prefirmada\n(corta duración)
+
+API --> AI : interfaz AIProvider\n(llamada en proceso)
+API ..> IDP : IdentityProvider
+AI ..> LLM : solo si AI_PROVIDER=llm
+note right of API
+  Único componente que lee y escribe
+  el catálogo. La IA recibe datos
+  minimizados y devuelve propuestas.
+end note
+@enduml

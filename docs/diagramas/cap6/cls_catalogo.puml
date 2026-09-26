@@ -1,0 +1,143 @@
+@startuml cls_catalogo
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+top to bottom direction
+package "Catálogo e identificación de piezas" #FBF8F0 {
+class Piece <<soft-delete>> {
+  +title : String
+  +description : String [0..1]
+  +tenure_regime : TenureRegime
+  +legal_owner : String [0..1]
+  +lender_name : String [0..1]
+  +loan_agreement_ref : String [0..1]
+  +temporary_inventory_number : String [0..1]
+  +entry_date : Date [0..1]
+  +author : String [0..1]
+  +provenance : String [0..1]
+  +period_text : String [0..1]
+  +period_type : PeriodType [0..1]
+  +period_from : Integer [0..1]
+  +period_to : Integer [0..1]
+  +dimensions_text : String [0..1]
+  +dimensions : JSON [0..1]
+  +recorded_by : String [0..1]
+  +notes : String [0..1]
+}
+class PieceIdentifier <<soft-delete>> {
+  +original_value : String
+  +normalized_value : String [0..1]
+  +normalization_status : NormalizationStatus
+  +detected_format : String [0..1]
+  +is_current : Boolean
+  +is_locked : Boolean
+  +source : String [0..1]
+  +recorded_at : DateTime
+  +notes : String [0..1]
+}
+class IdentifierType <<soft-delete>> {
+  +code : String
+  +label : String
+  +description : String [0..1]
+  +normalization_rule : NormalizationRule
+  +is_unique_when_current : Boolean
+  +locks_on_assignment : Boolean
+  +owned_pieces_only : Boolean
+  +allowed_for_temporary_loan : Boolean
+  +sort_order : Integer
+  +is_active : Boolean
+}
+class PieceMaterial <<soft-delete>> {
+}
+class ConservationAssessment <<solo inserción>> {
+  +assessed_at : DateTime
+  +assessed_by_label : String [0..1]
+  +notes : String [0..1]
+}
+class PieceSourceRecord <<solo inserción>> {
+  +source_name : String
+  +source_file_name : String [0..1]
+  +source_row_number : Integer [0..1]
+  +payload : JSON
+  +recorded_at : DateTime
+}
+enum TenureRegime {
+  OWNED
+  LOAN_FOR_USE
+  TEMPORARY_LOAN
+}
+enum PeriodType {
+  CENTURY
+  DECADE
+  YEAR
+  RANGE
+  APPROXIMATE
+  RELATIVE_AGE
+  UNKNOWN
+}
+enum NormalizationRule {
+  INVENTORY
+  COLLECTION
+  INC_RN
+  GENERIC
+}
+enum NormalizationStatus {
+  NORMALIZED
+  UNPARSEABLE
+}
+}
+class Collection #EEEEEE
+class ImportBatch #EEEEEE
+class Location #EEEEEE
+class Term #EEEEEE
+class CatalogService <<service>> {
+  +create_piece(data, ctx) : Piece
+  +update_piece(piece, changes, ctx) : Piece
+  +validate_piece_payload(data) : ValidationResult
+  +change_tenure(piece, regime, reason)
+  +set_parent(piece, parent_id)
+  +soft_delete(piece, reason)
+  +restore(piece, reason)
+}
+class IdentificationService <<service>> {
+  +add_identifier(piece, type, raw_value, ctx) : PieceIdentifier
+  +correct_locked_identifier(identifier, new_value, reason)
+  +normalize(type, raw_value) : NormalizationResult
+  +current_identifiers(piece, type) : List
+}
+Collection "0..1" -- "0..*" Piece : pertenece a
+Term "0..1" -- "0..*" Piece : adquisición
+Term "0..1" -- "0..*" Piece : tipo de bien
+Term "0..1" -- "0..*" Piece : categoría
+Term "0..1" -- "0..*" Piece : estado
+Piece "0..1" -- "0..*" Piece : componente de
+Piece "0..1" -- "0..*" Piece : fusionada en
+Term "0..1" -- "0..*" Piece : disponibilidad
+Location "0..1" -- "0..*" Piece : ubicada en
+Piece "1" *-- "0..*" PieceMaterial : materiales
+Term "1" -- "0..*" PieceMaterial : material
+Piece "1" *-- "0..*" PieceSourceRecord : datos de origen
+ImportBatch "0..1" -- "0..*" PieceSourceRecord : originado en
+Piece "1" *-- "0..*" ConservationAssessment : evaluaciones
+Term "1" -- "0..*" ConservationAssessment : estado
+Piece "1" *-- "0..*" PieceIdentifier : códigos
+IdentifierType "1" -- "0..*" PieceIdentifier : tipo
+PieceIdentifier "0..1" -- "0..*" PieceIdentifier : reemplazado por
+CatalogService ..> Piece : <<usa>>
+IdentificationService ..> PieceIdentifier : <<usa>>
+@enduml

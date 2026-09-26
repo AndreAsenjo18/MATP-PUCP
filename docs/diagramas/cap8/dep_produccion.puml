@@ -1,0 +1,61 @@
+@startuml dep_produccion
+!include _header.iuml
+top to bottom direction
+skinparam nodesep 45
+skinparam ranksep 55
+
+node "Estación de trabajo / tablet / smartphone\n<<dispositivo>>" as CLI {
+  artifact "Navegador web\n(Chrome, Edge, Safari)" as BR
+}
+
+node "VM Linux PUCP\n<<servidor virtual>>\n{SO: Linux LTS, 2–4 vCPU, 8 GB RAM}" as VM #FDF6E3 {
+  node "Docker Engine + Compose v2\n<<entorno de ejecución>>" as DE {
+    node "proxy\n<<contenedor>>" as C_PX {
+      artifact "Caddy\n:80 → 301, :443 TLS" as A_PX
+    }
+    node "web\n<<contenedor>>" as C_WEB {
+      artifact "ghcr.io/…/matp-web:vX.Y.Z\nNext.js standalone :3000" as A_WEB
+    }
+    node "api\n<<contenedor>>" as C_API {
+      artifact "ghcr.io/…/matp-api:vX.Y.Z\nuvicorn :8000\n(API + matp_ai en /ai)" as A_API
+    }
+    node "db\n<<contenedor>>" as C_DB {
+      database "PostgreSQL 18\nvolumen db-data" as A_DB
+    }
+    node "storage\n<<contenedor>>" as C_ST {
+      database "MinIO (S3)\nbucket matp-media\nvolumen storage-data" as A_ST
+    }
+    node "backup\n<<contenedor efímero>>" as C_BK {
+      artifact "restic + pg_dump\n+ mc mirror" as A_BK
+    }
+  }
+  artifact "systemd timers\nmatp-backup 02:00 · backup-check dom.\nkpis-snapshot · audit-digest · disk-check" as SYSD
+  artifact "/opt/matp/.env.production\n(permisos 600)" as ENV
+}
+
+node "Repositorio de respaldos externo\n<<almacenamiento S3 institucional o Cloudflare R2>>" as EXT #EEF6EC {
+  database "Repositorio restic\n(cifrado)" as A_EXT
+}
+node "GitHub\n<<SaaS>>" as GH #EEEEEE {
+  artifact "GHCR\nimágenes versionadas" as A_GHCR
+}
+
+BR --> A_PX : HTTPS 443\n(red PUCP)
+A_PX --> A_WEB : HTTP /*
+A_PX --> A_API : HTTP /api/*, /health
+A_PX --> A_ST : HTTPS media.<dominio>\n(URL prefirmadas)
+A_WEB --> A_API : HTTP interno\n(API_INTERNAL_URL)
+A_API --> A_DB : TCP 5432
+A_API --> A_ST : S3 API :9000
+SYSD ..> A_BK : ejecuta
+A_BK --> A_DB : pg_dump
+A_BK --> A_ST : mc mirror
+A_BK --> A_EXT : HTTPS (restic)
+DE ..> A_GHCR : docker pull (deploy.sh)
+A_API ..> ENV : lee
+note right of C_DB
+  db, storage y api no publican
+  puertos en el host: solo el
+  proxy expone 80/443.
+end note
+@enduml

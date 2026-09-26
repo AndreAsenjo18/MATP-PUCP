@@ -2,6 +2,24 @@
 
 > Generado desde los modelos SQLAlchemy (`apps/api/app/models.py`) del change `modelo-datos-nucleo` (2026-09-17). Migración: `apps/api/alembic/versions/0001_core_data_model.py`. Decisiones: `openspec/changes/modelo-datos-nucleo/design.md` (se archiva en `openspec/changes/archive/`) y `docs/adr/ADR-004-modelo-datos-auditoria.md`.
 
+## Diagrama vigente y extensiones
+
+- **Diagrama del modelo vigente**: [`docs/diagramas/modelo-datos/er.puml`](diagramas/modelo-datos/er.puml), generado desde los modelos SQLAlchemy con `npm run diagrams:er` y verificado en CI con `npm run diagrams:check`.
+- **Extensiones previstas en el expediente**: [`docs/diagramas/cap6/er_extensiones.puml`](diagramas/cap6/er_extensiones.puml) (capítulo 6). Todas están planificadas, **ninguna está implementada todavía**; cada una indica su change o spec de origen.
+
+### Extensiones planificadas
+
+| Extensión | Requisito | Origen |
+|---|---|---|
+| `loan`, `loan_item`, `exhibition`, `exhibition_piece` | RF-018 | change por proponer: `prestamos-y-exposiciones` |
+| `piece_document` | RF-015 | spec `multimedia` |
+| `valuation` | RF-037 | change `reportes-inventario`, D6 |
+| `piece.version` | — | change `ficha-pieza-crud`, D2 |
+| `location.space_kind`, `piece_movement.corrects_movement_id`, `idempotency_key` | — | change `ubicacion-jerarquica-y-movimientos` |
+| `collection.default_usage_restriction_term_id` | — | change `fotografias-multiples-por-pieza` |
+| `user_session`, `sensitive_access_log` | — | change `autenticacion-y-matriz-permisos` |
+| `quality_job`, `quality_setting` | — | change `deteccion-duplicados-y-cola-revision` |
+
 ## Principios
 
 - **RN-001**: toda entidad usa un UUID interno como clave primaria; los códigos del museo viven en `piece_identifier` (1:N) con valor original, valor normalizado, vigencia y fuente.

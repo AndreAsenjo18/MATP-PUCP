@@ -23,10 +23,11 @@
 ```mermaid
 flowchart LR
     U[Navegador interno PUCP] -->|443 HTTPS| P[proxy Caddy]
-    P -->|/api/*| A[api :8000]
+    P -->|/api/* y /health*| A[api :8000]
     P -->|/*| W[web :3000]
+    P -->|media.&lt;dominio&gt;| S[(storage MinIO)]
     A --> D[(db PostgreSQL)]
-    A --> S[(storage MinIO)]
+    A --> S
     A -.-> I[IA asistiva en el mismo contenedor de la API]
     B[backup restic<br/>job programado] --> D
     B --> S
@@ -42,9 +43,17 @@ flowchart LR
 ```
 
 - Solo `proxy` publica puertos (80 → redirección, 443). `db`, `storage`, `ai` sin puertos publicados.
-- Las URL prefirmadas de fotos deben ser alcanzables por el navegador: el proxy enruta `/media-store/*` al bucket (`S3_PUBLIC_ENDPOINT_URL=https://<dominio>/media-store`) con la firma intacta [SUPUESTO; verificar compatibilidad de firma con ruta reescrita, contingencia: subdominio propio para el almacenamiento].
+- Las URL prefirmadas de fotos se publican en un **subdominio propio** `media.<dominio>` con
+  `reverse_proxy storage:9000` que **conserva el encabezado Host**; el bucket se expone como
+  `S3_PUBLIC_ENDPOINT_URL=https://media.<dominio>`. Motivo: las URL prefirmadas S3 firman host y
+  ruta exactos, de modo que reescribir la ruta invalida la firma.
+  *Descartada*: publicarlas bajo la ruta `/media-store/*` en el mismo dominio, porque la
+  reescritura de ruta cambia el host/ruta firmados y rompe toda URL prefirmada.
+- El proxy **no** publica `/ai/*`: la IA solo se invoca dentro del proceso de la API (ADR-008).
 - Contenedores con usuario no root, `read_only` donde sea posible, `restart: unless-stopped`, límites de memoria acordes a la VM.
 - Secretos en `/opt/matp/.env.production` (permisos 600) fuera del repositorio; nunca en imágenes.
+- El overlay de Compose y el `Caddyfile` de referencia (Anexo A del documento de ajustes cap6-8)
+  están en [`deploy-reference.md`](deploy-reference.md) de este change.
 
 ### D2. Proxy: Caddy
 Caddy con configuración declarativa, HTTPS automático (ACME) si el dominio es público o certificado institucional montado si es interno; HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Content-Security-Policy` básica, `Permissions-Policy`, compresión y límite de tamaño de cuerpo coherente con `IMPORT_MAX_BYTES`.
@@ -72,9 +81,29 @@ Caddy con configuración declarativa, HTTPS automático (ACME) si el dominio es 
 ### D7. Contingencia free tier
 `deploy/free-tier/README.md`: web en Vercel Hobby, API y servicio IA en Render Free (arranque en frío documentado), Neon Postgres (PITR del proveedor + `pg_dump` semanal por GitHub Actions programado a R2), Cloudflare R2 para objetos (CORS y URL prefirmadas), cookies `SameSite=None; Secure` y `WEB_ORIGIN`. Tabla de límites conocidos (horas, almacenamiento, suspensión por inactividad) con la fecha de consulta, ya que cambian con frecuencia.
 
+### D8. Entorno de integración (ADR-013)
+
+El entorno de integración (staging) es **AWS Academy Learner Lab**, decidido en
+[`ADR-013`](../../../docs/adr/ADR-013-entorno-integracion-aws-academy.md): EC2 t3.medium con
+Amazon Linux 2023, IP elástica y `LabInstanceProfile` ejecutando **el mismo overlay de Compose
+que producción sin `db` ni `storage`**; RDS for PostgreSQL (db.t3.micro, sin acceso público,
+`sslmode=require`), bucket S3 privado con Block Public Access, TLS con Caddy sobre
+`<ip-elastica>.sslip.io`, región us-east-1, solo datos sintéticos (RNF-014), operación por
+sesiones (se detiene RDS al final para cuidar el crédito). Las credenciales S3 vienen de la
+cadena por defecto de boto3 (rol de instancia), sin claves estáticas (tarea 6.1).
+
+### D9. Artefacto web único entre entornos (mismo origen)
+
+`NEXT_PUBLIC_API_URL` vacío o ausente ⇒ el navegador llama a la API por **ruta relativa**
+(`/api/v1/...`, mismo origen): en staging y producción Caddy enruta `/api/*` y `/health*` a la
+API antes de llegar a la web; en local, Next.js reenvía `/api/*` y `/health` con `rewrites()` a
+`API_INTERNAL_URL`. En el servidor (SSR o route handlers) se usa `API_INTERNAL_URL`, porque ahí
+no hay origen relativo. Así **una sola imagen del frontend sirve para todos los entornos** y las
+cookies de sesión de ADR-009 (mismo origen) funcionan sin ajustes (tarea 6.2).
+
 ## Risks / Trade-offs
 
 - **Información de la VM desconocida** → todo parametrizado; checklist de datos a pedir a la DTI en `docs/despliegue/checklist-vm.md` y preguntas registradas.
 - **Clave de cifrado de respaldos perdida = respaldos inútiles** → custodia dual documentada y verificación en cada simulacro.
-- **Reescritura de ruta para URL prefirmadas** puede invalidar la firma → prueba específica; contingencia con subdominio.
+- **URL prefirmadas** → la reescritura de ruta (`/media-store/*`) invalidaba la firma; resuelto en D1 con subdominio propio `media.<dominio>` que conserva el Host (la alternativa queda descartada).
 - **Sin Docker en la máquina del arranque** → este change no puede verificarse hasta tener Docker y la VM; tareas marcadas en consecuencia.

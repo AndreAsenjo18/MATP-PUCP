@@ -1,0 +1,50 @@
+@startuml st_pieza
+!include _header.iuml
+hide empty description
+[*] --> Vigente : create_piece()\n/ auditoría CREATE
+
+state Vigente {
+  state "Régimen de tenencia" as R {
+    state "Propiedad\n(OWNED)" as OWN
+    state "Comodato\n(LOAN_FOR_USE)" as LFU
+    state "Préstamo temporal\n(TEMPORARY_LOAN)" as TMP
+    [*] --> OWN
+    [*] --> LFU
+    [*] --> TMP
+    OWN --> LFU : change_tenure()\n[sin código I vigente] (RN-003)
+    LFU --> OWN : change_tenure()\n[motivo y documento de respaldo]
+    OWN --> TMP : [sin código I ni de\ncolección vigente] (RN-004)
+    LFU --> TMP : [sin código I ni de\ncolección vigente]
+    TMP --> OWN : [motivo] / nº temporal pasa\na identificador no vigente
+    TMP --> LFU : [motivo]
+  }
+  --
+  state "Disponibilidad" as A {
+    state "En depósito" as DEP
+    state "En sala" as SALA
+    state "En préstamo" as PRES
+    state "En exposición temporal" as EXPO
+    [*] --> DEP
+    DEP --> SALA : move_piece()\n[destino es sala]
+    SALA --> DEP : move_piece()\n[destino es depósito]
+    DEP --> PRES : préstamo saliente activo
+    SALA --> PRES : préstamo saliente activo
+    PRES --> DEP : devolución registrada
+    DEP --> EXPO : alta en exposición
+    EXPO --> DEP : fin de exposición
+  }
+}
+
+state "Eliminada lógicamente" as DEL
+state "Fusionada" as MERGED
+
+Vigente --> DEL : soft_delete(motivo)\n/ deleted_at, deleted_by
+DEL --> Vigente : restore()\n[código I sin conflicto]
+Vigente --> MERGED : merge(keep, motivo)\n[mismo régimen y sin\ncódigos I distintos]\n/ merged_into_id, reasignar hijos
+MERGED --> Vigente : revert_change_set()
+note bottom of DEL
+  Nunca hay borrado físico (RN-005).
+  Sus identificadores se conservan y
+  el código I no se reutiliza.
+end note
+@enduml
