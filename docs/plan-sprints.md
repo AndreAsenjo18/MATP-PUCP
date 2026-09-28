@@ -1,6 +1,6 @@
 # Plan de sprints (base inicial)
 
-> **Estado: propuesta inicial, versión 2 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada lunes (ver «Cómo se modifica este plan»).
+> **Estado: propuesta inicial, versión 3 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada lunes (ver «Cómo se modifica este plan»).
 > Asignaciones tomadas de [`ownership.md`](ownership.md), que también es una propuesta pendiente de validar por el Líder de Proyecto y el Arquitecto.
 
 ## Marco
@@ -36,10 +36,10 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 | **Franz Vilcapoma** | alinear 2.4 + 4.4 (seed, fixtures, importación) | `plantillas-mapeo-y-normalizacion` | Cierre de plantillas | `importacion-pipeline-reconciliacion` | A: ajustes de Importación / B: manual de Importación | Demo del módulo de Importación |
 | **Sergio Huamán** | alinear 4.5 + 6.2 (búsqueda y documentación) | `alertas-y-reporte-incompletas` | Cierre de alertas | `reportes-inventario` | QA de extremo a extremo del MVP | Regresión final y congelamiento |
 | **Mathias Medina** | alinear 4.3 (ubicaciones) | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | `reportes-inventario` | QA de extremo a extremo · B: formato del manual | Documentación final |
-| **Josué Moreno** | `develop` → `main` · protección de `main` · CI de migraciones | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Versión final `v1.0.0` |
+| **Josué Moreno** | `develop` → `main` · protección de `main` · `ci-migraciones-postgresql` | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Versión final `v1.0.0` |
 | **José Ávalos** | alinear 3.2 + 4.6 (enumerados y multimedia) | `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA · revisiones del MVP | A: ajustes de IA / B: manual de IA | Demo del módulo de IA |
 | **Álvaro Vargas** | `auditoria-y-soft-delete-transversal` | Cierre de auditoría · `autenticacion-y-matriz-permisos` | Cierre de autenticación | Despliegue del MVP (compose de producción y proxy) | VM PUCP y respaldos (si hay acceso) | Entorno de la demo |
-| **Manuel Barrantes** | Cierre del arranque con Docker · alinear 4.7 (auth en rutas del contrato) | CD 1: imágenes y `release.yml` | CD 2: `deploy.sh` y entorno de integración | Despliegue del MVP en el entorno de integración | Simulacro de respaldo y manual técnico de despliegue | Entorno de la demo |
+| **Manuel Barrantes** | Cierre del arranque con Docker · alinear 4.7 (auth en rutas del contrato) | CD 1: imágenes en GHCR en cada merge · ADR-013 | CD 2: `deploy.sh` y despliegue en cada merge | Despliegue del MVP en el entorno de integración | Simulacro de respaldo y manual técnico de despliegue | Entorno de la demo |
 
 ## CI/CD
 
@@ -50,14 +50,24 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 | Sprint | Pieza | Responsable | Respaldo |
 |---|---|---|---|
 | S1 | Protección de `main`: PR obligatorio, los 4 jobs en verde y una aprobación | Josué Moreno | Guía de trabajo del equipo |
-| S1 | Job de CI **de migraciones**: servicio PostgreSQL, `alembic upgrade head` y `downgrade`, y verificación de **una sola cabeza** (`alembic heads`). Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Josué Moreno | ADR-010 (punto 5), sin change propio [SUPUESTO: basta un PR `ci(api): ...`; si el Arquitecto lo pide, se propone un change] |
-| S2 | **CD 1:** Dockerfiles sin usuario root y `release.yml` (construir y publicar las imágenes en GHCR al crear un tag) | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.1 y 2.1 |
-| S3 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y `scripts/staging-up.sh` para el entorno de integración en AWS Academy | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 2.2 y 6.3; ADR-013 |
+| S1 | Job de CI **de migraciones**: servicio PostgreSQL, `upgrade head`, comparación con los modelos, protecciones de la auditoría, `downgrade base` y verificación de **una sola cabeza**. Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Josué Moreno | Change [`ci-migraciones-postgresql`](../openspec/changes/ci-migraciones-postgresql/) (ADR-010, punto 5) |
+| S2 | **CD 1:** Dockerfiles sin usuario root y publicación de las imágenes en GHCR **en cada merge a main** (etiquetas con el SHA y `main`) y al crear un tag de versión | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.1 y 2.1 (ajustar la 2.1, que hoy publica solo por tag) |
+| S2 | Actualizar `despliegue-vm-y-respaldos` (`/opsx:update`) y ADR-013 para el despliegue continuo al entorno de integración | Manuel Barrantes; aprueba Sergio Chumbimuni | ADR-013 hoy dice que el entorno se opera por sesiones |
+| S3 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y **despliegue automático en AWS Academy después de cada merge a main** | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 2.2 y 6.3; ADR-013 |
 | S4 | Compose de producción y proxy con HTTPS; despliegue del MVP para la validación | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.2 y 1.3 |
 | S4 | Pruebas de humo contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | Definición de «hecho» |
 | S5 | Respaldos cifrados, simulacro de restauración y despliegue en la VM PUCP (si la DTI dio acceso) | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 3.x, 4.1 y 5.x |
 
-> El despliegue al entorno de integración se lanza a mano (`scripts/staging-up.sh` o un workflow con disparo manual), no en cada merge. [SUPUESTO: las credenciales de AWS Academy duran lo que dura la sesión del laboratorio, así que no pueden quedar guardadas como secretos permanentes en GitHub.]
+**Despliegue continuo al entorno de integración (AWS Academy, activo hasta fin de ciclo):**
+
+```text
+merge a main → CI en verde → imágenes en GHCR (sha, main) → despliegue en la EC2 de staging → pruebas de humo
+```
+
+- **Recomendación: despliegue por *pull*.** Un temporizador en la EC2 (systemd) revisa cada pocos minutos si hay una imagen `main` nueva en GHCR y, si la hay, ejecuta `scripts/deploy.sh`. Así no se guardan credenciales de AWS ni una llave SSH en GitHub, y no hay que abrir el puerto 22 a Internet.
+- **Alternativa: *push* desde GitHub Actions por SSH**, con la llave como secreto del repositorio. Da respuesta inmediata en el PR, pero obliga a exponer SSH.
+- **Si la instancia está detenida** cuando se integra un PR, el despliegue ocurre al volver a encenderla, porque `deploy.sh` siempre toma la última imagen de main.
+- La decisión final la toma Plataforma al actualizar ADR-013 en el sprint 2.
 
 ## Detalle por sprint
 
@@ -94,7 +104,7 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 
 | Qué | Quién |
 |---|---|
-| Integrar `develop` en `main`, proteger `main` y agregar el job de migraciones en CI | Josué Moreno |
+| Integrar `develop` en `main`, proteger `main` e implementar `ci-migraciones-postgresql` | Josué Moreno |
 | Verificar con Docker y archivar los changes del arranque: `setup-monorepo-base`, `modelo-datos-nucleo`, `contratos-api-borrador`, `maqueta-ui-navegable`, `sistema-diseno-frontend` | Manuel Barrantes (verificación), Sergio Chumbimuni (archivo) |
 | `auditoria-y-soft-delete-transversal` (no depende de los nombres que cambian) | Álvaro Vargas |
 | Resolver los conflictos C1–C6 de [`api/mapeo-endpoints-v1.md`](api/mapeo-endpoints-v1.md) y registrarlos en `preguntas-contraparte.md` | Germán Asenjo, Sergio Chumbimuni |
@@ -110,7 +120,7 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 | `ubicacion-jerarquica-y-movimientos` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` | Sergio Huamán | Yessica Ochante | José Ávalos |
 | `auditoria-y-soft-delete-transversal` (cierre) y `autenticacion-y-matriz-permisos` (inicio) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| CD 1: Dockerfiles sin root y `release.yml` | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| CD 1: Dockerfiles sin root, imágenes en GHCR en cada merge y actualización de ADR-013 | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | `ia-extraccion-texto-libre` | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 ### Sprint 3 · 12 – 18 oct · «Núcleo II»
@@ -122,7 +132,7 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 | `busqueda-avanzada-y-exportacion` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` (cierre) | Sergio Huamán | Yessica Ochante | José Ávalos |
 | `autenticacion-y-matriz-permisos` (cierre) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| CD 2: `deploy.sh` y entorno de integración | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| CD 2: `deploy.sh` y despliegue automático al entorno de integración | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | `ia-sugerencia-terminos` (requiere `ia-extraccion-texto-libre` integrado) | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 ### Sprint 4 · 19 – 25 oct · «MVP integrado y listo para validar»
@@ -213,3 +223,4 @@ Si un change no cumple esto el domingo, **pasa al sprint siguiente** y la célul
 |---|---|---|
 | 1 | 2026-09-28 | Base inicial: 6 sprints semanales, validación con el cliente al cierre del sprint 4 y demo en el sprint 6 |
 | 2 | 2026-09-28 | Los 11 integrantes con trabajo todas las semanas (`alinear-api-endpoints-v1` repartido en el sprint 1); tabla de carga por persona; sección de CI/CD con job de migraciones, CD en los sprints 2 a 4 y respaldos en el sprint 5 |
+| 3 | 2026-09-28 | Change `ci-migraciones-postgresql` para el job de migraciones; despliegue continuo al entorno de integración de AWS Academy en cada merge a main (CD en los sprints 2 y 3) |
