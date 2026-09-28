@@ -21,8 +21,8 @@ Las migraciones Alembic nunca se ejecutan contra PostgreSQL en la integración c
 ## Impact
 
 - **IDs cubiertos**: RNF-004 (mantenimiento por terceros: el historial de migraciones se mantiene coherente y verificable), RNF-011 (una restauración de respaldo solo es fiable si el esquema se reconstruye con las migraciones), RN-005 (los disparadores de solo inserción que protegen la auditoría se verifican en el motor real).
-- **Célula dueña**: Plataforma. Implementa Josué Moreno (Integrador, CI) en el sprint 1 (`docs/plan-sprints.md`).
-- **Depende de**: `modelo-datos-nucleo` (migración `0001_core_data_model`) y `setup-monorepo-base` (workflow `ci.yml`). No bloquea a nadie, pero conviene integrarlo antes de que las células del backlog agreguen migraciones (sprint 2).
+- **Célula dueña**: Plataforma. Implementa Sergio Huamán en el sprint 0 y revisa Josué Moreno (Integrador, CI); ver `docs/plan-sprints.md`.
+- **Depende de**: `modelo-datos-nucleo` (migración `0001_core_data_model`) y `setup-monorepo-base` (workflow `ci.yml`). No bloquea a nadie, pero conviene integrarlo antes de que las células del backlog agreguen migraciones (sprint 1).
 - **Afecta**: `.github/workflows/ci.yml`, `apps/api/tests/test_migrations.py` (o un módulo nuevo `tests/test_migrations_postgresql.py`), `apps/api/tests/conftest.py`, `apps/api/pyproject.toml` (marcador de pytest), `package.json` (script `test:api:pg`), `docs/ONBOARDING.md` y la configuración de protección de `main` en GitHub.
 - **Dependencias nuevas**: ninguna. Usa `psycopg`, que ya es dependencia de la API, y la imagen de PostgreSQL que ya usa Docker Compose.
 - **Fuera de este change**:
