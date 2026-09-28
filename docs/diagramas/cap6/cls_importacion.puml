@@ -1,0 +1,155 @@
+@startuml cls_importacion
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+top to bottom direction
+package "Importación, calidad de datos e IA" #FBF8F0 {
+class ImportMappingTemplate <<soft-delete>> {
+  +name : String
+  +source_name : String
+  +header_signature : String
+  +mapping : JSON
+  +description : String [0..1]
+}
+class ImportBatch <<soft-delete>> {
+  +source_name : String
+  +file_name : String
+  +file_storage_key : String [0..1]
+  +file_sha256 : String [0..1]
+  +status : ImportBatchStatus
+  +status_reason : String [0..1]
+  +approved_at : DateTime [0..1]
+  +stage_timestamps : JSON [0..1]
+  +counts : JSON [0..1]
+}
+class ImportRow {
+  +source_row_number : Integer
+  +raw_data : JSON
+  +mapped_data : JSON [0..1]
+  +classification : RowClassification [0..1]
+  +has_validation_errors : Boolean
+  +validation_errors : JSON [0..1]
+  +matches : JSON [0..1]
+  +diff : JSON [0..1]
+  +decision : RowDecision
+  +decision_reason : String [0..1]
+}
+class DuplicateCandidate {
+  +score : Decimal
+  +matched_fields : JSON
+  +status : DuplicateStatus
+  +compared_fingerprint : String [0..1]
+  +detected_by : String
+  +reviewed_at : DateTime [0..1]
+  +resolution_note : String [0..1]
+}
+class AiSuggestion {
+  +function_code : AiFunction
+  +status : SuggestionStatus
+  +provider : String
+  +model : String [0..1]
+  +input_data : JSON
+  +output_data : JSON
+  +approved_data : JSON [0..1]
+  +reviewed_at : DateTime [0..1]
+  +rejection_reason : String [0..1]
+}
+enum ImportBatchStatus {
+  UPLOADED
+  FAILED_INGESTION
+  MAPPED
+  VALIDATED
+  IN_PREVIEW
+  APPROVED
+  APPLIED
+  FAILED_APPLY
+  ABANDONED
+  REVERTED
+}
+enum RowClassification {
+  NEW
+  UPDATE
+  POSSIBLE_DUPLICATE
+  CONFLICT
+}
+enum RowDecision {
+  PENDING
+  ACCEPTED
+  EXCLUDED
+  REJECTED
+}
+enum DuplicateStatus {
+  PENDING
+  MERGED
+  DISTINCT
+  POSTPONED
+}
+enum AiFunction {
+  RIA_01
+  RIA_02
+  RIA_03
+  RIA_04
+  RIA_05
+}
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  PARTIALLY_APPROVED
+  REJECTED
+}
+}
+class Piece #EEEEEE
+class ImportPipelineService <<service>> {
+  +upload(file, source) : ImportBatch
+  +set_mapping(batch, template)
+  +validate(batch)
+  +decide_row(row, decision, reason)
+  +approve(batch, summary_token)
+  +apply(batch)
+  +revert(batch)
+}
+class QualityService <<service>> {
+  +scan_duplicates()
+  +score(piece_or_row) : List<Candidate>
+  +resolve(candidate, action, reason)
+  +merge(keep, absorbed, choices)
+}
+Piece "0..1" -- "0..*" AiSuggestion : sugerencias
+ImportBatch "0..1" -- "0..*" AiSuggestion : sobre lote
+ImportMappingTemplate "0..1" -- "0..*" ImportBatch : plantilla
+ImportBatch "1" *-- "0..*" ImportRow : filas
+Piece "0..1" -- "0..*" ImportRow : pieza objetivo
+Piece "1" -- "0..*" DuplicateCandidate : pieza A
+Piece "0..1" -- "0..*" DuplicateCandidate : pieza B
+ImportRow "0..1" -- "0..*" DuplicateCandidate : fila
+ImportPipelineService ..> ImportBatch : <<usa>>
+QualityService ..> DuplicateCandidate : <<usa>>
+class AiSuggestionService <<service>> {
+  +request(function, piece, source_field) : AiSuggestion
+  +approve(suggestion, items, confirm_stale)
+  +reject(suggestion, reason)
+  -apply(suggestion)
+}
+AiSuggestionService ..> AiSuggestion : <<usa>>
+interface AIProvider <<interface>> {
+  +extract_structured(ctx) : Proposal
+  +suggest_terms(ctx, candidates) : Proposal
+  +describe(ctx) : Proposal
+}
+AiSuggestionService ..> AIProvider : <<invoca>>
+@enduml

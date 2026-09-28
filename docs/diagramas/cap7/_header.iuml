@@ -1,0 +1,57 @@
+skinparam dpi 170
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam classAttributeIconSize 0
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam state {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  StartColor #0C0F14
+  EndColor #0C0F14
+}
+skinparam sequence {
+  ParticipantBorderColor #0C0F14
+  ParticipantBackgroundColor #F5F0DA
+  ActorBorderColor #0C0F14
+  ActorBackgroundColor #F5F0DA
+  LifeLineBorderColor #5B534C
+  GroupBorderColor #A23C16
+  GroupHeaderFontColor #A23C16
+}
+skinparam rectangle {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BackgroundColor #FDF6E3
+  BorderColor #C8791E
+}
+set separator none
+skinparam BoundaryBackgroundColor #F5F0DA
+skinparam ControlBackgroundColor #F5F0DA
+skinparam DatabaseBackgroundColor #F5F0DA
+skinparam EntityBackgroundColor #F5F0DA
+skinparam object {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+}
+skinparam component {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  StereotypeFontColor #A23C16
+}
+skinparam interface {
+  BorderColor #0C0F14
+  BackgroundColor #F5F0DA
+}
+skinparam node {
+  BorderColor #5B534C
+}
+skinparam componentStyle uml2

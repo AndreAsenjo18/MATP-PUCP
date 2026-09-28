@@ -1,0 +1,42 @@
+@startuml comp_frontend
+!include _header.iuml
+top to bottom direction
+skinparam nodesep 40
+skinparam ranksep 55
+package "apps/web (Next.js App Router)" {
+  package "src/app — rutas (páginas)" #FBEFE9 {
+    component "/inicio\n/busqueda\n/piezas/[id]\n/piezas/[id]/editar" as R1
+    component "/importacion\n/duplicados\n/ia/sugerencias" as R2
+    component "/deposito\n/reportes\n/administracion\n/estado" as R3
+  }
+  package "src/components — Atomic Design (ADR-012)" #F3EEF8 {
+    component "ui (átomos)\nButton, Badge, Input,\nSelect, Field, Card" as C_UI
+    component "domain (moléculas)\nPieceCard, PieceSheet,\nStatusBadges,\nImportConflictModal" as C_DOM
+    component "layout (organismos)\nMainLayout, Sidebar,\nRequireSession" as C_LAY
+  }
+  package "src/lib — lógica de cliente" #FDF6E3 {
+    component "api\n(openapi-fetch +\nschema.d.ts generado)" as L_API
+    component "data\n(modo mock | api,\nmock-store, masking)" as L_DATA
+    component "auth\n(sesión, permisos)" as L_AUTH
+    component "design\n(tokens, contraste)" as L_DES
+    component "fixtures\n(datos sintéticos)" as L_FIX
+  }
+}
+interface "REST /api/v1" as I_REST
+R1 --> C_LAY
+R2 --> C_LAY
+R3 --> C_LAY
+R1 --> C_DOM
+R2 --> C_DOM
+R3 --> C_DOM
+C_DOM --> C_UI
+C_LAY --> C_UI
+C_UI --> L_DES
+R1 --> L_DATA
+R2 --> L_DATA
+R3 --> L_DATA
+C_LAY --> L_AUTH
+L_DATA --> L_API : modo api
+L_DATA --> L_FIX : modo mock (maqueta, ADR-006)
+L_API -( I_REST
+@enduml

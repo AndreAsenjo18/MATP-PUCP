@@ -1,0 +1,21 @@
+@startuml st_sugerencia
+!include _header.iuml
+hide empty description
+state "PENDING\nPendiente" as P
+state "APPROVED\nAprobada" as A
+state "PARTIALLY_APPROVED\nAprobada parcialmente" as PA
+state "REJECTED\nRechazada" as R
+[*] --> P : request(función, pieza)\n[proveedor disponible]\n/ guardar input minimizado y output
+P --> A : approve(todos los ítems)\n[permiso ai.review]\n/ apply() con auditoría origin=AI
+P --> PA : approve(subconjunto)\n/ aplicar ítems aprobados
+PA --> A : approve(ítems pendientes)\n[p. ej. término nuevo:\npermiso vocabularies.manage]
+P --> R : reject(motivo)\n[motivo obligatorio]
+P --> P : [datos fuente cambiaron]\n/ marcar obsoleta, exigir confirm_stale
+A --> [*]
+R --> [*]
+note right of P
+  RN-009 garantizado en tres capas:
+  CHECK en BD, módulo único apply.py
+  y auditoría con origen AI.
+end note
+@enduml

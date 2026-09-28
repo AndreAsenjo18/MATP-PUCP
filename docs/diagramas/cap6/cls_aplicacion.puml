@@ -1,0 +1,119 @@
+@startuml cls_aplicacion
+!include _header.iuml
+top to bottom direction
+skinparam nodesep 40
+skinparam ranksep 50
+
+package "Presentación (apps/web — Next.js)" #F3EEF8 {
+  class ApiClient <<boundary>> {
+    +request(path, options) : Response
+    -csrfToken : String
+  }
+}
+
+package "API REST (app/api/v1 — FastAPI)" #FBEFE9 {
+  class PiecesRouter <<controller>>
+  class ImportsRouter <<controller>>
+  class LocationsRouter <<controller>>
+  class QualityRouter <<controller>>
+  class AiRouter <<controller>>
+  class Deps <<dependency>> {
+    +get_session() : Session
+    +current_user() : AppUser
+    +require_permission(code)
+    +audit_ctx(user, origin) : AuditContext
+  }
+}
+
+package "Servicios de dominio (app/modules/*)" #FDF6E3 {
+  class CatalogService <<service>>
+  class IdentificationService <<service>>
+  class LocationService <<service>>
+  class ImportPipelineService <<service>>
+  class QualityService <<service>>
+  class AiSuggestionService <<service>>
+  class MediaService <<service>>
+  class SensitiveFieldPolicy {
+    +mask(entity, fields, user) : dict
+  }
+}
+
+package "Transversal (app/core, app/modules/audit)" #EEF6EC {
+  class AuditContext {
+    +user_id : UUID
+    +origin : AuditOrigin
+    +origin_ref : String
+    +change_set_id : UUID
+    +reason : String
+  }
+  class AuditTracker <<hook before_flush>> {
+    +column_changes(obj) : dict
+    +register_flush_guard(guard)
+  }
+  interface FlushGuard {
+    +__call__(session, ctx)
+  }
+  class IdentifierRulesGuard
+  class TenureChangeGuard
+  class SoftDeleteFilter <<hook do_orm_execute>>
+  interface StorageClient {
+    +presign_put(key, ttl) : URL
+    +presign_get(key, ttl) : URL
+    +head(key) : ObjectInfo
+    +copy(src, dst)
+  }
+  class S3Storage
+  interface IdentityProvider {
+    +authenticate(credentials) : Identity
+  }
+  class LocalPasswordProvider
+  class OidcPucpProvider <<stub>>
+}
+
+package "IA desacoplada (services/ai — matp_ai)" #EDF0F7 {
+  interface AIProvider {
+    +extract_structured(ctx) : Proposal
+    +suggest_terms(ctx, candidates) : Proposal
+    +describe(ctx) : Proposal
+  }
+  class MockProvider
+  class LlmProvider <<stub>>
+}
+
+package "Persistencia (SQLAlchemy 2 + PostgreSQL)" #F5F0DA {
+  class Session
+  abstract class Base
+}
+
+ApiClient ..> PiecesRouter : HTTPS/JSON
+ApiClient ..> ImportsRouter
+PiecesRouter ..> Deps
+ImportsRouter ..> Deps
+PiecesRouter ..> CatalogService
+PiecesRouter ..> IdentificationService
+PiecesRouter ..> MediaService
+LocationsRouter ..> LocationService
+ImportsRouter ..> ImportPipelineService
+QualityRouter ..> QualityService
+AiRouter ..> AiSuggestionService
+ImportPipelineService ..> CatalogService : reutiliza guardas
+ImportPipelineService ..> IdentificationService
+ImportPipelineService ..> QualityService : SimilarityScorer
+AiSuggestionService ..> AIProvider
+MediaService ..> StorageClient
+CatalogService ..> SensitiveFieldPolicy
+CatalogService ..> Session
+Deps ..> IdentityProvider
+Deps ..> AuditContext
+Session o-- AuditTracker
+Session o-- SoftDeleteFilter
+AuditTracker o-- "0..*" FlushGuard
+FlushGuard <|.. IdentifierRulesGuard
+FlushGuard <|.. TenureChangeGuard
+StorageClient <|.. S3Storage
+IdentityProvider <|.. LocalPasswordProvider
+IdentityProvider <|.. OidcPucpProvider
+AIProvider <|.. MockProvider
+AIProvider <|.. LlmProvider
+AuditTracker ..> AuditContext : exige
+@enduml

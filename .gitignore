@@ -1,0 +1,14 @@
+logs/
+.env
+.env.*.local
+node_modules/
+__pycache__/
+.venv/
+dist/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+.next/
+coverage/
+*.tsbuildinfo

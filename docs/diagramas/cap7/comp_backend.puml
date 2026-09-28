@@ -1,0 +1,66 @@
+@startuml comp_backend
+!include _header.iuml
+left to right direction
+skinparam nodesep 35
+skinparam ranksep 55
+
+package "apps/api (FastAPI)" {
+  package "app/api/v1 — capa de exposición" #FBEFE9 {
+    component "Routers por recurso\n(pieces, imports, locations,\ncollections, media, quality,\nreports, admin, ai)" as RT
+    component "deps\n(sesión, usuario,\npermisos, AuditContext)" as DEPS
+    component "errors + pagination\n({code, message, details})" as ERR
+  }
+  package "app/modules — servicios de dominio" #FDF6E3 {
+    component "catalog" as M_CAT
+    component "identification\n(normalización N1–N7)" as M_ID
+    component "collections\n(+ vocabularios)" as M_COL
+    component "media" as M_MED
+    component "locations" as M_LOC
+    component "imports" as M_IMP
+    component "quality" as M_Q
+    component "search" as M_S
+    component "users\n(+ sensitive)" as M_U
+    component "ai_suggestions\n(apply, privacy)" as M_AI
+    component "audit\n(tracking, soft_delete,\ncontext)" as M_AUD
+  }
+  package "app/core — plataforma" #EEF6EC {
+    component "config\n(pydantic-settings)" as C_CFG
+    component "db\n(engine, sesión)" as C_DB
+    component "storage\n(boto3, S3)" as C_ST
+    component "health" as C_H
+  }
+  component "alembic\n(migraciones)" as ALB
+  component "seed\n(datos sintéticos)" as SEED
+}
+package "services/ai (matp_ai)" #EDF0F7 {
+  component "main\n(app FastAPI de IA)" as AI_MAIN
+  component "providers\n(base, mock, llm)" as AI_PROV
+}
+
+RT --> DEPS
+RT --> ERR
+RT --> M_CAT
+RT --> M_IMP
+RT --> M_LOC
+RT --> M_Q
+RT --> M_AI
+RT --> M_S
+DEPS --> M_U
+DEPS ..> M_AUD : AuditContext
+M_ID ..> M_AUD : registra FlushGuard
+M_CAT ..> M_AUD : registra FlushGuard
+M_IMP --> M_CAT
+M_IMP --> M_ID
+M_IMP --> M_Q
+M_CAT --> M_ID
+M_CAT --> M_COL
+M_LOC --> M_CAT
+M_MED --> C_ST : StorageClient
+M_AI --> AI_PROV : AIProvider
+AI_MAIN --> AI_PROV
+M_S --> M_CAT
+M_CAT --> C_DB
+M_AUD --> C_DB
+ALB --> C_DB
+SEED --> M_CAT
+@enduml

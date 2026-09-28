@@ -1,0 +1,37 @@
+@startuml dep_local
+!include _header.iuml
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 60
+node "Equipo del desarrollador\n<<Windows / macOS / Linux>>" as PC #F3EEF8 {
+  artifact "IDE + Claude Code\n(OpenSpec /opsx:*)" as IDE
+  artifact "Navegador" as BR
+  node "Docker Desktop / Engine\n<<entorno de ejecución>>" as DE {
+    node "web :3000" as W { 
+      artifact "Next.js\n(modo live o mock)" as AW
+    }
+    node "api :8000" as A {
+      artifact "FastAPI + matp_ai\n(--reload opcional)" as AA
+    }
+    node "db :5432" as D {
+      database "PostgreSQL 18\n+ datos semilla" as AD
+    }
+    node "storage :9000 / :9001" as S {
+      database "MinIO\n+ consola web" as AS
+    }
+  }
+  artifact ".env (desde .env.example)" as ENV
+}
+node "GitHub" as GH #EEEEEE {
+  artifact "Repositorio MATP-PUCP\n(ramas feature/* → develop → main)" as REPO
+  artifact "GitHub Actions (CI)" as CI
+}
+BR --> AW : http://localhost:3000
+BR --> AA : http://localhost:8000/docs
+BR --> AS : consola :9001
+AW --> AA
+AA --> AD
+AA --> AS
+IDE --> REPO : git push / Pull Request
+REPO --> CI : dispara
+@enduml

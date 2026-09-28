@@ -1,0 +1,53 @@
+@startuml cls_mixins
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+abstract class Base
+abstract class UUIDPrimaryKeyMixin {
+  +id : UUID
+}
+abstract class TimestampMixin {
+  +created_at : DateTime
+  +updated_at : DateTime
+}
+abstract class SoftDeleteMixin {
+  +deleted_at : DateTime [0..1]
+  +deleted_by_id : UUID [0..1]
+  +deletion_reason : String [0..1]
+  +is_deleted() : bool
+}
+class "Entidad con eliminación lógica" as E1 <<soft-delete>>
+class "Entidad de solo inserción" as E2 <<solo inserción>>
+UUIDPrimaryKeyMixin <|-- E1
+TimestampMixin <|-- E1
+SoftDeleteMixin <|-- E1
+Base <|-- E1
+UUIDPrimaryKeyMixin <|-- E2
+Base <|-- E2
+note right of E1
+  Piece, PieceIdentifier, IdentifierType, PieceMaterial,
+  MediaAsset, Collection, Vocabulary, Term, Location,
+  ImportMappingTemplate, ImportBatch, AppUser, Role,
+  RolePermission, UserRole
+end note
+note right of E2
+  AuditLog, PieceMovement, PieceSourceRecord,
+  ConservationAssessment (triggers BEFORE UPDATE/DELETE)
+end note
+
+@enduml

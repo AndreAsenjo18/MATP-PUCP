@@ -1,0 +1,88 @@
+@startuml cls_colecciones
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+top to bottom direction
+package "Colecciones, vocabularios y multimedia" #FBF8F0 {
+class Collection <<soft-delete>> {
+  +name : String
+  +acronym : String [0..1]
+  +acronym_normalized : String [0..1]
+  +description : String [0..1]
+  +default_tenure_regime : TenureRegime
+  +origin_description : String [0..1]
+  +is_active : Boolean
+}
+class Vocabulary <<soft-delete>> {
+  +code : String
+  +name : String
+  +description : String [0..1]
+}
+class Term <<soft-delete>> {
+  +code : String
+  +label : String
+  +description : String [0..1]
+  +sort_order : Integer
+  +is_active : Boolean
+  +external_uri : String [0..1]
+}
+class MediaAsset <<soft-delete>> {
+  +storage_key : String
+  +original_filename : String [0..1]
+  +content_type : String
+  +size_bytes : Integer
+  +content_sha256 : String
+  +width_px : Integer [0..1]
+  +height_px : Integer [0..1]
+  +sort_order : Integer
+  +is_primary : Boolean
+  +photographer : String [0..1]
+  +taken_on : Date [0..1]
+  +restriction_note : String [0..1]
+  +extra_metadata : JSON [0..1]
+}
+enum TenureRegime {
+  OWNED
+  LOAN_FOR_USE
+  TEMPORARY_LOAN
+}
+}
+class Piece #EEEEEE
+class CollectionService <<service>> {
+  +create_collection(data, ctx) : Collection
+  +move_collection(c, parent)
+  +create_term(vocabulary, data) : Term
+  +term_usage(term) : int
+  +delete_term(term, reason)
+}
+class MediaService <<service>> {
+  +create_upload_url(piece, meta) : UploadTicket
+  +register_media(piece, key, meta) : MediaAsset
+  +set_primary(media)
+  +reorder(piece, ids)
+  +effective_restriction(media) : Term
+  +download_url(media, purpose) : URL
+}
+Vocabulary "1" *-- "0..*" Term : términos
+Collection "0..1" -- "0..*" Collection : subcolección de
+Piece "1" *-- "0..*" MediaAsset : fotografías
+Term "0..1" -- "0..*" MediaAsset : vista
+Term "0..1" -- "0..*" MediaAsset : restricción
+CollectionService ..> Collection : <<usa>>
+MediaService ..> MediaAsset : <<usa>>
+@enduml

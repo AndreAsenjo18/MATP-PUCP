@@ -1,0 +1,44 @@
+@startuml dep_flujo
+!include _header.iuml
+skinparam activity {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  DiamondBackgroundColor #F5F0DA
+}
+|Desarrollador|
+start
+:Implementar change de OpenSpec\nen rama feature/MATP-PUCP#N;
+:Probar en entorno local\n(docker compose + seed);
+:Abrir Pull Request hacia develop;
+|GitHub Actions|
+:CI: ruff + pytest (API e IA),\neslint + tsc + vitest + build (web),\nopenspec validate --strict,\nverificación de contrato OpenAPI;
+if (¿CI en verde y revisión aprobada?) then (sí)
+  |Integradores|
+  :Merge a develop;
+else (no)
+  |Desarrollador|
+  :Corregir;
+  stop
+endif
+|Integradores|
+:Merge develop → main\ny etiqueta vX.Y.Z-rc.N;
+|GitHub Actions|
+:release.yml: construir imágenes\nmatp-api y matp-web y publicar en GHCR;
+|Implantadores|
+:Desplegar release candidate\nen staging AWS Academy;
+:Pruebas de integración y\nvalidación con QA / contraparte;
+if (¿Validado?) then (sí)
+  :Etiquetar vX.Y.Z (misma imagen);
+  :deploy.sh vX.Y.Z en VM PUCP:\nrespaldo previo → alembic upgrade\n→ up -d → verificación /health;
+  if (¿/health OK?) then (sí)
+    :Registrar en deployments.log;
+    stop
+  else (no)
+    :deploy.sh --rollback\n(versión anterior + restaurar respaldo\nsi la migración no es reversible);
+    stop
+  endif
+else (no)
+  :Reportar defectos (Cap. 10);
+  stop
+endif
+@enduml
