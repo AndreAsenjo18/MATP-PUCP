@@ -109,6 +109,7 @@ No archives hasta que el PR esté aprobado.
 | Reglas de dominio y comandos | [`CLAUDE.md`](../CLAUDE.md) |
 | Arquitectura y enlaces | [`README.md`](../README.md) |
 | Qué me toca | [`ownership.md`](ownership.md) |
+| En qué sprint va cada change | [`plan-sprints.md`](plan-sprints.md) |
 | Requisitos y prioridades | [`requisitos/catalogo.md`](requisitos/catalogo.md) |
 | Modelo de datos | [`modelo-datos.md`](modelo-datos.md) |
 | Contrato de API | [`api/README.md`](api/README.md), `docs/api/openapi.json`, http://localhost:8000/docs |
