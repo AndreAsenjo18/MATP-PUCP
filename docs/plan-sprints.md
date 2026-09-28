@@ -1,6 +1,6 @@
 # Plan de sprints (base inicial)
 
-> **Estado: propuesta inicial, versión 5 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada jueves (ver «Cómo se modifica este plan»).
+> **Estado: propuesta inicial, versión 6 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada jueves (ver «Cómo se modifica este plan»).
 > Asignaciones tomadas de [`ownership.md`](ownership.md), que también es una propuesta pendiente de validar por el Líder de Proyecto y el Arquitecto.
 
 ## Marco
@@ -43,16 +43,16 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 
 | Integrante | S0 · 28 – 30 sep | S1 · 1 – 7 oct | S2 · 8 – 14 oct | S3 · 15 – 21 oct | S4 · 22 – 28 oct | S5 · 29 oct – 4 nov | S6 – S8 · 5 – 25 nov |
 |---|---|---|---|---|---|---|---|
-| **Germán Asenjo** | Decisiones C1–C6 y validar ownership y plan | `deteccion-duplicados-y-cola-revision` | Cierre de duplicados | `importacion-pipeline-reconciliacion` · guion de la validación | Conduce la decisión A/B · A: priorizar ajustes / B: expediente y dossier | A: ajustes / B: expediente y dossier | Expediente final · conduce la demo |
-| **Sergio Chumbimuni** | alinear 2.1 (`code_i` y renombrados) | alinear 4.2, 5.x y 6.3 · `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA en la ficha | A: changes nuevos de IA o arquitectura / B: documentación de arquitectura | Revisión final de arquitectura · `v1.0.0` con Josué | Documentación de arquitectura · presenta la arquitectura |
+| **Germán Asenjo** | Decisiones C1–C6 con `/opsx:explore` y `/opsx:update` | `deteccion-duplicados-y-cola-revision` | Cierre de duplicados | `importacion-pipeline-reconciliacion` · guion de la validación | Conduce la decisión A/B · A: priorizar ajustes / B: expediente y dossier | A: ajustes / B: expediente y dossier | Expediente final · conduce la demo |
+| **Sergio Chumbimuni** | Preparación: `develop` → `main` · alinear 2.1 · acompañante | alinear 4.2, 5.x y 6.3 · `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA en la ficha | A: changes nuevos de IA o arquitectura / B: documentación de arquitectura | Revisión final de arquitectura · `v1.0.0` con Josué | Documentación de arquitectura · presenta la arquitectura |
 | **Camilo Gomez** | `ficha-pieza-crud` 1.2 (transiciones del régimen de tenencia) | alinear 2.2 y 4.1 · `ficha-pieza-crud` (backend) | `colecciones-y-vocabularios-admin` | `fotografias-multiples-por-pieza` | A: ajustes de Catálogo / B: manual de Catálogo | A: ajustes / B: manual de Catálogo | Demo del módulo de Catálogo |
 | **Yessica Ochante** | Cerrar `sistema-diseno-frontend` y `maqueta-ui-navegable` | alinear 6.1 · `ficha-pieza-crud` (frontend) | `colecciones-y-vocabularios-admin` (frontend) | `fotografias-multiples-por-pieza` (frontend) · datos de la validación | A: ajustes de UX / B: manual de usuario (pantallas) | A: ajustes de UX / B: capturas del manual | Guion y datos de la demo |
 | **Franz Vilcapoma** | `plantillas-mapeo-y-normalizacion` 1.2 (transformaciones) | alinear 2.4 y 4.4 · `plantillas-mapeo-y-normalizacion` | Cierre de plantillas | `importacion-pipeline-reconciliacion` | A: ajustes de Importación / B: manual de Importación | A: ajustes / B: manual de Importación | Demo del módulo de Importación |
-| **Sergio Huamán** | `ci-migraciones-postgresql` | alinear 4.5 y 6.2 · `alertas-y-reporte-incompletas` | Cierre de alertas | `reportes-inventario` | QA de extremo a extremo del MVP | Regresión y congelamiento | Regresión final antes de la demo |
+| **Sergio Huamán** | `ci-migraciones-postgresql` 1.1 (una sola cabeza) | alinear 4.5 y 6.2 · `alertas-y-reporte-incompletas` | Cierre de alertas | `reportes-inventario` | QA de extremo a extremo del MVP | Regresión y congelamiento | Regresión final antes de la demo |
 | **Mathias Medina** | — (presentación del proyecto) | alinear 4.3 · `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | `reportes-inventario` | QA de extremo a extremo · B: formato del manual | Formato del manual | Documentación final |
-| **Josué Moreno** | `develop` → `main` y protección de `main` | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
+| **Josué Moreno** | `ci-migraciones-postgresql` 2 a 5 (job de PostgreSQL) · acompañante | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
 | **José Ávalos** | alinear 3.2 (traducción de enumerados) | alinear 4.6 · `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA · revisiones del MVP | A: ajustes de IA / B: manual de IA | A: ajustes / B: manual de IA | Demo del módulo de IA |
-| **Álvaro Vargas** | alinear 2.3 (entidad `loan`) | `auditoria-y-soft-delete-transversal` | `autenticacion-y-matriz-permisos` | Cierre de autenticación · compose de producción y proxy | VM PUCP y respaldos (si hay acceso) | Simulacro de restauración | Entorno de la demo |
+| **Álvaro Vargas** | alinear 2.3 (entidad `loan`) · acompañante | `auditoria-y-soft-delete-transversal` | `autenticacion-y-matriz-permisos` | Cierre de autenticación · compose de producción y proxy | VM PUCP y respaldos (si hay acceso) | Simulacro de restauración | Entorno de la demo |
 | **Manuel Barrantes** | Verificar con Docker y archivar el arranque del backend | alinear 4.7 y 7.2 · CD 1: imágenes en cada merge y ADR-013 | CD 2: `deploy.sh` y despliegue en cada merge | Despliegue del MVP en el entorno de integración | VM PUCP y respaldos (si hay acceso) | Manual técnico de despliegue | Entorno de la demo |
 
 ## CI/CD
@@ -63,8 +63,8 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 
 | Sprint | Pieza | Responsable | Respaldo |
 |---|---|---|---|
-| S0 | Protección de `main`: PR obligatorio, los jobs de CI en verde y una aprobación | Josué Moreno | Guía de trabajo del equipo |
-| S0 | Job de CI **de migraciones**: servicio PostgreSQL, `upgrade head`, comparación con los modelos, protecciones de la auditoría, `downgrade base` y verificación de **una sola cabeza**. Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Sergio Huamán | Change [`ci-migraciones-postgresql`](../openspec/changes/ci-migraciones-postgresql/) (ADR-010, punto 5) |
+| S0 | Protección de `main`: PR obligatorio, los jobs de CI en verde y una aprobación | Sergio Chumbimuni (preparación del lunes 28) | Guía de trabajo del equipo |
+| S0 | Job de CI **de migraciones**: servicio PostgreSQL, `upgrade head`, comparación con los modelos, protecciones de la auditoría, `downgrade base` y verificación de **una sola cabeza**. Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Josué Moreno (tareas 2 a 5), Sergio Huamán (tarea 1.1) | Change [`ci-migraciones-postgresql`](../openspec/changes/ci-migraciones-postgresql/) (ADR-010, punto 5) |
 | S1 | **CD 1:** Dockerfiles sin usuario root y publicación de las imágenes en GHCR **en cada merge a main** (etiquetas con el SHA y `main`) y al crear un tag de versión | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.1 y 2.1 (ajustar la 2.1, que hoy publica solo por tag) |
 | S1 | Actualizar `despliegue-vm-y-respaldos` (`/opsx:update`) y ADR-013 para el despliegue continuo al entorno de integración | Manuel Barrantes; aprueba Sergio Chumbimuni | ADR-013 hoy dice que el entorno se opera por sesiones |
 | S2 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y **despliegue automático en AWS Academy después de cada merge a main** | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 2.2 y 6.3; ADR-013 |
@@ -89,25 +89,45 @@ merge a main → CI en verde → imágenes en GHCR (sha, main) → despliegue en
 
 **Objetivo:** que cada integrante haga **una tarea real de principio a fin con el flujo del equipo** (lee el change, crea su rama, trabaja con Claude Code u OpenCode, abre el PR, pasa CI y la revisión, integra) y que el jueves 1 de octubre main tenga la base para empezar con todo.
 
-**Preparación (no cuenta como tarea):** todos dejan el entorno local funcionando (`npm run dev`, `migrate`, `seed`) y leen la guía de trabajo del equipo.
+**Preparación (no cuenta como tarea):**
+- **Sergio Chumbimuni, el lunes 28:** integrar en `develop` la rama con la guía, el plan y `.opencode/`; pasar `develop` a `main`; y activar la protección de `main` (PR obligatorio, CI en verde y una aprobación). Todas las ramas del sprint salen de main.
+- **Todos:** dejar el entorno local funcionando (`npm run dev`, `migrate`, `seed`) y leer la guía de trabajo del equipo.
 
 Todas las tareas del sprint 0 son independientes entre sí, salvo la de Germán, que decide C4 y C5 antes de que Sergio Chumbimuni cierre la 2.1. Así nadie queda esperando a otro en una semana de tres días.
 
-| Integrante | Su única tarea | Change / respaldo | Debe estar integrada | Revisa PR |
-|---|---|---|---|---|
-| Josué Moreno | Integrar `develop` en `main` y activar la protección de `main` | Guía de trabajo del equipo | **Lunes 28** (todas las ramas del sprint salen de main) | Sergio Chumbimuni |
-| Germán Asenjo | Decidir los conflictos C1–C6 de [`api/mapeo-endpoints-v1.md`](api/mapeo-endpoints-v1.md) y validar `ownership.md` y este plan, en un PR `docs/...` | Preguntas I1–I6 de `preguntas-contraparte.md` | **Martes 29** (C4 y C5 afectan a la 2.1) | Sergio Chumbimuni |
-| Sergio Chumbimuni | Migración de `piece.code_i` y renombrados `title` → `denomination`, `period_*` → `epoch_*` | `alinear-api-endpoints-v1` tarea 2.1 | Miércoles 30 | José Ávalos |
-| Álvaro Vargas | Entidad `loan` con borrado lógico y auditoría | `alinear-api-endpoints-v1` tarea 2.3 | Miércoles 30 | Sergio Chumbimuni |
-| José Ávalos | Traducción de enumerados en todos los esquemas de entrada y salida | `alinear-api-endpoints-v1` tarea 3.2 | Miércoles 30 | Sergio Chumbimuni |
-| Camilo Gomez | Tabla de transiciones del régimen de tenencia con sus pruebas (módulo nuevo, no depende de los renombrados) | `ficha-pieza-crud` tarea 1.2 | Miércoles 30 | José Ávalos |
-| Franz Vilcapoma | Transformaciones de importación con traza por valor y sus pruebas (fechas ambiguas, épocas «s. XX», «ca. 1950») | `plantillas-mapeo-y-normalizacion` tarea 1.2 | Miércoles 30 | José Ávalos |
-| Sergio Huamán | Job de CI de migraciones en PostgreSQL y verificación de una sola cabeza | `ci-migraciones-postgresql` | Miércoles 30 | Josué Moreno |
-| Manuel Barrantes | Verificar con Docker y archivar `setup-monorepo-base`, `modelo-datos-nucleo` y `contratos-api-borrador` (tareas pendientes de verificación) | Esos tres changes | Martes 29 | Sergio Chumbimuni |
-| Yessica Ochante | Cerrar `sistema-diseno-frontend` (tareas 7.5 y 7.7) y archivar `maqueta-ui-navegable` y `sistema-diseno-frontend`, después de los tres de Manuel | Esos dos changes | Miércoles 30 | Josué Moreno |
-| Mathias Medina | — Presentación del proyecto | — | — | — |
+**Reglas del sprint 0.** Cada uno recorre en su tarea **todos** estos pasos; son el objetivo del sprint, más que el código en sí:
 
-> **Revisiones:** Sergio Chumbimuni revisa la mayoría de los PR porque casi todos tocan el modelo de datos; Josué Moreno y José Ávalos lo cubren cuando haya cola. Si una tarea no se integra el miércoles, pasa al sprint 1 como la primera tarea de esa persona.
+1. Leer el change con `openspec show <change>` y, si hay dudas, usar `/opsx:explore`.
+2. Crear la rama desde main con el nombre del change (`feat/<change>` o `feat/<change>-<parte>`).
+3. Ejecutar `/opsx:apply <change>` (en OpenCode, `/opsx-apply`), o el prompt con `openspec instructions apply --change <change>`, indicando al agente que haga **solo tu número de tarea**. En esta semana hay varias personas en el mismo change a la vez.
+4. Marcar tu tarea `- [x]` con su prueba y correr `npm test`, `npm run lint` y `openspec validate <change> --strict`.
+5. Abrir el PR como borrador, con la descripción de la guía (change, IDs y evidencia), y pasarlo a revisión con CI en verde.
+6. Atender la revisión e integrar. Si tu tarea cierra el change, archivarlo en un PR aparte.
+7. Llevar a la retrospectiva del miércoles qué costó y qué no quedó claro.
+
+**Acompañantes.** Sergio Chumbimuni, Josué Moreno y Álvaro Vargas ya conocen el flujo. Además de su tarea, cada uno resuelve dudas y mira el primer PR de dos o tres compañeros:
+
+| Acompañante | Acompaña a |
+|---|---|
+| Sergio Chumbimuni | Germán Asenjo, Camilo Gomez, Franz Vilcapoma |
+| Josué Moreno | Sergio Huamán, Yessica Ochante |
+| Álvaro Vargas | Manuel Barrantes, José Ávalos |
+
+| Integrante | Su única tarea | Change / respaldo | Qué practica del flujo | Debe estar integrada | Revisa PR |
+|---|---|---|---|---|---|
+| Germán Asenjo | Analizar los conflictos C1–C6 de [`api/mapeo-endpoints-v1.md`](api/mapeo-endpoints-v1.md) y registrar las decisiones en el `design.md` de `alinear-api-endpoints-v1` y en `preguntas-contraparte.md`; validar `ownership.md` y este plan | `alinear-api-endpoints-v1` (preguntas I1–I6) | `/opsx:explore` y `/opsx:update` | **Martes 29** (C4 y C5 afectan a la 2.1) | Sergio Chumbimuni |
+| Josué Moreno | Pruebas de migraciones contra PostgreSQL, job de CI, script local `test:api:pg` y cierre del change | `ci-migraciones-postgresql` tareas 2 a 5 | apply, validate y **archive** | Miércoles 30 | Sergio Chumbimuni |
+| Sergio Chumbimuni | Migración de `piece.code_i` y renombrados `title` → `denomination`, `period_*` → `epoch_*` | `alinear-api-endpoints-v1` tarea 2.1 | apply y revisión de PR | Miércoles 30 | José Ávalos |
+| Álvaro Vargas | Entidad `loan` con borrado lógico y auditoría | `alinear-api-endpoints-v1` tarea 2.3 | apply con una tarea de un change compartido | Miércoles 30 | Sergio Chumbimuni |
+| José Ávalos | Traducción de enumerados en todos los esquemas de entrada y salida | `alinear-api-endpoints-v1` tarea 3.2 | apply con una tarea de un change compartido | Miércoles 30 | Sergio Chumbimuni |
+| Camilo Gomez | Tabla de transiciones del régimen de tenencia con sus pruebas (módulo nuevo, no depende de los renombrados) | `ficha-pieza-crud` tarea 1.2 | apply sobre el change de su célula | Miércoles 30 | José Ávalos |
+| Franz Vilcapoma | Transformaciones de importación con traza por valor y sus pruebas (fechas ambiguas, épocas «s. XX», «ca. 1950») | `plantillas-mapeo-y-normalizacion` tarea 1.2 | apply sobre el change de su célula | Miércoles 30 | José Ávalos |
+| Sergio Huamán | Prueba de que el historial de migraciones tiene una sola cabeza (no necesita base de datos) | `ci-migraciones-postgresql` tarea 1.1 | apply con una sola tarea, PR y revisión | Miércoles 30 | Josué Moreno |
+| Manuel Barrantes | Verificar con Docker y archivar `setup-monorepo-base`, `modelo-datos-nucleo` y `contratos-api-borrador` (tareas pendientes de verificación) | Esos tres changes | verificación con Docker y **archive** | Martes 29 | Sergio Chumbimuni |
+| Yessica Ochante | Cerrar `sistema-diseno-frontend` (tareas 7.5 y 7.7) y archivar `maqueta-ui-navegable` y `sistema-diseno-frontend`, después de los tres de Manuel | Esos dos changes | apply, validate y **archive** | Miércoles 30 | Josué Moreno |
+| Mathias Medina | — Presentación del proyecto | — | — | — | — |
+
+> **Revisiones:** Sergio Chumbimuni revisa la mayoría de los PR porque casi todos tocan el modelo de datos; Josué Moreno y José Ávalos lo cubren cuando haya cola. Si una tarea no se integra el miércoles, pasa al sprint 1 como la primera tarea de esa persona. Entre todos se practican explore, update, apply, validate y archive; `/opsx:propose` queda fuera porque crear un change es poco frecuente y la guía lo explica.
 
 ### Sprint 1 · jue 1 – mié 7 oct · «Contrato cerrado y núcleo I»
 
@@ -247,3 +267,4 @@ En el sprint 0, la revisión del miércoles 30 sirve además para comentar **có
 | 3 | 2026-09-28 | Change `ci-migraciones-postgresql`; despliegue continuo al entorno de integración de AWS Academy en cada merge a main |
 | 4 | 2026-09-28 | Sprint 0 de adaptación al flujo (una tarea por persona, sin Mathias Medina por la presentación del proyecto) |
 | 5 | 2026-09-28 | Sprints de jueves a miércoles 23:59 (el sprint 0, del lunes 28 al miércoles 30 de septiembre); tareas del sprint 0 independientes entre sí; fin del desarrollo el 4 de noviembre y demo el 23 de noviembre [SUPUESTO] |
+| 6 | 2026-09-28 | Sprint 0 centrado en aprender el flujo: reglas paso a paso, qué practica cada uno, acompañantes (Sergio Chumbimuni, Josué Moreno, Álvaro Vargas); `develop` → `main` pasa a preparación del Arquitecto; `ci-migraciones-postgresql` repartido entre Josué Moreno y Sergio Huamán |
