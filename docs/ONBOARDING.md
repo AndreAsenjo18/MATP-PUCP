@@ -13,7 +13,11 @@ Lee antes: [`CLAUDE.md`](../CLAUDE.md) (dominio, reglas de negocio y convencione
 - Git, **Node.js 24** (con npm), **Python 3.14** (3.13 también sirve).
 - **Docker Desktop / Docker Engine con Compose v2** para levantar base de datos, almacenamiento y servicios.
 - OpenSpec CLI: `npm install -g @fission-ai/openspec@latest` (el arranque usó 1.13.0; usa la sintaxis de tu versión instalada: `openspec --help`).
-- Claude Code (opcional pero recomendado) con los comandos `/opsx:*` que ya vienen en `.claude/`.
+- Un agente de desarrollo (opcional pero recomendado):
+  - **Claude Code**, con los comandos `/opsx:*` que ya vienen en `.claude/`; o
+  - **OpenCode** (alternativa gratuita), con los comandos `/opsx-*` (con guion) que vienen en `.opencode/`. OpenCode lee `CLAUDE.md` como reglas del proyecto.
+  - Sin comandos slash, cualquier agente puede seguir el flujo si le pides ejecutar la CLI: `openspec instructions apply --change <change>` devuelve las tareas pendientes y los archivos de contexto que debe leer.
+  - Ambas carpetas se generan con `openspec init --tools claude,opencode` usando la misma versión de OpenSpec que CI (1.13.0).
 
 ## 2. Setup local en 5 comandos
 
@@ -58,7 +62,7 @@ Comandos útiles: `openspec list` · `openspec list --specs` · `openspec show <
 1. `git pull` en la rama principal y `openspec list`.
 2. Toma el change asignado a tu célula en [`ownership.md`](ownership.md) y revisa sus dependencias (columna "Depende de").
 3. Crea la rama: `git checkout -b feat/<change>`.
-4. En Claude Code:
+4. En Claude Code (en OpenCode, `/opsx-explore` y `/opsx-apply`):
    - `/opsx:explore` si tienes dudas sobre el alcance o el diseño (no escribe código);
    - `/opsx:apply <change>` para implementar tarea por tarea, marcando `- [x]` cada una con su prueba.
 5. Verifica en local: `npm run lint`, `npm test`, `npm run openapi:check` y `openspec validate <change> --strict`. Si tocaste la base de datos, verifica también con Docker (`npm run dev`, `npm run migrate`, `npm run seed`).
@@ -82,7 +86,7 @@ Comandos útiles: `openspec list` · `openspec list --specs` · `openspec show <
 - **IA solo con aprobación humana**; proveedor simulado (`AI_PROVIDER=mock`) por defecto.
 - **Solo datos sintéticos** en el repositorio y en las demos (Ley 29733).
 
-## 7. Prompt corto recomendado para iniciar cualquier sesión de Claude Code
+## 7. Prompt corto recomendado para iniciar cualquier sesión de Claude Code u OpenCode
 
 Reemplaza `<CHANGE>` y `<CÉLULA>`:
 
