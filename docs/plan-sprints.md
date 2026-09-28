@@ -1,11 +1,12 @@
 # Plan de sprints (base inicial)
 
-> **Estado: propuesta inicial, versión 1 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada lunes (ver «Cómo se modifica este plan»).
+> **Estado: propuesta inicial, versión 2 (2026-09-28).** Es una base para arrancar, no un compromiso cerrado: se ajusta en la planificación de cada lunes (ver «Cómo se modifica este plan»).
 > Asignaciones tomadas de [`ownership.md`](ownership.md), que también es una propuesta pendiente de validar por el Líder de Proyecto y el Arquitecto.
 
 ## Marco
 
 - **Sprints semanales**, de lunes a domingo. El primero empieza el lunes 28 de septiembre de 2026.
+- **Los 11 integrantes tienen trabajo asignado todas las semanas** (ver «Carga por persona»).
 - **Máximo 6 semanas.** La semana 6 termina con la **demo ante los profesores** (fecha exacta por confirmar [SUPUESTO: semana del 2 al 8 de noviembre]).
 - **Validación con el cliente al cierre del sprint 4** (reunión con el MATP [SUPUESTO: 23 al 27 de octubre]). Con lo que diga el museo, el equipo decide en el sprint 5 entre:
   - **Opción A:** hacer uno o dos sprints de ajustes con los changes nuevos que salgan de la reunión.
@@ -20,91 +21,151 @@ Se prioriza la **Fase 1 (Alta / MVP)** del contrato de interfaces ([`docs/fuente
 |---|---|
 | **MVP** (debe estar para la validación) | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin`, `fotografias-multiples-por-pieza`, `ubicacion-jerarquica-y-movimientos`, `plantillas-mapeo-y-normalizacion`, `deteccion-duplicados-y-cola-revision`, `importacion-pipeline-reconciliacion`, `busqueda-avanzada-y-exportacion`, `autenticacion-y-matriz-permisos`, `auditoria-y-soft-delete-transversal` |
 | **Deseable** (entra si hay capacidad; si no, se muestra como avance) | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos`, `alertas-y-reporte-incompletas`, `reportes-inventario` |
-| **Infraestructura** (por partes) | `despliegue-vm-y-respaldos`: entorno de integración para la validación y la demo; la VM PUCP y los respaldos dependen de la DTI |
+| **CI/CD e infraestructura** (por partes, todas las semanas) | Mejoras de CI (sección «CI/CD») y `despliegue-vm-y-respaldos` |
 
-## Vista general
+## Carga por persona
 
-| Célula (líder) | Sprint 1<br>28 sep – 4 oct | Sprint 2<br>5 – 11 oct | Sprint 3<br>12 – 18 oct | Sprint 4<br>19 – 25 oct | Sprint 5<br>26 oct – 1 nov | Sprint 6<br>2 – 8 nov |
+Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones de specs y de PR se suman a esto (ver el detalle de cada sprint).
+
+| Integrante | S1 · 28 sep – 4 oct | S2 · 5 – 11 oct | S3 · 12 – 18 oct | S4 · 19 – 25 oct | S5 · 26 oct – 1 nov | S6 · 2 – 8 nov |
 |---|---|---|---|---|---|---|
-| **Arranque** (Sergio Chumbimuni) | Cierre del arranque + `alinear-api-endpoints-v1` | Terminar `alinear-api-endpoints-v1` si queda algo | Revisión de arquitectura | Revisión de arquitectura | Según validación | Demo |
-| **Catálogo** (Camilo Gomez) | Revisar specs | `ficha-pieza-crud` | `colecciones-y-vocabularios-admin` | `fotografias-multiples-por-pieza` | Ajustes o documentación | Demo |
-| **Importación** (Franz Vilcapoma) | Revisar specs | `plantillas-mapeo-y-normalizacion` · `deteccion-duplicados-y-cola-revision` | Terminar los dos anteriores | `importacion-pipeline-reconciliacion` | Terminar pipeline, ajustes o documentación | Demo |
-| **Consulta y control** (Josué Moreno) | Revisar specs | `ubicacion-jerarquica-y-movimientos` · `alertas-y-reporte-incompletas` | `busqueda-avanzada-y-exportacion` · terminar alertas | `reportes-inventario` | Ajustes o documentación | Demo |
-| **Plataforma** (Álvaro Vargas) | `auditoria-y-soft-delete-transversal` + apoyo al cierre del arranque | Terminar auditoría · `autenticacion-y-matriz-permisos` | Terminar autenticación | `despliegue-vm-y-respaldos` (entorno de integración) | Despliegue en VM y respaldos (si hay acceso) | Entorno de la demo |
-| **IA** (José Ávalos) | `ia-extraccion-texto-libre` | Terminar `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Terminar `ia-sugerencia-terminos` e integración | Ajustes o documentación | Demo |
+| **Germán Asenjo** | Decisiones C1–C6 · validar ownership · alinear 2.3 (préstamos) | `deteccion-duplicados-y-cola-revision` | Cierre de duplicados | `importacion-pipeline-reconciliacion` · guion de la validación | Conduce la decisión A/B · A: priorizar ajustes / B: expediente y dossier | Conduce la demo |
+| **Sergio Chumbimuni** | Coordina alinear · 2.2 + 4.2 · 5.x · 6.3 | `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA en la ficha | A: changes nuevos de IA o arquitectura / B: documentación de arquitectura | Presenta la arquitectura |
+| **Camilo Gomez** | alinear 2.1 + 4.1 (piezas) | `ficha-pieza-crud` (backend) | `colecciones-y-vocabularios-admin` | `fotografias-multiples-por-pieza` | A: ajustes de Catálogo / B: manual de Catálogo | Demo del módulo de Catálogo |
+| **Yessica Ochante** | alinear 6.1 (cliente tipado y datos de la web) | `ficha-pieza-crud` (frontend) | `colecciones-y-vocabularios-admin` (frontend) | `fotografias-multiples-por-pieza` (frontend) · datos de la validación | A: ajustes de UX / B: manual de usuario (pantallas) | Guion y datos de la demo |
+| **Franz Vilcapoma** | alinear 2.4 + 4.4 (seed, fixtures, importación) | `plantillas-mapeo-y-normalizacion` | Cierre de plantillas | `importacion-pipeline-reconciliacion` | A: ajustes de Importación / B: manual de Importación | Demo del módulo de Importación |
+| **Sergio Huamán** | alinear 4.5 + 6.2 (búsqueda y documentación) | `alertas-y-reporte-incompletas` | Cierre de alertas | `reportes-inventario` | QA de extremo a extremo del MVP | Regresión final y congelamiento |
+| **Mathias Medina** | alinear 4.3 (ubicaciones) | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | `reportes-inventario` | QA de extremo a extremo · B: formato del manual | Documentación final |
+| **Josué Moreno** | `develop` → `main` · protección de `main` · CI de migraciones | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Versión final `v1.0.0` |
+| **José Ávalos** | alinear 3.2 + 4.6 (enumerados y multimedia) | `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA · revisiones del MVP | A: ajustes de IA / B: manual de IA | Demo del módulo de IA |
+| **Álvaro Vargas** | `auditoria-y-soft-delete-transversal` | Cierre de auditoría · `autenticacion-y-matriz-permisos` | Cierre de autenticación | Despliegue del MVP (compose de producción y proxy) | VM PUCP y respaldos (si hay acceso) | Entorno de la demo |
+| **Manuel Barrantes** | Cierre del arranque con Docker · alinear 4.7 (auth en rutas del contrato) | CD 1: imágenes y `release.yml` | CD 2: `deploy.sh` y entorno de integración | Despliegue del MVP en el entorno de integración | Simulacro de respaldo y manual técnico de despliegue | Entorno de la demo |
+
+## CI/CD
+
+**Lo que ya existe:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) corre en cada PR y en cada push a main cuatro jobs: API (ruff, pytest, OpenAPI y diagrama ER), IA (ruff, pytest, OpenAPI), Web (eslint, TypeScript, Vitest, build) y OpenSpec (`validate --strict`).
+
+**Lo que falta y dónde está planificado:**
+
+| Sprint | Pieza | Responsable | Respaldo |
+|---|---|---|---|
+| S1 | Protección de `main`: PR obligatorio, los 4 jobs en verde y una aprobación | Josué Moreno | Guía de trabajo del equipo |
+| S1 | Job de CI **de migraciones**: servicio PostgreSQL, `alembic upgrade head` y `downgrade`, y verificación de **una sola cabeza** (`alembic heads`). Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Josué Moreno | ADR-010 (punto 5), sin change propio [SUPUESTO: basta un PR `ci(api): ...`; si el Arquitecto lo pide, se propone un change] |
+| S2 | **CD 1:** Dockerfiles sin usuario root y `release.yml` (construir y publicar las imágenes en GHCR al crear un tag) | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.1 y 2.1 |
+| S3 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y `scripts/staging-up.sh` para el entorno de integración en AWS Academy | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 2.2 y 6.3; ADR-013 |
+| S4 | Compose de producción y proxy con HTTPS; despliegue del MVP para la validación | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.2 y 1.3 |
+| S4 | Pruebas de humo contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | Definición de «hecho» |
+| S5 | Respaldos cifrados, simulacro de restauración y despliegue en la VM PUCP (si la DTI dio acceso) | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 3.x, 4.1 y 5.x |
+
+> El despliegue al entorno de integración se lanza a mano (`scripts/staging-up.sh` o un workflow con disparo manual), no en cada merge. [SUPUESTO: las credenciales de AWS Academy duran lo que dura la sesión del laboratorio, así que no pueden quedar guardadas como secretos permanentes en GitHub.]
 
 ## Detalle por sprint
 
 ### Sprint 1 · 28 sep – 4 oct · «Base firme»
 
-**Objetivo:** dejar main estable, con el contrato de la API alineado, para que las células no trabajen sobre nombres que después cambian.
+**Objetivo:** dejar main estable, con el contrato de la API alineado, para que ninguna célula trabaje sobre nombres que después cambian.
 
-| Qué | Quién | Entregable |
-|---|---|---|
-| Validar `ownership.md` y este plan | Germán Asenjo, Sergio Chumbimuni | PR `docs/ownership` con la versión acordada |
-| Resolver los conflictos C1–C6 de [`api/mapeo-endpoints-v1.md`](api/mapeo-endpoints-v1.md), sobre todo C1, C4 y C5 | Germán Asenjo, Sergio Chumbimuni | Decisiones registradas en `preguntas-contraparte.md` |
-| Integrar `develop` en `main` y proteger `main` (PR obligatorio, CI en verde, una aprobación) | Josué Moreno | `main` protegida; ramas nuevas desde `main` |
-| Cerrar el arranque con Docker: `setup-monorepo-base`, `modelo-datos-nucleo`, `contratos-api-borrador`, `maqueta-ui-navegable`, `sistema-diseno-frontend` (verificar y archivar en ese orden) | Sergio Chumbimuni, Manuel Barrantes | Changes archivados |
-| `alinear-api-endpoints-v1` (tareas 2.x, 3.2, 4.x, 5.x y 6.x) | Sergio Chumbimuni, Manuel Barrantes | PR integrado; la prueba de conformidad del contrato pasa |
-| `auditoria-y-soft-delete-transversal` (no depende de los nombres que cambian) | Álvaro Vargas | PR en curso |
-| `ia-extraccion-texto-libre` (vive sobre todo en `services/ai`) | José Ávalos | PR en curso |
-| **Revisión de specs** de los changes del sprint 2 (paso 2 del ciclo de OpenSpec): vacíos, contradicciones y supuestos | Cada célula, con su revisor de specs | Changes corregidos con `/opsx:update` si hace falta |
-| Entorno local funcionando para todos (`npm run dev`, `migrate`, `seed`) y lectura de la guía | Todos | `npm test` en verde en cada máquina |
+**Cómo trabajamos todos en `alinear-api-endpoints-v1`:** el change se divide por grupos de tareas y cada grupo va en su propia rama y su propio PR contra main (`feat/alinear-api-endpoints-v1-<parte>`). Sergio Chumbimuni coordina el orden de integración y revisa todos esos PR. El change se archiva cuando entra el último.
 
-> **Regla del sprint 1:** las células de Catálogo, Importación y Consulta y control **no abren PR de código** hasta que `alinear-api-endpoints-v1` esté en main. Pueden adelantar la revisión de specs, el diseño de pantallas y la preparación de fixtures sintéticos.
+| Día | Qué debe quedar listo |
+|---|---|
+| Lunes | Decisiones C4 (modelo de datos) y C5 (enumerados) tomadas; ownership y este plan validados |
+| Martes | 2.1 integrado (`code_i` y renombrados): todo lo demás depende de esto |
+| Miércoles | 2.2, 2.3, 2.4 y 3.2 integrados |
+| Jueves – viernes | 4.x, 5.x y 6.x integrados; la prueba de conformidad del contrato pasa en CI |
+| Fin de semana | Archivar el change; revisar las specs de los changes del sprint 2 |
+
+| Parte | Tareas del change | Quién | Revisa PR |
+|---|---|---|---|
+| Modelo de piezas | 2.1 (`code_i`, renombrados) y 4.1 (rutas de piezas) | Camilo Gomez | Sergio Chumbimuni |
+| Catálogos | 2.2 (`category`, `conservation_state`) y 4.2 (rutas de colecciones y catálogos) | Sergio Chumbimuni | José Ávalos |
+| Préstamos | 2.3 (entidad `loan`) | Germán Asenjo | Sergio Chumbimuni |
+| Seed e importación | 2.4 (seed y fixtures) y 4.4 (rutas de importación) | Franz Vilcapoma | Sergio Chumbimuni |
+| Enumerados y multimedia | 3.2 (traducción de enumerados) y 4.6 (carga de multimedia) | José Ávalos | Sergio Chumbimuni |
+| Ubicaciones | 4.3 (árbol, movimiento e historial) | Mathias Medina | Josué Moreno |
+| Búsqueda | 4.5 (búsqueda y paginación) | Sergio Huamán | José Ávalos |
+| Autenticación y verificación | 4.7 (`/auth/login` provisional y `/auth/me`) y 7.2 (verificar la fase 1 en contenedores contra PostgreSQL) | Manuel Barrantes | Sergio Chumbimuni |
+| Operaciones de fase 2 y 3 | 5.1 – 5.3 (stubs y baja lógica de identificadores) | Sergio Chumbimuni | José Ávalos |
+| Web | 6.1 (cliente tipado, `lib/data` y fixtures de la web) | Yessica Ochante | Josué Moreno |
+| Documentación | 6.2 (modelo de datos, API, mapeo, estado) y 7.3 (manual) | Sergio Huamán | Sergio Chumbimuni |
+| Backlog | 6.3 (actualizar rutas en los 15 changes) | Sergio Chumbimuni | Germán Asenjo |
+
+**Además en el sprint 1:**
+
+| Qué | Quién |
+|---|---|
+| Integrar `develop` en `main`, proteger `main` y agregar el job de migraciones en CI | Josué Moreno |
+| Verificar con Docker y archivar los changes del arranque: `setup-monorepo-base`, `modelo-datos-nucleo`, `contratos-api-borrador`, `maqueta-ui-navegable`, `sistema-diseno-frontend` | Manuel Barrantes (verificación), Sergio Chumbimuni (archivo) |
+| `auditoria-y-soft-delete-transversal` (no depende de los nombres que cambian) | Álvaro Vargas |
+| Resolver los conflictos C1–C6 de [`api/mapeo-endpoints-v1.md`](api/mapeo-endpoints-v1.md) y registrarlos en `preguntas-contraparte.md` | Germán Asenjo, Sergio Chumbimuni |
+| Entorno local funcionando (`npm run dev`, `migrate`, `seed`) y lectura de la guía de trabajo | Todos |
 
 ### Sprint 2 · 5 – 11 oct · «Núcleo I»
 
-| Change | Implementan | Revisa specs | Revisa PR |
+| Change o pieza | Implementan | Revisa specs | Revisa PR |
 |---|---|---|---|
 | `ficha-pieza-crud` | Camilo Gomez (backend), Yessica Ochante (frontend) | Mathias Medina | José Ávalos |
 | `plantillas-mapeo-y-normalizacion` | Franz Vilcapoma | Sergio Huamán | José Ávalos |
-| `deteccion-duplicados-y-cola-revision` | Germán Asenjo (dedicación parcial), con apoyo de Franz Vilcapoma | Sergio Huamán | José Ávalos |
+| `deteccion-duplicados-y-cola-revision` | Germán Asenjo (dedicación parcial; Franz Vilcapoma apoya si se atrasa) | Sergio Huamán | José Ávalos |
 | `ubicacion-jerarquica-y-movimientos` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` | Sergio Huamán | Yessica Ochante | José Ávalos |
-| `auditoria-y-soft-delete-transversal` (cierre) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| `autenticacion-y-matriz-permisos` (inicio) | Manuel Barrantes | Camilo Gomez | Josué Moreno |
-| `ia-extraccion-texto-libre` (cierre) | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
+| `auditoria-y-soft-delete-transversal` (cierre) y `autenticacion-y-matriz-permisos` (inicio) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
+| CD 1: Dockerfiles sin root y `release.yml` | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| `ia-extraccion-texto-libre` | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 ### Sprint 3 · 12 – 18 oct · «Núcleo II»
 
-| Change | Implementan | Revisa specs | Revisa PR |
+| Change o pieza | Implementan | Revisa specs | Revisa PR |
 |---|---|---|---|
 | `colecciones-y-vocabularios-admin` | Camilo Gomez, Yessica Ochante | Mathias Medina | José Ávalos |
 | `plantillas-mapeo-y-normalizacion` y `deteccion-duplicados-y-cola-revision` (cierre) | Franz Vilcapoma, Germán Asenjo | Sergio Huamán | José Ávalos |
 | `busqueda-avanzada-y-exportacion` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` (cierre) | Sergio Huamán | Yessica Ochante | José Ávalos |
-| `autenticacion-y-matriz-permisos` (cierre) | Manuel Barrantes, Álvaro Vargas | Camilo Gomez | Josué Moreno |
+| `autenticacion-y-matriz-permisos` (cierre) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
+| CD 2: `deploy.sh` y entorno de integración | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | `ia-sugerencia-terminos` (requiere `ia-extraccion-texto-libre` integrado) | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 ### Sprint 4 · 19 – 25 oct · «MVP integrado y listo para validar»
 
-| Change | Implementan | Revisa specs | Revisa PR |
+| Change o pieza | Implementan | Revisa specs | Revisa PR |
 |---|---|---|---|
 | `fotografias-multiples-por-pieza` | Camilo Gomez, Yessica Ochante | Mathias Medina | José Ávalos |
 | `importacion-pipeline-reconciliacion` | Franz Vilcapoma, Germán Asenjo | Sergio Huamán | José Ávalos |
-| `reportes-inventario` | Sergio Huamán, Mathias Medina | Yessica Ochante | José Ávalos |
-| `despliegue-vm-y-respaldos`: Dockerfiles, compose de producción y entorno de integración (ADR-013) | Álvaro Vargas, Manuel Barrantes | Camilo Gomez | Josué Moreno |
-| `ia-sugerencia-terminos` (cierre) e integración de la IA en la ficha | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
-| **Preparar la validación:** guion de la reunión (basado en [`maqueta/recorrido-demo.md`](maqueta/recorrido-demo.md)), datos sintéticos de demostración y lista de preguntas abiertas | Germán Asenjo, Yessica Ochante | — | — |
+| `reportes-inventario` | Sergio Huamán, Mathias Medina | Yessica Ochante | Josué Moreno |
+| Despliegue del MVP: compose de producción, proxy y entorno de integración | Álvaro Vargas, Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| Pruebas de humo en CI contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | Sergio Huamán | Sergio Chumbimuni |
+| Integración de la IA en la ficha y cierre de `ia-sugerencia-terminos` | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
+| **Preparar la validación:** guion de la reunión (basado en [`maqueta/recorrido-demo.md`](maqueta/recorrido-demo.md)), datos sintéticos de demostración y preguntas abiertas | Germán Asenjo, Yessica Ochante | — | — |
 
-**Al cierre del sprint 4:** congelar el MVP en main, desplegarlo en el entorno de integración y hacer la **reunión de validación con el MATP**.
+**Al cierre del sprint 4:** congelar el MVP en main, desplegar `v0.1.0` en el entorno de integración y hacer la **reunión de validación con el MATP**.
 
 ### Sprint 5 · 26 oct – 1 nov · «Decisión tras la validación»
 
-El lunes, el Líder de Proyecto y el Arquitecto presentan lo que dijo el museo y el equipo elige:
+El lunes, el Líder de Proyecto y el Arquitecto presentan lo que dijo el museo y el equipo elige una opción. En las dos, todos tienen trabajo:
 
-- **Opción A · Ajustes.** Cada pedido del museo se convierte en un change nuevo (`/opsx:propose`), se prioriza y se asigna a la célula dueña de la capacidad. Los changes del MVP que no se terminaron en el sprint 4 tienen prioridad.
-- **Opción B · Cierre.** Se detiene el desarrollo de funcionalidades. Las células completan la sección del manual de usuario de cada change (`docs/manual-usuario/`), archivan lo que falte y QA hace una pasada de pruebas de extremo a extremo.
-
-En los dos casos, Plataforma avanza el despliegue en la VM PUCP y los respaldos si la DTI ya dio acceso.
+| Integrante | Opción A · Ajustes | Opción B · Cierre y documentación |
+|---|---|---|
+| Germán Asenjo | Prioriza los pedidos del museo y los convierte en changes con `/opsx:propose` | Expediente de ingeniería y dossier de gestión |
+| Sergio Chumbimuni | Changes nuevos de IA o de arquitectura; revisa los demás | Documentación de arquitectura: ADR, diagramas y modelo de datos |
+| Camilo Gomez, Yessica Ochante | Ajustes de Catálogo; changes del MVP que no se terminaron | Manual de usuario de Catálogo (Yessica: pantallas y capturas) |
+| Franz Vilcapoma | Ajustes de Importación; terminar el pipeline si quedó pendiente | Manual de usuario de Importación |
+| Josué Moreno | Ajustes de Consulta y control | Documentación de CI/CD y del flujo de versiones |
+| José Ávalos | Ajustes de IA | Manual de usuario de IA |
+| Sergio Huamán, Mathias Medina | QA de extremo a extremo del MVP y de los ajustes | QA de extremo a extremo; unificar formato del manual (Mathias) |
+| Álvaro Vargas, Manuel Barrantes | VM PUCP, respaldos y simulacro de restauración | Lo mismo, más el manual técnico de despliegue |
 
 ### Sprint 6 · 2 – 8 nov · «Demo»
 
-- Congelamiento de código a mitad de semana: solo correcciones.
-- Documentación final, manual de usuario y actualización del expediente.
-- Ensayo de la demo en el entorno donde se presentará, con datos sintéticos.
-- **Demo ante los profesores.**
+| Qué | Quién |
+|---|---|
+| Congelamiento de código a mitad de semana; solo correcciones | Todos; lo controla Josué Moreno |
+| Regresión final sobre el entorno de la demo | Sergio Huamán, Mathias Medina |
+| Entorno de la demo estable, con datos sintéticos y respaldo previo | Álvaro Vargas, Manuel Barrantes |
+| Versión final `v1.0.0` | Josué Moreno |
+| Guion de la demo y datos de ejemplo | Yessica Ochante |
+| Documentación final y actualización del expediente | Mathias Medina, Germán Asenjo |
+| Ensayo general | Todos |
+| **Demo ante los profesores:** Germán conduce; cada líder de célula presenta su módulo; Sergio Chumbimuni presenta la arquitectura | Todos |
 
 ## Definición de «hecho» de un change
 
@@ -112,7 +173,7 @@ Un change cuenta como hecho en su sprint solo si:
 
 1. Todas sus tareas están marcadas `- [x]` y cada una tiene su prueba.
 2. El PR está integrado en main con CI en verde y aprobación del revisor.
-3. Está verificado contra PostgreSQL con Docker, si toca la base de datos.
+3. Está verificado contra PostgreSQL (con Docker o con el job de migraciones de CI), si toca la base de datos.
 4. OpenAPI y el cliente tipado están actualizados, si toca la API.
 5. Tiene su sección en el manual de usuario, si cambia una pantalla (puede pasar al sprint 5 si se elige la opción B).
 6. Está archivado (`openspec archive`) en un PR aparte.
@@ -123,7 +184,7 @@ Si un change no cumple esto el domingo, **pasa al sprint siguiente** y la célul
 
 | Cuándo | Qué | Duración |
 |---|---|---|
-| Lunes | Planificación: revisar el tablero, mover lo pendiente y confirmar los changes del sprint | 20 min |
+| Lunes | Planificación: revisar el tablero, mover lo pendiente y confirmar lo de cada persona | 20 min |
 | Martes a viernes | Seguimiento asíncrono en el canal del equipo: qué hice, qué haré y qué me bloquea | — |
 | Viernes o sábado | Revisión: cada célula muestra lo integrado en main | 20 min |
 | Domingo | Cierre del sprint: tablero actualizado | — |
@@ -132,10 +193,11 @@ Si un change no cumple esto el domingo, **pasa al sprint siguiente** y la célul
 
 | Riesgo | Mitigación |
 |---|---|
-| `alinear-api-endpoints-v1` se alarga y bloquea a tres células | Es la prioridad número uno del sprint 1. Si no está el viernes 2 de octubre, el Arquitecto decide qué partes pueden empezar sin esperar |
-| José Ávalos revisa los PR de tres células y además lidera IA | Josué Moreno (el otro Integrador) toma parte de las revisiones cuando haya cola; se puede sumar un QA como segundo revisor |
+| `alinear-api-endpoints-v1` se alarga y bloquea a todas las células | Está repartido entre los 11 y ordenado por día. Si el martes 2.1 no está integrado, el Arquitecto reordena el resto de la semana |
+| Muchos PR del mismo change el mismo día (sprint 1) | Orden de integración fijado por el Arquitecto; cada PR hace rebase sobre main antes del merge |
+| José Ávalos revisa muchos PR y además lidera IA | Josué Moreno toma parte de las revisiones cuando haya cola; un QA puede ser segundo revisor |
 | `importacion-pipeline-reconciliacion` es el change más grande (19 tareas) y está en el sprint 4 | Si en el sprint 3 se ve atrasado, se reduce el alcance para la validación (subir, mapear, previsualizar y aprobar) y el resto pasa al sprint 5 |
-| Conflictos de migraciones Alembic entre células | Rebase sobre main antes del merge y una sola cabeza (`alembic heads`), según ADR-010 |
+| Conflictos de migraciones Alembic entre células | Rebase sobre main y una sola cabeza, verificada por el job de migraciones de CI desde el sprint 1 |
 | Sin acceso a la VM PUCP a tiempo | La validación y la demo usan el entorno de integración (ADR-013); la VM queda para después |
 | Germán Asenjo con dedicación parcial | `deteccion-duplicados-y-cola-revision` tiene apoyo de Franz Vilcapoma; si hace falta, se suma un Implantador |
 
@@ -150,3 +212,4 @@ Si un change no cumple esto el domingo, **pasa al sprint siguiente** y la célul
 | Versión | Fecha | Cambio |
 |---|---|---|
 | 1 | 2026-09-28 | Base inicial: 6 sprints semanales, validación con el cliente al cierre del sprint 4 y demo en el sprint 6 |
+| 2 | 2026-09-28 | Los 11 integrantes con trabajo todas las semanas (`alinear-api-endpoints-v1` repartido en el sprint 1); tabla de carga por persona; sección de CI/CD con job de migraciones, CD en los sprints 2 a 4 y respaldos en el sprint 5 |
