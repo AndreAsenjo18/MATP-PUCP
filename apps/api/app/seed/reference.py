@@ -137,6 +137,14 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("AUTORIZACION_COMODANTE", "Requiere autorización del comodante"),
         ],
     ),
+    VocabularyCode.LOAN_TYPE: (
+        "Tipos de préstamo y exposición",
+        [],  # [SUPUESTO] Pendiente de validar con la contraparte (K1).
+    ),
+    VocabularyCode.LOAN_STATUS: (
+        "Estados de préstamo y exposición",
+        [],  # [SUPUESTO] Pendiente de validar con la contraparte (K1).
+    ),
 }
 
 ROLES = [

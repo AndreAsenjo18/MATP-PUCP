@@ -8,7 +8,7 @@
 
 - [ ] 2.1 Migración Alembic: `piece.code_i` (único entre activos, con disparador de consistencia con el identificador vigente de tipo I según D4) y renombrado de `title` a `denomination` y de `period_*` a `epoch_*`; verificar con `tests/test_migrations.py` (upgrade, downgrade y `compare_metadata` sin diferencias) (Req: Campos de la ficha con los nombres del contrato; RF-001, RF-003, RN-001, RN-002)
 - [ ] 2.2 Entidades `category` (jerárquica) y `conservation_state`, con migración de los términos de los vocabularios `categoria` y `estado-conservacion` y sus referencias en `piece`; pruebas de que ninguna pieza pierde su clasificación (Req: Catálogos de categorías y estados de conservación; RF-011, RF-012)
-- [ ] 2.3 Entidad `loan` del diagrama entidad-relación (pieza, tipo, institución, fechas, estado) con borrado lógico y auditoría; pruebas de las reglas RN-004 y RN-008 (Req: Registro de préstamos y exposiciones; RF-018, RN-004, RN-008)
+- [x] 2.3 Proponer el change `prestamos-y-exposiciones` para modelar `loan` y `loan_item` con borrado lógico y auditoría; la implementación y las pruebas de RF-018, RN-004 y RN-008 se ejecutan exclusivamente en ese change (Req: Registro de préstamos y exposiciones; RF-018, RN-004, RN-008)
 - [ ] 2.4 Actualizar el seed y `data/fixtures` a los nombres y catálogos nuevos; prueba de que el seed sigue generando 300 piezas, 54 % sin código I y 10 pares duplicados (Req: Campos de la ficha con los nombres del contrato)
 
 ## 3. Traducción de enumerados en la frontera

@@ -27,6 +27,8 @@ class VocabularyCode:
     OBJECT_TYPE = "OBJECT_TYPE"
     AVAILABILITY = "AVAILABILITY"
     USAGE_RESTRICTION = "USAGE_RESTRICTION"
+    LOAN_TYPE = "LOAN_TYPE"
+    LOAN_STATUS = "LOAN_STATUS"
 
 
 class Vocabulary(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):

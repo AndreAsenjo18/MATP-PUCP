@@ -48,7 +48,11 @@ GROUPS = [
         ],
     ),
     ("Vocabularios controlados (RN-010)", "#F3EEF8", ["vocabulary", "term"]),
-    ("Ubicación y Control (EP-02)", "#FDF6E3", ["location", "piece_movement"]),
+    (
+        "Ubicación y Control (EP-02)",
+        "#FDF6E3",
+        ["location", "piece_movement", "loan", "loan_item"],
+    ),
     (
         "Importación y Calidad de Datos (EP-03)",
         "#EEF6EC",

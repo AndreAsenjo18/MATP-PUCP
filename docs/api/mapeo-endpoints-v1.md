@@ -58,9 +58,9 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Hoy en la API | Acción |
 |---|---|---|---|
-| 39 | `GET /loans` · `listLoans` | no existe | Pendiente: requiere proponer el change de préstamos |
-| 40 | `POST /loans` · `createLoan` | no existe | Pendiente: requiere proponer el change de préstamos |
-| 41 | `PUT /loans/{id}/status` · `updateLoanStatus` | no existe | Pendiente: requiere proponer el change de préstamos |
+| 39 | `GET /loans` · `listLoans` | no existe | En progreso: change `prestamos-y-exposiciones`; falta exponer el stub del contrato |
+| 40 | `POST /loans` · `createLoan` | no existe | En progreso: change `prestamos-y-exposiciones`; falta exponer el stub del contrato |
+| 41 | `PUT /loans/{id}/status` · `updateLoanStatus` | no existe | En progreso: change `prestamos-y-exposiciones`; falta exponer el stub del contrato |
 | 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | no existe | Pendiente: requiere proponer el change de descargas masivas |
 | 43 | `GET /public/catalog` · `getPublicCatalog` | no existe | Bloqueado por el conflicto C2 |
 | 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |

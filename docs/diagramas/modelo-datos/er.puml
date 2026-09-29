@@ -204,6 +204,31 @@ entity PIECE_MOVEMENT <<solo inserción>> {
     performed_by_label : varchar(200)
   * occurred_at : timestamptz
 }
+entity LOAN {
+  * id : uuid <<PK>>
+  --
+  * type_term_id : uuid <<FK>>
+  * destination_label : varchar(300)
+    responsible_user_id : uuid <<FK>>
+    document_reference : varchar(200)
+  * starts_on : date
+  * ends_on : date
+  * status_term_id : uuid <<FK>>
+    active_availability_term_id : uuid <<FK>>
+    confirmed_at : timestamptz
+    closed_at : timestamptz
+    cancelled_at : timestamptz
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity LOAN_ITEM {
+  * id : uuid <<PK>>
+  --
+  * loan_id : uuid <<FK>>
+  * piece_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 }
 
 package "Importación y Calidad de Datos (EP-03)" #EEF6EC {
@@ -372,6 +397,10 @@ PERMISSION ||--o{ ROLE_PERMISSION
 VOCABULARY ||--o{ TERM : "contiene"
 APP_USER ||--o{ USER_ROLE
 ROLE ||--o{ USER_ROLE
+TERM ||--o{ LOAN : "type_term_id"
+APP_USER |o--o{ LOAN : "responsible_user_id"
+TERM ||--o{ LOAN : "status_term_id"
+TERM |o--o{ LOAN : "active_availability_term_id"
 COLLECTION |o--o{ PIECE : "contiene"
 TERM |o--o{ PIECE : "forma de adquisición"
 TERM |o--o{ PIECE : "tipo de bien"
@@ -390,6 +419,8 @@ TERM ||--o{ CONSERVATION_ASSESSMENT : "estado"
 APP_USER |o--o{ CONSERVATION_ASSESSMENT : "evalúa"
 IMPORT_BATCH ||--o{ IMPORT_ROW : "filas / diffs"
 PIECE |o--o{ IMPORT_ROW : "pieza objetivo"
+LOAN ||--o{ LOAN_ITEM : "loan_id"
+PIECE ||--o{ LOAN_ITEM : "piece_id"
 PIECE ||--o{ MEDIA_ASSET : "fotografías"
 TERM |o--o{ MEDIA_ASSET : "tipo de vista"
 TERM |o--o{ MEDIA_ASSET : "restricción de uso"

@@ -15,7 +15,7 @@ from app.modules.catalog.models import (
 from app.modules.collections.models import Collection, Term, Vocabulary
 from app.modules.identification.models import IdentifierType, PieceIdentifier
 from app.modules.imports.models import ImportBatch, ImportMappingTemplate, ImportRow
-from app.modules.locations.models import Location, PieceMovement
+from app.modules.locations.models import Loan, LoanItem, Location, PieceMovement
 from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, Permission, Role, RolePermission, UserRole
@@ -32,6 +32,8 @@ __all__ = [
     "ImportBatch",
     "ImportMappingTemplate",
     "ImportRow",
+    "Loan",
+    "LoanItem",
     "Location",
     "MediaAsset",
     "Permission",
