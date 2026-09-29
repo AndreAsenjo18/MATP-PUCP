@@ -2382,6 +2382,33 @@
         "title": "LivenessResponse",
         "type": "object"
       },
+      "LoanStubOut": {
+        "description": "Non-binding response until K1 defines the final request schemas.",
+        "examples": [
+          {
+            "id": "01920000-0000-7000-8000-000000000040",
+            "status": "PENDIENTE_DEFINICION"
+          }
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "Estado configurable; sus valores se acuerdan en K1.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "LoanStubOut",
+        "type": "object"
+      },
       "LocationCreate": {
         "properties": {
           "code": {
@@ -9709,6 +9736,224 @@
           "Importación"
         ],
         "x-change": "importacion-pipeline-reconciliacion",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/loans": {
+      "get": {
+        "operationId": "listLoans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LoanStubOut"
+                  },
+                  "title": "Response Listloans",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Listar préstamos y exposiciones temporales",
+        "tags": [
+          "Préstamos y exposiciones"
+        ],
+        "x-change": "prestamos-y-exposiciones",
+        "x-status": "stub"
+      },
+      "post": {
+        "operationId": "createLoan",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoanStubOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Registrar un préstamo o salida de exhibición",
+        "tags": [
+          "Préstamos y exposiciones"
+        ],
+        "x-change": "prestamos-y-exposiciones",
+        "x-status": "stub"
+      }
+    },
+    "/api/v1/loans/{loan_id}/status": {
+      "put": {
+        "operationId": "updateLoanStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "loan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Loan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoanStubOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Actualizar el estado de un préstamo",
+        "tags": [
+          "Préstamos y exposiciones"
+        ],
+        "x-change": "prestamos-y-exposiciones",
         "x-status": "stub"
       }
     },

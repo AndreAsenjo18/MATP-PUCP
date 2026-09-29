@@ -27,12 +27,13 @@ def _term_in_vocabulary(session: Session, term_id: uuid.UUID, vocabulary_code: s
 
 
 def _pieces(session: Session, piece_ids: Iterable[uuid.UUID]) -> list[Piece]:
-    ids = list(dict.fromkeys(piece_ids))
+    provided_ids = list(piece_ids)
+    ids = list(dict.fromkeys(provided_ids))
     if not ids:
         raise ValidationFailed(
             "El expediente debe incluir al menos una pieza.", code="pieces_required"
         )
-    if len(ids) != len(list(piece_ids)):
+    if len(ids) != len(provided_ids):
         raise ValidationFailed(
             "Una pieza no puede repetirse en el expediente.", code="duplicate_piece"
         )

@@ -12,6 +12,7 @@ from app.models import Loan, Term, Vocabulary
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.service import create_piece
 from app.modules.collections.models import VocabularyCode
+from app.modules.identification.models import PieceIdentifier
 from app.modules.locations.loan_service import cancel_loan, close_loan, confirm_loan, create_loan
 
 
@@ -138,3 +139,30 @@ def test_cancel_preserves_loan_history(session: Session, act_as) -> None:  # typ
         session.commit()
     stored = session.get(Loan, loan.id)
     assert stored is not None and stored.cancelled_at is not None
+
+
+def test_temporary_loan_participation_stays_out_of_permanent_inventory(
+    session: Session, act_as
+) -> None:  # type: ignore[no-untyped-def]
+    """RN-004: a temporary incoming piece may participate but never gains an I code."""
+    with act_as("COLLECTIONS_MANAGER"):
+        piece = create_piece(
+            session, title="Pieza visitante", tenure_regime=TenureRegime.TEMPORARY_LOAN
+        )
+        loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_EXHIBITION")
+        draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
+        loan = create_loan(
+            session,
+            type_term_id=loan_type.id,
+            status_term_id=draft.id,
+            destination_label="Sala temporal",
+            starts_on=date(2026, 10, 1),
+            ends_on=date(2026, 10, 2),
+            piece_ids=[piece.id],
+        )
+        session.flush()
+    assert [item.piece_id for item in loan.items] == [piece.id]
+    assert (
+        session.scalars(select(PieceIdentifier).where(PieceIdentifier.piece_id == piece.id)).all()
+        == []
+    )
