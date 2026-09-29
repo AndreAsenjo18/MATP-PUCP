@@ -1,0 +1,40 @@
+@startuml sq_ia
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Catalogador" as U
+boundary "Ficha / Bandeja IA\n(Next.js)" as W
+control "AiRouter\n/api/v1/ai" as R
+participant "AiSuggestionService" as AS
+participant "privacy\n(minimización)" as PV
+participant "AIProvider\n(MockProvider)" as AI
+database "PostgreSQL" as DB
+
+U -> W : "Sugerir términos" en la ficha
+W -> R : POST /ai/suggest-cataloging {function: RIA_03, piece_id}
+R -> AS : request(RIA_03, piece) [ai.request]
+AS -> DB : leer pieza y términos activos\n(CATEGORY, MATERIAL, TECHNIQUE, OBJECT_TYPE)
+AS -> PV : minimizar(pieza)\n(sin campos sensibles ni datos personales)
+AS -> AI : suggest_terms(ctx, candidates) (timeout 20 s)
+alt proveedor no disponible
+  AS --> R : AiUnavailable
+  R --> W : 503 ai_unavailable (catálogo intacto)
+else propuesta recibida
+  AS -> AS : validar cada ítem contra términos activos\n(term o new_term_proposal)
+  AS -> DB : INSERT ai_suggestion (PENDING,\ninput_data, output_data, huella de origen)
+  R --> W : 201 {sugerencia}
+end
+... revisión humana ...
+U -> W : aprueba 2 de 3 ítems (edita uno)
+W -> R : POST /ai/suggestions/{id}/approve {items}
+R -> AS : approve(suggestion, items) [ai.review]
+AS -> DB : ¿cambiaron los campos destino?
+alt obsoleta y sin confirm_stale
+  R --> W : 409 suggestion_stale
+else
+  AS -> AS : apply() — único punto de escritura de IA
+  AS -> DB : UPDATE piece / INSERT piece_material\n+ audit_log origin=AI, origin_ref=sugerencia
+  AS -> DB : status = PARTIALLY_APPROVED,\napproved_data, reviewed_by, reviewed_at
+  R --> W : 200
+end
+@enduml

@@ -1,0 +1,667 @@
+{
+  "components": {
+    "schemas": {
+      "DescriptionResult": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "used_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Used Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text",
+          "used_fields"
+        ],
+        "title": "DescriptionResult",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExtractRequest": {
+        "examples": [
+          {
+            "source_field": "notes",
+            "text": "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998. Regular estado."
+          }
+        ],
+        "properties": {
+          "source_field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Campo de origen, p. ej. notes.",
+            "title": "Source Field"
+          },
+          "text": {
+            "description": "Texto libre (descripción, observaciones).",
+            "maxLength": 20000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ExtractRequest",
+        "type": "object"
+      },
+      "ExtractionResult": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "title": "ExtractionResult",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "service": {
+            "default": "ai",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "provider"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "PieceContext": {
+        "additionalProperties": false,
+        "description": "Non-sensitive piece data sent to a provider. Sensitive fields are not accepted (RF-041).",
+        "examples": [
+          {
+            "description": "Caja de madera policromada con figuras de pasta de papa.",
+            "dimensions_text": "35 x 20 x 12 cm",
+            "materials": [
+              "madera"
+            ],
+            "period_text": "ca. 1950",
+            "provenance": "Ayacucho",
+            "title": "Retablo ayacuchano de San Marcos (sintético)"
+          }
+        ],
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "dimensions_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions Text"
+          },
+          "materials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "period_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Text"
+          },
+          "piece_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Id"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "technique": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technique"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "PieceContext",
+        "type": "object"
+      },
+      "ProposedField": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "field": {
+            "description": "Campo de la ficha al que se propone el dato.",
+            "title": "Field",
+            "type": "string"
+          },
+          "source_fragment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fragmento de texto que origina el dato.",
+            "title": "Source Fragment"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "source_fragment",
+          "confidence"
+        ],
+        "title": "ProposedField",
+        "type": "object"
+      },
+      "SuggestionEnvelope_DescriptionResult_": {
+        "properties": {
+          "function_code": {
+            "enum": [
+              "RIA_01",
+              "RIA_03",
+              "RIA_04"
+            ],
+            "title": "Function Code",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "requires_human_approval": {
+            "const": true,
+            "default": true,
+            "title": "Requires Human Approval",
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/DescriptionResult"
+          },
+          "status": {
+            "const": "PENDING_REVIEW",
+            "default": "PENDING_REVIEW",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_code",
+          "provider",
+          "model",
+          "result"
+        ],
+        "title": "SuggestionEnvelope[DescriptionResult]",
+        "type": "object"
+      },
+      "SuggestionEnvelope_ExtractionResult_": {
+        "properties": {
+          "function_code": {
+            "enum": [
+              "RIA_01",
+              "RIA_03",
+              "RIA_04"
+            ],
+            "title": "Function Code",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "requires_human_approval": {
+            "const": true,
+            "default": true,
+            "title": "Requires Human Approval",
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ExtractionResult"
+          },
+          "status": {
+            "const": "PENDING_REVIEW",
+            "default": "PENDING_REVIEW",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_code",
+          "provider",
+          "model",
+          "result"
+        ],
+        "title": "SuggestionEnvelope[ExtractionResult]",
+        "type": "object"
+      },
+      "SuggestionEnvelope_TermSuggestionResult_": {
+        "properties": {
+          "function_code": {
+            "enum": [
+              "RIA_01",
+              "RIA_03",
+              "RIA_04"
+            ],
+            "title": "Function Code",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "requires_human_approval": {
+            "const": true,
+            "default": true,
+            "title": "Requires Human Approval",
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/TermSuggestionResult"
+          },
+          "status": {
+            "const": "PENDING_REVIEW",
+            "default": "PENDING_REVIEW",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_code",
+          "provider",
+          "model",
+          "result"
+        ],
+        "title": "SuggestionEnvelope[TermSuggestionResult]",
+        "type": "object"
+      },
+      "TermSuggestion": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "source_fragment": {
+            "title": "Source Fragment",
+            "type": "string"
+          },
+          "term_code": {
+            "title": "Term Code",
+            "type": "string"
+          },
+          "vocabulary_code": {
+            "title": "Vocabulary Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vocabulary_code",
+          "term_code",
+          "label",
+          "source_fragment",
+          "confidence"
+        ],
+        "title": "TermSuggestion",
+        "type": "object"
+      },
+      "TermSuggestionResult": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/TermSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "title": "TermSuggestionResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Servicio de IA asistiva desacoplado. Toda salida es una propuesta pendiente de aprobación humana (RN-009); el servicio no escribe en el catálogo.",
+    "title": "MATP AI service",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/describe": {
+      "post": {
+        "operationId": "describe",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PieceContext"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEnvelope_DescriptionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-04: descripción preliminar desde metadatos",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/extract-structured": {
+      "post": {
+        "operationId": "extract_structured",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEnvelope_ExtractionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-01: proponer datos estructurados desde texto libre",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/suggest-terms": {
+      "post": {
+        "operationId": "suggest_terms",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PieceContext"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEnvelope_TermSuggestionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-03: sugerir términos normalizados de vocabulario",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    }
+  }
+}

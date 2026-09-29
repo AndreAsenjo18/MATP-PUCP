@@ -1,0 +1,96 @@
+@startuml cls_seguridad
+skinparam dpi 170
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName DejaVu Sans
+skinparam defaultFontSize 11
+skinparam ArrowColor #0C0F14
+skinparam class {
+  BorderColor #0C0F14
+  BackgroundColor #FFFFFF
+  HeaderBackgroundColor #F5F0DA
+  StereotypeFontColor #A23C16
+}
+skinparam package {
+  BorderColor #5B534C
+  FontStyle bold
+}
+hide empty members
+
+left to right direction
+package "Usuarios, seguridad y auditoría" #FBF8F0 {
+class AppUser <<soft-delete>> {
+  +email : String
+  +full_name : String
+  +password_hash : String [0..1]
+  +is_active : Boolean
+  +is_synthetic : Boolean
+  +external_subject : String [0..1]
+  +last_login_at : DateTime [0..1]
+  +failed_login_count : Integer
+  +locked_until : DateTime [0..1]
+}
+class Role <<soft-delete>> {
+  +code : String
+  +name : String
+  +description : String [0..1]
+  +is_enabled : Boolean
+}
+class Permission {
+  +code : String
+  +description : String
+}
+class RolePermission <<soft-delete>> {
+}
+class UserRole <<soft-delete>> {
+}
+class AuditLog <<solo inserción>> {
+  +occurred_at : DateTime
+  +change_set_id : UUID
+  +entity_type : String
+  +entity_id : UUID
+  +field : String [0..1]
+  +old_value : JSON [0..1]
+  +new_value : JSON [0..1]
+  +action : AuditAction
+  +origin : AuditOrigin
+  +origin_ref : String [0..1]
+  +actor_label : String [0..1]
+  +reason : String [0..1]
+}
+enum AuditAction {
+  CREATE
+  UPDATE
+  SOFT_DELETE
+  RESTORE
+  CORRECTION
+  MERGE
+  REVERT
+}
+enum AuditOrigin {
+  MANUAL
+  IMPORT
+  AI
+  SYSTEM
+}
+}
+class AuthService <<service>> {
+  +login(email, password) : Session
+  +logout(session)
+  +current_user() : AppUser
+  +has_permission(user, code) : bool
+  +mask_sensitive(data, user) : dict
+}
+class AuditService <<service>> {
+  +audit_context(session, ctx)
+  +revert_change_set(id, confirm_conflicts) : RevertResult
+  +history(entity) : List<AuditLog>
+}
+AppUser "0..1" -- "0..*" AuditLog : autor
+Role "1" *-- "0..*" RolePermission : permisos
+Permission "1" -- "0..*" RolePermission
+AppUser "1" *-- "0..*" UserRole : roles
+Role "1" -- "0..*" UserRole
+AuthService ..> AppUser : <<usa>>
+AuditService ..> AuditLog : <<usa>>
+@enduml

@@ -1,0 +1,23 @@
+@startuml st_prestamo
+!include _header.iuml
+hide empty description
+state "DRAFT\nBorrador" as DR
+state "APPROVED\nAutorizado" as AP
+state "ACTIVE\nEn curso" as AC
+state "RETURNED\nDevuelto" as RE
+state "CANCELLED\nCancelado" as CA
+[*] --> DR : crear préstamo\n(saliente o entrante)
+DR --> DR : agregar/quitar piezas\n[saliente: pieza en propiedad o comodato]\n[entrante: pieza en préstamo temporal]
+DR --> AP : authorize()\n[permiso loans.approve]
+AP --> AC : registrar salida/ingreso\n/ disponibilidad = En préstamo,\nregistrar condición
+AC --> RE : registrar devolución\n[todas las piezas devueltas]\n/ restaurar disponibilidad
+DR --> CA : cancel(motivo)
+AP --> CA : cancel(motivo)
+RE --> [*]
+CA --> [*]
+note right of AC
+  "Vencido" es una condición derivada
+  (hoy > expected_return_date), no un
+  estado persistido: alimenta alertas.
+end note
+@enduml

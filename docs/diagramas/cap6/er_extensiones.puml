@@ -1,0 +1,190 @@
+@startuml er_extensiones
+!include _header.iuml
+hide circle
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam class {
+  HeaderBackgroundColor #F5F0DA
+}
+' Entidades existentes (referencia)
+entity piece #EEEEEE {
+  * id : uuid <<PK>>
+  --
+  <b>+ version : integer (nuevo, D2 ficha-pieza-crud)</b>
+}
+entity location #EEEEEE {
+  * id : uuid <<PK>>
+  --
+  <b>+ space_kind : varchar(40) (nuevo)</b>
+}
+entity piece_movement #EEEEEE {
+  * id : uuid <<PK>>
+  --
+  <b>+ corrects_movement_id : uuid <<FK>> (nuevo)</b>
+}
+entity collection #EEEEEE {
+  * id : uuid <<PK>>
+  --
+  <b>+ default_usage_restriction_term_id : uuid <<FK>> (nuevo)</b>
+}
+entity app_user #EEEEEE {
+  * id : uuid <<PK>>
+}
+entity term #EEEEEE {
+  * id : uuid <<PK>>
+}
+
+package "RF-018 Préstamos y exposiciones" #FDF6E3 {
+entity loan {
+  * id : uuid <<PK>>
+  --
+  * direction : varchar(40)  (OUTGOING | INCOMING)
+  * counterpart_institution : varchar(300)
+  counterpart_contact : text  <<sensible>>
+  purpose : text
+  exhibition_id : uuid <<FK>>
+  agreement_ref : varchar(200)
+  * start_date : date
+  expected_return_date : date
+  actual_return_date : date
+  * status : varchar(40)  (DRAFT | APPROVED | ACTIVE | RETURNED | CANCELLED)
+  authorized_by_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity loan_item {
+  * id : uuid <<PK>>
+  --
+  * loan_id : uuid <<FK>>
+  * piece_id : uuid <<FK>>
+  condition_out : text
+  condition_in : text
+  returned_at : timestamptz
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity exhibition {
+  * id : uuid <<PK>>
+  --
+  * name : varchar(300)
+  venue : varchar(300)
+  * exhibition_type : varchar(40)  (PERMANENT | TEMPORARY | TRAVELING)
+  * status : varchar(40)  (PLANNED | OPEN | CLOSED | CANCELLED)
+  start_date : date
+  end_date : date
+  responsible_user_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity exhibition_piece {
+  * id : uuid <<PK>>
+  --
+  * exhibition_id : uuid <<FK>>
+  * piece_id : uuid <<FK>>
+  installed_at : date
+  removed_at : date
+  notes : text
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+}
+
+package "RF-015 / RF-037 Documentos y valorización" #FBEFE9 {
+entity piece_document {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * document_type_term_id : uuid <<FK>>
+  * title : varchar(300)
+  description : text
+  document_date : date
+  storage_key : varchar(500)
+  external_archive_ref : varchar(200)
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity valuation <<sensible>> {
+  * id : uuid <<PK>>
+  --
+  * scope_type : varchar(40)  (COLLECTION | LOCATION)
+  collection_id : uuid <<FK>>
+  location_id : uuid <<FK>>
+  * amount : numeric(14,2)
+  * currency : char(3)
+  * valued_on : date
+  source : varchar(300)
+  notes : text
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+}
+
+package "Soporte técnico (ADR-009, calidad, idempotencia)" #EDF0F7 {
+entity user_session {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * token_sha256 : varchar(64) <<UK>>
+  * created_at : timestamptz
+  * last_seen_at : timestamptz
+  * expires_at : timestamptz
+  revoked_at : timestamptz
+  ip_address : inet
+  user_agent : varchar(300)
+}
+entity sensitive_access_log <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * user_id : uuid <<FK>>
+  * route : varchar(200)
+  * entity_type : varchar(60)
+  * entity_ids : jsonb
+  * fields : jsonb
+}
+entity idempotency_key {
+  * key : varchar(100) <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * request_hash : varchar(64)
+  * response : jsonb
+  * expires_at : timestamptz
+}
+entity quality_job {
+  * id : uuid <<PK>>
+  --
+  * kind : varchar(40)  (FULL_SCAN | INCREMENTAL)
+  * status : varchar(40)
+  counts : jsonb
+  started_at : timestamptz
+  finished_at : timestamptz
+}
+entity quality_setting {
+  * key : varchar(80) <<PK>>
+  --
+  * value : jsonb
+  updated_by_id : uuid <<FK>>
+}
+}
+
+loan ||--o{ loan_item : "incluye"
+piece ||--o{ loan_item : "se presta en"
+exhibition |o--o{ loan : "motiva"
+exhibition ||--o{ exhibition_piece : "exhibe"
+piece ||--o{ exhibition_piece : "participa en"
+app_user |o--o{ loan : "autoriza"
+piece ||--o{ piece_document : "documentos"
+term ||--o{ piece_document : "tipo"
+collection |o--o{ valuation : "valoriza"
+location |o--o{ valuation : "valoriza"
+app_user ||--o{ user_session : "sesiones"
+app_user ||--o{ sensitive_access_log : "accede"
+app_user ||--o{ idempotency_key : ""
+piece_movement |o--o| piece_movement : "corrige"
+term |o--o{ collection : "restricción por defecto"
+note as NC
+  <b>Convenciones</b>: * = NOT NULL | gris = tabla existente (migración 0001)
+  <b>negrita</b> en tabla existente = columna nueva planificada
+end note
+@enduml

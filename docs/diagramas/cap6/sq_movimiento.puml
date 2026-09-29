@@ -1,0 +1,31 @@
+@startuml sq_movimiento
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Auxiliar de depósito" as U
+boundary "Vista móvil /deposito\n(Next.js)" as W
+control "PiecesRouter\n/pieces/{id}/move" as R
+participant "LocationService" as LS
+participant "SensitiveFieldPolicy" as SP
+database "PostgreSQL" as DB
+
+U -> W : busca "MMZ 15" y elige destino\nDEP2-RB-N3-C12
+W -> R : POST /pieces/{id}/move\n{type: MOVE, expected_from, to, reason}
+R -> LS : move_piece(piece, to, expected_from, reason)
+LS -> DB : SELECT piece FOR UPDATE
+alt current_location ≠ expected_from
+  LS --> R : LocationChanged
+  R --> W : 409 location_changed {current}
+  W --> U : "Otra persona ya movió la pieza"
+else destino inactivo o eliminado
+  R --> W : 422 invalid_destination
+else válido
+  LS -> DB : INSERT piece_movement (solo inserción)
+  LS -> DB : UPDATE piece.current_location_id\n(+ disponibilidad según tipo de espacio)
+  LS -> DB : INSERT audit_log (mismo change_set)
+  LS --> R : PieceMovement
+  R -> SP : mask(movimiento, usuario)\n[sin sensitive.exact_location → solo sede/espacio]
+  R --> W : 201 {movimiento}
+  W --> U : ubicación actualizada con fecha y responsable
+end
+@enduml

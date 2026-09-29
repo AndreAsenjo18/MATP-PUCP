@@ -1,0 +1,39 @@
+@startuml st_lote
+!include _header.iuml
+hide empty description
+state "UPLOADED\nCargado" as UPLOADED
+state "FAILED_INGESTION\nIngesta fallida" as FI
+state "MAPPED\nMapeado" as MAPPED
+state "VALIDATED\nValidado" as VALIDATED
+state "IN_PREVIEW\nEn previsualización" as PREVIEW
+state "APPROVED\nAprobado" as APPROVED
+state "APPLIED\nAplicado" as APPLIED
+state "FAILED_APPLY\nAplicación fallida" as FA
+state "ABANDONED\nAbandonado" as ABANDONED
+state "REVERTED\nRevertido" as REVERTED
+
+[*] --> UPLOADED : upload(archivo)\n/ guardar original en storage
+UPLOADED --> FI : [archivo ilegible o\nsupera límites]
+UPLOADED --> MAPPED : set_mapping(plantilla)\n[mapeo válido]
+MAPPED --> MAPPED : set_mapping()\n/ re-mapear
+MAPPED --> VALIDATED : validate()\n/ normalizar, matching
+VALIDATED --> PREVIEW : [clasificación completa]\n/ calcular diffs
+PREVIEW --> PREVIEW : decide_row(fila, decisión)
+PREVIEW --> MAPPED : set_mapping()\n/ descartar validación
+PREVIEW --> APPROVED : approve(summary_token)\n[permiso imports.approve y\nresumen sin cambios]
+APPROVED --> APPLIED : apply()\n/ transacción única,\naudit origin=IMPORT
+APPROVED --> FA : [error en aplicación]\n/ rollback total
+FA --> PREVIEW : corregir y reintentar
+APPLIED --> REVERTED : revert()\n[permiso imports.revert]\n/ revertir change_set
+UPLOADED --> ABANDONED : abandon()
+MAPPED --> ABANDONED : abandon()
+PREVIEW --> ABANDONED : abandon()
+FI --> [*]
+ABANDONED --> [*]
+REVERTED --> [*]
+APPLIED --> [*]
+note right of PREVIEW
+  Ninguna fila modifica el catálogo
+  antes de APPLIED (RF-021, RF-027).
+end note
+@enduml

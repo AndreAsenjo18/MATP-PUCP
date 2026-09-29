@@ -1,0 +1,38 @@
+@startuml sq_fotografias
+!include _header.iuml
+hide footbox
+autonumber "<b>0."
+actor "Catalogador" as U
+boundary "Galería\n(Next.js)" as W
+control "PiecesRouter\n/pieces/{id}/media" as R
+participant "MediaService" as MS
+participant "StorageClient\n(S3 API)" as SC
+database "Bucket S3-compatible\n(MinIO)" as S3
+database "PostgreSQL" as DB
+
+U -> W : arrastra fotos y elige tipo de vista
+loop por cada archivo
+  W -> W : calcular SHA-256 (Web Crypto)
+  W -> R : POST /pieces/{id}/media/upload-url\n{filename, content_type, size, sha256}
+  R -> MS : create_upload_url(piece, meta)
+  MS -> DB : ¿sha256 ya existe en la pieza?
+  MS -> SC : presign_put("pending/<uuid>", ttl=15 min)
+  MS --> R : {upload_url, storage_key}
+  R --> W : 200 (+ warning duplicate_content si aplica)
+  W -> S3 : PUT archivo (directo, sin pasar por la API)
+  W -> R : POST /pieces/{id}/media {storage_key, view_type}
+  R -> MS : register_media(piece, key, meta)
+  MS -> SC : head(key) + leer primeros bytes
+  MS -> MS : verificar tipo real (Pillow),\ntamaño y SHA-256
+  alt archivo inválido o huella distinta
+    MS -> SC : borrar objeto pendiente
+    R --> W : 422 invalid_media
+  else válido
+    MS -> SC : copy(pending → pieces/<piece>/<media>/original)
+    MS -> DB : INSERT media_asset + audit_log
+    MS ->> MS : BackgroundTask: generar thumb y display (webp)
+    R --> W : 201 {media}
+  end
+end
+W --> U : galería multivista actualizada
+@enduml
