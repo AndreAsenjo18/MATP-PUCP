@@ -3,8 +3,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of, serialize_label
 from app.api.refs import EX_COLLECTION_ID, EX_DATETIME, EX_TERM_ID, ORMModel
 from app.modules.catalog.enums import TenureRegime
 
@@ -15,7 +16,7 @@ _COLLECTION_EXAMPLE = {
     "acronym": "M.M.Z.",
     "acronym_normalized": "MMZ",
     "description": "Colección sintética de demostración.",
-    "default_tenure_regime": "OWNED",
+    "default_tenure_regime": "Propiedad",
     "origin_description": None,
     "is_active": True,
     "piece_count": 54,
@@ -36,7 +37,9 @@ class CollectionOut(ORMModel):
     acronym: str | None
     acronym_normalized: str | None
     description: str | None
-    default_tenure_regime: TenureRegime
+    default_tenure_regime: TenureRegimeLabel = Field(
+        description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+    )
     origin_description: str | None = Field(
         description="Origen o donante. Sensible: requiere sensitive.donor_data (RF-041)."
     )
@@ -45,6 +48,12 @@ class CollectionOut(ORMModel):
     created_at: datetime
     updated_at: datetime
     masked_fields: list[str] = Field(default_factory=list)
+
+    @field_validator("default_tenure_regime", mode="before")
+    @classmethod
+    def _tenure_to_label(cls, value: object) -> str | None:
+        """Emite la etiqueta en español del contrato aunque llegue el código interno."""
+        return serialize_label(TENURE_REGIME_LABELS, value)  # type: ignore[arg-type]
 
 
 class CollectionCreate(BaseModel):
@@ -55,7 +64,7 @@ class CollectionCreate(BaseModel):
                     "name": "Colección de retablos (ficticia)",
                     "acronym": "R.A.",
                     "parent_id": None,
-                    "default_tenure_regime": "OWNED",
+                    "default_tenure_regime": "Propiedad",
                 }
             ]
         }
@@ -64,9 +73,25 @@ class CollectionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=300)
     acronym: str | None = Field(None, max_length=40)
     parent_id: uuid.UUID | None = None
-    default_tenure_regime: TenureRegime = TenureRegime.OWNED
+    default_tenure_regime: TenureRegimeLabel = Field(
+        default="Propiedad",
+        description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+    )
     description: str | None = None
     origin_description: str | None = None
+
+    @field_validator("default_tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, TenureRegime)
+            else code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
+        )
+        return TENURE_REGIME_LABELS[code]
 
 
 class CollectionUpdate(BaseModel):

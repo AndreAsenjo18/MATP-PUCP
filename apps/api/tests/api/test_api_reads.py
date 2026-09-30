@@ -15,9 +15,9 @@ def test_identifier_types(client: TestClient) -> None:
 def test_locations_for_storage_staff_include_exact_levels(client: TestClient) -> None:
     listed = client.get("/api/v1/locations", headers=as_user(STORAGE)).json()
     levels = {item["level"] for item in listed}
-    assert {"SITE", "SPACE", "FURNITURE"} <= levels
-    container = next(item for item in listed if item["level"] in {"CONTAINER", "SHELF_LEVEL"})
-    assert container["path"][0]["level"] == "SITE"
+    assert {"Sede", "Depósito", "Mueble"} <= levels
+    container = next(item for item in listed if item["level"] in {"Contenedor", "Nivel"})
+    assert container["path"][0]["level"] == "Sede"
     detail = client.get(f"/api/v1/locations/{container['id']}", headers=as_user(STORAGE))
     assert detail.status_code == 200
     hidden = client.get(f"/api/v1/locations/{container['id']}", headers=as_user(VIEWER))

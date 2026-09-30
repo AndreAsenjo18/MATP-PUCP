@@ -18,7 +18,7 @@ export function maskPieceForRole(piece: PieceDetail, hasPermission: (code: strin
 
   let lenderName = piece.lender_name;
   let loanAgreementRef = piece.loan_agreement_ref;
-  if (piece.tenure_regime === "LOAN_FOR_USE") {
+  if (piece.tenure_regime === "Comodato") {
     if (!hasPermission("sensitive.donor_data") && lenderName) {
       lenderName = null;
       maskedFields.push("lender_name");

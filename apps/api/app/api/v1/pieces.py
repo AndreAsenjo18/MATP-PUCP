@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
-from app.api.refs import LocationRef, TermRef
+from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
     CHANGE_LOCATIONS,
@@ -21,7 +22,6 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
@@ -78,7 +78,10 @@ def piece_filters(
     ] = None,
     collection_id: Annotated[uuid.UUID | None, Query(description="Incluye subcolecciones.")] = None,
     without_collection: Annotated[bool | None, Query(description="true = piezas sueltas.")] = None,
-    tenure_regime: TenureRegime | None = None,
+    tenure_regime: Annotated[
+        TenureRegimeLabel | None,
+        Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
+    ] = None,
     category_term_id: uuid.UUID | None = None,
     material_term_id: uuid.UUID | None = None,
     conservation_status_term_id: uuid.UUID | None = None,
@@ -89,11 +92,16 @@ def piece_filters(
     period_text: Annotated[str | None, Query(max_length=200)] = None,
     sort: PieceSort = "title",
 ) -> PieceFilters:
+    regime = (
+        code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
+        if tenure_regime is not None
+        else None
+    )
     return PieceFilters(
         q=q,
         collection_id=collection_id,
         without_collection=without_collection,
-        tenure_regime=tenure_regime,
+        tenure_regime=regime,
         category_term_id=category_term_id,
         material_term_id=material_term_id,
         conservation_status_term_id=conservation_status_term_id,
@@ -345,7 +353,7 @@ def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> 
             content_sha256=asset.content_sha256,
             width_px=asset.width_px,
             height_px=asset.height_px,
-            view_type=TermRef.model_validate(terms[asset.view_type_term_id])
+            view_type=translate_view_term(TermRef.model_validate(terms[asset.view_type_term_id]))
             if asset.view_type_term_id in terms
             else None,
             sort_order=asset.sort_order,

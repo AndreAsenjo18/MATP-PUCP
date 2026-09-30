@@ -14,7 +14,7 @@
 ## 3. Traducción de enumerados en la frontera
 
 - [x] 3.1 Crear `app/api/enums.py` con la tabla única de equivalencias (régimen de tenencia, tipo de vista, estado de lote e importación) y pruebas de ida y vuelta para cada valor (Req: Valores de enumerado del contrato en la API; RF-005, RF-013)
-- [ ] 3.2 Aplicar la traducción en todos los esquemas de entrada y salida; prueba de que ninguna respuesta de la API contiene los códigos internos en inglés (Req: Valores de enumerado del contrato en la API)
+- [x] 3.2 Aplicar la traducción en todos los esquemas de entrada y salida; prueba de que ninguna respuesta de la API contiene los códigos internos en inglés (Req: Valores de enumerado del contrato en la API)
 
 ## 4. Operaciones de la fase 1 del documento (1 a 20)
 

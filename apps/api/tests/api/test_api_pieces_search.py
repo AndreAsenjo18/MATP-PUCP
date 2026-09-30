@@ -39,15 +39,15 @@ def test_deleted_piece_detail_is_404(seeded_api: SeededApi) -> None:
 
 def test_combined_filters_are_and(client: TestClient) -> None:
     response = client.get(
-        "/api/v1/pieces?tenure_regime=LOAN_FOR_USE&has_inventory_code=false&page_size=100",
+        "/api/v1/pieces?tenure_regime=Comodato&has_inventory_code=false&page_size=100",
         headers=H,
     ).json()
     assert response["total"] > 0
     for item in response["items"]:
-        assert item["tenure_regime"] == "LOAN_FOR_USE"
+        assert item["tenure_regime"] == "Comodato"
         assert item["inventory_code"] is None
     impossible = client.get(
-        "/api/v1/pieces?tenure_regime=LOAN_FOR_USE&has_inventory_code=true", headers=H
+        "/api/v1/pieces?tenure_regime=Comodato&has_inventory_code=true", headers=H
     ).json()
     assert impossible["total"] == 0  # RN-003: comodato nunca tiene I
 
