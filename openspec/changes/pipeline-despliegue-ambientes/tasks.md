@@ -30,5 +30,5 @@
 
 - [ ] 6.1 Pruebas requeridas: las de 2.1 y 3.1, `npm run lint`, `npm test`, `npm run openapi:check`, `actionlint` sobre los dos workflows y `openspec validate --all --strict` en verde. La verificación contra PostgreSQL real es el despliegue en pruebas de la tarea 3.3 (RDS, ADR-013), y para producción, el primer despliegue en la VM PUCP cuando haya acceso (G14)
 - [ ] 6.2 Confirmar que `docs/api/openapi.json` y el cliente tipado reflejan `commit` y `release` en `/health` (tarea 2.1), sin otros cambios de contrato
-- [ ] 6.3 Añadir al manual de usuario `docs/manual-usuario/administracion.md` una sección que explique cómo saber qué versión está en pruebas y en producción, y a quién pedir un despliegue a producción
+- [x] 6.3 Añadir al manual de usuario `docs/manual-usuario/administracion.md` una sección que explique cómo saber qué versión está en pruebas y en producción, y a quién pedir un despliegue a producción
 - [ ] 6.4 Tras aprobar el PR, `openspec archive pipeline-despliegue-ambientes -y`

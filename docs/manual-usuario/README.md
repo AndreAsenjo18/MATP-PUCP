@@ -16,7 +16,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | pendiente |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | pendiente |
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
-| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | pendiente |
+| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) |
 
 ## Cómo moverse por el sistema
 
