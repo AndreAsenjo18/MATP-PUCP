@@ -361,18 +361,18 @@ class SyntheticCatalogBuilder:
         structured = rng.random() < 0.6
         piece = create_piece(
             self.session,
-            title=title,
+            denomination=title,
             tenure_regime=tenure,
             collection_id=self.collections[acronym].id if acronym else None,
             description=f"{title} procedente de {region}. Descripción sintética de demostración.",
             provenance=region,
             author=rng.choice(["Anónimo", f"Taller ficticio {rng.randint(1, 40):02d}", None]),
             entry_date=date(rng.randint(1975, 2024), rng.randint(1, 12), rng.randint(1, 28)),
-            period_text=period_text,
-            period_type=period_type,
-            period_from=period_from,
-            period_to=period_to,
-            category_term_id=self.term_id(VocabularyCode.CATEGORY, category),
+            epoch_original_text=period_text,
+            epoch_type=period_type,
+            epoch_start_year=period_from,
+            epoch_end_year=period_to,
+            category_id=self.term_id(VocabularyCode.CATEGORY, category),
             object_type_term_id=self.term_id(VocabularyCode.OBJECT_TYPE, "BIEN_MUEBLE"),
             acquisition_method_term_id=self.term_id(
                 VocabularyCode.ACQUISITION_METHOD,
@@ -479,7 +479,7 @@ class SyntheticCatalogBuilder:
                     notes="Evaluación sintética",
                 )
             )
-            piece.conservation_status_term_id = status_id
+            piece.conservation_state_id = status_id
 
         self._assign_location(piece)
         self._attach_photos(piece, acronym)
@@ -510,7 +510,7 @@ class SyntheticCatalogBuilder:
         )
         restriction = "NO_PUBLICAR" if acronym == "AJB" else "SIN_RESTRICCION"
         for order, view in enumerate(views):
-            image = placeholder_photo(f"{piece.title} ({str(piece.id)[:8]})", view)
+            image = placeholder_photo(f"{piece.denomination} ({str(piece.id)[:8]})", view)
             asset_id = new_uuid()
             key = f"pieces/{piece.id}/{asset_id}.jpg"
             if self.storage is not None:
@@ -555,12 +555,12 @@ class SyntheticCatalogBuilder:
             for component in range(1, self.options.components_per_set + 1):
                 child = create_piece(
                     self.session,
-                    title=f"{parent.title} - componente {component}",
+                    denomination=f"{parent.denomination} - componente {component}",
                     tenure_regime=parent.tenure_regime,
                     collection_id=parent.collection_id,
                     parent_piece_id=parent.id,
                     object_type_term_id=self.term_id(VocabularyCode.OBJECT_TYPE, "COMPONENTE"),
-                    category_term_id=parent.category_term_id,
+                    category_id=parent.category_id,
                     description="Componente sintético de un conjunto.",
                 )
                 if parent_code:
@@ -582,24 +582,24 @@ class SyntheticCatalogBuilder:
             acronym, number = code.split(" ")
             variant_title = self.rng.choice(
                 [
-                    f"{original.title} (duplicado probable)",
-                    original.title.upper(),
-                    f"{original.title} s/n",
+                    f"{original.denomination} (duplicado probable)",
+                    original.denomination.upper(),
+                    f"{original.denomination} s/n",
                 ]
             )
             duplicate = create_piece(
                 self.session,
-                title=variant_title,
+                denomination=variant_title,
                 tenure_regime=original.tenure_regime,
                 collection_id=original.collection_id,
                 provenance=original.provenance,
-                category_term_id=original.category_term_id,
+                category_id=original.category_id,
                 description="Ficha duplicada sintética (reproduce registros de Word/Excel).",
                 notes="Registrada desde otra fuente histórica.",
             )
             dirty = f"{'.'.join(acronym)}. {int(number):03d}"
             add_identifier(self.session, duplicate, TYPE_COLLECTION, dirty, source="Ficha Word")
-            title_similarity = _similarity(original.title, variant_title)
+            title_similarity = _similarity(original.denomination, variant_title)
             score = Decimal(str(round(0.5 * title_similarity + 0.5, 4)))
             self.session.add(
                 DuplicateCandidate(
@@ -650,9 +650,9 @@ class SyntheticCatalogBuilder:
         rows = [
             (RowClassification.NEW, {"DENOMINACIÓN": "Retablo de pastores", "CÓDIGOS": "RA 900"}, None, None),
             (RowClassification.NEW, {"DENOMINACIÓN": "Máscara de negrito", "CÓDIGOS": "S/N"}, None, None),
-            (RowClassification.UPDATE, {"DENOMINACIÓN": target.title, "PROCEDENCIA": "Huancavelica"},
+            (RowClassification.UPDATE, {"DENOMINACIÓN": target.denomination, "PROCEDENCIA": "Huancavelica"},
              target.id, {"provenance": {"current": target.provenance, "incoming": "Huancavelica"}}),
-            (RowClassification.POSSIBLE_DUPLICATE, {"DENOMINACIÓN": f"{target.title} (3 pisos)"}, target.id, None),
+            (RowClassification.POSSIBLE_DUPLICATE, {"DENOMINACIÓN": f"{target.denomination} (3 pisos)"}, target.id, None),
             (RowClassification.CONFLICT, {"DENOMINACIÓN": "Pieza con códigos contradictorios",
                                           "CÓDIGOS": "I 2362 / RA 28"}, None, None),
             (None, {"DENOMINACIÓN": "Imagen en comodato con código I", "CÓDIGOS": "I-0999 / AJB 12"}, None, None),
@@ -687,7 +687,7 @@ class SyntheticCatalogBuilder:
                     provider="mock",
                     model="mock-deterministic",
                     piece_id=piece.id,
-                    input_data={"title": piece.title, "description": piece.description},
+                    input_data={"title": piece.denomination, "description": piece.description},
                     output_data={
                         "category": self.piece_categories.get(piece.id),
                         "confidence": 0.8,

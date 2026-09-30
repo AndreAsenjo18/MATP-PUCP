@@ -34,7 +34,7 @@ def _audit_count(session: Session) -> int:
 def test_write_without_audit_context_is_rejected_and_nothing_is_saved(
     session: Session, users: dict[str, AppUser]
 ) -> None:
-    session.add(Piece(id=new_uuid(), title="Sin contexto", tenure_regime=TenureRegime.OWNED))
+    session.add(Piece(id=new_uuid(), denomination="Sin contexto", tenure_regime=TenureRegime.OWNED))
     with pytest.raises(MissingAuditContext):
         session.flush()
     session.rollback()
@@ -43,7 +43,7 @@ def test_write_without_audit_context_is_rejected_and_nothing_is_saved(
 
 def test_service_without_context_is_rejected(session: Session, users: dict[str, AppUser]) -> None:
     with pytest.raises(MissingAuditContext):
-        create_piece(session, title="Sin contexto", tenure_regime=TenureRegime.OWNED)
+        create_piece(session, denomination="Sin contexto", tenure_regime=TenureRegime.OWNED)
 
 
 def test_context_requires_user_or_system_process() -> None:
@@ -65,7 +65,7 @@ def test_manual_edit_is_audited_field_by_field(
 ) -> None:
     with act_as("CATALOGUER"):
         piece = create_piece(
-            session, title="Retablo", tenure_regime=TenureRegime.OWNED, provenance="Ayacucho"
+            session, denomination="Retablo", tenure_regime=TenureRegime.OWNED, provenance="Ayacucho"
         )
         session.commit()
         before = _audit_count(session)
@@ -91,7 +91,7 @@ def test_manual_edit_is_audited_field_by_field(
 
 def test_creation_is_audited_per_field(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Quena", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Quena", tenure_regime=TenureRegime.OWNED)
         session.commit()
     fields = set(
         session.scalars(
@@ -100,13 +100,13 @@ def test_creation_is_audited_per_field(session: Session, act_as: ActAs) -> None:
             )
         )
     )
-    assert {"id", "title", "tenure_regime", "legal_owner"} <= fields
+    assert {"id", "denomination", "tenure_regime", "legal_owner"} <= fields
     assert "created_at" not in fields
 
 
 def test_import_origin_keeps_batch_reference(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Manta", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Manta", tenure_regime=TenureRegime.OWNED)
         session.commit()
     with act_as("COLLECTIONS_MANAGER", origin=AuditOrigin.IMPORT, origin_ref="batch-42"):
         update_piece(session, piece, author="Autor sintético")
@@ -120,17 +120,17 @@ def test_import_origin_keeps_batch_reference(session: Session, act_as: ActAs) ->
 
 def test_saving_without_changes_creates_no_audit_rows(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Charango", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Charango", tenure_regime=TenureRegime.OWNED)
         session.commit()
         before = _audit_count(session)
-        update_piece(session, piece, title="Charango")
+        update_piece(session, piece, denomination="Charango")
         session.commit()
     assert _audit_count(session) == before
 
 
 def test_physical_delete_is_forbidden(session: Session, act_as: ActAs) -> None:
     with act_as("ADMIN"):
-        piece = create_piece(session, title="Tinya", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Tinya", tenure_regime=TenureRegime.OWNED)
         session.commit()
         session.delete(piece)
         with pytest.raises(PhysicalDeleteForbidden):
@@ -140,7 +140,7 @@ def test_physical_delete_is_forbidden(session: Session, act_as: ActAs) -> None:
 
 def test_audit_log_rows_cannot_be_modified_or_deleted(session: Session, act_as: ActAs) -> None:
     with act_as("ADMIN"):
-        create_piece(session, title="Mate", tenure_regime=TenureRegime.OWNED)
+        create_piece(session, denomination="Mate", tenure_regime=TenureRegime.OWNED)
         session.commit()
         entry = session.scalars(select(AuditLog)).first()
         assert entry is not None
@@ -160,7 +160,7 @@ def test_movements_are_append_only(session: Session, act_as: ActAs) -> None:
         space = create_location(
             session, level=LocationLevel.SPACE, code="S-D1", name="Depósito", parent=site
         )
-        piece = create_piece(session, title="Olla", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Olla", tenure_regime=TenureRegime.OWNED)
         movement = move_piece(session, piece, space, "Ingreso")
         session.commit()
         movement.reason = "Otro motivo"
@@ -172,7 +172,7 @@ def test_movements_are_append_only(session: Session, act_as: ActAs) -> None:
 
 def test_soft_delete_requires_reason(session: Session, act_as: ActAs) -> None:
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Trompo", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Trompo", tenure_regime=TenureRegime.OWNED)
         with pytest.raises(ValidationFailed) as excinfo:
             soft_delete(session, piece, "  ")
     assert excinfo.value.code == "reason_required"
@@ -182,8 +182,8 @@ def test_soft_deleted_piece_is_hidden_kept_and_audited(
     session: Session, act_as: ActAs, users: dict[str, AppUser]
 ) -> None:
     with act_as("COLLECTIONS_MANAGER"):
-        kept = create_piece(session, title="Visible", tenure_regime=TenureRegime.OWNED)
-        piece = create_piece(session, title="Eliminada", tenure_regime=TenureRegime.OWNED)
+        kept = create_piece(session, denomination="Visible", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Eliminada", tenure_regime=TenureRegime.OWNED)
         soft_delete(session, piece, "Registrada por error")
         session.commit()
     session.expunge_all()
@@ -191,7 +191,7 @@ def test_soft_deleted_piece_is_hidden_kept_and_audited(
     assert [p.id for p in visible] == [kept.id]
     assert session.get(Piece, piece.id) is None
     stored = session.get(Piece, piece.id, execution_options={INCLUDE_DELETED: True})
-    assert stored is not None and stored.title == "Eliminada"
+    assert stored is not None and stored.denomination == "Eliminada"
     assert stored.deleted_by_id == users["COLLECTIONS_MANAGER"].id
     assert stored.deletion_reason == "Registrada por error"
     entry = session.scalars(
@@ -206,7 +206,7 @@ def test_soft_deleted_piece_is_hidden_kept_and_audited(
 
 def test_restore_by_admin_only(session: Session, act_as: ActAs) -> None:
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Restaurable", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Restaurable", tenure_regime=TenureRegime.OWNED)
         soft_delete(session, piece, "Error")
         session.commit()
         with pytest.raises(PermissionDenied):
