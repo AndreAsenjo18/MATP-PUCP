@@ -1,5 +1,7 @@
 # MATP-PUCP — System Design Frontend
 
+> Documento original del equipo, solo referencia histórica. La versión vigente es `docs/system-design.md`.
+
 Documentación del sistema de diseño para el inventario del museo. Stack: React + TypeScript + Tailwind CSS + `lucide-react`.
 
 Este proyecto usa la variante **Atomic Design**, con tres niveles:
