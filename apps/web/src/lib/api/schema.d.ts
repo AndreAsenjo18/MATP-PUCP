@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: ae666536fc3ce5ecd435d7838c79a6ac501d4cd1ec39f0032b83add3062f0088
+ * openapi-sha256: abf8b7319a6f4916a257861cf637ac4fafca26091b9aeaae2d169e3524f74c75
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -1886,6 +1886,10 @@ export interface components {
             checks: {
                 [key: string]: components["schemas"]["DependencyStatus"];
             };
+            /** Commit */
+            commit: string;
+            /** Release */
+            release: string | null;
             /** Service */
             service: string;
             /**
