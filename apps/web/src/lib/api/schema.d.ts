@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: f1898e8741a1e6214a07d1114d532831da31bac3acebc1b6be2a5cc4571155b8
+ * openapi-sha256: 823b73f742c218a391a020c492e4f5b680da156822abec912993cc1c640dfd1b
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -580,7 +580,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025) */
+        /** Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016) */
         get: operations["getPiecesInLocation"];
         put?: never;
         post?: never;
@@ -1018,7 +1018,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-033) */
+        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-006) */
         get: operations["exportPiecePdf"];
         put?: never;
         post?: never;
@@ -1422,7 +1422,7 @@ export interface components {
          *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
          *       "entity_id": "01920000-0000-7000-8000-000000000101",
          *       "entity_type": "piece",
-         *       "field": "conservation_status_term_id",
+         *       "field": "conservation_state_id",
          *       "id": "01920000-0000-7000-8000-000000000a01",
          *       "new_value": "01920000-0000-7000-8000-000000000301",
          *       "occurred_at": "2026-09-17T10:30:00Z",

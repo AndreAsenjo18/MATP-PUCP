@@ -37,7 +37,7 @@ entity COLLECTION {
 entity PIECE {
   * id : uuid <<PK>>
   --
-  * title : varchar(500)
+  * denomination : varchar(500)
     description : text
     collection_id : uuid <<FK>>
   * tenure_regime : varchar(40)
@@ -49,15 +49,15 @@ entity PIECE {
     entry_date : date
     author : varchar(300)
     provenance : varchar(300)
-    period_text : varchar(200)
-    period_type : varchar(40)
-    period_from : integer
-    period_to : integer
+    epoch_original_text : varchar(200)
+    epoch_type : varchar(40)
+    epoch_start_year : integer
+    epoch_end_year : integer
     object_type_term_id : uuid <<FK>>
-    category_term_id : uuid <<FK>>
+    category_id : uuid <<FK>>
     dimensions_text : text
     dimensions : jsonb
-    conservation_status_term_id : uuid <<FK>>
+    conservation_state_id : uuid <<FK>>
     recorded_by : varchar(200)
     notes : text
     parent_piece_id : uuid <<FK>>

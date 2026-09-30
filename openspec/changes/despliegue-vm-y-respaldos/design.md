@@ -1,6 +1,6 @@
 ## Context
 
-- `docker-compose.yml` de desarrollo: `db` (`postgres:18-alpine`), `storage` (MinIO `quay.io/minio/minio` con etiqueta fija, ver ADR-003), `api`, `ai`, `web` con healthchecks; puertos 5432/9000/9001 publicados para desarrollo.
+- `docker-compose.yml` de desarrollo: `db` (`postgres:18-alpine`), `storage` (MinIO, fork comunitario `pgsty/minio` con etiqueta fija, ver ADR-003), `api`, `ai`, `web` con healthchecks; puertos 5432/9000/9001 publicados para desarrollo.
 - Imágenes Python 3.14 y Next.js `output: standalone`; aún no se han construido por falta de Docker (bloqueo de entorno).
 - Datos a proteger: base PostgreSQL (catálogo, auditoría, usuarios con datos personales) y bucket de objetos (fotos originales, archivos de importación, exportaciones temporales).
 - Información pendiente de la DTI/contraparte: sistema operativo y recursos de la VM, dominio y certificado, acceso SSH, destino externo de respaldos y correo para alertas [SUPUESTO C6].

@@ -28,7 +28,7 @@ class Piece(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "piece"
 
     # Denominación (mandatory, RF-006) and descriptive fields.
-    title: Mapped[str] = mapped_column(String(500))
+    denomination: Mapped[str] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(Text)
     collection_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("collection.id"), index=True)
 
@@ -44,20 +44,20 @@ class Piece(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     author: Mapped[str | None] = mapped_column(String(300))
     provenance: Mapped[str | None] = mapped_column(String(300))
 
-    # Period: original text plus optional structured interpretation (RF-007).
-    period_text: Mapped[str | None] = mapped_column(String(200))
-    period_type: Mapped[PeriodType | None] = mapped_column(str_enum(PeriodType, "period_type"))
-    period_from: Mapped[int | None] = mapped_column()
-    period_to: Mapped[int | None] = mapped_column()
+    # Epoch: original text plus optional structured interpretation (RF-007).
+    epoch_original_text: Mapped[str | None] = mapped_column(String(200))
+    epoch_type: Mapped[PeriodType | None] = mapped_column(str_enum(PeriodType, "epoch_type"))
+    epoch_start_year: Mapped[int | None] = mapped_column()
+    epoch_end_year: Mapped[int | None] = mapped_column()
 
     object_type_term_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"))
-    category_term_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"), index=True)
+    category_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"), index=True)
 
     # Dimensions: original text + structured list [{dimension, value, unit}] (RF-006).
     dimensions_text: Mapped[str | None] = mapped_column(Text)
     dimensions: Mapped[list[Any] | None] = mapped_column(JsonType)
 
-    conservation_status_term_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"))
+    conservation_state_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"))
     recorded_by: Mapped[str | None] = mapped_column(String(200))  # registrador
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -76,10 +76,11 @@ class Piece(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "period_from IS NULL OR period_to IS NULL OR period_from <= period_to",
-            name="period_range",
+            "epoch_start_year IS NULL OR epoch_end_year IS NULL "
+            "OR epoch_start_year <= epoch_end_year",
+            name="epoch_range",
         ),
-        Index("ix_piece_title", "title"),
+        Index("ix_piece_denomination", "denomination"),
     )
 
 

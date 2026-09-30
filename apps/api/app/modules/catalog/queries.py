@@ -126,7 +126,7 @@ def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[P
         conditions.append(
             or_(
                 identifier_match_condition(filters.q),
-                Piece.title.ilike(_contains(filters.q), escape="\\"),
+                Piece.denomination.ilike(_contains(filters.q), escape="\\"),
             )
         )
     if filters.collection_id is not None:
@@ -139,9 +139,9 @@ def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[P
     if filters.tenure_regime is not None:
         conditions.append(Piece.tenure_regime == filters.tenure_regime)
     if filters.category_term_id is not None:
-        conditions.append(Piece.category_term_id == filters.category_term_id)
+        conditions.append(Piece.category_id == filters.category_term_id)
     if filters.conservation_status_term_id is not None:
-        conditions.append(Piece.conservation_status_term_id == filters.conservation_status_term_id)
+        conditions.append(Piece.conservation_state_id == filters.conservation_status_term_id)
     if filters.material_term_id is not None:
         conditions.append(
             exists().where(
@@ -164,15 +164,15 @@ def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[P
     for column, value in (
         (Piece.author, filters.author),
         (Piece.provenance, filters.provenance),
-        (Piece.period_text, filters.period_text),
+        (Piece.epoch_original_text, filters.period_text),
     ):
         if value and value.strip():
             conditions.append(column.ilike(_contains(value), escape="\\"))
     if conditions:
         statement = statement.where(and_(*conditions))
     order = {
-        "title": (Piece.title.asc(), Piece.id.asc()),
-        "-title": (Piece.title.desc(), Piece.id.desc()),
+        "title": (Piece.denomination.asc(), Piece.id.asc()),
+        "-title": (Piece.denomination.desc(), Piece.id.desc()),
         "created_at": (Piece.created_at.asc(), Piece.id.asc()),
         "-created_at": (Piece.created_at.desc(), Piece.id.desc()),
     }[filters.sort]
@@ -291,7 +291,7 @@ class CatalogReader:
         children = self.session.scalars(
             select(Piece)
             .where(Piece.parent_piece_id == piece_id, Piece.deleted_at.is_(None))
-            .order_by(Piece.title)
+            .order_by(Piece.denomination)
         )
         return self.summaries(list(children))
 
@@ -303,7 +303,7 @@ class CatalogReader:
         terms = self.terms(
             term_id
             for piece in pieces
-            for term_id in (piece.category_term_id, piece.conservation_status_term_id)
+            for term_id in (piece.category_id, piece.conservation_state_id)
         )
         result: list[PieceSummary] = []
         for piece in pieces:
@@ -321,7 +321,7 @@ class CatalogReader:
             result.append(
                 PieceSummary(
                     id=piece.id,
-                    title=piece.title,
+                    title=piece.denomination,
                     collection=CollectionRef.model_validate(collection) if collection else None,
                     tenure_regime=piece.tenure_regime,
                     inventory_code=inventory,
@@ -333,9 +333,9 @@ class CatalogReader:
                         )
                         for code in codes
                     ],
-                    category=self._term(terms, piece.category_term_id),
-                    conservation_status=self._term(terms, piece.conservation_status_term_id),
-                    period_text=piece.period_text,
+                    category=self._term(terms, piece.category_id),
+                    conservation_status=self._term(terms, piece.conservation_state_id),
+                    period_text=piece.epoch_original_text,
                     location_label=" › ".join(node.name for node in path) or None,
                     media_count=media.get(piece.id, 0),
                     has_location=piece.current_location_id is not None,
@@ -355,8 +355,8 @@ class CatalogReader:
             [
                 piece.acquisition_method_term_id,
                 piece.object_type_term_id,
-                piece.category_term_id,
-                piece.conservation_status_term_id,
+                piece.category_id,
+                piece.conservation_state_id,
                 piece.availability_term_id,
                 *material_ids,
             ]
@@ -379,7 +379,7 @@ class CatalogReader:
             masked.append("location.path")
         return PieceDetail(
             id=piece.id,
-            title=piece.title,
+            title=piece.denomination,
             description=piece.description,
             collection=CollectionRef.model_validate(collection) if collection else None,
             tenure_regime=piece.tenure_regime,
@@ -390,19 +390,19 @@ class CatalogReader:
             author=piece.author,
             provenance=piece.provenance,
             period=Period(
-                text=piece.period_text,
-                type=piece.period_type,
-                year_from=piece.period_from,
-                year_to=piece.period_to,
+                text=piece.epoch_original_text,
+                type=piece.epoch_type,
+                year_from=piece.epoch_start_year,
+                year_to=piece.epoch_end_year,
             ),
             object_type=self._term(terms, piece.object_type_term_id),
-            category=self._term(terms, piece.category_term_id),
+            category=self._term(terms, piece.category_id),
             materials=[ref for ref in (self._term(terms, t) for t in material_ids) if ref],
             dimensions_text=piece.dimensions_text,
             dimensions=[Dimension.model_validate(item) for item in piece.dimensions]
             if piece.dimensions
             else None,
-            conservation_status=self._term(terms, piece.conservation_status_term_id),
+            conservation_status=self._term(terms, piece.conservation_state_id),
             recorded_by=piece.recorded_by,
             notes=piece.notes,
             parent_piece_id=piece.parent_piece_id,

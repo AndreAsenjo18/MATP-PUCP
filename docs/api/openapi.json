@@ -370,7 +370,7 @@
             "change_set_id": "01920000-0000-7000-8000-000000000a00",
             "entity_id": "01920000-0000-7000-8000-000000000101",
             "entity_type": "piece",
-            "field": "conservation_status_term_id",
+            "field": "conservation_state_id",
             "id": "01920000-0000-7000-8000-000000000a01",
             "new_value": "01920000-0000-7000-8000-000000000301",
             "occurred_at": "2026-09-17T10:30:00Z",
@@ -10205,7 +10205,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)",
         "tags": [
           "Ubicaciones"
         ],
@@ -13118,7 +13118,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
         "tags": [
           "Reportes"
         ],

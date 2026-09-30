@@ -24,8 +24,10 @@ services:
 
   storage:
     # RustFS (Apache 2.0, S3-compatible) reemplaza a MinIO: quay.io/minio/... devuelve 401.
-    # Contingencia prevista en ADR-003. La API (boto3 path-style) no cambia; las credenciales
-    # locales siguen saliendo de MINIO_ROOT_USER / MINIO_ROOT_PASSWORD del .env.
+    # Contingencia prevista en ADR-003 (se descartó el fork pgsty/minio: tercero no verificado;
+    # RustFS sí verificado: healthy, /health ok y seed con 433 fotos). La API (boto3 path-style)
+    # no cambia; las credenciales locales siguen saliendo de MINIO_ROOT_USER /
+    # MINIO_ROOT_PASSWORD del .env. Puertos solo en 127.0.0.1 (desarrollo local).
     image: rustfs/rustfs:1.0.0
     restart: unless-stopped
     command: ["/data"]
@@ -36,8 +38,8 @@ services:
       RUSTFS_CONSOLE_ADDRESS: ":9001"
       RUSTFS_CONSOLE_ENABLE: "true"
     ports:
-      - "${S3_PORT:-9000}:9000"
-      - "${S3_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${S3_PORT:-9000}:9000"
+      - "127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001"
     volumes:
       - storage-data:/data
     healthcheck:

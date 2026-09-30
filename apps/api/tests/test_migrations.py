@@ -103,3 +103,84 @@ def test_postgresql_sql_is_generated_offline(
     assert "JSONB" in sql
     for table in ("audit_log", "piece_movement", "piece_source_record", "conservation_assessment"):
         assert f"CREATE TRIGGER trg_{table}_append_only BEFORE UPDATE OR DELETE ON {table}" in sql
+
+
+def _migrate(engine, revision: str, *, down: bool = False) -> None:  # type: ignore[no-untyped-def]
+    with engine.begin() as connection:
+        config = _config(str(engine.url))
+        config.attributes["connection"] = connection
+        (command.downgrade if down else command.upgrade)(config, revision)
+
+
+def test_piece_contract_names_keep_the_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0002 renames the piece columns to the contract names without losing rows (tarea 2.1)."""
+    engine = _sqlite_engine(tmp_path / "matp.db")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'matp.db').as_posix()}")
+    _migrate(engine, "0001_core_data_model")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO piece (id, title, tenure_regime, period_text, period_type, "
+                "period_from, period_to, created_at, updated_at) VALUES "
+                "('00000000000000000000000000000001', 'Retablo', 'OWNED', 's. XX', 'CENTURY', "
+                "1901, 2000, '2026-09-29', '2026-09-29')"
+            )
+        )
+
+    _migrate(engine, "0002_piece_contract_names")
+    columns = {column["name"] for column in inspect(engine).get_columns("piece")}
+    assert {
+        "denomination",
+        "epoch_original_text",
+        "epoch_type",
+        "epoch_start_year",
+        "epoch_end_year",
+        "category_id",
+        "conservation_state_id",
+    } <= columns
+    assert not columns & {"title", "period_text", "category_term_id", "code_i"}
+    indexes = {index["name"] for index in inspect(engine).get_indexes("piece")}
+    assert {"ix_piece_denomination", "ix_piece_category_id"} <= indexes
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT denomination, epoch_original_text, epoch_type, epoch_start_year, "
+                "epoch_end_year FROM piece"
+            )
+        ).one()
+    assert tuple(row) == ("Retablo", "s. XX", "CENTURY", 1901, 2000)
+    with pytest.raises(DatabaseError), engine.begin() as connection:
+        connection.execute(text("UPDATE piece SET epoch_start_year = 2001"))  # epoch_range
+
+    _migrate(engine, "0001_core_data_model", down=True)
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT title, period_to FROM piece")).one() == (
+            "Retablo",
+            2000,
+        )
+    engine.dispose()
+
+
+def test_piece_contract_names_on_postgresql(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """On PostgreSQL the renames keep indexes and constraints aligned with the model names."""
+    url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
+    monkeypatch.setenv("DATABASE_URL", url)
+    command.upgrade(_config(url), "0001_core_data_model:0002_piece_contract_names", sql=True)
+    sql = capsys.readouterr().out
+    for statement in (
+        "ALTER TABLE piece RENAME COLUMN title TO denomination",
+        "ALTER TABLE piece RENAME COLUMN period_text TO epoch_original_text",
+        "ALTER TABLE piece RENAME COLUMN category_term_id TO category_id",
+        "ALTER TABLE piece RENAME COLUMN conservation_status_term_id TO conservation_state_id",
+        "ALTER INDEX ix_piece_title RENAME TO ix_piece_denomination",
+        "ALTER INDEX IF EXISTS ix_piece_title_trgm RENAME TO ix_piece_denomination_trgm",
+        "ALTER TABLE piece RENAME CONSTRAINT ck_piece_period_range TO ck_piece_epoch_range",
+        "ALTER TABLE piece RENAME CONSTRAINT fk_piece_category_term_id_term "
+        "TO fk_piece_category_id_term",
+    ):
+        assert statement in sql
+    assert "code_i" not in sql

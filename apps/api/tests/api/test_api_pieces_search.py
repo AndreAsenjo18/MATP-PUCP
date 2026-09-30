@@ -101,7 +101,9 @@ def test_search_by_code_written_differently(seeded_api: SeededApi) -> None:
 
 def test_search_by_title_fragment(seeded_api: SeededApi) -> None:
     with seeded_api.session() as session:
-        title = session.scalar(select(Piece.title).where(Piece.deleted_at.is_(None)).limit(1))
+        title = session.scalar(
+            select(Piece.denomination).where(Piece.deleted_at.is_(None)).limit(1)
+        )
     fragment = title.split()[0].lower()
     hits = seeded_api.client.get("/api/v1/search", params={"q": fragment}, headers=H).json()
     assert hits["total"] > 0
