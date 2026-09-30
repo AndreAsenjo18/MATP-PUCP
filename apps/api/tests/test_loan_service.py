@@ -43,7 +43,7 @@ def test_loan_rejects_invalid_dates(session: Session, act_as) -> None:  # type: 
 
 def test_confirm_rejects_overlapping_piece(session: Session, act_as) -> None:  # type: ignore[no-untyped-def]
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Retablo", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Retablo", tenure_regime=TenureRegime.OWNED)
         loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_EXHIBITION")
         draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
         active = _term(session, VocabularyCode.LOAN_STATUS, "TEST_ACTIVE")
@@ -84,7 +84,7 @@ def test_confirm_rejects_overlapping_piece(session: Session, act_as) -> None:  #
 
 def test_close_restores_location_based_availability(session: Session, act_as) -> None:  # type: ignore[no-untyped-def]
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Máscara", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Máscara", tenure_regime=TenureRegime.OWNED)
         loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_LOAN")
         draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
         active = _term(session, VocabularyCode.LOAN_STATUS, "TEST_ACTIVE")
@@ -114,7 +114,7 @@ def test_close_restores_location_based_availability(session: Session, act_as) ->
 
 def test_cancel_preserves_loan_history(session: Session, act_as) -> None:  # type: ignore[no-untyped-def]
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Textil", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Textil", tenure_regime=TenureRegime.OWNED)
         loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_LOAN")
         draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
         active = _term(session, VocabularyCode.LOAN_STATUS, "TEST_ACTIVE")
@@ -147,7 +147,7 @@ def test_temporary_loan_participation_stays_out_of_permanent_inventory(
     """RN-004: a temporary incoming piece may participate but never gains an I code."""
     with act_as("COLLECTIONS_MANAGER"):
         piece = create_piece(
-            session, title="Pieza visitante", tenure_regime=TenureRegime.TEMPORARY_LOAN
+            session, denomination="Pieza visitante", tenure_regime=TenureRegime.TEMPORARY_LOAN
         )
         loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_EXHIBITION")
         draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
@@ -174,7 +174,7 @@ def test_loan_for_use_requires_agreement_reference_before_confirmation(
     """K1 [SUPUESTO]: comodato is blocked without its agreement reference (RN-008)."""
     with act_as("COLLECTIONS_MANAGER"):
         piece = create_piece(
-            session, title="Pieza en comodato", tenure_regime=TenureRegime.LOAN_FOR_USE
+            session, denomination="Pieza en comodato", tenure_regime=TenureRegime.LOAN_FOR_USE
         )
         loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_LOAN")
         draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")

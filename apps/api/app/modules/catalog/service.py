@@ -23,15 +23,15 @@ EDITABLE_FIELDS = frozenset(
         "entry_date",
         "author",
         "provenance",
-        "period_text",
-        "period_type",
-        "period_from",
-        "period_to",
+        "epoch_original_text",
+        "epoch_type",
+        "epoch_start_year",
+        "epoch_end_year",
         "object_type_term_id",
-        "category_term_id",
+        "category_id",
         "dimensions_text",
         "dimensions",
-        "conservation_status_term_id",
+        "conservation_state_id",
         "recorded_by",
         "notes",
         "parent_piece_id",
@@ -41,9 +41,9 @@ EDITABLE_FIELDS = frozenset(
 )
 
 
-def validate_period(period_from: int | None, period_to: int | None) -> None:
-    """Structured period must be coherent; the original text is always kept (RF-007)."""
-    if period_from is not None and period_to is not None and period_from > period_to:
+def validate_epoch(start_year: int | None, end_year: int | None) -> None:
+    """Structured epoch must be coherent; the original text is always kept (RF-007)."""
+    if start_year is not None and end_year is not None and start_year > end_year:
         raise ValidationFailed(
             "La época estructurada es incoherente: el año desde es mayor que el año hasta. "
             "El texto original se conserva.",
@@ -76,7 +76,7 @@ def _legal_owner_for(tenure_regime: TenureRegime, legal_owner: str | None) -> st
 def create_piece(
     session: Session,
     *,
-    title: str | None,
+    denomination: str | None,
     tenure_regime: TenureRegime | None,
     legal_owner: str | None = None,
     **fields: Any,
@@ -86,17 +86,19 @@ def create_piece(
     unknown = set(fields) - EDITABLE_FIELDS
     if unknown:
         raise ValidationFailed(f"Campos desconocidos: {', '.join(sorted(unknown))}.")
-    if not title or not title.strip():
+    if not denomination or not denomination.strip():
         raise ValidationFailed("La denominación es obligatoria.", code="title_required")
     if tenure_regime is None:
         raise ValidationFailed("El régimen de tenencia es obligatorio.", code="tenure_required")
-    validate_period(fields.get("period_from"), fields.get("period_to"))
+    validate_epoch(fields.get("epoch_start_year"), fields.get("epoch_end_year"))
     validate_dimensions(fields.get("dimensions"))
     owner = _legal_owner_for(tenure_regime, legal_owner)
     if fields.get("parent_piece_id") is not None:
         _ensure_exists(session, fields["parent_piece_id"])
 
-    piece = Piece(id=new_uuid(), title=title.strip(), tenure_regime=tenure_regime, **fields)
+    piece = Piece(
+        id=new_uuid(), denomination=denomination.strip(), tenure_regime=tenure_regime, **fields
+    )
     piece.legal_owner = owner
     session.add(piece)
     session.flush()
@@ -151,13 +153,16 @@ def set_parent(session: Session, piece: Piece, parent_id: uuid.UUID | None) -> N
 def update_piece(session: Session, piece: Piece, **changes: Any) -> Piece:
     """Generic sheet update. Audit entries are generated automatically, only for real changes."""
     require_audit_context(session)
-    unknown = set(changes) - EDITABLE_FIELDS - {"title"}
+    unknown = set(changes) - EDITABLE_FIELDS - {"denomination"}
     if unknown:
         raise ValidationFailed(f"Campos no editables: {', '.join(sorted(unknown))}.")
-    if "title" in changes and (not changes["title"] or not str(changes["title"]).strip()):
+    if "denomination" in changes and (
+        not changes["denomination"] or not str(changes["denomination"]).strip()
+    ):
         raise ValidationFailed("La denominación es obligatoria.", code="title_required")
-    validate_period(
-        changes.get("period_from", piece.period_from), changes.get("period_to", piece.period_to)
+    validate_epoch(
+        changes.get("epoch_start_year", piece.epoch_start_year),
+        changes.get("epoch_end_year", piece.epoch_end_year),
     )
     if "dimensions" in changes:
         validate_dimensions(changes["dimensions"])

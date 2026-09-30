@@ -10,7 +10,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
-from app.api.enums import LOCATION_LEVEL_LABELS, label_of
+from app.api.enums import (
+    LOCATION_LEVEL_LABELS,
+    LocationLevelLabel,
+    code_of,
+    label_of,
+)
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.refs import LocationRef
 from app.api.stubs import (
@@ -29,7 +34,7 @@ from app.modules.identification.schemas import (
     NormalizeRequest,
     NormalizeResponse,
 )
-from app.modules.locations.models import Location, LocationLevel
+from app.modules.locations.models import Location
 from app.modules.locations.schemas import (
     LocationCreate,
     LocationNode,
@@ -61,13 +66,19 @@ def list_locations(
     session: SessionDep,
     user: Reader,
     parent_id: Annotated[uuid.UUID | None, Query(description="Solo hijos directos.")] = None,
-    level: LocationLevel | None = None,
+    level: Annotated[
+        LocationLevelLabel | None,
+        Query(
+            description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
+        ),
+    ] = None,
 ) -> list[LocationOut]:
+    sought = code_of(LOCATION_LEVEL_LABELS, level, "level") if level is not None else None
     statement = select(Location).order_by(Location.code)
     if parent_id is not None:
         statement = statement.where(Location.parent_id == parent_id)
-    if level is not None:
-        statement = statement.where(Location.level == level)
+    if sought is not None:
+        statement = statement.where(Location.level == sought)
     if not user.can(PERM_EXACT_LOCATION):
         statement = statement.where(Location.level.in_(PUBLIC_LOCATION_LEVELS))
     reader = CatalogReader(session, Viewer(user.permissions))
@@ -151,7 +162,9 @@ def update_location(
 @router.get(
     "/locations/{location_id}/pieces",
     response_model=list[PieceSummary],
-    summary="Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+    summary=(
+        "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)"
+    ),
     tags=["Ubicaciones"],
     **stub(CHANGE_LOCATIONS),
 )

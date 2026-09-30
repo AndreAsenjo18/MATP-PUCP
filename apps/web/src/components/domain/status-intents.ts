@@ -11,7 +11,8 @@ export interface StatusStyle {
   intent: BadgeIntent;
 }
 
-type TenureRegime = ApiSchemas["TenureRegime"];
+/** Régimen de tenencia del contrato (3.2 alinear-api-endpoints-v1): solo español. */
+export type TenureRegimeLabel = "Propiedad" | "Comodato" | "Préstamo Temporal";
 type AlertType = ApiSchemas["PieceAlert"]["type"];
 type RowClassification = ApiSchemas["RowClassification"];
 type RowDecision = ApiSchemas["RowDecision"];
@@ -23,14 +24,14 @@ function lookup<K extends string>(table: Record<K, StatusStyle>, value: string |
   return (value != null && table[value as K]) || { label: value ? `${fallbackLabel}: ${value}` : fallbackLabel, intent: "default" };
 }
 
-const TENURE: Record<TenureRegime, StatusStyle> = {
-  OWNED: { label: "Propia", intent: "default" },
-  LOAN_FOR_USE: { label: "Comodato", intent: "info" },
-  TEMPORARY_LOAN: { label: "Préstamo temporal", intent: "info" },
+const TENURE: Record<TenureRegimeLabel, StatusStyle> = {
+  Propiedad: { label: "Propia", intent: "default" },
+  Comodato: { label: "Comodato", intent: "info" },
+  "Préstamo Temporal": { label: "Préstamo temporal", intent: "info" },
 };
 
 /** Régimen de tenencia: comodato y préstamo temporal siempre `info` (RN-003, RN-004, RN-008). */
-export function tenureStatus(regime: TenureRegime | string | null | undefined): StatusStyle {
+export function tenureStatus(regime: TenureRegimeLabel | string | null | undefined): StatusStyle {
   return lookup(TENURE, regime, "Tenencia no reconocida");
 }
 

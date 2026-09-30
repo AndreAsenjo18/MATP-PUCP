@@ -21,7 +21,7 @@ class AuditEntryOut(ORMModel):
                     "change_set_id": "01920000-0000-7000-8000-000000000a00",
                     "entity_type": "piece",
                     "entity_id": EX_PIECE_ID,
-                    "field": "conservation_status_term_id",
+                    "field": "conservation_state_id",
                     "old_value": None,
                     "new_value": "01920000-0000-7000-8000-000000000301",
                     "action": "UPDATE",

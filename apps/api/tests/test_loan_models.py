@@ -43,14 +43,22 @@ def _loan_terms(session: Session) -> tuple[Term, Term]:
 
 
 def test_reference_data_keeps_loan_vocabularies_configurable(reference) -> None:  # type: ignore[no-untyped-def]
-    assert reference.terms[VocabularyCode.LOAN_TYPE] == {}
-    assert reference.terms[VocabularyCode.LOAN_STATUS] == {}
+    assert set(reference.terms[VocabularyCode.LOAN_TYPE]) == {
+        "PRESTAMO_TEMPORAL",
+        "EXPOSICION",
+    }
+    assert set(reference.terms[VocabularyCode.LOAN_STATUS]) == {
+        "BORRADOR",
+        "VIGENTE",
+        "CERRADO",
+        "CANCELADO",
+    }
 
 
 def test_exhibition_can_include_multiple_pieces(session: Session, act_as) -> None:  # type: ignore[no-untyped-def]
     with act_as("COLLECTIONS_MANAGER"):
-        first = create_piece(session, title="Retablo", tenure_regime=TenureRegime.OWNED)
-        second = create_piece(session, title="Máscara", tenure_regime=TenureRegime.OWNED)
+        first = create_piece(session, denomination="Retablo", tenure_regime=TenureRegime.OWNED)
+        second = create_piece(session, denomination="Máscara", tenure_regime=TenureRegime.OWNED)
         loan_type, status = _loan_terms(session)
         loan = Loan(
             id=new_uuid(),
@@ -75,7 +83,7 @@ def test_exhibition_can_include_multiple_pieces(session: Session, act_as) -> Non
 
 def test_loan_date_range_and_piece_uniqueness_are_enforced(session: Session, act_as) -> None:  # type: ignore[no-untyped-def]
     with act_as("COLLECTIONS_MANAGER"):
-        piece = create_piece(session, title="Mate", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Mate", tenure_regime=TenureRegime.OWNED)
         loan_type, status = _loan_terms(session)
         invalid = Loan(
             id=new_uuid(),

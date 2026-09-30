@@ -1,7 +1,7 @@
 """Add loan and loan-item records for loans and exhibitions (RF-018).
 
 Revision ID: 0002_loans_and_exhibitions
-Revises: 0001_core_data_model
+Revises: 0002_piece_contract_names
 Create Date: 2026-09-28
 
 Change de OpenSpec: prestamos-y-exposiciones
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0002_loans_and_exhibitions"
-down_revision: str | None = "0001_core_data_model"
+down_revision: str | None = "0002_piece_contract_names"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

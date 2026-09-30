@@ -39,15 +39,15 @@ def test_deleted_piece_detail_is_404(seeded_api: SeededApi) -> None:
 
 def test_combined_filters_are_and(client: TestClient) -> None:
     response = client.get(
-        "/api/v1/pieces?tenure_regime=LOAN_FOR_USE&has_inventory_code=false&page_size=100",
+        "/api/v1/pieces?tenure_regime=Comodato&has_inventory_code=false&page_size=100",
         headers=H,
     ).json()
     assert response["total"] > 0
     for item in response["items"]:
-        assert item["tenure_regime"] == "LOAN_FOR_USE"
+        assert item["tenure_regime"] == "Comodato"
         assert item["inventory_code"] is None
     impossible = client.get(
-        "/api/v1/pieces?tenure_regime=LOAN_FOR_USE&has_inventory_code=true", headers=H
+        "/api/v1/pieces?tenure_regime=Comodato&has_inventory_code=true", headers=H
     ).json()
     assert impossible["total"] == 0  # RN-003: comodato nunca tiene I
 
@@ -101,7 +101,9 @@ def test_search_by_code_written_differently(seeded_api: SeededApi) -> None:
 
 def test_search_by_title_fragment(seeded_api: SeededApi) -> None:
     with seeded_api.session() as session:
-        title = session.scalar(select(Piece.title).where(Piece.deleted_at.is_(None)).limit(1))
+        title = session.scalar(
+            select(Piece.denomination).where(Piece.deleted_at.is_(None)).limit(1)
+        )
     fragment = title.split()[0].lower()
     hits = seeded_api.client.get("/api/v1/search", params={"q": fragment}, headers=H).json()
     assert hits["total"] > 0

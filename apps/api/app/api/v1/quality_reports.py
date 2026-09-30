@@ -159,7 +159,7 @@ def get_report(
 @router.get(
     "/reports/piece-card/{piece_id}/pdf",
     response_model=ExportJob,
-    summary="Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+    summary="Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
     tags=["Reportes"],
     **stub(CHANGE_REPORTS),
 )

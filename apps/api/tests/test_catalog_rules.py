@@ -32,30 +32,32 @@ from tests.conftest import ActAs
 @pytest.mark.parametrize("title", [None, "", "   "])
 def test_title_is_mandatory(session: Session, act_as: ActAs, title: str | None) -> None:
     with act_as("CATALOGUER"), pytest.raises(ValidationFailed) as excinfo:
-        create_piece(session, title=title, tenure_regime=TenureRegime.OWNED)
+        create_piece(session, denomination=title, tenure_regime=TenureRegime.OWNED)
     assert excinfo.value.code == "title_required"
 
 
 def test_tenure_regime_is_mandatory(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"), pytest.raises(ValidationFailed) as excinfo:
-        create_piece(session, title="Pieza", tenure_regime=None)
+        create_piece(session, denomination="Pieza", tenure_regime=None)
     assert excinfo.value.code == "tenure_required"
 
 
 def test_partial_sheet_is_saved(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Solo denominación", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(
+            session, denomination="Solo denominación", tenure_regime=TenureRegime.OWNED
+        )
         session.commit()
     assert piece.description is None and piece.collection_id is None
 
 
 def test_owned_piece_legal_owner_is_always_pucp(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Propia", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Propia", tenure_regime=TenureRegime.OWNED)
         with pytest.raises(BusinessRuleViolation) as excinfo:
             create_piece(
                 session,
-                title="Otra",
+                denomination="Otra",
                 tenure_regime=TenureRegime.OWNED,
                 legal_owner="Coleccionista sintético",
             )
@@ -67,7 +69,7 @@ def test_loan_for_use_keeps_lender_and_agreement(session: Session, act_as: ActAs
     with act_as("CATALOGUER"):
         piece = create_piece(
             session,
-            title="Imagen en comodato",
+            denomination="Imagen en comodato",
             tenure_regime=TenureRegime.LOAN_FOR_USE,
             lender_name="Comodante sintético",
             loan_agreement_ref="ACUERDO-SINT-01",
@@ -95,27 +97,38 @@ def test_period_text_and_interpretation(
     with act_as("CATALOGUER"):
         piece = create_piece(
             session,
-            title="Pieza",
+            denomination="Pieza",
             tenure_regime=TenureRegime.OWNED,
-            period_text=text,
-            period_type=period_type,
-            period_from=start,
-            period_to=end,
+            epoch_original_text=text,
+            epoch_type=period_type,
+            epoch_start_year=start,
+            epoch_end_year=end,
         )
-    assert (piece.period_text, piece.period_from, piece.period_to) == (text, start, end)
+    assert (piece.epoch_original_text, piece.epoch_start_year, piece.epoch_end_year) == (
+        text,
+        start,
+        end,
+    )
 
 
 def test_incoherent_period_is_rejected_and_text_kept(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
         piece = create_piece(
-            session, title="Pieza", tenure_regime=TenureRegime.OWNED, period_text="1960-1950"
+            session,
+            denomination="Pieza",
+            tenure_regime=TenureRegime.OWNED,
+            epoch_original_text="1960-1950",
         )
         with pytest.raises(ValidationFailed) as excinfo:
             update_piece(
-                session, piece, period_type=PeriodType.RANGE, period_from=1960, period_to=1950
+                session,
+                piece,
+                epoch_type=PeriodType.RANGE,
+                epoch_start_year=1960,
+                epoch_end_year=1950,
             )
     assert excinfo.value.code == "invalid_period_range"
-    assert piece.period_text == "1960-1950" and piece.period_from is None
+    assert piece.epoch_original_text == "1960-1950" and piece.epoch_start_year is None
 
 
 def test_database_check_constraint_on_period(session: Session, act_as: ActAs) -> None:
@@ -123,10 +136,10 @@ def test_database_check_constraint_on_period(session: Session, act_as: ActAs) ->
         session.add(
             Piece(
                 id=new_uuid(),
-                title="Directa",
+                denomination="Directa",
                 tenure_regime=TenureRegime.OWNED,
-                period_from=2000,
-                period_to=1900,
+                epoch_start_year=2000,
+                epoch_end_year=1900,
             )
         )
         with pytest.raises(IntegrityError):
@@ -139,7 +152,7 @@ def test_invalid_structured_dimension(session: Session, act_as: ActAs, value: ob
     with act_as("CATALOGUER"), pytest.raises(ValidationFailed) as excinfo:
         create_piece(
             session,
-            title="Pieza",
+            denomination="Pieza",
             tenure_regime=TenureRegime.OWNED,
             dimensions_text="alto 23 cm",
             dimensions=[{"dimension": "alto", "value": value, "unit": "cm"}],
@@ -149,13 +162,16 @@ def test_invalid_structured_dimension(session: Session, act_as: ActAs, value: ob
 
 def test_sets_reject_cycles(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        parent = create_piece(session, title="Conjunto", tenure_regime=TenureRegime.OWNED)
+        parent = create_piece(session, denomination="Conjunto", tenure_regime=TenureRegime.OWNED)
         child = create_piece(
-            session, title="Componente", tenure_regime=TenureRegime.OWNED, parent_piece_id=parent.id
+            session,
+            denomination="Componente",
+            tenure_regime=TenureRegime.OWNED,
+            parent_piece_id=parent.id,
         )
         grandchild = create_piece(
             session,
-            title="Subcomponente",
+            denomination="Subcomponente",
             tenure_regime=TenureRegime.OWNED,
             parent_piece_id=child.id,
         )
@@ -214,7 +230,7 @@ def test_location_hierarchy_and_movements(
                 session, level=LocationLevel.CONTAINER, code="Y", name="Caja en sede", parent=site
             )
     with act_as("CATALOGUER"):
-        piece = create_piece(session, title="Pieza", tenure_regime=TenureRegime.OWNED)
+        piece = create_piece(session, denomination="Pieza", tenure_regime=TenureRegime.OWNED)
         assert is_without_location(piece)
         with pytest.raises(ValidationFailed):
             move_piece(session, piece, site, "Solo sede")

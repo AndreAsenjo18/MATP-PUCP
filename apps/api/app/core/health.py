@@ -18,6 +18,8 @@ class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     service: str
     version: str
+    commit: str
+    release: str | None
     checks: dict[str, DependencyStatus]
 
 
@@ -47,10 +49,13 @@ def health(request: Request, response: Response) -> HealthResponse:
     degraded = any(item.status == "error" for item in results.values())
     if degraded:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    settings = request.app.state.settings
     return HealthResponse(
         status="degraded" if degraded else "ok",
         service="api",
         version=request.app.version,
+        commit=settings.app_commit,
+        release=settings.app_release,
         checks=results,
     )
 

@@ -27,7 +27,7 @@
 - **Normalizador de códigos** (I, INC/RN y sus variantes): las reglas son [SUPUESTO], sin una muestra real. De él dependen la unicidad del código I y la detección de duplicados.
 - **Identidad provisional con la cabecera `X-MATP-User`** (ADR-005): no es segura fuera de desarrollo, aunque ya se rechaza con `APP_ENV=production`. El change `autenticacion-y-matriz-permisos` debe eliminarla.
 - **Campos sensibles y matriz de permisos** (`apps/api/app/modules/users/sensitive.py`): son supuestos.
-- **Imágenes Docker sin probar**: puede que Python 3.14 no tenga wheels para Linux. MinIO dejó de publicar en Docker Hub, así que la imagen está fijada en quay.io; las alternativas son RustFS o Garage (ADR-003). `uv` no está instalado y se usa pip con venv.
+- **Imágenes Docker sin probar**: puede que Python 3.14 no tenga wheels para Linux. MinIO dejó de publicar en Docker Hub y quay.io rechaza el pull anónimo desde el 2026-09-29, así que la imagen está fijada en el fork comunitario `pgsty/minio`; las alternativas son RustFS o Garage (ADR-003). `uv` no está instalado y se usa pip con venv.
 
 ## Las 5 preguntas más urgentes para la contraparte
 1. (A1, G6) Muestra anonimizada de la sábana de la consultoría (cabeceras reales, 20–50 filas), su tamaño y qué otras fuentes hay.

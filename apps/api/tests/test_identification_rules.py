@@ -23,9 +23,9 @@ from tests.conftest import ActAs
 
 
 def _piece(
-    session: Session, tenure: TenureRegime = TenureRegime.OWNED, title: str = "Pieza"
+    session: Session, tenure: TenureRegime = TenureRegime.OWNED, denomination: str = "Pieza"
 ) -> Piece:
-    return create_piece(session, title=title, tenure_regime=tenure)
+    return create_piece(session, denomination=denomination, tenure_regime=tenure)
 
 
 def test_piece_without_codes_gets_internal_uuid(session: Session, act_as: ActAs) -> None:
@@ -39,7 +39,7 @@ def test_piece_without_codes_gets_internal_uuid(session: Session, act_as: ActAs)
 
 def test_two_pieces_can_share_a_historical_inc_code(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        first, second = _piece(session, title="A"), _piece(session, title="B")
+        first, second = _piece(session, denomination="A"), _piece(session, denomination="B")
         add_identifier(session, first, "INC_RN", "1234")
         add_identifier(session, second, "INC_RN", "INC 1234")
         session.commit()
@@ -190,9 +190,9 @@ def test_correction_requires_admin(session: Session, act_as: ActAs) -> None:
 
 def test_duplicate_inventory_code_names_existing_piece(session: Session, act_as: ActAs) -> None:
     with act_as("CATALOGUER"):
-        first = _piece(session, title="Primera")
+        first = _piece(session, denomination="Primera")
         add_identifier(session, first, "I", "I-236")
-        second = _piece(session, title="Segunda")
+        second = _piece(session, denomination="Segunda")
         with pytest.raises(BusinessRuleViolation) as excinfo:
             add_identifier(session, second, "I", "I 0236")
     assert excinfo.value.code == "duplicate_identifier"
@@ -203,7 +203,7 @@ def test_database_partial_unique_index_on_current_inventory_code(
     session: Session, act_as: ActAs
 ) -> None:
     with act_as("CATALOGUER"):
-        first, second = _piece(session, title="A"), _piece(session, title="B")
+        first, second = _piece(session, denomination="A"), _piece(session, denomination="B")
         for piece in (first, second):  # bypass the service on purpose
             session.add(
                 PieceIdentifier(
@@ -223,10 +223,10 @@ def test_database_partial_unique_index_on_current_inventory_code(
 
 def test_inventory_code_of_deleted_piece_is_not_reused(session: Session, act_as: ActAs) -> None:
     with act_as("COLLECTIONS_MANAGER"):
-        deleted = _piece(session, title="Eliminada")
+        deleted = _piece(session, denomination="Eliminada")
         add_identifier(session, deleted, "I", "I-500")
         soft_delete(session, deleted, "Registrada por error")
-        other = _piece(session, title="Nueva")
+        other = _piece(session, denomination="Nueva")
         with pytest.raises(BusinessRuleViolation) as excinfo:
             add_identifier(session, other, "I", "I-500")
     assert excinfo.value.code == "identifier_of_deleted_piece"

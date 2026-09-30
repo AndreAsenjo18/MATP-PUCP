@@ -45,9 +45,11 @@ El guardrail 7 exige consultar la versión estable vigente de cada dependencia a
 | Servicio | Imagen | Nota |
 |---|---|---|
 | db | `postgres:18-alpine` | PostgreSQL 18 guarda datos en `/var/lib/postgresql` |
-| storage | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772` | MinIO retiró `minio/minio` de Docker Hub y la edición comunitaria no publica nuevas imágenes; es la última etiqueta activa en quay.io |
+| storage | `pgsty/minio` `RELEASE.2026-08-04T00-00-00Z`, fijada por digest `sha256:b6bfe723…` (amd64 y arm64) | MinIO retiró `minio/minio` de Docker Hub y la edición comunitaria no publica nuevas imágenes. Hasta el 2026-09-29 se usó `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772`, pero quay.io empezó a rechazar el pull anónimo (401). `pgsty/minio` es un fork comunitario mantenido del mismo servidor: igual entrypoint, variables y cliente `mc`. **Solo para desarrollo local**, ver la nota siguiente |
 | api (incluye la IA asistiva; ADR-008) | `python:3.14-slim` | |
 | web | `node:24-alpine` | Node 24 = LTS vigente (Node 26 aún no es LTS) |
+
+**Imagen de MinIO de terceros (2026-09-29, aceptada por el Arquitecto de Software)**: `pgsty/minio` no la publica MinIO, así que su procedencia no está verificada. Se acepta el riesgo solo para desarrollo local, porque maneja datos sintéticos (RNF-014) y está aislada en un contenedor. Mitigaciones: (1) se fija por digest, así que la imagen no puede cambiar sin un cambio en el repo; (2) los puertos 9000 y 9001 se publican solo en `127.0.0.1`; (3) las credenciales de `.env` son solo de desarrollo y no se reutilizan. **No está aprobada para staging ni producción.** Staging usa S3 de AWS (ADR-013) y el almacenamiento de producción se decide en `despliegue-vm-y-respaldos`. Para actualizarla, consultar la versión vigente y reemplazar el digest.
 
 **Contingencia S3**: `rustfs/rustfs` (Apache 2.0, 1.0.0 publicado 2026-09-16) o `dxflrs/garage` (v2.4.1), cambiando solo `docker-compose.yml`/variables; en la nube, Cloudflare R2. El código solo usa la API S3 con direccionamiento por ruta.
 

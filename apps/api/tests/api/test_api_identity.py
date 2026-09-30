@@ -115,7 +115,7 @@ def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) 
     assert viewer["loan_agreement_ref"] is None
     assert {"lender_name", "loan_agreement_ref", "location.path"} <= set(viewer["masked_fields"])
     assert viewer["location"]["is_exact"] is False
-    assert {node["level"] for node in viewer["location"]["path"]} <= {"SITE", "SPACE"}
+    assert {node["level"] for node in viewer["location"]["path"]} <= {"Sede", "Depósito"}
 
     admin = client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(ADMIN)).json()
     assert admin["lender_name"] == "Comodante sintético AJB"
@@ -124,4 +124,4 @@ def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) 
     assert len(admin["location"]["path"]) > len(viewer["location"]["path"])
 
     listed = client.get("/api/v1/locations", headers=as_user(VIEWER)).json()
-    assert {item["level"] for item in listed} <= {"SITE", "SPACE"}
+    assert {item["level"] for item in listed} <= {"Sede", "Depósito"}

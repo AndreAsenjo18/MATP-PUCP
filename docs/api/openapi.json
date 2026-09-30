@@ -370,7 +370,7 @@
             "change_set_id": "01920000-0000-7000-8000-000000000a00",
             "entity_id": "01920000-0000-7000-8000-000000000101",
             "entity_type": "piece",
-            "field": "conservation_status_term_id",
+            "field": "conservation_state_id",
             "id": "01920000-0000-7000-8000-000000000a01",
             "new_value": "01920000-0000-7000-8000-000000000301",
             "occurred_at": "2026-09-17T10:30:00Z",
@@ -597,7 +597,7 @@
         "examples": [
           {
             "acronym": "R.A.",
-            "default_tenure_regime": "OWNED",
+            "default_tenure_regime": "Propiedad",
             "name": "Colección de retablos (ficticia)"
           }
         ],
@@ -615,8 +615,15 @@
             "title": "Acronym"
           },
           "default_tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime",
-            "default": "OWNED"
+            "default": "Propiedad",
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Default Tenure Regime",
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -671,7 +678,7 @@
             "acronym": "M.M.Z.",
             "acronym_normalized": "MMZ",
             "created_at": "2026-09-17T10:30:00Z",
-            "default_tenure_regime": "OWNED",
+            "default_tenure_regime": "Propiedad",
             "description": "Colección sintética de demostración.",
             "id": "01920000-0000-7000-8000-000000000201",
             "is_active": true,
@@ -712,7 +719,14 @@
             "type": "string"
           },
           "default_tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime"
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Default Tenure Regime",
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -1458,6 +1472,21 @@
             "title": "Checks",
             "type": "object"
           },
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release"
+          },
           "service": {
             "title": "Service",
             "type": "string"
@@ -1479,6 +1508,8 @@
           "status",
           "service",
           "version",
+          "commit",
+          "release",
           "checks"
         ],
         "title": "HealthResponse",
@@ -2429,7 +2460,16 @@
             "title": "Description"
           },
           "level": {
-            "$ref": "#/components/schemas/LocationLevel"
+            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
+            "title": "Level",
+            "type": "string"
           },
           "name": {
             "maxLength": 200,
@@ -2457,18 +2497,6 @@
         ],
         "title": "LocationCreate",
         "type": "object"
-      },
-      "LocationLevel": {
-        "description": "[SUPUESTO] sede -> espacio -> mueble/rack -> nivel -> contenedor.",
-        "enum": [
-          "SITE",
-          "SPACE",
-          "FURNITURE",
-          "SHELF_LEVEL",
-          "CONTAINER"
-        ],
-        "title": "LocationLevel",
-        "type": "string"
       },
       "LocationNode": {
         "description": "Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).",
@@ -2524,20 +2552,20 @@
             "code": "SEDE1-DEP-A",
             "id": "01920000-0000-7000-8000-000000000401",
             "is_active": true,
-            "level": "SPACE",
+            "level": "Depósito",
             "name": "Depósito A (ficticio)",
             "parent_id": "01920000-0000-7000-8000-000000000400",
             "path": [
               {
                 "code": "SEDE1",
                 "id": "01920000-0000-7000-8000-000000000400",
-                "level": "SITE",
+                "level": "Sede",
                 "name": "Sede 1 (ficticia)"
               },
               {
                 "code": "SEDE1-DEP-A",
                 "id": "01920000-0000-7000-8000-000000000401",
-                "level": "SPACE",
+                "level": "Depósito",
                 "name": "Depósito A (ficticio)"
               }
             ]
@@ -2569,7 +2597,16 @@
             "type": "boolean"
           },
           "level": {
-            "$ref": "#/components/schemas/LocationLevel"
+            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
+            "title": "Level",
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -2620,6 +2657,14 @@
             "type": "string"
           },
           "level": {
+            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
             "title": "Level",
             "type": "string"
           },
@@ -3098,7 +3143,7 @@
             "sort_order": 0,
             "taken_on": "2025-03-10",
             "view_type": {
-              "code": "FRONTAL",
+              "code": "Frontal",
               "id": "01920000-0000-7000-8000-000000000321",
               "label": "Frontal"
             },
@@ -3379,7 +3424,7 @@
             "to_location": {
               "code": "SEDE1-DEP-A",
               "id": "01920000-0000-7000-8000-000000000401",
-              "level": "SPACE",
+              "level": "Depósito",
               "name": "Depósito A (ficticio)"
             }
           }
@@ -4182,7 +4227,7 @@
             "period": {
               "text": "s. XX"
             },
-            "tenure_regime": "OWNED",
+            "tenure_regime": "Propiedad",
             "title": "Retablo de San Marcos (sintético)"
           }
         ],
@@ -4431,7 +4476,14 @@
             "title": "Temporary Inventory Number"
           },
           "tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime"
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Tenure Regime",
+            "type": "string"
           },
           "title": {
             "maxLength": 500,
@@ -4499,7 +4551,7 @@
             },
             "provenance": "Ayacucho (sintético)",
             "recorded_by": "Registrador sintético",
-            "tenure_regime": "LOAN_FOR_USE",
+            "tenure_regime": "Comodato",
             "title": "Vasija ceremonial (sintética)",
             "updated_at": "2026-09-17T10:30:00Z"
           }
@@ -4769,7 +4821,14 @@
             "title": "Temporary Inventory Number"
           },
           "tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime"
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Tenure Regime",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -4883,7 +4942,7 @@
             "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
             "media_count": 2,
             "period_text": "ca. 1950",
-            "tenure_regime": "OWNED",
+            "tenure_regime": "Propiedad",
             "title": "Vasija ceremonial (sintética)",
             "updated_at": "2026-09-17T10:30:00Z"
           }
@@ -4976,7 +5035,14 @@
             "title": "Period Text"
           },
           "tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime"
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Tenure Regime",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -5681,7 +5747,7 @@
               "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
               "media_count": 2,
               "period_text": "ca. 1950",
-              "tenure_regime": "OWNED",
+              "tenure_regime": "Propiedad",
               "title": "Vasija ceremonial (sintética)",
               "updated_at": "2026-09-17T10:30:00Z"
             }
@@ -5814,16 +5880,6 @@
           "REJECTED"
         ],
         "title": "SuggestionStatus",
-        "type": "string"
-      },
-      "TenureRegime": {
-        "description": "Régimen de tenencia (RF-005). Only OWNED pieces may receive an inventory code I.",
-        "enum": [
-          "OWNED",
-          "LOAN_FOR_USE",
-          "TEMPORARY_LOAN"
-        ],
-        "title": "TenureRegime",
         "type": "string"
       },
       "TermCreate": {
@@ -9981,18 +10037,27 @@
             }
           },
           {
+            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
             "in": "query",
             "name": "level",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/LocationLevel"
+                  "enum": [
+                    "Sede",
+                    "Depósito",
+                    "Mueble",
+                    "Nivel",
+                    "Contenedor"
+                  ],
+                  "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
+              "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
               "title": "Level"
             }
           }
@@ -10436,7 +10501,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)",
         "tags": [
           "Ubicaciones"
         ],
@@ -10644,18 +10709,25 @@
             }
           },
           {
+            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
             "in": "query",
             "name": "tenure_regime",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/TenureRegime"
+                  "enum": [
+                    "Propiedad",
+                    "Comodato",
+                    "Préstamo Temporal"
+                  ],
+                  "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
+              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
               "title": "Tenure Regime"
             }
           },
@@ -13347,7 +13419,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
         "tags": [
           "Reportes"
         ],
