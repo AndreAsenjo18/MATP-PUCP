@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 06327fd0071401b7ba08f40170f6ef1ce3304c75a6174f7a72377e35dd0ce0e5
+ * openapi-sha256: 7635109b8b10915ec7195bbe34918d196517d6b75f2962e07b2e2c957afcb0be
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -1422,7 +1422,7 @@ export interface components {
          *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
          *       "entity_id": "01920000-0000-7000-8000-000000000101",
          *       "entity_type": "piece",
-         *       "field": "conservation_status_term_id",
+         *       "field": "conservation_state_id",
          *       "id": "01920000-0000-7000-8000-000000000a01",
          *       "new_value": "01920000-0000-7000-8000-000000000301",
          *       "occurred_at": "2026-09-17T10:30:00Z",

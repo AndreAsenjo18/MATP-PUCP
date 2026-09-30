@@ -98,8 +98,8 @@ def update_term(session: Session, term: Term, changes: dict[str, object]) -> Non
 
 def term_usage(session: Session, term_id: uuid.UUID) -> int:
     piece_columns = (
-        Piece.category_term_id,
-        Piece.conservation_status_term_id,
+        Piece.category_id,
+        Piece.conservation_state_id,
         Piece.acquisition_method_term_id,
         Piece.object_type_term_id,
         Piece.availability_term_id,

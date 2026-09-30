@@ -141,7 +141,7 @@ def _catalogue_fingerprint(options: SeedOptions) -> list[tuple[str, str, tuple[s
         rows = []
         for piece in pieces:
             codes = tuple(sorted(i.original_value for i in piece.identifiers))
-            rows.append((piece.title, piece.tenure_regime.value, codes))
+            rows.append((piece.denomination, piece.tenure_regime.value, codes))
         return sorted(rows)
     finally:
         session.close()
