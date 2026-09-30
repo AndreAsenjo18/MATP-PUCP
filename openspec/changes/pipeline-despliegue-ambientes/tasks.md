@@ -1,6 +1,6 @@
 ## 1. Decisión de arquitectura
 
-- [ ] 1.1 Escribir `docs/adr/ADR-014-pipeline-despliegue-ambientes.md` (estado Propuesto) con D1 a D6 de `design.md`, las alternativas descartadas y la decisión sobre los roles que pueden crear tags `v*` (Arquitecto, Líder e Implantadores; ratificada por el Arquitecto el 2026-09-30), enlazado desde ADR-011 y ADR-013 (sección «Consecuencias»). Verificar que los enlaces resuelven y que `openspec validate pipeline-despliegue-ambientes --strict` sigue en verde (Req: Producción solo por versión etiquetada y acción humana; RNF-004)
+- [x] 1.1 Escribir `docs/adr/ADR-014-pipeline-despliegue-ambientes.md` (estado Propuesto) con D1 a D6 de `design.md`, las alternativas descartadas y la decisión sobre los roles que pueden crear tags `v*` (Arquitecto, Líder e Implantadores; ratificada por el Arquitecto el 2026-09-30), enlazado desde ADR-011 y ADR-013 (sección «Consecuencias»). Verificar que los enlaces resuelven y que `openspec validate pipeline-despliegue-ambientes --strict` sigue en verde (Req: Producción solo por versión etiquetada y acción humana; RNF-004)
 
 ## 2. Versión identificable y publicación de imágenes tras cada merge
 
