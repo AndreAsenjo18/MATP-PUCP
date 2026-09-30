@@ -139,11 +139,21 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
     ),
     VocabularyCode.LOAN_TYPE: (
         "Tipos de préstamo y exposición",
-        [],  # [SUPUESTO] Pendiente de validar con la contraparte (K1).
+        [
+            ("PRESTAMO_TEMPORAL", "Préstamo temporal"),
+            ("EXPOSICION", "Exposición"),
+        ],
+        # [SUPUESTO] Valores iniciales reversibles; pendiente de validar con la contraparte (K1).
     ),
     VocabularyCode.LOAN_STATUS: (
         "Estados de préstamo y exposición",
-        [],  # [SUPUESTO] Pendiente de validar con la contraparte (K1).
+        [
+            ("BORRADOR", "Borrador"),
+            ("VIGENTE", "Vigente"),
+            ("CERRADO", "Cerrado"),
+            ("CANCELADO", "Cancelado"),
+        ],
+        # [SUPUESTO] Valores iniciales reversibles; pendiente de validar con la contraparte (K1).
     ),
 }
 

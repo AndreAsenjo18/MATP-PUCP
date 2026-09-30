@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import ConflictError, ValidationFailed
+from app.core.errors import BusinessRuleViolation, ConflictError, ValidationFailed
 from app.core.models_base import new_uuid
 from app.models import Loan, Term, Vocabulary
 from app.modules.catalog.enums import TenureRegime
@@ -166,3 +166,36 @@ def test_temporary_loan_participation_stays_out_of_permanent_inventory(
         session.scalars(select(PieceIdentifier).where(PieceIdentifier.piece_id == piece.id)).all()
         == []
     )
+
+
+def test_loan_for_use_requires_agreement_reference_before_confirmation(
+    session: Session, act_as
+) -> None:  # type: ignore[no-untyped-def]
+    """K1 [SUPUESTO]: comodato is blocked without its agreement reference (RN-008)."""
+    with act_as("COLLECTIONS_MANAGER"):
+        piece = create_piece(
+            session, title="Pieza en comodato", tenure_regime=TenureRegime.LOAN_FOR_USE
+        )
+        loan_type = _term(session, VocabularyCode.LOAN_TYPE, "TEST_LOAN")
+        draft = _term(session, VocabularyCode.LOAN_STATUS, "TEST_DRAFT")
+        active = _term(session, VocabularyCode.LOAN_STATUS, "TEST_ACTIVE")
+        availability = session.scalar(
+            select(Term)
+            .join(Vocabulary)
+            .where(Vocabulary.code == VocabularyCode.AVAILABILITY, Term.code == "EN_PRESTAMO")
+        )
+        assert availability is not None
+        loan = create_loan(
+            session,
+            type_term_id=loan_type.id,
+            status_term_id=draft.id,
+            destination_label="Institución sintética",
+            starts_on=date(2026, 10, 1),
+            ends_on=date(2026, 10, 2),
+            piece_ids=[piece.id],
+        )
+        with pytest.raises(BusinessRuleViolation) as error:
+            confirm_loan(
+                session, loan, status_term_id=active.id, availability_term_id=availability.id
+            )
+    assert error.value.code == "loan_for_use_contract_required"

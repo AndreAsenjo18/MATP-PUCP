@@ -10,7 +10,7 @@
 - [x] 2.2 Implementar cierre y cancelación con recálculo de disponibilidad sin modificar la ubicación; verificar que retorno con movimiento deja la pieza en depósito y que una cancelación conserva el historial (Req: Disponibilidad de la pieza; RF-020, RN-005).
 - [x] 2.3 Integrar `Loan` y `LoanItem` con auditoría automática y `soft_delete`; verificar registros de creación, cambio de estado y eliminación lógica con motivo (Req: Préstamos y exposiciones; RN-005).
 - [x] 2.4 Comprobar que una pieza de préstamo temporal participante no recibe códigos permanentes ni entra al inventario permanente; verificar con pruebas de dominio y reporte (Req: Préstamos y exposiciones; RN-004).
-- [ ] 2.5 Aplicar las restricciones contractuales de comodato al confirmar una participación y dejar una prueba que cubra la restricción configurada; verificar el rechazo antes de confirmar (Req: Préstamos y exposiciones; RN-008).
+- [x] 2.5 Aplicar las restricciones contractuales de comodato al confirmar una participación y dejar una prueba que cubra la restricción configurada; verificar el rechazo antes de confirmar (Req: Préstamos y exposiciones; RN-008). [SUPUESTO K1: exige `loan_agreement_ref`; reversible tras la reunión.]
 
 ## 3. Contrato, documentación y cierre
 

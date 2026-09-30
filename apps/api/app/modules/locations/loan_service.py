@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import BusinessRuleViolation, ConflictError, NotFound, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
 from app.modules.audit.context import require_audit_context
+from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.locations.models import Loan, LoanItem
@@ -121,15 +122,28 @@ def confirm_loan(
         raise ConflictError(
             "Una pieza ya tiene un préstamo o exposición vigente.", code="loan_overlap"
         )
-    loan.status_term_id = status_term_id
-    loan.active_availability_term_id = availability_term_id
-    loan.confirmed_at = utcnow()
+    pieces: list[Piece] = []
     for item in loan.items:
         piece = session.get(Piece, item.piece_id)
         if piece is None or piece.deleted_at is not None:
             raise NotFound("Una de las piezas no existe o fue eliminada.", code="piece_not_found")
+        _validate_contract_restriction(piece)
+        pieces.append(piece)
+    loan.status_term_id = status_term_id
+    loan.active_availability_term_id = availability_term_id
+    loan.confirmed_at = utcnow()
+    for piece in pieces:
         piece.availability_term_id = availability_term_id
     session.flush()
+
+
+def _validate_contract_restriction(piece: Piece) -> None:
+    """K1 [SUPUESTO]: a loan-for-use piece needs a recorded agreement before confirmation."""
+    if piece.tenure_regime is TenureRegime.LOAN_FOR_USE and not piece.loan_agreement_ref:
+        raise BusinessRuleViolation(
+            "La pieza en comodato exige una referencia de convenio antes de confirmarla.",
+            code="loan_for_use_contract_required",
+        )
 
 
 def close_loan(session: Session, loan: Loan, *, status_term_id: uuid.UUID) -> None:
