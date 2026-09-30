@@ -37,7 +37,7 @@ describe("createApiClient", () => {
       id: "01920000-0000-7000-8000-000000000101",
       title: "Vasija (sintética)",
       collection: null,
-      tenure_regime: "OWNED",
+      tenure_regime: "Propiedad",
       inventory_code: "I-0236",
       codes: [],
       category: null,

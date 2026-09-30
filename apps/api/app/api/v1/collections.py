@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
+from app.api.enums import TENURE_REGIME_LABELS, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.stubs import CHANGE_COLLECTIONS_ADMIN, implemented, not_implemented, stub
 from app.core.errors import NotFound
@@ -102,7 +103,12 @@ def list_collections(
 def create_collection(
     body: CollectionCreate, session: SessionDep, user: CollectionManager
 ) -> CollectionOut:
-    collection = create_collection_service(writer(session, user), **body.model_dump())
+    payload = body.model_dump()
+    # El esquema acepta la etiqueta del contrato; el servicio trabaja con el código interno.
+    payload["default_tenure_regime"] = code_of(
+        TENURE_REGIME_LABELS, body.default_tenure_regime, "default_tenure_regime"
+    )
+    collection = create_collection_service(writer(session, user), **payload)
     session.commit()
     return _collection_out(session, collection, user)
 

@@ -19,7 +19,7 @@ _MEDIA_EXAMPLE = {
     "height_px": 900,
     "view_type": {
         "id": "01920000-0000-7000-8000-000000000321",
-        "code": "FRONTAL",
+        "code": "Frontal",
         "label": "Frontal",
     },
     "sort_order": 0,
