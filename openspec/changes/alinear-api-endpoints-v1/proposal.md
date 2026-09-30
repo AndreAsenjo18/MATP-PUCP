@@ -11,7 +11,7 @@ Este change hace del documento del equipo la fuente de verdad de las interfaces 
 - **Paginación** `page`/`limit` con respuesta `{total, page, limit, items}` en listados y búsqueda.
 - **Enumerados en los valores del documento** (`Propiedad`, `Comodato`, `Préstamo Temporal`; `Frontal`, `Perfil`, `Posterior`, `Detalle`, `Abierto`, `Cerrado`) en la frontera de la API.
 - **Rutas nuevas**: `/categories`, `/conservation-states`, `/locations/tree`, `/locations/{id}/pieces`, `/pieces/{id}/children`, `/media/upload`, `/media/bulk-download`, `/reports/export-excel`, `/reports/piece-card/{id}/pdf`, `/reports/dashboard-stats`, `/users/{id}/role`, `/audit-logs`, `/audit-logs/pieces/{id}`, `/ai/suggest-cataloging`, `/ai/validate-data`, `/ai/batch-enrich`, `/loans`, `/loans/{id}/status`.
-- **Modelo de datos**: `piece.code_i` como campo propio único y inmutable, `category` y `conservation_state` como entidades, `is_active`, y la entidad `loan` del diagrama entidad-relación.
+- **Modelo de datos** (decisiones de C4 en `design.md`, D3, D4 y D7): renombrado a `denomination` y `epoch_*`; `code_i` derivado del identificador vigente de tipo I, sin columna propia; categorías y estados de conservación como fachada sobre `vocabulary`/`term`; `is_active` derivado del borrado lógico; y la entidad `loan` del diagrama entidad-relación.
 - Las operaciones que el documento asigna a las fases 2 y 3 se exponen con su forma definitiva y responden `501` con el change del backlog que las implementará, como ya hace el contrato actual.
 - Las operaciones que hoy existen y el documento no incluye se conservan como **añadidos** documentados (RN-005, RN-009, RN-010, RF-030); su eliminación queda a decisión del equipo (pregunta I5).
 
@@ -22,7 +22,7 @@ Este change hace del documento del equipo la fuente de verdad de las interfaces 
 
 ### Modified Capabilities
 - `plataforma`: el requirement del contrato OpenAPI pasa a exigir conformidad con el documento del equipo, con una prueba que compara rutas, verbos y `operationId`.
-- `catalogo-piezas`: los campos de la ficha en la API adoptan los nombres del documento y el código I pasa a ser un campo propio de la pieza.
+- `catalogo-piezas`: los campos de la ficha en la API adoptan los nombres del documento y el código I se expone como campo de la pieza, derivado de su identificador vigente de tipo I.
 - `busqueda-reportes`: paginación `page`/`limit` y las tres rutas de reportes del documento.
 - `ubicacion-movimientos`: árbol jerárquico en `/locations/tree`, movimiento en `/pieces/{id}/move` e historial en `/pieces/{id}/location-history`.
 - `importacion-datos`: `/imports/upload`, `/imports/{batch_id}/diffs`, `/imports/{batch_id}/confirm` y `/imports/{batch_id}/rollback`.
@@ -36,6 +36,6 @@ Este change hace del documento del equipo la fuente de verdad de las interfaces 
 - **Célula dueña**: Integradores, con revisión del Arquitecto (toca la frontera de todas las células).
 - **Depende de**: `modelo-datos-nucleo` y `contratos-api-borrador` (aplicados, sin archivar).
 - **Consumido por**: los 15 changes del backlog, que pasan a implementar las rutas de este contrato.
-- **Afecta**: `apps/api/app/api/v1/*.py`, `apps/api/app/modules/*/schemas.py`, `apps/api/app/main.py` (etiquetas), migración Alembic (`piece.code_i`, `category`, `conservation_state`, `loan`, `is_active`), `apps/api/app/seed/`, `docs/api/openapi.json`, `apps/web/src/lib/api/`, `apps/web/src/lib/{data,fixtures}/`, `docs/api/mapeo-endpoints-v1.md`, `docs/modelo-datos.md`.
-- **Bloqueos declarados**: los conflictos C1 (numeración de requisitos), C2 (`/public/catalog` sin autenticación frente a «solo uso interno») y C4 (modelo de datos) de `docs/api/mapeo-endpoints-v1.md` necesitan decisión del equipo antes de cerrar este change; `/public/catalog` no se implementa hasta que se resuelva C2.
+- **Afecta**: `apps/api/app/api/v1/*.py`, `apps/api/app/modules/*/schemas.py`, `apps/api/app/main.py` (etiquetas), migración Alembic (renombrados de `piece`, `term.parent_id`, `loan`), `apps/api/app/seed/`, `docs/api/openapi.json`, `apps/web/src/lib/api/`, `apps/web/src/lib/{data,fixtures}/`, `docs/api/mapeo-endpoints-v1.md`, `docs/modelo-datos.md`.
+- **Bloqueos declarados**: los conflictos C1 a C6 de `docs/api/mapeo-endpoints-v1.md` quedaron resueltos el 2026-09-29 (`design.md`, D7). Solo `/public/catalog` (C2) sigue bloqueado hasta que el museo responda la pregunta I2; el change puede cerrarse sin esa operación.
 - **Dependencias nuevas**: generación de PDF para `/reports/piece-card/{id}/pdf` (se consulta la versión estable vigente al instalar, guardrail 7).

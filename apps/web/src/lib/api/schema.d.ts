@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 3ecdf011034d98793c230cc8caf2b0fcfb9a90f2d2a52dd2d4967ae8ba57ee08
+ * openapi-sha256: 06327fd0071401b7ba08f40170f6ef1ce3304c75a6174f7a72377e35dd0ce0e5
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -580,7 +580,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025) */
+        /** Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016) */
         get: operations["getPiecesInLocation"];
         put?: never;
         post?: never;
@@ -1018,7 +1018,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-033) */
+        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-006) */
         get: operations["exportPiecePdf"];
         put?: never;
         post?: never;
