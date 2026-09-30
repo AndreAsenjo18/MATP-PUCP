@@ -1,3 +1,4 @@
+
 ## 1. Estructura y decisiones
 
 - [x] 1.1 Crear estructura de directorios (`apps/web`, `apps/api/app/{core,modules/*}`, `apps/api/{alembic,tests}`, `services/ai`, `data/fixtures`, `scripts`) y verificar su presencia con `ls` (Req: Entorno local reproducible con verificación de salud; RNF-004)
@@ -37,4 +38,4 @@
 ## 8. Verificación integrada
 
 - [x] 8.1 Ejecutar `npm run lint`, `npm test` y `openspec validate --all --strict` en verde
-- [ ] 8.2 Ejecutar `docker compose up` y comprobar `/health` de api e ia y carga de la web (PENDIENTE si el daemon de Docker no está disponible) — **PENDIENTE (2026-09-17)**: daemon de Docker no disponible en la máquina del arranque. Verificado sin contenedores: `docker compose config` válido; api, ai y web ejecutados localmente (`/health/live` 200, `/health` 503 degradado con storage caído, ia 200 con proveedor mock, página web mostrando ambos estados)
+- [x] 8.2 Ejecutar `docker compose up` y comprobar `/health` de api e ia y carga de la web — **VERIFICADO (2026-09-30)**: Docker Compose levantó correctamente PostgreSQL, MinIO, API y Web con estado healthy. `GET /health` de API respondió `status=ok`; `GET /ai/health` respondió `status=ok` con proveedor `mock`; la Web en `http://localhost:3000` respondió HTTP 200.
