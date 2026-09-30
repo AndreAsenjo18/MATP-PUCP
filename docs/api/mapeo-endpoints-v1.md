@@ -29,7 +29,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 17 | `GET /search` · `searchPieces` | `RF-031` → RF-031, RF-032 | `GET /search` (implementado) | Parcial: `searchPieces` renombrado; faltan `collection_code`, `tenure_regime` y `page`/`limit` |
 | 18 | `POST /media/upload` · `uploadMediaAsset` | `RF-032` → RF-013, RF-014, RN-008 | `POST /pieces/{piece_id}/media` + `.../media/upload-url` (stubs) | Hecho: `POST /media/upload` (stub) |
 | 19 | `POST /auth/login` · `login` | `RF-041` → RNF-012 | `POST /auth/login` (stub) | Pendiente: cuerpo `username`/`password` (tarea 4.7) |
-| 20 | `GET /auth/me` · `getMe` | `RF-042` → RF-039 | `GET /auth/me` (implementado) | Pendiente: rol único en la respuesta (tarea 4.7) |
+| 20 | `GET /auth/me` · `getMe` | `RF-042` → RF-039 | `GET /auth/me` (implementado) | Pendiente: cerrar la tarea 4.7. Se mantiene la matriz de roles (resolución C4-g) y `/auth/me` ya devuelve `roles` y `permissions`; no queda ningún «rol único» por implementar |
 
 ¹ El catálogo no tiene un requisito de listado de piezas. La paginación de listados y búsqueda está trazada a RF-031, RF-032 y RF-038 en la spec delta de `plataforma`, pero eso no identifica el requisito del listado.
 
@@ -43,11 +43,11 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |
 | 25 | `POST /locations` · `createLocation` | `RF-019` → RF-016 | igual (stub) | Hecho: ruta ya conforme |
 | 26 | `PUT /locations/{id}` · `updateLocation` | `RF-020` → RF-016 | `PATCH /locations/{location_id}` (stub) | Hecho: `PUT /locations/{id}` |
-| 27 | `GET /locations/{id}/pieces` · `getPiecesInLocation` | `RF-025` → Pendiente² | no existe (filtro en `/pieces`) | Hecho: `GET /locations/{id}/pieces` (stub) |
-| 28 | `GET /imports` · `listImportBatches` | `RF-026` → Pendiente³ | igual (stub) | Hecho: `listImportBatches` |
+| 27 | `GET /locations/{id}/pieces` · `getPiecesInLocation` | `RF-025` → RF-034, RF-016 | no existe (filtro en `/pieces`) | Hecho: `GET /locations/{id}/pieces` (stub) |
+| 28 | `GET /imports` · `listImportBatches` | `RF-026` → Pendiente² | igual (stub) | Hecho: `listImportBatches` |
 | 29 | `POST /imports/{batch_id}/rollback` · `rollbackImportBatch` | `RF-027` → RNF-007 | `POST /imports/{batch_id}/revert` (stub) | Hecho: `POST /imports/{batch_id}/rollback` |
 | 30 | `POST /reports/export-excel` · `exportExcelReport` | `RF-033` → RF-036 | `POST /search/export` (stub) | Hecho: `POST /reports/export-excel` |
-| 31 | `GET /reports/piece-card/{id}/pdf` · `exportPiecePdf` | `RF-034` → Pendiente⁴ | no existe | Hecho: `GET /reports/piece-card/{id}/pdf` (stub) |
+| 31 | `GET /reports/piece-card/{id}/pdf` · `exportPiecePdf` | `RF-034` → RF-006 | no existe | Hecho: `GET /reports/piece-card/{id}/pdf` (stub) |
 | 32 | `GET /reports/dashboard-stats` · `getDashboardStats` | `RF-035` → RF-035 | `GET /quality/kpis` (stub) | Hecho: `GET /reports/dashboard-stats` |
 | 33 | `GET /users` · `listUsers` | `RF-036` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
 | 34 | `POST /users` · `createUser` | `RF-037` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
@@ -56,11 +56,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 37 | `POST /ai/suggest-cataloging` · `suggestCataloging` | `RF-028` → RIA-01, RN-009 | `POST /ai/suggestions` (stub) | Hecho: `POST /ai/suggest-cataloging` |
 | 38 | `POST /ai/validate-data` · `validateDataQuality` | `RF-029` → RIA-02, RN-009 | `GET /quality/incomplete` + `/quality/kpis` (stubs) | Hecho: `POST /ai/validate-data` (stub) |
 
-² `docs/api/openapi.json` cita RF-025, que es la etiqueta del documento; en el catálogo, RF-025 es la clasificación de filas de importación. Candidatos: RF-016 (ubicación jerárquica) o RF-034 (reporte por ubicación).
-
-³ Candidatos: RF-021 (pipeline con bitácora) o RF-028 (bitácora de carga). `docs/api/openapi.json` asocia RF-028 a `GET /imports/{batch_id}/log`, no al listado de lotes.
-
-⁴ `docs/api/openapi.json` cita RF-033 (reporte de inventario general y por colección); el catálogo no tiene un requisito de ficha individual en PDF.
+² Candidatos: RF-021 (pipeline con bitácora) o RF-028 (bitácora de carga). `docs/api/openapi.json` asocia RF-028 a `GET /imports/{batch_id}/log`, no al listado de lotes.
 
 ## Fase 3 — Baja / Post-MVP
 
@@ -69,16 +65,16 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 39 | `GET /loans` · `listLoans` | `RF-013` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
 | 40 | `POST /loans` · `createLoan` | `RF-015` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
 | 41 | `PUT /loans/{id}/status` · `updateLoanStatus` | `RF-028-B` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
-| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente⁵ | no existe | Pendiente: requiere proponer el change de descargas masivas |
-| 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁶ | no existe | Bloqueado por el conflicto C2 |
+| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Pendiente: requiere proponer el change de descargas masivas |
+| 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁴ | no existe | Bloqueado por el conflicto C2 |
 | 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |
-| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁷ | no existe (hay lote en `ia-sugerencia-terminos`) | Pendiente: requiere proponer el change de enriquecimiento por lote |
+| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Pendiente: requiere proponer el change de enriquecimiento por lote |
 
-⁵ El catálogo no tiene un requisito de descarga masiva de imágenes. Aplicarían RF-014 y RN-008 (restricciones de uso en comodato).
+³ El catálogo no tiene un requisito de descarga masiva de imágenes. Aplicarían RF-014 y RN-008 (restricciones de uso en comodato).
 
-⁶ Sin equivalente: RF-044 del catálogo es la exportación completa de la base de datos, y un catálogo público choca con RF-042 (ver C2).
+⁴ Sin equivalente: RF-044 del catálogo es la exportación completa de la base de datos, y un catálogo público choca con RF-042 (ver C2).
 
-⁷ Aplica RN-009 (aprobación humana). Si corresponde a RIA-01 (extracción) o a RIA-03 (sugerencia de términos) se decide al proponer su change.
+⁵ Aplica RN-009 (aprobación humana). Si corresponde a RIA-01 (extracción) o a RIA-03 (sugerencia de términos) se decide al proponer su change.
 
 ## Operaciones que hoy existen y el documento no incluye
 

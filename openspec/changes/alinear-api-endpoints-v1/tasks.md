@@ -26,7 +26,7 @@
 - [ ] 4.4 Importación: `POST /imports/upload` (202), `GET /imports/{batch_id}/diffs` y `POST /imports/{batch_id}/confirm` con `ImportBatchSummary`; pruebas de la forma de la respuesta (Req: Pipeline de importación en las rutas del contrato; RF-021, RF-026, RF-027)
 - [ ] 4.5 Búsqueda `GET /search` con `q`, `collection_code`, `tenure_regime`, `page` y `limit`; pruebas de filtros combinados y de paginación (Req: Búsqueda y paginación del contrato; RF-031, RF-032)
 - [ ] 4.6 Multimedia `POST /media/upload` (`multipart/form-data` con `piece_id`, `view_type`, `file`); pruebas de alta y de restricción de uso en comodato (Req: Carga de multimedia en la ruta del contrato; RF-013, RF-014, RN-008)
-- [ ] 4.7 Autenticación: `POST /auth/login` (stub hasta `autenticacion-y-matriz-permisos`) y `GET /auth/me` con el rol del usuario; pruebas de ambas (Req: Perfil y rol en las rutas del contrato; RF-039, RF-041)
+- [ ] 4.7 Autenticación: `POST /auth/login` (stub hasta `autenticacion-y-matriz-permisos`) y `GET /auth/me` con el rol del usuario; pruebas de ambas (Req: Perfil y rol en las rutas del contrato; RF-039, RNF-012; secundario: RF-041, porque `/auth/me` expone los permisos sobre campos sensibles, pero no es el requisito principal de esta tarea)
 
 ## 5. Operaciones de las fases 2 y 3 del documento (21 a 45)
 

@@ -151,7 +151,7 @@ def update_location(
 @router.get(
     "/locations/{location_id}/pieces",
     response_model=list[PieceSummary],
-    summary="Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+    summary="Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)",
     tags=["Ubicaciones"],
     **stub(CHANGE_LOCATIONS),
 )

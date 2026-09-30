@@ -10191,7 +10191,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-025)",
+        "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)",
         "tags": [
           "Ubicaciones"
         ],
@@ -13102,7 +13102,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-033)",
+        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
         "tags": [
           "Reportes"
         ],
