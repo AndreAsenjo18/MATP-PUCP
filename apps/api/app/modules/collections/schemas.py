@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.enums import TENURE_REGIME_LABELS, code_of, serialize_label
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of, serialize_label
 from app.api.refs import EX_COLLECTION_ID, EX_DATETIME, EX_TERM_ID, ORMModel
 from app.modules.catalog.enums import TenureRegime
 
@@ -37,7 +37,7 @@ class CollectionOut(ORMModel):
     acronym: str | None
     acronym_normalized: str | None
     description: str | None
-    default_tenure_regime: str = Field(
+    default_tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
     origin_description: str | None = Field(
@@ -73,8 +73,8 @@ class CollectionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=300)
     acronym: str | None = Field(None, max_length=40)
     parent_id: uuid.UUID | None = None
-    default_tenure_regime: TenureRegime = Field(
-        default=TenureRegime.OWNED,
+    default_tenure_regime: TenureRegimeLabel = Field(
+        default="Propiedad",
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
     )
     description: str | None = None
@@ -82,11 +82,16 @@ class CollectionCreate(BaseModel):
 
     @field_validator("default_tenure_regime", mode="before")
     @classmethod
-    def _tenure_from_label(cls, value: object) -> TenureRegime:
-        """Acepta solo la etiqueta en español del contrato y la convierte al código interno."""
-        if isinstance(value, TenureRegime):
-            return value
-        return code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
+    def _tenure_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, TenureRegime)
+            else code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
+        )
+        return TENURE_REGIME_LABELS[code]
 
 
 class CollectionUpdate(BaseModel):

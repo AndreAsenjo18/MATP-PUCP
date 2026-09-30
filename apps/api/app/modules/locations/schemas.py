@@ -5,7 +5,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.enums import LOCATION_LEVEL_LABELS, code_of, serialize_label
+from app.api.enums import (
+    LOCATION_LEVEL_LABELS,
+    LocationLevelLabel,
+    code_of,
+    serialize_label,
+)
 from app.api.refs import EX_DATETIME, EX_LOCATION_ID, EX_PIECE_ID, LocationRef, ORMModel
 from app.modules.locations.models import LocationLevel, MovementType
 
@@ -41,7 +46,7 @@ class LocationOut(ORMModel):
 
     id: uuid.UUID
     parent_id: uuid.UUID | None
-    level: str = Field(
+    level: LocationLevelLabel = Field(
         description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
     )
     code: str
@@ -92,7 +97,7 @@ class LocationNode(BaseModel):
 
 class LocationCreate(BaseModel):
     parent_id: uuid.UUID | None = None
-    level: LocationLevel = Field(
+    level: LocationLevelLabel = Field(
         description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
     )
     code: str = Field(min_length=1, max_length=80)
@@ -101,11 +106,16 @@ class LocationCreate(BaseModel):
 
     @field_validator("level", mode="before")
     @classmethod
-    def _level_from_label(cls, value: object) -> LocationLevel:
-        """Acepta solo la etiqueta en español del contrato y la convierte al código interno."""
-        if isinstance(value, LocationLevel):
-            return value
-        return code_of(LOCATION_LEVEL_LABELS, str(value), "level")
+    def _level_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, LocationLevel)
+            else code_of(LOCATION_LEVEL_LABELS, str(value), "level")
+        )
+        return LOCATION_LEVEL_LABELS[code]
 
 
 class LocationUpdate(BaseModel):

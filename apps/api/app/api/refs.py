@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.api.enums import (
     LOCATION_LEVEL_LABELS,
     PHOTO_VIEW_TYPE_LABELS,
+    LocationLevelLabel,
     serialize_label,
 )
 
@@ -42,7 +43,7 @@ class CollectionRef(ORMModel):
 
 class LocationRef(ORMModel):
     id: uuid.UUID
-    level: str = Field(
+    level: LocationLevelLabel = Field(
         description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
     )
     code: str

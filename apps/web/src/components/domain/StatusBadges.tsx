@@ -7,10 +7,10 @@ import { Lock, TriangleAlert } from "lucide-react";
 import { Badge, type BadgeIntent } from "@/components/ui/Badge";
 import type { ApiSchemas } from "@/lib/api/client";
 
-import { alertStatus, tenureStatus, type StatusStyle } from "./status-intents";
+import { alertStatus, tenureStatus, type StatusStyle, type TenureRegimeLabel } from "./status-intents";
 
-/** Régimen de tenencia (Propia, Comodato, Préstamo temporal). Acepta código inglés (mock) o etiqueta del contrato. */
-export function TenureBadge({ regime }: { regime: ApiSchemas["TenureRegime"] | string }) {
+/** Régimen de tenencia (Propia, Comodato, Préstamo temporal). */
+export function TenureBadge({ regime }: { regime: TenureRegimeLabel | string }) {
   const { label, intent } = tenureStatus(regime);
   return <Badge intent={intent}>{label}</Badge>;
 }

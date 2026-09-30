@@ -23,27 +23,24 @@ services:
       retries: 20
 
   storage:
-    # RustFS (Apache 2.0, S3-compatible) reemplaza a MinIO: quay.io/minio/... devuelve 401.
-    # Contingencia prevista en ADR-003 (se descartó el fork pgsty/minio: tercero no verificado;
-    # RustFS sí verificado: healthy, /health ok y seed con 433 fotos). La API (boto3 path-style)
-    # no cambia; las credenciales locales siguen saliendo de MINIO_ROOT_USER /
-    # MINIO_ROOT_PASSWORD del .env. Puertos solo en 127.0.0.1 (desarrollo local).
-    image: rustfs/rustfs:1.0.0
+    # MinIO dejó de publicar imágenes comunitarias y quay.io/minio/minio rechaza el pull anónimo
+    # (401). pgsty/minio es un fork comunitario de terceros: solo para desarrollo local, fijado por
+    # digest (RELEASE.2026-08-04T00-00-00Z) y con puertos solo en 127.0.0.1 (ADR-003).
+    # Alternativas S3 compatibles (solo cambiar variables): rustfs/rustfs, dxflrs/garage.
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     restart: unless-stopped
-    command: ["/data"]
+    command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER:?Defina MINIO_ROOT_USER en .env}
-      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Defina MINIO_ROOT_PASSWORD en .env}
-      RUSTFS_ADDRESS: ":9000"
-      RUSTFS_CONSOLE_ADDRESS: ":9001"
-      RUSTFS_CONSOLE_ENABLE: "true"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Defina MINIO_ROOT_USER en .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Defina MINIO_ROOT_PASSWORD en .env}
     ports:
       - "127.0.0.1:${S3_PORT:-9000}:9000"
       - "127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001"
     volumes:
       - storage-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:9000/health || exit 1"]
+      # La imagen de MinIO incluye el cliente mc; "mc ready local" es su verificación recomendada.
+      test: ["CMD", "mc", "ready", "local"]
       interval: 5s
       timeout: 5s
       retries: 20

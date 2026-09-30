@@ -203,3 +203,58 @@ def test_location_level_filter_accepts_only_spanish(client: TestClient) -> None:
     assert {item["level"] for item in ok.json()} == {"Sede"}
     bad = client.get("/api/v1/locations?level=SITE", headers=H)
     assert bad.status_code == 422
+
+
+def test_openapi_documents_spanish_enums(seeded_api: SeededApi) -> None:
+    """El contrato generado dice lo que el servidor acepta: solo español (review 3.2)."""
+    spec = seeded_api.app.openapi()
+    schemas = spec["components"]["schemas"]
+    assert schemas["PieceCreate"]["properties"]["tenure_regime"]["enum"] == [
+        "Propiedad",
+        "Comodato",
+        "Préstamo Temporal",
+    ]
+    collection_create = schemas["CollectionCreate"]["properties"]["default_tenure_regime"]
+    assert collection_create["enum"] == ["Propiedad", "Comodato", "Préstamo Temporal"]
+    assert collection_create["default"] == "Propiedad"
+    assert schemas["LocationCreate"]["properties"]["level"]["enum"] == [
+        "Sede",
+        "Depósito",
+        "Mueble",
+        "Nivel",
+        "Contenedor",
+    ]
+    assert schemas["PieceSummary"]["properties"]["tenure_regime"]["enum"] == [
+        "Propiedad",
+        "Comodato",
+        "Préstamo Temporal",
+    ]
+    assert schemas["LocationOut"]["properties"]["level"]["enum"] == [
+        "Sede",
+        "Depósito",
+        "Mueble",
+        "Nivel",
+        "Contenedor",
+    ]
+    pieces_params = spec["paths"]["/api/v1/pieces"]["get"]["parameters"]
+    tenure_param = next(p for p in pieces_params if p["name"] == "tenure_regime")
+    assert _schema_enums(tenure_param["schema"]) == ["Propiedad", "Comodato", "Préstamo Temporal"]
+    locations_params = spec["paths"]["/api/v1/locations"]["get"]["parameters"]
+    level_param = next(p for p in locations_params if p["name"] == "level")
+    assert _schema_enums(level_param["schema"]) == [
+        "Sede",
+        "Depósito",
+        "Mueble",
+        "Nivel",
+        "Contenedor",
+    ]
+
+
+def _schema_enums(schema: dict) -> list[str]:
+    """Valores `enum` de un esquema, directamente o dentro de `anyOf` (parámetro opcional)."""
+    if "enum" in schema:
+        return list(schema["enum"])
+    for variant in schema.get("anyOf", []):
+        if "enum" in variant:
+            return list(variant["enum"])
+    raise AssertionError(f"sin enum en el esquema: {schema}")

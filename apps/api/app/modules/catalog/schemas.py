@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.enums import TENURE_REGIME_LABELS, code_of, serialize_label
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of, serialize_label
 from app.api.refs import (
     EX_COLLECTION_ID,
     EX_DATETIME,
@@ -92,7 +92,7 @@ class PieceSummary(BaseModel):
     id: uuid.UUID
     title: str
     collection: CollectionRef | None
-    tenure_regime: str = Field(
+    tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
     inventory_code: str | None = Field(description="Código I vigente tal como está escrito.")
@@ -168,7 +168,7 @@ class PieceDetail(BaseModel):
     title: str
     description: str | None
     collection: CollectionRef | None
-    tenure_regime: str = Field(
+    tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
     legal_owner: str | None
@@ -245,7 +245,7 @@ class PieceCreate(PieceWrite):
     )
 
     title: str = Field(min_length=1, max_length=500)
-    tenure_regime: TenureRegime = Field(
+    tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
     identifiers: list[dict[str, Any]] = Field(
@@ -255,11 +255,16 @@ class PieceCreate(PieceWrite):
 
     @field_validator("tenure_regime", mode="before")
     @classmethod
-    def _tenure_from_label(cls, value: object) -> TenureRegime:
-        """Acepta solo la etiqueta en español del contrato y la convierte al código interno."""
-        if isinstance(value, TenureRegime):
-            return value
-        return code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
+    def _tenure_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, TenureRegime)
+            else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
+        )
+        return TENURE_REGIME_LABELS[code]
 
 
 class PieceUpdate(PieceWrite):

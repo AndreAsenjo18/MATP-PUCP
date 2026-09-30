@@ -10,7 +10,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
-from app.api.enums import LOCATION_LEVEL_LABELS, code_of, label_of
+from app.api.enums import (
+    LOCATION_LEVEL_LABELS,
+    LocationLevelLabel,
+    code_of,
+    label_of,
+)
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.refs import LocationRef
 from app.api.stubs import (
@@ -62,7 +67,7 @@ def list_locations(
     user: Reader,
     parent_id: Annotated[uuid.UUID | None, Query(description="Solo hijos directos.")] = None,
     level: Annotated[
-        str | None,
+        LocationLevelLabel | None,
         Query(
             description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
         ),

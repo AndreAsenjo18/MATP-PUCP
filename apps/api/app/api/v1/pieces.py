@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
-from app.api.enums import TENURE_REGIME_LABELS, code_of
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
@@ -79,7 +79,7 @@ def piece_filters(
     collection_id: Annotated[uuid.UUID | None, Query(description="Incluye subcolecciones.")] = None,
     without_collection: Annotated[bool | None, Query(description="true = piezas sueltas.")] = None,
     tenure_regime: Annotated[
-        str | None,
+        TenureRegimeLabel | None,
         Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
     ] = None,
     category_term_id: uuid.UUID | None = None,

@@ -615,9 +615,15 @@
             "title": "Acronym"
           },
           "default_tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime",
-            "default": "OWNED",
-            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+            "default": "Propiedad",
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Default Tenure Regime",
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -714,6 +720,11 @@
           },
           "default_tenure_regime": {
             "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
             "title": "Default Tenure Regime",
             "type": "string"
           },
@@ -2405,8 +2416,16 @@
             "title": "Description"
           },
           "level": {
-            "$ref": "#/components/schemas/LocationLevel",
-            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
+            "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
+            "title": "Level",
+            "type": "string"
           },
           "name": {
             "maxLength": 200,
@@ -2434,18 +2453,6 @@
         ],
         "title": "LocationCreate",
         "type": "object"
-      },
-      "LocationLevel": {
-        "description": "[SUPUESTO] sede -> espacio -> mueble/rack -> nivel -> contenedor.",
-        "enum": [
-          "SITE",
-          "SPACE",
-          "FURNITURE",
-          "SHELF_LEVEL",
-          "CONTAINER"
-        ],
-        "title": "LocationLevel",
-        "type": "string"
       },
       "LocationNode": {
         "description": "Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).",
@@ -2547,6 +2554,13 @@
           },
           "level": {
             "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
             "title": "Level",
             "type": "string"
           },
@@ -2600,6 +2614,13 @@
           },
           "level": {
             "description": "Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.",
+            "enum": [
+              "Sede",
+              "Depósito",
+              "Mueble",
+              "Nivel",
+              "Contenedor"
+            ],
             "title": "Level",
             "type": "string"
           },
@@ -4411,8 +4432,14 @@
             "title": "Temporary Inventory Number"
           },
           "tenure_regime": {
-            "$ref": "#/components/schemas/TenureRegime",
-            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+            "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
+            "title": "Tenure Regime",
+            "type": "string"
           },
           "title": {
             "maxLength": 500,
@@ -4751,6 +4778,11 @@
           },
           "tenure_regime": {
             "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
             "title": "Tenure Regime",
             "type": "string"
           },
@@ -4960,6 +4992,11 @@
           },
           "tenure_regime": {
             "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
+            "enum": [
+              "Propiedad",
+              "Comodato",
+              "Préstamo Temporal"
+            ],
             "title": "Tenure Regime",
             "type": "string"
           },
@@ -5799,16 +5836,6 @@
           "REJECTED"
         ],
         "title": "SuggestionStatus",
-        "type": "string"
-      },
-      "TenureRegime": {
-        "description": "Régimen de tenencia (RF-005). Only OWNED pieces may receive an inventory code I.",
-        "enum": [
-          "OWNED",
-          "LOAN_FOR_USE",
-          "TEMPORARY_LOAN"
-        ],
-        "title": "TenureRegime",
         "type": "string"
       },
       "TermCreate": {
@@ -9755,6 +9782,13 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "Sede",
+                    "Depósito",
+                    "Mueble",
+                    "Nivel",
+                    "Contenedor"
+                  ],
                   "type": "string"
                 },
                 {
@@ -10420,6 +10454,11 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "Propiedad",
+                    "Comodato",
+                    "Préstamo Temporal"
+                  ],
                   "type": "string"
                 },
                 {

@@ -6,9 +6,17 @@ aquí (change `alinear-api-endpoints-v1`, design D3) para que ninguna respuesta 
 códigos internos y para que un valor inválido liste los admitidos.
 """
 
+from typing import Literal
+
 from app.core.errors import ValidationFailed
 from app.modules.catalog.enums import TenureRegime
 from app.modules.locations.models import LocationLevel
+
+#: Valores del contrato para el régimen de tenencia (endpoints-api-v1.yaml).
+TenureRegimeLabel = Literal["Propiedad", "Comodato", "Préstamo Temporal"]
+
+#: Valores del contrato para el nivel de ubicación (RF-016).
+LocationLevelLabel = Literal["Sede", "Depósito", "Mueble", "Nivel", "Contenedor"]
 
 #: Régimen de tenencia (contrato: `tenure_regime`; RF-005).
 TENURE_REGIME_LABELS: dict[TenureRegime, str] = {
@@ -59,8 +67,6 @@ def serialize_label[K: str](labels: dict[K, str], value: K | str | None) -> str 
     if hit is not None:
         return hit
     text = value if isinstance(value, str) else str(value)
-    if text in labels.values():
-        return text
     return text
 
 

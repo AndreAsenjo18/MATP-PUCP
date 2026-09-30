@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 823b73f742c218a391a020c492e4f5b680da156822abec912993cc1c640dfd1b
+ * openapi-sha256: ae666536fc3ce5ecd435d7838c79a6ac501d4cd1ec39f0032b83add3062f0088
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -1525,10 +1525,12 @@ export interface components {
             /** Acronym */
             acronym?: string | null;
             /**
+             * Default Tenure Regime
              * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
-             * @default OWNED
+             * @default Propiedad
+             * @enum {string}
              */
-            default_tenure_regime: components["schemas"]["TenureRegime"];
+            default_tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Description */
             description?: string | null;
             /** Name */
@@ -1569,8 +1571,9 @@ export interface components {
             /**
              * Default Tenure Regime
              * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
              */
-            default_tenure_regime: string;
+            default_tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Description */
             description: string | null;
             /**
@@ -2273,19 +2276,17 @@ export interface components {
             code: string;
             /** Description */
             description?: string | null;
-            /** @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor. */
-            level: components["schemas"]["LocationLevel"];
+            /**
+             * Level
+             * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
+             */
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
             /** Parent Id */
             parent_id?: string | null;
         };
-        /**
-         * LocationLevel
-         * @description [SUPUESTO] sede -> espacio -> mueble/rack -> nivel -> contenedor.
-         * @enum {string}
-         */
-        LocationLevel: "SITE" | "SPACE" | "FURNITURE" | "SHELF_LEVEL" | "CONTAINER";
         /**
          * LocationNode
          * @description Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).
@@ -2359,8 +2360,9 @@ export interface components {
             /**
              * Level
              * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
              */
-            level: string;
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
             /** Parent Id */
@@ -2383,8 +2385,9 @@ export interface components {
             /**
              * Level
              * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
              */
-            level: string;
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
         };
@@ -3103,8 +3106,12 @@ export interface components {
             recorded_by?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
-            /** @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal. */
-            tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
+             */
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
         };
@@ -3232,8 +3239,9 @@ export interface components {
             /**
              * Tenure Regime
              * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
              */
-            tenure_regime: string;
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
             /**
@@ -3326,8 +3334,9 @@ export interface components {
             /**
              * Tenure Regime
              * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
              */
-            tenure_regime: string;
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
             /**
@@ -3681,12 +3690,6 @@ export interface components {
          * @enum {string}
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
-        /**
-         * TenureRegime
-         * @description Régimen de tenencia (RF-005). Only OWNED pieces may receive an inventory code I.
-         * @enum {string}
-         */
-        TenureRegime: "OWNED" | "LOAN_FOR_USE" | "TEMPORARY_LOAN";
         /**
          * TermCreate
          * @example {
@@ -6147,7 +6150,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor. */
-                level?: string | null;
+                level?: ("Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor") | null;
                 /** @description Solo hijos directos. */
                 parent_id?: string | null;
             };
@@ -6610,7 +6613,7 @@ export interface operations {
                 q?: string | null;
                 sort?: "title" | "-title" | "created_at" | "-created_at";
                 /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
-                tenure_regime?: string | null;
+                tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
                 /** @description true = piezas sueltas. */
                 without_collection?: boolean | null;
             };

@@ -85,7 +85,7 @@ export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
         <PieceField label="Fecha de ingreso" value={piece.entry_date ?? "Sin registrar"} />
         <PieceField label="Registrado por" value={piece.recorded_by ?? "Sin registrar"} />
         <PieceField label="Propietario legal" value={piece.legal_owner ?? "PUCP"} />
-        {piece.tenure_regime === "LOAN_FOR_USE" && (
+        {piece.tenure_regime === "Comodato" && (
           <>
             <PieceField label="Comodante" value={piece.lender_name ?? RESTRICTED} />
             <PieceField label="Convenio de comodato" value={piece.loan_agreement_ref ?? RESTRICTED} />
