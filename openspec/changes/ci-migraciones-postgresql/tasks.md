@@ -1,6 +1,6 @@
 ## 1. Historial lineal
 
-- [ ] 1.1 Agregar a `apps/api/tests/test_migrations.py` la prueba de una sola cabeza con `ScriptDirectory.get_heads()` (D4), cuyo mensaje lista las revisiones si hay más de una; verificar que pasa con la migración actual y que falla con una migración de prueba temporal que parte de `base` (Req: Historial de migraciones lineal; RNF-004)
+- [x] 1.1 Agregar a `apps/api/tests/test_migrations.py` la prueba de una sola cabeza con `ScriptDirectory.get_heads()` (D4), cuyo mensaje lista las revisiones si hay más de una; verificar que pasa con la migración actual y que falla con una migración de prueba temporal que parte de `base` (Req: Historial de migraciones lineal; RNF-004)
 
 ## 2. Pruebas contra PostgreSQL
 
