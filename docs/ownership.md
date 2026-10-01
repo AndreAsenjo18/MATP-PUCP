@@ -43,6 +43,7 @@ Notas:
 | `auditoria-y-soft-delete-transversal` | auditoria-trazabilidad | — | Plataforma | — | 1 (la prueba transversal protege a las demás células) |
 | `autenticacion-y-matriz-permisos` | usuarios-roles | — | Plataforma | — | 1 |
 | `despliegue-vm-y-respaldos` | plataforma | — | Plataforma | coordina con `autenticacion-y-matriz-permisos` (HTTPS) | 2 (requiere Docker y la VM) |
+| `pipeline-despliegue-ambientes` | plataforma | — | Plataforma | `despliegue-vm-y-respaldos` (`deploy.sh` y Compose de producción; **bloqueante** para desplegar en pruebas); coordina con `ci-migraciones-postgresql` | 2 (publicar imágenes no requiere Docker local; desplegar en pruebas requiere AWS Academy) |
 | `ia-extraccion-texto-libre` | ia-asistiva | — | IA | — | 1 |
 | `ia-sugerencia-terminos` | ia-asistiva | — | IA | `ia-extraccion-texto-libre` (**bloqueante**) | 2 |
 
@@ -53,5 +54,5 @@ Changes de arranque aún abiertos (a cargo del Arquitecto con apoyo de Plataform
 1. **Specs delta solo con `ADDED`**: todos los changes del backlog agregan requirements con nombres únicos; ninguno modifica requirements vigentes, para poder archivarse en cualquier orden. Un `MODIFIED` exige avisar a la célula dueña de la capacidad.
 2. **Migraciones Alembic**: cada change crea su migración al abrir el PR y la rebasa sobre la última de `main` antes del merge (una sola cabeza; CI lo verifica con `alembic heads`).
 3. **Contrato OpenAPI**: solo se reemplazan stubs y se añaden operaciones; renombrar o quitar exige change con `MODIFIED` y revisión del Arquitecto.
-4. **Utilidades compartidas con dueño**: `app/core/xlsx.py` y `export_job` → Consulta y control (`busqueda-avanzada-y-exportacion`); `MappingSpec` → Importación (`plantillas-mapeo-y-normalizacion`); `revert_change_set()` y `app/core/cross_cutting.py` → Plataforma (`auditoria-y-soft-delete-transversal`); `ai_suggestions/apply.py` → IA (`ia-extraccion-texto-libre`).
+4. **Utilidades compartidas con dueño**: `app/core/xlsx.py` y `export_job` → Consulta y control (`busqueda-avanzada-y-exportacion`); `MappingSpec` → Importación (`plantillas-mapeo-y-normalizacion`); `revert_change_set()` y `app/core/cross_cutting.py` → Plataforma (`auditoria-y-soft-delete-transversal`); `ai_suggestions/apply.py` → IA (`ia-extraccion-texto-libre`); `.github/workflows/publish-images.yml`, `.github/workflows/release.yml` y `deploy/staging/pull-deploy/` → Plataforma (`pipeline-despliegue-ambientes`).
 5. **Patrón de trabajos en segundo plano** (importación, duplicados, exportaciones, lotes de IA): worker en proceso con latido y recuperación; el primer change que lo implemente lo deja en `app/core/jobs.py` y los demás lo reutilizan (ver ADR-010).
