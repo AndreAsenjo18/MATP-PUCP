@@ -3,20 +3,26 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.api.enums import (
+    LOCATION_LEVEL_LABELS,
+    LocationLevelLabel,
+    code_of,
+    serialize_label,
+)
 from app.api.refs import EX_DATETIME, EX_LOCATION_ID, EX_PIECE_ID, LocationRef, ORMModel
 from app.modules.locations.models import LocationLevel, MovementType
 
 _SITE_REF = {
     "id": "01920000-0000-7000-8000-000000000400",
-    "level": "SITE",
+    "level": "Sede",
     "code": "SEDE1",
     "name": "Sede 1 (ficticia)",
 }
 _SPACE_REF = {
     "id": EX_LOCATION_ID,
-    "level": "SPACE",
+    "level": "Depósito",
     "code": "SEDE1-DEP-A",
     "name": "Depósito A (ficticio)",
 }
@@ -40,12 +46,22 @@ class LocationOut(ORMModel):
 
     id: uuid.UUID
     parent_id: uuid.UUID | None
-    level: LocationLevel
+    level: LocationLevelLabel = Field(
+        description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
+    )
     code: str
     name: str
     description: str | None
     is_active: bool
     path: list[LocationRef] = Field(default_factory=list, description="Ruta desde la sede.")
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def _level_to_label(cls, value: object) -> str | None:
+        """Emite la etiqueta en español del contrato aunque llegue el código interno."""
+        label = serialize_label(LOCATION_LEVEL_LABELS, value)  # type: ignore[arg-type]
+        assert label is not None, "level es obligatorio en LocationOut"
+        return label
 
 
 class LocationNode(BaseModel):
@@ -81,10 +97,25 @@ class LocationNode(BaseModel):
 
 class LocationCreate(BaseModel):
     parent_id: uuid.UUID | None = None
-    level: LocationLevel
+    level: LocationLevelLabel = Field(
+        description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
+    )
     code: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def _level_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, LocationLevel)
+            else code_of(LOCATION_LEVEL_LABELS, str(value), "level")
+        )
+        return LOCATION_LEVEL_LABELS[code]
 
 
 class LocationUpdate(BaseModel):

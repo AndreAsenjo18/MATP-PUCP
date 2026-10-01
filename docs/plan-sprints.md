@@ -35,7 +35,7 @@ Se prioriza la **Fase 1 (Alta / MVP)** del contrato de interfaces ([`docs/fuente
 |---|---|
 | **MVP** (debe estar para la validación) | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin`, `fotografias-multiples-por-pieza`, `ubicacion-jerarquica-y-movimientos`, `plantillas-mapeo-y-normalizacion`, `deteccion-duplicados-y-cola-revision`, `importacion-pipeline-reconciliacion`, `busqueda-avanzada-y-exportacion`, `autenticacion-y-matriz-permisos`, `auditoria-y-soft-delete-transversal` |
 | **Deseable** (entra si hay capacidad; es lo primero que se recorta si hay atraso) | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos`, `alertas-y-reporte-incompletas`, `reportes-inventario` |
-| **CI/CD e infraestructura** (por partes, todas las semanas) | `ci-migraciones-postgresql` y `despliegue-vm-y-respaldos` (sección «CI/CD») |
+| **CI/CD e infraestructura** (por partes, todas las semanas) | `ci-migraciones-postgresql`, `pipeline-despliegue-ambientes` (publicación y promoción entre ambientes) y `despliegue-vm-y-respaldos` (script de despliegue, Compose de producción, proxy y respaldos) |
 
 ## Carga por persona
 
@@ -53,7 +53,7 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 | **Josué Moreno** | `ci-migraciones-postgresql` 2 a 5 (job de PostgreSQL) · acompañante | `ubicacion-jerarquica-y-movimientos` | `busqueda-avanzada-y-exportacion` | Pruebas de humo en CI · versión `v0.1.0` del MVP | A: ajustes de Consulta y control / B: documentación de CI/CD | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
 | **José Ávalos** | alinear 3.2 (traducción de enumerados) | alinear 4.6 · `ia-extraccion-texto-libre` | `ia-sugerencia-terminos` | Integración de la IA · revisiones del MVP | A: ajustes de IA / B: manual de IA | A: ajustes / B: manual de IA | Demo del módulo de IA |
 | **Álvaro Vargas** | alinear 2.3 (entidad `loan`) · acompañante | `auditoria-y-soft-delete-transversal` | `autenticacion-y-matriz-permisos` | Cierre de autenticación · compose de producción y proxy | VM PUCP y respaldos (si hay acceso) | Simulacro de restauración | Entorno de la demo |
-| **Manuel Barrantes** | Verificar con Docker y archivar el arranque del backend | alinear 4.7 y 7.2 · CD 1: imágenes en cada merge y ADR-013 | CD 2: `deploy.sh` y despliegue en cada merge | Despliegue del MVP en el entorno de integración | VM PUCP y respaldos (si hay acceso) | Manual técnico de despliegue | Entorno de la demo |
+| **Manuel Barrantes** | Verificar con Docker y archivar el arranque del backend | alinear 4.7 y 7.2 · CD 1: imágenes en cada merge y ADR-014 | CD 2: `deploy.sh` y despliegue en cada merge | Despliegue del MVP en el entorno de integración | VM PUCP y respaldos (si hay acceso) | Manual técnico de despliegue | Entorno de la demo |
 
 ## CI/CD
 
@@ -65,11 +65,11 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 |---|---|---|---|
 | S0 | Protección de `main`: PR obligatorio, los jobs de CI en verde y una aprobación | Sergio Chumbimuni (preparación del lunes 28) | Guía de trabajo del equipo |
 | S0 | Job de CI **de migraciones**: servicio PostgreSQL, `upgrade head`, comparación con los modelos, protecciones de la auditoría, `downgrade base` y verificación de **una sola cabeza**. Hoy las pruebas corren sobre SQLite y nada verifica las migraciones en PostgreSQL | Josué Moreno (tareas 2 a 5), Sergio Huamán (tarea 1.1) | Change [`ci-migraciones-postgresql`](../openspec/changes/ci-migraciones-postgresql/) (ADR-010, punto 5) |
-| S1 | **CD 1:** Dockerfiles sin usuario root y publicación de las imágenes en GHCR **en cada merge a main** (etiquetas con el SHA y `main`) y al crear un tag de versión | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.1 y 2.1 (ajustar la 2.1, que hoy publica solo por tag) |
-| S1 | Actualizar `despliegue-vm-y-respaldos` (`/opsx:update`) y ADR-013 para el despliegue continuo al entorno de integración | Manuel Barrantes; aprueba Sergio Chumbimuni | ADR-013 hoy dice que el entorno se opera por sesiones |
-| S2 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y **despliegue automático en AWS Academy después de cada merge a main** | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 2.2 y 6.3; ADR-013 |
+| S1 | **CD 1:** publicación de las imágenes en GHCR **en cada merge a main con CI en verde** (etiquetas `sha-<commit>` y `main`) y versión identificable en `/health` — **implementado** (PR #38; primera publicación en `main`: commit `9d55396`, 2026-09-30) | Manuel Barrantes | `pipeline-despliegue-ambientes` tareas 2.1 a 2.4; `despliegue-vm-y-respaldos` tarea 1.1 (verificar usuario no root) |
+| S1 | Ajustar `despliegue-vm-y-respaldos` (`/opsx:update`: sus tareas 2.1 y 6.3 remiten a `pipeline-despliegue-ambientes`) y ratificar ADR-014 | Manuel Barrantes; aprueba Sergio Chumbimuni | ADR-014 (Propuesto) define el despliegue continuo; ADR-013 ya lo enlaza |
+| S2 | **CD 2:** `scripts/deploy.sh` (respaldo previo, migración, salud y vuelta atrás) y **despliegue automático en AWS Academy después de cada merge a main** (temporizador por *pull* en la EC2) | Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.2 y 2.2 y 6.3 (`staging-up.sh`); `pipeline-despliegue-ambientes` tareas 3.1 a 3.4 |
 | S3 | Compose de producción y proxy con HTTPS; despliegue del MVP para la validación | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 1.2 y 1.3 |
-| S3 | Pruebas de humo contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | Definición de «hecho» |
+| S3 | Pruebas de humo contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | Definición de «hecho»; procedimiento de versión: `pipeline-despliegue-ambientes` tareas 4.1 a 4.3 |
 | S4 – S5 | Respaldos cifrados, simulacro de restauración y despliegue en la VM PUCP (si la DTI dio acceso) | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` tareas 3.x, 4.1 y 5.x |
 
 **Despliegue continuo al entorno de integración (AWS Academy, activo hasta fin de ciclo):**
@@ -78,10 +78,10 @@ Cada celda es el trabajo principal de esa persona en esa semana. Las revisiones 
 merge a main → CI en verde → imágenes en GHCR (sha, main) → despliegue en la EC2 de staging → pruebas de humo
 ```
 
-- **Recomendación: despliegue por *pull*.** Un temporizador en la EC2 (systemd) revisa cada pocos minutos si hay una imagen `main` nueva en GHCR y, si la hay, ejecuta `scripts/deploy.sh`. Así no se guardan credenciales de AWS ni una llave SSH en GitHub, y no hay que abrir el puerto 22 a Internet.
-- **Alternativa: *push* desde GitHub Actions por SSH**, con la llave como secreto del repositorio. Da respuesta inmediata en el PR, pero obliga a exponer SSH.
-- **Si la instancia está detenida** cuando se integra un PR, el despliegue ocurre al volver a encenderla, porque `deploy.sh` siempre toma la última imagen de main.
-- La decisión final la toma Plataforma al actualizar ADR-013 en el sprint 1.
+- **Decidido: despliegue por *pull*** ([ADR-014](adr/ADR-014-pipeline-despliegue-ambientes.md), change `pipeline-despliegue-ambientes`). Un temporizador en la EC2 (systemd) revisa cada 5 minutos si hay una imagen `main` nueva en GHCR y, si la hay, ejecuta `scripts/deploy.sh sha-<commit>`. No se guardan credenciales de AWS ni llaves SSH en GitHub.
+- **Descartado: *push* desde GitHub Actions por SSH o SSM** (ADR-014, «Alternativas consideradas»): las credenciales de AWS Academy caducan en cada sesión y habría que exponer SSH.
+- **Si la instancia está detenida** cuando se integra un PR, el despliegue ocurre al volver a encenderla, porque el temporizador siempre toma la última imagen de main.
+- **Producción (VM PUCP) nunca se despliega automáticamente**: solo con un tag `vX.Y.Z` y `scripts/deploy.sh vX.Y.Z`, ejecutado por una persona autorizada.
 
 ## Detalle por sprint
 
@@ -152,7 +152,7 @@ Todas las tareas del sprint 0 son independientes entre sí, salvo la de Germán,
 | `ubicacion-jerarquica-y-movimientos` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` | Sergio Huamán | Yessica Ochante | José Ávalos |
 | `auditoria-y-soft-delete-transversal` | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| CD 1: imágenes en cada merge y actualización de ADR-013 | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| CD 1: imágenes en cada merge (`pipeline-despliegue-ambientes` 2.x) y ADR-014 | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | `ia-extraccion-texto-libre` | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 **Al cierre del sprint 1:** `alinear-api-endpoints-v1` integrado y archivado; la prueba de conformidad del contrato pasa en CI.
@@ -166,7 +166,7 @@ Todas las tareas del sprint 0 son independientes entre sí, salvo la de Germán,
 | `ubicacion-jerarquica-y-movimientos` (cierre) y `busqueda-avanzada-y-exportacion` | Josué Moreno, Mathias Medina | Yessica Ochante | José Ávalos |
 | `alertas-y-reporte-incompletas` (cierre) | Sergio Huamán | Yessica Ochante | José Ávalos |
 | `autenticacion-y-matriz-permisos` | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| CD 2: `deploy.sh` y despliegue automático al entorno de integración | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| CD 2: `deploy.sh` y despliegue automático al entorno de integración (`pipeline-despliegue-ambientes` 3.x) | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | `ia-sugerencia-terminos` (requiere `ia-extraccion-texto-libre` integrado) | José Ávalos, Sergio Chumbimuni | Franz Vilcapoma | Josué Moreno |
 
 ### Sprint 3 · jue 15 – mié 21 oct · «MVP integrado y listo para validar»

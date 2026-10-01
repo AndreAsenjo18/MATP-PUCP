@@ -6,11 +6,11 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
   it("reproduce el caos de codificación con al menos 14 piezas y todos los regímenes de tenencia", () => {
     expect(PIECES.length).toBeGreaterThanOrEqual(14);
     const regimes = new Set(PIECES.map((p) => p.tenure_regime));
-    expect(regimes).toEqual(new Set(["OWNED", "LOAN_FOR_USE", "TEMPORARY_LOAN"]));
+    expect(regimes).toEqual(new Set(["Propiedad", "Comodato", "Préstamo Temporal"]));
   });
 
   it("nunca asigna un código I vigente a una pieza en comodato (RN-003)", () => {
-    const onLoanForUse = PIECES.filter((p) => p.tenure_regime === "LOAN_FOR_USE");
+    const onLoanForUse = PIECES.filter((p) => p.tenure_regime === "Comodato");
     expect(onLoanForUse.length).toBeGreaterThan(0);
     for (const piece of onLoanForUse) {
       expect(piece.inventory_code).toBeNull();
@@ -20,7 +20,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
   });
 
   it("nunca asigna un código I a una pieza en préstamo temporal (RN-004)", () => {
-    const onTemporaryLoan = PIECES.filter((p) => p.tenure_regime === "TEMPORARY_LOAN");
+    const onTemporaryLoan = PIECES.filter((p) => p.tenure_regime === "Préstamo Temporal");
     expect(onTemporaryLoan.length).toBeGreaterThan(0);
     for (const piece of onTemporaryLoan) {
       expect(piece.inventory_code).toBeNull();
@@ -42,7 +42,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     const alerts = alertsForPiece(cajonSanMarcos);
     expect(alerts.find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).toBe(true);
 
-    const comodatoPiece = PIECES.find((p) => p.tenure_regime === "LOAN_FOR_USE")!;
+    const comodatoPiece = PIECES.find((p) => p.tenure_regime === "Comodato")!;
     const comodatoAlerts = alertsForPiece(comodatoPiece);
     expect(comodatoAlerts.find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).toBe(false);
   });

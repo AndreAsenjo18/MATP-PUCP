@@ -31,3 +31,4 @@ La evaluación y el uso real requieren la VM Linux institucional PUCP con HTTPS 
 - El Implantador necesita acceso SSH a la VM y un destino externo de respaldos antes de S12.
 - Hasta tener Docker y la VM, este diseño no está verificado; el riesgo se registra en `docs/estado-arranque.md`.
 - La guía de free tier debe revisarse cada vez que cambien los límites de los proveedores (se fechan en la guía).
+- La publicación de imágenes y el despliegue automático en el entorno de integración los define [ADR-014](ADR-014-pipeline-despliegue-ambientes.md) (change `pipeline-despliegue-ambientes`). El despliegue en la VM sigue siendo manual, con `scripts/deploy.sh vX.Y.Z`.
