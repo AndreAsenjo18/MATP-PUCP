@@ -36,6 +36,9 @@ RUN addgroup -S matp && adduser -S matp -G matp
 COPY --from=build --chown=matp:matp /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=matp:matp /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=matp:matp /repo/apps/web/public ./apps/web/public
+# Commit the image was built from, for deployment traceability (change pipeline-despliegue-ambientes, D5).
+ARG GIT_SHA=dev
+ENV APP_COMMIT=$GIT_SHA
 USER matp
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \

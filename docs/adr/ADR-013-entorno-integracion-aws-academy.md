@@ -45,3 +45,4 @@ sin decidir (pregunta I6, prioridad B, impacto en `despliegue-vm-y-respaldos`, R
 - Requiere el ajuste de credenciales descrito en la Parte 2 del documento de ajustes (P2.1:
   S3 opcional vía cadena de credenciales por defecto).
 - La URL publicada debe registrarse en `docs/estado-arranque.md` cuando se levante por primera vez.
+- El despliegue en este entorno después de cada merge a `main` (por *pull* desde la EC2, sin credenciales en GitHub) lo define [ADR-014](ADR-014-pipeline-despliegue-ambientes.md) (change `pipeline-despliegue-ambientes`).

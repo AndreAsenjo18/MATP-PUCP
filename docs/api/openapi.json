@@ -1472,6 +1472,21 @@
             "title": "Checks",
             "type": "object"
           },
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release"
+          },
           "service": {
             "title": "Service",
             "type": "string"
@@ -1493,6 +1508,8 @@
           "status",
           "service",
           "version",
+          "commit",
+          "release",
           "checks"
         ],
         "title": "HealthResponse",
