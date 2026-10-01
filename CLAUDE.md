@@ -85,6 +85,7 @@ No hay `make` en el entorno de referencia (Windows). Los comandos se exponen com
 | Detener / logs | `npm run down` · `npm run logs` | disponible (requiere Docker) |
 | Servicios sin contenedor | `npm run dev:api` (incluye la IA en `/ai`) · `npm run dev:web` | disponible |
 | Tests | `npm test` (`test:api`, `test:ai`, `test:web`) | disponible |
+| Tests de migraciones en PostgreSQL | `npm run test:api:pg` (crea `matp_test` y corre `pytest -m postgres`) | disponible (requiere Docker) |
 | Lint | `npm run lint` (`lint:api`, `lint:ai`, `lint:web`) | disponible |
 | Migraciones | `npm run migrate` (= `docker compose exec api alembic upgrade head`) | disponible (requiere Docker) |
 | Datos semilla | `npm run seed` (= `docker compose exec api python -m app.seed`) | disponible (requiere Docker) |

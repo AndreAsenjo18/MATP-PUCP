@@ -42,6 +42,12 @@ include = ["app*"]
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = ["ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning"]
+markers = [
+    # ci-migraciones-postgresql: solo corren con TEST_POSTGRES_URL apuntando a una base de
+    # pruebas. Sin esa variable se omiten con motivo (escenario «Sin PostgreSQL disponible»),
+    # de modo que `npm test` sigue funcionando sin Docker.
+    "postgres: requiere TEST_POSTGRES_URL contra un PostgreSQL real",
+]
 
 [tool.ruff]
 line-length = 100

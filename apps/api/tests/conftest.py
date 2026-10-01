@@ -1,10 +1,11 @@
+import os
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 
 import pytest
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from app.core.config import Settings, load_settings
 from app.core.db import make_session_factory
@@ -15,6 +16,29 @@ from app.modules.audit.models import AuditOrigin
 from app.seed.reference import ReferenceData, seed_reference_data
 
 SECRET = "test-secret-value-not-for-production"
+
+
+@pytest.fixture(scope="module")
+def postgres_url() -> Iterator[str]:
+    """URL de la base PostgreSQL de pruebas (change ci-migraciones-postgresql, decision D1).
+
+    Se omite con un motivo si ``TEST_POSTGRES_URL`` no esta definida, para que ``npm test``
+    siga en verde en maquinas sin Docker. El esquema ``public`` se recrea antes de cada
+    modulo: las migraciones parten siempre de una base vacia.
+    """
+    url = os.environ.get("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip(
+            "requiere TEST_POSTGRES_URL (npm run test:api:pg o el job de migraciones de CI)"
+        )
+    engine = create_engine(url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+            connection.execute(text("CREATE SCHEMA public"))
+    finally:
+        engine.dispose()
+    yield url
 
 
 @pytest.fixture
