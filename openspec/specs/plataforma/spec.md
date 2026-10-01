@@ -105,3 +105,119 @@ El sistema MUST soportar al menos 20 000 piezas con sus identificadores, fotos y
 #### Scenario: Superación del volumen objetivo
 - **WHEN** el catálogo supera las 20 000 piezas
 - **THEN** el sistema sigue operando y los indicadores de monitoreo permiten detectar degradación
+
+### Requirement: Conformidad con el contrato de interfaces del equipo
+Las rutas, los verbos, los identificadores de operación y los campos requeridos de cada esquema de la API MUST coincidir con el documento de interfaces acordado por el equipo (`docs/fuentes/endpoints-api-v1.yaml`), verificado por una prueba automática. Toda operación de la API que ese documento no contemple SHALL estar declarada como añadido justificado en el mapeo publicado (`docs/api/mapeo-endpoints-v1.md`), y ninguna ruta renombrada por el documento SHALL conservarse como alias. Las operaciones que el documento sitúa en fases posteriores MUST exponerse con su forma definitiva y responder `501` citando el change que las implementará. (RNF-009, RNF-004)
+
+#### Scenario: Conformidad con el documento de interfaces
+- **WHEN** se ejecutan las pruebas de la API
+- **THEN** una prueba compara cada ruta, verbo, identificador de operación y campo requerido del documento de interfaces del equipo con la especificación que genera la aplicación, y falla indicando las diferencias encontradas
+
+#### Scenario: Operación fuera del documento de interfaces
+- **GIVEN** una operación de la API que el documento de interfaces del equipo no contempla y que no figura en la lista publicada de añadidos justificados
+- **WHEN** se ejecutan las pruebas de la API
+- **THEN** la prueba falla indicando la operación y pidiendo que se justifique en el mapeo o se elimine
+
+#### Scenario: Ruta renombrada por el documento
+- **WHEN** un cliente invoca una ruta anterior que el documento renombró, por ejemplo la de auditoría sin el sufijo del documento
+- **THEN** la API responde 404 y solo la ruta del documento atiende la operación
+
+#### Scenario: Operación de una fase posterior
+- **WHEN** un cliente invoca una operación que el documento sitúa en la fase 3, por ejemplo el registro de un préstamo
+- **THEN** recibe 501 con el esquema definitivo de la respuesta y el nombre del change que la implementará
+
+### Requirement: Valores de enumerado del contrato en la API
+La API MUST aceptar y devolver los valores de enumerado tal como los define el documento de interfaces del equipo (por ejemplo `Propiedad`, `Comodato` y `Préstamo Temporal` para el régimen de tenencia, y `Frontal`, `Perfil`, `Posterior`, `Detalle`, `Abierto` y `Cerrado` para el tipo de vista de una fotografía), SHALL traducirlos en un único punto hacia los códigos internos del dominio, y MUST NOT exponer los códigos internos en ninguna respuesta. Un valor que no pertenezca al enumerado SHALL producir un error de validación que liste los valores admitidos. (RNF-009, RF-005, RF-013)
+
+#### Scenario: Alta de pieza con el valor del documento
+- **WHEN** un Catalogador registra una pieza con régimen de tenencia "Comodato"
+- **THEN** la API la acepta, la guarda con su código interno y devuelve "Comodato" en la respuesta
+
+#### Scenario: Valor de enumerado no admitido
+- **WHEN** un cliente envía el régimen de tenencia "OWNED"
+- **THEN** la API responde 422 indicando los valores admitidos: "Propiedad", "Comodato" y "Préstamo Temporal"
+
+#### Scenario: Ninguna respuesta expone códigos internos
+- **WHEN** se ejecutan las pruebas de la API sobre las respuestas de piezas, multimedia e importaciones
+- **THEN** ninguna contiene los códigos internos en inglés del régimen de tenencia ni del tipo de vista
+
+### Requirement: Paginación uniforme en listados y búsqueda
+Los listados y la búsqueda de piezas MUST aceptar los parámetros `page` (desde 1) y `limit`, y SHALL responder con el total de coincidencias, la página, el límite y los elementos de esa página. Un `page` o `limit` fuera de rango SHALL producir un error de validación, y un `page` posterior a la última página SHALL devolver una lista vacía con el total real. (RNF-009, RF-031, RF-032, RF-038)
+
+#### Scenario: Segunda página de resultados
+- **GIVEN** 45 piezas que cumplen un filtro de búsqueda
+- **WHEN** un usuario solicita la página 2 con límite 20
+- **THEN** la respuesta indica un total de 45, la página 2, el límite 20 y contiene las piezas 21 a 40
+
+#### Scenario: Página posterior a la última
+- **GIVEN** 45 piezas que cumplen un filtro
+- **WHEN** un usuario solicita la página 10 con límite 20
+- **THEN** la respuesta indica un total de 45 y una lista vacía de elementos
+
+#### Scenario: Límite fuera de rango
+- **WHEN** un usuario solicita un límite de 5000 elementos
+- **THEN** la API responde 422 indicando el límite máximo permitido por página
+
+### Requirement: Despliegue automático al ambiente de pruebas tras integrar en main
+Cada commit integrado en la rama principal MUST desplegarse automáticamente en el ambiente de pruebas cuando la integración continua de ese commit haya terminado con éxito en todos sus checks, sin que ninguna persona tenga que intervenir. Si la integración continua de ese commit falla o se cancela, el pipeline SHALL no publicar imágenes ni desplegar ese commit. El ambiente de pruebas MUST contener solo datos sintéticos, y el pipeline SHALL no copiar datos de producción hacia él. El mecanismo de despliegue MUST funcionar sin guardar en el repositorio ni en su servicio de integración continua credenciales del proveedor de nube ni llaves de acceso al servidor de pruebas. Si el despliegue de un commit falla, el ambiente SHALL seguir sirviendo la versión anterior. (RNF-004, RNF-002, RNF-008, RNF-014)
+
+#### Scenario: Merge con integración continua en verde
+- **GIVEN** un pull request aprobado cuya integración continua está en verde
+- **WHEN** se integra en la rama principal y la integración continua de ese commit termina con éxito
+- **THEN** se publican las imágenes de ese commit etiquetadas con su identificador, y el ambiente de pruebas pasa a servir esa versión sin intervención manual
+
+#### Scenario: Integración continua fallida en la rama principal
+- **WHEN** la integración continua del commit integrado falla o se cancela
+- **THEN** no se publica ninguna imagen de ese commit y el ambiente de pruebas sigue sirviendo la versión anterior
+
+#### Scenario: Servidor de pruebas apagado al integrar
+- **GIVEN** el servidor de pruebas está detenido porque la sesión del laboratorio terminó
+- **WHEN** se integran uno o más commits en la rama principal y luego se vuelve a encender el servidor
+- **THEN** el servidor despliega la última versión publicada de la rama principal, sin necesidad de volver a ejecutar el pipeline
+
+#### Scenario: Despliegue fallido en pruebas
+- **WHEN** la nueva versión no supera la migración o el chequeo de salud en el ambiente de pruebas
+- **THEN** el ambiente sigue sirviendo la versión anterior y el fallo queda registrado con el identificador del commit
+
+#### Scenario: Sin credenciales de despliegue en el repositorio
+- **WHEN** se revisan los secretos y variables configurados en el repositorio y en los workflows
+- **THEN** no hay credenciales del proveedor de nube ni llaves de acceso al servidor de pruebas
+
+### Requirement: Producción solo por versión etiquetada y acción humana
+El ambiente de producción MUST recibir únicamente versiones etiquetadas con el formato `vMAYOR.MENOR.PARCHE`, y SHALL desplegarse solo cuando una persona autorizada ejecuta el procedimiento de despliegue con esa versión. Ningún merge, push ni ejecución automática SHALL modificar producción. Una versión MUST corresponder a un commit de la rama principal cuyas imágenes ya se publicaron, y MUST usar esas mismas imágenes, sin reconstruirlas. Solo los roles autorizados SHALL poder crear etiquetas de versión. (RNF-004, RNF-008)
+
+#### Scenario: Merge a la rama principal no toca producción
+- **WHEN** se integra un commit en la rama principal y se despliega en pruebas
+- **THEN** producción sigue sirviendo exactamente la misma versión que antes
+
+#### Scenario: Creación de una versión
+- **GIVEN** un commit de la rama principal cuyas imágenes ya se publicaron y se desplegaron en pruebas
+- **WHEN** una persona autorizada crea la etiqueta `v0.1.0` sobre ese commit
+- **THEN** se publica la versión `v0.1.0` con las mismas imágenes (mismo digest) que se probaron, y se crea una nota de versión con los digests y los cambios incluidos
+
+#### Scenario: Etiqueta sobre un commit fuera de la rama principal
+- **WHEN** se crea una etiqueta de versión sobre un commit que no pertenece a la rama principal, o cuya integración continua no publicó imágenes
+- **THEN** no se publica la versión y la ejecución falla indicando el motivo
+
+#### Scenario: Etiqueta creada por un rol no autorizado
+- **WHEN** una persona sin el rol autorizado intenta crear una etiqueta de versión
+- **THEN** el repositorio la rechaza
+
+#### Scenario: Despliegue manual en producción
+- **WHEN** la persona autorizada ejecuta el procedimiento de despliegue con la versión `v0.1.0` en el servidor de producción
+- **THEN** producción pasa a servir esa versión. Si la versión no existe en el registro de imágenes, el procedimiento se detiene antes de modificar los servicios
+
+### Requirement: Versión desplegada identificable en cada ambiente
+Cada ambiente MUST permitir consultar qué versión sirve (identificador del commit y, en producción, la etiqueta de versión) sin autenticación de usuario y sin exponer datos del catálogo, y cada servidor SHALL registrar cada despliegue con la versión, la fecha y el resultado. Una ejecución local sin versión de build MUST identificarse como desarrollo en lugar de fallar. (RNF-004)
+
+#### Scenario: Consulta de la versión en pruebas
+- **WHEN** se consulta el chequeo de salud del ambiente de pruebas después de un despliegue
+- **THEN** la respuesta incluye el identificador del commit desplegado y ningún dato del catálogo
+
+#### Scenario: Historial de despliegues
+- **WHEN** el Implantador revisa el registro de despliegues del servidor
+- **THEN** encuentra cada despliegue con su versión, fecha y hora, y si terminó con éxito o volvió a la versión anterior
+
+#### Scenario: Ejecución local sin versión de build
+- **WHEN** se levanta la API en local sin indicar la versión de build
+- **THEN** el chequeo de salud responde correctamente e identifica la versión como de desarrollo
