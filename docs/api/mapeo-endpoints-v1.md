@@ -62,9 +62,9 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
-| 39 | `GET /loans` · `listLoans` | `RF-013` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
-| 40 | `POST /loans` · `createLoan` | `RF-015` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
-| 41 | `PUT /loans/{id}/status` · `updateLoanStatus` | `RF-028-B` → RF-018 | no existe | Pendiente: requiere proponer el change de préstamos |
+| 39 | `GET /loans` · `listLoans` | `RF-013` → RF-018 | `GET /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
+| 40 | `POST /loans` · `createLoan` | `RF-015` → RF-018 | `POST /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
+| 41 | `PUT /loans/{id}/status` | `RF-028-B` → RF-018 | `PUT /loans/{id}/status` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Pendiente: requiere proponer el change de descargas masivas |
 | 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁴ | no existe | Bloqueado por el conflicto C2 |
 | 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |

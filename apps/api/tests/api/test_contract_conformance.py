@@ -28,9 +28,6 @@ PREFIX = "/api/v1"
 # propongan sus changes de backlog (préstamos y exposiciones; descargas masivas y enriquecimiento
 # por lote), porque cada stub debe citar un change existente.
 PENDIENTES: set[tuple[str, str]] = {
-    ("get", "/loans"),
-    ("post", "/loans"),
-    ("put", "/loans/{}/status"),
     ("post", "/media/bulk-download"),
     ("post", "/ai/batch-enrich"),
 }

@@ -137,6 +137,24 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("AUTORIZACION_COMODANTE", "Requiere autorización del comodante"),
         ],
     ),
+    VocabularyCode.LOAN_TYPE: (
+        "Tipos de préstamo y exposición",
+        [
+            ("PRESTAMO_TEMPORAL", "Préstamo temporal"),
+            ("EXPOSICION", "Exposición"),
+        ],
+        # [SUPUESTO] Valores iniciales reversibles; pendiente de validar con la contraparte (K1).
+    ),
+    VocabularyCode.LOAN_STATUS: (
+        "Estados de préstamo y exposición",
+        [
+            ("BORRADOR", "Borrador"),
+            ("VIGENTE", "Vigente"),
+            ("CERRADO", "Cerrado"),
+            ("CANCELADO", "Cancelado"),
+        ],
+        # [SUPUESTO] Valores iniciales reversibles; pendiente de validar con la contraparte (K1).
+    ),
 }
 
 ROLES = [

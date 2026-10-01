@@ -8,7 +8,7 @@
 
 - [x] 2.1 Migración Alembic: renombrado de `title` a `denomination` (con su índice), de `period_text`/`period_from`/`period_to`/`period_type` a `epoch_original_text`/`epoch_start_year`/`epoch_end_year`/`epoch_type` (con la restricción `epoch_range`) y de `category_term_id`/`conservation_status_term_id` a `category_id`/`conservation_state_id`; **sin** columna `piece.code_i` (se deriva según D4); verificar con `tests/test_migrations.py` (upgrade, downgrade y `compare_metadata` sin diferencias) (Req: Campos de la ficha con los nombres del contrato; RF-001, RF-003, RN-001, RN-002)
 - [ ] 2.2 Categorías y estados de conservación como fachada sobre `vocabulary`/`term` (D3, D7-C4d): `term.parent_id` para la jerarquía de categorías, `GET/POST /categories` y `GET /conservation-states` devolviendo `term.id` como identificador; pruebas de jerarquía y de que ninguna pieza pierde su clasificación (Req: Catálogos de categorías y estados de conservación; RF-011, RF-012)
-- [ ] 2.3 Entidad `loan` del diagrama entidad-relación (pieza, tipo, institución, fechas, estado) con borrado lógico y auditoría; pruebas de las reglas RN-004 y RN-008 (Req: Registro de préstamos y exposiciones; RF-018, RN-004, RN-008)
+- [x] 2.3 Proponer el change `prestamos-y-exposiciones` para modelar `loan` y `loan_item` con borrado lógico y auditoría; la implementación y las pruebas de RF-018, RN-004 y RN-008 se ejecutan exclusivamente en ese change (Req: Registro de préstamos y exposiciones; RF-018, RN-004, RN-008)
 - [ ] 2.4 Actualizar el seed y `data/fixtures` a los nombres y catálogos nuevos; prueba de que el seed sigue generando 300 piezas, 54 % sin código I y 10 pares duplicados (Req: Campos de la ficha con los nombres del contrato)
 
 ## 3. Traducción de enumerados en la frontera

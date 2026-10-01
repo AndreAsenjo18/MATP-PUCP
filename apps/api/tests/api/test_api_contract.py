@@ -11,7 +11,7 @@ from pydantic import TypeAdapter
 
 from app.api.errors import NotImplementedEndpoint
 from app.api.stubs import STATUS_IMPLEMENTED, STATUS_STUB, X_CHANGE, X_STATUS
-from app.api.v1 import admin, collections, imports, locations, pieces, quality_reports
+from app.api.v1 import admin, collections, imports, loans, locations, pieces, quality_reports
 from app.openapi_export import DEFAULT_OUTPUT, build_spec, render
 from tests.api.conftest import ADMIN, SeededApi, as_user
 
@@ -30,6 +30,7 @@ BACKLOG_CHANGES = {
     "auditoria-y-soft-delete-transversal",
     "ia-extraccion-texto-libre",
     "ia-sugerencia-terminos",
+    "prestamos-y-exposiciones",
 }
 
 REQUIRED_PATHS = [
@@ -68,7 +69,7 @@ def spec(seeded_api: SeededApi) -> dict:
 
 def _api_routes() -> list[APIRoute]:
     """Routes of every v1 module (FastAPI includes routers lazily, so read them at the source)."""
-    modules = (admin, collections, imports, locations, pieces, quality_reports)
+    modules = (admin, collections, imports, loans, locations, pieces, quality_reports)
     return [route for module in modules for route in module.router.routes]
 
 
