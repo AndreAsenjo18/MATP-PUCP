@@ -52,6 +52,40 @@ jobs:
       - run: node scripts/py.mjs services/ai -m matp_ai.openapi_export --check
       - run: npm run test:ai
 
+  migrations:
+    name: Migraciones (PostgreSQL)
+    runs-on: ubuntu-latest
+    # La suite de la API corre sobre SQLite; este job es el único que aplica las migraciones en
+    # el motor real (change ci-migraciones-postgresql, decisión D2). La imagen debe coincidir con
+    # la de docker-compose.yml: lo verifica apps/api/tests/test_ci_config.py.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: matp_test
+          POSTGRES_USER: matp
+          POSTGRES_PASSWORD: matp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U matp -d matp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://matp:matp@localhost:5432/matp_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/setup.mjs apps/api
+      - run: npm run lint:api
+      - run: npm run test:api:postgres
+
   web:
     name: Web (eslint + tsc + vitest + build)
     runs-on: ubuntu-latest
