@@ -13,6 +13,7 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.exc import DatabaseError
 
@@ -46,6 +47,15 @@ def migrated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):  # type: ignore[n
         command.upgrade(config, "head")
     yield engine
     engine.dispose()
+
+
+def test_migration_history_has_a_single_head() -> None:
+    """Two cells adding a migration in parallel would leave two heads (RNF-004, ADR-010)."""
+    heads = ScriptDirectory.from_config(_config("sqlite://")).get_heads()
+    assert len(heads) == 1, (
+        f"Alembic history has {len(heads)} heads: {', '.join(sorted(heads))}. "
+        "Rebase your migration so its down_revision is the latest one on main."
+    )
 
 
 def test_upgrade_creates_every_model_table(migrated) -> None:  # type: ignore[no-untyped-def]
