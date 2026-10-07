@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MATP - Sistema de Gestión de Colecciones</title>
+    <meta name="description" content="Sistema de gestión y digitalización de colecciones museográficas para el Museo de Artes y Tradiciones Populares Luis Repetto Málaga (MATP – PUCP)." />
+    <meta property="og:title" content="MATP - Sistema de Gestión de Colecciones" />
+    <meta property="og:description" content="Sistema de gestión y digitalización de colecciones museográficas para el Museo de Artes y Tradiciones Populares Luis Repetto Málaga (MATP – PUCP)." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts: Poppins (Titulares) & Inter (Cuerpo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Google Material Symbols Outlined -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+
+    <!-- Tailwind CSS por CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              terracota: {
+                DEFAULT: '#A23C16',
+                dark: '#852F0F',
+                light: '#F0DAD0'
+              },
+              tinta: '#0C0F14',
+              crema: {
+                DEFAULT: '#F5F0DA',
+                light: '#FAF7EE'
+              },
+              borde: '#E3DECB',
+              'gris-texto': '#5B534C',
+              'verde-exito': '#007438',
+              'verde-bg': '#E1EFD8',
+              'ambar-alerta': '#C8791E',
+              'ambar-bg': '#F5E4CC',
+              'carmin-peligro': '#DA2A4E',
+              'carmin-bg': '#F7D9DF'
+            },
+            fontFamily: {
+              heading: ['Poppins', 'sans-serif'],
+              sans: ['Inter', 'sans-serif']
+            }
+          }
+        }
+      };
+    </script>
+
+    <!-- Estilos del Sistema de Diseño MATP -->
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body class="bg-[#F5F0DA] text-[#0C0F14] font-sans antialiased min-h-screen overflow-x-hidden">
+    <!-- Contenedor dinámico del prototipo interactivo MATP -->
+    <div id="app-container" class="min-h-screen flex flex-col"></div>
+
+    <!-- Capa de Datos Mock -->
+    <script src="./js/data.js"></script>
+    <!-- Capa de Servicios desacoplada (API) -->
+    <script src="./js/api.js"></script>
+    <!-- Biblioteca de Componentes UI -->
+    <script src="./js/components.js"></script>
+    <!-- Enrutador y Controladores de Pantalla -->
+    <script src="./js/app.js"></script>
+
+    <script>
+      // Inicialización garantizada
+      document.addEventListener("DOMContentLoaded", () => {
+        if (window.App && typeof window.App.init === "function") {
+          window.App.init();
+        }
+      });
+    </script>
+  </body>
+</html>
+
