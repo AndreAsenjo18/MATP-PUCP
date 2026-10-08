@@ -157,3 +157,18 @@ Fuente: `docs/fuentes/system-design-frontend.md` (documento del equipo). Change:
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
 | K1 | ¿Cuáles son los tipos y estados permitidos de préstamos y exposiciones, qué datos mínimos exige el acta (institución/sala, responsable, referencia) y qué restricciones contractuales deben verificarse antes de confirmar? | **[SUPUESTO autorizado por Álvaro, 2026-09-30]** Tipos iniciales: `PRESTAMO_TEMPORAL`, `EXPOSICION`; estados: `BORRADOR`, `VIGENTE`, `CERRADO`, `CANCELADO`. El acta exige destino, fechas, piezas y referencia documental opcional. Una pieza en comodato no se confirma sin `loan_agreement_ref`. Todo es configurable/reversible y debe validarse en la reunión. | `prestamos-y-exposiciones` (RF-018, RF-020, RN-008) | B |
+
+## L. Validación del prototipo v3 y revisión de los archivos del cliente (2026-10-07)
+
+Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar **solo la estructura** (hojas, columnas, formatos y vocabularios) de las bases entregadas por el museo (`BD ESTANDARIZADAS AL 2025`, fichas AJB, colección FJT). Ningún dato real se copió al repositorio.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| L1 | ¿Cómo están nombrados hoy los archivos y carpetas de fotos? Basta un pantallazo de una carpeta, sin las imágenes. (Amplía C1; el museo respondió que no lo sabe) | Emparejamiento en tres vías: código en el nombre del archivo, código en el nombre de la carpeta o columna de archivo en el Excel; el resto va a una bandeja manual | importacion-datos (RF-045), multimedia (RF-013) | A |
+| L2 | ¿Qué cuota de almacenamiento en la nube ofrece la PUCP y hay que conservar los originales de las fotos? (≈ 10 000 piezas y ≈ 25 000 fotos, según el museo) | `MEDIA_KEEP_ORIGINALS=true` hasta confirmar; sin originales el volumen baja de 75–200 GB a ≈ 8 GB | multimedia (RNF-003), plataforma (RNF-002) | A |
+| L3 | ¿Cuánto pesa una foto típica y en qué formato está (JPEG, TIFF, RAW)? | JPEG de 3 a 8 MB; RAW y HEIC fuera de alcance | multimedia (RF-013, RNF-003) | B |
+| L4 | ¿El nombre de los archivos permite distinguir el tipo de vista (frontal, posterior, detalle)? | No; las fotos importadas quedan con vista «sin especificar» | multimedia (RF-013) | C |
+| L5 | Las bases usan como forma de adquisición **Donación**, **Compra**, **Cesión de uso** y **Custodia**. ¿«Cesión de uso» y «Custodia» equivalen a comodato (sin código I y con restricciones) o son otro régimen de tenencia? | Sin supuesto: el contrato solo conoce `Propiedad`, `Comodato` y `Préstamo Temporal` | catalogo-piezas (RF-005), identificacion-piezas (RN-003) | A |
+| L6 | ¿La **clasificación del Registro Nacional** (Contemporáneo, Republicano, Virreinal; Etnográfico, Indumentaria…) y la **situación** (habida / no habida) deben ser campos de la ficha? | No existen como campos; se conservan como datos de origen de la importación | catalogo-piezas (RF-006), importacion-datos (RF-021) | B |
+| L7 | «No presenta» aparece como valor vacío en casi todas las columnas. ¿Se puede tratar siempre como «sin dato»? | Sí, se normaliza a vacío junto con los marcadores de A5 | importacion-datos (RF-023), calidad-datos | B |
+| L8 | Las hojas «Errores identificados» y «Errores pendientes» de la consultoría, ¿deben cargarse como cola de revisión inicial del sistema? | Se cargan como observaciones de origen, sin crear alertas automáticas | calidad-datos, importacion-datos (RF-028) | C |
