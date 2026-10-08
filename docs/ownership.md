@@ -36,6 +36,7 @@ Notas:
 | `plantillas-mapeo-y-normalizacion` | importacion-datos | identificacion-piezas | Importación | (coordina con `colecciones-y-vocabularios-admin`) | 1 |
 | `deteccion-duplicados-y-cola-revision` | calidad-datos | — | Importación | — | 1 |
 | `importacion-pipeline-reconciliacion` | importacion-datos | — | Importación | `plantillas-mapeo-y-normalizacion` (interfaz), `deteccion-duplicados-y-cola-revision` (interfaz), `auditoria-y-soft-delete-transversal` (reversión, al final) | 2 |
+| `importacion-masiva-fotografias` | importacion-datos | multimedia | Importación (refuerzo de IA: José Ávalos) | `fotografias-multiples-por-pieza` (**bloqueante**), `importacion-pipeline-reconciliacion` (**bloqueante**), `plantillas-mapeo-y-normalizacion` (columna de archivo), `auditoria-y-soft-delete-transversal` (reversión) | 3 |
 | `ubicacion-jerarquica-y-movimientos` | ubicacion-movimientos | — | Consulta y control | — | 1 |
 | `alertas-y-reporte-incompletas` | calidad-datos | — | Consulta y control | — (exportación Excel de `busqueda-avanzada-y-exportacion`, no bloqueante) | 1 |
 | `busqueda-avanzada-y-exportacion` | busqueda-reportes | — | Consulta y control | — (predicados de alertas, no bloqueante) | 2 |
