@@ -1,0 +1,6 @@
+{
+  "name": "MATP - Sistema de Gestión de Colecciones",
+  "description": "Sistema de gestión y digitalización de colecciones museográficas para el Museo de Artes y Tradiciones Populares Luis Repetto Málaga (MATP – PUCP).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
