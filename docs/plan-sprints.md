@@ -49,7 +49,8 @@ Del 8 al 31 de octubre quedan **unos 18 días útiles**. Los sprints 3 y 4 pasan
 | **S3** | Lun 19 oct | Dom 25 oct | 7 | **Núcleo funcional**: backend de cada pantalla y primeras pantallas reales |
 | **S4** | Lun 26 oct | **Sáb 31 oct** | 6 | **MVP integrado**: todas las pantallas del prototipo funcionando, desplegado; versión `v0.1.0` |
 | S5 | Dom 1 nov | Dom 8 nov | 7 | Estabilización, regresión, deseables (IA) y versión `v1.0.0` |
-| S6 – S7 | Lun 9 nov | Dom 22 nov | 14 | Documentación final y reserva |
+| S6 | Lun 9 nov | Dom 15 nov | 7 | Documentación final y reserva |
+| S7 | Lun 16 nov | Dom 22 nov | 7 | Regresión final, ensayo y entorno de la demo |
 | S8 | Lun 23 nov | Mié 25 nov | 3 | **Demo** (lunes 23 nov [SUPUESTO: fecha por confirmar]) |
 
 **Ritmo intenso (S2 a S4):**
@@ -58,7 +59,7 @@ Del 8 al 31 de octubre quedan **unos 18 días útiles**. Los sprints 3 y 4 pasan
 
 ## Alcance del MVP: el prototipo v3 funcional
 
-Cada pantalla del prototipo cuenta como hecha cuando funciona en `apps/web` contra la API desplegada en el entorno de integración.
+Cada pantalla del prototipo cuenta como hecha cuando funciona en `apps/web` contra la API desplegada en el ambiente de calidad.
 
 | Pantalla del prototipo | Changes que la hacen funcional | Célula |
 |---|---|---|
@@ -103,21 +104,27 @@ Por eso **la célula de IA (José Ávalos y Sergio Chumbimuni) se suma a Importa
 
 ## Carga por persona
 
+**Regla: los 11 integrantes trabajan todas las semanas.** Hay solo dos excepciones acordadas:
+- **Camilo Gomez no trabaja en S2** y lo compensa con carga doble en S3.
+- **Nadie trabaja en la semana de parciales** (12 al 18 de octubre).
+
+Ninguna celda depende de una condición sin alternativa: donde algo es «si entra» o «si hay acceso», la celda dice qué se hace si no.
+
 Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones de PR se suman a esto.
 
-| Integrante | S2 · 8 – 11 oct | S3 · 19 – 25 oct | S4 · 26 – 31 oct | S5 · 1 – 8 nov | S6 – S8 · 9 – 25 nov |
-|---|---|---|---|---|---|
-| **Germán Asenjo** | Preguntas L1–L8 al museo · revisar datos de `prototipo-v3/js/data.js` · alinear 6.3 · validar este plan | `deteccion-duplicados-y-cola-revision` | `importacion-masiva-fotografias` (bandeja y previsualización) con José | Regresión de Importación · guion de la demo | Expediente final · conduce la demo |
-| **Sergio Chumbimuni** | alinear 2.2, 4.2 y 5.1–5.3 · orden de integración del contrato | `importacion-pipeline-reconciliacion` (estados, ingesta, previsualización) | Cierre del pipeline (aplicación y reversión) con Franz · revisión de arquitectura | IA: `ia-extraccion-texto-libre` (si entra) · `v1.0.0` con Josué | Documentación de arquitectura · presenta la arquitectura |
-| **Camilo Gomez** | — (no trabaja en S2) | **Carga doble:** `ficha-pieza-crud` (backend) **y** `colecciones-y-vocabularios-admin` (backend: colecciones, tesauros y parámetros) | Cierre de Catálogo: parámetros de Configuración · apoyo a `importacion-masiva-fotografias` en el registro de fotos de la ficha | Ajustes de Catálogo | Manual de Catálogo · demo de Catálogo |
-| **Yessica Ochante** | alinear 6.1 · mapa de rutas de `apps/web` desde el prototipo y componentes base (layout, barra lateral, tablas, chips) | Pantallas Catálogo, Ficha y Registro (frontend de `ficha-pieza-crud`) | Pantallas Colecciones, Tesauros y Configuración · galería de fotos | Ajustes de UX · capturas del manual | Guion y datos de la demo |
-| **Franz Vilcapoma** | alinear 2.4 y 4.4 | `plantillas-mapeo-y-normalizacion` (incluye la plantilla de 44 columnas de la consultoría y «No presenta» como vacío) | Cierre del pipeline con Sergio Ch. · asistente de importación en `apps/web` | Ajustes de Importación | Manual de Importación · demo de Importación |
-| **Sergio Huamán** | alinear 4.5 y 6.2 | `alertas-y-reporte-incompletas` (backend y Dashboard) | `reportes-inventario` (backend y pantalla) | QA de extremo a extremo del MVP · regresión | Regresión final antes de la demo |
-| **Mathias Medina** | alinear 4.3 | `busqueda-avanzada-y-exportacion` (backend) | Cierre de búsqueda y exportación · pantalla Catálogo con filtros reales | QA de extremo a extremo · formato del manual | Documentación final |
-| **Josué Moreno** | alinear 4.1 · archivar `ci-migraciones-postgresql` (5.4, 5.5) · revisiones | `ubicacion-jerarquica-y-movimientos` (backend y pantalla) | Pruebas de humo contra el entorno desplegado · versión `v0.1.0` del MVP | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
-| **José Ávalos** | alinear 4.6 · leer `fotografias-multiples-por-pieza` e `importacion-masiva-fotografias` | `fotografias-multiples-por-pieza` (backend: subida, derivados, restricciones) | `importacion-masiva-fotografias` (subida reanudable, emparejamiento, aplicación) con Germán | IA: `ia-sugerencia-terminos` (si entra) | Manual de fotos e IA · demo |
-| **Álvaro Vargas** | `auditoria-y-soft-delete-transversal` (inicio) · cerrar y archivar `prestamos-y-exposiciones` | Cierre de auditoría · `autenticacion-y-matriz-permisos` (backend) | Cierre de autenticación · pantallas Login y Usuarios | Respaldos y VM PUCP (si hay acceso) | Entorno de la demo |
-| **Manuel Barrantes** | alinear 4.7 y 7.2 · CD 2: `deploy.sh` (`despliegue-vm-y-respaldos` 2.2) · **primer despliegue manual en calidad** | CD 2: despliegue automático en AWS Academy (`pipeline-despliegue-ambientes` 3.x) · compose de producción y proxy | MVP desplegado en integración con MinIO o R2 (CORS, URL prefirmadas) · apoyo en Login y Usuarios | Manual técnico de despliegue · simulacro de restauración | Entorno de la demo |
+| Integrante | S2 · 8 – 11 oct | S3 · 19 – 25 oct | S4 · 26 – 31 oct | S5 · 1 – 8 nov | S6 · 9 – 15 nov | S7 · 16 – 22 nov | S8 · 23 – 25 nov |
+|---|---|---|---|---|---|---|---|
+| **Germán Asenjo** | Preguntas L1–L8 al museo · revisar datos de `prototipo-v3/js/data.js` · alinear 6.3 · validar este plan | `deteccion-duplicados-y-cola-revision` | `importacion-masiva-fotografias` (bandeja y previsualización) con José | Lo recortado de `importacion-masiva-fotografias` (si aplica) o regresión de Importación · borrador del guion de la demo | Expediente de ingeniería y dossier de gestión (borrador) | Expediente final · guion general de la demo · ensayo | Conduce la demo |
+| **Sergio Chumbimuni** | alinear 2.2, 4.2 y 5.1–5.3 · orden de integración del contrato | `importacion-pipeline-reconciliacion` (estados, ingesta, previsualización) | Cierre del pipeline (aplicación y reversión) con Franz · revisión de arquitectura | `ia-extraccion-texto-libre` si entra la IA; si no, correcciones del pipeline · `v1.0.0` con Josué | Documentación de arquitectura (ADR ratificados, diagramas, modelo de datos) | Revisión técnica de manuales y expediente · ensayo | Presenta la arquitectura |
+| **Camilo Gomez** | — (no trabaja en S2) | **Carga doble:** `ficha-pieza-crud` (backend) **y** `colecciones-y-vocabularios-admin` (backend: colecciones, tesauros y parámetros) | Cierre de Catálogo: parámetros de Configuración · apoyo a `importacion-masiva-fotografias` en el registro de fotos de la ficha | Correcciones de Catálogo de la regresión | Manual de usuario de Catálogo | Correcciones de la regresión final · ensayo | Demo de Catálogo |
+| **Yessica Ochante** | alinear 6.1 · mapa de rutas de `apps/web` desde el prototipo y componentes base (layout, barra lateral, tablas, chips) | Pantallas Catálogo, Ficha y Registro (frontend de `ficha-pieza-crud`) | Pantallas Colecciones, Tesauros y Configuración · galería de fotos | Ajustes de UX detectados en la regresión | Capturas y pantallas del manual de usuario | Guion de la demo y datos sintéticos de demostración | Soporte de la demo (datos y pantallas) |
+| **Franz Vilcapoma** | alinear 2.4 y 4.4 | `plantillas-mapeo-y-normalizacion` (incluye la plantilla de 44 columnas de la consultoría y «No presenta» como vacío) | Cierre del pipeline con Sergio Ch. · asistente de importación en `apps/web` | Correcciones de Importación de la regresión | Manual de usuario de Importación | Lote de demostración (Excel y fotos sintéticas) · correcciones · ensayo | Demo de Importación |
+| **Sergio Huamán** | alinear 4.5 y 6.2 | `alertas-y-reporte-incompletas` (backend y Dashboard) | `reportes-inventario` (backend y pantalla) | QA de extremo a extremo del MVP en calidad · regresión | Informe de QA: casos de prueba y resultados | Regresión final en calidad | Verificación del entorno antes de la demo |
+| **Mathias Medina** | alinear 4.3 | `busqueda-avanzada-y-exportacion` (backend) | Cierre de búsqueda y exportación · pantalla Catálogo con filtros reales | QA de extremo a extremo en calidad · plantilla y formato del manual | Unificar el formato del manual de usuario | Integrar el manual final y la documentación de entrega | Entrega de la documentación |
+| **Josué Moreno** | alinear 4.1 · archivar `ci-migraciones-postgresql` (5.4, 5.5) · revisiones | `ubicacion-jerarquica-y-movimientos` (backend y pantalla) | Pruebas de humo en calidad · versión `v0.1.0` del MVP | Congelamiento y versión `v1.0.0` | Documentación de CI/CD y del flujo de versiones | Versión de corrección (`v1.0.x`) si la regresión la exige · ensayo | Soporte de la demo |
+| **José Ávalos** | alinear 4.6 · leer `fotografias-multiples-por-pieza` e `importacion-masiva-fotografias` | `fotografias-multiples-por-pieza` (backend: subida, derivados, restricciones) | `importacion-masiva-fotografias` (subida reanudable, emparejamiento, aplicación) con Germán | `ia-sugerencia-terminos` si entra la IA; si no, lo recortado de `importacion-masiva-fotografias` | Manual de fotografías (y de IA si entró) | Correcciones de fotos · ensayo | Demo de importación con fotos |
+| **Álvaro Vargas** | `auditoria-y-soft-delete-transversal` (inicio) · cerrar y archivar `prestamos-y-exposiciones` | Cierre de auditoría · `autenticacion-y-matriz-permisos` (backend) | Cierre de autenticación · pantallas Login y Usuarios | Respaldos y simulacro de restauración en calidad · VM PUCP si hay acceso | Manual de administración (usuarios, permisos, auditoría) | Entorno de la demo estable con respaldo previo | Entorno de la demo |
+| **Manuel Barrantes** | alinear 4.7 y 7.2 · CD 2: `deploy.sh` (`despliegue-vm-y-respaldos` 2.2) · **primer despliegue manual en calidad** | CD 2: despliegue automático en AWS Academy (`pipeline-despliegue-ambientes` 3.x) · compose de producción y proxy | MVP desplegado en calidad con MinIO o R2 (CORS, URL prefirmadas) · apoyo en Login y Usuarios | `release.yml` y procedimiento de versión (`pipeline-despliegue-ambientes` 4.x) | Manual técnico de despliegue | Ensayo del despliegue de la versión de la demo | Entorno de la demo |
 
 ## Detalle por sprint
 
@@ -200,18 +207,20 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 |---|---|
 | Regresión de extremo a extremo y corrección de errores del MVP | Cada célula en su módulo; QA: Sergio Huamán, Mathias Medina |
 | Lo recortado de `importacion-masiva-fotografias` en el control del jueves 22, si aplica | José Ávalos, Germán Asenjo |
-| IA (`ia-extraccion-texto-libre`, `ia-sugerencia-terminos`), **solo si se decidió que entra** | Sergio Chumbimuni, José Ávalos |
-| Respaldos, simulacro de restauración y VM PUCP (si la DTI dio acceso) | Álvaro Vargas, Manuel Barrantes |
+| IA (`ia-extraccion-texto-libre`, `ia-sugerencia-terminos`) **si se decidió que entra**; si no, correcciones del pipeline y lo recortado de las fotos | Sergio Chumbimuni, José Ávalos |
+| Respaldos y simulacro de restauración en calidad; VM PUCP si la DTI dio acceso | Álvaro Vargas |
+| `release.yml` y procedimiento de versión | Manuel Barrantes |
 | Congelamiento y versión `v1.0.0` (domingo 8) | Josué Moreno, Sergio Chumbimuni |
 
 ### Sprints 6 a 8 · lun 9 – mié 25 nov · «Documentación, reserva y demo»
 
-Sin cambios respecto de la versión 6:
-- documentación final (manual de usuario, manual técnico y expediente);
-- reserva solo para corregir errores;
-- regresión final;
-- entorno de la demo estable;
-- ensayo general y **demo el lunes 23 de noviembre** [SUPUESTO]. La conduce Germán Asenjo, cada líder de célula presenta su módulo y Sergio Chumbimuni presenta la arquitectura.
+El trabajo de cada semana está en la tabla «Carga por persona».
+
+| Sprint | Meta |
+|---|---|
+| **S6** (9 – 15 nov) | Borradores completos de todos los manuales (usuario por módulo, administración, técnico de despliegue y CI/CD), documentación de arquitectura, informe de QA y expediente. |
+| **S7** (16 – 22 nov) | Regresión final en calidad, correcciones (solo errores, nada de funcionalidades nuevas), manual integrado, entorno de la demo estable con respaldo previo y **ensayo general**. |
+| **S8** (23 – 25 nov) | **Demo el lunes 23 de noviembre** [SUPUESTO]. La conduce Germán Asenjo, cada líder de célula presenta su módulo y Sergio Chumbimuni presenta la arquitectura. Después, entrega de la documentación. |
 
 ## Qué pasa con lo atrasado
 
@@ -232,7 +241,7 @@ Sin cambios respecto de la versión 6:
 | S2 | Marcar «Migraciones (PostgreSQL)» como check requerido de `main` y archivar el change | Josué Moreno | `ci-migraciones-postgresql` 5.4 y 5.5 |
 | S2 – S3 | **CD 2:** `scripts/deploy.sh` y despliegue automático por *pull* en la EC2 de AWS Academy | Manuel Barrantes | `despliegue-vm-y-respaldos` 2.2 y 6.3; `pipeline-despliegue-ambientes` 3.1–3.4 |
 | S3 | Compose de producción y proxy con HTTPS | Manuel Barrantes, Álvaro Vargas | `despliegue-vm-y-respaldos` 1.1–1.3 |
-| S4 | Almacenamiento de objetos del entorno de integración con CORS para la subida directa de fotos (individual y masiva) | Manuel Barrantes | `fotografias-multiples-por-pieza` 4.1; `importacion-masiva-fotografias` 7.2 |
+| S4 | Almacenamiento de objetos del ambiente de calidad con CORS para la subida directa de fotos (individual y masiva) | Manuel Barrantes | `fotografias-multiples-por-pieza` 4.1; `importacion-masiva-fotografias` 7.2 |
 | S4 | Pruebas de humo contra el entorno desplegado y versión `v0.1.0` | Josué Moreno | `pipeline-despliegue-ambientes` 4.1–4.3 |
 | S5 | Respaldos cifrados, simulacro de restauración y VM PUCP | Álvaro Vargas, Manuel Barrantes | `despliegue-vm-y-respaldos` 3.x, 4.1 y 5.x |
 
@@ -294,4 +303,4 @@ Un change cuenta como hecho en su sprint solo si:
 | 4 | 2026-09-28 | Sprint 0 de adaptación al flujo (una tarea por persona, sin Mathias Medina por la presentación del proyecto) |
 | 5 | 2026-09-28 | Sprints de jueves a miércoles 23:59; tareas del sprint 0 independientes entre sí; fin del desarrollo el 4 de noviembre y demo el 23 de noviembre [SUPUESTO] |
 | 6 | 2026-09-28 | Sprint 0 centrado en aprender el flujo: reglas paso a paso, acompañantes; `develop` → `main` pasa a preparación del Arquitecto; `ci-migraciones-postgresql` repartido entre Josué Moreno y Sergio Huamán |
-| 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho»; Camilo Gomez sin trabajo en S2 y con carga doble en S3 (2.2 → Sergio Chumbimuni, 4.1 → Josué Moreno, 6.3 → Germán Asenjo) |
+| 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho»; Camilo Gomez sin trabajo en S2 y con carga doble en S3 (2.2 → Sergio Chumbimuni, 4.1 → Josué Moreno, 6.3 → Germán Asenjo); regla explícita de trabajo semanal para todos, alternativas en S5 y S6, S7 y S8 detallados por semana |
