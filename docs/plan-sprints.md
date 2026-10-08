@@ -107,14 +107,14 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 
 | Integrante | S2 · 8 – 11 oct | S3 · 19 – 25 oct | S4 · 26 – 31 oct | S5 · 1 – 8 nov | S6 – S8 · 9 – 25 nov |
 |---|---|---|---|---|---|
-| **Germán Asenjo** | Preguntas L1–L8 al museo · revisar datos de `prototipo-v3/js/data.js` · validar este plan | `deteccion-duplicados-y-cola-revision` | `importacion-masiva-fotografias` (bandeja y previsualización) con José | Regresión de Importación · guion de la demo | Expediente final · conduce la demo |
-| **Sergio Chumbimuni** | alinear 4.2, 5.1–5.3 y 6.3 · orden de integración del contrato | `importacion-pipeline-reconciliacion` (estados, ingesta, previsualización) | Cierre del pipeline (aplicación y reversión) con Franz · revisión de arquitectura | IA: `ia-extraccion-texto-libre` (si entra) · `v1.0.0` con Josué | Documentación de arquitectura · presenta la arquitectura |
-| **Camilo Gomez** | alinear 2.2 y 4.1 | `ficha-pieza-crud` (backend) | `colecciones-y-vocabularios-admin` (backend: colecciones, tesauros y parámetros) | Ajustes de Catálogo | Manual de Catálogo · demo de Catálogo |
+| **Germán Asenjo** | Preguntas L1–L8 al museo · revisar datos de `prototipo-v3/js/data.js` · alinear 6.3 · validar este plan | `deteccion-duplicados-y-cola-revision` | `importacion-masiva-fotografias` (bandeja y previsualización) con José | Regresión de Importación · guion de la demo | Expediente final · conduce la demo |
+| **Sergio Chumbimuni** | alinear 2.2, 4.2 y 5.1–5.3 · orden de integración del contrato | `importacion-pipeline-reconciliacion` (estados, ingesta, previsualización) | Cierre del pipeline (aplicación y reversión) con Franz · revisión de arquitectura | IA: `ia-extraccion-texto-libre` (si entra) · `v1.0.0` con Josué | Documentación de arquitectura · presenta la arquitectura |
+| **Camilo Gomez** | — (no trabaja en S2) | **Carga doble:** `ficha-pieza-crud` (backend) **y** `colecciones-y-vocabularios-admin` (backend: colecciones, tesauros y parámetros) | Cierre de Catálogo: parámetros de Configuración · apoyo a `importacion-masiva-fotografias` en el registro de fotos de la ficha | Ajustes de Catálogo | Manual de Catálogo · demo de Catálogo |
 | **Yessica Ochante** | alinear 6.1 · mapa de rutas de `apps/web` desde el prototipo y componentes base (layout, barra lateral, tablas, chips) | Pantallas Catálogo, Ficha y Registro (frontend de `ficha-pieza-crud`) | Pantallas Colecciones, Tesauros y Configuración · galería de fotos | Ajustes de UX · capturas del manual | Guion y datos de la demo |
 | **Franz Vilcapoma** | alinear 2.4 y 4.4 | `plantillas-mapeo-y-normalizacion` (incluye la plantilla de 44 columnas de la consultoría y «No presenta» como vacío) | Cierre del pipeline con Sergio Ch. · asistente de importación en `apps/web` | Ajustes de Importación | Manual de Importación · demo de Importación |
 | **Sergio Huamán** | alinear 4.5 y 6.2 | `alertas-y-reporte-incompletas` (backend y Dashboard) | `reportes-inventario` (backend y pantalla) | QA de extremo a extremo del MVP · regresión | Regresión final antes de la demo |
 | **Mathias Medina** | alinear 4.3 | `busqueda-avanzada-y-exportacion` (backend) | Cierre de búsqueda y exportación · pantalla Catálogo con filtros reales | QA de extremo a extremo · formato del manual | Documentación final |
-| **Josué Moreno** | Archivar `ci-migraciones-postgresql` (5.4, 5.5) · revisiones | `ubicacion-jerarquica-y-movimientos` (backend y pantalla) | Pruebas de humo contra el entorno desplegado · versión `v0.1.0` del MVP | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
+| **Josué Moreno** | alinear 4.1 · archivar `ci-migraciones-postgresql` (5.4, 5.5) · revisiones | `ubicacion-jerarquica-y-movimientos` (backend y pantalla) | Pruebas de humo contra el entorno desplegado · versión `v0.1.0` del MVP | Congelamiento y versión `v1.0.0` | Documentación de CI/CD · soporte de la demo |
 | **José Ávalos** | alinear 4.6 · leer `fotografias-multiples-por-pieza` e `importacion-masiva-fotografias` | `fotografias-multiples-por-pieza` (backend: subida, derivados, restricciones) | `importacion-masiva-fotografias` (subida reanudable, emparejamiento, aplicación) con Germán | IA: `ia-sugerencia-terminos` (si entra) | Manual de fotos e IA · demo |
 | **Álvaro Vargas** | `auditoria-y-soft-delete-transversal` (inicio) · cerrar y archivar `prestamos-y-exposiciones` | Cierre de auditoría · `autenticacion-y-matriz-permisos` (backend) | Cierre de autenticación · pantallas Login y Usuarios | Respaldos y VM PUCP (si hay acceso) | Entorno de la demo |
 | **Manuel Barrantes** | alinear 4.7 y 7.2 · CD 2: `deploy.sh` (`despliegue-vm-y-respaldos` 2.2) · **primer despliegue manual en calidad** | CD 2: despliegue automático en AWS Academy (`pipeline-despliegue-ambientes` 3.x) · compose de producción y proxy | MVP desplegado en integración con MinIO o R2 (CORS, URL prefirmadas) · apoyo en Login y Usuarios | Manual técnico de despliegue · simulacro de restauración | Entorno de la demo |
@@ -123,13 +123,17 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 
 ### Sprint 2 · jue 8 – dom 11 oct · «Contrato cerrado y base lista»
 
+> **Camilo Gomez no trabaja en el sprint 2** y compensa con carga doble en el sprint 3. Sus partes de `alinear-api-endpoints-v1` pasan a Sergio Chumbimuni (2.2, que sigue a su 2.1) y a Josué Moreno (4.1). Para equilibrar, la 6.3 de Sergio Chumbimuni pasa a Germán Asenjo.
+
 **Meta:** `alinear-api-endpoints-v1` **integrado y archivado el domingo 11**, la prueba de conformidad del contrato en verde, y cada célula con su change leído y su rama creada para arrancar el lunes 19 sin esperar a nadie.
 
 | Parte de `alinear-api-endpoints-v1` | Quién | Revisa PR | Orden |
 |---|---|---|---|
-| 2.2 `category` y `conservation_state` · 4.1 Rutas de piezas | Camilo Gomez | Sergio Chumbimuni | 1 (modelo) |
+| 2.2 `category` y `conservation_state` | Sergio Chumbimuni | José Ávalos | 1 (modelo) |
+| 4.1 Rutas de piezas | Josué Moreno | Sergio Chumbimuni | 2 (después de 2.2) |
 | 2.4 Seed y fixtures · 4.4 Rutas de importación | Franz Vilcapoma | Sergio Chumbimuni | 1 (modelo) |
-| 4.2 Colecciones y catálogos · 5.1–5.3 Stubs y baja lógica de identificadores · 6.3 Actualizar los changes del backlog | Sergio Chumbimuni | José Ávalos | 2 |
+| 4.2 Colecciones y catálogos · 5.1–5.3 Stubs y baja lógica de identificadores | Sergio Chumbimuni | José Ávalos | 2 |
+| 6.3 Actualizar los changes del backlog a las rutas del contrato (`/opsx:update`) | Germán Asenjo | Sergio Chumbimuni | 3 |
 | 4.3 Árbol de ubicaciones, movimiento e historial | Mathias Medina | Josué Moreno | 2 |
 | 4.5 Búsqueda y paginación · 6.2 Documentación | Sergio Huamán | José Ávalos | 2 |
 | 4.6 Carga de multimedia | José Ávalos | Sergio Chumbimuni | 2 |
@@ -155,6 +159,7 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 | Change | Implementan | Revisa specs | Revisa PR |
 |---|---|---|---|
 | `ficha-pieza-crud` | Camilo Gomez (backend), Yessica Ochante (frontend) | Mathias Medina | José Ávalos |
+| `colecciones-y-vocabularios-admin` (backend; adelantado desde S4 por la carga doble) | Camilo Gomez | Mathias Medina | José Ávalos |
 | `fotografias-multiples-por-pieza` (backend) | José Ávalos | Mathias Medina | Sergio Chumbimuni |
 | `plantillas-mapeo-y-normalizacion` | Franz Vilcapoma | Sergio Huamán | Sergio Chumbimuni |
 | `deteccion-duplicados-y-cola-revision` | Germán Asenjo | Sergio Huamán | José Ávalos |
@@ -162,8 +167,10 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 | `ubicacion-jerarquica-y-movimientos` | Josué Moreno | Yessica Ochante | José Ávalos |
 | `busqueda-avanzada-y-exportacion` | Mathias Medina | Yessica Ochante | Josué Moreno |
 | `alertas-y-reporte-incompletas` | Sergio Huamán | Yessica Ochante | Josué Moreno |
-| `auditoria-y-soft-delete-transversal` (cierre) · `autenticacion-y-matriz-permisos` (backend) | Álvaro Vargas | Camilo Gomez | Josué Moreno |
-| CD 2 y compose de producción | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| `auditoria-y-soft-delete-transversal` (cierre) · `autenticacion-y-matriz-permisos` (backend) | Álvaro Vargas | Franz Vilcapoma | Josué Moreno |
+| CD 2 y compose de producción | Manuel Barrantes | Franz Vilcapoma | Josué Moreno |
+
+> En S3, Franz Vilcapoma reemplaza a Camilo Gomez en la revisión de specs de Plataforma para que Camilo se dedique a sus dos changes.
 
 **Control a mitad de sprint (jueves 22):** si `fotografias-multiples-por-pieza` o el pipeline van por debajo del 50 % de sus tareas, `importacion-masiva-fotografias` se reduce a su núcleo en S4:
 - **se mantiene:** subida reanudable, emparejamiento por nombre de archivo y carpeta, aplicación conjunta;
@@ -175,13 +182,14 @@ Cada celda es el trabajo principal de esa persona en ese sprint. Las revisiones 
 
 | Change o pieza | Implementan | Revisa specs | Revisa PR |
 |---|---|---|---|
-| `colecciones-y-vocabularios-admin` + pantallas Colecciones, Tesauros y Configuración | Camilo Gomez, Yessica Ochante | Mathias Medina | José Ávalos |
+| Pantallas Colecciones, Tesauros y Configuración sobre `colecciones-y-vocabularios-admin` (cierre y parámetros) | Yessica Ochante (frontend), Camilo Gomez (backend) | Mathias Medina | José Ávalos |
+| Registro de fotos importadas en la ficha (apoyo a `importacion-masiva-fotografias`) | Camilo Gomez | Sergio Huamán | Sergio Chumbimuni |
 | Cierre de `importacion-pipeline-reconciliacion` + asistente de importación en `apps/web` | Sergio Chumbimuni, Franz Vilcapoma | Sergio Huamán | Josué Moreno |
 | `importacion-masiva-fotografias` | José Ávalos, Germán Asenjo | Sergio Huamán | Sergio Chumbimuni |
 | `reportes-inventario` | Sergio Huamán | Yessica Ochante | Josué Moreno |
 | Cierre de `busqueda-avanzada-y-exportacion` y de `ubicacion-jerarquica-y-movimientos` | Mathias Medina, Josué Moreno | Yessica Ochante | José Ávalos |
 | Cierre de `autenticacion-y-matriz-permisos` + pantallas Login y Usuarios | Álvaro Vargas, Manuel Barrantes | Camilo Gomez | Josué Moreno |
-| MVP desplegado en integración (almacenamiento con CORS y URL prefirmadas) | Manuel Barrantes | Camilo Gomez | Josué Moreno |
+| MVP desplegado en el ambiente de calidad (almacenamiento con CORS y URL prefirmadas) | Manuel Barrantes | Camilo Gomez | Josué Moreno |
 | Pruebas de humo y versión `v0.1.0` | Josué Moreno | Sergio Huamán | Sergio Chumbimuni |
 
 **Al cierre del sprint 4 (sábado 31 de octubre):** MVP congelado en main, `v0.1.0` desplegada en el ambiente de calidad y recorrido completo del prototipo hecho por QA (Sergio Huamán y Mathias Medina) **sobre calidad**.
@@ -263,6 +271,7 @@ Un change cuenta como hecho en su sprint solo si:
 | El prototipo v3 podría contener datos personales reales de los Excel del museo | Revisión de `prototipo-v3/js/data.js` en S2 y reemplazo por datos sintéticos (RNF-014) |
 | Una semana sin trabajo a mitad del desarrollo (parciales) | S2 deja todo listo para arrancar el lunes 19: ramas creadas, changes leídos y el contrato cerrado |
 | Pantalla «Configuración» sin change que la respalde | Decisión en la planificación del jueves 8: se cubre con `colecciones-y-vocabularios-admin` o se propone un change pequeño |
+| Camilo Gomez con carga doble en S3 (dos changes de Catálogo, 32 tareas) | Sin revisiones de specs de Plataforma en S3; en el control del jueves 22, si `colecciones-y-vocabularios-admin` va por debajo del 50 %, su cierre pasa a S4 sin afectar la pantalla Ficha |
 | Muchos PR del mismo change en S2 | Orden de integración de la tabla de S2; rebase sobre main antes de cada merge |
 | Conflictos de migraciones Alembic entre células en S3 | Rebase y una sola cabeza, verificada en CI con PostgreSQL |
 | Sin acceso a la VM PUCP | El MVP y la demo usan el ambiente de calidad (ADR-013) |
@@ -285,4 +294,4 @@ Un change cuenta como hecho en su sprint solo si:
 | 4 | 2026-09-28 | Sprint 0 de adaptación al flujo (una tarea por persona, sin Mathias Medina por la presentación del proyecto) |
 | 5 | 2026-09-28 | Sprints de jueves a miércoles 23:59; tareas del sprint 0 independientes entre sí; fin del desarrollo el 4 de noviembre y demo el 23 de noviembre [SUPUESTO] |
 | 6 | 2026-09-28 | Sprint 0 centrado en aprender el flujo: reglas paso a paso, acompañantes; `develop` → `main` pasa a preparación del Arquitecto; `ci-migraciones-postgresql` repartido entre Josué Moreno y Sergio Huamán |
-| 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho» |
+| 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho»; Camilo Gomez sin trabajo en S2 y con carga doble en S3 (2.2 → Sergio Chumbimuni, 4.1 → Josué Moreno, 6.3 → Germán Asenjo) |
