@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 2c481392cc4ccdff4a3883b193f443deff4326b3a0a929659f82154e21dc87b4
+ * openapi-sha256: 1fa198cfc4e64321d02b3b59f94c61bcb0c671806c4619ae16598abc20383c88
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -758,7 +758,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Identificadores de la pieza (vigentes y, opcionalmente, históricos) */
+        /** Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja) */
         get: operations["listPieceIdentifiers"];
         put?: never;
         /** Registrar un identificador externo (I bloqueado; comodato sin I) */
@@ -1986,6 +1986,16 @@ export interface components {
          *     }
          */
         IdentifierOut: {
+            /**
+             * Deleted At
+             * @description Fecha de la baja lógica de un código secundario mal asignado (RN-005).
+             */
+            deleted_at?: string | null;
+            /**
+             * Deletion Reason
+             * @description Motivo de la baja lógica.
+             */
+            deletion_reason?: string | null;
             /** Detected Format */
             detected_format: string | null;
             /**
@@ -7334,7 +7344,7 @@ export interface operations {
     listPieceIdentifiers: {
         parameters: {
             query?: {
-                /** @description Incluye códigos no vigentes. */
+                /** @description Incluye códigos no vigentes y los dados de baja (RN-005). */
                 include_history?: boolean;
             };
             header?: never;
@@ -7496,8 +7506,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7505,13 +7515,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description El código I no se elimina (RN-002). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

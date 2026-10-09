@@ -32,7 +32,7 @@
 
 - [ ] 5.1 Renombrar y exponer con su forma definitiva las operaciones de la fase 2 (identificadores, conjuntos, espacios, lotes, reportes, usuarios, auditoría e IA), manteniendo `501` con su `x-change`; prueba de que cada stub cita un change existente del backlog (Req: Conformidad con el contrato de interfaces del equipo)
 - [ ] 5.2 Proponer los changes que faltan para la fase 3 (préstamos y exposiciones; descargas masivas y enriquecimiento por lote) y luego exponer sus operaciones (`/loans`, `/loans/{id}/status`, `/media/bulk-download`, `/audit-logs/pieces/{id}`, `/ai/batch-enrich`) como stubs con su esquema; **sin** `/public/catalog` hasta resolver C2 (Req: Conformidad con el contrato de interfaces del equipo)
-- [ ] 5.3 Baja lógica del identificador en `DELETE /pieces/{id}/identifiers/{identifier_id}` según D1, con pruebas: identificador secundario dado de baja queda en el historial; identificador de tipo I responde 409 (Req: Conformidad con el contrato de interfaces del equipo; RN-002, RN-005)
+- [x] 5.3 Baja lógica del identificador en `DELETE /pieces/{id}/identifiers/{identifier_id}` según D1, con pruebas: identificador secundario dado de baja queda en el historial; identificador de tipo I responde 409 (Req: Conformidad con el contrato de interfaces del equipo; RN-002, RN-005)
 
 ## 6. Cliente tipado, maqueta y documentación
 

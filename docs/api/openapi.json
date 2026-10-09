@@ -1622,6 +1622,31 @@
           }
         ],
         "properties": {
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fecha de la baja lógica de un código secundario mal asignado (RN-005).",
+            "title": "Deleted At"
+          },
+          "deletion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo de la baja lógica.",
+            "title": "Deletion Reason"
+          },
           "detected_format": {
             "anyOf": [
               {
@@ -11722,13 +11747,13 @@
             }
           },
           {
-            "description": "Incluye códigos no vigentes.",
+            "description": "Incluye códigos no vigentes y los dados de baja (RN-005).",
             "in": "query",
             "name": "include_history",
             "required": false,
             "schema": {
               "default": false,
-              "description": "Incluye códigos no vigentes.",
+              "description": "Incluye códigos no vigentes y los dados de baja (RN-005).",
               "title": "Include History",
               "type": "boolean"
             }
@@ -11795,7 +11820,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Identificadores de la pieza (vigentes y, opcionalmente, históricos)",
+        "summary": "Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja)",
         "tags": [
           "Identificadores"
         ],
@@ -11959,6 +11984,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El código I no se elimina (RN-002)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11968,16 +12013,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -11989,8 +12024,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction": {

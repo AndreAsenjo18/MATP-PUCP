@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, SessionDep, require_permission
+from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
@@ -22,6 +22,8 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
+from app.core.errors import NotFound
+from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.models import PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
@@ -46,6 +48,7 @@ from app.modules.identification.schemas import (
     IdentifierOut,
     InventoryCodeCorrection,
 )
+from app.modules.identification.service import retire_identifier
 from app.modules.locations.models import PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
 from app.modules.media.models import MediaAsset
@@ -65,6 +68,7 @@ NOT_FOUND = {404: {"model": ErrorResponse, "description": "La pieza no existe o 
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 Creator = Annotated[CurrentUser, Depends(require_permission("pieces.create"))]
 Editor = Annotated[CurrentUser, Depends(require_permission("pieces.update"))]
+IdentifierManager = Annotated[CurrentUser, Depends(require_permission("identifiers.manage"))]
 
 
 def piece_filters(
@@ -250,7 +254,7 @@ def list_piece_alerts(piece_id: uuid.UUID, user: Reader) -> list[PieceAlert]:
     "/{piece_id}/identifiers",
     response_model=list[IdentifierOut],
     responses=NOT_FOUND,
-    summary="Identificadores de la pieza (vigentes y, opcionalmente, históricos)",
+    summary="Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja)",
     tags=["Identificadores"],
     **implemented(),
 )
@@ -258,11 +262,15 @@ def list_piece_identifiers(
     piece_id: uuid.UUID,
     session: SessionDep,
     user: Reader,
-    include_history: Annotated[bool, Query(description="Incluye códigos no vigentes.")] = False,
+    include_history: Annotated[
+        bool, Query(description="Incluye códigos no vigentes y los dados de baja (RN-005).")
+    ] = False,
 ) -> list[IdentifierOut]:
     get_piece(session, piece_id)
     statement = select(PieceIdentifier).where(PieceIdentifier.piece_id == piece_id)
-    if not include_history:
+    if include_history:
+        statement = statement.execution_options(**{INCLUDE_DELETED: True})
+    else:
         statement = statement.where(PieceIdentifier.is_current.is_(True))
     rows = session.scalars(
         statement.order_by(PieceIdentifier.identifier_type_code, PieceIdentifier.recorded_at)
@@ -288,19 +296,35 @@ def add_piece_identifier(
 
 @router.delete(
     "/{piece_id}/identifiers/{identifier_id}",
+    response_model=IdentifierOut,
     status_code=status.HTTP_200_OK,
+    responses={
+        **NOT_FOUND,
+        409: {"model": ErrorResponse, "description": "El código I no se elimina (RN-002)."},
+    },
     summary="Dar de baja un código histórico mal asignado (baja lógica, RN-005)",
     tags=["Identificadores"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def delete_piece_identifier(
     piece_id: uuid.UUID,
     identifier_id: uuid.UUID,
     reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio (RN-005).")],
-    user: Editor,
+    session: SessionDep,
+    user: IdentifierManager,
 ) -> IdentifierOut:
     """El identificador queda en el historial y en la auditoría; el de tipo I responde 409."""
-    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+    piece = get_piece(session, piece_id)
+    identifier = session.scalar(
+        select(PieceIdentifier).where(
+            PieceIdentifier.id == identifier_id, PieceIdentifier.piece_id == piece_id
+        )
+    )
+    if identifier is None:
+        raise NotFound("El identificador no existe en esta pieza o ya fue dado de baja.")
+    retire_identifier(writer(session, user, reason), piece, identifier, reason)
+    session.commit()
+    return IdentifierOut.model_validate(identifier)
 
 
 @router.post(
