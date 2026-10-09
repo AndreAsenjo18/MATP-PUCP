@@ -226,3 +226,59 @@ def test_downgrade_to_base_and_upgrade_again(migrated: Engine) -> None:
             for (extension,) in connection.execute(text("SELECT extname FROM pg_extension"))
         }
     assert "pg_trgm" in installed, "La nueva aplicación no recreó la extensión de búsqueda"
+
+
+def test_term_hierarchy_round_trip_keeps_piece_classification(migrated: Engine) -> None:
+    """0003 adds and removes ``term.parent_id`` without losing any classification (tarea 2.2)."""
+    _run(migrated, "0002_loans_and_exhibitions", down=True)
+    with migrated.begin() as connection:
+        vocabulary_id = connection.execute(
+            text(
+                "INSERT INTO vocabulary (id, code, name, created_at, updated_at) "
+                "VALUES (gen_random_uuid(), 'CATEGORY', 'Categorías', now(), now()) RETURNING id"
+            )
+        ).scalar_one()
+        term_id = connection.execute(
+            text(
+                "INSERT INTO term (id, vocabulary_id, code, label, sort_order, is_active, "
+                "created_at, updated_at) VALUES (gen_random_uuid(), :vocabulary, 'RETABLO', "
+                "'Retablo', 0, true, now(), now()) RETURNING id"
+            ),
+            {"vocabulary": vocabulary_id},
+        ).scalar_one()
+        connection.execute(
+            text(
+                "INSERT INTO piece (id, denomination, tenure_regime, category_id, created_at, "
+                "updated_at) VALUES (gen_random_uuid(), 'Retablo', 'OWNED', :term, now(), now())"
+            ),
+            {"term": term_id},
+        )
+
+    _run(migrated, "0003_term_hierarchy")
+    with migrated.begin() as connection:
+        child_id = connection.execute(
+            text(
+                "INSERT INTO term (id, vocabulary_id, parent_id, code, label, sort_order, "
+                "is_active, created_at, updated_at) VALUES (gen_random_uuid(), :vocabulary, "
+                ":parent, 'RETABLO_CAJON', 'Retablo de cajón', 0, true, now(), now()) RETURNING id"
+            ),
+            {"vocabulary": vocabulary_id, "parent": term_id},
+        ).scalar_one()
+        assert connection.execute(text("SELECT category_id FROM piece")).scalar_one() == term_id
+
+    _run(migrated, "0002_loans_and_exhibitions", down=True)
+    with migrated.connect() as connection:
+        assert connection.execute(text("SELECT category_id FROM piece")).scalar_one() == term_id
+        assert (
+            connection.execute(
+                text("SELECT count(*) FROM term WHERE id = :id"), {"id": child_id}
+            ).scalar_one()
+            == 1
+        )
+    _run(migrated, "head")
+    with migrated.begin() as connection:  # the database is shared by the tests of this module
+        connection.execute(text("DELETE FROM piece"))
+        connection.execute(
+            text("DELETE FROM term WHERE vocabulary_id = :id"), {"id": vocabulary_id}
+        )
+        connection.execute(text("DELETE FROM vocabulary WHERE id = :id"), {"id": vocabulary_id})

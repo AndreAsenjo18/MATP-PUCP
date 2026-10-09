@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: ce2e31667458cb2557539fffd680c5783a25e4f430e6f6443ef961fa41343668
+ * openapi-sha256: 917d448b71e0fcbedd5f2b341f1a91ed9e2e8e58269165a8ca3ebd3520da6d29
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -3766,6 +3766,11 @@ export interface components {
             /** Label */
             label: string;
             /**
+             * Parent Id
+             * @description Término más general del mismo vocabulario; vacío en la raíz.
+             */
+            parent_id?: string | null;
+            /**
              * Sort Order
              * @default 0
              */
@@ -3798,6 +3803,8 @@ export interface components {
             is_active: boolean;
             /** Label */
             label: string;
+            /** Parent Id */
+            parent_id: string | null;
             /** Sort Order */
             sort_order: number;
             /** Vocabulary Code */
