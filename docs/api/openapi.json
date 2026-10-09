@@ -563,6 +563,51 @@
         "title": "Body_uploadMediaAsset",
         "type": "object"
       },
+      "CatalogingSuggestionRequest": {
+        "description": "Body of ``POST /ai/suggest-cataloging``: the contract requires the piece (RIA-01).",
+        "examples": [
+          {
+            "field": "notes",
+            "piece_id": "01920000-0000-7000-8000-000000000101"
+          }
+        ],
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Campo de texto libre de origen (RIA-01).",
+            "title": "Field"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Texto explícito si no se toma de la ficha.",
+            "title": "Text"
+          }
+        },
+        "required": [
+          "piece_id"
+        ],
+        "title": "CatalogingSuggestionRequest",
+        "type": "object"
+      },
       "CodeBrief": {
         "properties": {
           "identifier_type_code": {
@@ -6438,6 +6483,32 @@
         "title": "UserOut",
         "type": "object"
       },
+      "UserRoleUpdate": {
+        "description": "Body of ``PUT /users/{id}/role``: replaces the whole set of assigned roles (D3).",
+        "examples": [
+          {
+            "roles": [
+              "CATALOGUER"
+            ]
+          }
+        ],
+        "properties": {
+          "roles": {
+            "description": "Códigos de rol que quedan asignados.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "roles"
+        ],
+        "title": "UserRoleUpdate",
+        "type": "object"
+      },
       "UserUpdate": {
         "properties": {
           "full_name": {
@@ -6640,7 +6711,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AiSuggestionCreate"
+                "$ref": "#/components/schemas/CatalogingSuggestionRequest"
               }
             }
           },
@@ -14267,7 +14338,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
+                "$ref": "#/components/schemas/UserRoleUpdate"
               }
             }
           },
@@ -14330,7 +14401,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Cambiar el rol o el estado de un usuario (RF-039)",
+        "summary": "Reemplazar los roles asignados a un usuario (RF-039)",
         "tags": [
           "Usuarios y roles"
         ],

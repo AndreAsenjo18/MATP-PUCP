@@ -78,6 +78,18 @@ class AiSuggestionCreate(BaseModel):
     text: str | None = Field(None, description="Texto explícito si no se toma de la ficha.")
 
 
+class CatalogingSuggestionRequest(BaseModel):
+    """Body of ``POST /ai/suggest-cataloging``: the contract requires the piece (RIA-01)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"piece_id": EX_PIECE_ID, "field": "notes"}]}
+    )
+
+    piece_id: uuid.UUID
+    field: str | None = Field(None, description="Campo de texto libre de origen (RIA-01).")
+    text: str | None = Field(None, description="Texto explícito si no se toma de la ficha.")
+
+
 class AiSuggestionApproval(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

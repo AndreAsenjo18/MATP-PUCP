@@ -27,6 +27,7 @@ from app.modules.ai_suggestions.schemas import (
     AiSuggestionCreate,
     AiSuggestionOut,
     AiSuggestionRejection,
+    CatalogingSuggestionRequest,
 )
 from app.modules.audit.models import AuditLog, AuditOrigin
 from app.modules.audit.schemas import AuditEntryOut, RevertChangeSetRequest, RevertResult
@@ -40,6 +41,7 @@ from app.modules.users.schemas import (
     TokenResponse,
     UserCreate,
     UserOut,
+    UserRoleUpdate,
     UserUpdate,
 )
 
@@ -146,11 +148,11 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> User
 @router.put(
     "/users/{user_id}/role",
     response_model=UserOut,
-    summary="Cambiar el rol o el estado de un usuario (RF-039)",
+    summary="Reemplazar los roles asignados a un usuario (RF-039)",
     tags=["Usuarios y roles"],
     **stub(CHANGE_AUTH),
 )
-def update_user_role(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> UserOut:
+def update_user_role(user_id: uuid.UUID, body: UserRoleUpdate, user: UserManager) -> UserOut:
     raise not_implemented(CHANGE_AUTH, UserOut)
 
 
@@ -265,7 +267,7 @@ def get_ai_suggestion(
     tags=["IA asistiva"],
     **stub(CHANGE_AI_EXTRACTION),
 )
-def suggest_cataloging(body: AiSuggestionCreate, user: AiRequester) -> AiSuggestionOut:
+def suggest_cataloging(body: CatalogingSuggestionRequest, user: AiRequester) -> AiSuggestionOut:
     raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
 
 

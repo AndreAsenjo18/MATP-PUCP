@@ -94,6 +94,14 @@ class UserUpdate(BaseModel):
     roles: list[str] | None = None
 
 
+class UserRoleUpdate(BaseModel):
+    """Body of ``PUT /users/{id}/role``: replaces the whole set of assigned roles (D3)."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"roles": ["CATALOGUER"]}]})
+
+    roles: list[str] = Field(min_length=1, description="Códigos de rol que quedan asignados.")
+
+
 class RoleOut(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

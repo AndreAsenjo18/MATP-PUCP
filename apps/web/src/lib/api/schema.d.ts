@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1fa198cfc4e64321d02b3b59f94c61bcb0c671806c4619ae16598abc20383c88
+ * openapi-sha256: 76424116549024c265d6a29c4dad1a84de84508211dab6076bd84b61539f5669
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -1158,7 +1158,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Cambiar el rol o el estado de un usuario (RF-039) */
+        /** Reemplazar los roles asignados a un usuario (RF-039) */
         put: operations["updateUserRole"];
         post?: never;
         delete?: never;
@@ -1538,6 +1538,31 @@ export interface components {
              * @description Tipo de vista: Frontal, Perfil, Posterior, Detalle, Abierto, Cerrado.
              */
             view_type: string;
+        };
+        /**
+         * CatalogingSuggestionRequest
+         * @description Body of ``POST /ai/suggest-cataloging``: the contract requires the piece (RIA-01).
+         * @example {
+         *       "field": "notes",
+         *       "piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
+         */
+        CatalogingSuggestionRequest: {
+            /**
+             * Field
+             * @description Campo de texto libre de origen (RIA-01).
+             */
+            field?: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Text
+             * @description Texto explícito si no se toma de la ficha.
+             */
+            text?: string | null;
         };
         /** CodeBrief */
         CodeBrief: {
@@ -3987,6 +4012,22 @@ export interface components {
             /** Roles */
             roles: string[];
         };
+        /**
+         * UserRoleUpdate
+         * @description Body of ``PUT /users/{id}/role``: replaces the whole set of assigned roles (D3).
+         * @example {
+         *       "roles": [
+         *         "CATALOGUER"
+         *       ]
+         *     }
+         */
+        UserRoleUpdate: {
+            /**
+             * Roles
+             * @description Códigos de rol que quedan asignados.
+             */
+            roles: string[];
+        };
         /** UserUpdate */
         UserUpdate: {
             /** Full Name */
@@ -4082,7 +4123,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AiSuggestionCreate"];
+                "application/json": components["schemas"]["CatalogingSuggestionRequest"];
             };
         };
         responses: {
@@ -9044,7 +9085,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UserUpdate"];
+                "application/json": components["schemas"]["UserRoleUpdate"];
             };
         };
         responses: {

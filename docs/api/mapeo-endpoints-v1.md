@@ -51,9 +51,9 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 32 | `GET /reports/dashboard-stats` · `getDashboardStats` | `RF-035` → RF-035 | `GET /quality/kpis` (stub) | Hecho: `GET /reports/dashboard-stats` |
 | 33 | `GET /users` · `listUsers` | `RF-036` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
 | 34 | `POST /users` · `createUser` | `RF-037` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
-| 35 | `PUT /users/{id}/role` · `updateUserRole` | `RF-038` → RF-039 | `PATCH /users/{user_id}` (stub) | Hecho: `PUT /users/{id}/role` (stub) |
+| 35 | `PUT /users/{id}/role` · `updateUserRole` | `RF-038` → RF-039 | `PATCH /users/{user_id}` (stub) | Hecho: `PUT /users/{id}/role` (stub) con `UserRoleUpdate`, que reemplaza el conjunto de roles (D3, tarea 5.1) |
 | 36 | `GET /audit-logs` · `getAuditLogs` | `RF-043` → RF-040 | `GET /audit` (implementado) | Hecho: `GET /audit-logs` |
-| 37 | `POST /ai/suggest-cataloging` · `suggestCataloging` | `RF-028` → RIA-01, RN-009 | `POST /ai/suggestions` (stub) | Hecho: `POST /ai/suggest-cataloging` |
+| 37 | `POST /ai/suggest-cataloging` · `suggestCataloging` | `RF-028` → RIA-01, RN-009 | `POST /ai/suggestions` (stub) | Hecho: `POST /ai/suggest-cataloging` (stub) con `CatalogingSuggestionRequest` y `piece_id` obligatorio como en el documento (tarea 5.1) |
 | 38 | `POST /ai/validate-data` · `validateDataQuality` | `RF-029` → RIA-02, RN-009 | `GET /quality/incomplete` + `/quality/kpis` (stubs) | Hecho: `POST /ai/validate-data` (stub) |
 
 ² Candidatos: RF-021 (pipeline con bitácora) o RF-028 (bitácora de carga). `docs/api/openapi.json` asocia RF-028 a `GET /imports/{batch_id}/log`, no al listado de lotes.
