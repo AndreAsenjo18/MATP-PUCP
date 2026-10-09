@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -120,3 +120,50 @@ class AiSuggestionApproval(BaseModel):
 
 class AiSuggestionRejection(BaseModel):
     reason: str = Field(min_length=3, description="Motivo obligatorio (RN-009).")
+
+
+# Limit of an AI batch: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+MAX_AI_BATCH_PIECES = 50
+
+
+class BatchEnrichRequest(BaseModel):
+    """Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04)."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"piece_ids": [EX_PIECE_ID]}]})
+
+    piece_ids: list[uuid.UUID] = Field(
+        min_length=1,
+        max_length=MAX_AI_BATCH_PIECES,
+        description="Piezas sin descripción [SUPUESTO M1: máximo 50].",
+    )
+
+
+class SkippedPiece(BaseModel):
+    piece_id: uuid.UUID
+    reason: str = Field(
+        description="Por ejemplo «ya tiene descripción» o «metadatos insuficientes»."
+    )
+
+
+class AiBatchOut(BaseModel):
+    """State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000902",
+                    "status": "RUNNING",
+                    "processed": 12,
+                    "skipped": [],
+                    "suggestion_ids": [EX_SUGGESTION_ID],
+                }
+            ]
+        }
+    )
+
+    id: uuid.UUID
+    status: Literal["PENDING", "RUNNING", "DONE", "PARTIAL", "FAILED"]
+    processed: int
+    skipped: list[SkippedPiece] = Field(default_factory=list)
+    suggestion_ids: list[uuid.UUID] = Field(default_factory=list)

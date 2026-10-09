@@ -15,6 +15,7 @@ from app.api.stubs import (
     CHANGE_AI_EXTRACTION,
     CHANGE_AUDIT,
     CHANGE_AUTH,
+    CHANGE_BULK,
     implemented,
     not_implemented,
     page_example,
@@ -23,10 +24,12 @@ from app.api.stubs import (
 from app.core.errors import NotFound
 from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
 from app.modules.ai_suggestions.schemas import (
+    AiBatchOut,
     AiSuggestionApproval,
     AiSuggestionCreate,
     AiSuggestionOut,
     AiSuggestionRejection,
+    BatchEnrichRequest,
     CatalogingSuggestionRequest,
 )
 from app.modules.audit.models import AuditLog, AuditOrigin
@@ -365,6 +368,18 @@ def get_piece_audit_timeline(
 )
 def validate_data_quality(body: AiSuggestionCreate, user: AiRequester) -> AiSuggestionOut:
     raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
+
+
+@router.post(
+    "/ai/batch-enrich",
+    response_model=AiBatchOut,
+    summary="Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)",
+    tags=["IA asistiva"],
+    **stub(CHANGE_BULK),
+)
+def batch_ai_enrichment(body: BatchEnrichRequest, user: AiRequester) -> AiBatchOut:
+    """Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación."""
+    raise not_implemented(CHANGE_BULK, AiBatchOut)
 
 
 @router.post(

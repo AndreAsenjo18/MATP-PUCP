@@ -13,12 +13,13 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from app.api.deps import CurrentUser, require_permission
 from app.api.enums import PHOTO_VIEW_TYPE_LABELS
 from app.api.errors import COMMON_ERROR_RESPONSES
-from app.api.stubs import CHANGE_MEDIA, not_implemented, stub
-from app.modules.media.schemas import MediaAssetOut
+from app.api.stubs import CHANGE_BULK, CHANGE_MEDIA, not_implemented, stub
+from app.modules.media.schemas import BulkDownloadJob, BulkDownloadRequest, MediaAssetOut
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Multimedia"])
 
 MediaUploader = Annotated[CurrentUser, Depends(require_permission("media.upload"))]
+Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
 
 VIEW_TYPES = ", ".join(PHOTO_VIEW_TYPE_LABELS.values())
 
@@ -37,3 +38,14 @@ def upload_media_asset(
     file: Annotated[UploadFile, File(description="Imagen (JPEG, PNG o TIFF).")],
 ) -> MediaAssetOut:
     raise not_implemented(CHANGE_MEDIA, MediaAssetOut)
+
+
+@router.post(
+    "/media/bulk-download",
+    response_model=BulkDownloadJob,
+    summary="Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
+    **stub(CHANGE_BULK),
+)
+def bulk_download_media(body: BulkDownloadRequest, user: Exporter) -> BulkDownloadJob:
+    """Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera."""
+    raise not_implemented(CHANGE_BULK, BulkDownloadJob)

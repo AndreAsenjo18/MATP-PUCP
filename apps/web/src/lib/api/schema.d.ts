@@ -1,9 +1,29 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 76424116549024c265d6a29c4dad1a84de84508211dab6076bd84b61539f5669
+ * openapi-sha256: f883afd458468347e6dea0158a9f5d8db255244a8f6cab99cbc2099809b2a256
  */
 export interface paths {
+    "/api/v1/ai/batch-enrich": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)
+         * @description Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación.
+         */
+        post: operations["batchAiEnrichment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/suggest-cataloging": {
         parameters: {
             query?: never;
@@ -645,6 +665,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media/bulk-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
+         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         */
+        post: operations["bulkDownloadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/upload": {
         parameters: {
             query?: never;
@@ -1277,6 +1317,37 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AiBatchOut
+         * @description State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).
+         * @example {
+         *       "id": "01920000-0000-7000-8000-000000000902",
+         *       "processed": 12,
+         *       "skipped": [],
+         *       "status": "RUNNING",
+         *       "suggestion_ids": [
+         *         "01920000-0000-7000-8000-000000000901"
+         *       ]
+         *     }
+         */
+        AiBatchOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Processed */
+            processed: number;
+            /** Skipped */
+            skipped?: components["schemas"]["SkippedPiece"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "DONE" | "PARTIAL" | "FAILED";
+            /** Suggestion Ids */
+            suggestion_ids?: string[];
+        };
+        /**
          * AiFunction
          * @enum {string}
          */
@@ -1510,6 +1581,22 @@ export interface components {
          * @enum {string}
          */
         AuditOrigin: "MANUAL" | "IMPORT" | "AI" | "SYSTEM";
+        /**
+         * BatchEnrichRequest
+         * @description Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).
+         * @example {
+         *       "piece_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ]
+         *     }
+         */
+        BatchEnrichRequest: {
+            /**
+             * Piece Ids
+             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             */
+            piece_ids: string[];
+        };
         /** Body_uploadImportBatch */
         Body_uploadImportBatch: {
             /**
@@ -1538,6 +1625,57 @@ export interface components {
              * @description Tipo de vista: Frontal, Perfil, Posterior, Detalle, Abierto, Cerrado.
              */
             view_type: string;
+        };
+        /**
+         * BulkDownloadJob
+         * @description State of a photo package; restricted photos are left out (RN-008).
+         * @example {
+         *       "download_url": "http://localhost:9000/matp-media/exports/fotos.zip",
+         *       "expires_at": "2026-09-17T10:30:00Z",
+         *       "id": "01920000-0000-7000-8000-000000000901",
+         *       "included_photos": 84,
+         *       "omitted": [],
+         *       "piece_count": 30,
+         *       "status": "READY"
+         *     }
+         */
+        BulkDownloadJob: {
+            /** Download Url */
+            download_url?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Included Photos */
+            included_photos?: number | null;
+            /** Omitted */
+            omitted?: components["schemas"]["OmittedPhoto"][];
+            /** Piece Count */
+            piece_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "READY" | "FAILED";
+        };
+        /**
+         * BulkDownloadRequest
+         * @description Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote).
+         * @example {
+         *       "piece_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ]
+         *     }
+         */
+        BulkDownloadRequest: {
+            /**
+             * Piece Ids
+             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             */
+            piece_ids: string[];
         };
         /**
          * CatalogingSuggestionRequest
@@ -2945,6 +3083,24 @@ export interface components {
              */
             message: string;
         };
+        /** OmittedPhoto */
+        OmittedPhoto: {
+            /**
+             * Media Id
+             * Format: uuid
+             */
+            media_id: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Restriction
+             * @description Restricción de uso efectiva que impide incluirla.
+             */
+            restriction: string;
+        };
         /** Page[AiSuggestionOut] */
         Page_AiSuggestionOut_: {
             /** Items */
@@ -3744,6 +3900,19 @@ export interface components {
             matched_identifier?: components["schemas"]["CodeBrief"] | null;
             piece: components["schemas"]["PieceSummary"];
         };
+        /** SkippedPiece */
+        SkippedPiece: {
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Por ejemplo «ya tiene descripción» o «metadatos insuficientes».
+             */
+            reason: string;
+        };
         /**
          * SourceRecordOut
          * @example {
@@ -4114,6 +4283,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    batchAiEnrichment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchEnrichRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
     suggestCataloging: {
         parameters: {
             query?: never;
@@ -6783,6 +7012,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkDownloadMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

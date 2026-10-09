@@ -65,16 +65,16 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 39 | `GET /loans` · `listLoans` | `RF-013` → RF-018 | `GET /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 40 | `POST /loans` · `createLoan` | `RF-015` → RF-018 | `POST /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 41 | `PUT /loans/{id}/status` | `RF-028-B` → RF-018 | `PUT /loans/{id}/status` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
-| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Pendiente: requiere proponer el change de descargas masivas |
+| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Hecho: stub `501` con `BulkDownloadRequest`/`BulkDownloadJob`; lo implementa `descargas-masivas-y-enriquecimiento-lote` (tarea 5.2) |
 | 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁴ | no existe | Bloqueado por el conflicto C2 |
 | 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |
-| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Pendiente: requiere proponer el change de enriquecimiento por lote |
+| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Hecho: stub `501` con `BatchEnrichRequest`/`AiBatchOut`; lo implementa `descargas-masivas-y-enriquecimiento-lote` como RIA-04 (tarea 5.2) |
 
 ³ El catálogo no tiene un requisito de descarga masiva de imágenes. Aplicarían RF-014 y RN-008 (restricciones de uso en comodato).
 
 ⁴ Sin equivalente: RF-044 del catálogo es la exportación completa de la base de datos, y un catálogo público choca con RF-042 (ver C2).
 
-⁵ Aplica RN-009 (aprobación humana). Si corresponde a RIA-01 (extracción) o a RIA-03 (sugerencia de términos) se decide al proponer su change.
+⁵ Aplica RN-009 (aprobación humana). Resuelto al proponer `descargas-masivas-y-enriquecimiento-lote`: corresponde a RIA-04 (descripción preliminar desde metadatos).
 
 ## Operaciones que hoy existen y el documento no incluye
 
