@@ -103,7 +103,7 @@ def list_collections(
 def create_collection(
     body: CollectionCreate, session: SessionDep, user: CollectionManager
 ) -> CollectionOut:
-    payload = body.model_dump()
+    payload = body.model_dump(exclude={"code"})
     # El esquema acepta la etiqueta del contrato; el servicio trabaja con el código interno.
     payload["default_tenure_regime"] = code_of(
         TENURE_REGIME_LABELS, body.default_tenure_regime, "default_tenure_regime"
@@ -212,6 +212,7 @@ def _term_out(term: Term, vocabulary: Vocabulary) -> TermOut:
         vocabulary_code=vocabulary.code,
         parent_id=term.parent_id,
         code=term.code,
+        name=term.label,
         label=term.label,
         description=term.description,
         sort_order=term.sort_order,

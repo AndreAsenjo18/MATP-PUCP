@@ -22,6 +22,8 @@ _IDENTIFIER_EXAMPLE = {
     "recorded_at": EX_DATETIME,
     "replaced_by_id": None,
     "notes": None,
+    "deleted_at": None,
+    "deletion_reason": None,
 }
 
 
@@ -43,6 +45,10 @@ class IdentifierOut(ORMModel):
     recorded_at: datetime
     replaced_by_id: uuid.UUID | None
     notes: str | None
+    deleted_at: datetime | None = Field(
+        None, description="Fecha de la baja lógica de un código secundario mal asignado (RN-005)."
+    )
+    deletion_reason: str | None = Field(None, description="Motivo de la baja lógica.")
 
 
 class IdentifierCreate(BaseModel):

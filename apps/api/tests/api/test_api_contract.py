@@ -3,6 +3,7 @@
 import inspect
 import uuid
 from collections import Counter
+from pathlib import Path
 
 import pytest
 from fastapi.routing import APIRoute
@@ -15,23 +16,25 @@ from app.api.v1 import admin, collections, imports, loans, locations, pieces, qu
 from app.openapi_export import DEFAULT_OUTPUT, build_spec, render
 from tests.api.conftest import ADMIN, SeededApi, as_user
 
-BACKLOG_CHANGES = {
-    "ficha-pieza-crud",
-    "colecciones-y-vocabularios-admin",
-    "fotografias-multiples-por-pieza",
-    "ubicacion-jerarquica-y-movimientos",
-    "importacion-pipeline-reconciliacion",
-    "plantillas-mapeo-y-normalizacion",
-    "deteccion-duplicados-y-cola-revision",
-    "alertas-y-reporte-incompletas",
-    "busqueda-avanzada-y-exportacion",
-    "reportes-inventario",
-    "autenticacion-y-matriz-permisos",
-    "auditoria-y-soft-delete-transversal",
-    "ia-extraccion-texto-libre",
-    "ia-sugerencia-terminos",
-    "prestamos-y-exposiciones",
-}
+CHANGES_DIR = Path(__file__).resolve().parents[4] / "openspec" / "changes"
+
+
+def backlog_changes() -> set[str]:
+    """Changes still open in OpenSpec: the archived ones are already implemented."""
+    return {
+        entry.name
+        for entry in CHANGES_DIR.iterdir()
+        if entry.is_dir() and entry.name != "archive" and (entry / "proposal.md").is_file()
+    }
+
+
+def archived_changes() -> set[str]:
+    """Archived folders are named ``YYYY-MM-DD-<change>``."""
+    archive = CHANGES_DIR / "archive"
+    if not archive.is_dir():
+        return set()
+    return {entry.name[11:] for entry in archive.iterdir() if entry.is_dir()}
+
 
 REQUIRED_PATHS = [
     ("get", "/api/v1/pieces"),
@@ -86,9 +89,31 @@ def test_every_business_operation_declares_its_status(spec: dict) -> None:
             status = operation.get(X_STATUS)
             assert status in {STATUS_STUB, STATUS_IMPLEMENTED}, f"{method} {path}"
             if status == STATUS_STUB:
-                assert operation.get(X_CHANGE) in BACKLOG_CHANGES, f"{method} {path}"
-                assert "501" in operation["responses"]
+                assert "501" in operation["responses"], f"{method} {path}"
             assert operation["summary"], f"{method} {path} sin resumen"
+
+
+def test_every_stub_cites_an_existing_backlog_change(spec: dict) -> None:
+    """Tarea 5.1: el `x-change` de cada stub es un change abierto en `openspec/changes/`."""
+    open_changes = backlog_changes()
+    archived = archived_changes()
+    stubs = {
+        f"{method.upper()} {path}": operation.get(X_CHANGE)
+        for path, operations in spec["paths"].items()
+        for method, operation in operations.items()
+        if operation.get(X_STATUS) == STATUS_STUB
+    }
+    assert stubs
+    unknown = {op: change for op, change in stubs.items() if change not in open_changes}
+    assert not unknown, (
+        "Stubs que citan un change que no existe en openspec/changes/ "
+        + (
+            "(o que ya se archivó, así que la operación debería estar implementada)"
+            if set(unknown.values()) & archived
+            else ""
+        )
+        + f": {unknown}"
+    )
 
 
 def test_operation_ids_are_unique_and_stable(spec: dict) -> None:
