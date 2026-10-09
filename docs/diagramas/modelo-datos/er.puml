@@ -168,6 +168,7 @@ entity TERM {
   * id : uuid <<PK>>
   --
   * vocabulary_id : uuid <<FK>>
+    parent_id : uuid <<FK>>
   * code : varchar(80)
   * label : varchar(200)
     description : text
@@ -395,6 +396,7 @@ APP_USER |o--o{ IMPORT_BATCH : "aprueba"
 ROLE ||--o{ ROLE_PERMISSION
 PERMISSION ||--o{ ROLE_PERMISSION
 VOCABULARY ||--o{ TERM : "contiene"
+TERM |o--o{ TERM : "parent_id"
 APP_USER ||--o{ USER_ROLE
 ROLE ||--o{ USER_ROLE
 TERM ||--o{ LOAN : "type_term_id"

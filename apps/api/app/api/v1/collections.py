@@ -210,6 +210,7 @@ def _term_out(term: Term, vocabulary: Vocabulary) -> TermOut:
     return TermOut(
         id=term.id,
         vocabulary_code=vocabulary.code,
+        parent_id=term.parent_id,
         code=term.code,
         label=term.label,
         description=term.description,

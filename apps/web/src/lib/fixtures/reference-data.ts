@@ -142,6 +142,7 @@ export const TERMS: ApiSchemas["TermOut"][] = VOCABULARY_DEFS.flatMap((def, vInd
   def.terms.map(([code, label], tIndex) => ({
     id: ids.term(vIndex * 100 + tIndex + 1),
     vocabulary_code: def.code,
+    parent_id: null,
     code,
     label,
     description: null,

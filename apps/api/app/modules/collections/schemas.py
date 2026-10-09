@@ -146,6 +146,7 @@ class TermOut(ORMModel):
                 {
                     "id": EX_TERM_ID,
                     "vocabulary_code": "CONSERVATION_STATUS",
+                    "parent_id": None,
                     "code": "REGULAR",
                     "label": "Regular",
                     "description": None,
@@ -159,6 +160,8 @@ class TermOut(ORMModel):
 
     id: uuid.UUID
     vocabulary_code: str
+    # Broader term (e.g. the craft line of a category); null at the root (RF-011).
+    parent_id: uuid.UUID | None
     code: str
     label: str
     description: str | None
@@ -174,6 +177,9 @@ class TermCreate(BaseModel):
 
     code: str = Field(min_length=1, max_length=80, pattern=r"^[A-Z0-9][A-Z0-9_]*$")
     label: str = Field(min_length=1, max_length=200)
+    parent_id: uuid.UUID | None = Field(
+        None, description="Término más general del mismo vocabulario; vacío en la raíz."
+    )
     description: str | None = None
     sort_order: int = 0
     external_uri: str | None = Field(None, max_length=500)

@@ -5926,6 +5926,19 @@
             "title": "Label",
             "type": "string"
           },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Término más general del mismo vocabulario; vacío en la raíz.",
+            "title": "Parent Id"
+          },
           "sort_order": {
             "default": 0,
             "title": "Sort Order",
@@ -5990,6 +6003,18 @@
             "title": "Label",
             "type": "string"
           },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
           "sort_order": {
             "title": "Sort Order",
             "type": "integer"
@@ -6002,6 +6027,7 @@
         "required": [
           "id",
           "vocabulary_code",
+          "parent_id",
           "code",
           "label",
           "description",
