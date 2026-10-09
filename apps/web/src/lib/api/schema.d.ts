@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 917d448b71e0fcbedd5f2b341f1a91ed9e2e8e58269165a8ca3ebd3520da6d29
+ * openapi-sha256: 2c481392cc4ccdff4a3883b193f443deff4326b3a0a929659f82154e21dc87b4
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -1560,6 +1560,11 @@ export interface components {
             /** Acronym */
             acronym?: string | null;
             /**
+             * Code
+             * @description Código del contrato (`CollectionItem.code`); equivale a `acronym`.
+             */
+            code?: string | null;
+            /**
              * Default Tenure Regime
              * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
              * @default Propiedad
@@ -1580,6 +1585,7 @@ export interface components {
          * @example {
          *       "acronym": "M.M.Z.",
          *       "acronym_normalized": "MMZ",
+         *       "code": "MMZ",
          *       "created_at": "2026-09-17T10:30:00Z",
          *       "default_tenure_regime": "Propiedad",
          *       "description": "Colección sintética de demostración.",
@@ -1598,6 +1604,11 @@ export interface components {
             acronym: string | null;
             /** Acronym Normalized */
             acronym_normalized: string | null;
+            /**
+             * Code
+             * @description Código del contrato (`CollectionItem.code`): la sigla normalizada.
+             */
+            code?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -3783,6 +3794,7 @@ export interface components {
          *       "id": "01920000-0000-7000-8000-000000000301",
          *       "is_active": true,
          *       "label": "Regular",
+         *       "name": "Regular",
          *       "sort_order": 2,
          *       "vocabulary_code": "CONSERVATION_STATUS"
          *     }
@@ -3803,6 +3815,11 @@ export interface components {
             is_active: boolean;
             /** Label */
             label: string;
+            /**
+             * Name
+             * @description Nombre del contrato (`CollectionItem.name`): la etiqueta.
+             */
+            name: string;
             /** Parent Id */
             parent_id: string | null;
             /** Sort Order */

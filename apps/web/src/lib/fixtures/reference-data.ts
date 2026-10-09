@@ -144,6 +144,7 @@ export const TERMS: ApiSchemas["TermOut"][] = VOCABULARY_DEFS.flatMap((def, vInd
     vocabulary_code: def.code,
     parent_id: null,
     code,
+    name: label,
     label,
     description: null,
     sort_order: tIndex,

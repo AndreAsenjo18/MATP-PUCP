@@ -15,8 +15,8 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById` |
 | 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`) |
 | 5 | `DELETE /pieces/{id}` · `softDeletePiece` | `RF-005` → RN-005, RNF-006 | `DELETE /pieces/{piece_id}` (stub) | Hecho: `softDeletePiece` |
-| 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Pendiente: arreglo plano `CollectionItem` (tarea 4.2) |
-| 7 | `POST /collections` · `createCollection` | `RF-039` → RF-010 | `POST /collections` (implementado) | Hecho: `createCollection` |
+| 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Hecho: `CollectionOut` contiene `CollectionItem` (`code` = sigla normalizada); `TermOut` añade `name` en `/categories` y `/conservation-states` (tarea 4.2) |
+| 7 | `POST /collections` · `createCollection` | `RF-039` → RF-010 | `POST /collections` (implementado) | Hecho: `createCollection`; acepta el cuerpo `CollectionItem` (`code` equivale a `acronym`) |
 | 8 | `GET /categories` · `listCategories` | `RF-007` → RF-011 | `GET /vocabularies/categoria/terms` | Hecho: `GET /categories` sobre el vocabulario CATEGORY |
 | 9 | `POST /categories` · `createCategory` | `RF-040` → RF-011 | `POST /vocabularies/{code}/terms` | Hecho: `POST /categories` |
 | 10 | `GET /conservation-states` · `listConservationStates` | `RF-008` → RF-012 | `GET /vocabularies/estado-conservacion/terms` | Hecho: `GET /conservation-states` |

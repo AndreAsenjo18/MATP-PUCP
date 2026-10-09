@@ -614,6 +614,19 @@
             ],
             "title": "Acronym"
           },
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código del contrato (`CollectionItem.code`); equivale a `acronym`.",
+            "title": "Code"
+          },
           "default_tenure_regime": {
             "default": "Propiedad",
             "description": "Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.",
@@ -677,6 +690,7 @@
           {
             "acronym": "M.M.Z.",
             "acronym_normalized": "MMZ",
+            "code": "MMZ",
             "created_at": "2026-09-17T10:30:00Z",
             "default_tenure_regime": "Propiedad",
             "description": "Colección sintética de demostración.",
@@ -712,6 +726,18 @@
               }
             ],
             "title": "Acronym Normalized"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código del contrato (`CollectionItem.code`): la sigla normalizada.",
+            "title": "Code"
           },
           "created_at": {
             "format": "date-time",
@@ -5959,6 +5985,7 @@
             "id": "01920000-0000-7000-8000-000000000301",
             "is_active": true,
             "label": "Regular",
+            "name": "Regular",
             "sort_order": 2,
             "vocabulary_code": "CONSERVATION_STATUS"
           }
@@ -6003,6 +6030,11 @@
             "title": "Label",
             "type": "string"
           },
+          "name": {
+            "description": "Nombre del contrato (`CollectionItem.name`): la etiqueta.",
+            "title": "Name",
+            "type": "string"
+          },
           "parent_id": {
             "anyOf": [
               {
@@ -6029,6 +6061,7 @@
           "vocabulary_code",
           "parent_id",
           "code",
+          "name",
           "label",
           "description",
           "sort_order",
