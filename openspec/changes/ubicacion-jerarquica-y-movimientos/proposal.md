@@ -4,8 +4,8 @@ Saber **dónde está cada pieza** es uno de los problemas declarados por el muse
 
 ## What Changes
 
-- Implementar `POST /api/v1/locations` y `PATCH /api/v1/locations/{location_id}`: catálogo jerárquico sede → espacio → mueble/rack → nivel → contenedor con reglas de nivel padre, código único, desactivación y reubicación de un nodo completo.
-- Implementar `POST /api/v1/pieces/{piece_id}/movements`: movimiento (cambia la ubicación actual), verificación física (sin cambio) y movimiento correctivo; la ubicación actual de la pieza se deriva siempre del último movimiento y se actualiza en la misma transacción.
+- Implementar `POST /api/v1/locations` y `PUT /api/v1/locations/{location_id}`: catálogo jerárquico sede → espacio → mueble/rack → nivel → contenedor con reglas de nivel padre, código único, desactivación y reubicación de un nodo completo.
+- Implementar `POST /api/v1/pieces/{piece_id}/move`: movimiento (cambia la ubicación actual), verificación física (sin cambio) y movimiento correctivo; la ubicación actual de la pieza se deriva siempre del último movimiento y se actualiza en la misma transacción.
 - Control de concurrencia: un movimiento declara el origen que el usuario vio; si la pieza ya se movió, se rechaza.
 - Nueva operación `POST /api/v1/movements/batch`: mover o verificar varias piezas escaneadas hacia un mismo destino, todo o nada, pensado para la vista móvil.
 - Reubicación de un mueble o contenedor completo que genera los movimientos de todas sus piezas.

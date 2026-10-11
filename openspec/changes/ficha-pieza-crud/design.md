@@ -21,7 +21,7 @@
 ## Decisions
 
 ### D1. La validación vive solo en el servidor; el cliente la consulta
-`POST /pieces/validate` ejecuta exactamente la misma función `validate_piece_payload()` que usan `POST`/`PATCH`, dentro de una transacción que siempre se revierte. El editor la llama con *debounce* (~400 ms) por campo modificado. Devuelve `errors` (bloquean guardar) y `warnings` (no bloquean: formato de código no reconocido, código I de una pieza eliminada, etc.).
+`POST /pieces/validate` ejecuta exactamente la misma función `validate_piece_payload()` que usan `POST`/`PUT`, dentro de una transacción que siempre se revierte. El editor la llama con *debounce* (~400 ms) por campo modificado. Devuelve `errors` (bloquean guardar) y `warnings` (no bloquean: formato de código no reconocido, código I de una pieza eliminada, etc.).
 *Alternativa descartada*: duplicar las reglas en Zod en el cliente → divergencia garantizada con las reglas `[SUPUESTO]` que cambiarán tras la validación con la contraparte. Zod se usa solo para tipos/formato local (campos vacíos, números).
 
 ```mermaid
@@ -39,18 +39,18 @@ sequenceDiagram
     A-->>W: 200 {errors:[...], warnings:[]}
     W-->>C: aviso junto al campo + enlace a pieza X
     C->>W: Guardar
-    W->>A: PATCH /pieces/{id} (If-Match: version)
+    W->>A: PUT /pieces/{id} (If-Match: version)
     A->>S: update_piece(ctx=AuditContext)
     S->>DB: UPDATE + audit_log por campo (misma transacción)
     A-->>W: 200 ficha actualizada
 ```
 
 ### D2. Concurrencia optimista con `version`
-Se añade a `piece` una columna entera `version` (migración Alembic nueva, `server_default 1`) incrementada por SQLAlchemy `version_id_col`. `PATCH` exige la cabecera `If-Match` con la versión leída; si no coincide → `409 edit_conflict` con los valores actuales en `details`. Sin `If-Match` → `428 precondition_required`.
+Se añade a `piece` una columna entera `version` (migración Alembic nueva, `server_default 1`) incrementada por SQLAlchemy `version_id_col`. `PUT` exige la cabecera `If-Match` con la versión leída; si no coincide → `409 edit_conflict` con los valores actuales en `details`. Sin `If-Match` → `428 precondition_required`.
 *Alternativa*: comparar `updated_at` → frágil con precisión de timestamps en SQLite/PostgreSQL.
 
-### D3. Semántica de `PATCH`
-JSON merge (campos ausentes = sin cambio; `null` explícito = vaciar, salvo campos obligatorios). Guardar sin cambios no genera auditoría (ya garantizado por `tracking.py`) y no incrementa `version`.
+### D3. Semántica de `PUT`: actualización parcial
+El contrato del equipo fija el verbo `PUT /pieces/{id}` (D1 de `alinear-api-endpoints-v1`: el documento manda en la ruta y el verbo, y el comportamiento se conserva). La semántica sigue siendo de actualización parcial por JSON merge (campos ausentes = sin cambio; `null` explícito = vaciar, salvo campos obligatorios). Guardar sin cambios no genera auditoría (ya garantizado por `tracking.py`) y no incrementa `version`.
 
 ### D4. Transiciones de régimen de tenencia
 Tabla de transiciones en `catalog/tenure.py`:

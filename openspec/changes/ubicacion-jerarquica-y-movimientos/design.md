@@ -30,7 +30,7 @@ sequenceDiagram
     participant A as API
     participant DB as PostgreSQL
     D->>M: escanea/busca "MMZ 15", elige destino "DEP2-RB-N3-C12"
-    M->>A: POST /pieces/{id}/movements {type: MOVE, expected_from: DEP1-RA, to, reason}
+    M->>A: POST /pieces/{id}/move {type: MOVE, expected_from: DEP1-RA, to, reason}
     A->>DB: SELECT piece FOR UPDATE
     alt current_location != expected_from
         A-->>M: 409 location_changed {current}
@@ -52,7 +52,7 @@ sequenceDiagram
 *Alternativa*: resultados parciales → confunden a usuarios con baja alfabetización digital (RNF-010).
 
 ### D4. Reubicación de un nodo con piezas
-`PATCH /locations/{id}` con nuevo `parent_id` cuando el subárbol contiene piezas exige `confirm_affected_count` igual al número de piezas afectadas; registra para cada pieza un `MOVE` con motivo "reubicación de <código>" y `origin_ref` común. Rechaza ciclos y padres de nivel no permitido. Desactivar o eliminar lógicamente una ubicación con piezas se rechaza (`409 location_not_empty`).
+`PUT /locations/{id}` (verbo del contrato; actualización parcial, como antes con `PATCH`) con nuevo `parent_id` cuando el subárbol contiene piezas exige `confirm_affected_count` igual al número de piezas afectadas; registra para cada pieza un `MOVE` con motivo "reubicación de <código>" y `origin_ref` común. Rechaza ciclos y padres de nivel no permitido. Desactivar o eliminar lógicamente una ubicación con piezas se rechaza (`409 location_not_empty`).
 
 ### D5. Tipo de espacio y disponibilidad
 Columna nueva `location.space_kind` (DEPOSIT, EXHIBITION_ROOM, WORKSHOP, OTHER) solo para nivel SPACE [SUPUESTO]. Al mover a un espacio de tipo sala se propone la disponibilidad "en sala"; a depósito, "en depósito" (términos del vocabulario `AVAILABILITY` mapeados por configuración). Un cambio manual incoherente (p. ej. "en sala" con ubicación actual en depósito) se rechaza con `409 availability_incoherent`. La coherencia con préstamos queda para `prestamos-y-exposiciones`.

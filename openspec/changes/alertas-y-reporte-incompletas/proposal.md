@@ -8,8 +8,8 @@ El museo necesita medir el avance de la digitalización: cuántas piezas siguen 
 - Cálculo en consulta mediante predicados SQL reutilizables (sin tablas desnormalizadas que puedan quedar desactualizadas), expuestos también como filtro para la búsqueda.
 - `GET /api/v1/pieces/{piece_id}/alerts`: alertas de una pieza con explicación y acción sugerida.
 - `GET /api/v1/quality/incomplete`: reporte paginado filtrable por tipo de alerta y colección (con subcolecciones), exportable.
-- `GET /api/v1/quality/kpis`: indicadores globales y por colección con numeradores y denominadores explícitos.
-- Serie histórica de KPI mediante instantáneas diarias (operación nueva `GET /api/v1/quality/kpis/history` y comando programable).
+- `GET /api/v1/reports/dashboard-stats`: indicadores globales y por colección con numeradores y denominadores explícitos.
+- Serie histórica de KPI mediante instantáneas diarias (operación nueva `GET /api/v1/reports/dashboard-stats/history` y comando programable).
 - Frontend: alertas visibles en la ficha, tablero de inicio y reporte de incompletas en modo `live`.
 
 ## Capabilities

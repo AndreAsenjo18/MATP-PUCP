@@ -6,11 +6,11 @@
 ## 2. API de ubicaciones
 
 - [ ] 2.1 Implementar `POST /api/v1/locations` (nivel, código normalizado único, auditoría); pruebas: rack en depósito ok, padre no permitido 422, código repetido 409, sin permiso 403 (Req: Administración del catálogo de ubicaciones)
-- [ ] 2.2 Implementar `PATCH /api/v1/locations/{location_id}` (edición, desactivación rechazada con piezas, reubicación con `confirm_affected_count` y movimientos por pieza); pruebas de los escenarios de desactivación y reubicación (Req: Administración del catálogo…; Req: Reubicación de un nodo con piezas)
+- [ ] 2.2 Implementar `PUT /api/v1/locations/{location_id}` (edición, desactivación rechazada con piezas, reubicación con `confirm_affected_count` y movimientos por pieza); pruebas de los escenarios de desactivación y reubicación (Req: Administración del catálogo…; Req: Reubicación de un nodo con piezas)
 
 ## 3. API de movimientos
 
-- [ ] 3.1 Implementar `POST /api/v1/pieces/{piece_id}/movements` (MOVE, VERIFICATION, CORRECTION) con `SELECT ... FOR UPDATE`, `expected_from` y actualización de `current_location_id`; pruebas de los cinco escenarios del requirement (Req: Registro de movimientos con ubicación actual derivada; RF-017)
+- [ ] 3.1 Implementar `POST /api/v1/pieces/{piece_id}/move` (MOVE, VERIFICATION, CORRECTION) con `SELECT ... FOR UPDATE`, `expected_from` y actualización de `current_location_id`; pruebas de los cinco escenarios del requirement (Req: Registro de movimientos con ubicación actual derivada; RF-017)
 - [ ] 3.2 Prueba de propiedad: tras una secuencia aleatoria de movimientos, `piece.current_location_id` coincide con el destino del último MOVE/CORRECTION (Req: Registro de movimientos…)
 - [ ] 3.3 Implementar `POST /api/v1/movements/batch` todo-o-nada con `Idempotency-Key` y límite de 200; pruebas: lote ok, una pieza fallida, reintento idempotente, límite excedido 422 (Req: Movimiento en lote desde el depósito)
 - [ ] 3.4 Propuesta y validación de disponibilidad por `space_kind` (mapeo configurable a términos de `AVAILABILITY`); pruebas de los dos escenarios (Req: Coherencia de la disponibilidad con el tipo de espacio; RF-020)

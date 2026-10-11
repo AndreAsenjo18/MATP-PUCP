@@ -6,7 +6,7 @@
 
 ## 2. Flujo de sugerencias
 
-- [ ] 2.1 Implementar `POST /api/v1/ai/suggestions` (RIA-01; permiso `ai.request`, límite por usuario, sin datos → sin sugerencia, huella de origen); pruebas de los cuatro escenarios de solicitud y de "Texto sin datos" (Req: Solicitud de sugerencias…; Req: Destinos de los datos extraídos…)
+- [ ] 2.1 Implementar `POST /api/v1/ai/suggest-cataloging` (RIA-01; permiso `ai.request`, límite por usuario, sin datos → sin sugerencia, huella de origen); pruebas de los cuatro escenarios de solicitud y de "Texto sin datos" (Req: Solicitud de sugerencias…; Req: Destinos de los datos extraídos…)
 - [ ] 2.2 Crear `ai_suggestions/apply.py` como único punto de escritura (verifica aprobación registrada) con destinos RIA-01 (medidas, evaluación de conservación, nota de revisión, exposición retenida); pruebas unitarias por destino y prueba de escritura sin aprobación que falla (Req: Revisión total, parcial o con edición…; Req: Destinos de los datos extraídos…; RN-009)
 - [ ] 2.3 Implementar `POST /api/v1/ai/suggestions/{suggestion_id}/approve` (ítems, ediciones validadas, estados, `was_edited`, obsolescencia con `confirm_stale`, auditoría origen IA aprobada); pruebas: aprobación parcial con edición, valor inválido 422, obsoleta 409 y confirmada, doble revisión 409, Catalogador sin `ai.review` 403 (Req: Revisión total…; Req: Detección de sugerencias obsoletas por huella)
 - [ ] 2.4 Implementar `POST /api/v1/ai/suggestions/{suggestion_id}/reject` con motivo obligatorio; pruebas (Req: Revisión total… — escenario "Rechazo sin motivo")
