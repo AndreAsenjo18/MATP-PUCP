@@ -28,7 +28,7 @@ sequenceDiagram
     participant I as Servicio IA
     participant DB as PostgreSQL
     C->>W: "Sugerir datos desde el texto" (campo notes)
-    W->>A: POST /ai/suggestions {function: RIA_01, piece_id, source_field: notes}
+    W->>A: POST /ai/suggest-cataloging {function: RIA_01, piece_id, source_field: notes}
     A->>DB: leer pieza (permiso ai.request)
     A->>P: minimizar entrada (quita campos sensibles y datos personales)
     A->>I: POST /v1/extract-structured (timeout 20 s)

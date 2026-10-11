@@ -4,13 +4,13 @@ La mayor parte de las >10 000 piezas del MATP está en sábanas Excel, Access y 
 
 ## What Changes
 
-- Ingesta de `.xlsx` y `.csv` (subida, almacenamiento del archivo original, elección de hoja y fila de cabeceras, límites de tamaño y filas) → `POST /imports`, `GET /imports`, `GET /imports/{batch_id}`.
+- Ingesta de `.xlsx` y `.csv` (subida, almacenamiento del archivo original, elección de hoja y fila de cabeceras, límites de tamaño y filas) → `POST /imports/upload`, `GET /imports`, `GET /imports/{batch_id}`.
 - Máquina de estados del lote con etapas idempotentes y procesamiento en segundo plano dentro del proceso de la API: `UPLOADED → MAPPED → VALIDATED → IN_PREVIEW → APPROVED → APPLIED` (más `FAILED_INGESTION`, `FAILED_APPLY`, `ABANDONED`, `REVERTED`).
 - Aplicación del mapeo al lote (`PUT /imports/{batch_id}/mapping`) usando el formato de mapeo y el motor de transformación definidos en `plantillas-mapeo-y-normalizacion`.
 - Validación, matching multi-código contra identificadores vigentes e históricos y clasificación de filas (`POST /imports/{batch_id}/validate`).
-- Previsualización con diff campo a campo y decisiones por fila y por campo (`GET /imports/{batch_id}/preview`, `PATCH /imports/{batch_id}/rows/{row_id}`), incluida la resolución manual de conflictos.
-- Aprobación explícita por rol autorizado con resumen confirmado y aplicación atómica (`POST /imports/{batch_id}/approve`), que crea/actualiza piezas, identificadores y registros de datos de origen con auditoría origen "importación".
-- Bitácora consultable y descargable (`GET /imports/{batch_id}/log`) y reversión del lote aplicado (`POST /imports/{batch_id}/revert`).
+- Previsualización con diff campo a campo y decisiones por fila y por campo (`GET /imports/{batch_id}/diffs`, `PATCH /imports/{batch_id}/rows/{row_id}`), incluida la resolución manual de conflictos.
+- Aprobación explícita por rol autorizado con resumen confirmado y aplicación atómica (`POST /imports/{batch_id}/confirm`), que crea/actualiza piezas, identificadores y registros de datos de origen con auditoría origen "importación".
+- Bitácora consultable y descargable (`GET /imports/{batch_id}/log`) y reversión del lote aplicado (`POST /imports/{batch_id}/rollback`).
 - Extracción de imágenes incrustadas en Excel con propuesta de asociación por fila y revisión manual (RF-029).
 - Frontend: asistente de importación de 6 pasos en modo `live`.
 

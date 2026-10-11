@@ -4,7 +4,7 @@ Las categorías, materiales y técnicas de las piezas se registraron históricam
 
 ## What Changes
 
-- Solicitud de sugerencias RIA-03 por la API (`POST /api/v1/ai/suggestions` con función `RIA_03`), reutilizando el flujo genérico de `ia-extraccion-texto-libre`, en la que la API envía al servicio de IA la lista de **términos candidatos activos** de los vocabularios pedidos (categoría, material, técnica, tipo de bien).
+- Solicitud de sugerencias RIA-03 por la API (`POST /api/v1/ai/suggest-cataloging` con función `RIA_03`), reutilizando el flujo genérico de `ia-extraccion-texto-libre`, en la que la API envía al servicio de IA la lista de **términos candidatos activos** de los vocabularios pedidos (categoría, material, técnica, tipo de bien).
 - Contrato del servicio IA ampliado: `suggest_terms` recibe los candidatos; el proveedor simulado hace coincidencias deterministas por etiqueta y variantes sin tildes.
 - Validación en la API de toda respuesta: un término que no está entre los candidatos activos se convierte en "propuesta de término nuevo"; nunca se sugiere un término inactivo.
 - Aplicación de términos aprobados según el vocabulario: categoría y tipo de bien reemplazan con elección explícita si ya hay valor; materiales y técnicas se agregan sin quitar los existentes.

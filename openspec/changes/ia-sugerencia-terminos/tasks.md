@@ -6,7 +6,7 @@
 ## 2. API
 
 - [ ] 2.1 Migración `piece_technique` análoga a `piece_material` con soft-delete y auditoría; `tests/test_migrations.py` y prueba transversal en verde (Req: Aplicación de términos aprobados según el vocabulario)
-- [ ] 2.2 Crear `ai_suggestions/terms.py`: construcción de candidatos activos (límite 2 000), llamada al servicio, validación y conversión a `new_term_proposal`; extender `POST /api/v1/ai/suggestions` para `RIA_03`; pruebas de los tres escenarios del requirement (Req: Sugerencia de términos restringida a candidatos activos)
+- [ ] 2.2 Crear `ai_suggestions/terms.py`: construcción de candidatos activos (límite 2 000), llamada al servicio, validación y conversión a `new_term_proposal`; extender `POST /api/v1/ai/suggest-cataloging` para `RIA_03`; pruebas de los tres escenarios del requirement (Req: Sugerencia de términos restringida a candidatos activos)
 - [ ] 2.3 Extender `apply.py` con destinos por cardinalidad (`replace=true` para valor único, agregar para múltiples) y huella de campos destino; pruebas: reemplazo sin confirmar 409, con confirmación ok, agregar material, obsolescencia (Req: Aplicación de términos aprobados según el vocabulario; RN-009)
 - [ ] 2.4 Aprobación de `new_term_proposal` con `vocabularies.manage`, verificación de etiqueta normalizada contra activos e inactivos, creación y aplicación en una transacción; pruebas de los tres escenarios (Req: Aceptación controlada de términos nuevos)
 - [ ] 2.5 Crear `ai_suggestions/batch.py` y operaciones nuevas `POST /api/v1/ai/suggestions/batch` y `GET /api/v1/ai/suggestions/batch/{batch_request_id}` (≤ 50 piezas, un lote activo por usuario, estado parcial ante caída); pruebas de los tres escenarios (Req: Solicitud de sugerencias de términos por lote acotado)

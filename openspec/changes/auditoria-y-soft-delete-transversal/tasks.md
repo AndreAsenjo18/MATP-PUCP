@@ -12,7 +12,7 @@
 ## 3. Papelera y consulta
 
 - [ ] 3.1 Crear `audit/trash.py` con verificadores de dependencias por tipo y operaciones nuevas `GET /api/v1/trash` y `POST /api/v1/trash/{entity_type}/{entity_id}/restore`; pruebas: restaurar término, foto con pieza eliminada 409, Catalogador 403 (Req: Papelera con restauración que verifica dependencias; RNF-006)
-- [ ] 3.2 Extender `GET /api/v1/audit` con `group_by=change_set`, `format=csv` en streaming y enmascarado de valores sensibles; pruebas de ambos escenarios (Req: Consulta agrupada y exportable de la auditoría; RF-040, RF-041)
+- [ ] 3.2 Extender `GET /api/v1/audit-logs` con `group_by=change_set`, `format=csv` en streaming y enmascarado de valores sensibles; pruebas de ambos escenarios (Req: Consulta agrupada y exportable de la auditoría; RF-040, RF-041)
 
 ## 4. Integridad
 
