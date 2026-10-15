@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: ce2e31667458cb2557539fffd680c5783a25e4f430e6f6443ef961fa41343668
+ * openapi-sha256: 36a0b2e38a4967527a5c10ffd2c30f8342180f820c36199da7543cafd1a944f9
  */
 export interface paths {
     "/api/v1/ai/suggest-cataloging": {
@@ -6752,8 +6752,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6761,13 +6761,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
