@@ -194,3 +194,63 @@ def test_piece_contract_names_on_postgresql(
     ):
         assert statement in sql
     assert "code_i" not in sql
+
+
+def test_term_hierarchy_keeps_piece_classification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0003 adds ``term.parent_id`` without moving terms: no piece loses its classification.
+
+    The downgrade with data is covered on PostgreSQL (``test_migrations_postgresql.py``).
+    """
+    engine = _sqlite_engine(tmp_path / "matp.db")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'matp.db').as_posix()}")
+    _migrate(engine, "0002_loans_and_exhibitions")
+    now = "'2026-10-09', '2026-10-09'"
+    with engine.begin() as connection:
+        for statement in (
+            f"INSERT INTO vocabulary (id, code, name, created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000010', 'CATEGORY', 'Categorías', {now}), "
+            f"('00000000000000000000000000000020', 'CONSERVATION_STATUS', 'Estados', {now})",
+            f"INSERT INTO term (id, vocabulary_id, code, label, sort_order, is_active, "
+            f"created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000011', '00000000000000000000000000000010', "
+            f"'RETABLO', 'Retablo', 0, 1, {now}), "
+            f"('00000000000000000000000000000021', '00000000000000000000000000000020', "
+            f"'REGULAR', 'Regular', 0, 1, {now})",
+            f"INSERT INTO piece (id, denomination, tenure_regime, category_id, "
+            f"conservation_state_id, created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000001', 'Retablo de Ayacucho', 'OWNED', "
+            f"'00000000000000000000000000000011', '00000000000000000000000000000021', {now})",
+        ):
+            connection.execute(text(statement))
+    classification = text("SELECT category_id, conservation_state_id FROM piece")
+    expected = ("00000000000000000000000000000011", "00000000000000000000000000000021")
+
+    _migrate(engine, "0003_term_hierarchy")
+    assert "parent_id" in {column["name"] for column in inspect(engine).get_columns("term")}
+    assert "ix_term_parent_id" in {index["name"] for index in inspect(engine).get_indexes("term")}
+    with engine.connect() as connection:
+        assert tuple(connection.execute(classification).one()) == expected
+        assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+    with pytest.raises(DatabaseError), engine.begin() as connection:
+        connection.execute(  # the parent must be an existing term
+            text("UPDATE term SET parent_id = '00000000000000000000000000000099'")
+        )
+    engine.dispose()
+
+
+def test_term_hierarchy_on_postgresql(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
+    monkeypatch.setenv("DATABASE_URL", url)
+    command.upgrade(_config(url), "0002_loans_and_exhibitions:0003_term_hierarchy", sql=True)
+    sql = capsys.readouterr().out
+    assert "ALTER TABLE term ADD COLUMN parent_id UUID" in sql
+    assert (
+        "ALTER TABLE term ADD CONSTRAINT fk_term_parent_id_term FOREIGN KEY(parent_id) "
+        "REFERENCES term (id)"
+    ) in sql
+    assert "CREATE INDEX ix_term_parent_id ON term (parent_id)" in sql
+    assert "DROP TABLE" not in sql  # no table rebuild on PostgreSQL
