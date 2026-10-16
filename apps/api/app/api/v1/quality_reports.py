@@ -1,12 +1,12 @@
 """Quality, search, reports and exports (calidad-datos, busqueda-reportes)."""
 
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
-from app.api.enums import TENURE_REGIME_LABELS, code_of
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES
 from app.api.pagination import (
     DEFAULT_PAGE_SIZE,
@@ -48,10 +48,6 @@ from app.modules.search.schemas import (
 from app.modules.search.service import describe_matches
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
-
-#: Valores del contrato para `tenure_regime` en `GET /search` (endpoints-api-v1.yaml).
-#: Definido local porque esta rama de `app.api.enums` todavía no expone el alias compartido.
-TenureRegimeLabel = Literal["Propiedad", "Comodato", "Préstamo Temporal"]
 
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 ReportViewer = Annotated[CurrentUser, Depends(require_permission("reports.view"))]
