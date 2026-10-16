@@ -15,8 +15,8 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById` |
 | 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`) |
 | 5 | `DELETE /pieces/{id}` · `softDeletePiece` | `RF-005` → RN-005, RNF-006 | `DELETE /pieces/{piece_id}` (stub) | Hecho: `softDeletePiece` |
-| 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Pendiente: arreglo plano `CollectionItem` (tarea 4.2) |
-| 7 | `POST /collections` · `createCollection` | `RF-039` → RF-010 | `POST /collections` (implementado) | Hecho: `createCollection` |
+| 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Hecho: `CollectionOut` contiene `CollectionItem` (`code` = sigla normalizada); `TermOut` añade `name` en `/categories` y `/conservation-states` (tarea 4.2) |
+| 7 | `POST /collections` · `createCollection` | `RF-039` → RF-010 | `POST /collections` (implementado) | Hecho: `createCollection`; acepta el cuerpo `CollectionItem` (`code` equivale a `acronym`) |
 | 8 | `GET /categories` · `listCategories` | `RF-007` → RF-011 | `GET /vocabularies/categoria/terms` | Hecho: `GET /categories` sobre el vocabulario CATEGORY |
 | 9 | `POST /categories` · `createCategory` | `RF-040` → RF-011 | `POST /vocabularies/{code}/terms` | Hecho: `POST /categories` |
 | 10 | `GET /conservation-states` · `listConservationStates` | `RF-008` → RF-012 | `GET /vocabularies/estado-conservacion/terms` | Hecho: `GET /conservation-states` |
@@ -38,7 +38,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
 | 21 | `POST /pieces/{id}/identifiers` · `addPieceIdentifier` | `RF-009` → RF-002 | igual (stub) | Hecho: ruta ya conforme |
-| 22 | `DELETE /pieces/{id}/identifiers/{identifier_id}` · `deletePieceIdentifier` | `RF-010` → RF-002, RN-002, RN-005 | no existe (hay `.../correction`) | Hecho como baja lógica (stub) |
+| 22 | `DELETE /pieces/{id}/identifiers/{identifier_id}` · `deletePieceIdentifier` | `RF-010` → RF-002, RN-002, RN-005 | no existe (hay `.../correction`) | Hecho: baja lógica con motivo; queda en el historial (`include_history`) y en la auditoría; el código I responde 409 (tarea 5.3) |
 | 23 | `GET /pieces/{id}/children` · `getPieceChildren` | `RF-011` → RF-009 | no existe (se resuelve con filtro) | Hecho: `GET /pieces/{id}/children` |
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |
 | 25 | `POST /locations` · `createLocation` | `RF-019` → RF-016 | igual (stub) | Hecho: ruta ya conforme |
@@ -51,9 +51,9 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 32 | `GET /reports/dashboard-stats` · `getDashboardStats` | `RF-035` → RF-035 | `GET /quality/kpis` (stub) | Hecho: `GET /reports/dashboard-stats` |
 | 33 | `GET /users` · `listUsers` | `RF-036` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
 | 34 | `POST /users` · `createUser` | `RF-037` → RF-039 | igual (stub) | Hecho: ruta ya conforme |
-| 35 | `PUT /users/{id}/role` · `updateUserRole` | `RF-038` → RF-039 | `PATCH /users/{user_id}` (stub) | Hecho: `PUT /users/{id}/role` (stub) |
+| 35 | `PUT /users/{id}/role` · `updateUserRole` | `RF-038` → RF-039 | `PATCH /users/{user_id}` (stub) | Hecho: `PUT /users/{id}/role` (stub) con `UserRoleUpdate`, que reemplaza el conjunto de roles (D3, tarea 5.1) |
 | 36 | `GET /audit-logs` · `getAuditLogs` | `RF-043` → RF-040 | `GET /audit` (implementado) | Hecho: `GET /audit-logs` |
-| 37 | `POST /ai/suggest-cataloging` · `suggestCataloging` | `RF-028` → RIA-01, RN-009 | `POST /ai/suggestions` (stub) | Hecho: `POST /ai/suggest-cataloging` |
+| 37 | `POST /ai/suggest-cataloging` · `suggestCataloging` | `RF-028` → RIA-01, RN-009 | `POST /ai/suggestions` (stub) | Hecho: `POST /ai/suggest-cataloging` (stub) con `CatalogingSuggestionRequest` y `piece_id` obligatorio como en el documento (tarea 5.1) |
 | 38 | `POST /ai/validate-data` · `validateDataQuality` | `RF-029` → RIA-02, RN-009 | `GET /quality/incomplete` + `/quality/kpis` (stubs) | Hecho: `POST /ai/validate-data` (stub) |
 
 ² Candidatos: RF-021 (pipeline con bitácora) o RF-028 (bitácora de carga). `docs/api/openapi.json` asocia RF-028 a `GET /imports/{batch_id}/log`, no al listado de lotes.
@@ -65,16 +65,16 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 39 | `GET /loans` · `listLoans` | `RF-013` → RF-018 | `GET /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 40 | `POST /loans` · `createLoan` | `RF-015` → RF-018 | `POST /loans` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 41 | `PUT /loans/{id}/status` | `RF-028-B` → RF-018 | `PUT /loans/{id}/status` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
-| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Pendiente: requiere proponer el change de descargas masivas |
+| 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Hecho: stub `501` con `BulkDownloadRequest`/`BulkDownloadJob`; lo implementa `descargas-masivas-y-enriquecimiento-lote` (tarea 5.2) |
 | 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁴ | no existe | Bloqueado por el conflicto C2 |
 | 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |
-| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Pendiente: requiere proponer el change de enriquecimiento por lote |
+| 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Hecho: stub `501` con `BatchEnrichRequest`/`AiBatchOut`; lo implementa `descargas-masivas-y-enriquecimiento-lote` como RIA-04 (tarea 5.2) |
 
 ³ El catálogo no tiene un requisito de descarga masiva de imágenes. Aplicarían RF-014 y RN-008 (restricciones de uso en comodato).
 
 ⁴ Sin equivalente: RF-044 del catálogo es la exportación completa de la base de datos, y un catálogo público choca con RF-042 (ver C2).
 
-⁵ Aplica RN-009 (aprobación humana). Si corresponde a RIA-01 (extracción) o a RIA-03 (sugerencia de términos) se decide al proponer su change.
+⁵ Aplica RN-009 (aprobación humana). Resuelto al proponer `descargas-masivas-y-enriquecimiento-lote`: corresponde a RIA-04 (descripción preliminar desde metadatos).
 
 ## Operaciones que hoy existen y el documento no incluye
 

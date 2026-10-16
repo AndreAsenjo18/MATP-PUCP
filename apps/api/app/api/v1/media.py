@@ -19,18 +19,19 @@ from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import PHOTO_VIEW_TYPE_LABELS, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.refs import TermRef, translate_view_term
-from app.api.stubs import implemented
+from app.api.stubs import CHANGE_BULK, implemented, not_implemented, stub
 from app.core.errors import BusinessRuleViolation, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.queries import get_piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.media.models import MediaAsset
-from app.modules.media.schemas import MediaAssetOut
+from app.modules.media.schemas import BulkDownloadJob, BulkDownloadRequest, MediaAssetOut
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Multimedia"])
 
 MediaUploader = Annotated[CurrentUser, Depends(require_permission("media.upload"))]
+Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
 
 VIEW_TYPES = ", ".join(PHOTO_VIEW_TYPE_LABELS.values())
 
@@ -200,3 +201,14 @@ def upload_media_asset(
         download_url=None,
         created_at=asset.created_at,
     )
+
+
+@router.post(
+    "/media/bulk-download",
+    response_model=BulkDownloadJob,
+    summary="Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
+    **stub(CHANGE_BULK),
+)
+def bulk_download_media(body: BulkDownloadRequest, user: Exporter) -> BulkDownloadJob:
+    """Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera."""
+    raise not_implemented(CHANGE_BULK, BulkDownloadJob)

@@ -37,6 +37,7 @@ def create_term(
     *,
     code: str,
     label: str,
+    parent_id: uuid.UUID | None = None,
     description: str | None = None,
     sort_order: int = 0,
     external_uri: str | None = None,
@@ -55,9 +56,18 @@ def create_term(
             code="duplicate_term",
             details={"term_id": str(duplicate.id)},
         )
+    if parent_id is not None:
+        parent = session.get(Term, parent_id)
+        if parent is None or parent.deleted_at is not None or parent.vocabulary_id != vocabulary.id:
+            raise ValidationFailed(
+                f"El término padre no existe en {vocabulary.name} o fue eliminado.",
+                code="invalid_parent_term",
+                details={"parent_id": str(parent_id), "vocabulary_code": vocabulary.code},
+            )
     term = Term(
         id=new_uuid(),
         vocabulary_id=vocabulary.id,
+        parent_id=parent_id,
         code=normalized_code,
         label=label.strip(),
         description=description,

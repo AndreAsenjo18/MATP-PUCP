@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -121,3 +121,53 @@ class MediaAssetUpdate(BaseModel):
     is_primary: bool | None = None
     usage_restriction_term_id: uuid.UUID | None = None
     restriction_note: str | None = None
+
+
+# Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+MAX_BULK_DOWNLOAD_PIECES = 200
+
+
+class BulkDownloadRequest(BaseModel):
+    """Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote)."""
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"piece_ids": [EX_PIECE_ID]}]})
+
+    piece_ids: list[uuid.UUID] = Field(
+        min_length=1,
+        max_length=MAX_BULK_DOWNLOAD_PIECES,
+        description="Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+    )
+
+
+class OmittedPhoto(BaseModel):
+    media_id: uuid.UUID
+    piece_id: uuid.UUID
+    restriction: str = Field(description="Restricción de uso efectiva que impide incluirla.")
+
+
+class BulkDownloadJob(BaseModel):
+    """State of a photo package; restricted photos are left out (RN-008)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000901",
+                    "status": "READY",
+                    "piece_count": 30,
+                    "included_photos": 84,
+                    "omitted": [],
+                    "download_url": "http://localhost:9000/matp-media/exports/fotos.zip",
+                    "expires_at": EX_DATETIME,
+                }
+            ]
+        }
+    )
+
+    id: uuid.UUID
+    status: Literal["PENDING", "RUNNING", "READY", "FAILED"]
+    piece_count: int
+    included_photos: int | None = None
+    omitted: list[OmittedPhoto] = Field(default_factory=list)
+    download_url: str | None = None
+    expires_at: datetime | None = None
