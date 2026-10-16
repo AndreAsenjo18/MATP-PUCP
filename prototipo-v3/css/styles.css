@@ -1,0 +1,322 @@
+/* ══════════════════════════════════════════════════════════════
+   SISTEMA DE GESTIÓN Y DIGITALIZACIÓN DE COLECCIONES MATP - PUCP
+   css/styles.css — Variables de color, tipografía y componentes base
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* MARCA / PRIMARIO */
+  --color-terracota: #A23C16;
+  --color-terracota-hover: #7E2E11;
+  --color-terracota-tinte: #F0DAD0;
+
+  /* NEUTRALES */
+  --color-tinta: #0C0F14;
+  --color-texto-secundario: #5B534C;
+  --color-canvas: #F5F0DA;
+  --color-superficie: #FFFFFF;
+  --color-borde: #E3DECB;
+
+  /* ACENTOS SEMÁNTICOS */
+  --color-verde-exito: #007438;
+  --color-verde-tinte: #E1EFD8;
+  --color-verde-lima: #A4C35F;
+  --color-carmin-error: #DA2A4E;
+  --color-carmin-tinte: #F7D9DF;
+  --color-rosa: #DA546F;
+  --color-ambar: #C8791E;
+  --color-ambar-tinte: #F5E4CC;
+
+  /* Tipografías */
+  --font-titulos: 'Poppins', sans-serif;
+  --font-cuerpo: 'Inter', sans-serif;
+
+  /* Radios */
+  --radius-card: 8px;
+  --radius-input: 8px;
+  --radius-btn: 6px;
+  --radius-chip: 9999px;
+}
+
+body {
+  font-family: var(--font-cuerpo);
+  background-color: var(--color-canvas);
+  color: var(--color-tinta);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-titulos);
+}
+
+/* Material Symbols Outlined estándar estricto */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+
+.material-symbols-outlined.icon-24 {
+  font-size: 24px;
+}
+
+/* Tarjetas y Contenedores */
+.matp-card {
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1px 2px 0 rgba(12, 15, 20, 0.04);
+}
+
+/* Botones con alturas y padding normalizados */
+.btn-primario {
+  background-color: var(--color-terracota);
+  color: #FFFFFF;
+  border-radius: var(--radius-btn);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 150ms ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primario:hover {
+  background-color: var(--color-terracota-hover);
+}
+
+.btn-secundario {
+  background-color: var(--color-superficie);
+  color: var(--color-terracota);
+  border: 1px solid var(--color-terracota);
+  border-radius: var(--radius-btn);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-secundario:hover {
+  background-color: var(--color-terracota-tinte);
+}
+
+.btn-texto {
+  background-color: transparent;
+  color: var(--color-texto-secundario);
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 150ms ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-texto:hover {
+  color: var(--color-terracota);
+  background-color: rgba(162, 60, 22, 0.06);
+}
+
+.btn-peligro {
+  background-color: var(--color-carmin-error);
+  color: #FFFFFF;
+  border-radius: var(--radius-btn);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 150ms ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-peligro:hover {
+  background-color: #B51F3D;
+}
+
+/* Inputs y Selects */
+.input-matp {
+  background-color: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-input);
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: var(--color-tinta);
+  width: 100%;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.input-matp:focus {
+  border-color: var(--color-terracota);
+  box-shadow: 0 0 0 3px rgba(162, 60, 22, 0.15);
+}
+.input-matp.input-error {
+  border-color: var(--color-carmin-error);
+  box-shadow: 0 0 0 3px rgba(218, 42, 78, 0.15);
+}
+.input-matp.input-success {
+  border-color: var(--color-verde-exito);
+  box-shadow: 0 0 0 3px rgba(0, 116, 56, 0.15);
+}
+
+/* Chips de estado uniformes */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.chip-completa, .chip-nuevo {
+  background-color: var(--color-verde-tinte);
+  color: var(--color-verde-exito);
+}
+.chip-sin-codigo, .chip-sin-foto, .chip-sin-ubicacion, .chip-incompleta {
+  background-color: var(--color-ambar-tinte);
+  color: var(--color-ambar);
+}
+.chip-duplicado {
+  background-color: #F7D9DF;
+  color: var(--color-rosa);
+}
+.chip-conflicto, .chip-error {
+  background-color: var(--color-carmin-tinte);
+  color: var(--color-carmin-error);
+}
+.chip-actualizacion {
+  background-color: var(--color-terracota-tinte);
+  color: var(--color-terracota);
+}
+.chip-rechazado {
+  background-color: #E3DECB;
+  color: #5B534C;
+}
+.chip-pendiente {
+  background-color: var(--color-ambar-tinte);
+  color: var(--color-ambar);
+}
+
+/* Badges de prioridad */
+.badge-prioridad {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-prioridad-alta {
+  background-color: var(--color-terracota-tinte);
+  color: var(--color-terracota);
+}
+.badge-prioridad-media {
+  background-color: var(--color-ambar-tinte);
+  color: var(--color-ambar);
+}
+.badge-prioridad-baja {
+  background-color: var(--color-borde);
+  color: var(--color-texto-secundario);
+}
+
+/* Tablas estilizadas según especificación */
+.tabla-matp {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  background-color: #FFFFFF;
+}
+.tabla-matp thead th {
+  background-color: var(--color-tinta);
+  color: #FFFFFF;
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+.tabla-matp thead th:first-child {
+  border-top-left-radius: 6px;
+}
+.tabla-matp thead th:last-child {
+  border-top-right-radius: 6px;
+}
+.tabla-matp tbody tr {
+  border-bottom: 1px solid var(--color-borde);
+  transition: background-color 100ms ease;
+}
+.tabla-matp tbody tr:nth-child(even) {
+  background-color: #FAF7EE;
+}
+.tabla-matp tbody tr:nth-child(odd) {
+  background-color: #FFFFFF;
+}
+.tabla-matp tbody tr:hover {
+  background-color: var(--color-terracota-tinte) !important;
+}
+.tabla-matp td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  color: var(--color-tinta);
+}
+
+/* Cenefa sutil de arte popular peruano */
+.greca-decorativa {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(162, 60, 22, 0.04) 0px,
+    rgba(162, 60, 22, 0.04) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+}
+
+/* Tabs uniformes */
+.matp-tab {
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-texto-secundario);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+.matp-tab:hover {
+  color: var(--color-terracota);
+}
+.matp-tab.active {
+  color: var(--color-terracota);
+  border-bottom-color: var(--color-terracota);
+  font-weight: 600;
+}

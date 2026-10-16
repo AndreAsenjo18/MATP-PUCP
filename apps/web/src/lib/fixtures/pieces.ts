@@ -61,7 +61,7 @@ const P1: PieceDetail = {
   title: "Toro de Pucará",
   description: "Toro ritual de cerámica vidriada, decoración policroma.",
   collection: collectionRef("MMZ"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "CERAMICA"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "ARCILLA"), termRef("MATERIAL", "PIGMENTO")],
@@ -117,7 +117,7 @@ const P3: PieceDetail = {
   title: "Retablo ayacuchano",
   description: "Retablo de dos cuerpos con escena costumbrista.",
   collection: collectionRef("RA"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "RETABLO"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA"), termRef("MATERIAL", "PASTA_PAPA")],
@@ -156,7 +156,7 @@ const P4: PieceDetail = {
   title: "Cajón San Marcos",
   description: "Cajón retablo con figuras de bulto para la festividad de San Marcos.",
   collection: collectionRef("RAB"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "RETABLO"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA")],
@@ -192,7 +192,7 @@ const P5: PieceDetail = {
   title: "Niño Manuelito",
   description: "Imagen de bulto policromada, vestida con textiles bordados.",
   collection: collectionRef("AJB"),
-  tenure_regime: "LOAN_FOR_USE",
+  tenure_regime: "Comodato",
   category: termRef("CATEGORY", "IMAGINERIA"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA"), termRef("MATERIAL", "PIGMENTO")],
@@ -228,7 +228,7 @@ const P6: PieceDetail = {
   title: "Virgen de la Puerta",
   description: "Imagen de bulto en yeso policromado.",
   collection: collectionRef("AJB"),
-  tenure_regime: "LOAN_FOR_USE",
+  tenure_regime: "Comodato",
   category: termRef("CATEGORY", "IMAGINERIA"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "YESO"), termRef("MATERIAL", "PIGMENTO")],
@@ -267,7 +267,7 @@ const P7: PieceDetail = {
   title: "Juego de mates burilados",
   description: "Conjunto de dos mates burilados con escenas de cosecha y fiesta patronal.",
   collection: collectionRef("MBB"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "MATE_BURILADO"),
   object_type: termRef("OBJECT_TYPE", "CONJUNTO"),
   materials: [termRef("MATERIAL", "CALABAZA")],
@@ -318,7 +318,7 @@ const P9: PieceDetail = {
   title: "Charango",
   description: "Charango de caja completa, tapa de madera.",
   collection: collectionRef("LRM"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "INSTRUMENTO_MUSICAL"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA"), termRef("MATERIAL", "CUERO")],
@@ -357,7 +357,7 @@ const P10: PieceDetail = {
   title: "Máscara de chuncho",
   description: "Máscara de danza ritual, sin registro de colección de origen.",
   collection: null,
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "MASCARA"),
   object_type: null,
   materials: [termRef("MATERIAL", "YESO")],
@@ -393,7 +393,7 @@ const P11: PieceDetail = {
   title: "Tabla pintada de Sarhua",
   description: "Tabla pintada con escena costumbrista de Sarhua.",
   collection: collectionRef("LRM"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "PINTURA_POPULAR"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA"), termRef("MATERIAL", "PIGMENTO")],
@@ -429,7 +429,7 @@ const P12: PieceDetail = {
   title: "Manta tejida",
   description: "Manta de lana con iconografía andina en telar de cuatro estacas.",
   collection: collectionRef("MBB"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "TEXTIL"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "LANA")],
@@ -465,7 +465,7 @@ const P13: PieceDetail = {
   title: "Quena",
   description: "Quena de caña, recibida para la exposición temporal \"Sonidos del ande\".",
   collection: collectionRef("LRM"),
-  tenure_regime: "TEMPORARY_LOAN",
+  tenure_regime: "Préstamo Temporal",
   category: termRef("CATEGORY", "INSTRUMENTO_MUSICAL"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "MADERA")],
@@ -501,7 +501,7 @@ const P14: PieceDetail = {
   title: "Cántaro decorado",
   description: "Cántaro de cerámica con decoración geométrica.",
   collection: collectionRef("MMZ"),
-  tenure_regime: "OWNED",
+  tenure_regime: "Propiedad",
   category: termRef("CATEGORY", "CERAMICA"),
   object_type: termRef("OBJECT_TYPE", "BIEN_MUEBLE"),
   materials: [termRef("MATERIAL", "ARCILLA")],
@@ -542,15 +542,15 @@ const MISSING_FIELDS: Record<string, string[]> = {
 
 export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
   const alerts: PieceAlert[] = [];
-  const withoutCode = piece.tenure_regime === "OWNED" && !piece.inventory_code;
+  const withoutCode = piece.tenure_regime === "Propiedad" && !piece.inventory_code;
   alerts.push({
     type: "WITHOUT_INVENTORY_CODE",
     applies: withoutCode,
     message: withoutCode
       ? "Pieza propia sin código I asignado."
-      : piece.tenure_regime === "LOAN_FOR_USE"
+      : piece.tenure_regime === "Comodato"
         ? "En comodato: nunca recibe código I (RN-003), no es una alerta."
-        : piece.tenure_regime === "TEMPORARY_LOAN"
+        : piece.tenure_regime === "Préstamo Temporal"
           ? "Préstamo temporal: no entra al inventario permanente (RN-004), no es una alerta."
           : "Tiene código I vigente.",
   });

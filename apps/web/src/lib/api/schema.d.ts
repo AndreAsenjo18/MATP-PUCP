@@ -1,9 +1,29 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7635109b8b10915ec7195bbe34918d196517d6b75f2962e07b2e2c957afcb0be
+ * openapi-sha256: 48099dad1a6d8866cfff881a789acdf59ee863880e592046d2fc1844231d6080
  */
 export interface paths {
+    "/api/v1/ai/batch-enrich": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)
+         * @description Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación.
+         */
+        post: operations["batchAiEnrichment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/suggest-cataloging": {
         parameters: {
             query?: never;
@@ -537,6 +557,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar préstamos y exposiciones temporales */
+        get: operations["listLoans"];
+        put?: never;
+        /** Registrar un préstamo o salida de exhibición */
+        post: operations["createLoan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/loans/{loan_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Actualizar el estado de un préstamo */
+        put: operations["updateLoanStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/locations": {
         parameters: {
             query?: never;
@@ -604,6 +659,26 @@ export interface paths {
         get: operations["getLocationsTree"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/bulk-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
+         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         */
+        post: operations["bulkDownloadMedia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -723,7 +798,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Identificadores de la pieza (vigentes y, opcionalmente, históricos) */
+        /** Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja) */
         get: operations["listPieceIdentifiers"];
         put?: never;
         /** Registrar un identificador externo (I bloqueado; comodato sin I) */
@@ -1123,7 +1198,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Cambiar el rol o el estado de un usuario (RF-039) */
+        /** Reemplazar los roles asignados a un usuario (RF-039) */
         put: operations["updateUserRole"];
         post?: never;
         delete?: never;
@@ -1241,6 +1316,37 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AiBatchOut
+         * @description State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).
+         * @example {
+         *       "id": "01920000-0000-7000-8000-000000000902",
+         *       "processed": 12,
+         *       "skipped": [],
+         *       "status": "RUNNING",
+         *       "suggestion_ids": [
+         *         "01920000-0000-7000-8000-000000000901"
+         *       ]
+         *     }
+         */
+        AiBatchOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Processed */
+            processed: number;
+            /** Skipped */
+            skipped?: components["schemas"]["SkippedPiece"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "DONE" | "PARTIAL" | "FAILED";
+            /** Suggestion Ids */
+            suggestion_ids?: string[];
+        };
         /**
          * AiFunction
          * @enum {string}
@@ -1475,6 +1581,22 @@ export interface components {
          * @enum {string}
          */
         AuditOrigin: "MANUAL" | "IMPORT" | "AI" | "SYSTEM";
+        /**
+         * BatchEnrichRequest
+         * @description Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).
+         * @example {
+         *       "piece_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ]
+         *     }
+         */
+        BatchEnrichRequest: {
+            /**
+             * Piece Ids
+             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             */
+            piece_ids: string[];
+        };
         /** Body_uploadImportBatch */
         Body_uploadImportBatch: {
             /**
@@ -1504,6 +1626,82 @@ export interface components {
              */
             view_type: string;
         };
+        /**
+         * BulkDownloadJob
+         * @description State of a photo package; restricted photos are left out (RN-008).
+         * @example {
+         *       "download_url": "http://localhost:9000/matp-media/exports/fotos.zip",
+         *       "expires_at": "2026-09-17T10:30:00Z",
+         *       "id": "01920000-0000-7000-8000-000000000901",
+         *       "included_photos": 84,
+         *       "omitted": [],
+         *       "piece_count": 30,
+         *       "status": "READY"
+         *     }
+         */
+        BulkDownloadJob: {
+            /** Download Url */
+            download_url?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Included Photos */
+            included_photos?: number | null;
+            /** Omitted */
+            omitted?: components["schemas"]["OmittedPhoto"][];
+            /** Piece Count */
+            piece_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "READY" | "FAILED";
+        };
+        /**
+         * BulkDownloadRequest
+         * @description Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote).
+         * @example {
+         *       "piece_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ]
+         *     }
+         */
+        BulkDownloadRequest: {
+            /**
+             * Piece Ids
+             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             */
+            piece_ids: string[];
+        };
+        /**
+         * CatalogingSuggestionRequest
+         * @description Body of ``POST /ai/suggest-cataloging``: the contract requires the piece (RIA-01).
+         * @example {
+         *       "field": "notes",
+         *       "piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
+         */
+        CatalogingSuggestionRequest: {
+            /**
+             * Field
+             * @description Campo de texto libre de origen (RIA-01).
+             */
+            field?: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Text
+             * @description Texto explícito si no se toma de la ficha.
+             */
+            text?: string | null;
+        };
         /** CodeBrief */
         CodeBrief: {
             /** Identifier Type Code */
@@ -1517,15 +1715,25 @@ export interface components {
          * CollectionCreate
          * @example {
          *       "acronym": "R.A.",
-         *       "default_tenure_regime": "OWNED",
+         *       "default_tenure_regime": "Propiedad",
          *       "name": "Colección de retablos (ficticia)"
          *     }
          */
         CollectionCreate: {
             /** Acronym */
             acronym?: string | null;
-            /** @default OWNED */
-            default_tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Code
+             * @description Código del contrato (`CollectionItem.code`); equivale a `acronym`.
+             */
+            code?: string | null;
+            /**
+             * Default Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @default Propiedad
+             * @enum {string}
+             */
+            default_tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Description */
             description?: string | null;
             /** Name */
@@ -1540,8 +1748,9 @@ export interface components {
          * @example {
          *       "acronym": "M.M.Z.",
          *       "acronym_normalized": "MMZ",
+         *       "code": "MMZ",
          *       "created_at": "2026-09-17T10:30:00Z",
-         *       "default_tenure_regime": "OWNED",
+         *       "default_tenure_regime": "Propiedad",
          *       "description": "Colección sintética de demostración.",
          *       "id": "01920000-0000-7000-8000-000000000201",
          *       "is_active": true,
@@ -1559,11 +1768,21 @@ export interface components {
             /** Acronym Normalized */
             acronym_normalized: string | null;
             /**
+             * Code
+             * @description Código del contrato (`CollectionItem.code`): la sigla normalizada.
+             */
+            code?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            default_tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Default Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
+             */
+            default_tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Description */
             description: string | null;
             /**
@@ -1876,6 +2095,10 @@ export interface components {
             checks: {
                 [key: string]: components["schemas"]["DependencyStatus"];
             };
+            /** Commit */
+            commit: string;
+            /** Release */
+            release: string | null;
             /** Service */
             service: string;
             /**
@@ -1926,6 +2149,16 @@ export interface components {
          *     }
          */
         IdentifierOut: {
+            /**
+             * Deleted At
+             * @description Fecha de la baja lógica de un código secundario mal asignado (RN-005).
+             */
+            deleted_at?: string | null;
+            /**
+             * Deletion Reason
+             * @description Motivo de la baja lógica.
+             */
+            deletion_reason?: string | null;
             /** Detected Format */
             detected_format: string | null;
             /**
@@ -2260,24 +2493,43 @@ export interface components {
              */
             status: "ok";
         };
+        /**
+         * LoanStubOut
+         * @description Non-binding response until K1 defines the final request schemas.
+         * @example {
+         *       "id": "01920000-0000-7000-8000-000000000040",
+         *       "status": "PENDIENTE_DEFINICION"
+         *     }
+         */
+        LoanStubOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @description Estado configurable; sus valores se acuerdan en K1.
+             */
+            status: string;
+        };
         /** LocationCreate */
         LocationCreate: {
             /** Code */
             code: string;
             /** Description */
             description?: string | null;
-            level: components["schemas"]["LocationLevel"];
+            /**
+             * Level
+             * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
+             */
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
             /** Parent Id */
             parent_id?: string | null;
         };
-        /**
-         * LocationLevel
-         * @description [SUPUESTO] sede -> espacio -> mueble/rack -> nivel -> contenedor.
-         * @enum {string}
-         */
-        LocationLevel: "SITE" | "SPACE" | "FURNITURE" | "SHELF_LEVEL" | "CONTAINER";
         /**
          * LocationNode
          * @description Nodo del árbol de ubicaciones (contrato del equipo: `LocationNode`; RF-016).
@@ -2317,20 +2569,20 @@ export interface components {
          *       "code": "SEDE1-DEP-A",
          *       "id": "01920000-0000-7000-8000-000000000401",
          *       "is_active": true,
-         *       "level": "SPACE",
+         *       "level": "Depósito",
          *       "name": "Depósito A (ficticio)",
          *       "parent_id": "01920000-0000-7000-8000-000000000400",
          *       "path": [
          *         {
          *           "code": "SEDE1",
          *           "id": "01920000-0000-7000-8000-000000000400",
-         *           "level": "SITE",
+         *           "level": "Sede",
          *           "name": "Sede 1 (ficticia)"
          *         },
          *         {
          *           "code": "SEDE1-DEP-A",
          *           "id": "01920000-0000-7000-8000-000000000401",
-         *           "level": "SPACE",
+         *           "level": "Depósito",
          *           "name": "Depósito A (ficticio)"
          *         }
          *       ]
@@ -2348,7 +2600,12 @@ export interface components {
             id: string;
             /** Is Active */
             is_active: boolean;
-            level: components["schemas"]["LocationLevel"];
+            /**
+             * Level
+             * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
+             */
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
             /** Parent Id */
@@ -2368,8 +2625,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** Level */
-            level: string;
+            /**
+             * Level
+             * @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor.
+             * @enum {string}
+             */
+            level: "Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor";
             /** Name */
             name: string;
         };
@@ -2573,7 +2834,7 @@ export interface components {
          *       "sort_order": 0,
          *       "taken_on": "2025-03-10",
          *       "view_type": {
-         *         "code": "FRONTAL",
+         *         "code": "Frontal",
          *         "id": "01920000-0000-7000-8000-000000000321",
          *         "label": "Frontal"
          *       },
@@ -2671,7 +2932,7 @@ export interface components {
          *       "to_location": {
          *         "code": "SEDE1-DEP-A",
          *         "id": "01920000-0000-7000-8000-000000000401",
-         *         "level": "SPACE",
+         *         "level": "Depósito",
          *         "name": "Depósito A (ficticio)"
          *       }
          *     }
@@ -2821,6 +3082,24 @@ export interface components {
              * @description Mensaje para la persona usuaria, en español.
              */
             message: string;
+        };
+        /** OmittedPhoto */
+        OmittedPhoto: {
+            /**
+             * Media Id
+             * Format: uuid
+             */
+            media_id: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Restriction
+             * @description Restricción de uso efectiva que impide incluirla.
+             */
+            restriction: string;
         };
         /** Page[AiSuggestionOut] */
         Page_AiSuggestionOut_: {
@@ -3037,7 +3316,7 @@ export interface components {
          *       "period": {
          *         "text": "s. XX"
          *       },
-         *       "tenure_regime": "OWNED",
+         *       "tenure_regime": "Propiedad",
          *       "title": "Retablo de San Marcos (sintético)"
          *     }
          */
@@ -3088,7 +3367,12 @@ export interface components {
             recorded_by?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
-            tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
+             */
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
         };
@@ -3144,7 +3428,7 @@ export interface components {
          *       },
          *       "provenance": "Ayacucho (sintético)",
          *       "recorded_by": "Registrador sintético",
-         *       "tenure_regime": "LOAN_FOR_USE",
+         *       "tenure_regime": "Comodato",
          *       "title": "Vasija ceremonial (sintética)",
          *       "updated_at": "2026-09-17T10:30:00Z"
          *     }
@@ -3213,7 +3497,12 @@ export interface components {
             recorded_by: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number: string | null;
-            tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
+             */
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
             /**
@@ -3268,7 +3557,7 @@ export interface components {
          *       "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
          *       "media_count": 2,
          *       "period_text": "ca. 1950",
-         *       "tenure_regime": "OWNED",
+         *       "tenure_regime": "Propiedad",
          *       "title": "Vasija ceremonial (sintética)",
          *       "updated_at": "2026-09-17T10:30:00Z"
          *     }
@@ -3303,7 +3592,12 @@ export interface components {
             media_count: number;
             /** Period Text */
             period_text: string | null;
-            tenure_regime: components["schemas"]["TenureRegime"];
+            /**
+             * Tenure Regime
+             * @description Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal.
+             * @enum {string}
+             */
+            tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
             /** Title */
             title: string;
             /**
@@ -3590,7 +3884,7 @@ export interface components {
          *         "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
          *         "media_count": 2,
          *         "period_text": "ca. 1950",
-         *         "tenure_regime": "OWNED",
+         *         "tenure_regime": "Propiedad",
          *         "title": "Vasija ceremonial (sintética)",
          *         "updated_at": "2026-09-17T10:30:00Z"
          *       }
@@ -3605,6 +3899,19 @@ export interface components {
             match_type: "IDENTIFIER" | "TITLE";
             matched_identifier?: components["schemas"]["CodeBrief"] | null;
             piece: components["schemas"]["PieceSummary"];
+        };
+        /** SkippedPiece */
+        SkippedPiece: {
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Por ejemplo «ya tiene descripción» o «metadatos insuficientes».
+             */
+            reason: string;
         };
         /**
          * SourceRecordOut
@@ -3658,12 +3965,6 @@ export interface components {
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
         /**
-         * TenureRegime
-         * @description Régimen de tenencia (RF-005). Only OWNED pieces may receive an inventory code I.
-         * @enum {string}
-         */
-        TenureRegime: "OWNED" | "LOAN_FOR_USE" | "TEMPORARY_LOAN";
-        /**
          * TermCreate
          * @example {
          *       "code": "FRAGMENTADO",
@@ -3680,6 +3981,11 @@ export interface components {
             /** Label */
             label: string;
             /**
+             * Parent Id
+             * @description Término más general del mismo vocabulario; vacío en la raíz.
+             */
+            parent_id?: string | null;
+            /**
              * Sort Order
              * @default 0
              */
@@ -3692,6 +3998,7 @@ export interface components {
          *       "id": "01920000-0000-7000-8000-000000000301",
          *       "is_active": true,
          *       "label": "Regular",
+         *       "name": "Regular",
          *       "sort_order": 2,
          *       "vocabulary_code": "CONSERVATION_STATUS"
          *     }
@@ -3712,6 +4019,13 @@ export interface components {
             is_active: boolean;
             /** Label */
             label: string;
+            /**
+             * Name
+             * @description Nombre del contrato (`CollectionItem.name`): la etiqueta.
+             */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
             /** Sort Order */
             sort_order: number;
             /** Vocabulary Code */
@@ -3867,6 +4181,22 @@ export interface components {
             /** Roles */
             roles: string[];
         };
+        /**
+         * UserRoleUpdate
+         * @description Body of ``PUT /users/{id}/role``: replaces the whole set of assigned roles (D3).
+         * @example {
+         *       "roles": [
+         *         "CATALOGUER"
+         *       ]
+         *     }
+         */
+        UserRoleUpdate: {
+            /**
+             * Roles
+             * @description Códigos de rol que quedan asignados.
+             */
+            roles: string[];
+        };
         /** UserUpdate */
         UserUpdate: {
             /** Full Name */
@@ -3953,6 +4283,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    batchAiEnrichment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchEnrichRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
     suggestCataloging: {
         parameters: {
             query?: never;
@@ -3962,7 +4352,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AiSuggestionCreate"];
+                "application/json": components["schemas"]["CatalogingSuggestionRequest"];
             };
         };
         responses: {
@@ -6119,10 +6509,181 @@ export interface operations {
             };
         };
     };
+    listLoans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoanStubOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    createLoan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoanStubOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    updateLoanStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                loan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoanStubOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
     listLocations: {
         parameters: {
             query?: {
-                level?: components["schemas"]["LocationLevel"] | null;
+                /** @description Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor. */
+                level?: ("Sede" | "Depósito" | "Mueble" | "Nivel" | "Contenedor") | null;
                 /** @description Solo hijos directos. */
                 parent_id?: string | null;
             };
@@ -6455,6 +7016,66 @@ export interface operations {
             };
         };
     };
+    bulkDownloadMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
     uploadMediaAsset: {
         parameters: {
             query?: never;
@@ -6495,8 +7116,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6504,13 +7125,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6584,7 +7205,8 @@ export interface operations {
                 /** @description Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031). */
                 q?: string | null;
                 sort?: "title" | "-title" | "created_at" | "-created_at";
-                tenure_regime?: components["schemas"]["TenureRegime"] | null;
+                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
                 /** @description true = piezas sueltas. */
                 without_collection?: boolean | null;
             };
@@ -7052,7 +7674,7 @@ export interface operations {
     listPieceIdentifiers: {
         parameters: {
             query?: {
-                /** @description Incluye códigos no vigentes. */
+                /** @description Incluye códigos no vigentes y los dados de baja (RN-005). */
                 include_history?: boolean;
             };
             header?: never;
@@ -7214,8 +7836,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7223,13 +7845,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description El código I no se elimina (RN-002). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8743,7 +9374,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UserUpdate"];
+                "application/json": components["schemas"]["UserRoleUpdate"];
             };
         };
         responses: {

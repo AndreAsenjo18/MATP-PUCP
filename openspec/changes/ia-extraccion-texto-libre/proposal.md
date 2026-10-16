@@ -4,7 +4,7 @@ Gran parte de la información útil de las piezas está enterrada en campos de t
 
 ## What Changes
 
-- Solicitud de sugerencias desde la API (`POST /api/v1/ai/suggestions`) que llama al servicio de IA, filtra campos sensibles y datos personales de la entrada, y guarda la sugerencia como pendiente con la entrada usada, la salida, el proveedor, el modelo y una huella de los campos de origen.
+- Solicitud de sugerencias desde la API (`POST /api/v1/ai/suggest-cataloging`) que llama al servicio de IA, filtra campos sensibles y datos personales de la entrada, y guarda la sugerencia como pendiente con la entrada usada, la salida, el proveedor, el modelo y una huella de los campos de origen.
 - Flujo genérico de revisión: aprobación total, parcial o con edición (`POST /api/v1/ai/suggestions/{suggestion_id}/approve`) aplicada con los servicios de dominio y auditoría de origen "IA aprobada"; rechazo con motivo obligatorio (`.../reject`); detección de sugerencias obsoletas.
 - Función RIA-01: extracción de medidas estructuradas, estado de conservación, participación en exposiciones y marcas de revisión, cada dato con su fragmento de origen y su destino en la ficha.
 - Degradación controlada: si el servicio de IA no responde, la API informa que la asistencia no está disponible sin afectar al resto.

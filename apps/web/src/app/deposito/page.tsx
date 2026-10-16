@@ -101,7 +101,7 @@ function DepositoContent() {
               onClick={() => {
                 store.registerMovement(
                   selected.id,
-                  selected.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "SITE" },
+                  selected.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "Sede" },
                   "VERIFICATION",
                   "Verificación física desde vista de depósito.",
                   actor,

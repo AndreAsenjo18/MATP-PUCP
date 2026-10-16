@@ -41,7 +41,7 @@ sequenceDiagram
         A->>DB: INSERT user_session(token_hash) + auth_event
         A-->>W: 200 + Set-Cookie matp_session + Set-Cookie matp_csrf
     end
-    W->>A: PATCH /pieces/{id} (cookie + X-CSRF-Token)
+    W->>A: PUT /pieces/{id} (cookie + X-CSRF-Token)
     A->>DB: sesión válida y no revocada, permisos actuales
     A-->>W: 200
 ```

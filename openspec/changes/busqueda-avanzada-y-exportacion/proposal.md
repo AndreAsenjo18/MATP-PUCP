@@ -7,7 +7,7 @@
 - Objeto de filtros único (`PieceFilter`) compartido por búsqueda, exportación y reportes, con todos los filtros de RF-032: colección con subcolecciones, categoría, material, rango de época con conteo de piezas excluidas por época sin interpretar, estado de conservación, ubicación con descendientes, régimen de tenencia, disponibilidad y alertas de incompletitud.
 - Búsqueda de texto sin distinguir mayúsculas ni tildes sobre denominación, autor, procedencia, material, categoría, época y estado, combinada con búsqueda por cualquier código (vigente o histórico, con alias de siglas si existen), con indicación de qué coincidió y orden por relevancia.
 - Mensajes de "sin resultados" con sugerencias y lista de filtros activos (contrato para la UI).
-- Exportación de resultados a Excel (`POST /api/v1/search/export`) con hoja de filtros y fecha, respetando campos sensibles; en segundo plano por encima de un umbral, con trabajos de exportación consultables y archivos que caducan.
+- Exportación de resultados a Excel (`POST /api/v1/reports/export-excel`) con hoja de filtros y fecha, respetando campos sensibles; en segundo plano por encima de un umbral, con trabajos de exportación consultables y archivos que caducan.
 - Exportación completa en formato abierto (`GET /api/v1/exports/full` → trabajo en segundo plano): paquete ZIP con un CSV y una hoja por entidad, diccionario de columnas y manifiesto con conteos y huellas, incluyendo registros eliminados lógicamente.
 - Auditoría de cada exportación (quién, cuándo, filtros, columnas sensibles incluidas) por Ley 29733.
 - Script reproducible de prueba de rendimiento con 20 000 piezas sintéticas y 10 usuarios concurrentes que reporta el percentil 95.

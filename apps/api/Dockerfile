@@ -27,6 +27,11 @@ RUN pip install --no-deps /ai
 COPY apps/api .
 RUN pip install --no-deps . && chown -R matp:matp /app /ai
 
+# Commit the image was built from, reported by /health (change pipeline-despliegue-ambientes, D5).
+# Declared after the dependency layers so a new commit does not invalidate their cache.
+ARG GIT_SHA=dev
+ENV APP_COMMIT=$GIT_SHA
+
 USER matp
 EXPOSE 8000
 

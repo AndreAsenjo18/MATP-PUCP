@@ -27,6 +27,8 @@ class VocabularyCode:
     OBJECT_TYPE = "OBJECT_TYPE"
     AVAILABILITY = "AVAILABILITY"
     USAGE_RESTRICTION = "USAGE_RESTRICTION"
+    LOAN_TYPE = "LOAN_TYPE"
+    LOAN_STATUS = "LOAN_STATUS"
 
 
 class Vocabulary(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
@@ -43,6 +45,8 @@ class Term(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "term"
 
     vocabulary_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vocabulary.id"), index=True)
+    # Broader term in the same vocabulary (craft line -> category, RF-011). Null at the root.
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("term.id"), index=True)
     code: Mapped[str] = mapped_column(String(80))
     label: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)

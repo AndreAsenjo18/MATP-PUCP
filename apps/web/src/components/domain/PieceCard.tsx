@@ -9,6 +9,7 @@ import { cardClassName } from "@/components/ui/Card";
 import type { ApiSchemas } from "@/lib/api/client";
 
 import { AlertBadge, TenureBadge } from "./StatusBadges";
+import type { TenureRegimeLabel } from "./status-intents";
 
 type PieceAlert = ApiSchemas["PieceAlert"];
 
@@ -18,7 +19,7 @@ export interface PieceCardProps {
   inventoryCode: string | null;
   collectionName: string | null;
   locationLabel: string | null;
-  tenureRegime: ApiSchemas["TenureRegime"];
+  tenureRegime: TenureRegimeLabel | string;
   alerts?: PieceAlert[];
   hasPhoto: boolean;
 }

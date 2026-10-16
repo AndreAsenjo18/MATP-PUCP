@@ -20,15 +20,15 @@ import {
 } from "./status-intents";
 import { AlertBadge, LockBadge, StatusBadge, TenureBadge } from "./StatusBadges";
 
-const loanPiece = PIECES.find((p) => p.tenure_regime === "LOAN_FOR_USE")!;
+const loanPiece = PIECES.find((p) => p.tenure_regime === "Comodato")!;
 const pieceWithoutPhoto = PIECES.find((p) => p.media_count === 0)!;
 const pieceWithCode = PIECES.find((p) => p.inventory_code && p.identifiers.some((i) => i.is_locked))!;
 
 describe("status-intents", () => {
   it("comodato y préstamo temporal son info; propia es default", () => {
-    expect(tenureStatus("LOAN_FOR_USE")).toEqual({ label: "Comodato", intent: "info" });
-    expect(tenureStatus("TEMPORARY_LOAN")).toEqual({ label: "Préstamo temporal", intent: "info" });
-    expect(tenureStatus("OWNED").intent).toBe("default");
+    expect(tenureStatus("Comodato")).toEqual({ label: "Comodato", intent: "info" });
+    expect(tenureStatus("Préstamo Temporal")).toEqual({ label: "Préstamo temporal", intent: "info" });
+    expect(tenureStatus("Propiedad").intent).toBe("default");
   });
 
   it("información incompleta es warning y código no normalizable es danger", () => {
@@ -61,7 +61,7 @@ describe("status-intents", () => {
 
 describe("badges de dominio", () => {
   it("TenureBadge muestra Comodato con intent info", () => {
-    const html = render(<TenureBadge regime="LOAN_FOR_USE" />);
+    const html = render(<TenureBadge regime="Comodato" />);
     expect(html).toContain(BADGE_INTENTS.info);
     expect(visibleText(html)).toBe("Comodato");
   });
@@ -134,7 +134,7 @@ describe("PieceCard", () => {
         inventoryCode="I-0001"
         collectionName={null}
         locationLabel={null}
-        tenureRegime="OWNED"
+        tenureRegime="Propiedad"
         hasPhoto
       />,
     );

@@ -250,7 +250,7 @@ function LocationTab({
               onClick={() =>
                 store.registerMovement(
                   pieceId,
-                  piece.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "SITE" },
+                  piece.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "Sede" },
                   "VERIFICATION",
                   "Verificación física registrada desde la ficha.",
                   currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",

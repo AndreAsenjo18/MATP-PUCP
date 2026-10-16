@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-from app.core.config import Settings
+from app.core.config import Settings, load_settings
 from app.main import create_app
 from tests.conftest import SECRET
 
@@ -28,6 +28,39 @@ def test_health_ok(settings: Settings) -> None:
         "database": {"status": "ok", "detail": None},
         "storage": {"status": "ok", "detail": None},
     }
+
+
+def test_health_identifies_a_local_build_as_development(settings: Settings) -> None:
+    """Spec plataforma — Versión desplegada identificable: sin versión de build no falla."""
+    app = create_app(settings, health_checks={"database": _ok, "storage": _ok})
+    with TestClient(app) as client:
+        response = client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["commit"] == "dev"
+    assert body["release"] is None
+    # Only service metadata and dependency status: no catalog data.
+    assert set(body) == {"status", "service", "version", "commit", "release", "checks"}
+
+
+def test_health_reports_the_deployed_commit_and_release(settings: Settings) -> None:
+    deployed = settings.model_copy(update={"app_commit": "556f5e8", "app_release": "v0.1.0"})
+    app = create_app(deployed, health_checks={"database": _ok, "storage": _ok})
+    with TestClient(app) as client:
+        body = client.get("/health").json()
+    assert body["commit"] == "556f5e8"
+    assert body["release"] == "v0.1.0"
+
+
+def test_empty_release_variable_means_no_release() -> None:
+    settings = load_settings(
+        app_env="test",
+        database_url="sqlite+pysqlite:///:memory:",
+        s3_bucket="matp-test",
+        jwt_secret=SECRET,
+        app_release="",
+    )
+    assert settings.app_release is None
 
 
 def test_health_degraded_when_database_down(settings: Settings) -> None:

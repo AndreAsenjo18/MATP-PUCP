@@ -6,6 +6,7 @@ from app.api.v1 import (
     admin,
     collections,
     imports,
+    loans,
     locations,
     media,
     pieces,
@@ -15,5 +16,5 @@ from app.api.v1 import (
 API_PREFIX = "/api/v1"
 
 api_router = APIRouter(prefix=API_PREFIX)
-for module in (pieces, collections, locations, media, imports, quality_reports, admin):
+for module in (pieces, collections, locations, loans, media, imports, quality_reports, admin):
     api_router.include_router(module.router)

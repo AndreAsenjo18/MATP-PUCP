@@ -4,8 +4,9 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of, serialize_label
 from app.api.refs import (
     EX_COLLECTION_ID,
     EX_DATETIME,
@@ -73,7 +74,7 @@ class PieceSummary(BaseModel):
                     "id": EX_PIECE_ID,
                     "title": "Vasija ceremonial (sintética)",
                     "collection": _COLLECTION_REF,
-                    "tenure_regime": "OWNED",
+                    "tenure_regime": "Propiedad",
                     "inventory_code": "I-0236",
                     "codes": [_CODE_EXAMPLE],
                     "category": _CATEGORY_REF,
@@ -91,7 +92,9 @@ class PieceSummary(BaseModel):
     id: uuid.UUID
     title: str
     collection: CollectionRef | None
-    tenure_regime: TenureRegime
+    tenure_regime: TenureRegimeLabel = Field(
+        description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+    )
     inventory_code: str | None = Field(description="Código I vigente tal como está escrito.")
     codes: list[CodeBrief] = Field(description="Identificadores vigentes.")
     category: TermRef | None
@@ -104,6 +107,12 @@ class PieceSummary(BaseModel):
     has_location: bool
     updated_at: datetime
 
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_to_label(cls, value: object) -> str | None:
+        """Emite la etiqueta en español del contrato aunque llegue el código interno."""
+        return serialize_label(TENURE_REGIME_LABELS, value)  # type: ignore[arg-type]
+
 
 class PieceDetail(BaseModel):
     model_config = ConfigDict(
@@ -114,7 +123,7 @@ class PieceDetail(BaseModel):
                     "title": "Vasija ceremonial (sintética)",
                     "description": "Descripción sintética de demostración.",
                     "collection": _COLLECTION_REF,
-                    "tenure_regime": "LOAN_FOR_USE",
+                    "tenure_regime": "Comodato",
                     "legal_owner": None,
                     "lender_name": None,
                     "loan_agreement_ref": None,
@@ -159,8 +168,17 @@ class PieceDetail(BaseModel):
     title: str
     description: str | None
     collection: CollectionRef | None
-    tenure_regime: TenureRegime
+    tenure_regime: TenureRegimeLabel = Field(
+        description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+    )
     legal_owner: str | None
+
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_to_label(cls, value: object) -> str | None:
+        """Emite la etiqueta en español del contrato aunque llegue el código interno."""
+        return serialize_label(TENURE_REGIME_LABELS, value)  # type: ignore[arg-type]
+
     lender_name: str | None = Field(description="Comodante. Sensible (RF-041).")
     loan_agreement_ref: str | None = Field(description="Contrato de comodato. Sensible (RF-041).")
     temporary_inventory_number: str | None
@@ -217,7 +235,7 @@ class PieceCreate(PieceWrite):
             "examples": [
                 {
                     "title": "Retablo de San Marcos (sintético)",
-                    "tenure_regime": "OWNED",
+                    "tenure_regime": "Propiedad",
                     "collection_id": EX_COLLECTION_ID,
                     "period": {"text": "s. XX"},
                     "identifiers": [{"identifier_type_code": "COLECCION", "value": "RA 28"}],
@@ -227,11 +245,26 @@ class PieceCreate(PieceWrite):
     )
 
     title: str = Field(min_length=1, max_length=500)
-    tenure_regime: TenureRegime
+    tenure_regime: TenureRegimeLabel = Field(
+        description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
+    )
     identifiers: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Identificadores iniciales ({identifier_type_code, value, source}).",
     )
+
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> str | None:
+        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+        if value is None:
+            return None
+        code = (
+            value
+            if isinstance(value, TenureRegime)
+            else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
+        )
+        return TENURE_REGIME_LABELS[code]
 
 
 class PieceUpdate(PieceWrite):

@@ -54,7 +54,7 @@ Una sola consulta con `COUNT(*) FILTER (WHERE ...)` en PostgreSQL (`SUM(CASE ...
 `GET /quality/incomplete?alert=&collection_id=&include_subcollections=true&page=` devuelve piezas con sus alertas activas (lista), ordenadas por número de alertas desc. `format=xlsx|csv` genera el archivo con cabecera de filtros y fecha (usa la utilidad de `busqueda-avanzada-y-exportacion` si existe; si no, CSV). Aplica enmascarado de campos sensibles.
 
 ### D5. Instantáneas diarias
-Tabla `completeness_snapshot (taken_on, collection_id nullable, alert_code, numerator, denominator)`; comando idempotente `python -m app.quality.snapshot` (script npm `kpis:snapshot`; con Docker `docker compose exec api python -m app.quality.snapshot`) que reemplaza la instantánea del día. `GET /quality/kpis/history?from=&to=&collection_id=`. La programación diaria (cron/systemd timer) se documenta en `despliegue-vm-y-respaldos`.
+Tabla `completeness_snapshot (taken_on, collection_id nullable, alert_code, numerator, denominator)`; comando idempotente `python -m app.quality.snapshot` (script npm `kpis:snapshot`; con Docker `docker compose exec api python -m app.quality.snapshot`) que reemplaza la instantánea del día. `GET /reports/dashboard-stats/history?from=&to=&collection_id=`. La programación diaria (cron/systemd timer) se documenta en `despliegue-vm-y-respaldos`.
 
 ### D6. Índices
 Se verifica con `EXPLAIN ANALYZE` en PostgreSQL (tarea con Docker) y se añaden si hacen falta: índice parcial `piece_identifier (piece_id) WHERE identifier_type_code='I' AND is_current AND deleted_at IS NULL`, `media_asset (piece_id) WHERE deleted_at IS NULL`.

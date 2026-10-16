@@ -2,7 +2,7 @@
 
 - Implementado: `GET /api/v1/pieces` con filtros AND iniciales y paginación; `GET /api/v1/search` por código normalizado N1–N7 o denominación (`ilike`), enmascarado RF-041.
 - `pg_trgm` e índices GIN de trigramas existen; `unaccent` no está habilitado.
-- Stubs: `POST /search/export`, `GET /exports/full`. Permisos: `exports.run`, `exports.full` (solo Administrador) [SUPUESTO C5].
+- Stubs: `POST /reports/export-excel`, `GET /exports/full`. Permisos: `exports.run`, `exports.full` (solo Administrador) [SUPUESTO C5].
 - Objetivo de rendimiento p95 ≤ 2 s con 20 000 piezas y 10 usuarios [SUPUESTO C4].
 
 ## Goals / Non-Goals
@@ -20,7 +20,7 @@
 ## Decisions
 
 ### D1. `PieceFilter` único
-Modelo Pydantic en `search/filters.py` con `to_where(session) -> ColumnElement` y `describe() -> list[ActiveFilter]` (texto legible para la hoja de filtros y los chips de la UI). Lo usan `GET /pieces`, `GET /search`, `POST /search/export`, los reportes y el reporte de incompletas. Filtros por campos sensibles (p. ej. valorización) se rechazan con `403 filter_not_allowed` si el rol no tiene el permiso (RF-041 escenario "Búsqueda por campo restringido").
+Modelo Pydantic en `search/filters.py` con `to_where(session) -> ColumnElement` y `describe() -> list[ActiveFilter]` (texto legible para la hoja de filtros y los chips de la UI). Lo usan `GET /pieces`, `GET /search`, `POST /reports/export-excel`, los reportes y el reporte de incompletas. Filtros por campos sensibles (p. ej. valorización) se rechazan con `403 filter_not_allowed` si el rol no tiene el permiso (RF-041 escenario "Búsqueda por campo restringido").
 - Época: superposición `period_from <= to AND period_to >= from`; la respuesta incluye `excluded_uninterpreted_period` (piezas que cumplen el resto de filtros pero solo tienen `period_text`).
 - Colección y ubicación: CTE recursiva de descendientes (PostgreSQL); en SQLite, precálculo en Python para pruebas.
 - Alertas: delega en los predicados de `alertas-y-reporte-incompletas`; sin ese change, el filtro responde `501` con `x-change` (se documenta en OpenAPI).
@@ -46,7 +46,7 @@ flowchart TD
 
 ### D3. Trabajos de exportación
 Tabla `export_job (id, kind: results|full|report, requested_by, params JSON, status, row_count, storage_key, sha256, expires_at, error)`.
-- `POST /search/export {filter, columns, format: xlsx|csv}`: si el conteo ≤ `EXPORT_SYNC_MAX_ROWS` (5 000 [SUPUESTO C8]) responde el archivo directamente; si no, `202` con `job_id`. Operaciones nuevas: `GET /api/v1/exports/jobs`, `GET /api/v1/exports/jobs/{job_id}` y `GET /api/v1/exports/jobs/{job_id}/download-url` (URL prefirmada; solo el solicitante o Administrador).
+- `POST /reports/export-excel {filter, columns, format: xlsx|csv}`: si el conteo ≤ `EXPORT_SYNC_MAX_ROWS` (5 000 [SUPUESTO C8]) responde el archivo directamente; si no, `202` con `job_id`. Operaciones nuevas: `GET /api/v1/exports/jobs`, `GET /api/v1/exports/jobs/{job_id}` y `GET /api/v1/exports/jobs/{job_id}/download-url` (URL prefirmada; solo el solicitante o Administrador).
 - Los archivos se guardan en `exports/<job_id>/` y caducan a las 72 h (`EXPORT_TTL_HOURS`): el objeto se elimina por regla de ciclo de vida del bucket; el registro `export_job` se conserva (es trazabilidad, no se borra).
 - Ejecución con el mismo patrón de worker en proceso que importación (latido y recuperación).
 - `app/core/xlsx.py`: `write_table(rows_iter, columns, meta_sheet)` con `openpyxl` en modo `write_only` (memoria constante). Primera hoja "Resultados", segunda "Filtros" (filtros activos, fecha, usuario, columnas omitidas por permisos).

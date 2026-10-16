@@ -1,17 +1,17 @@
 # Modelo de datos núcleo (MATP)
 
-> Generado desde los modelos SQLAlchemy (`apps/api/app/models.py`) del change `modelo-datos-nucleo` (2026-09-17). Migración: `apps/api/alembic/versions/0001_core_data_model.py`. Decisiones: `openspec/changes/modelo-datos-nucleo/design.md` (se archiva en `openspec/changes/archive/`) y `docs/adr/ADR-004-modelo-datos-auditoria.md`.
+> Generado desde los modelos SQLAlchemy (`apps/api/app/models.py`). La base nació con el change `modelo-datos-nucleo` (migración `0001_core_data_model`) y se amplía con el change `prestamos-y-exposiciones` (migración `0002_loans_and_exhibitions`). Decisiones: `openspec/changes/modelo-datos-nucleo/design.md` (archivado), `openspec/changes/prestamos-y-exposiciones/design.md` y `docs/adr/ADR-004-modelo-datos-auditoria.md`.
 
 ## Diagrama vigente y extensiones
 
 - **Diagrama del modelo vigente**: [`docs/diagramas/modelo-datos/er.puml`](diagramas/modelo-datos/er.puml), generado desde los modelos SQLAlchemy con `npm run diagrams:er` y verificado en CI con `npm run diagrams:check`.
-- **Extensiones previstas en el expediente**: [`docs/diagramas/cap6/er_extensiones.puml`](diagramas/cap6/er_extensiones.puml) (capítulo 6). Todas están planificadas, **ninguna está implementada todavía**; cada una indica su change o spec de origen.
+- **Extensiones previstas en el expediente**: [`docs/diagramas/cap6/er_extensiones.puml`](diagramas/cap6/er_extensiones.puml) (capítulo 6). Las extensiones de la tabla siguiente siguen planificadas; cada una indica su change o spec de origen.
+- **Préstamos y exposiciones**: `loan` y `loan_item` ya forman parte del modelo vigente y permiten expedientes con varias piezas. El servicio, sus rutas y los valores de sus vocabularios permanecen en el change `prestamos-y-exposiciones`; K1 debe validar esos valores.
 
 ### Extensiones planificadas
 
 | Extensión | Requisito | Origen |
 |---|---|---|
-| `loan`, `loan_item`, `exhibition`, `exhibition_piece` | RF-018 | change por proponer: `prestamos-y-exposiciones` |
 | `piece_document` | RF-015 | spec `multimedia` |
 | `valuation` | RF-037 | change `reportes-inventario`, D6 |
 | `piece.version` | — | change `ficha-pieza-crud`, D2 |

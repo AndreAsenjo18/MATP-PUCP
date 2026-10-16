@@ -3,7 +3,14 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.api.enums import (
+    LOCATION_LEVEL_LABELS,
+    PHOTO_VIEW_TYPE_LABELS,
+    LocationLevelLabel,
+    serialize_label,
+)
 
 # Fixed synthetic UUIDs used in OpenAPI examples (never real data).
 EX_PIECE_ID = "01920000-0000-7000-8000-000000000101"
@@ -36,9 +43,32 @@ class CollectionRef(ORMModel):
 
 class LocationRef(ORMModel):
     id: uuid.UUID
-    level: str
+    level: LocationLevelLabel = Field(
+        description="Nivel jerárquico en español: Sede, Depósito, Mueble, Nivel o Contenedor."
+    )
     code: str
     name: str
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def _level_to_label(cls, value: object) -> str | None:
+        """Traduce el código interno de nivel a la etiqueta del contrato (3.2)."""
+        label = serialize_label(LOCATION_LEVEL_LABELS, value)  # type: ignore[arg-type]
+        assert label is not None, "level es obligatorio en LocationRef"
+        return label
+
+
+def translate_view_term(term: "TermRef | None") -> "TermRef | None":
+    """Traduce el código interno del tipo de vista a la etiqueta del contrato (3.2).
+
+    Los códigos fuera del contrato (p. ej. `Superior`) conservan su código propio.
+    """
+    if term is None:
+        return None
+    code = PHOTO_VIEW_TYPE_LABELS.get(term.code, term.code)
+    if code == term.code:
+        return term
+    return TermRef(id=term.id, code=code, label=term.label)
 
 
 class UserRef(ORMModel):

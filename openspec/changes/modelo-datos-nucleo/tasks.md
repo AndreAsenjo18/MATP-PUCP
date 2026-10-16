@@ -21,14 +21,13 @@
 ## 4. Migraciones
 
 - [x] 4.1 Configurar Alembic (`alembic.ini`, `env.py` solo con `DATABASE_URL`) y generar `0001_core_data_model` con `pg_trgm`, índices de trigramas y triggers de solo inserción; verificar con `tests/test_migrations.py`: upgrade/downgrade en SQLite, `compare_metadata` sin diferencias, UPDATE/DELETE directo de `audit_log` rechazado y SQL offline de PostgreSQL con índice parcial, JSONB y triggers (Req: Ninguna escritura sin contexto de auditoría; RNF-007)
-- [ ] 4.2 Ejecutar `npm run migrate` contra PostgreSQL en compose y comprobar tablas, índice parcial y triggers con `psql` — **PENDIENTE (2026-09-17)**: daemon de Docker no disponible en la máquina del arranque
+- [x] 4.2 Ejecutar `npm run migrate` contra PostgreSQL en compose y comprobar tablas, índice parcial y triggers con `psql` — **VERIFICADO (2026-09-30)**: `npm run migrate` aplicó correctamente las migraciones `0001_core_data_model` y `0002_piece_contract_names`; se verificaron 24 tablas en PostgreSQL, 5 índices parciales —incluido `uq_piece_identifier_current_inventory_code`— y 8 registros de triggers append-only sobre `audit_log`, `conservation_assessment`, `piece_movement` y `piece_source_record`.
 
 ## 5. Datos semilla
 
 - [x] 5.1 Implementar `app/seed` (referencia, catálogo sintético, fotos placeholder, CLI) y verificar con `tests/test_seed.py`: 300 piezas, 40–60 % sin I, comodato sin I, duplicados, varias fotos por pieza subidas a almacenamiento (doble), usuarios sintéticos, auditoría de origen sistema, rechazo sobre catálogo con datos y reproducibilidad (Req: Datos de demostración sintéticos reproducibles; RNF-008, RNF-014)
 - [x] 5.2 Generar `data/fixtures/sabana_sintetica_v1.xlsx` con problemas reales e imágenes incrustadas y verificar con prueba de lectura openpyxl (RF-021, RF-029)
-- [ ] 5.3 Ejecutar `npm run seed` en compose y comprobar fotos en MinIO y conteos en PostgreSQL — **PENDIENTE (2026-09-17)**: daemon de Docker no disponible
-
+- [x] 5.3 Ejecutar `npm run seed` en compose y comprobar fotos en MinIO y conteos en PostgreSQL — **VERIFICADO (2026-09-30)**: `npm run seed` cargó 300 piezas, 433 recursos multimedia, 10 candidatos a duplicados, 6 usuarios y 6 colecciones; los conteos fueron comprobados directamente en PostgreSQL y el bucket `matp-media` fue verificado en MinIO con 433 objetos.
 ## 6. Documentación y cierre
 
 - [x] 6.1 Escribir `docs/modelo-datos.md` (ER Mermaid + tablas generadas desde los modelos) y `docs/adr/ADR-004-modelo-datos-auditoria.md`; ampliar ADR-003 con las dependencias nuevas

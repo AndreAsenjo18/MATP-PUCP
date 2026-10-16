@@ -24,6 +24,8 @@
     "format": "node scripts/py.mjs apps/api -m ruff format . && node scripts/py.mjs services/ai -m ruff format .",
     "test": "npm run test:api && npm run test:ai && npm run test:web",
     "test:api": "node scripts/py.mjs apps/api -m pytest",
+    "test:api:postgres": "node scripts/py.mjs apps/api -m pytest -m postgres",
+    "test:api:pg": "node scripts/test-api-pg.mjs",
     "test:ai": "node scripts/py.mjs services/ai -m pytest",
     "test:web": "npm run test -w apps/web",
     "build:web": "npm run build -w apps/web",

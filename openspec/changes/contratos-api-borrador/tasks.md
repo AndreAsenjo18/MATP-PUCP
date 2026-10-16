@@ -26,5 +26,5 @@
 
 - [x] 5.1 Ejecutar `npm run lint`, `npm test`, `npm run openapi:check` y `openspec validate --all --strict` en verde
 - [x] 5.2 Smoke test sin contenedores: API con SQLite + seed, `GET /api/v1/pieces` con `X-MATP-User` y `/docs` accesible
-- [ ] 5.3 Ejecutar la API en compose contra PostgreSQL con el seed y repetir el smoke test de 5.2 (requiere Docker) — **PENDIENTE (2026-09-17)**: daemon de Docker no disponible en la máquina del arranque
+- [x] 5.3 Ejecutar la API en compose contra PostgreSQL con el seed y repetir el smoke test de 5.2 (requiere Docker) — **VERIFICADO (2026-09-30)**: API ejecutada correctamente en Docker contra PostgreSQL con el seed cargado; `GET /api/v1/pieces` con `X-MATP-User: admin@matp.local` devolvió piezas del catálogo y `/docs` respondió HTTP 200.
 - [x] 5.4 Registrar supuestos y preguntas nuevas en `docs/preguntas-contraparte.md` y actualizar `docs/estado-arranque.md`

@@ -91,9 +91,9 @@ function BusquedaContent() {
             value={tenureRegime}
             onChange={setTenureRegime}
             options={[
-              { value: "OWNED", label: "Propia" },
-              { value: "LOAN_FOR_USE", label: "Comodato" },
-              { value: "TEMPORARY_LOAN", label: "Préstamo temporal" },
+              { value: "Propiedad", label: "Propia" },
+              { value: "Comodato", label: "Comodato" },
+              { value: "Préstamo Temporal", label: "Préstamo temporal" },
             ]}
           />
 

@@ -17,6 +17,7 @@ from app.core.errors import (
 from app.core.models_base import new_uuid
 from app.modules.audit.context import AuditContext, refined_context, require_audit_context
 from app.modules.audit.models import AuditAction
+from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import (
     INCLUDE_DELETED,
     column_changes,
@@ -269,6 +270,32 @@ def correct_locked_identifier(
         old.replaced_by_id = new.id
         session.flush()
     return new
+
+
+def retire_identifier(
+    session: Session, piece: Piece, identifier: PieceIdentifier, reason: str | None
+) -> None:
+    """Logical removal of a wrongly assigned secondary code (RN-005).
+
+    The row stays as a non-current identifier with who, when and why, so it remains in the
+    piece's history and in the audit log. An inventory code (I) is never removed (RN-002): it
+    is only corrected by an Administrator with the audited procedure.
+    """
+    require_audit_context(session)
+    if identifier.piece_id != piece.id:
+        raise NotFound("El identificador no pertenece a la pieza.")
+    identifier_type = session.scalar(
+        select(IdentifierType).where(IdentifierType.code == identifier.identifier_type_code)
+    )
+    if identifier.is_locked or (
+        identifier_type is not None and identifier_type.locks_on_assignment
+    ):
+        raise ImmutableInventoryCode(
+            "El código I no se puede eliminar (RN-002); solo un Administrador puede "
+            "corregirlo con el procedimiento de corrección auditado.",
+        )
+    identifier.is_current = False
+    soft_delete(session, identifier, reason)
 
 
 @register_flush_guard

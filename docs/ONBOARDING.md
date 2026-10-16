@@ -35,6 +35,27 @@ Comprueba: http://localhost:3000 (web), http://localhost:8000/health y http://lo
 
 En PowerShell: `scripts/setup.ps1` (pasos 1–3), `scripts/dev.ps1` (paso 4; `-Down` para detener) y `scripts/test.ps1`.
 
+### Migraciones contra PostgreSQL
+
+`npm test` corre las pruebas de la API sobre **SQLite en memoria**, así que no alcanza para
+verificar que una migración funcione en el motor real. Para eso hay un paso aparte:
+
+```bash
+npm run test:api:pg
+```
+
+Levanta solo el servicio `db`, crea la base `matp_test` si no existe y corre las pruebas
+marcadas con `pytest -m postgres`, que aplican las migraciones contra PostgreSQL de verdad y
+comprueban el esquema, la extensión `pg_trgm`, los índices únicos parciales y los disparadores de
+solo inserción. **Nunca toca la base `matp`**, que tiene los datos del seed.
+
+Sin esa variable `TEST_POSTGRES_URL`, esas pruebas se indican como **omitidas** con el motivo, y
+`npm test` sigue en verde: por eso no hace falta Docker para el trabajo diario, solo cuando
+tocaste una migración. Es el mismo paso que corre el job «Migraciones (PostgreSQL)» de CI.
+
+> Si tienes otro PostgreSQL ocupando el puerto 5432 en el host, cambia `DB_PORT` en tu `.env`
+> (por ejemplo a 5433). Docker Compose y el script leen esa misma variable.
+
 ### Sin Docker (lo que sí funciona)
 
 El daemon de Docker no estaba disponible en la máquina del arranque, así que parte del sistema aún **no se ha verificado en contenedores** (ver [`estado-arranque.md`](estado-arranque.md)). Sin Docker puedes:
@@ -45,6 +66,8 @@ El daemon de Docker no estaba disponible en la máquina del arranque, así que p
 | Maqueta navegable con datos simulados | `npm run dev:web` (con `NEXT_PUBLIC_API_MODE=mock`, valor por defecto) y abrir http://localhost:3000 |
 | Exportar y verificar el contrato OpenAPI | `npm run openapi` · `npm run openapi:check` |
 | Validar specs | `npm run validate:specs` |
+
+Con Docker también: `npm run test:api:pg` (migraciones contra PostgreSQL de verdad, requiere Docker) · `npm run migrate` · `npm run seed`.
 
 Detener y ver logs con Docker: `npm run down` · `npm run logs` · `npm run ps`.
 
@@ -65,7 +88,7 @@ Comandos útiles: `openspec list` · `openspec list --specs` · `openspec show <
 4. En Claude Code (en OpenCode, `/opsx-explore` y `/opsx-apply`):
    - `/opsx:explore` si tienes dudas sobre el alcance o el diseño (no escribe código);
    - `/opsx:apply <change>` para implementar tarea por tarea, marcando `- [x]` cada una con su prueba.
-5. Verifica en local: `npm run lint`, `npm test`, `npm run openapi:check` y `openspec validate <change> --strict`. Si tocaste la base de datos, verifica también con Docker (`npm run dev`, `npm run migrate`, `npm run seed`).
+5. Verifica en local: `npm run lint`, `npm test`, `npm run openapi:check` y `openspec validate <change> --strict`. Si tocaste la base de datos, verifica también con Docker (`npm run dev`, `npm run migrate`, `npm run seed`). Si tocaste una **migración**, añade `npm run test:api:pg`, que la aplica en PostgreSQL de verdad y comprueba que el esquema, los índices parciales y los disparadores de solo inserción quedan como deben.
 6. Abre el PR (título Conventional Commit, descripción con el change, IDs cubiertos y evidencia de pruebas). Revisa un Integrador; CI debe estar en verde.
 7. **Tras el merge** (no antes): `/opsx:archive <change>` o `openspec archive <change> -y`, en un PR pequeño `chore(openspec): archive <change>`.
 
