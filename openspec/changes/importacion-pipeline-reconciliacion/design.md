@@ -23,7 +23,7 @@
 
 ```mermaid
 stateDiagram-v2
-    [*] --> UPLOADED: POST /imports (archivo guardado)
+    [*] --> UPLOADED: POST /imports/upload (archivo guardado)
     UPLOADED --> FAILED_INGESTION: ilegible / límites
     UPLOADED --> MAPPED: PUT mapping válido
     MAPPED --> MAPPED: PUT mapping (re-mapear)
@@ -31,11 +31,11 @@ stateDiagram-v2
     VALIDATED --> IN_PREVIEW: clasificación completa
     IN_PREVIEW --> IN_PREVIEW: PATCH rows (decisiones)
     IN_PREVIEW --> MAPPED: PUT mapping (descarta validación)
-    IN_PREVIEW --> APPROVED: approve (resumen confirmado)
+    IN_PREVIEW --> APPROVED: confirm (resumen confirmado)
     APPROVED --> APPLIED: apply (transacción única)
     APPROVED --> FAILED_APPLY: error → rollback total
     FAILED_APPLY --> IN_PREVIEW: corregir y reintentar
-    APPLIED --> REVERTED: revert
+    APPLIED --> REVERTED: rollback
     UPLOADED --> ABANDONED
     MAPPED --> ABANDONED
     IN_PREVIEW --> ABANDONED
@@ -47,7 +47,7 @@ stateDiagram-v2
 - *Alternativa*: Celery/RQ + Redis → servicio adicional sin justificación para ≤ 10 usuarios; queda como contingencia documentada si los tiempos medidos superan 10 min por lote.
 
 ### D2. Ingesta
-- `POST /imports` (multipart, permiso `imports.prepare`): guarda el original en `imports/<batch_id>/original.<ext>` (nunca se modifica) y crea el lote `UPLOADED`.
+- `POST /imports/upload` (multipart, permiso `imports.prepare`): guarda el original en `imports/<batch_id>/original.<ext>` (nunca se modifica) y crea el lote `UPLOADED`.
 - Límites configurables: `IMPORT_MAX_BYTES` (50 MB), `IMPORT_MAX_ROWS` (20 000) [SUPUESTO].
 - `.xlsx`: `openpyxl` en modo `read_only`, `data_only=True` (valores calculados de fórmulas); hoja elegida por el usuario (por defecto la primera no vacía); fila de cabeceras detectable o indicada; celdas combinadas → el valor se propaga a las filas cubiertas y se marca en `raw_data.__merged`. `.csv`: detección de codificación UTF-8/UTF-8-BOM/Latin-1 y separador `;`/`,` con `csv.Sniffer`.
 - Filas totalmente vacías se omiten y se cuentan en la bitácora.
@@ -65,19 +65,19 @@ Mientras el change hermano no esté aplicado, `PUT /imports/{id}/mapping` acepta
 3. Una sola pieza por código I, o por otro código sin contradicciones → `UPDATE` (+ `diff`).
 4. Sin candidatos y puntaje de similitud ≥ umbral (`SimilarityScorer`) → `POSSIBLE_DUPLICATE` (+ `duplicate_candidate` con `import_row_id`).
 5. Resto → `NEW`.
-Las reglas y umbrales se exponen en `GET /imports/{id}/preview` como `classification_rules` para que sean visibles al usuario (RF-025). También se detectan duplicados **dentro del mismo lote** (dos filas con el mismo código I normalizado → ambas `CONFLICT`).
+Las reglas y umbrales se exponen en `GET /imports/{id}/diffs` como `classification_rules` para que sean visibles al usuario (RF-025). También se detectan duplicados **dentro del mismo lote** (dos filas con el mismo código I normalizado → ambas `CONFLICT`).
 
 ### D5. Diff y decisiones
 - `diff[field] = {current, incoming, default_action}`; entrante vacío con valor actual → `default_action=keep` [SUPUESTO B10].
 - `PATCH /rows/{row_id}`: `decision` (ACCEPTED/EXCLUDED/REJECTED + `reason` obligatorio en REJECTED), `field_decisions` (aceptar/excluir por campo) y para `CONFLICT`/`POSSIBLE_DUPLICATE`: `resolution = {target_piece_id}` o `{as_new: true}`. Filas `CONFLICT` sin resolución o con errores de validación no pueden quedar `ACCEPTED`.
 
 ### D6. Aprobación y aplicación atómica
-- `POST /approve` exige `imports.approve`, estado `IN_PREVIEW` y `summary_token` (hash de conteos crear/actualizar/omitir mostrado al usuario); si cambió → `409 summary_changed` con el resumen nuevo.
+- `POST /confirm` exige `imports.approve`, estado `IN_PREVIEW` y `summary_token` (hash de conteos crear/actualizar/omitir mostrado al usuario); si cambió → `409 summary_changed` con el resumen nuevo.
 - Aplicación en **una transacción**: por fila aceptada crea/actualiza pieza e identificadores (vía servicios de `catalog`/`identification`, nunca SQL directo, para reutilizar las guardas), inserta `piece_source_record` con columnas no mapeadas (RF-008) y `source_row_number`, y usa un único `AuditContext(origin=IMPORT, origin_ref=batch_id, change_set_id=batch_change_set)`. Cualquier excepción → rollback total, lote `FAILED_APPLY` con fila y motivo.
 - Para 20 000 filas se usan `flush` por bloques de 500 dentro de la misma transacción.
 
 ### D7. Reversión
-`POST /revert` (`imports.revert`) delega en el motor de `auditoria-y-soft-delete-transversal` con el `change_set_id` del lote: piezas creadas → eliminación lógica con motivo; campos actualizados → valor anterior; conflictos por ediciones posteriores → `409` con lista y `confirm_conflicts=true` para forzar. Estado `REVERTED`.
+`POST /rollback` (`imports.revert`) delega en el motor de `auditoria-y-soft-delete-transversal` con el `change_set_id` del lote: piezas creadas → eliminación lógica con motivo; campos actualizados → valor anterior; conflictos por ediciones posteriores → `409` con lista y `confirm_conflicts=true` para forzar. Estado `REVERTED`.
 
 ### D8. Imágenes incrustadas
 En la ingesta de `.xlsx` se leen las imágenes del libro (`ws._images`, anclaje `from.row`) y se guardan en `imports/<batch_id>/images/<n>.<ext>` con fila de anclaje. En la previsualización cada imagen aparece como "pendiente de revisión" en su fila o en la bandeja "sin asignar". Tras aplicar el lote, `POST /imports/{batch_id}/images/{image_id}/associate` (operación nueva) registra la foto en la pieza reutilizando el servicio de registro de `fotografias-multiples-por-pieza` (o, si aún no existe, una inserción mínima de `media_asset` con verificación de tipo y SHA-256). Nunca se asocian automáticamente.

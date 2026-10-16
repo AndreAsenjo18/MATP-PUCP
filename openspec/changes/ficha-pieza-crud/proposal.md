@@ -4,7 +4,7 @@ La API y la maqueta ya muestran fichas de piezas, pero hoy solo se pueden **leer
 
 ## What Changes
 
-- Implementar `POST /api/v1/pieces`, `PATCH /api/v1/pieces/{piece_id}`, `DELETE /api/v1/pieces/{piece_id}` (eliminación lógica con motivo) y `POST /api/v1/pieces/{piece_id}/restore` sobre el servicio de dominio existente (`app/modules/catalog/service.py`), con auditoría campo a campo automática.
+- Implementar `POST /api/v1/pieces`, `PUT /api/v1/pieces/{piece_id}`, `DELETE /api/v1/pieces/{piece_id}` (eliminación lógica con motivo) y `POST /api/v1/pieces/{piece_id}/restore` sobre el servicio de dominio existente (`app/modules/catalog/service.py`), con auditoría campo a campo automática.
 - Implementar `POST /api/v1/pieces/validate`: validación del formulario sin persistir, con los mismos mensajes que el guardado (RF-043).
 - Implementar `POST /api/v1/pieces/{piece_id}/identifiers` (con propuesta de separación de códigos concatenados que exige confirmación) y `POST /api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction` (procedimiento auditado de corrección de código I).
 - Control de concurrencia optimista en la edición (el cliente envía la versión leída; si otro usuario guardó antes, se responde conflicto sin sobrescribir).

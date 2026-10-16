@@ -47,7 +47,7 @@ flowchart TD
 Fallo → `409 restore_dependency` con la dependencia a restaurar primero.
 
 ### D3. Consulta agrupada
-`GET /audit/change-sets/{id}`: resumen (usuario, fecha, origen, motivo, entidades afectadas, conteo de campos, estado revertido/no). `GET /audit?group_by=change_set` y `format=csv` (streaming) sobre la lectura existente. Enmascara `old_value/new_value` de campos sensibles según el rol (RF-041).
+`GET /audit/change-sets/{id}`: resumen (usuario, fecha, origen, motivo, entidades afectadas, conteo de campos, estado revertido/no). `GET /audit-logs?group_by=change_set` y `format=csv` (streaming) sobre la lectura existente. Enmascara `old_value/new_value` de campos sensibles según el rol (RF-041).
 
 ### D4. Prueba transversal
 `tests/test_cross_cutting_rules.py` recorre `Base.metadata` y los mappers:
