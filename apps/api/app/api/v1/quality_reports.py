@@ -6,8 +6,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import CurrentUser, SessionDep, require_permission
+from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES
-from app.api.pagination import Page, PageParams, page_params, paginate
+from app.api.pagination import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    Page,
+    PageParams,
+    page_params,
+    paginate,
+)
 from app.api.stubs import (
     CHANGE_DUPLICATES,
     CHANGE_INCOMPLETE,
@@ -19,6 +27,7 @@ from app.api.stubs import (
     stub,
 )
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
+from app.modules.collections.service import find_collection_by_code
 from app.modules.quality.models import DuplicateStatus
 from app.modules.quality.schemas import (
     AlertType,
@@ -34,6 +43,7 @@ from app.modules.search.schemas import (
     ReportType,
     SearchExportRequest,
     SearchHit,
+    SearchResultPage,
 )
 from app.modules.search.service import describe_matches
 
@@ -106,8 +116,8 @@ def resolve_duplicate_candidate(
 # ------------------------------------------------------------------------- search
 @router.get(
     "/search",
-    response_model=Page[SearchHit],
-    summary="Búsqueda básica por cualquier código o denominación (RF-031)",
+    response_model=SearchResultPage,
+    summary="Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
     tags=["Búsqueda"],
     **implemented(),
 )
@@ -115,15 +125,39 @@ def search_pieces(
     q: Annotated[str, Query(min_length=1, max_length=200, description="Código o texto.")],
     session: SessionDep,
     user: Reader,
-    params: Annotated[PageParams, Depends(page_params)],
-) -> Page[SearchHit]:
-    pieces, total = paginate(session, build_piece_query(session, PieceFilters(q=q)), params)
+    collection_code: Annotated[
+        str | None, Query(description="Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).")
+    ] = None,
+    tenure_regime: Annotated[
+        TenureRegimeLabel | None,
+        Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
+    ] = None,
+    page: Annotated[int, Query(ge=1, description="Número de página (desde 1).")] = 1,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
+    ] = DEFAULT_PAGE_SIZE,
+) -> SearchResultPage:
+    collection_id: uuid.UUID | None = None
+    if collection_code is not None:
+        collection = find_collection_by_code(session, collection_code)
+        if collection is None:
+            return SearchResultPage(items=[], total=0, page=page, limit=limit)
+        collection_id = collection.id
+
+    regime = (
+        code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
+        if tenure_regime is not None
+        else None
+    )
+    filters = PieceFilters(q=q, collection_id=collection_id, tenure_regime=regime)
+    params = PageParams(page=page, page_size=limit)
+    pieces, total = paginate(session, build_piece_query(session, filters), params)
     summaries = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
-    return Page(
+    return SearchResultPage(
         items=describe_matches(session, q, summaries),
         total=total,
-        page=params.page,
-        page_size=params.page_size,
+        page=page,
+        limit=limit,
     )
 
 
