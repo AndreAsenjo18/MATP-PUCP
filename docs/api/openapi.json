@@ -1,6 +1,64 @@
 {
   "components": {
     "schemas": {
+      "AiBatchOut": {
+        "description": "State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).",
+        "examples": [
+          {
+            "id": "01920000-0000-7000-8000-000000000902",
+            "processed": 12,
+            "skipped": [],
+            "status": "RUNNING",
+            "suggestion_ids": [
+              "01920000-0000-7000-8000-000000000901"
+            ]
+          }
+        ],
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "processed": {
+            "title": "Processed",
+            "type": "integer"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedPiece"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "RUNNING",
+              "DONE",
+              "PARTIAL",
+              "FAILED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "suggestion_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Suggestion Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "processed"
+        ],
+        "title": "AiBatchOut",
+        "type": "object"
+      },
       "AiFunction": {
         "enum": [
           "RIA_01",
@@ -513,6 +571,34 @@
         "title": "AuditOrigin",
         "type": "string"
       },
+      "BatchEnrichRequest": {
+        "description": "Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).",
+        "examples": [
+          {
+            "piece_ids": [
+              "01920000-0000-7000-8000-000000000101"
+            ]
+          }
+        ],
+        "properties": {
+          "piece_ids": {
+            "description": "Piezas sin descripción [SUPUESTO M1: máximo 50].",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Piece Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "piece_ids"
+        ],
+        "title": "BatchEnrichRequest",
+        "type": "object"
+      },
       "Body_uploadImportBatch": {
         "properties": {
           "file": {
@@ -561,6 +647,162 @@
           "file"
         ],
         "title": "Body_uploadMediaAsset",
+        "type": "object"
+      },
+      "BulkDownloadJob": {
+        "description": "State of a photo package; restricted photos are left out (RN-008).",
+        "examples": [
+          {
+            "download_url": "http://localhost:9000/matp-media/exports/fotos.zip",
+            "expires_at": "2026-09-17T10:30:00Z",
+            "id": "01920000-0000-7000-8000-000000000901",
+            "included_photos": 84,
+            "omitted": [],
+            "piece_count": 30,
+            "status": "READY"
+          }
+        ],
+        "properties": {
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "included_photos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Included Photos"
+          },
+          "omitted": {
+            "items": {
+              "$ref": "#/components/schemas/OmittedPhoto"
+            },
+            "title": "Omitted",
+            "type": "array"
+          },
+          "piece_count": {
+            "title": "Piece Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "RUNNING",
+              "READY",
+              "FAILED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "piece_count"
+        ],
+        "title": "BulkDownloadJob",
+        "type": "object"
+      },
+      "BulkDownloadRequest": {
+        "description": "Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote).",
+        "examples": [
+          {
+            "piece_ids": [
+              "01920000-0000-7000-8000-000000000101"
+            ]
+          }
+        ],
+        "properties": {
+          "piece_ids": {
+            "description": "Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Piece Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "piece_ids"
+        ],
+        "title": "BulkDownloadRequest",
+        "type": "object"
+      },
+      "CatalogingSuggestionRequest": {
+        "description": "Body of ``POST /ai/suggest-cataloging``: the contract requires the piece (RIA-01).",
+        "examples": [
+          {
+            "field": "notes",
+            "piece_id": "01920000-0000-7000-8000-000000000101"
+          }
+        ],
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Campo de texto libre de origen (RIA-01).",
+            "title": "Field"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Texto explícito si no se toma de la ficha.",
+            "title": "Text"
+          }
+        },
+        "required": [
+          "piece_id"
+        ],
+        "title": "CatalogingSuggestionRequest",
         "type": "object"
       },
       "CodeBrief": {
@@ -613,6 +855,19 @@
               }
             ],
             "title": "Acronym"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código del contrato (`CollectionItem.code`); equivale a `acronym`.",
+            "title": "Code"
           },
           "default_tenure_regime": {
             "default": "Propiedad",
@@ -677,6 +932,7 @@
           {
             "acronym": "M.M.Z.",
             "acronym_normalized": "MMZ",
+            "code": "MMZ",
             "created_at": "2026-09-17T10:30:00Z",
             "default_tenure_regime": "Propiedad",
             "description": "Colección sintética de demostración.",
@@ -712,6 +968,18 @@
               }
             ],
             "title": "Acronym Normalized"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código del contrato (`CollectionItem.code`): la sigla normalizada.",
+            "title": "Code"
           },
           "created_at": {
             "format": "date-time",
@@ -1596,6 +1864,31 @@
           }
         ],
         "properties": {
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fecha de la baja lógica de un código secundario mal asignado (RN-005).",
+            "title": "Deleted At"
+          },
+          "deletion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo de la baja lógica.",
+            "title": "Deletion Reason"
+          },
           "detected_format": {
             "anyOf": [
               {
@@ -3734,6 +4027,32 @@
         "title": "NotImplementedResponse",
         "type": "object"
       },
+      "OmittedPhoto": {
+        "properties": {
+          "media_id": {
+            "format": "uuid",
+            "title": "Media Id",
+            "type": "string"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "restriction": {
+            "description": "Restricción de uso efectiva que impide incluirla.",
+            "title": "Restriction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "piece_id",
+          "restriction"
+        ],
+        "title": "OmittedPhoto",
+        "type": "object"
+      },
       "Page_AiSuggestionOut_": {
         "properties": {
           "items": {
@@ -5784,6 +6103,26 @@
         "title": "SearchHit",
         "type": "object"
       },
+      "SkippedPiece": {
+        "properties": {
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Por ejemplo «ya tiene descripción» o «metadatos insuficientes».",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id",
+          "reason"
+        ],
+        "title": "SkippedPiece",
+        "type": "object"
+      },
       "SourceRecordOut": {
         "examples": [
           {
@@ -5959,6 +6298,7 @@
             "id": "01920000-0000-7000-8000-000000000301",
             "is_active": true,
             "label": "Regular",
+            "name": "Regular",
             "sort_order": 2,
             "vocabulary_code": "CONSERVATION_STATUS"
           }
@@ -6003,6 +6343,11 @@
             "title": "Label",
             "type": "string"
           },
+          "name": {
+            "description": "Nombre del contrato (`CollectionItem.name`): la etiqueta.",
+            "title": "Name",
+            "type": "string"
+          },
           "parent_id": {
             "anyOf": [
               {
@@ -6029,6 +6374,7 @@
           "vocabulary_code",
           "parent_id",
           "code",
+          "name",
           "label",
           "description",
           "sort_order",
@@ -6380,6 +6726,32 @@
         "title": "UserOut",
         "type": "object"
       },
+      "UserRoleUpdate": {
+        "description": "Body of ``PUT /users/{id}/role``: replaces the whole set of assigned roles (D3).",
+        "examples": [
+          {
+            "roles": [
+              "CATALOGUER"
+            ]
+          }
+        ],
+        "properties": {
+          "roles": {
+            "description": "Códigos de rol que quedan asignados.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "roles"
+        ],
+        "title": "UserRoleUpdate",
+        "type": "object"
+      },
       "UserUpdate": {
         "properties": {
           "full_name": {
@@ -6575,6 +6947,85 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/ai/batch-enrich": {
+      "post": {
+        "description": "Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación.",
+        "operationId": "batchAiEnrichment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnrichRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)",
+        "tags": [
+          "IA asistiva"
+        ],
+        "x-change": "descargas-masivas-y-enriquecimiento-lote",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/ai/suggest-cataloging": {
       "post": {
         "operationId": "suggestCataloging",
@@ -6582,7 +7033,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AiSuggestionCreate"
+                "$ref": "#/components/schemas/CatalogingSuggestionRequest"
               }
             }
           },
@@ -10535,6 +10986,85 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/media/bulk-download": {
+      "post": {
+        "description": "Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.",
+        "operationId": "bulkDownloadMedia",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDownloadJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-change": "descargas-masivas-y-enriquecimiento-lote",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/media/upload": {
       "post": {
         "operationId": "uploadMediaAsset",
@@ -11689,13 +12219,13 @@
             }
           },
           {
-            "description": "Incluye códigos no vigentes.",
+            "description": "Incluye códigos no vigentes y los dados de baja (RN-005).",
             "in": "query",
             "name": "include_history",
             "required": false,
             "schema": {
               "default": false,
-              "description": "Incluye códigos no vigentes.",
+              "description": "Incluye códigos no vigentes y los dados de baja (RN-005).",
               "title": "Include History",
               "type": "boolean"
             }
@@ -11762,7 +12292,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Identificadores de la pieza (vigentes y, opcionalmente, históricos)",
+        "summary": "Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja)",
         "tags": [
           "Identificadores"
         ],
@@ -11926,6 +12456,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El código I no se elimina (RN-002)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11935,16 +12485,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -11956,8 +12496,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction": {
@@ -14200,7 +14739,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
+                "$ref": "#/components/schemas/UserRoleUpdate"
               }
             }
           },
@@ -14263,7 +14802,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Cambiar el rol o el estado de un usuario (RF-039)",
+        "summary": "Reemplazar los roles asignados a un usuario (RF-039)",
         "tags": [
           "Usuarios y roles"
         ],

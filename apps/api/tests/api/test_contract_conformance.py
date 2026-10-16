@@ -23,14 +23,11 @@ CONTRACT = REPO_ROOT / "docs" / "fuentes" / "endpoints-api-v1.yaml"
 MAPPING_DOC = "docs/api/mapeo-endpoints-v1.md"
 PREFIX = "/api/v1"
 
-# --- Diferencias congeladas (tareas 5.2 y 5.3 del change alinear-api-endpoints-v1) ----------
-# Operaciones del documento que la API todavía no expone. Las cinco de la fase 3 esperan que se
-# propongan sus changes de backlog (préstamos y exposiciones; descargas masivas y enriquecimiento
-# por lote), porque cada stub debe citar un change existente.
-PENDIENTES: set[tuple[str, str]] = {
-    ("post", "/media/bulk-download"),
-    ("post", "/ai/batch-enrich"),
-}
+# --- Diferencias congeladas ------------------------------------------------------------------
+# Operaciones del documento que la API todavía no expone. Vacía desde la tarea 5.2: las de la
+# fase 3 son stubs que citan `prestamos-y-exposiciones` y
+# `descargas-masivas-y-enriquecimiento-lote`.
+PENDIENTES: set[tuple[str, str]] = set()
 
 # `GET /public/catalog` queda fuera de PENDIENTES a propósito: el conflicto C2 del mapeo
 # (catálogo público sin autenticación frente a "solo uso interno en fase 1", RF-042) debe

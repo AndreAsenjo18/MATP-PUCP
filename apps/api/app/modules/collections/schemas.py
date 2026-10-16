@@ -2,8 +2,9 @@
 
 import uuid
 from datetime import datetime
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of, serialize_label
 from app.api.refs import EX_COLLECTION_ID, EX_DATETIME, EX_TERM_ID, ORMModel
@@ -11,6 +12,7 @@ from app.modules.catalog.enums import TenureRegime
 
 _COLLECTION_EXAMPLE = {
     "id": EX_COLLECTION_ID,
+    "code": "MMZ",
     "parent_id": None,
     "name": "Colección MMZ (ficticia)",
     "acronym": "M.M.Z.",
@@ -32,6 +34,9 @@ class CollectionOut(ORMModel):
     )
 
     id: uuid.UUID
+    code: str | None = Field(
+        None, description="Código del contrato (`CollectionItem.code`): la sigla normalizada."
+    )
     parent_id: uuid.UUID | None
     name: str
     acronym: str | None
@@ -55,6 +60,11 @@ class CollectionOut(ORMModel):
         """Emite la etiqueta en español del contrato aunque llegue el código interno."""
         return serialize_label(TENURE_REGIME_LABELS, value)  # type: ignore[arg-type]
 
+    @model_validator(mode="after")
+    def _code_from_acronym(self) -> Self:
+        self.code = self.acronym_normalized
+        return self
+
 
 class CollectionCreate(BaseModel):
     model_config = ConfigDict(
@@ -72,6 +82,11 @@ class CollectionCreate(BaseModel):
 
     name: str = Field(min_length=1, max_length=300)
     acronym: str | None = Field(None, max_length=40)
+    code: str | None = Field(
+        None,
+        max_length=40,
+        description="Código del contrato (`CollectionItem.code`); equivale a `acronym`.",
+    )
     parent_id: uuid.UUID | None = None
     default_tenure_regime: TenureRegimeLabel = Field(
         default="Propiedad",
@@ -92,6 +107,15 @@ class CollectionCreate(BaseModel):
             else code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
         )
         return TENURE_REGIME_LABELS[code]
+
+    @model_validator(mode="after")
+    def _acronym_from_code(self) -> Self:
+        """`code` y `acronym` son la misma sigla; si llegan ambos deben coincidir."""
+        if self.code is not None and self.acronym is not None and self.code != self.acronym:
+            raise ValueError("`code` y `acronym` son la misma sigla: envíe solo uno.")
+        if self.acronym is None:
+            self.acronym = self.code
+        return self
 
 
 class CollectionUpdate(BaseModel):
@@ -148,6 +172,7 @@ class TermOut(ORMModel):
                     "vocabulary_code": "CONSERVATION_STATUS",
                     "parent_id": None,
                     "code": "REGULAR",
+                    "name": "Regular",
                     "label": "Regular",
                     "description": None,
                     "sort_order": 2,
@@ -163,6 +188,7 @@ class TermOut(ORMModel):
     # Broader term (e.g. the craft line of a category); null at the root (RF-011).
     parent_id: uuid.UUID | None
     code: str
+    name: str = Field(description="Nombre del contrato (`CollectionItem.name`): la etiqueta.")
     label: str
     description: str | None
     sort_order: int

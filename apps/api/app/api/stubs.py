@@ -32,6 +32,7 @@ CHANGE_REPORTS = "reportes-inventario"
 CHANGE_AUTH = "autenticacion-y-matriz-permisos"
 CHANGE_AUDIT = "auditoria-y-soft-delete-transversal"
 CHANGE_AI_EXTRACTION = "ia-extraccion-texto-libre"
+CHANGE_BULK = "descargas-masivas-y-enriquecimiento-lote"
 
 
 def implemented() -> dict[str, Any]:
