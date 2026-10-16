@@ -11109,6 +11109,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11118,16 +11128,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -11139,8 +11139,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/permissions": {
