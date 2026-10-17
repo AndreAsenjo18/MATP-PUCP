@@ -11,8 +11,8 @@
 ## 3. Mapeo, validación y clasificación
 
 - [ ] 3.1 Implementar `PUT /api/v1/imports/{batch_id}/mapping` sobre la interfaz `apply_mapping`/`validate_mapping` (implementación mínima provisional si `plantillas-mapeo-y-normalizacion` no está aplicado); pruebas: mapeo válido → `MAPPED`, sin denominación 422, re-mapeo desde `IN_PREVIEW` descarta la validación (Req: Estados del lote…; RF-022 vía change hermano)
-- [ ] 3.2 Crear `imports/matching.py` (identificadores vigentes e históricos, agrupación por pieza, `via`); pruebas: `M.M.Z. 015` contra `MMZ 15`, código INC no vigente, contradicción entre piezas (RF-024)
-- [ ] 3.3 Crear `imports/classify.py` con reglas ordenadas, conflicto intra-lote, interfaz `SimilarityScorer` con evaluador provisional y creación de `duplicate_candidate`; pruebas por regla (Req: Decisiones por fila y por campo con resolución de conflictos; RF-025, RN-003, RN-004)
+- [x] 3.2 Crear `imports/matching.py` (identificadores vigentes e históricos, agrupación por pieza, `via`); pruebas: `M.M.Z. 015` contra `MMZ 15`, código INC no vigente, contradicción entre piezas (RF-024)
+- [x] 3.3 Crear `imports/classify.py` con reglas ordenadas, conflicto intra-lote, interfaz `SimilarityScorer` con evaluador provisional y creación de `duplicate_candidate`; pruebas por regla (Req: Decisiones por fila y por campo con resolución de conflictos; RF-025, RN-003, RN-004)
 - [ ] 3.4 Implementar `POST /api/v1/imports/{batch_id}/validate` (worker) y `GET /api/v1/imports/{batch_id}/diffs` con diff, `default_action` y `classification_rules`; pruebas con la sábana sintética: conteos por clasificación esperados (RF-026)
 
 ## 4. Decisiones, aprobación y aplicación
