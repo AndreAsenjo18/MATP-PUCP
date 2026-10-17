@@ -6,7 +6,7 @@
 ## 2. Ingesta
 
 - [ ] 2.1 Implementar `POST /api/v1/imports/upload`, `GET /api/v1/imports` y `GET /api/v1/imports/{batch_id}` con almacenamiento del original y límites `IMPORT_MAX_BYTES`/`IMPORT_MAX_ROWS` (documentados en `.env.example`); pruebas: xlsx ok, formato no admitido y límite de filas → `FAILED_INGESTION` (Req: Ingesta de hojas de cálculo con límites)
-- [ ] 2.2 Crear `imports/ingest.py` (hojas, fila de cabeceras, `data_only`, celdas combinadas, CSV con codificación y separador, filas vacías); pruebas con fixtures sintéticos nuevos en `data/fixtures/` (Latin-1 `;`, varias hojas, fórmulas) (Req: Ingesta de hojas de cálculo con límites)
+- [x] 2.2 Crear `imports/ingest.py` (hojas, fila de cabeceras, `data_only`, celdas combinadas, CSV con codificación y separador, filas vacías); pruebas con fixtures sintéticos nuevos en `data/fixtures/` (Latin-1 `;`, varias hojas, fórmulas) (Req: Ingesta de hojas de cálculo con límites)
 
 ## 3. Mapeo, validación y clasificación
 
