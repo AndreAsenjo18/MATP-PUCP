@@ -58,7 +58,7 @@ class PieceFilters:
     author: str | None = None
     provenance: str | None = None
     period_text: str | None = None
-    sort: str = "title"
+    sort: str = "denomination"
 
 
 @dataclass
@@ -171,8 +171,8 @@ def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[P
     if conditions:
         statement = statement.where(and_(*conditions))
     order = {
-        "title": (Piece.denomination.asc(), Piece.id.asc()),
-        "-title": (Piece.denomination.desc(), Piece.id.desc()),
+        "denomination": (Piece.denomination.asc(), Piece.id.asc()),
+        "-denomination": (Piece.denomination.desc(), Piece.id.desc()),
         "created_at": (Piece.created_at.asc(), Piece.id.asc()),
         "-created_at": (Piece.created_at.desc(), Piece.id.desc()),
     }[filters.sort]
@@ -310,7 +310,7 @@ class CatalogReader:
             codes = identifiers[piece.id]
             inventory = next(
                 (
-                    code.original_value
+                    code.normalized_value
                     for code in codes
                     if code.identifier_type_code == TYPE_INVENTORY
                 ),
@@ -321,10 +321,10 @@ class CatalogReader:
             result.append(
                 PieceSummary(
                     id=piece.id,
-                    title=piece.denomination,
+                    denomination=piece.denomination,
                     collection=CollectionRef.model_validate(collection) if collection else None,
                     tenure_regime=piece.tenure_regime,
-                    inventory_code=inventory,
+                    code_i=inventory,
                     codes=[
                         CodeBrief(
                             identifier_type_code=code.identifier_type_code,
@@ -379,7 +379,7 @@ class CatalogReader:
             masked.append("location.path")
         return PieceDetail(
             id=piece.id,
-            title=piece.denomination,
+            denomination=piece.denomination,
             description=piece.description,
             collection=CollectionRef.model_validate(collection) if collection else None,
             tenure_regime=piece.tenure_regime,
@@ -409,9 +409,9 @@ class CatalogReader:
             availability=self._term(terms, piece.availability_term_id),
             location=location,
             identifiers=[IdentifierOut.model_validate(item) for item in identifiers],
-            inventory_code=next(
+            code_i=next(
                 (
-                    item.original_value
+                    item.normalized_value
                     for item in identifiers
                     if item.identifier_type_code == TYPE_INVENTORY
                 ),
