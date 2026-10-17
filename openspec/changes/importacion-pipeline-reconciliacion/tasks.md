@@ -1,6 +1,6 @@
 ## 1. Estados y worker
 
-- [ ] 1.1 Crear `imports/state.py` (tabla de transiciones, `FOR UPDATE`, 409 `invalid_batch_transition`) y migración aditiva de `processing_started_at`, `heartbeat_at`, `sheet_name`, `header_row`; pruebas por transición permitida y no permitida (Req: Estados del lote con etapas reanudables; RF-021)
+- [x] 1.1 Crear `imports/state.py` (tabla de transiciones, `FOR UPDATE`, 409 `invalid_batch_transition`) y migración aditiva de `processing_started_at`, `heartbeat_at`, `sheet_name`, `header_row`; pruebas por transición permitida y no permitida (Req: Estados del lote con etapas reanudables; RF-021)
 - [ ] 1.2 Crear `imports/worker.py` (ejecución en `BackgroundTasks`, latido, recuperación de lotes interrumpidos al arrancar); pruebas: etapa repetida sin duplicados, recuperación tras latido vencido (Req: Estados del lote con etapas reanudables)
 
 ## 2. Ingesta

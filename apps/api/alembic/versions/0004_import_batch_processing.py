@@ -1,0 +1,39 @@
+"""Import batches record the chosen sheet, the header row and the background stage heartbeat.
+
+Revision ID: 0004_import_batch_processing
+Revises: 0003_term_hierarchy
+Create Date: 2026-10-16
+
+Change de OpenSpec: importacion-pipeline-reconciliacion (tarea 1.1, decisiones D1 y D2).
+Additive: four nullable columns on `import_batch`, so existing batches keep working.
+"""
+
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
+
+revision: str = "0004_import_batch_processing"
+down_revision: str | None = "0003_term_hierarchy"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+COLUMNS = ("sheet_name", "header_row", "processing_started_at", "heartbeat_at")
+
+
+def upgrade() -> None:
+    op.add_column("import_batch", sa.Column("sheet_name", sa.String(length=200), nullable=True))
+    op.add_column("import_batch", sa.Column("header_row", sa.Integer(), nullable=True))
+    op.add_column(
+        "import_batch",
+        sa.Column("processing_started_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.add_column(
+        "import_batch", sa.Column("heartbeat_at", sa.DateTime(timezone=True), nullable=True)
+    )
+
+
+def downgrade() -> None:
+    with op.batch_alter_table("import_batch") as batch_op:
+        for column in reversed(COLUMNS):
+            batch_op.drop_column(column)

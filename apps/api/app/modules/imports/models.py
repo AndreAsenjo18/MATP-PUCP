@@ -78,6 +78,12 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     # {stage: ISO timestamp} and {classification: count} for the load log (RF-028).
     stage_timestamps: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
     counts: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
+    # Sheet and header row chosen at ingestion (RF-021).
+    sheet_name: Mapped[str | None] = mapped_column(String(200))
+    header_row: Mapped[int | None] = mapped_column()
+    # Background stage in progress and its heartbeat: a stale heartbeat means the process died.
+    processing_started_at: Mapped[datetime | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column()
 
 
 class ImportRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
