@@ -110,8 +110,8 @@ function DuplicadosContent() {
             {resolved.map((c) => (
               <Card as="li" key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-base text-tinta">
                 <span>
-                  {getPieceDetail(c.piece_a_id)?.title}
-                  {c.piece_b_id ? ` ↔ ${getPieceDetail(c.piece_b_id)?.title}` : ""}
+                  {getPieceDetail(c.piece_a_id)?.denomination}
+                  {c.piece_b_id ? ` ↔ ${getPieceDetail(c.piece_b_id)?.denomination}` : ""}
                 </span>
                 <StatusBadge status={duplicateStatus(c.status)} />
               </Card>
@@ -128,13 +128,13 @@ function PieceSummaryCard({ title, piece }: { title: string; piece: ReturnType<t
   return (
     <Link href={`/piezas/${piece.id}`} className={cardClassName({ interactive: true, className: "flex flex-col gap-1 p-3 shadow-none" })}>
       <p className="text-sm font-medium text-gris-texto">{title}</p>
-      <p className="text-lg font-semibold text-tinta">{piece.title}</p>
+      <p className="text-lg font-semibold text-tinta">{piece.denomination}</p>
       <div className="flex flex-wrap gap-1">
         <TenureBadge regime={piece.tenure_regime} />
       </div>
       <p className="text-sm text-gris-texto">{piece.collection?.name ?? "Sin colección"}</p>
       <p className="text-sm text-gris-texto">
-        Código I: <span className="font-mono font-bold text-terracota">{piece.inventory_code ?? "Sin código I"}</span>
+        Código I: <span className="font-mono font-bold text-terracota">{piece.code_i ?? "Sin código I"}</span>
       </p>
       <p className="text-sm text-gris-texto">{piece.location.path.length > 0 ? piece.location.path.map((l) => l.name).join(" / ") : "Sin ubicación"}</p>
     </Link>

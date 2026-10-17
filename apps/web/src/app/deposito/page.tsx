@@ -61,9 +61,9 @@ function DepositoContent() {
           {results.map((piece) => (
             <li key={piece.id}>
               <button type="button" onClick={() => setSelectedId(piece.id)} className={cardClassName({ interactive: true, className: "w-full text-left" })}>
-                <p className="text-lg font-semibold text-tinta">{piece.title}</p>
+                <p className="text-lg font-semibold text-tinta">{piece.denomination}</p>
                 <p className="text-base text-gris-texto">
-                  <span className="font-mono font-bold text-terracota">{piece.inventory_code ?? "Sin código I"}</span> · {piece.location_label ?? "Sin ubicación"}
+                  <span className="font-mono font-bold text-terracota">{piece.code_i ?? "Sin código I"}</span> · {piece.location_label ?? "Sin ubicación"}
                 </p>
               </button>
             </li>
@@ -78,10 +78,10 @@ function DepositoContent() {
             <ArrowLeft size={18} aria-hidden="true" />
             Buscar otra pieza
           </button>
-          <h2 className="text-xl font-bold text-tinta">{selected.title}</h2>
+          <h2 className="text-xl font-bold text-tinta">{selected.denomination}</h2>
           {media[0] && (
             // eslint-disable-next-line @next/next/no-img-element -- foto sintética en data: URI
-            <img src={media[0].download_url ?? undefined} alt={selected.title} className="aspect-[4/3] w-full rounded-md object-cover" />
+            <img src={media[0].download_url ?? undefined} alt={selected.denomination} className="aspect-[4/3] w-full rounded-md object-cover" />
           )}
           <p className="flex items-start gap-2 text-lg text-tinta">
             <MapPin size={20} aria-hidden="true" className="mt-1 shrink-0 text-terracota" />
