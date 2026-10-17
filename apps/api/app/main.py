@@ -14,13 +14,18 @@ from sqlalchemy import Engine
 
 from app.api.errors import install_error_handlers
 from app.api.v1 import api_router
+from app.core import jobs
 from app.core.config import Settings, get_settings
 from app.core.db import check_database, make_engine, make_session_factory
 from app.core.health import HealthCheck
 from app.core.health import router as health_router
 from app.core.storage import ObjectStorage
+from app.modules.imports.worker import recover_interrupted_batches
 
 logger = logging.getLogger("matp.api")
+
+# Background jobs cut by a restart go back to a stable state at startup (ADR-010).
+RECOVERY_HOOKS: list[tuple[str, jobs.RecoveryHook]] = [("imports", recover_interrupted_batches)]
 
 API_DESCRIPTION = """API del Sistema de Gestión y Digitalización de Colecciones del MATP
 (uso interno).
@@ -83,6 +88,7 @@ def create_app(
                     logger.info("Bucket %s creado", settings.s3_bucket)
             except Exception:  # noqa: BLE001 - storage may start later; health reports it
                 logger.warning("No se pudo verificar/crear el bucket %s", settings.s3_bucket)
+        jobs.recover_interrupted(app.state.session_factory, RECOVERY_HOOKS)
         yield
         if owns_engine:
             engine.dispose()
