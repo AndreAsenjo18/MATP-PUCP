@@ -3667,12 +3667,25 @@
       "MovementCreate": {
         "examples": [
           {
+            "destination_location_id": "01920000-0000-7000-8000-000000000401",
             "movement_type": "MOVE",
-            "reason": "Traslado",
-            "to_location_id": "01920000-0000-7000-8000-000000000401"
+            "reason": "Traslado"
           }
         ],
         "properties": {
+          "destination_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias del contrato de interfaces (MovePieceRequest).",
+            "title": "Destination Location Id"
+          },
           "movement_type": {
             "$ref": "#/components/schemas/MovementType",
             "default": "MOVE"
@@ -13198,16 +13211,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
           }
         },
         "security": [
@@ -13219,8 +13222,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/restore": {
