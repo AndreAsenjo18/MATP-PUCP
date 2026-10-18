@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 48099dad1a6d8866cfff881a789acdf59ee863880e592046d2fc1844231d6080
+ * openapi-sha256: a21f47516bc86fdcc3473d5f5eccc4eeab125fdc32ce9b1c5e05072d38b8e3bb
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2904,12 +2904,17 @@ export interface components {
         /**
          * MovementCreate
          * @example {
+         *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
          *       "movement_type": "MOVE",
-         *       "reason": "Traslado",
-         *       "to_location_id": "01920000-0000-7000-8000-000000000401"
+         *       "reason": "Traslado"
          *     }
          */
         MovementCreate: {
+            /**
+             * Destination Location Id
+             * @description Alias del contrato de interfaces (MovePieceRequest).
+             */
+            destination_location_id?: string | null;
             /** @default MOVE */
             movement_type: components["schemas"]["MovementType"];
             /** Reason */
@@ -8339,15 +8344,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
