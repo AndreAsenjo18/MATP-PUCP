@@ -80,3 +80,18 @@ Decisiones del equipo sobre los conflictos de `docs/api/mapeo-endpoints-v1.md`, 
 | **C6** Almacenamiento e infraestructura | AWS Academy como entorno de integración (staging), con RDS y S3 gestionados. Local con MinIO; producción en la VM de la PUCP; R2 como contingencia | Ya decidido en **ADR-013** (Aceptado, 2026-09-26). S3, MinIO y R2 comparten API (ADR-007) | I6 (interna): resuelta |
 
 Efecto sobre las tareas: la 2.1 ya no crea `piece.code_i` ni el disparador. La 2.2 deja de crear entidades: solo añade `term.parent_id` y renombra las referencias de `piece`. La 4.1 añade las pruebas de `code_i` derivado y de número de consultas.
+
+## D8. Alcance mínimo de las tareas 2.4 y 4.4 (2026-10-18)
+
+Regla del Líder de Proyecto: ninguna de las dos tareas puede afectar el trabajo de otros changes. Por eso se limitan a renombrar y declarar la forma; el comportamiento queda a sus dueños.
+
+| Tarea | Decisión | Motivo |
+|---|---|---|
+| 2.4 | Solo se renombran los nombres viejos dentro de los datos JSON del seed (`matched_fields` de `DuplicateCandidate`, destinos de la plantilla de mapeo, `input_data` de las sugerencias de IA) | Las columnas ya se renombraron en 2.1; lo que queda son claves dentro de JSON que el resto del código no lee por nombre de columna |
+| 2.4 | No cambian `SeedOptions`, `run_seed` ni los datos generados (300 piezas, 10 pares duplicados, proporción sin código I, movimientos, préstamos) | Otros changes consumen esos datos en sus pruebas y en la maqueta |
+| 2.4 | Sin jerarquía de categorías en el seed | La administra `colecciones-y-vocabularios-admin` |
+| 2.4 | No cambia el `output_data` de las sugerencias de IA | Es la interfaz de `ia-extraccion-texto-libre` e `ia-sugerencia-terminos` |
+| 2.4 | La prueba usa una proporción sin código I entre 0,4 y 0,6, no un 54 % exacto | Coincide con el requirement «aproximadamente la mitad» y no ata la prueba a la semilla |
+| 4.4 | Las tres rutas siguen en 501; solo se declaran la respuesta 202 con `ImportBatchSummary` y el formulario con solo `file` en `upload` | El pipeline (RF-021, RF-026, RF-027) lo implementa `importacion-pipeline-reconciliacion` |
+| 4.4 | No cambian el cuerpo de `confirm` ni la respuesta de `diffs` | Dependen de decisiones abiertas del pipeline (I7 a I9 en `docs/preguntas-contraparte.md`) |
+| 4.4 | La prueba verifica el OpenAPI generado, no una llamada real | No hay comportamiento que probar mientras la ruta responde 501 |
