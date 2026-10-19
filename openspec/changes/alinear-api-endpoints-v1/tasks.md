@@ -42,6 +42,6 @@
 
 ## 7. Cierre
 
-- [ ] 7.1 `npm run lint`, `npm test`, `npm run openapi:check`, `npm run build:web` y `openspec validate --all --strict` en verde
+- [x] 7.1 `npm run lint`, `npm test`, `npm run openapi:check`, `npm run build:web` y `openspec validate --all --strict` en verde
 - [ ] 7.2 Verificar en contenedores (`npm run dev`, `npm run migrate`, `npm run seed`) que la fase 1 responde contra PostgreSQL real — requiere Docker
 - [ ] 7.3 Sección del manual de usuario si alguna pantalla cambia de ruta, y `openspec archive alinear-api-endpoints-v1` tras aprobar el PR
