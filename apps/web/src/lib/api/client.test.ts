@@ -35,10 +35,10 @@ describe("createApiClient", () => {
     const seen: Request[] = [];
     const summary: PieceSummary = {
       id: "01920000-0000-7000-8000-000000000101",
-      title: "Vasija (sintética)",
+      denomination: "Vasija (sintética)",
       collection: null,
       tenure_regime: "Propiedad",
-      inventory_code: "I-0236",
+      code_i: "I-0236",
       codes: [],
       category: null,
       conservation_status: null,
@@ -53,19 +53,19 @@ describe("createApiClient", () => {
       devUser: "catalogador@matp.local",
       fetch: async (input) => {
         seen.push(input as Request);
-        return jsonResponse(200, { items: [summary], total: 1, page: 1, page_size: 20 });
+        return jsonResponse(200, { items: [summary], total: 1, page: 1, limit: 20 });
       },
     });
 
     const { data, error } = await client.GET("/api/v1/pieces", {
-      params: { query: { has_inventory_code: false, page_size: 20 } },
+      params: { query: { has_inventory_code: false, limit: 20 } },
     });
 
     expect(error).toBeUndefined();
-    expect(data?.items[0].inventory_code).toBe("I-0236");
+    expect(data?.items[0].code_i).toBe("I-0236");
     expect(seen[0].headers.get(DEV_USER_HEADER)).toBe("catalogador@matp.local");
     expect(seen[0].url).toBe(
-      "http://api.test/api/v1/pieces?has_inventory_code=false&page_size=20",
+      "http://api.test/api/v1/pieces?has_inventory_code=false&limit=20",
     );
   });
 

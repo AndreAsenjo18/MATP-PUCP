@@ -30,7 +30,11 @@ from app.modules.identification.models import (
     NormalizationStatus,
     PieceIdentifier,
 )
-from app.modules.identification.normalization import NormalizationResult, normalize
+from app.modules.identification.normalization import (
+    TYPE_INVENTORY,
+    NormalizationResult,
+    normalize,
+)
 from app.modules.users.service import ADMIN_ROLE, user_has_role
 
 TENURE_LABELS = {
@@ -213,6 +217,38 @@ def add_identifier(
         replaces.replaced_by_id = identifier.id
         session.flush()
     return identifier
+
+
+def set_inventory_code(
+    session: Session,
+    piece: Piece,
+    raw_value: str | None,
+    *,
+    source: str | None = "Ficha",
+) -> PieceIdentifier | None:
+    """Create or verify the piece's code I from the record sheet (design D4).
+
+    - `raw_value` empty/None: no-op (the sheet is not touching the code I).
+    - No vigente code I yet: creates it with `add_identifier` (which already enforces
+      RN-003/RN-004 via `_check_tenure_allows` and uniqueness via `_ensure_unique`).
+    - A vigente code I exists and the normalized value matches: no-op, idempotent PUT.
+    - A vigente code I exists and the normalized value differs: raises `ImmutableInventoryCode`
+      (RN-002); correcting it is only possible through the audited correction procedure.
+    """
+    if raw_value is None or not raw_value.strip():
+        return None
+    identifier_type = get_identifier_type(session, TYPE_INVENTORY)
+    _check_tenure_allows(identifier_type, piece)
+    result = _normalize_value(identifier_type, raw_value)
+    current = current_identifiers(session, piece, TYPE_INVENTORY)
+    if current:
+        if result.normalized and result.normalized == current[0].normalized_value:
+            return current[0]
+        raise ImmutableInventoryCode(
+            "El código I asignado no se puede cambiar en una edición normal; use el "
+            "procedimiento de corrección auditado (RN-002).",
+        )
+    return add_identifier(session, piece, TYPE_INVENTORY, raw_value, source=source)
 
 
 def correct_locked_identifier(

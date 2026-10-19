@@ -14,6 +14,18 @@ from app.modules.collections.models import Collection
 from app.modules.identification.normalization import normalize_acronym
 
 
+def find_collection_by_code(session: Session, code: str) -> Collection | None:
+    """Colección cuya sigla normalizada coincide con ``code`` (ej. "M.M.Z." y "mmz" -> MMZ).
+
+    Usado por la búsqueda avanzada (`GET /search`, RF-031) para resolver `collection_code`
+    a un `collection_id` sin obligar al cliente a conocer el UUID.
+    """
+    normalized = normalize_acronym(code)
+    if not normalized:
+        return None
+    return session.scalar(select(Collection).where(Collection.acronym_normalized == normalized))
+
+
 def create_collection(
     session: Session,
     *,

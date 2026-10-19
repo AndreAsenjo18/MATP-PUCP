@@ -22,7 +22,7 @@ describe("fetchPieceDetail (modo mock)", () => {
   it("devuelve status ok con la pieza cuando existe", async () => {
     const result = await fetchPieceDetail(ids.piece(1));
     expect(result.status).toBe("ok");
-    if (result.status === "ok") expect(result.piece.title).toBe("Toro de Pucará");
+    if (result.status === "ok") expect(result.piece.denomination).toBe("Toro de Pucará");
   });
 
   it("devuelve status not_found para un id que no existe", async () => {

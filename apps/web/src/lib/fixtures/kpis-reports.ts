@@ -41,7 +41,7 @@ export function computeIncompletePieces(): IncompletePiece[] {
       .map((a) => a.type);
     return {
       piece_id: piece.id,
-      title: piece.title,
+      title: piece.denomination,
       collection_name: piece.collection?.name ?? null,
       alerts,
     };
@@ -50,9 +50,9 @@ export function computeIncompletePieces(): IncompletePiece[] {
 
 export function computeInventoryReport(): ReportOut {
   const rows = PIECES.map((p) => [
-    p.title,
+    p.denomination,
     p.collection?.name ?? "Sin colección",
-    p.inventory_code ?? "Sin código I",
+    p.code_i ?? "Sin código I",
     p.tenure_regime,
     p.conservation_status?.label ?? "Sin registrar",
     p.location.path.length > 0 ? p.location.path.map((l) => l.name).join(" / ") : "Sin ubicación",
