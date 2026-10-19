@@ -36,12 +36,12 @@
 
 ## 6. Cliente tipado, maqueta y documentación
 
-- [ ] 6.1 Regenerar `docs/api/openapi.json` y el cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar `apps/web/src/lib/{data,fixtures}` a los nombres nuevos; `npm run test:web` en verde (Req: Conformidad con el contrato de interfaces del equipo)
+- [x] 6.1 Regenerar `docs/api/openapi.json` y el cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar `apps/web/src/lib/{data,fixtures}` a los nombres nuevos; `npm run test:web` en verde (Req: Conformidad con el contrato de interfaces del equipo)
 - [ ] 6.2 Actualizar `docs/modelo-datos.md`, `docs/api/README.md`, `docs/api/mapeo-endpoints-v1.md` (columna «Acción» a «hecho») y `docs/estado-arranque.md` (Req: Conformidad con el contrato de interfaces del equipo)
 - [x] 6.3 Actualizar los 15 changes del backlog cuyas tareas citan rutas renombradas, para que apunten a las del contrato (Req: Conformidad con el contrato de interfaces del equipo)
 
 ## 7. Cierre
 
-- [ ] 7.1 `npm run lint`, `npm test`, `npm run openapi:check`, `npm run build:web` y `openspec validate --all --strict` en verde
+- [x] 7.1 `npm run lint`, `npm test`, `npm run openapi:check`, `npm run build:web` y `openspec validate --all --strict` en verde
 - [ ] 7.2 Verificar en contenedores (`npm run dev`, `npm run migrate`, `npm run seed`) que la fase 1 responde contra PostgreSQL real — requiere Docker
 - [ ] 7.3 Sección del manual de usuario si alguna pantalla cambia de ruta, y `openspec archive alinear-api-endpoints-v1` tras aprobar el PR
