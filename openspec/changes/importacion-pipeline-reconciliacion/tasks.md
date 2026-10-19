@@ -1,19 +1,19 @@
 ## 1. Estados y worker
 
-- [ ] 1.1 Crear `imports/state.py` (tabla de transiciones, `FOR UPDATE`, 409 `invalid_batch_transition`) y migración aditiva de `processing_started_at`, `heartbeat_at`, `sheet_name`, `header_row`; pruebas por transición permitida y no permitida (Req: Estados del lote con etapas reanudables; RF-021)
-- [ ] 1.2 Crear `imports/worker.py` (ejecución en `BackgroundTasks`, latido, recuperación de lotes interrumpidos al arrancar); pruebas: etapa repetida sin duplicados, recuperación tras latido vencido (Req: Estados del lote con etapas reanudables)
+- [x] 1.1 Crear `imports/state.py` (tabla de transiciones, `FOR UPDATE`, 409 `invalid_batch_transition`) y migración aditiva de `processing_started_at`, `heartbeat_at`, `sheet_name`, `header_row`; pruebas por transición permitida y no permitida (Req: Estados del lote con etapas reanudables; RF-021)
+- [x] 1.2 Crear `imports/worker.py` (ejecución en `BackgroundTasks`, latido, recuperación de lotes interrumpidos al arrancar); pruebas: etapa repetida sin duplicados, recuperación tras latido vencido (Req: Estados del lote con etapas reanudables)
 
 ## 2. Ingesta
 
-- [ ] 2.1 Implementar `POST /api/v1/imports/upload`, `GET /api/v1/imports` y `GET /api/v1/imports/{batch_id}` con almacenamiento del original y límites `IMPORT_MAX_BYTES`/`IMPORT_MAX_ROWS` (documentados en `.env.example`); pruebas: xlsx ok, formato no admitido y límite de filas → `FAILED_INGESTION` (Req: Ingesta de hojas de cálculo con límites)
-- [ ] 2.2 Crear `imports/ingest.py` (hojas, fila de cabeceras, `data_only`, celdas combinadas, CSV con codificación y separador, filas vacías); pruebas con fixtures sintéticos nuevos en `data/fixtures/` (Latin-1 `;`, varias hojas, fórmulas) (Req: Ingesta de hojas de cálculo con límites)
+- [x] 2.1 Implementar `POST /api/v1/imports/upload`, `GET /api/v1/imports` y `GET /api/v1/imports/{batch_id}` con almacenamiento del original y límites `IMPORT_MAX_BYTES`/`IMPORT_MAX_ROWS` (documentados en `.env.example`); pruebas: xlsx ok, formato no admitido y límite de filas → `FAILED_INGESTION` (Req: Ingesta de hojas de cálculo con límites) — `apps/api/tests/api/test_import_pipeline_api.py` (sección 2.1); el exceso de tamaño responde 422 sin crear lote (M2)
+- [x] 2.2 Crear `imports/ingest.py` (hojas, fila de cabeceras, `data_only`, celdas combinadas, CSV con codificación y separador, filas vacías); pruebas con fixtures sintéticos nuevos en `data/fixtures/` (Latin-1 `;`, varias hojas, fórmulas) (Req: Ingesta de hojas de cálculo con límites)
 
 ## 3. Mapeo, validación y clasificación
 
-- [ ] 3.1 Implementar `PUT /api/v1/imports/{batch_id}/mapping` sobre la interfaz `apply_mapping`/`validate_mapping` (implementación mínima provisional si `plantillas-mapeo-y-normalizacion` no está aplicado); pruebas: mapeo válido → `MAPPED`, sin denominación 422, re-mapeo desde `IN_PREVIEW` descarta la validación (Req: Estados del lote…; RF-022 vía change hermano)
-- [ ] 3.2 Crear `imports/matching.py` (identificadores vigentes e históricos, agrupación por pieza, `via`); pruebas: `M.M.Z. 015` contra `MMZ 15`, código INC no vigente, contradicción entre piezas (RF-024)
-- [ ] 3.3 Crear `imports/classify.py` con reglas ordenadas, conflicto intra-lote, interfaz `SimilarityScorer` con evaluador provisional y creación de `duplicate_candidate`; pruebas por regla (Req: Decisiones por fila y por campo con resolución de conflictos; RF-025, RN-003, RN-004)
-- [ ] 3.4 Implementar `POST /api/v1/imports/{batch_id}/validate` (worker) y `GET /api/v1/imports/{batch_id}/diffs` con diff, `default_action` y `classification_rules`; pruebas con la sábana sintética: conteos por clasificación esperados (RF-026)
+- [x] 3.1 Implementar `PUT /api/v1/imports/{batch_id}/mapping` sobre la interfaz `apply_mapping`/`validate_mapping` (implementación mínima provisional si `plantillas-mapeo-y-normalizacion` no está aplicado); pruebas: mapeo válido → `MAPPED`, sin denominación 422, re-mapeo desde `IN_PREVIEW` descarta la validación (Req: Estados del lote…; RF-022 vía change hermano) — implementación mínima en `imports/mapping.py`; `apps/api/tests/api/test_import_pipeline_api.py` (sección 3.1)
+- [x] 3.2 Crear `imports/matching.py` (identificadores vigentes e históricos, agrupación por pieza, `via`); pruebas: `M.M.Z. 015` contra `MMZ 15`, código INC no vigente, contradicción entre piezas (RF-024)
+- [x] 3.3 Crear `imports/classify.py` con reglas ordenadas, conflicto intra-lote, interfaz `SimilarityScorer` con evaluador provisional y creación de `duplicate_candidate`; pruebas por regla (Req: Decisiones por fila y por campo con resolución de conflictos; RF-025, RN-003, RN-004)
+- [x] 3.4 Implementar `POST /api/v1/imports/{batch_id}/validate` (worker) y `GET /api/v1/imports/{batch_id}/diffs` con diff, `default_action` y `classification_rules`; pruebas con la sábana sintética: conteos por clasificación esperados (RF-026) — `apps/api/tests/api/test_import_pipeline_api.py` (sección 3.4: hoja controlada con una fila por regla y sábana sintética)
 
 ## 4. Decisiones, aprobación y aplicación
 

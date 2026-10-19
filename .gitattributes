@@ -5,3 +5,4 @@
 *.docx binary
 *.pdf binary
 *.xlsx binary
+data/fixtures/*.csv -text

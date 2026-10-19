@@ -4,7 +4,7 @@ Options:
   --pieces N            number of synthetic pieces (default SEED_PIECE_COUNT or 300)
   --random-seed N       random seed (default SEED_RANDOM_SEED or 20260917)
   --no-media-upload     do not upload placeholder photos to object storage
-  --fixtures DIR        only write the synthetic Excel fixture into DIR and exit
+  --fixtures DIR        only write the synthetic Excel and CSV fixtures into DIR and exit
 """
 
 import argparse
@@ -15,7 +15,7 @@ from pathlib import Path
 from app.core.config import ConfigurationError, load_settings
 from app.core.db import make_engine, make_session_factory
 from app.core.storage import ObjectStorage
-from app.seed.fixtures import write_synthetic_workbook
+from app.seed.fixtures import write_all_fixtures
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 
 
@@ -34,8 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.fixtures:
-        path = write_synthetic_workbook(args.fixtures, random_seed=args.random_seed)
-        print(f"Excel sintético generado en {path}")
+        for path in write_all_fixtures(args.fixtures, random_seed=args.random_seed):
+            print(f"Fixture sintético generado en {path}")
         return 0
 
     try:

@@ -603,7 +603,7 @@
         "properties": {
           "file": {
             "contentMediaType": "application/octet-stream",
-            "description": "Archivo .xlsx de origen.",
+            "description": "Archivo .xlsx o .csv de origen.",
             "title": "File",
             "type": "string"
           }
@@ -796,6 +796,41 @@
           "piece_id"
         ],
         "title": "CatalogingSuggestionRequest",
+        "type": "object"
+      },
+      "ClassificationRule": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "result": {
+            "description": "Clasificación resultante o `validation_errors`.",
+            "title": "Result",
+            "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "order",
+          "result",
+          "description"
+        ],
+        "title": "ClassificationRule",
         "type": "object"
       },
       "CodeBrief": {
@@ -1204,7 +1239,7 @@
           },
           "split_compound": {
             "default": false,
-            "description": "La celda puede tener varios códigos (N7).",
+            "description": "La celda puede tener varios códigos (N7); cada parte toma el tipo que se reconoce en ella.",
             "title": "Split Compound",
             "type": "boolean"
           },
@@ -1217,7 +1252,7 @@
                 "type": "null"
               }
             ],
-            "description": "Campo de la ficha o identificador (p. ej. identifier:I); null = payload.",
+            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen.",
             "title": "Target Field"
           }
         },
@@ -1671,7 +1706,24 @@
             ],
             "title": "Current Value"
           },
+          "default_action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "accept",
+                  "keep"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`keep` cuando el archivo trae el campo vacío [SUPUESTO B10].",
+            "title": "Default Action"
+          },
           "field": {
+            "description": "Campo de la ficha o `identifier:<TIPO>` (códigos nuevos).",
             "title": "Field",
             "type": "string"
           },
@@ -2203,7 +2255,18 @@
             "created_at": "2026-09-17T10:30:00Z",
             "file_name": "sabana_sintetica_v1.xlsx",
             "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "header_row": 1,
+            "headers": [
+              "CÓDIGOS",
+              "DENOMINACIÓN",
+              "OBS. CONSULTORÍA"
+            ],
             "id": "01920000-0000-7000-8000-000000000601",
+            "processing": false,
+            "sheet_name": "SABANA",
+            "sheet_names": [
+              "SABANA"
+            ],
             "source_name": "Sábana consultoría 2024/25 (sintética)",
             "stage_timestamps": {
               "UPLOADED": "2026-09-17T10:30:00Z"
@@ -2249,6 +2312,7 @@
                 "type": "null"
               }
             ],
+            "description": "Filas leídas, filas vacías omitidas y, tras validar, filas por clasificación.",
             "title": "Counts"
           },
           "created_at": {
@@ -2271,10 +2335,80 @@
             ],
             "title": "File Sha256"
           },
+          "header_row": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Header Row"
+          },
+          "headers": {
+            "description": "Cabeceras leídas del archivo.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mapeo de columnas confirmado.",
+            "title": "Mapping"
+          },
+          "processing": {
+            "default": false,
+            "description": "Hay una etapa ejecutándose en segundo plano.",
+            "title": "Processing",
+            "type": "boolean"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Etapa en curso y avance: `{stage, done, total}` (RF-021).",
+            "title": "Progress"
+          },
+          "sheet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheet Name"
+          },
+          "sheet_names": {
+            "description": "Hojas del libro.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sheet Names",
+            "type": "array"
           },
           "source_name": {
             "title": "Source Name",
@@ -2398,7 +2532,7 @@
                 "type": "null"
               }
             ],
-            "description": "Estado del lote; valores en español pendientes (I8).",
+            "description": "Estado del lote con el código interno (`UPLOADED`, `FAILED_INGESTION`…); los valores en español siguen pendientes (I8).",
             "title": "Status"
           },
           "summary": {
@@ -2417,6 +2551,52 @@
           "summary"
         ],
         "title": "ImportBatchSummary",
+        "type": "object"
+      },
+      "ImportDiffsPage": {
+        "description": "Preview of a batch: rows with their diff plus the rules that classified them (RF-025).",
+        "properties": {
+          "classification_rules": {
+            "description": "Reglas y umbrales usados para clasificar las filas, en orden de evaluación.",
+            "items": {
+              "$ref": "#/components/schemas/ClassificationRule"
+            },
+            "title": "Classification Rules",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "classification_rules"
+        ],
+        "title": "ImportDiffsPage",
         "type": "object"
       },
       "ImportLog": {
@@ -2543,17 +2723,29 @@
             "diff": [
               {
                 "current_value": "Retablo",
-                "field": "title",
-                "incoming_value": "Retablo"
+                "default_action": "accept",
+                "field": "denomination",
+                "incoming_value": "Retablo ayacuchano"
               }
             ],
+            "has_validation_errors": false,
             "id": "01920000-0000-7000-8000-000000000611",
             "mapped_data": {
-              "title": "Retablo"
+              "fields": {
+                "denomination": "Retablo ayacuchano"
+              }
             },
             "matches": [
               {
-                "matched_by": "I-2362",
+                "contradicts": [],
+                "identifiers": [
+                  {
+                    "identifier_type": "I",
+                    "value": "I-2362",
+                    "via": "current"
+                  }
+                ],
+                "kind": "piece",
                 "piece_id": "01920000-0000-7000-8000-000000000101"
               }
             ],
@@ -2602,6 +2794,11 @@
             },
             "title": "Diff",
             "type": "array"
+          },
+          "has_validation_errors": {
+            "default": false,
+            "title": "Has Validation Errors",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -3128,11 +3325,13 @@
               },
               {
                 "source_column": "DENOMINACION",
-                "target_field": "title"
+                "target_field": "denomination"
               }
             ],
+            "defaults": {
+              "tenure_regime": "Propiedad"
+            },
             "header_row": 1,
-            "save_as_template_name": "Sábana consultoría (sintética)",
             "sheet_name": "Hoja1"
           }
         ],
@@ -3144,11 +3343,26 @@
             "title": "Columns",
             "type": "array"
           },
+          "defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal) y `collection` (sigla).",
+            "title": "Defaults",
+            "type": "object"
+          },
           "header_row": {
-            "default": 1,
-            "minimum": 1.0,
-            "title": "Header Row",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Otra fila de cabeceras: se vuelve a leer el archivo.",
+            "title": "Header Row"
           },
           "save_as_template_name": {
             "anyOf": [
@@ -3159,6 +3373,7 @@
                 "type": "null"
               }
             ],
+            "description": "Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.",
             "title": "Save As Template Name"
           },
           "sheet_name": {
@@ -3170,6 +3385,7 @@
                 "type": "null"
               }
             ],
+            "description": "Otra hoja: se vuelve a leer el archivo.",
             "title": "Sheet Name"
           },
           "template_id": {
@@ -3182,6 +3398,7 @@
                 "type": "null"
               }
             ],
+            "description": "Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.",
             "title": "Template Id"
           }
         },
@@ -4280,42 +4497,6 @@
           "page_size"
         ],
         "title": "Page[ImportBatchOut]",
-        "type": "object"
-      },
-      "Page_ImportRowOut_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ImportRowOut"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "minimum": 1.0,
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Page Size",
-            "type": "integer"
-          },
-          "total": {
-            "description": "Total de resultados que cumplen los filtros.",
-            "minimum": 0.0,
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size"
-        ],
-        "title": "Page[ImportRowOut]",
         "type": "object"
       },
       "Page_IncompletePiece_": {
@@ -9790,16 +9971,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -9811,12 +9982,12 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/upload": {
       "post": {
+        "description": "Guarda el archivo original sin modificarlo y lo lee en segundo plano; el avance se consulta en `GET /imports/{batch_id}`. Un formato no admitido o un archivo con más de IMPORT_MAX_ROWS filas deja el lote «fallido en ingesta» con el motivo.",
         "operationId": "uploadImportBatch",
         "requestBody": {
           "content": {
@@ -9868,16 +10039,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -9889,8 +10050,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}": {
@@ -9939,6 +10099,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -9948,16 +10118,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -9965,12 +10125,11 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Estado de un lote",
+        "summary": "Estado de un lote, con la etapa en curso y su avance",
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/confirm": {
@@ -10065,6 +10224,7 @@
     },
     "/api/v1/imports/{batch_id}/diffs": {
       "get": {
+        "description": "Filas del lote con su clasificación, coincidencias, errores y diff campo a campo, más las reglas y umbrales usados para clasificarlas (RF-025, RF-026).",
         "operationId": "getImportBatchDiffs",
         "parameters": [
           {
@@ -10136,7 +10296,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_ImportRowOut_"
+                  "$ref": "#/components/schemas/ImportDiffsPage"
                 }
               }
             },
@@ -10162,6 +10322,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10171,16 +10341,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -10192,8 +10352,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/log": {
@@ -10278,6 +10437,7 @@
     },
     "/api/v1/imports/{batch_id}/mapping": {
       "put": {
+        "description": "Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).",
         "operationId": "setImportMapping",
         "parameters": [
           {
@@ -10332,6 +10492,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10341,16 +10511,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -10362,8 +10522,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/rollback": {
@@ -10558,6 +10717,7 @@
     },
     "/api/v1/imports/{batch_id}/validate": {
       "post": {
+        "description": "Lanza la validación en segundo plano y responde de inmediato; al terminar, el lote queda en previsualización con los conteos por clasificación (RF-026).",
         "operationId": "validateImport",
         "parameters": [
           {
@@ -10572,7 +10732,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -10602,6 +10762,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10611,16 +10781,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -10632,8 +10792,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/loans": {

@@ -52,6 +52,7 @@ export const IMPORT_BATCHES: ImportBatchOut[] = [
     uploaded_by_id: ids.user(3),
     approved_by_id: null,
     approved_at: null,
+    processing: false,
     created_at: "2026-09-10T08:50:00Z",
   },
   {
@@ -71,6 +72,7 @@ export const IMPORT_BATCHES: ImportBatchOut[] = [
     uploaded_by_id: ids.user(2),
     approved_by_id: ids.user(1),
     approved_at: "2026-08-02T10:00:00Z",
+    processing: false,
     created_at: "2026-08-01T09:00:00Z",
   },
 ];
@@ -93,6 +95,7 @@ function row(
     raw_data: raw,
     mapped_data: mapped,
     classification,
+    has_validation_errors: opts.has_validation_errors ?? (opts.validation_errors?.length ?? 0) > 0,
     decision,
     decision_reason: opts.decision_reason ?? null,
     diff,

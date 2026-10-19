@@ -259,6 +259,11 @@ entity IMPORT_BATCH {
     approved_at : timestamptz
     stage_timestamps : jsonb
     counts : jsonb
+    sheet_name : varchar(200)
+    header_row : integer
+    processing_started_at : timestamptz
+    heartbeat_at : timestamptz
+    mapping : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }
