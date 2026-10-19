@@ -1,6 +1,6 @@
 ## 1. Modelo y configuración
 
-- [ ] 1.1 Migración aditiva: `quality_setting` (pesos, umbral), `quality_job` y `quality_job_item`, nuevo estado `SUPERSEDED` (`POSTPONED` ya existe) y columnas `postponed_until`, `blocking_conflict`, `change_set_id` en `duplicate_candidate`; `tests/test_migrations.py` en verde (Req: Detección explicable…; Req: Pares distintos estables…)
+- [x] 1.1 Migración aditiva: `quality_setting` (pesos, umbral), `quality_job` y `quality_job_item`, nuevo estado `SUPERSEDED` (`POSTPONED` ya existe) y columnas `postponed_until`, `blocking_conflict`, `change_set_id` en `duplicate_candidate`; `tests/test_migrations.py` en verde (Req: Detección explicable…; Req: Pares distintos estables…)
 
 ## 2. Detección
 

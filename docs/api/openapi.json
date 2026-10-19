@@ -1533,7 +1533,8 @@
           "PENDING",
           "MERGED",
           "DISTINCT",
-          "POSTPONED"
+          "POSTPONED",
+          "SUPERSEDED"
         ],
         "title": "DuplicateStatus",
         "type": "string"
