@@ -14,7 +14,6 @@ from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
-    CHANGE_LOCATIONS,
     CHANGE_MEDIA,
     CHANGE_PIECE_CRUD,
     example_of,
@@ -22,7 +21,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound
+from app.core.errors import NotFound, ValidationFailed
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog import service as catalog_service
@@ -52,8 +51,10 @@ from app.modules.identification.schemas import (
     InventoryCodeCorrection,
 )
 from app.modules.identification.service import retire_identifier, set_inventory_code
-from app.modules.locations.models import PieceMovement
+from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
+from app.modules.locations.service import move_piece as move_piece_service
+from app.modules.locations.service import verify_location
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
     MediaAssetCreate,
@@ -542,6 +543,23 @@ def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> 
 
 
 # ---------------------------------------------------------------------- movements
+def _movement_out(reader: CatalogReader, movement: PieceMovement) -> MovementOut:
+    def visible_ref(location_id: uuid.UUID | None) -> LocationRef | None:
+        path, _exact = reader.visible_path(location_id)
+        return LocationRef.model_validate(path[-1]) if path else None
+
+    return MovementOut(
+        id=movement.id,
+        piece_id=movement.piece_id,
+        movement_type=movement.movement_type,
+        from_location=visible_ref(movement.from_location_id),
+        to_location=visible_ref(movement.to_location_id),
+        reason=movement.reason,
+        performed_by_label=movement.performed_by_label,
+        occurred_at=movement.occurred_at,
+    )
+
+
 @router.get(
     "/{piece_id}/location-history",
     response_model=list[MovementOut],
@@ -560,24 +578,7 @@ def get_piece_location_history(
         .where(PieceMovement.piece_id == piece_id)
         .order_by(PieceMovement.occurred_at.desc())
     )
-
-    def visible_ref(location_id: uuid.UUID | None) -> LocationRef | None:
-        path, _exact = reader.visible_path(location_id)
-        return LocationRef.model_validate(path[-1]) if path else None
-
-    return [
-        MovementOut(
-            id=movement.id,
-            piece_id=movement.piece_id,
-            movement_type=movement.movement_type,
-            from_location=visible_ref(movement.from_location_id),
-            to_location=visible_ref(movement.to_location_id),
-            reason=movement.reason,
-            performed_by_label=movement.performed_by_label,
-            occurred_at=movement.occurred_at,
-        )
-        for movement in movements
-    ]
+    return [_movement_out(reader, movement) for movement in movements]
 
 
 @router.post(
@@ -586,11 +587,36 @@ def get_piece_location_history(
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un movimiento o verificación física",
     tags=["Ubicaciones"],
-    **stub(CHANGE_LOCATIONS),
+    **implemented(),
 )
 def move_piece(
     piece_id: uuid.UUID,
     body: MovementCreate,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("movements.register"))],
 ) -> MovementOut:
-    raise not_implemented(CHANGE_LOCATIONS, MovementOut)
+    piece = get_piece(session, piece_id)
+    writer(session, user, body.reason)
+    target_loc_id = body.to_location_id or body.destination_location_id
+    if body.movement_type == MovementType.MOVE:
+        if target_loc_id is None:
+            raise ValidationFailed(
+                "to_location_id o destination_location_id es obligatorio para un traslado.",
+                code="destination_required",
+            )
+        destination = session.get(Location, target_loc_id)
+        if destination is None or destination.deleted_at is not None:
+            raise NotFound("La ubicación de destino no existe o fue eliminada.")
+        movement = move_piece_service(
+            session, piece, destination, body.reason, performed_by_label=user.full_name
+        )
+    elif body.movement_type == MovementType.VERIFICATION:
+        movement = verify_location(session, piece)
+    else:
+        raise ValidationFailed(
+            f"Tipo de movimiento no admitido: {body.movement_type}.",
+            code="invalid_movement_type",
+        )
+    session.commit()
+    reader = CatalogReader(session, Viewer(user.permissions))
+    return _movement_out(reader, movement)
