@@ -42,7 +42,6 @@ from app.modules.search.schemas import (
     ReportOut,
     ReportType,
     SearchExportRequest,
-    SearchHit,
     SearchResultPage,
 )
 from app.modules.search.service import describe_matches
