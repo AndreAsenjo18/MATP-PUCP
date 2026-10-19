@@ -97,7 +97,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
               <p className="text-sm text-gris-texto">
                 Componente de{" "}
                 <Link href={`/piezas/${parent.id}`} className="text-terracota underline">
-                  {parent.title}
+                  {parent.denomination}
                 </Link>{" "}
                 (RF-009).
               </p>
@@ -136,7 +136,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
       {tab === "Fotografías" && (
         <PieceMediaGallery
           media={media}
-          pieceTitle={piece.title}
+          pieceTitle={piece.denomination}
           renderActions={() =>
             hasPermission("media.retire") && (
               <ConfirmButton
@@ -171,7 +171,7 @@ function IdentifiersTab({ pieceId, piece }: { pieceId: string; piece: PieceDetai
 
   return (
     <PieceIdentifiersTable piece={piece}>
-      {piece.inventory_code && canCorrect && (
+      {piece.code_i && canCorrect && (
         <ConfirmButton
           label="Corregir código I (procedimiento auditado)"
           variant="danger"
@@ -180,7 +180,7 @@ function IdentifiersTab({ pieceId, piece }: { pieceId: string; piece: PieceDetai
           confirmTitle="Corregir el código I"
           confirmDescription={
             <>
-              Está a punto de retirar el código <strong>{piece.inventory_code}</strong> de esta pieza. Esta acción queda registrada
+              Está a punto de retirar el código <strong>{piece.code_i}</strong> de esta pieza. Esta acción queda registrada
               en la auditoría con su usuario y el motivo indicado, y nunca borra el historial (RN-005).
             </>
           }

@@ -24,7 +24,7 @@ export interface Page<T> {
   items: T[];
   total: number;
   page: number;
-  page_size: number;
+  limit: number;
 }
 
 export interface PiecesQuery {
@@ -43,10 +43,10 @@ function client() {
 export async function fetchPieces(query: PiecesQuery): Promise<Page<PieceSummary>> {
   if (getApiMode() === "mock") {
     const result = listPieces({ q: query.q, page: query.page, pageSize: query.pageSize });
-    return { items: result.items, total: result.total, page: result.page, page_size: result.page_size };
+    return { items: result.items, total: result.total, page: result.page, limit: result.page_size };
   }
   const { data, error } = await client().GET("/api/v1/pieces", {
-    params: { query: { q: query.q || undefined, page: query.page, page_size: query.pageSize } },
+    params: { query: { q: query.q || undefined, page: query.page, limit: query.pageSize } },
   });
   if (error) throw new Error(apiErrorMessage(error));
   return data;

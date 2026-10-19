@@ -258,7 +258,7 @@ function reducer(state: MockState, action: Action): MockState {
         entity_id: action.pieceId,
         action: "CORRECTION",
         field: "inventory_code",
-        old_value: piece.inventory_code,
+        old_value: piece.code_i,
         new_value: action.newValue,
         user_id: action.actorId,
         actor_label: action.actor,
@@ -270,7 +270,7 @@ function reducer(state: MockState, action: Action): MockState {
         ...state,
         nextSeq: seq,
         auditLog,
-        pieces: { ...state.pieces, [action.pieceId]: { ...piece, inventory_code: action.newValue } },
+        pieces: { ...state.pieces, [action.pieceId]: { ...piece, code_i: action.newValue } },
       };
     }
     case "UPDATE_PIECE": {

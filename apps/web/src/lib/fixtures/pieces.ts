@@ -58,7 +58,7 @@ function identifier(
 const P1_ID = ids.piece(1);
 const P1: PieceDetail = {
   id: P1_ID,
-  title: "Toro de Pucará",
+  denomination: "Toro de Pucará",
   description: "Toro ritual de cerámica vidriada, decoración policroma.",
   collection: collectionRef("MMZ"),
   tenure_regime: "Propiedad",
@@ -81,7 +81,7 @@ const P1: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: "I-0236",
+  code_i: "I-0236",
   identifiers: [
     identifier(101, P1_ID, "I", "I-0236 / M.M.Z. 015", "I-0236", { detected_format: "I-nnnn", notes: "Celda con dos códigos concatenados: se separó en dos identificadores (RF-023)." }),
     identifier(102, P1_ID, "COLLECTION", "M.M.Z. 015", "MMZ-015", { detected_format: "sigla con puntos", is_locked: false }),
@@ -98,11 +98,11 @@ const P2_ID = ids.piece(2);
 const P2: PieceDetail = {
   ...P1,
   id: P2_ID,
-  title: "Toro de Pucará (3 cuernos)",
+  denomination: "Toro de Pucará (3 cuernos)",
   description: "Variante con tres cuernos; ingresado en una carga posterior. Posible duplicado del registro I-0236.",
   entry_date: "2020-03-02",
   notes: "Marcado por el detector de duplicados por similitud de título y colección (RF-030).",
-  inventory_code: null,
+  code_i: null,
   identifiers: [identifier(103, P2_ID, "COLLECTION", "mmz 15", "MMZ-015", { detected_format: "minúsculas sin separador", source: "Carga 2020 (sintética)" })],
   location: emptyLocation(),
   media_count: 1,
@@ -114,7 +114,7 @@ const P2: PieceDetail = {
 const P3_ID = ids.piece(3);
 const P3: PieceDetail = {
   id: P3_ID,
-  title: "Retablo ayacuchano",
+  denomination: "Retablo ayacuchano",
   description: "Retablo de dos cuerpos con escena costumbrista.",
   collection: collectionRef("RA"),
   tenure_regime: "Propiedad",
@@ -137,7 +137,7 @@ const P3: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: "I-2362",
+  code_i: "I-2362",
   identifiers: [
     identifier(104, P3_ID, "I", "I 2362 / RA 28", "I-2362", { detected_format: "I sin guion", notes: "Celda con dos códigos concatenados: se separó en dos identificadores (RF-023)." }),
     identifier(105, P3_ID, "COLLECTION", "RA 28", "RA-028", { is_locked: false }),
@@ -153,7 +153,7 @@ const P3: PieceDetail = {
 const P4_ID = ids.piece(4);
 const P4: PieceDetail = {
   id: P4_ID,
-  title: "Cajón San Marcos",
+  denomination: "Cajón San Marcos",
   description: "Cajón retablo con figuras de bulto para la festividad de San Marcos.",
   collection: collectionRef("RAB"),
   tenure_regime: "Propiedad",
@@ -176,7 +176,7 @@ const P4: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: "TMP-0007",
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [identifier(106, P4_ID, "COLLECTION", "RAB", "RAB", { is_locked: false })],
   location: emptyLocation(),
   media_count: 0,
@@ -189,7 +189,7 @@ const P4: PieceDetail = {
 const P5_ID = ids.piece(5);
 const P5: PieceDetail = {
   id: P5_ID,
-  title: "Niño Manuelito",
+  denomination: "Niño Manuelito",
   description: "Imagen de bulto policromada, vestida con textiles bordados.",
   collection: collectionRef("AJB"),
   tenure_regime: "Comodato",
@@ -212,7 +212,7 @@ const P5: PieceDetail = {
   loan_agreement_ref: "CONV-AJB-2021-014 (sintético)",
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [identifier(107, P5_ID, "OWNER", "AJB 12", "AJB-012", { is_locked: false })],
   location: locatedAt(LOCATION_IDS.deposit2),
   media_count: 1,
@@ -225,7 +225,7 @@ const P5: PieceDetail = {
 const P6_ID = ids.piece(6);
 const P6: PieceDetail = {
   id: P6_ID,
-  title: "Virgen de la Puerta",
+  denomination: "Virgen de la Puerta",
   description: "Imagen de bulto en yeso policromado.",
   collection: collectionRef("AJB"),
   tenure_regime: "Comodato",
@@ -248,7 +248,7 @@ const P6: PieceDetail = {
   loan_agreement_ref: "CONV-AJB-2021-015 (sintético)",
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [
     identifier(108, P6_ID, "I", "I-0999", "I-0999", { is_current: false, is_locked: true, notes: "Asignación errónea: una pieza en comodato nunca recibe código I (RN-003). Retirada mediante corrección auditada." }),
     identifier(109, P6_ID, "OWNER", "AJB 13", "AJB-013", { is_locked: false }),
@@ -264,7 +264,7 @@ const P6: PieceDetail = {
 const P7_ID = ids.piece(7);
 const P7: PieceDetail = {
   id: P7_ID,
-  title: "Juego de mates burilados",
+  denomination: "Juego de mates burilados",
   description: "Conjunto de dos mates burilados con escenas de cosecha y fiesta patronal.",
   collection: collectionRef("MBB"),
   tenure_regime: "Propiedad",
@@ -287,7 +287,7 @@ const P7: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: "I-0450",
+  code_i: "I-0450",
   identifiers: [identifier(110, P7_ID, "I", "MBB 40", "I-0450", { detected_format: "sigla de colección usada como I", notes: "Normalizado a código I tras revisión manual." })],
   location: locatedAt(LOCATION_IDS.deposit1),
   media_count: 2,
@@ -299,14 +299,14 @@ const P8_ID = ids.piece(8);
 const P8: PieceDetail = {
   ...P7,
   id: P8_ID,
-  title: "Mate burilado (componente 1)",
+  denomination: "Mate burilado (componente 1)",
   description: "Componente individual del conjunto MBB 40 (escena de cosecha).",
   object_type: termRef("OBJECT_TYPE", "COMPONENTE"),
   dimensions: [{ dimension: "diámetro", unit: "cm", value: 12 }],
   dimensions_text: "diám. 12 cm",
   notes: null,
   parent_piece_id: P7_ID,
-  inventory_code: null,
+  code_i: null,
   identifiers: [identifier(111, P8_ID, "COLLECTION", "MBB 40.1", "MBB-040.1", { is_locked: false })],
   media_count: 0,
 };
@@ -315,7 +315,7 @@ const P8: PieceDetail = {
 const P9_ID = ids.piece(9);
 const P9: PieceDetail = {
   id: P9_ID,
-  title: "Charango",
+  denomination: "Charango",
   description: "Charango de caja completa, tapa de madera.",
   collection: collectionRef("LRM"),
   tenure_regime: "Propiedad",
@@ -338,7 +338,7 @@ const P9: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [
     identifier(112, P9_ID, "INC_RN", "INC 1234", "INC-1234", { detected_format: "INC 4 dígitos (histórico)", is_current: false, is_locked: false, notes: "Formato anterior a 2020; se conserva como histórico." }),
     identifier(113, P9_ID, "INC_RN", "RN 004521", "RN-004521", { detected_format: "RN 6 dígitos", is_locked: false }),
@@ -354,7 +354,7 @@ const P9: PieceDetail = {
 const P10_ID = ids.piece(10);
 const P10: PieceDetail = {
   id: P10_ID,
-  title: "Máscara de chuncho",
+  denomination: "Máscara de chuncho",
   description: "Máscara de danza ritual, sin registro de colección de origen.",
   collection: null,
   tenure_regime: "Propiedad",
@@ -377,7 +377,7 @@ const P10: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [],
   location: emptyLocation(),
   media_count: 0,
@@ -390,7 +390,7 @@ const P10: PieceDetail = {
 const P11_ID = ids.piece(11);
 const P11: PieceDetail = {
   id: P11_ID,
-  title: "Tabla pintada de Sarhua",
+  denomination: "Tabla pintada de Sarhua",
   description: "Tabla pintada con escena costumbrista de Sarhua.",
   collection: collectionRef("LRM"),
   tenure_regime: "Propiedad",
@@ -413,7 +413,7 @@ const P11: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [identifier(114, P11_ID, "OTHER", "???", null, { detected_format: null, notes: "No se pudo normalizar: código ilegible en la fuente (RF-023)." })],
   location: emptyLocation(),
   media_count: 0,
@@ -426,7 +426,7 @@ const P11: PieceDetail = {
 const P12_ID = ids.piece(12);
 const P12: PieceDetail = {
   id: P12_ID,
-  title: "Manta tejida",
+  denomination: "Manta tejida",
   description: "Manta de lana con iconografía andina en telar de cuatro estacas.",
   collection: collectionRef("MBB"),
   tenure_regime: "Propiedad",
@@ -449,7 +449,7 @@ const P12: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: "I-0512",
+  code_i: "I-0512",
   identifiers: [identifier(115, P12_ID, "I", "I-0512", "I-0512")],
   location: locatedAt(LOCATION_IDS.shelfB3),
   media_count: 1,
@@ -462,7 +462,7 @@ const P12: PieceDetail = {
 const P13_ID = ids.piece(13);
 const P13: PieceDetail = {
   id: P13_ID,
-  title: "Quena",
+  denomination: "Quena",
   description: "Quena de caña, recibida para la exposición temporal \"Sonidos del ande\".",
   collection: collectionRef("LRM"),
   tenure_regime: "Préstamo Temporal",
@@ -485,7 +485,7 @@ const P13: PieceDetail = {
   loan_agreement_ref: "PREST-2026-003 (sintético)",
   temporary_inventory_number: "TMP-0021",
   parent_piece_id: null,
-  inventory_code: null,
+  code_i: null,
   identifiers: [],
   location: locatedAt(LOCATION_IDS.room1),
   media_count: 0,
@@ -498,7 +498,7 @@ const P13: PieceDetail = {
 const P14_ID = ids.piece(14);
 const P14: PieceDetail = {
   id: P14_ID,
-  title: "Cántaro decorado",
+  denomination: "Cántaro decorado",
   description: "Cántaro de cerámica con decoración geométrica.",
   collection: collectionRef("MMZ"),
   tenure_regime: "Propiedad",
@@ -521,7 +521,7 @@ const P14: PieceDetail = {
   loan_agreement_ref: null,
   temporary_inventory_number: null,
   parent_piece_id: null,
-  inventory_code: "I-0781",
+  code_i: "I-0781",
   identifiers: [identifier(116, P14_ID, "I", "I-0781", "I-0781")],
   location: locatedAt(LOCATION_IDS.shelfA1),
   media_count: 1,
@@ -542,7 +542,7 @@ const MISSING_FIELDS: Record<string, string[]> = {
 
 export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
   const alerts: PieceAlert[] = [];
-  const withoutCode = piece.tenure_regime === "Propiedad" && !piece.inventory_code;
+  const withoutCode = piece.tenure_regime === "Propiedad" && !piece.code_i;
   alerts.push({
     type: "WITHOUT_INVENTORY_CODE",
     applies: withoutCode,
@@ -605,17 +605,17 @@ function photo(n: number, pieceId: string, title: string, viewCode: string, opts
 }
 
 export const MEDIA_BY_PIECE: Record<string, MediaAssetOut[]> = {
-  [P1_ID]: [photo(1, P1_ID, P1.title, "FRONTAL")],
-  [P2_ID]: [photo(2, P2_ID, P2.title, "FRONTAL")],
-  [P3_ID]: [photo(3, P3_ID, P3.title, "FRONTAL")],
-  [P5_ID]: [photo(4, P5_ID, P5.title, "FRONTAL", { usage_restriction: termRef("USAGE_RESTRICTION", "NO_PUBLICAR"), restriction_note: "Comodato: no publicar sin autorización del comodante (RF-014)." })],
+  [P1_ID]: [photo(1, P1_ID, P1.denomination, "FRONTAL")],
+  [P2_ID]: [photo(2, P2_ID, P2.denomination, "FRONTAL")],
+  [P3_ID]: [photo(3, P3_ID, P3.denomination, "FRONTAL")],
+  [P5_ID]: [photo(4, P5_ID, P5.denomination, "FRONTAL", { usage_restriction: termRef("USAGE_RESTRICTION", "NO_PUBLICAR"), restriction_note: "Comodato: no publicar sin autorización del comodante (RF-014)." })],
   [P7_ID]: [
-    photo(5, P7_ID, P7.title, "FRONTAL", { sort_order: 0 }),
-    photo(6, P7_ID, P7.title, "DETALLE", { sort_order: 1, is_primary: false }),
+    photo(5, P7_ID, P7.denomination, "FRONTAL", { sort_order: 0 }),
+    photo(6, P7_ID, P7.denomination, "DETALLE", { sort_order: 1, is_primary: false }),
   ],
-  [P9_ID]: [photo(7, P9_ID, P9.title, "PERFIL")],
-  [P12_ID]: [photo(8, P12_ID, P12.title, "FRONTAL")],
-  [P14_ID]: [photo(9, P14_ID, P14.title, "FRONTAL")],
+  [P9_ID]: [photo(7, P9_ID, P9.denomination, "PERFIL")],
+  [P12_ID]: [photo(8, P12_ID, P12.denomination, "FRONTAL")],
+  [P14_ID]: [photo(9, P14_ID, P14.denomination, "FRONTAL")],
 };
 
 // --- Movimientos e historial (RF-017) ---
