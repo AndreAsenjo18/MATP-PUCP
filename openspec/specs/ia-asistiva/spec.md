@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define las funciones de inteligencia artificial asistiva del sistema del MATP, siempre desacopladas mediante un proveedor intercambiable (simulado por defecto) y sujetas a aprobación humana antes de persistir cualquier resultado.
-
 ## Requirements
-
 ### Requirement: Aprobación humana obligatoria de salidas de IA
 El sistema MUST registrar toda salida de IA como sugerencia pendiente, con tipo de función (RIA-01..05), entrada utilizada, salida propuesta, proveedor, fecha y pieza o lote relacionado, y MUST NOT aplicar ningún dato de una sugerencia al catálogo sin que un usuario autorizado la apruebe (total o parcialmente, con posibilidad de editarla) o la rechace con motivo. (RN-009, RF-040)
 
@@ -95,3 +93,25 @@ El sistema SHALL poder ofrecer, en una etapa posterior, un asistente de consulta
 - **GIVEN** el asistente habilitado
 - **WHEN** un usuario de Consulta interna pregunta por la ubicación exacta de una pieza
 - **THEN** la respuesta no revela campos restringidos para su rol
+
+### Requirement: Contrato del proveedor de IA
+La IA asistiva, que se ejecuta dentro de la aplicación de la API (ADR-008), MUST definir una interfaz de proveedor con las operaciones `extract_structured(text)` (RIA-01), `suggest_terms(piece)` (RIA-03) y `describe(piece)` (RIA-04), seleccionada por la variable `AI_PROVIDER`, con un proveedor simulado determinista por defecto y un proveedor de modelo de lenguaje configurable. Toda respuesta SHALL identificar el proveedor y el modelo, y MUST declararse como propuesta pendiente de aprobación humana; la IA no escribe en el catálogo ni accede a la base de datos. (RIA-01, RIA-03, RIA-04, RN-009, RNF-008)
+
+#### Scenario: Extracción simulada determinista
+- **GIVEN** el servicio configurado con `AI_PROVIDER=mock`
+- **WHEN** se solicita dos veces la extracción estructurada del texto "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998"
+- **THEN** ambas respuestas son idénticas, proponen las medidas con el fragmento de texto que las origina y están marcadas como pendientes de aprobación humana
+
+#### Scenario: Texto sin datos reconocibles
+- **WHEN** se solicita la extracción de un texto sin medidas, exposiciones ni estados reconocibles
+- **THEN** la respuesta no contiene campos propuestos y lo indica sin error
+
+#### Scenario: Proveedor real no implementado o no disponible
+- **GIVEN** el servicio configurado con `AI_PROVIDER=llm` y credenciales
+- **WHEN** se solicita una sugerencia y el proveedor no está implementado o no responde
+- **THEN** el servicio responde 503 con código `ai_provider_unavailable` y un mensaje en español, sin afectar a la API de colecciones
+
+#### Scenario: Entrada vacía
+- **WHEN** se solicita la extracción de un texto vacío
+- **THEN** el servicio responde 422 indicando que el texto es obligatorio
+

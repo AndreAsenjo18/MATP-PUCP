@@ -53,4 +53,4 @@
 - [x] 7.4 Recorrer `docs/maqueta/recorrido-demo.md` en escritorio y a 360 px (sin desplazamiento horizontal, menú móvil con teclado); actualizar el guion si cambian nombres o ubicaciones de elementos (Req: Navegación principal con barra lateral responsive; RNF-001)
 - [x] 7.5 Tests requeridos: `npm test` y `npm run lint` en verde (sin cambios en API ni IA, por lo que no requiere verificación en PostgreSQL); OpenAPI y cliente tipado sin cambios: confirmar `npm run openapi:check` en verde
 - [x] 7.6 Actualizar `apps/web/README.md` (estructura de componentes y cómo usar tokens) y añadir a `docs/manual-usuario/README.md` una nota sobre la nueva navegación (barra lateral y menú móvil)
-- [ ] 7.7 `openspec validate sistema-diseno-frontend --strict` en verde y, tras aprobar el PR, `openspec archive sistema-diseno-frontend -y` (o `/opsx:archive sistema-diseno-frontend`), después de archivar `maqueta-ui-navegable`
+- [x] 7.7 `openspec validate sistema-diseno-frontend --strict` en verde y, tras aprobar el PR, `openspec archive sistema-diseno-frontend -y` (o `/opsx:archive sistema-diseno-frontend`), después de archivar `maqueta-ui-navegable`
