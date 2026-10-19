@@ -97,7 +97,7 @@ def test_labels_are_case_insensitive() -> None:
 
 
 def test_list_pieces_tenure_in_spanish(client: TestClient) -> None:
-    body = client.get("/api/v1/pieces?page_size=100", headers=H).json()
+    body = client.get("/api/v1/pieces?limit=100", headers=H).json()
     assert body["total"] > 0
     values = _walk_values(body["items"], {"tenure_regime"})
     assert values, "se esperaban piezas listadas"
@@ -107,7 +107,7 @@ def test_list_pieces_tenure_in_spanish(client: TestClient) -> None:
 
 def test_piece_detail_tenure_in_spanish(seeded_api: SeededApi) -> None:
     client = seeded_api.client
-    first = client.get("/api/v1/pieces?page_size=1", headers=H).json()["items"][0]
+    first = client.get("/api/v1/pieces?limit=1", headers=H).json()["items"][0]
     detail = client.get(f"/api/v1/pieces/{first['id']}", headers=H).json()
     assert detail["tenure_regime"] in SPANISH_TENURE
 
@@ -138,8 +138,8 @@ def test_locations_tree_level_type_in_spanish(client: TestClient) -> None:
 
 
 def test_search_hits_tenure_in_spanish(client: TestClient) -> None:
-    first = client.get("/api/v1/pieces?page_size=1", headers=H).json()["items"][0]
-    fragment = first["title"].split()[0]
+    first = client.get("/api/v1/pieces?limit=1", headers=H).json()["items"][0]
+    fragment = first["denomination"].split()[0]
     body = client.get("/api/v1/search", params={"q": fragment}, headers=H).json()
     assert body["total"] > 0
     values = _walk_values(body["items"], {"tenure_regime"})
@@ -149,7 +149,7 @@ def test_search_hits_tenure_in_spanish(client: TestClient) -> None:
 
 def test_media_view_type_in_spanish(seeded_api: SeededApi) -> None:
     client = seeded_api.client
-    listing = client.get("/api/v1/pieces?page_size=100", headers=H).json()["items"]
+    listing = client.get("/api/v1/pieces?limit=100", headers=H).json()["items"]
     checked = 0
     for item in listing:
         media = client.get(f"/api/v1/pieces/{item['id']}/media", headers=H).json()
@@ -188,7 +188,7 @@ def test_create_collection_rejects_english_and_unknown(seeded_api: SeededApi) ->
 
 
 def test_piece_filters_accept_only_spanish(client: TestClient) -> None:
-    ok = client.get("/api/v1/pieces?tenure_regime=Comodato&page_size=5", headers=H)
+    ok = client.get("/api/v1/pieces?tenure_regime=Comodato&limit=5", headers=H)
     assert ok.status_code == 200
     assert {item["tenure_regime"] for item in ok.json()["items"]} == {"Comodato"}
     for value in ("LOAN_FOR_USE", "Dueño"):

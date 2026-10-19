@@ -10,11 +10,10 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
-from app.api.pagination import Page, PageParams, page_params, paginate
+from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
-    CHANGE_LOCATIONS,
     CHANGE_MEDIA,
     CHANGE_PIECE_CRUD,
     example_of,
@@ -22,8 +21,10 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound
+from app.core.errors import NotFound, ValidationFailed
+from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.catalog import service as catalog_service
 from app.modules.catalog.models import PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
@@ -36,6 +37,7 @@ from app.modules.catalog.schemas import (
     PieceChildLink,
     PieceCreate,
     PieceDetail,
+    PieceSearchResponse,
     PieceSort,
     PieceSummary,
     PieceUpdate,
@@ -48,9 +50,11 @@ from app.modules.identification.schemas import (
     IdentifierOut,
     InventoryCodeCorrection,
 )
-from app.modules.identification.service import retire_identifier
-from app.modules.locations.models import PieceMovement
+from app.modules.identification.service import retire_identifier, set_inventory_code
+from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
+from app.modules.locations.service import move_piece as move_piece_service
+from app.modules.locations.service import verify_location
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
     MediaAssetCreate,
@@ -94,7 +98,7 @@ def piece_filters(
     author: Annotated[str | None, Query(max_length=200)] = None,
     provenance: Annotated[str | None, Query(max_length=200)] = None,
     period_text: Annotated[str | None, Query(max_length=200)] = None,
-    sort: PieceSort = "title",
+    sort: PieceSort = "denomination",
 ) -> PieceFilters:
     regime = (
         code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
@@ -121,7 +125,7 @@ def piece_filters(
 # ------------------------------------------------------------------------- pieces
 @router.get(
     "",
-    response_model=Page[PieceSummary],
+    response_model=PieceSearchResponse,
     summary="Listar piezas con filtros combinados (AND) y paginación",
     tags=["Piezas"],
     **implemented(),
@@ -130,23 +134,54 @@ def list_pieces(
     session: SessionDep,
     user: Reader,
     filters: Annotated[PieceFilters, Depends(piece_filters)],
-    params: Annotated[PageParams, Depends(page_params)],
-) -> Page[PieceSummary]:
+    params: Annotated[LimitPageParams, Depends(limit_page_params)],
+) -> PieceSearchResponse:
     pieces, total = paginate(session, build_piece_query(session, filters), params)
     items = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
-    return Page(items=items, total=total, page=params.page, page_size=params.page_size)
+    return PieceSearchResponse(total=total, page=params.page, limit=params.limit, items=items)
 
 
 @router.post(
     "",
-    response_model=PieceDetail,
+    response_model=PieceSummary,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar una pieza",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
-def create_piece(body: PieceCreate, user: Creator) -> PieceDetail:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceDetail)
+def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> PieceSummary:
+    tenure = code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime")
+    piece = catalog_service.create_piece(
+        writer(session, user),
+        denomination=body.denomination,
+        tenure_regime=tenure,
+        description=body.description,
+        collection_id=body.collection_id,
+        lender_name=body.lender_name,
+        loan_agreement_ref=body.loan_agreement_ref,
+        temporary_inventory_number=body.temporary_inventory_number,
+        acquisition_method_term_id=body.acquisition_method_term_id,
+        entry_date=body.entry_date,
+        author=body.author,
+        provenance=body.provenance,
+        epoch_original_text=body.period.text if body.period else None,
+        epoch_type=body.period.type if body.period else None,
+        epoch_start_year=body.period.year_from if body.period else None,
+        epoch_end_year=body.period.year_to if body.period else None,
+        object_type_term_id=body.object_type_term_id,
+        category_id=body.category_id,
+        dimensions_text=body.dimensions_text,
+        dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
+        conservation_state_id=body.conservation_state_id,
+        recorded_by=body.recorded_by,
+        notes=body.notes,
+        parent_piece_id=body.parent_piece_id,
+        availability_term_id=body.availability_term_id,
+        current_location_id=None,
+    )
+    set_inventory_code(session, piece, body.code_i)
+    session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).summaries([piece])[0]
 
 
 @router.post(
@@ -180,27 +215,48 @@ def get_piece_by_id(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> P
 @router.put(
     "/{piece_id}",
     response_model=PieceDetail,
+    responses=NOT_FOUND,
     summary="Editar la ficha (auditoría campo a campo)",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
-def update_piece(piece_id: uuid.UUID, body: PieceUpdate, user: Editor) -> PieceDetail:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceDetail)
+def update_piece(
+    piece_id: uuid.UUID, body: PieceUpdate, session: SessionDep, user: Editor
+) -> PieceDetail:
+    piece = get_piece(session, piece_id)
+    writer(session, user)
+    changes = body.model_dump(exclude_unset=True, exclude={"code_i", "material_term_ids"})
+    if "period" in changes:
+        period = changes.pop("period") or {}
+        changes["epoch_original_text"] = period.get("text")
+        changes["epoch_type"] = period.get("type")
+        changes["epoch_start_year"] = period.get("year_from")
+        changes["epoch_end_year"] = period.get("year_to")
+    if changes:
+        catalog_service.update_piece(session, piece, **changes)
+    if "code_i" in body.model_fields_set:
+        set_inventory_code(session, piece, body.code_i)
+    session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
 
 @router.delete(
     "/{piece_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses=NOT_FOUND,
     summary="Eliminar lógicamente una pieza con motivo (RN-005)",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def soft_delete_piece(
     piece_id: uuid.UUID,
     reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio.")],
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("pieces.delete"))],
 ) -> None:
-    raise not_implemented(CHANGE_PIECE_CRUD)
+    piece = get_piece(session, piece_id)
+    soft_delete(writer(session, user, reason), piece, reason)
+    session.commit()
 
 
 @router.post(
@@ -487,6 +543,23 @@ def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> 
 
 
 # ---------------------------------------------------------------------- movements
+def _movement_out(reader: CatalogReader, movement: PieceMovement) -> MovementOut:
+    def visible_ref(location_id: uuid.UUID | None) -> LocationRef | None:
+        path, _exact = reader.visible_path(location_id)
+        return LocationRef.model_validate(path[-1]) if path else None
+
+    return MovementOut(
+        id=movement.id,
+        piece_id=movement.piece_id,
+        movement_type=movement.movement_type,
+        from_location=visible_ref(movement.from_location_id),
+        to_location=visible_ref(movement.to_location_id),
+        reason=movement.reason,
+        performed_by_label=movement.performed_by_label,
+        occurred_at=movement.occurred_at,
+    )
+
+
 @router.get(
     "/{piece_id}/location-history",
     response_model=list[MovementOut],
@@ -505,24 +578,7 @@ def get_piece_location_history(
         .where(PieceMovement.piece_id == piece_id)
         .order_by(PieceMovement.occurred_at.desc())
     )
-
-    def visible_ref(location_id: uuid.UUID | None) -> LocationRef | None:
-        path, _exact = reader.visible_path(location_id)
-        return LocationRef.model_validate(path[-1]) if path else None
-
-    return [
-        MovementOut(
-            id=movement.id,
-            piece_id=movement.piece_id,
-            movement_type=movement.movement_type,
-            from_location=visible_ref(movement.from_location_id),
-            to_location=visible_ref(movement.to_location_id),
-            reason=movement.reason,
-            performed_by_label=movement.performed_by_label,
-            occurred_at=movement.occurred_at,
-        )
-        for movement in movements
-    ]
+    return [_movement_out(reader, movement) for movement in movements]
 
 
 @router.post(
@@ -531,11 +587,36 @@ def get_piece_location_history(
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un movimiento o verificación física",
     tags=["Ubicaciones"],
-    **stub(CHANGE_LOCATIONS),
+    **implemented(),
 )
 def move_piece(
     piece_id: uuid.UUID,
     body: MovementCreate,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("movements.register"))],
 ) -> MovementOut:
-    raise not_implemented(CHANGE_LOCATIONS, MovementOut)
+    piece = get_piece(session, piece_id)
+    writer(session, user, body.reason)
+    target_loc_id = body.to_location_id or body.destination_location_id
+    if body.movement_type == MovementType.MOVE:
+        if target_loc_id is None:
+            raise ValidationFailed(
+                "to_location_id o destination_location_id es obligatorio para un traslado.",
+                code="destination_required",
+            )
+        destination = session.get(Location, target_loc_id)
+        if destination is None or destination.deleted_at is not None:
+            raise NotFound("La ubicación de destino no existe o fue eliminada.")
+        movement = move_piece_service(
+            session, piece, destination, body.reason, performed_by_label=user.full_name
+        )
+    elif body.movement_type == MovementType.VERIFICATION:
+        movement = verify_location(session, piece)
+    else:
+        raise ValidationFailed(
+            f"Tipo de movimiento no admitido: {body.movement_type}.",
+            code="invalid_movement_type",
+        )
+    session.commit()
+    reader = CatalogReader(session, Viewer(user.permissions))
+    return _movement_out(reader, movement)

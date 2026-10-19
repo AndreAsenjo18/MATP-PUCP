@@ -34,6 +34,33 @@ class SearchHit(BaseModel):
     matched_identifier: CodeBrief | None = None
 
 
+class SearchResultPage(BaseModel):
+    """Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
+
+    A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
+    `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
+    la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "items": [SearchHit.model_config["json_schema_extra"]["examples"][0]],  # type: ignore[index]
+                    "total": 1,
+                    "page": 1,
+                    "limit": 20,
+                }
+            ]
+        }
+    )
+
+    items: list[SearchHit]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1)
+
+
 class ReportType(enum.StrEnum):
     INVENTORY = "inventory"
     BY_COLLECTION = "by-collection"

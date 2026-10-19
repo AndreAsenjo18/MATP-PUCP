@@ -28,8 +28,8 @@ export interface PieceCardProps {
 export function pieceCardProps(piece: ApiSchemas["PieceSummary"], alerts: PieceAlert[] = []): PieceCardProps {
   return {
     href: `/piezas/${piece.id}`,
-    title: piece.title,
-    inventoryCode: piece.inventory_code,
+    title: piece.denomination,
+    inventoryCode: piece.code_i,
     collectionName: piece.collection?.name ?? null,
     locationLabel: piece.location_label,
     tenureRegime: piece.tenure_regime,

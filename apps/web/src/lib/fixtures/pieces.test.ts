@@ -13,7 +13,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     const onLoanForUse = PIECES.filter((p) => p.tenure_regime === "Comodato");
     expect(onLoanForUse.length).toBeGreaterThan(0);
     for (const piece of onLoanForUse) {
-      expect(piece.inventory_code).toBeNull();
+      expect(piece.code_i).toBeNull();
       const currentInventoryIdentifier = piece.identifiers.find((i) => i.identifier_type_code === "I" && i.is_current);
       expect(currentInventoryIdentifier).toBeUndefined();
     }
@@ -23,7 +23,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     const onTemporaryLoan = PIECES.filter((p) => p.tenure_regime === "Préstamo Temporal");
     expect(onTemporaryLoan.length).toBeGreaterThan(0);
     for (const piece of onTemporaryLoan) {
-      expect(piece.inventory_code).toBeNull();
+      expect(piece.code_i).toBeNull();
     }
   });
 
@@ -37,7 +37,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
 
   it("marca la alerta WITHOUT_INVENTORY_CODE solo para piezas propias sin código I", () => {
     const cajonSanMarcos = getPieceDetail(
-      PIECES.find((p) => p.title === "Cajón San Marcos")!.id,
+      PIECES.find((p) => p.denomination === "Cajón San Marcos")!.id,
     )!;
     const alerts = alertsForPiece(cajonSanMarcos);
     expect(alerts.find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).toBe(true);
@@ -48,7 +48,7 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
   });
 
   it("marca un código como no normalizable cuando el original es ilegible", () => {
-    const tabla = PIECES.find((p) => p.title === "Tabla pintada de Sarhua")!;
+    const tabla = PIECES.find((p) => p.denomination === "Tabla pintada de Sarhua")!;
     const alerts = alertsForPiece(tabla);
     expect(alerts.find((a) => a.type === "UNPARSEABLE_CODE")?.applies).toBe(true);
   });
@@ -63,10 +63,10 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
   it("busca por un código tal como está escrito en la fuente (sucio) y por el código normalizado (RF-023)", () => {
     const byDirtyCode = listPieces({ q: "mmz 15" });
     expect(byDirtyCode.items).toHaveLength(1);
-    expect(byDirtyCode.items[0].title).toBe("Toro de Pucará (3 cuernos)");
+    expect(byDirtyCode.items[0].denomination).toBe("Toro de Pucará (3 cuernos)");
 
     const byNormalizedCode = listPieces({ q: "I-0236" });
     expect(byNormalizedCode.items).toHaveLength(1);
-    expect(byNormalizedCode.items[0].title).toBe("Toro de Pucará");
+    expect(byNormalizedCode.items[0].denomination).toBe("Toro de Pucará");
   });
 });

@@ -36,7 +36,35 @@ def page_params(
     return PageParams(page=page, page_size=page_size)
 
 
-def paginate(session: Session, statement: Select[Any], params: PageParams) -> tuple[list[Any], int]:
+class LimitPageParams(BaseModel):
+    """Paginación con el nombre de parámetro del contrato de interfaces (`limit`, no
+    `page_size`)."""
+
+    page: int = 1
+    limit: int = DEFAULT_PAGE_SIZE
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.limit
+
+    @property
+    def page_size(self) -> int:
+        """Compatibilidad con `paginate()`, que solo conoce `page_size`/`offset`."""
+        return self.limit
+
+
+def limit_page_params(
+    page: Annotated[int, Query(ge=1, description="Número de página (desde 1).")] = 1,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
+    ] = DEFAULT_PAGE_SIZE,
+) -> LimitPageParams:
+    return LimitPageParams(page=page, limit=limit)
+
+
+def paginate(
+    session: Session, statement: Select[Any], params: PageParams | LimitPageParams
+) -> tuple[list[Any], int]:
     """Run a select returning ORM entities with limit/offset and its total count."""
     total = session.scalar(select(func.count()).select_from(statement.order_by(None).subquery()))
     rows = list(session.scalars(statement.limit(params.page_size).offset(params.offset)))

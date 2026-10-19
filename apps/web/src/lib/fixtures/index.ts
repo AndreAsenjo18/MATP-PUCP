@@ -36,10 +36,10 @@ type Page<T> = { items: T[]; total: number; page: number; page_size: number };
 export function toSummary(detail: PieceDetail): PieceSummary {
   return {
     id: detail.id,
-    title: detail.title,
+    denomination: detail.denomination,
     collection: detail.collection,
     tenure_regime: detail.tenure_regime,
-    inventory_code: detail.inventory_code,
+    code_i: detail.code_i,
     codes: detail.identifiers
       .filter((i) => i.is_current)
       .map((i) => ({ identifier_type_code: i.identifier_type_code, original_value: i.original_value, normalized_value: i.normalized_value })),
@@ -69,7 +69,7 @@ export interface PieceFilters {
 function matchesQuery(piece: PieceDetail, q: string): boolean {
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
-  if (piece.title.toLowerCase().includes(needle)) return true;
+  if (piece.denomination.toLowerCase().includes(needle)) return true;
   const compactNeedle = needle.replace(/[.\s]/g, "");
   return piece.identifiers.some(
     (i) =>
@@ -127,7 +127,7 @@ export function searchPieces(query: string, page = 1, pageSize = 20): Page<Searc
       });
       continue;
     }
-    if (piece.title.toLowerCase().includes(q)) {
+    if (piece.denomination.toLowerCase().includes(q)) {
       hits.push({ piece: toSummary(piece), match_type: "TITLE", matched_identifier: null });
     }
   }

@@ -21,7 +21,7 @@ from app.modules.catalog.enums import PeriodType, TenureRegime
 from app.modules.identification.schemas import IdentifierOut
 from app.modules.locations.schemas import PieceLocation
 
-PieceSort = Literal["title", "-title", "created_at", "-created_at"]
+PieceSort = Literal["denomination", "-denomination", "created_at", "-created_at"]
 
 _COLLECTION_REF = {"id": EX_COLLECTION_ID, "name": "Colección MMZ (ficticia)", "acronym": "M.M.Z."}
 _STATUS_REF = {"id": EX_TERM_ID, "code": "REGULAR", "label": "Regular"}
@@ -72,10 +72,10 @@ class PieceSummary(BaseModel):
             "examples": [
                 {
                     "id": EX_PIECE_ID,
-                    "title": "Vasija ceremonial (sintética)",
+                    "denomination": "Vasija ceremonial (sintética)",
                     "collection": _COLLECTION_REF,
                     "tenure_regime": "Propiedad",
-                    "inventory_code": "I-0236",
+                    "code_i": "I-0236",
                     "codes": [_CODE_EXAMPLE],
                     "category": _CATEGORY_REF,
                     "conservation_status": _STATUS_REF,
@@ -90,12 +90,12 @@ class PieceSummary(BaseModel):
     )
 
     id: uuid.UUID
-    title: str
+    denomination: str
     collection: CollectionRef | None
     tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
-    inventory_code: str | None = Field(description="Código I vigente tal como está escrito.")
+    code_i: str | None = Field(description="Código I vigente, normalizado (D4).")
     codes: list[CodeBrief] = Field(description="Identificadores vigentes.")
     category: TermRef | None
     conservation_status: TermRef | None
@@ -114,13 +114,51 @@ class PieceSummary(BaseModel):
         return serialize_label(TENURE_REGIME_LABELS, value)  # type: ignore[arg-type]
 
 
+class PieceSearchResponse(BaseModel):
+    """Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "total": 1,
+                    "page": 1,
+                    "limit": 20,
+                    "items": [
+                        {
+                            "id": EX_PIECE_ID,
+                            "denomination": "Vasija ceremonial (sintética)",
+                            "collection": _COLLECTION_REF,
+                            "tenure_regime": "Propiedad",
+                            "code_i": "I-0236",
+                            "codes": [_CODE_EXAMPLE],
+                            "category": _CATEGORY_REF,
+                            "conservation_status": _STATUS_REF,
+                            "period_text": "ca. 1950",
+                            "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+                            "media_count": 2,
+                            "has_location": True,
+                            "updated_at": EX_DATETIME,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    total: int = Field(ge=0, description="Total de resultados que cumplen los filtros.")
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1, le=100)
+    items: list[PieceSummary]
+
+
 class PieceDetail(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "id": EX_PIECE_ID,
-                    "title": "Vasija ceremonial (sintética)",
+                    "denomination": "Vasija ceremonial (sintética)",
                     "description": "Descripción sintética de demostración.",
                     "collection": _COLLECTION_REF,
                     "tenure_regime": "Comodato",
@@ -154,7 +192,7 @@ class PieceDetail(BaseModel):
                         "is_exact": False,
                     },
                     "identifiers": [],
-                    "inventory_code": None,
+                    "code_i": None,
                     "media_count": 0,
                     "created_at": EX_DATETIME,
                     "updated_at": EX_DATETIME,
@@ -165,7 +203,7 @@ class PieceDetail(BaseModel):
     )
 
     id: uuid.UUID
-    title: str
+    denomination: str
     description: str | None
     collection: CollectionRef | None
     tenure_regime: TenureRegimeLabel = Field(
@@ -199,7 +237,7 @@ class PieceDetail(BaseModel):
     availability: TermRef | None
     location: PieceLocation
     identifiers: list[IdentifierOut] = Field(description="Identificadores vigentes.")
-    inventory_code: str | None
+    code_i: str | None = Field(description="Código I vigente, normalizado (D4).")
     media_count: int
     created_at: datetime
     updated_at: datetime
@@ -218,11 +256,11 @@ class PieceWrite(BaseModel):
     provenance: str | None = None
     period: Period | None = None
     object_type_term_id: uuid.UUID | None = None
-    category_term_id: uuid.UUID | None = None
+    category_id: uuid.UUID | None = None
     material_term_ids: list[uuid.UUID] | None = None
     dimensions_text: str | None = None
     dimensions: list[Dimension] | None = None
-    conservation_status_term_id: uuid.UUID | None = None
+    conservation_state_id: uuid.UUID | None = None
     recorded_by: str | None = None
     notes: str | None = None
     parent_piece_id: uuid.UUID | None = None
@@ -234,23 +272,29 @@ class PieceCreate(PieceWrite):
         json_schema_extra={
             "examples": [
                 {
-                    "title": "Retablo de San Marcos (sintético)",
+                    "denomination": "Retablo de San Marcos (sintético)",
                     "tenure_regime": "Propiedad",
                     "collection_id": EX_COLLECTION_ID,
                     "period": {"text": "s. XX"},
+                    "code_i": None,
                     "identifiers": [{"identifier_type_code": "COLECCION", "value": "RA 28"}],
                 }
             ]
         }
     )
 
-    title: str = Field(min_length=1, max_length=500)
+    denomination: str = Field(min_length=1, max_length=500)
     tenure_regime: TenureRegimeLabel = Field(
         description="Régimen de tenencia en español: Propiedad, Comodato o Préstamo Temporal."
     )
+    code_i: str | None = Field(
+        None,
+        description="Código I a asignar (RN-002, RN-003). No usar `identifiers` para el tipo I.",
+    )
     identifiers: list[dict[str, Any]] = Field(
         default_factory=list,
-        description="Identificadores iniciales ({identifier_type_code, value, source}).",
+        description="Identificadores iniciales, sin el tipo I "
+        "({identifier_type_code, value, source}).",
     )
 
     @field_validator("tenure_regime", mode="before")
@@ -272,7 +316,11 @@ class PieceUpdate(PieceWrite):
 
     model_config = ConfigDict(json_schema_extra={"examples": [{"notes": "Revisado (sintético)"}]})
 
-    title: str | None = Field(None, min_length=1, max_length=500)
+    denomination: str | None = Field(None, min_length=1, max_length=500)
+    code_i: str | None = Field(
+        None,
+        description="Código I a verificar o asignar (RN-002, RN-003); omitir para no tocarlo.",
+    )
 
 
 class FieldIssue(BaseModel):
