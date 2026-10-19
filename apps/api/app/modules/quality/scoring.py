@@ -31,16 +31,21 @@ SETTING_KEY = "duplicates.scoring"
 
 @dataclass(frozen=True)
 class ScoringConfig:
-    """Weights and thresholds of the detection rules (design D1) [SUPUESTO]."""
+    """Weights and thresholds of the detection rules (design D1) [SUPUESTO].
+
+    Without a shared identifier a pair can reach at most 0.75, so it enters the queue only when
+    several signals agree (denomination, collection, author and provenance, epoch); a near-equal
+    denomination in the same collection alone adds 0.40.
+    """
 
     #: Weight of a shared normalized identifier, by identifier type; I weighs more.
     inventory_code_weight: float = 0.45
     other_identifier_weight: float = 0.35
-    denomination_weight: float = 0.25
+    denomination_weight: float = 0.30
     collection_weight: float = 0.10
-    author_provenance_weight: float = 0.10
-    epoch_weight: float = 0.05
-    dimensions_weight: float = 0.05
+    author_provenance_weight: float = 0.15
+    epoch_weight: float = 0.10
+    dimensions_weight: float = 0.10
     #: Pairs without a shared identifier enter the queue from this score (DUPLICATE_MIN_SCORE).
     min_score: float = 0.6
     #: Relative tolerance for two measures of the same dimension to be compatible (±5 %).

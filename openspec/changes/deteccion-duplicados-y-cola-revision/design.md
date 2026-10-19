@@ -29,17 +29,18 @@ Puntaje ponderado (pesos en `quality_setting`, auditados) [SUPUESTO]:
 |---|---|
 | identificador normalizado igual, del mismo tipo: código I | 0.45 |
 | identificador normalizado igual, del mismo tipo: colección, INC/RN, PUCP, propietario u otro | 0.35 |
-| similitud de denominación | 0.25 |
+| similitud de denominación | 0.30 |
 | misma colección (o subcolección) | 0.10 |
-| autor / procedencia similares | 0.10 |
-| épocas estructuradas superpuestas | 0.05 |
-| medidas estructuradas compatibles (±5 %) | 0.05 |
+| autor / procedencia similares | 0.15 |
+| épocas estructuradas superpuestas | 0.10 |
+| medidas estructuradas compatibles (±5 %) | 0.10 |
 
 Umbral de cola `DUPLICATE_MIN_SCORE=0.6`. `matched_fields` guarda cada señal con valores comparados. Contradicciones fuertes (dos códigos I vigentes distintos) no descartan el par pero se marcan `blocking_conflict` (la fusión queda bloqueada).
 
 Reglas del puntaje (decididas al implementar la tarea 2.1, 2026-10-19):
 - El puntaje es la suma de `peso × similitud` de las señales que aplican, con tope 1. Una señal aplica solo si ambas piezas tienen el dato; un dato ausente no suma ni resta.
-- **Un par que comparte un identificador normalizado entra siempre en la cola**, aunque su puntaje quede bajo el umbral: con los pesos de la tabla, un código compartido con denominaciones distintas suma entre 0.35 y 0.55, y la spec exige que ese par llegue a revisión (escenario «Mismo código histórico en dos piezas»). El puntaje mostrado sigue siendo el real. El umbral solo filtra los pares de los bloques 2 y 3.
+- **Un par que comparte un identificador normalizado entra siempre en la cola**, aunque su puntaje quede bajo el umbral: con los pesos de la tabla, un código compartido con denominaciones distintas puede quedar bajo 0.6 cuando las demás señales no coinciden, y la spec exige que ese par llegue a revisión (escenario «Mismo código histórico en dos piezas»). El puntaje mostrado sigue siendo el real. El umbral solo filtra los pares de los bloques 2 y 3.
+- **Pesos reequilibrados (2026-10-19, al implementar la tarea 2.4).** Con los pesos iniciales (denominación 0.25, colección 0.10, autor/procedencia 0.10, época 0.05, medidas 0.05), un par sin identificador compartido sumaba como máximo 0.55, por debajo del umbral 0.6: los bloques 2 y 3 nunca podían meter un par en la cola y el escenario «Detección incremental al editar» era imposible. Medido sobre el seed (298 piezas, 1 508 pares evaluados sin identificador compartido), bajar el umbral no era una alternativa: con 0.35 entraban 1 060 pares y con 0.45, 94; una regla de «denominación casi igual en la misma colección» metía 832, porque piezas distintas comparten denominación («Retablo ayacuchano»). Con los pesos actuales un par sin identificador llega como máximo a 0.75 y solo entra si coinciden varias señales (denominación, colección, autor y procedencia, época): en el seed entran 10 pares de esos 1 508, y los 10 pares sembrados siguen detectándose (puntajes de 0.80 a 0.90). Una denominación casi igual en la misma colección suma 0.40 por sí sola, así que no basta. Los identificadores y el umbral no cambian.
 - Los pesos, el umbral, la tolerancia de medidas y los mínimos de los bloques se leen de `quality_setting` (clave `duplicates.scoring`); sin fila, rigen los valores por defecto de esta tabla.
 
 ```mermaid

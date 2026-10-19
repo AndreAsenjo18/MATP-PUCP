@@ -84,22 +84,32 @@ def test_every_planted_pair_is_detected_above_the_threshold(
         assert {f"identifier:{TYPE_COLLECTION}", "denomination", "collection_id"} <= signals
 
 
-def test_no_spurious_pair_above_the_threshold(
+def test_pairs_outside_the_planted_ones_need_a_code_or_several_agreeing_signals(
     detection: Any, planted: set[tuple[uuid.UUID, uuid.UUID]]
 ) -> None:
-    """Outside the planted pairs nothing reaches the threshold.
+    """No trivial pair reaches the queue.
 
-    A pair may still enter below it only because both pieces share a normalized code (the seed
-    draws PUCP codes at random, so two unrelated pieces can share one): that is the spec scenario
-    «Mismo código histórico en dos piezas», which must reach a human.
+    Outside the planted pairs a candidate either shares a normalized code (the seed draws PUCP
+    codes at random, so two unrelated pieces can share one: spec scenario «Mismo código histórico
+    en dos piezas») or reaches the threshold because several signals agree: near-equal
+    denomination, same collection, and author/provenance or epoch. The seed has 10 such pairs
+    (design D1, reweighted weights).
     """
     config = ScoringConfig()
+    by_signals = []
     for candidate in detection.candidates:
         if (candidate.piece_a_id, candidate.piece_b_id) in planted:
             continue
-        assert candidate.result.score < config.min_score
-        assert candidate.result.shared_identifier
-        assert candidate.blocks == {BLOCK_IDENTIFIER}
+        if candidate.result.shared_identifier:
+            assert candidate.blocks == {BLOCK_IDENTIFIER}
+            continue
+        signals = {s["signal"]: s for s in candidate.result.matched_fields()}
+        assert candidate.result.score >= config.min_score
+        assert signals["denomination"]["similarity"] >= 0.9
+        assert signals["collection"]["similarity"] == 1.0
+        assert {"author_provenance", "epoch"} & set(signals)
+        by_signals.append(candidate)
+    assert len(by_signals) == 10
 
 
 def test_detection_does_not_compare_every_pair(detection: Any) -> None:
