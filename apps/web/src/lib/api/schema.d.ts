@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 48099dad1a6d8866cfff881a789acdf59ee863880e592046d2fc1844231d6080
+ * openapi-sha256: 4d076278b43373acaf8b90f80e1526c632cf4c38b06c55dd4974667cbf9822f8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1604,8 +1604,6 @@ export interface components {
              * @description Archivo .xlsx de origen.
              */
             file: string;
-            /** Source Name */
-            source_name: string;
         };
         /** Body_uploadMediaAsset */
         Body_uploadMediaAsset: {
@@ -2263,6 +2261,18 @@ export interface components {
             sort_order?: number | null;
         };
         /**
+         * ImportBatchCounters
+         * @description Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``).
+         */
+        ImportBatchCounters: {
+            /** Conflicts */
+            conflicts: number;
+            /** New Records */
+            new_records: number;
+            /** Updates */
+            updates: number;
+        };
+        /**
          * ImportBatchOut
          * @example {
          *       "counts": {
@@ -2326,6 +2336,41 @@ export interface components {
          * @enum {string}
          */
         ImportBatchStatus: "UPLOADED" | "FAILED_INGESTION" | "MAPPED" | "VALIDATED" | "IN_PREVIEW" | "APPROVED" | "APPLIED" | "FAILED_APPLY" | "ABANDONED" | "REVERTED";
+        /**
+         * ImportBatchSummary
+         * @description Response of ``POST /imports/upload`` as the team contract defines it (task 4.4, D8).
+         *
+         *     How the four row classifications map to the three counters (I7) and the Spanish values of
+         *     ``status`` (I8) stay open until ``importacion-pipeline-reconciliacion``.
+         * @example {
+         *       "batch_id": "01920000-0000-7000-8000-000000000601",
+         *       "filename": "sabana_sintetica_v1.xlsx",
+         *       "summary": {
+         *         "conflicts": 5,
+         *         "new_records": 70,
+         *         "updates": 35
+         *       },
+         *       "total_rows": 120
+         *     }
+         */
+        ImportBatchSummary: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Status
+             * @description Estado del lote; valores en español pendientes (I8).
+             */
+            status?: string | null;
+            /** @description Agrupación de NEW, UPDATE, POSSIBLE_DUPLICATE y CONFLICT pendiente (I7). */
+            summary: components["schemas"]["ImportBatchCounters"];
+            /** Total Rows */
+            total_rows: number;
+        };
         /**
          * ImportLog
          * @example {
@@ -6463,12 +6508,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportBatchOut"];
+                    "application/json": components["schemas"]["ImportBatchSummary"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 
 from app.api.deps import CurrentUser, require_permission
 from app.api.errors import COMMON_ERROR_RESPONSES
@@ -20,6 +20,7 @@ from app.modules.imports.models import ImportBatchStatus, RowClassification
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ImportBatchOut,
+    ImportBatchSummary,
     ImportLog,
     ImportRowOut,
     MappingRequest,
@@ -39,17 +40,16 @@ Reverter = Annotated[CurrentUser, Depends(require_permission("imports.revert"))]
 
 @router.post(
     "/imports/upload",
-    response_model=ImportBatchOut,
-    status_code=status.HTTP_201_CREATED,
+    response_model=ImportBatchSummary,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="1. Ingesta: subir un Excel y crear el lote",
     **stub(CHANGE_IMPORTS),
 )
 def upload_import_batch(
     user: Preparer,
     file: Annotated[UploadFile, File(description="Archivo .xlsx de origen.")],
-    source_name: Annotated[str, Form(min_length=1, max_length=200)],
-) -> ImportBatchOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
+) -> ImportBatchSummary:
+    raise not_implemented(CHANGE_IMPORTS, ImportBatchSummary)
 
 
 @router.get(

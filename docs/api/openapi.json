@@ -606,17 +606,10 @@
             "description": "Archivo .xlsx de origen.",
             "title": "File",
             "type": "string"
-          },
-          "source_name": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Source Name",
-            "type": "string"
           }
         },
         "required": [
-          "file",
-          "source_name"
+          "file"
         ],
         "title": "Body_uploadImportBatch",
         "type": "object"
@@ -2172,6 +2165,30 @@
         "title": "IdentifierTypeUpdate",
         "type": "object"
       },
+      "ImportBatchCounters": {
+        "description": "Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``).",
+        "properties": {
+          "conflicts": {
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "new_records": {
+            "title": "New Records",
+            "type": "integer"
+          },
+          "updates": {
+            "title": "Updates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "new_records",
+          "updates",
+          "conflicts"
+        ],
+        "title": "ImportBatchCounters",
+        "type": "object"
+      },
       "ImportBatchOut": {
         "examples": [
           {
@@ -2346,6 +2363,60 @@
         ],
         "title": "ImportBatchStatus",
         "type": "string"
+      },
+      "ImportBatchSummary": {
+        "description": "Response of ``POST /imports/upload`` as the team contract defines it (task 4.4, D8).\n\nHow the four row classifications map to the three counters (I7) and the Spanish values of\n``status`` (I8) stay open until ``importacion-pipeline-reconciliacion``.",
+        "examples": [
+          {
+            "batch_id": "01920000-0000-7000-8000-000000000601",
+            "filename": "sabana_sintetica_v1.xlsx",
+            "summary": {
+              "conflicts": 5,
+              "new_records": 70,
+              "updates": 35
+            },
+            "total_rows": 120
+          }
+        ],
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Estado del lote; valores en español pendientes (I8).",
+            "title": "Status"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ImportBatchCounters",
+            "description": "Agrupación de NEW, UPDATE, POSSIBLE_DUPLICATE y CONFLICT pendiente (I7)."
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "filename",
+          "total_rows",
+          "summary"
+        ],
+        "title": "ImportBatchSummary",
+        "type": "object"
       },
       "ImportLog": {
         "examples": [
@@ -9465,11 +9536,11 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportBatchOut"
+                  "$ref": "#/components/schemas/ImportBatchSummary"
                 }
               }
             },
