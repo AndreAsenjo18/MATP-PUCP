@@ -42,7 +42,7 @@ export const AI_SUGGESTIONS: AiSuggestionOut[] = [
     provider: "mock",
     model: "matp-mock-terms-v1",
     status: "PENDING",
-    input_data: { titulo: "Charango", descripcion: "Charango de caja completa, tapa de madera." },
+    input_data: { denomination: "Charango", description: "Charango de caja completa, tapa de madera." },
     output_data: { suggested_terms: ["INSTRUMENTO_MUSICAL"], vocabulary_code: "CATEGORY", confidence: 0.91 },
     approved_data: null,
     rejection_reason: null,
