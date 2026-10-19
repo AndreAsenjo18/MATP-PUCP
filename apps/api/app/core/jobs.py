@@ -158,13 +158,14 @@ def register_worker(name: str, drain: Drain, *, interval: float = 30.0) -> None:
 
 
 def start_workers(factory: SessionFactory) -> list[PollingWorker]:
-    """Start one worker per registered queue (called from the app lifespan)."""
+    """Start one worker per registered queue (called from the app lifespan) and drain it once."""
     started: list[PollingWorker] = []
     for name, spec in _worker_specs.items():
         if name in _running:
             continue
         worker = PollingWorker(name, spec.drain, factory, spec.interval)
         worker.start()
+        worker.wake()  # drain at once whatever was queued before the restart
         _running[name] = worker
         started.append(worker)
     return started
