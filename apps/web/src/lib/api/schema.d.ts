@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 8b9b145e5ff421f3720c79e450391990ea5e79b3d9f4365477bc82315fcf3a3f
+ * openapi-sha256: d4d5d2f05f77ac6a1547c63762e160af8a83a91e205cce1ecef598d0c96276e2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2002,7 +2002,7 @@ export interface components {
          * DuplicateStatus
          * @enum {string}
          */
-        DuplicateStatus: "PENDING" | "MERGED" | "DISTINCT" | "POSTPONED";
+        DuplicateStatus: "PENDING" | "MERGED" | "DISTINCT" | "POSTPONED" | "SUPERSEDED";
         /**
          * ErrorResponse
          * @description Error body shared by every endpoint.

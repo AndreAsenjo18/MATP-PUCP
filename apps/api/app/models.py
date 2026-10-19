@@ -17,7 +17,12 @@ from app.modules.identification.models import IdentifierType, PieceIdentifier
 from app.modules.imports.models import ImportBatch, ImportMappingTemplate, ImportRow
 from app.modules.locations.models import Loan, LoanItem, Location, PieceMovement
 from app.modules.media.models import MediaAsset
-from app.modules.quality.models import DuplicateCandidate
+from app.modules.quality.models import (
+    DuplicateCandidate,
+    QualityJob,
+    QualityJobItem,
+    QualitySetting,
+)
 from app.modules.users.models import AppUser, Permission, Role, RolePermission, UserRole
 
 __all__ = [
@@ -42,6 +47,9 @@ __all__ = [
     "PieceMaterial",
     "PieceMovement",
     "PieceSourceRecord",
+    "QualityJob",
+    "QualityJobItem",
+    "QualitySetting",
     "Role",
     "RolePermission",
     "Term",

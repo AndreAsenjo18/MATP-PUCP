@@ -1,11 +1,11 @@
 ## 1. Modelo y configuración
 
-- [ ] 1.1 Migración aditiva: `quality_setting` (pesos, umbral), `quality_job` y `quality_job_item`, nuevo estado `SUPERSEDED` (`POSTPONED` ya existe) y columnas `postponed_until`, `blocking_conflict`, `change_set_id` en `duplicate_candidate`; `tests/test_migrations.py` en verde (Req: Detección explicable…; Req: Pares distintos estables…)
+- [x] 1.1 Migración aditiva: `quality_setting` (pesos, umbral), `quality_job` y `quality_job_item`, nuevo estado `SUPERSEDED` (`POSTPONED` ya existe) y columnas `postponed_until`, `blocking_conflict`, `change_set_id` en `duplicate_candidate`; `tests/test_migrations.py` en verde (Req: Detección explicable…; Req: Pares distintos estables…)
 
 ## 2. Detección
 
-- [ ] 2.1 Crear `quality/scoring.py` (señales, pesos, huella) con pruebas unitarias por señal y por huella (Req: Detección explicable…; Req: Pares distintos estables…; RF-030)
-- [ ] 2.2 Crear `quality/duplicates.py` con generación por bloques (identificador, trigramas por colección, autor+procedencia) e interfaz `SimilarityScorer` para importación; pruebas con los 10 pares del seed: todos detectados y sin pares triviales espurios por encima del umbral (Req: Detección explicable…)
+- [x] 2.1 Crear `quality/scoring.py` (señales, pesos, huella) con pruebas unitarias por señal y por huella (Req: Detección explicable…; Req: Pares distintos estables…; RF-030)
+- [x] 2.2 Crear `quality/duplicates.py` con generación por bloques (identificador, trigramas por colección, autor+procedencia) e interfaz `SimilarityScorer` para importación; pruebas con los 10 pares del seed: todos detectados y sin pares triviales espurios por encima del umbral (Req: Detección explicable…)
 - [ ] 2.3 Implementar operación nueva `POST /api/v1/quality/duplicates/scan` (job en segundo plano, 409 si hay uno en curso) y `GET /api/v1/quality/jobs/{job_id}`; pruebas (Req: Detección explicable… — escenario "Detección completa en curso")
 - [ ] 2.4 Detección incremental tras alta/edición de pieza o identificador (`quality_job_item` + worker); prueba del escenario "Detección incremental al editar" (Req: Detección explicable…)
 

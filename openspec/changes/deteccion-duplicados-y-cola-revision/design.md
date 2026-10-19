@@ -20,14 +20,15 @@
 ### D1. Generación de candidatos por bloques (blocking) y puntaje
 Comparar todos contra todos (≈2·10⁸ pares) no es viable. Se generan pares candidatos por bloques:
 1. Mismo valor normalizado de cualquier identificador (vigente o histórico) en piezas distintas.
-2. Similitud de trigramas de `title` ≥ 0.45 (`%` de `pg_trgm` con `set_limit`) dentro de la misma colección raíz o piezas sueltas.
+2. Similitud de trigramas de `denomination` ≥ 0.45 dentro de la misma colección raíz o piezas sueltas. La similitud sigue la definición de `pg_trgm` (trigramas compartidos sobre el total), pero se calcula en Python con un índice invertido por grupo (`quality/scoring.py` y `quality/duplicates.py`): un solo camino de código para PostgreSQL y para las pruebas en SQLite. Si la prueba de volumen (tarea 5.1) lo exige, el bloque puede pasar a `%` de `pg_trgm` con `set_limit` sin cambiar el puntaje.
 3. Mismo autor normalizado + procedencia normalizada + similitud de título ≥ 0.3.
 
 Puntaje ponderado (pesos en `quality_setting`, auditados) [SUPUESTO]:
 
 | Señal | Peso |
 |---|---|
-| identificador normalizado igual (por tipo; I pesa más) | 0.45 |
+| identificador normalizado igual, del mismo tipo: código I | 0.45 |
+| identificador normalizado igual, del mismo tipo: colección, INC/RN, PUCP, propietario u otro | 0.35 |
 | similitud de denominación | 0.25 |
 | misma colección (o subcolección) | 0.10 |
 | autor / procedencia similares | 0.10 |
@@ -35,6 +36,11 @@ Puntaje ponderado (pesos en `quality_setting`, auditados) [SUPUESTO]:
 | medidas estructuradas compatibles (±5 %) | 0.05 |
 
 Umbral de cola `DUPLICATE_MIN_SCORE=0.6`. `matched_fields` guarda cada señal con valores comparados. Contradicciones fuertes (dos códigos I vigentes distintos) no descartan el par pero se marcan `blocking_conflict` (la fusión queda bloqueada).
+
+Reglas del puntaje (decididas al implementar la tarea 2.1, 2026-10-19):
+- El puntaje es la suma de `peso × similitud` de las señales que aplican, con tope 1. Una señal aplica solo si ambas piezas tienen el dato; un dato ausente no suma ni resta.
+- **Un par que comparte un identificador normalizado entra siempre en la cola**, aunque su puntaje quede bajo el umbral: con los pesos de la tabla, un código compartido con denominaciones distintas suma entre 0.35 y 0.55, y la spec exige que ese par llegue a revisión (escenario «Mismo código histórico en dos piezas»). El puntaje mostrado sigue siendo el real. El umbral solo filtra los pares de los bloques 2 y 3.
+- Los pesos, el umbral, la tolerancia de medidas y los mínimos de los bloques se leen de `quality_setting` (clave `duplicates.scoring`); sin fila, rigen los valores por defecto de esta tabla.
 
 ```mermaid
 flowchart TD
@@ -57,7 +63,7 @@ flowchart TD
 ### D3. Ejecución
 - `POST /quality/duplicates/scan` (Administrador/Gestor) corre en `BackgroundTasks` con registro en tabla `quality_job` (estado, conteos, duración); un solo scan activo a la vez (`409 scan_in_progress`).
 - Incremental: al confirmar la transacción de alta/edición de pieza o identificador se encola la pieza en `quality_job_item` y un worker en proceso la procesa (bloques 1–3 solo para esa pieza). Si falla, el siguiente scan completo lo recupera.
-- `SimilarityScorer.score(mapped_row_or_piece) -> list[Candidate]` expone los mismos bloques y pesos para `importacion-pipeline-reconciliacion`.
+- `SimilarityScorer.score(subject: PieceProfile) -> list[Candidate]` expone los mismos bloques y pesos para `importacion-pipeline-reconciliacion`: el pipeline construye un `PieceProfile` con `piece_id=None` a partir de la fila mapeada (denominación, colección, autor, procedencia, época, medidas e identificadores normalizados) y recibe las piezas que entran en la cola con esa fila, de mayor a menor puntaje. La implementación es `RuleBasedSimilarityScorer` en `quality/duplicates.py`.
 
 ### D4. Fusión
 `resolve {action: "merge", keep_piece_id, field_choices: {field: "a"|"b"}, reason}` en una transacción:
