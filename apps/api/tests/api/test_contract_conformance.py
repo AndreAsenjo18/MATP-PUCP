@@ -207,10 +207,7 @@ def test_documented_schema_fields_are_not_silently_renamed(
         "conservation_state_id",
     ], "Cambiaron los campos obligatorios del documento: revise la tarea 4.1 y el mapeo."
     spec = json.dumps(build_spec(), ensure_ascii=False)
-    pendientes_de_renombrar = [
-        name for name in ("denomination", "code_i") if f'"{name}"' not in spec
-    ]
-    assert pendientes_de_renombrar == ["denomination", "code_i"], (
-        "La API ya usa los nombres del documento: quite esta comprobación provisional y "
-        "complete la tarea 4.1 del change alinear-api-endpoints-v1."
+    assert '"denomination"' in spec and '"code_i"' in spec, (
+        "Los campos del contrato (denomination, code_i) deben aparecer en el esquema de la API "
+        "(tarea 4.1 del change alinear-api-endpoints-v1)."
     )

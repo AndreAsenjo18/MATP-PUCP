@@ -53,7 +53,7 @@ function EditorContent({ pieceId }: { pieceId: string }) {
   if (!piece) notFound();
 
   const [form, setForm] = useState<FormState>({
-    title: piece.title,
+    title: piece.denomination,
     description: piece.description ?? "",
     provenance: piece.provenance ?? "",
     dimensionsText: piece.dimensions_text ?? "",
@@ -75,7 +75,7 @@ function EditorContent({ pieceId }: { pieceId: string }) {
           <ArrowLeft size={16} aria-hidden="true" />
           Volver a la ficha
         </Link>
-        <h1 className="text-2xl font-bold text-tinta">Editar: {piece.title}</h1>
+        <h1 className="text-2xl font-bold text-tinta">Editar: {piece.denomination}</h1>
         <p className="text-base text-gris-texto">
           El código I no se edita aquí (RN-002): use la pestaña Identificadores de la ficha si necesita una
           corrección auditada.
@@ -91,7 +91,7 @@ function EditorContent({ pieceId }: { pieceId: string }) {
             if (!isValid) return;
             store.updatePiece(
               pieceId,
-              { title: form.title.trim(), description: form.description || null, provenance: form.provenance || null, dimensions_text: form.dimensionsText || null, notes: form.notes || null },
+              { denomination: form.title.trim(), description: form.description || null, provenance: form.provenance || null, dimensions_text: form.dimensionsText || null, notes: form.notes || null },
               currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
               currentUser?.id ?? "",
             );

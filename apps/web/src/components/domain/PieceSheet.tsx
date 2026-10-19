@@ -40,12 +40,12 @@ export function PieceSheetHeader({
         {backLabel}
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-tinta">{piece.title}</h1>
+        <h1 className="text-2xl font-bold text-tinta">{piece.denomination}</h1>
         {actions}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <TenureBadge regime={piece.tenure_regime} />
-        {piece.inventory_code && <LockBadge label={`Código I: ${piece.inventory_code}`} />}
+        {piece.code_i && <LockBadge label={`Código I: ${piece.code_i}`} />}
         {alerts
           .filter((alert) => alert.applies)
           .map((alert) => (
@@ -141,7 +141,7 @@ export function PieceIdentifiersTable({ piece, children }: { piece: PieceDetail;
           </tbody>
         </table>
       </div>
-      {piece.inventory_code && (
+      {piece.code_i && (
         <p className="flex items-start gap-2 rounded-md bg-crema-light p-3 text-sm text-gris-texto">
           <Lock size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
           El código I está bloqueado una vez asignado (RN-002). Solo un Administrador puede corregirlo mediante un procedimiento

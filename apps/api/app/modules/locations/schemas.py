@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.api.enums import (
     LOCATION_LEVEL_LABELS,
@@ -165,11 +165,26 @@ class MovementCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"movement_type": "MOVE", "to_location_id": EX_LOCATION_ID, "reason": "Traslado"}
+                {
+                    "movement_type": "MOVE",
+                    "destination_location_id": EX_LOCATION_ID,
+                    "reason": "Traslado",
+                }
             ]
         }
     )
 
     movement_type: MovementType = MovementType.MOVE
     to_location_id: uuid.UUID | None = Field(None, description="Obligatorio para MOVE.")
+    destination_location_id: uuid.UUID | None = Field(
+        None, description="Alias del contrato de interfaces (MovePieceRequest)."
+    )
     reason: str | None = None
+
+    @model_validator(mode="after")
+    def _sync_destination_location(self) -> "MovementCreate":
+        if self.to_location_id is None and self.destination_location_id is not None:
+            self.to_location_id = self.destination_location_id
+        elif self.destination_location_id is None and self.to_location_id is not None:
+            self.destination_location_id = self.to_location_id
+        return self

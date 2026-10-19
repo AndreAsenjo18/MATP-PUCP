@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 4d076278b43373acaf8b90f80e1526c632cf4c38b06c55dd4974667cbf9822f8
+ * openapi-sha256: 8b9b145e5ff421f3720c79e450391990ea5e79b3d9f4365477bc82315fcf3a3f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1144,7 +1144,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Búsqueda básica por cualquier código o denominación (RF-031) */
+        /** Búsqueda avanzada con filtros combinados (RF-031, RF-032) */
         get: operations["searchPieces"];
         put?: never;
         post?: never;
@@ -2949,12 +2949,17 @@ export interface components {
         /**
          * MovementCreate
          * @example {
+         *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
          *       "movement_type": "MOVE",
-         *       "reason": "Traslado",
-         *       "to_location_id": "01920000-0000-7000-8000-000000000401"
+         *       "reason": "Traslado"
          *     }
          */
         MovementCreate: {
+            /**
+             * Destination Location Id
+             * @description Alias del contrato de interfaces (MovePieceRequest).
+             */
+            destination_location_id?: string | null;
             /** @default MOVE */
             movement_type: components["schemas"]["MovementType"];
             /** Reason */
@@ -3230,34 +3235,6 @@ export interface components {
              */
             total: number;
         };
-        /** Page[PieceSummary] */
-        Page_PieceSummary_: {
-            /** Items */
-            items: components["schemas"]["PieceSummary"][];
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /**
-             * Total
-             * @description Total de resultados que cumplen los filtros.
-             */
-            total: number;
-        };
-        /** Page[SearchHit] */
-        Page_SearchHit_: {
-            /** Items */
-            items: components["schemas"]["SearchHit"][];
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /**
-             * Total
-             * @description Total de resultados que cumplen los filtros.
-             */
-            total: number;
-        };
         /** Page[UserOut] */
         Page_UserOut_: {
             /** Items */
@@ -3352,6 +3329,7 @@ export interface components {
          * PieceCreate
          * @example {
          *       "collection_id": "01920000-0000-7000-8000-000000000201",
+         *       "denomination": "Retablo de San Marcos (sintético)",
          *       "identifiers": [
          *         {
          *           "identifier_type_code": "COLECCION",
@@ -3361,8 +3339,7 @@ export interface components {
          *       "period": {
          *         "text": "s. XX"
          *       },
-         *       "tenure_regime": "Propiedad",
-         *       "title": "Retablo de San Marcos (sintético)"
+         *       "tenure_regime": "Propiedad"
          *     }
          */
         PieceCreate: {
@@ -3372,12 +3349,19 @@ export interface components {
             author?: string | null;
             /** Availability Term Id */
             availability_term_id?: string | null;
-            /** Category Term Id */
-            category_term_id?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Code I
+             * @description Código I a asignar (RN-002, RN-003). No usar `identifiers` para el tipo I.
+             */
+            code_i?: string | null;
             /** Collection Id */
             collection_id?: string | null;
-            /** Conservation Status Term Id */
-            conservation_status_term_id?: string | null;
+            /** Conservation State Id */
+            conservation_state_id?: string | null;
+            /** Denomination */
+            denomination: string;
             /** Description */
             description?: string | null;
             /** Dimensions */
@@ -3388,7 +3372,7 @@ export interface components {
             entry_date?: string | null;
             /**
              * Identifiers
-             * @description Identificadores iniciales ({identifier_type_code, value, source}).
+             * @description Identificadores iniciales, sin el tipo I ({identifier_type_code, value, source}).
              */
             identifiers?: {
                 [key: string]: unknown;
@@ -3418,8 +3402,6 @@ export interface components {
              * @enum {string}
              */
             tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
-            /** Title */
-            title: string;
         };
         /**
          * PieceDetail
@@ -3441,6 +3423,7 @@ export interface components {
          *         "label": "Regular"
          *       },
          *       "created_at": "2026-09-17T10:30:00Z",
+         *       "denomination": "Vasija ceremonial (sintética)",
          *       "description": "Descripción sintética de demostración.",
          *       "dimensions": [
          *         {
@@ -3474,7 +3457,6 @@ export interface components {
          *       "provenance": "Ayacucho (sintético)",
          *       "recorded_by": "Registrador sintético",
          *       "tenure_regime": "Comodato",
-         *       "title": "Vasija ceremonial (sintética)",
          *       "updated_at": "2026-09-17T10:30:00Z"
          *     }
          */
@@ -3484,6 +3466,11 @@ export interface components {
             author: string | null;
             availability: components["schemas"]["TermRef"] | null;
             category: components["schemas"]["TermRef"] | null;
+            /**
+             * Code I
+             * @description Código I vigente, normalizado (D4).
+             */
+            code_i: string | null;
             collection: components["schemas"]["CollectionRef"] | null;
             conservation_status: components["schemas"]["TermRef"] | null;
             /**
@@ -3491,6 +3478,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Denomination */
+            denomination: string;
             /** Description */
             description: string | null;
             /** Dimensions */
@@ -3509,8 +3498,6 @@ export interface components {
              * @description Identificadores vigentes.
              */
             identifiers: components["schemas"]["IdentifierOut"][];
-            /** Inventory Code */
-            inventory_code: string | null;
             /** Legal Owner */
             legal_owner: string | null;
             /**
@@ -3548,8 +3535,6 @@ export interface components {
              * @enum {string}
              */
             tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
-            /** Title */
-            title: string;
             /**
              * Updated At
              * Format: date-time
@@ -3572,6 +3557,63 @@ export interface components {
             path: components["schemas"]["LocationRef"][];
         };
         /**
+         * PieceSearchResponse
+         * @description Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`).
+         * @example {
+         *       "items": [
+         *         {
+         *           "category": {
+         *             "code": "CERAMICA",
+         *             "id": "01920000-0000-7000-8000-000000000302",
+         *             "label": "Cerámica"
+         *           },
+         *           "code_i": "I-0236",
+         *           "codes": [
+         *             {
+         *               "identifier_type_code": "I",
+         *               "normalized_value": "I-236",
+         *               "original_value": "I-0236"
+         *             }
+         *           ],
+         *           "collection": {
+         *             "acronym": "M.M.Z.",
+         *             "id": "01920000-0000-7000-8000-000000000201",
+         *             "name": "Colección MMZ (ficticia)"
+         *           },
+         *           "conservation_status": {
+         *             "code": "REGULAR",
+         *             "id": "01920000-0000-7000-8000-000000000301",
+         *             "label": "Regular"
+         *           },
+         *           "denomination": "Vasija ceremonial (sintética)",
+         *           "has_location": true,
+         *           "id": "01920000-0000-7000-8000-000000000101",
+         *           "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+         *           "media_count": 2,
+         *           "period_text": "ca. 1950",
+         *           "tenure_regime": "Propiedad",
+         *           "updated_at": "2026-09-17T10:30:00Z"
+         *         }
+         *       ],
+         *       "limit": 20,
+         *       "page": 1,
+         *       "total": 1
+         *     }
+         */
+        PieceSearchResponse: {
+            /** Items */
+            items: components["schemas"]["PieceSummary"][];
+            /** Limit */
+            limit: number;
+            /** Page */
+            page: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
+        /**
          * PieceSummary
          * @example {
          *       "category": {
@@ -3579,6 +3621,7 @@ export interface components {
          *         "id": "01920000-0000-7000-8000-000000000302",
          *         "label": "Cerámica"
          *       },
+         *       "code_i": "I-0236",
          *       "codes": [
          *         {
          *           "identifier_type_code": "I",
@@ -3596,19 +3639,23 @@ export interface components {
          *         "id": "01920000-0000-7000-8000-000000000301",
          *         "label": "Regular"
          *       },
+         *       "denomination": "Vasija ceremonial (sintética)",
          *       "has_location": true,
          *       "id": "01920000-0000-7000-8000-000000000101",
-         *       "inventory_code": "I-0236",
          *       "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
          *       "media_count": 2,
          *       "period_text": "ca. 1950",
          *       "tenure_regime": "Propiedad",
-         *       "title": "Vasija ceremonial (sintética)",
          *       "updated_at": "2026-09-17T10:30:00Z"
          *     }
          */
         PieceSummary: {
             category: components["schemas"]["TermRef"] | null;
+            /**
+             * Code I
+             * @description Código I vigente, normalizado (D4).
+             */
+            code_i: string | null;
             /**
              * Codes
              * @description Identificadores vigentes.
@@ -3616,6 +3663,8 @@ export interface components {
             codes: components["schemas"]["CodeBrief"][];
             collection: components["schemas"]["CollectionRef"] | null;
             conservation_status: components["schemas"]["TermRef"] | null;
+            /** Denomination */
+            denomination: string;
             /** Has Location */
             has_location: boolean;
             /**
@@ -3623,11 +3672,6 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Inventory Code
-             * @description Código I vigente tal como está escrito.
-             */
-            inventory_code: string | null;
             /**
              * Location Label
              * @description Ruta de ubicación (sin niveles restringidos para el rol).
@@ -3643,8 +3687,6 @@ export interface components {
              * @enum {string}
              */
             tenure_regime: "Propiedad" | "Comodato" | "Préstamo Temporal";
-            /** Title */
-            title: string;
             /**
              * Updated At
              * Format: date-time
@@ -3665,12 +3707,19 @@ export interface components {
             author?: string | null;
             /** Availability Term Id */
             availability_term_id?: string | null;
-            /** Category Term Id */
-            category_term_id?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Code I
+             * @description Código I a verificar o asignar (RN-002, RN-003); omitir para no tocarlo.
+             */
+            code_i?: string | null;
             /** Collection Id */
             collection_id?: string | null;
-            /** Conservation Status Term Id */
-            conservation_status_term_id?: string | null;
+            /** Conservation State Id */
+            conservation_state_id?: string | null;
+            /** Denomination */
+            denomination?: string | null;
             /** Description */
             description?: string | null;
             /** Dimensions */
@@ -3698,8 +3747,6 @@ export interface components {
             recorded_by?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
-            /** Title */
-            title?: string | null;
         };
         /**
          * PieceValidationResult
@@ -3906,6 +3953,7 @@ export interface components {
          *           "id": "01920000-0000-7000-8000-000000000302",
          *           "label": "Cerámica"
          *         },
+         *         "code_i": "I-0236",
          *         "codes": [
          *           {
          *             "identifier_type_code": "I",
@@ -3923,14 +3971,13 @@ export interface components {
          *           "id": "01920000-0000-7000-8000-000000000301",
          *           "label": "Regular"
          *         },
+         *         "denomination": "Vasija ceremonial (sintética)",
          *         "has_location": true,
          *         "id": "01920000-0000-7000-8000-000000000101",
-         *         "inventory_code": "I-0236",
          *         "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
          *         "media_count": 2,
          *         "period_text": "ca. 1950",
          *         "tenure_regime": "Propiedad",
-         *         "title": "Vasija ceremonial (sintética)",
          *         "updated_at": "2026-09-17T10:30:00Z"
          *       }
          *     }
@@ -3944,6 +3991,72 @@ export interface components {
             match_type: "IDENTIFIER" | "TITLE";
             matched_identifier?: components["schemas"]["CodeBrief"] | null;
             piece: components["schemas"]["PieceSummary"];
+        };
+        /**
+         * SearchResultPage
+         * @description Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
+         *
+         *     A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
+         *     `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
+         *     la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+         * @example {
+         *       "items": [
+         *         {
+         *           "match_type": "IDENTIFIER",
+         *           "matched_identifier": {
+         *             "identifier_type_code": "I",
+         *             "normalized_value": "I-236",
+         *             "original_value": "I-0236"
+         *           },
+         *           "piece": {
+         *             "category": {
+         *               "code": "CERAMICA",
+         *               "id": "01920000-0000-7000-8000-000000000302",
+         *               "label": "Cerámica"
+         *             },
+         *             "code_i": "I-0236",
+         *             "codes": [
+         *               {
+         *                 "identifier_type_code": "I",
+         *                 "normalized_value": "I-236",
+         *                 "original_value": "I-0236"
+         *               }
+         *             ],
+         *             "collection": {
+         *               "acronym": "M.M.Z.",
+         *               "id": "01920000-0000-7000-8000-000000000201",
+         *               "name": "Colección MMZ (ficticia)"
+         *             },
+         *             "conservation_status": {
+         *               "code": "REGULAR",
+         *               "id": "01920000-0000-7000-8000-000000000301",
+         *               "label": "Regular"
+         *             },
+         *             "denomination": "Vasija ceremonial (sintética)",
+         *             "has_location": true,
+         *             "id": "01920000-0000-7000-8000-000000000101",
+         *             "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+         *             "media_count": 2,
+         *             "period_text": "ca. 1950",
+         *             "tenure_regime": "Propiedad",
+         *             "updated_at": "2026-09-17T10:30:00Z"
+         *           }
+         *         }
+         *       ],
+         *       "limit": 20,
+         *       "page": 1,
+         *       "total": 1
+         *     }
+         */
+        SearchResultPage: {
+            /** Items */
+            items: components["schemas"]["SearchHit"][];
+            /** Limit */
+            limit: number;
+            /** Page */
+            page: number;
+            /** Total */
+            total: number;
         };
         /** SkippedPiece */
         SkippedPiece: {
@@ -7238,18 +7351,18 @@ export interface operations {
                 conservation_status_term_id?: string | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Resultados por página (máx. 100). */
+                limit?: number;
                 /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
                 material_term_id?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
-                /** @description Resultados por página (máx. 100). */
-                page_size?: number;
                 period_text?: string | null;
                 provenance?: string | null;
                 /** @description Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031). */
                 q?: string | null;
-                sort?: "title" | "-title" | "created_at" | "-created_at";
+                sort?: "denomination" | "-denomination" | "created_at" | "-created_at";
                 /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
                 tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
                 /** @description true = piezas sueltas. */
@@ -7267,7 +7380,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_PieceSummary_"];
+                    "application/json": components["schemas"]["PieceSearchResponse"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -7318,7 +7431,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PieceDetail"];
+                    "application/json": components["schemas"]["PieceSummary"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -7346,15 +7459,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -7459,8 +7563,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7468,13 +7572,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7518,8 +7622,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7527,13 +7631,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8386,15 +8490,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     restorePiece: {
@@ -9115,12 +9210,16 @@ export interface operations {
     searchPieces: {
         parameters: {
             query: {
+                /** @description Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.). */
+                collection_code?: string | null;
+                /** @description Resultados por página (máx. 100). */
+                limit?: number;
                 /** @description Número de página (desde 1). */
                 page?: number;
-                /** @description Resultados por página (máx. 100). */
-                page_size?: number;
                 /** @description Código o texto. */
                 q: string;
+                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             };
             header?: never;
             path?: never;
@@ -9134,7 +9233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_SearchHit_"];
+                    "application/json": components["schemas"]["SearchResultPage"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

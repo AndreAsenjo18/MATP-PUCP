@@ -3738,12 +3738,25 @@
       "MovementCreate": {
         "examples": [
           {
+            "destination_location_id": "01920000-0000-7000-8000-000000000401",
             "movement_type": "MOVE",
-            "reason": "Traslado",
-            "to_location_id": "01920000-0000-7000-8000-000000000401"
+            "reason": "Traslado"
           }
         ],
         "properties": {
+          "destination_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alias del contrato de interfaces (MovePieceRequest).",
+            "title": "Destination Location Id"
+          },
           "movement_type": {
             "$ref": "#/components/schemas/MovementType",
             "default": "MOVE"
@@ -4340,78 +4353,6 @@
         "title": "Page[IncompletePiece]",
         "type": "object"
       },
-      "Page_PieceSummary_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/PieceSummary"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "minimum": 1.0,
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Page Size",
-            "type": "integer"
-          },
-          "total": {
-            "description": "Total de resultados que cumplen los filtros.",
-            "minimum": 0.0,
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size"
-        ],
-        "title": "Page[PieceSummary]",
-        "type": "object"
-      },
-      "Page_SearchHit_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SearchHit"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "minimum": 1.0,
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "maximum": 100.0,
-            "minimum": 1.0,
-            "title": "Page Size",
-            "type": "integer"
-          },
-          "total": {
-            "description": "Total de resultados que cumplen los filtros.",
-            "minimum": 0.0,
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size"
-        ],
-        "title": "Page[SearchHit]",
-        "type": "object"
-      },
       "Page_UserOut_": {
         "properties": {
           "items": {
@@ -4608,6 +4549,7 @@
         "examples": [
           {
             "collection_id": "01920000-0000-7000-8000-000000000201",
+            "denomination": "Retablo de San Marcos (sintético)",
             "identifiers": [
               {
                 "identifier_type_code": "COLECCION",
@@ -4617,8 +4559,7 @@
             "period": {
               "text": "s. XX"
             },
-            "tenure_regime": "Propiedad",
-            "title": "Retablo de San Marcos (sintético)"
+            "tenure_regime": "Propiedad"
           }
         ],
         "properties": {
@@ -4657,7 +4598,7 @@
             ],
             "title": "Availability Term Id"
           },
-          "category_term_id": {
+          "category_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -4667,7 +4608,19 @@
                 "type": "null"
               }
             ],
-            "title": "Category Term Id"
+            "title": "Category Id"
+          },
+          "code_i": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código I a asignar (RN-002, RN-003). No usar `identifiers` para el tipo I.",
+            "title": "Code I"
           },
           "collection_id": {
             "anyOf": [
@@ -4681,7 +4634,7 @@
             ],
             "title": "Collection Id"
           },
-          "conservation_status_term_id": {
+          "conservation_state_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -4691,7 +4644,13 @@
                 "type": "null"
               }
             ],
-            "title": "Conservation Status Term Id"
+            "title": "Conservation State Id"
+          },
+          "denomination": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Denomination",
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -4742,7 +4701,7 @@
             "title": "Entry Date"
           },
           "identifiers": {
-            "description": "Identificadores iniciales ({identifier_type_code, value, source}).",
+            "description": "Identificadores iniciales, sin el tipo I ({identifier_type_code, value, source}).",
             "items": {
               "additionalProperties": true,
               "type": "object"
@@ -4874,16 +4833,10 @@
             ],
             "title": "Tenure Regime",
             "type": "string"
-          },
-          "title": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
           }
         },
         "required": [
-          "title",
+          "denomination",
           "tenure_regime"
         ],
         "title": "PieceCreate",
@@ -4909,6 +4862,7 @@
               "label": "Regular"
             },
             "created_at": "2026-09-17T10:30:00Z",
+            "denomination": "Vasija ceremonial (sintética)",
             "description": "Descripción sintética de demostración.",
             "dimensions": [
               {
@@ -4942,7 +4896,6 @@
             "provenance": "Ayacucho (sintético)",
             "recorded_by": "Registrador sintético",
             "tenure_regime": "Comodato",
-            "title": "Vasija ceremonial (sintética)",
             "updated_at": "2026-09-17T10:30:00Z"
           }
         ],
@@ -4988,6 +4941,18 @@
               }
             ]
           },
+          "code_i": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código I vigente, normalizado (D4).",
+            "title": "Code I"
+          },
           "collection": {
             "anyOf": [
               {
@@ -5011,6 +4976,10 @@
           "created_at": {
             "format": "date-time",
             "title": "Created At",
+            "type": "string"
+          },
+          "denomination": {
+            "title": "Denomination",
             "type": "string"
           },
           "description": {
@@ -5073,17 +5042,6 @@
             },
             "title": "Identifiers",
             "type": "array"
-          },
-          "inventory_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Inventory Code"
           },
           "legal_owner": {
             "anyOf": [
@@ -5220,10 +5178,6 @@
             "title": "Tenure Regime",
             "type": "string"
           },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -5232,7 +5186,7 @@
         },
         "required": [
           "id",
-          "title",
+          "denomination",
           "description",
           "collection",
           "tenure_regime",
@@ -5257,7 +5211,7 @@
           "availability",
           "location",
           "identifiers",
-          "inventory_code",
+          "code_i",
           "media_count",
           "created_at",
           "updated_at"
@@ -5301,6 +5255,85 @@
         "title": "PieceLocation",
         "type": "object"
       },
+      "PieceSearchResponse": {
+        "description": "Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`).",
+        "examples": [
+          {
+            "items": [
+              {
+                "category": {
+                  "code": "CERAMICA",
+                  "id": "01920000-0000-7000-8000-000000000302",
+                  "label": "Cerámica"
+                },
+                "code_i": "I-0236",
+                "codes": [
+                  {
+                    "identifier_type_code": "I",
+                    "normalized_value": "I-236",
+                    "original_value": "I-0236"
+                  }
+                ],
+                "collection": {
+                  "acronym": "M.M.Z.",
+                  "id": "01920000-0000-7000-8000-000000000201",
+                  "name": "Colección MMZ (ficticia)"
+                },
+                "conservation_status": {
+                  "code": "REGULAR",
+                  "id": "01920000-0000-7000-8000-000000000301",
+                  "label": "Regular"
+                },
+                "denomination": "Vasija ceremonial (sintética)",
+                "has_location": true,
+                "id": "01920000-0000-7000-8000-000000000101",
+                "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+                "media_count": 2,
+                "period_text": "ca. 1950",
+                "tenure_regime": "Propiedad",
+                "updated_at": "2026-09-17T10:30:00Z"
+              }
+            ],
+            "limit": 20,
+            "page": 1,
+            "total": 1
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PieceSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "items"
+        ],
+        "title": "PieceSearchResponse",
+        "type": "object"
+      },
       "PieceSummary": {
         "examples": [
           {
@@ -5309,6 +5342,7 @@
               "id": "01920000-0000-7000-8000-000000000302",
               "label": "Cerámica"
             },
+            "code_i": "I-0236",
             "codes": [
               {
                 "identifier_type_code": "I",
@@ -5326,14 +5360,13 @@
               "id": "01920000-0000-7000-8000-000000000301",
               "label": "Regular"
             },
+            "denomination": "Vasija ceremonial (sintética)",
             "has_location": true,
             "id": "01920000-0000-7000-8000-000000000101",
-            "inventory_code": "I-0236",
             "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
             "media_count": 2,
             "period_text": "ca. 1950",
             "tenure_regime": "Propiedad",
-            "title": "Vasija ceremonial (sintética)",
             "updated_at": "2026-09-17T10:30:00Z"
           }
         ],
@@ -5347,6 +5380,18 @@
                 "type": "null"
               }
             ]
+          },
+          "code_i": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código I vigente, normalizado (D4).",
+            "title": "Code I"
           },
           "codes": {
             "description": "Identificadores vigentes.",
@@ -5376,6 +5421,10 @@
               }
             ]
           },
+          "denomination": {
+            "title": "Denomination",
+            "type": "string"
+          },
           "has_location": {
             "title": "Has Location",
             "type": "boolean"
@@ -5384,18 +5433,6 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
-          },
-          "inventory_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Código I vigente tal como está escrito.",
-            "title": "Inventory Code"
           },
           "location_label": {
             "anyOf": [
@@ -5434,10 +5471,6 @@
             "title": "Tenure Regime",
             "type": "string"
           },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -5446,10 +5479,10 @@
         },
         "required": [
           "id",
-          "title",
+          "denomination",
           "collection",
           "tenure_regime",
-          "inventory_code",
+          "code_i",
           "codes",
           "category",
           "conservation_status",
@@ -5505,7 +5538,7 @@
             ],
             "title": "Availability Term Id"
           },
-          "category_term_id": {
+          "category_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5515,7 +5548,19 @@
                 "type": "null"
               }
             ],
-            "title": "Category Term Id"
+            "title": "Category Id"
+          },
+          "code_i": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código I a verificar o asignar (RN-002, RN-003); omitir para no tocarlo.",
+            "title": "Code I"
           },
           "collection_id": {
             "anyOf": [
@@ -5529,7 +5574,7 @@
             ],
             "title": "Collection Id"
           },
-          "conservation_status_term_id": {
+          "conservation_state_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5539,7 +5584,20 @@
                 "type": "null"
               }
             ],
-            "title": "Conservation Status Term Id"
+            "title": "Conservation State Id"
+          },
+          "denomination": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denomination"
           },
           "description": {
             "anyOf": [
@@ -5703,19 +5761,6 @@
               }
             ],
             "title": "Temporary Inventory Number"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
           }
         },
         "title": "PieceUpdate",
@@ -6114,6 +6159,7 @@
                 "id": "01920000-0000-7000-8000-000000000302",
                 "label": "Cerámica"
               },
+              "code_i": "I-0236",
               "codes": [
                 {
                   "identifier_type_code": "I",
@@ -6131,14 +6177,13 @@
                 "id": "01920000-0000-7000-8000-000000000301",
                 "label": "Regular"
               },
+              "denomination": "Vasija ceremonial (sintética)",
               "has_location": true,
               "id": "01920000-0000-7000-8000-000000000101",
-              "inventory_code": "I-0236",
               "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
               "media_count": 2,
               "period_text": "ca. 1950",
               "tenure_regime": "Propiedad",
-              "title": "Vasija ceremonial (sintética)",
               "updated_at": "2026-09-17T10:30:00Z"
             }
           }
@@ -6172,6 +6217,91 @@
           "match_type"
         ],
         "title": "SearchHit",
+        "type": "object"
+      },
+      "SearchResultPage": {
+        "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar\nla paginación compartida que usan otros endpoints (`app/api/pagination.py`).",
+        "examples": [
+          {
+            "items": [
+              {
+                "match_type": "IDENTIFIER",
+                "matched_identifier": {
+                  "identifier_type_code": "I",
+                  "normalized_value": "I-236",
+                  "original_value": "I-0236"
+                },
+                "piece": {
+                  "category": {
+                    "code": "CERAMICA",
+                    "id": "01920000-0000-7000-8000-000000000302",
+                    "label": "Cerámica"
+                  },
+                  "code_i": "I-0236",
+                  "codes": [
+                    {
+                      "identifier_type_code": "I",
+                      "normalized_value": "I-236",
+                      "original_value": "I-0236"
+                    }
+                  ],
+                  "collection": {
+                    "acronym": "M.M.Z.",
+                    "id": "01920000-0000-7000-8000-000000000201",
+                    "name": "Colección MMZ (ficticia)"
+                  },
+                  "conservation_status": {
+                    "code": "REGULAR",
+                    "id": "01920000-0000-7000-8000-000000000301",
+                    "label": "Regular"
+                  },
+                  "denomination": "Vasija ceremonial (sintética)",
+                  "has_location": true,
+                  "id": "01920000-0000-7000-8000-000000000101",
+                  "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+                  "media_count": 2,
+                  "period_text": "ca. 1950",
+                  "tenure_regime": "Propiedad",
+                  "updated_at": "2026-09-17T10:30:00Z"
+                }
+              }
+            ],
+            "limit": 20,
+            "page": 1,
+            "total": 1
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "title": "SearchResultPage",
         "type": "object"
       },
       "SkippedPiece": {
@@ -11501,10 +11631,10 @@
             "name": "sort",
             "required": false,
             "schema": {
-              "default": "title",
+              "default": "denomination",
               "enum": [
-                "title",
-                "-title",
+                "denomination",
+                "-denomination",
                 "created_at",
                 "-created_at"
               ],
@@ -11528,14 +11658,14 @@
           {
             "description": "Resultados por página (máx. 100).",
             "in": "query",
-            "name": "page_size",
+            "name": "limit",
             "required": false,
             "schema": {
               "default": 20,
               "description": "Resultados por página (máx. 100).",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Limit",
               "type": "integer"
             }
           }
@@ -11545,7 +11675,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_PieceSummary_"
+                  "$ref": "#/components/schemas/PieceSearchResponse"
                 }
               }
             },
@@ -11610,7 +11740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PieceDetail"
+                  "$ref": "#/components/schemas/PieceSummary"
                 }
               }
             },
@@ -11645,16 +11775,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -11666,8 +11786,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/validate": {
@@ -11820,6 +11939,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11829,16 +11958,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -11850,8 +11969,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "get": {
         "operationId": "getPieceById",
@@ -11985,6 +12103,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11994,16 +12122,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -12015,8 +12133,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/alerts": {
@@ -13269,16 +13386,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
           }
         },
         "security": [
@@ -13290,8 +13397,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/restore": {
@@ -14358,6 +14464,47 @@
             }
           },
           {
+            "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+            "in": "query",
+            "name": "collection_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+              "title": "Collection Code"
+            }
+          },
+          {
+            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+            "in": "query",
+            "name": "tenure_regime",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "Propiedad",
+                    "Comodato",
+                    "Préstamo Temporal"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+              "title": "Tenure Regime"
+            }
+          },
+          {
             "description": "Número de página (desde 1).",
             "in": "query",
             "name": "page",
@@ -14373,14 +14520,14 @@
           {
             "description": "Resultados por página (máx. 100).",
             "in": "query",
-            "name": "page_size",
+            "name": "limit",
             "required": false,
             "schema": {
               "default": 20,
               "description": "Resultados por página (máx. 100).",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Limit",
               "type": "integer"
             }
           }
@@ -14390,7 +14537,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_SearchHit_"
+                  "$ref": "#/components/schemas/SearchResultPage"
                 }
               }
             },
@@ -14432,7 +14579,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Búsqueda básica por cualquier código o denominación (RF-031)",
+        "summary": "Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
         "tags": [
           "Búsqueda"
         ],

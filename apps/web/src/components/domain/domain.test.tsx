@@ -22,7 +22,7 @@ import { AlertBadge, LockBadge, StatusBadge, TenureBadge } from "./StatusBadges"
 
 const loanPiece = PIECES.find((p) => p.tenure_regime === "Comodato")!;
 const pieceWithoutPhoto = PIECES.find((p) => p.media_count === 0)!;
-const pieceWithCode = PIECES.find((p) => p.inventory_code && p.identifiers.some((i) => i.is_locked))!;
+const pieceWithCode = PIECES.find((p) => p.code_i && p.identifiers.some((i) => i.is_locked))!;
 
 describe("status-intents", () => {
   it("comodato y préstamo temporal son info; propia es default", () => {
@@ -117,7 +117,7 @@ describe("PieceCard", () => {
     expect(html).toContain(`href="/piezas/${loanPiece.id}"`);
     expect(html).toContain(BADGE_INTENTS.info);
     expect(visibleText(html)).toContain("Comodato");
-    if (!loanPiece.inventory_code) expect(visibleText(html)).toContain("Sin código I");
+    if (!loanPiece.code_i) expect(visibleText(html)).toContain("Sin código I");
   });
 
   it("una pieza sin foto muestra «Sin foto» una sola vez, con icono", () => {
@@ -151,7 +151,7 @@ describe("PieceSheet", () => {
   it("el encabezado de una pieza en comodato muestra Comodato y las alertas", () => {
     const html = render(<PieceSheetHeader piece={loanPiece} alerts={alertsForPiece(loanPiece)} />);
     expect(html).toContain(`<h1`);
-    expect(visibleText(html)).toContain(loanPiece.title);
+    expect(visibleText(html)).toContain(loanPiece.denomination);
     expect(visibleText(html)).toContain("Comodato");
   });
 
