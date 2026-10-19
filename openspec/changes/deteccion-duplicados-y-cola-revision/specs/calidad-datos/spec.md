@@ -9,7 +9,8 @@ El sistema MUST generar candidatos a duplicado combinando coincidencias de ident
 - **THEN** el par entra en la cola con la señal "identificador INC igual" y ambos valores originales
 
 #### Scenario: Detección incremental al editar
-- **WHEN** un Catalogador cambia la denominación de una pieza a un texto casi igual al de otra pieza de la misma colección
+- **GIVEN** dos piezas de la misma colección con el mismo autor, la misma procedencia y épocas que se superponen, y denominaciones distintas
+- **WHEN** un Catalogador cambia la denominación de una de ellas a un texto casi igual al de la otra
 - **THEN** el par aparece en la cola sin esperar a una detección completa
 
 #### Scenario: Detección completa en curso

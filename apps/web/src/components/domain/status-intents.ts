@@ -107,6 +107,7 @@ const DUPLICATE: Record<DuplicateStatus, StatusStyle> = {
   MERGED: { label: "Fusionado", intent: "success" },
   DISTINCT: { label: "Distinto", intent: "default" },
   POSTPONED: { label: "Pospuesto", intent: "default" },
+  SUPERSEDED: { label: "Reemplazado", intent: "default" },
 };
 
 export function duplicateStatus(status: DuplicateStatus | string | null | undefined): StatusStyle {
