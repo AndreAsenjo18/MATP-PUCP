@@ -1533,7 +1533,8 @@
           "PENDING",
           "MERGED",
           "DISTINCT",
-          "POSTPONED"
+          "POSTPONED",
+          "SUPERSEDED"
         ],
         "title": "DuplicateStatus",
         "type": "string"
@@ -5800,6 +5801,168 @@
         ],
         "title": "PieceValidationResult",
         "type": "object"
+      },
+      "QualityJobOut": {
+        "description": "State and progress of a full duplicate scan run in the background (design D3).",
+        "examples": [
+          {
+            "candidates_created": 0,
+            "candidates_reopened": 0,
+            "heartbeat_at": "2026-09-17T10:30:00Z",
+            "id": "01920000-0000-7000-8000-000000000921",
+            "job_type": "FULL_SCAN",
+            "pairs_evaluated": 610,
+            "processed_pieces": 120,
+            "requested_by_id": "01920000-0000-7000-8000-000000000501",
+            "started_at": "2026-09-17T10:30:00Z",
+            "status": "RUNNING",
+            "total_pieces": 298
+          }
+        ],
+        "properties": {
+          "candidates_created": {
+            "minimum": 0.0,
+            "title": "Candidates Created",
+            "type": "integer"
+          },
+          "candidates_reopened": {
+            "description": "Pares «distintos» que vuelven a la cola porque cambió su huella.",
+            "minimum": 0.0,
+            "title": "Candidates Reopened",
+            "type": "integer"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_type": {
+            "$ref": "#/components/schemas/QualityJobType"
+          },
+          "pairs_evaluated": {
+            "description": "Pares comparados; nunca todos contra todos.",
+            "minimum": 0.0,
+            "title": "Pairs Evaluated",
+            "type": "integer"
+          },
+          "processed_pieces": {
+            "minimum": 0.0,
+            "title": "Processed Pieces",
+            "type": "integer"
+          },
+          "requested_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QualityJobStatus"
+          },
+          "total_pieces": {
+            "minimum": 0.0,
+            "title": "Total Pieces",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "job_type",
+          "status",
+          "requested_by_id",
+          "started_at",
+          "heartbeat_at",
+          "finished_at",
+          "total_pieces",
+          "processed_pieces",
+          "pairs_evaluated",
+          "candidates_created",
+          "candidates_reopened",
+          "duration_ms",
+          "error_message"
+        ],
+        "title": "QualityJobOut",
+        "type": "object"
+      },
+      "QualityJobStatus": {
+        "enum": [
+          "RUNNING",
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "title": "QualityJobStatus",
+        "type": "string"
+      },
+      "QualityJobType": {
+        "enum": [
+          "FULL_SCAN"
+        ],
+        "title": "QualityJobType",
+        "type": "string"
       },
       "ReportOut": {
         "examples": [
@@ -13710,6 +13873,63 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/quality/duplicates/scan": {
+      "post": {
+        "operationId": "scanDuplicates",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/quality/duplicates/{candidate_id}/resolve": {
       "post": {
         "operationId": "resolveDuplicateCandidate",
@@ -13940,6 +14160,75 @@
         ],
         "x-change": "alertas-y-reporte-incompletas",
         "x-status": "stub"
+      }
+    },
+    "/api/v1/quality/jobs/{job_id}": {
+      "get": {
+        "operationId": "getQualityJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/reports/dashboard-stats": {

@@ -27,11 +27,14 @@ from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.service import ingest_stage
 from app.modules.imports.state import transition
 from app.modules.imports.worker import (
+    HEARTBEAT_EVERY_ROWS,
     INTERRUPTED_REASON,
     Progress,
     Stage,
     launch_stage,
+    recover_import_batches,
     recover_interrupted_batches,
+    register_import_jobs,
     run_stage,
     start_stage,
 )
@@ -183,7 +186,7 @@ def test_progress_is_recorded_while_the_stage_runs(
     seen: list[dict] = []
 
     def work(work_session: Session, batch: ImportBatch, progress: Progress) -> None:
-        for done in (0, jobs.HEARTBEAT_EVERY - 1, jobs.HEARTBEAT_EVERY, 1200):
+        for done in (0, HEARTBEAT_EVERY_ROWS - 1, HEARTBEAT_EVERY_ROWS, 1200):
             progress.advance(done, total=1200)
             counts = work_session.scalar(
                 select(ImportBatch.counts).where(ImportBatch.id == batch.id)
@@ -252,16 +255,14 @@ def test_interrupted_batches_are_recovered(
     session: Session, engine: Engine, new_batch: NewBatch
 ) -> None:
     stale = new_batch(S.MAPPED, processing_started_at=NOW, heartbeat_at=NOW)
-    alive = new_batch(S.MAPPED, processing_started_at=NOW, heartbeat_at=NOW + timedelta(minutes=8))
+    alive = new_batch(S.MAPPED, processing_started_at=NOW, heartbeat_at=NOW + timedelta(minutes=9))
     idle = new_batch(S.MAPPED)
 
-    recovered = jobs.recover_interrupted(
-        make_session_factory(engine),
-        [("imports", recover_interrupted_batches)],
-        now=NOW + timedelta(minutes=10),
-    )
+    with make_session_factory(engine)() as recovery:
+        recovered = recover_interrupted_batches(recovery, NOW + timedelta(minutes=10))
+        recovery.commit()
 
-    assert recovered == {"imports": 1}
+    assert recovered == 1
     session.expire_all()
     stale_now = session.get(ImportBatch, stale.id)
     assert stale_now is not None
@@ -286,18 +287,11 @@ def test_recovery_runs_when_the_api_starts(
     assert stored is not None and stored.status_reason == INTERRUPTED_REASON
 
 
-def test_recovery_failure_does_not_stop_the_api(engine: Engine) -> None:
-    def broken(_session: Session, _now: datetime) -> int:
-        raise RuntimeError("base de datos no disponible")
+def test_import_recovery_is_registered_with_the_shared_jobs(engine: Engine) -> None:
+    register_import_jobs()
 
-    assert jobs.recover_interrupted(make_session_factory(engine), [("roto", broken)]) == {}
-
-
-def test_heartbeat_staleness() -> None:
-    assert jobs.is_stale(None)
-    assert not jobs.is_stale(NOW, NOW + timedelta(minutes=4))
-    assert jobs.is_stale(NOW, NOW + timedelta(minutes=6))
-    assert jobs.is_stale(NOW.replace(tzinfo=None), NOW + timedelta(minutes=6))
+    assert jobs._recoveries["imports"] is recover_import_batches
+    assert jobs.recover_interrupted(make_session_factory(engine))["imports"] == 0
 
 
 def test_staging_rows_do_not_flood_the_audit_log(

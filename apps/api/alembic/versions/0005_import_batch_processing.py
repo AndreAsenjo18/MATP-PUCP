@@ -1,7 +1,7 @@
 """Import batches record the chosen sheet, the header row and the background stage heartbeat.
 
-Revision ID: 0004_import_batch_processing
-Revises: 0003_term_hierarchy
+Revision ID: 0005_import_batch_processing
+Revises: 0004_duplicate_detection
 Create Date: 2026-10-16
 
 Change de OpenSpec: importacion-pipeline-reconciliacion (tarea 1.1, decisiones D1 y D2).
@@ -13,8 +13,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0004_import_batch_processing"
-down_revision: str | None = "0003_term_hierarchy"
+revision: str = "0005_import_batch_processing"
+down_revision: str | None = "0004_duplicate_detection"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

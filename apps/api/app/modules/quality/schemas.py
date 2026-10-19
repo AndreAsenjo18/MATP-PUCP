@@ -6,8 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.refs import EX_DATETIME, EX_PIECE_ID
-from app.modules.quality.models import DuplicateStatus
+from app.api.refs import EX_DATETIME, EX_PIECE_ID, EX_USER_ID
+from app.modules.quality.models import DuplicateStatus, QualityJobStatus, QualityJobType
 
 AlertType = Literal[
     "WITHOUT_INVENTORY_CODE",
@@ -134,3 +134,48 @@ class DuplicateResolution(BaseModel):
     resolution: Literal["MERGED", "DISTINCT", "POSTPONED"]
     surviving_piece_id: uuid.UUID | None = Field(None, description="Obligatorio para MERGED.")
     note: str | None = None
+
+
+class QualityJobOut(BaseModel):
+    """State and progress of a full duplicate scan run in the background (design D3)."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000921",
+                    "job_type": "FULL_SCAN",
+                    "status": "RUNNING",
+                    "requested_by_id": EX_USER_ID,
+                    "started_at": EX_DATETIME,
+                    "heartbeat_at": EX_DATETIME,
+                    "finished_at": None,
+                    "total_pieces": 298,
+                    "processed_pieces": 120,
+                    "pairs_evaluated": 610,
+                    "candidates_created": 0,
+                    "candidates_reopened": 0,
+                    "duration_ms": None,
+                    "error_message": None,
+                }
+            ]
+        },
+    )
+
+    id: uuid.UUID
+    job_type: QualityJobType
+    status: QualityJobStatus
+    requested_by_id: uuid.UUID | None
+    started_at: datetime | None
+    heartbeat_at: datetime | None
+    finished_at: datetime | None
+    total_pieces: int = Field(ge=0)
+    processed_pieces: int = Field(ge=0)
+    pairs_evaluated: int = Field(ge=0, description="Pares comparados; nunca todos contra todos.")
+    candidates_created: int = Field(ge=0)
+    candidates_reopened: int = Field(
+        ge=0, description="Pares «distintos» que vuelven a la cola porque cambió su huella."
+    )
+    duration_ms: int | None
+    error_message: str | None

@@ -298,6 +298,49 @@ entity DUPLICATE_CANDIDATE {
     reviewed_by_id : uuid <<FK>>
     reviewed_at : timestamptz
     resolution_note : text
+    postponed_until : timestamptz
+  * blocking_conflict : boolean
+    change_set_id : uuid
+  ..
+  <i>+ timestamps</i>
+}
+entity QUALITY_SETTING {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(80) <<UK>>
+  * value : jsonb
+    description : text
+  ..
+  <i>+ timestamps</i>
+}
+entity QUALITY_JOB {
+  * id : uuid <<PK>>
+  --
+  * job_type : varchar(40)
+  * status : varchar(40)
+    requested_by_id : uuid <<FK>>
+    started_at : timestamptz
+    heartbeat_at : timestamptz
+    finished_at : timestamptz
+  * total_pieces : integer
+  * processed_pieces : integer
+  * pairs_evaluated : integer
+  * candidates_created : integer
+  * candidates_reopened : integer
+    duration_ms : integer
+    error_message : text
+  ..
+  <i>+ timestamps</i>
+}
+entity QUALITY_JOB_ITEM {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * reason : varchar(40)
+  * status : varchar(40)
+  * attempts : integer
+    last_error : text
+    processed_at : timestamptz
   ..
   <i>+ timestamps</i>
 }
@@ -394,6 +437,7 @@ entity AUDIT_LOG <<solo inserción>> {
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
 COLLECTION |o--o{ COLLECTION : "subcolección de"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
+APP_USER |o--o{ QUALITY_JOB : "lanza"
 IMPORT_MAPPING_TEMPLATE |o--o{ IMPORT_BATCH : "plantilla"
 APP_USER |o--o{ IMPORT_BATCH : "carga"
 APP_USER |o--o{ IMPORT_BATCH : "aprueba"
@@ -441,6 +485,7 @@ LOCATION |o--o{ PIECE_MOVEMENT : "destino"
 APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
 PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
 IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
+PIECE ||--o{ QUALITY_JOB_ITEM : "detección incremental"
 PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
 PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
 IMPORT_ROW |o--o{ DUPLICATE_CANDIDATE : "fila vs pieza"

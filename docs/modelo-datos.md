@@ -1,6 +1,6 @@
 # Modelo de datos núcleo (MATP)
 
-> Generado desde los modelos SQLAlchemy (`apps/api/app/models.py`). La base nació con el change `modelo-datos-nucleo` (migración `0001_core_data_model`) y se amplía con el change `prestamos-y-exposiciones` (migración `0002_loans_and_exhibitions`). Decisiones: `openspec/changes/modelo-datos-nucleo/design.md` (archivado), `openspec/changes/prestamos-y-exposiciones/design.md` y `docs/adr/ADR-004-modelo-datos-auditoria.md`.
+> Generado desde los modelos SQLAlchemy (`apps/api/app/models.py`). La base nació con el change `modelo-datos-nucleo` (migración `0001_core_data_model`) y se amplía con el change `prestamos-y-exposiciones` (migración `0002_loans_and_exhibitions`). Decisiones: `openspec/changes/archive/2026-10-19-modelo-datos-nucleo/design.md` (archivado), `openspec/changes/prestamos-y-exposiciones/design.md` y `docs/adr/ADR-004-modelo-datos-auditoria.md`.
 
 ## Diagrama vigente y extensiones
 
@@ -616,4 +616,4 @@ Unmapped source columns of each load, kept separately and read-only (RF-008).
 
 ## Datos semilla
 
-`npm run seed` (= `docker compose exec api python -m app.seed`) carga ~300 piezas sintéticas; ver `openspec/changes/modelo-datos-nucleo/design.md` (D8) y `data/fixtures/README.md`. Supuestos de vocabularios, permisos y normalización en `docs/preguntas-contraparte.md` (secciones A, B y D).
+`npm run seed` (= `docker compose exec api python -m app.seed`) carga ~300 piezas sintéticas; ver `openspec/changes/archive/2026-10-19-modelo-datos-nucleo/design.md` (D8) y `data/fixtures/README.md`. Supuestos de vocabularios, permisos y normalización en `docs/preguntas-contraparte.md` (secciones A, B y D).

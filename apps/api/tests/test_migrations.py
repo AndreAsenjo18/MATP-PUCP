@@ -254,3 +254,90 @@ def test_term_hierarchy_on_postgresql(
     ) in sql
     assert "CREATE INDEX ix_term_parent_id ON term (parent_id)" in sql
     assert "DROP TABLE" not in sql  # no table rebuild on PostgreSQL
+
+
+def test_duplicate_detection_keeps_candidates_and_their_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0004 rebuilds `duplicate_candidate` on SQLite: rows and the other CHECKs survive (1.1)."""
+    engine = _sqlite_engine(tmp_path / "matp.db")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'matp.db').as_posix()}")
+    _migrate(engine, "0003_term_hierarchy")
+    now = "'2026-10-19', '2026-10-19'"
+    with engine.begin() as connection:
+        for statement in (
+            f"INSERT INTO app_user (id, email, full_name, is_active, is_synthetic, "
+            f"failed_login_count, created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000009', 'gestor@matp.local', 'Gestora', 1, 1, 0, {now})",
+            f"INSERT INTO piece (id, denomination, tenure_regime, created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000001', 'Retablo ayacuchano', 'OWNED', {now}), "
+            f"('00000000000000000000000000000002', 'RETABLO AYACUCHANO', 'OWNED', {now})",
+            f"INSERT INTO duplicate_candidate (id, piece_a_id, piece_b_id, score, "
+            f"matched_fields, status, detected_by, created_at, updated_at) VALUES "
+            f"('00000000000000000000000000000100', '00000000000000000000000000000001', "
+            f"'00000000000000000000000000000002', 0.8, '[]', 'PENDING', 'rules', {now})",
+        ):
+            connection.execute(text(statement))
+
+    _migrate(engine, "0004_duplicate_detection")
+    tables = set(inspect(engine).get_table_names())
+    assert {"quality_setting", "quality_job", "quality_job_item"} <= tables
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT score, status, blocking_conflict, postponed_until FROM duplicate_candidate"
+            )
+        ).one()
+    assert (float(row[0]), row[1], row[2], row[3]) == (0.8, "PENDING", 0, None)
+    with engine.begin() as connection:  # the new status is accepted once a reviewer is set
+        connection.execute(
+            text(
+                "UPDATE duplicate_candidate SET status = 'SUPERSEDED', "
+                "reviewed_by_id = '00000000000000000000000000000009'"
+            )
+        )
+    for statement in (
+        "UPDATE duplicate_candidate SET status = 'UNKNOWN'",  # status CHECK recreated
+        "UPDATE duplicate_candidate SET score = 2",  # score_range kept by the rebuild
+        "UPDATE duplicate_candidate SET status = 'PENDING', reviewed_by_id = NULL, "
+        "piece_b_id = NULL",  # one_counterpart kept by the rebuild
+    ):
+        with pytest.raises(DatabaseError), engine.begin() as connection:
+            connection.execute(text(statement))
+
+    _migrate(engine, "0003_term_hierarchy", down=True)
+    assert not {"quality_setting", "quality_job", "quality_job_item"} & set(
+        inspect(engine).get_table_names()
+    )
+    columns = {column["name"] for column in inspect(engine).get_columns("duplicate_candidate")}
+    assert not columns & {"postponed_until", "blocking_conflict", "change_set_id"}
+    with engine.connect() as connection:  # SUPERSEDED does not exist before 0004
+        assert connection.execute(text("SELECT status FROM duplicate_candidate")).scalar() == (
+            "PENDING"
+        )
+    with pytest.raises(DatabaseError), engine.begin() as connection:
+        connection.execute(text("UPDATE duplicate_candidate SET status = 'SUPERSEDED'"))
+    engine.dispose()
+
+
+def test_duplicate_detection_on_postgresql(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """On PostgreSQL 0004 alters `duplicate_candidate` in place, without rebuilding it."""
+    url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
+    monkeypatch.setenv("DATABASE_URL", url)
+    command.upgrade(_config(url), "0003_term_hierarchy:0004_duplicate_detection", sql=True)
+    sql = capsys.readouterr().out
+    for statement in (
+        "CREATE TABLE quality_setting",
+        "CREATE TABLE quality_job (",
+        "CREATE TABLE quality_job_item",
+        "CONSTRAINT uq_quality_setting_key UNIQUE (key)",
+        "ALTER TABLE duplicate_candidate ADD COLUMN blocking_conflict BOOLEAN "
+        "DEFAULT false NOT NULL",
+        "ALTER TABLE duplicate_candidate DROP CONSTRAINT ck_duplicate_candidate_duplicate_status",
+        "ALTER TABLE duplicate_candidate ADD CONSTRAINT ck_duplicate_candidate_duplicate_status "
+        "CHECK (status IN ('PENDING', 'MERGED', 'DISTINCT', 'POSTPONED', 'SUPERSEDED'))",
+    ):
+        assert statement in sql
+    assert "DROP TABLE" not in sql

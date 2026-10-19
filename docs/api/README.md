@@ -21,7 +21,7 @@ Generados por el change `contratos-api-borrador` (ADR-005). **No se editan a man
 
 ## Implementado hoy
 
-Colecciones (CRUD con eliminación lógica), vocabularios y términos (lectura, alta, edición, desactivación, eliminación lógica si no están en uso), tipos de identificador, ubicaciones (lectura), piezas (listado con filtros AND, ficha, identificadores, fotos, movimientos, datos de origen), búsqueda básica por cualquier código o denominación, vista previa del normalizador, `/auth/me`, roles y permisos, sugerencias de IA (lectura) y auditoría (lectura). El resto es stub; la tabla completa está en `openspec/changes/contratos-api-borrador/design.md` (D2).
+Colecciones (CRUD con eliminación lógica), vocabularios y términos (lectura, alta, edición, desactivación, eliminación lógica si no están en uso), tipos de identificador, ubicaciones (lectura), piezas (listado con filtros AND, ficha, identificadores, fotos, movimientos, datos de origen), búsqueda básica por cualquier código o denominación, vista previa del normalizador, `/auth/me`, roles y permisos, sugerencias de IA (lectura) y auditoría (lectura). El resto es stub; la tabla completa está en `openspec/changes/archive/2026-10-19-contratos-api-borrador/design.md` (D2).
 
 ## Regenerar
 

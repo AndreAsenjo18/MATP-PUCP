@@ -10,9 +10,10 @@ A heavy stage (ingestion, validation, application) runs in ``BackgroundTasks`` t
    the work wrote is rolled back and the batch goes to the failure state of the stage
    (``FAILED_INGESTION``, ``FAILED_APPLY``) or keeps its stable state (validation) with the
    reason in ``status_reason``.
-3. ``recover_interrupted_batches`` (at startup) clears the marks of batches whose heartbeat is
-   older than ``STALE_AFTER``: the batch is still in its stable state, so it can run the stage
-   again. Stages are idempotent, so running one twice never duplicates rows.
+3. ``recover_interrupted_batches`` (at startup, registered by ``register_import_jobs``) clears
+   the marks of batches whose heartbeat is older than ``jobs.HEARTBEAT_TIMEOUT``: the batch is
+   still in its stable state, so it can run the stage again. Stages are idempotent, so running
+   one twice never duplicates rows.
 
 Processing marks and progress are technical columns written with Core ``UPDATE`` statements,
 outside the audit log: a heartbeat every few hundred rows is not a change of business data.
@@ -40,6 +41,8 @@ from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.state import STATUS_LABELS, lock_batch, transition
 
 logger = logging.getLogger("matp.imports")
+
+HEARTBEAT_EVERY_ROWS = 500  # rows processed between two heartbeats of a stage
 
 
 class Stage(enum.StrEnum):
@@ -83,7 +86,7 @@ class Progress:
         self.done = done
         if total is not None:
             self.total = total
-        if force or done - self._last_beat >= jobs.HEARTBEAT_EVERY:
+        if force or done - self._last_beat >= HEARTBEAT_EVERY_ROWS:
             self._last_beat = done
             self.beat(self.as_json())
 
@@ -152,7 +155,7 @@ def start_stage(
             code="invalid_batch_transition",
             details={"current_status": batch.status.value, "required_status": expected.value},
         )
-    if batch.processing_started_at is not None and not jobs.is_stale(batch.heartbeat_at, now):
+    if batch.processing_started_at is not None and not jobs.is_stale(batch.heartbeat_at, now=now):
         raise ConflictError(
             "El lote ya se está procesando; espere a que termine.",
             code="batch_processing",
@@ -238,18 +241,25 @@ def launch_stage(
     """For the routes: mark the stage, commit and run it after the response is sent."""
     batch = start_stage(session, batch_id, stage)
     session.commit()
-    background_tasks.add_task(
-        jobs.run_job,
-        f"import:{stage.value}:{batch_id}",
-        session_factory,
-        run_stage,
-        session_factory,
-        batch_id,
-        stage,
-        work,
-        user_id,
+    jobs.run_in_background(
+        background_tasks, _run_in_new_session, session_factory, batch_id, stage, work, user_id
     )
     return batch
+
+
+def _run_in_new_session(
+    session_factory: sessionmaker[Session],
+    batch_id: uuid.UUID,
+    stage: Stage,
+    work: StageWork,
+    user_id: uuid.UUID,
+) -> None:
+    """The request session is closed by now: the stage gets its own (``app.core.jobs``)."""
+    try:
+        with session_factory() as session:
+            run_stage(session, session_factory, batch_id, stage, work, user_id)
+    except Exception:  # run_stage records failures; this only guards opening the session
+        logger.exception("Falló la etapa %s del lote %s", stage, batch_id)
 
 
 def recover_interrupted_batches(session: Session, now: datetime) -> int:
@@ -262,7 +272,7 @@ def recover_interrupted_batches(session: Session, now: datetime) -> int:
     recovered = 0
     with audit_context(session, SYSTEM_CONTEXT):
         for batch in batches:
-            if not jobs.is_stale(batch.heartbeat_at or batch.processing_started_at, now):
+            if not jobs.is_stale(batch.heartbeat_at or batch.processing_started_at, now=now):
                 continue
             batch.status_reason = INTERRUPTED_REASON
             session.flush()
@@ -275,3 +285,14 @@ def recover_interrupted_batches(session: Session, now: datetime) -> int:
             )
             recovered += 1
     return recovered
+
+
+def recover_import_batches(session_factory: jobs.SessionFactory) -> int:
+    with session_factory() as session:
+        recovered = recover_interrupted_batches(session, utcnow())
+        session.commit()
+    return recovered
+
+
+def register_import_jobs() -> None:
+    jobs.register_recovery("imports", recover_import_batches)
