@@ -1,24 +1,26 @@
-"""Import batches record the chosen sheet, the header row and the background stage heartbeat.
+"""Import batches record the chosen sheet, the header row, the column mapping and the
+background stage heartbeat.
 
 Revision ID: 0005_import_batch_processing
 Revises: 0004_duplicate_detection
 Create Date: 2026-10-16
 
-Change de OpenSpec: importacion-pipeline-reconciliacion (tarea 1.1, decisiones D1 y D2).
-Additive: four nullable columns on `import_batch`, so existing batches keep working.
+Change de OpenSpec: importacion-pipeline-reconciliacion (tareas 1.1 y 3.1, decisiones D1 a D3).
+Additive: five nullable columns on `import_batch`, so existing batches keep working.
 """
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "0005_import_batch_processing"
 down_revision: str | None = "0004_duplicate_detection"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-COLUMNS = ("sheet_name", "header_row", "processing_started_at", "heartbeat_at")
+COLUMNS = ("sheet_name", "header_row", "processing_started_at", "heartbeat_at", "mapping")
 
 
 def upgrade() -> None:
@@ -30,6 +32,14 @@ def upgrade() -> None:
     )
     op.add_column(
         "import_batch", sa.Column("heartbeat_at", sa.DateTime(timezone=True), nullable=True)
+    )
+    op.add_column(
+        "import_batch",
+        sa.Column(
+            "mapping",
+            sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql"),
+            nullable=True,
+        ),
     )
 
 

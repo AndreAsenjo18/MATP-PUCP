@@ -263,6 +263,7 @@ entity IMPORT_BATCH {
     header_row : integer
     processing_started_at : timestamptz
     heartbeat_at : timestamptz
+    mapping : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }

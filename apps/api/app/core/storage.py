@@ -57,3 +57,7 @@ class ObjectStorage:
 
     def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
         self._client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
+
+    def get_bytes(self, key: str) -> bytes:
+        response = self._client.get_object(Bucket=self.bucket, Key=key)
+        return response["Body"].read()
