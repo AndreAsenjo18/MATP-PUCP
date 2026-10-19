@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 636af9c96849718e2f3d98257cbefff52fc894017fc9431a475e44cb121734c0
+ * openapi-sha256: 95571c367bd3602fec815a597c426e1c6b352f9a2e1973bc8a0e0cc803732f06
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1144,7 +1144,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Búsqueda básica por cualquier código o denominación (RF-031) */
+        /** Búsqueda avanzada con filtros combinados (RF-031, RF-032) */
         get: operations["searchPieces"];
         put?: never;
         post?: never;
@@ -3185,20 +3185,6 @@ export interface components {
              */
             total: number;
         };
-        /** Page[SearchHit] */
-        Page_SearchHit_: {
-            /** Items */
-            items: components["schemas"]["SearchHit"][];
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /**
-             * Total
-             * @description Total de resultados que cumplen los filtros.
-             */
-            total: number;
-        };
         /** Page[UserOut] */
         Page_UserOut_: {
             /** Items */
@@ -3955,6 +3941,72 @@ export interface components {
             match_type: "IDENTIFIER" | "TITLE";
             matched_identifier?: components["schemas"]["CodeBrief"] | null;
             piece: components["schemas"]["PieceSummary"];
+        };
+        /**
+         * SearchResultPage
+         * @description Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
+         *
+         *     A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
+         *     `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
+         *     la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+         * @example {
+         *       "items": [
+         *         {
+         *           "match_type": "IDENTIFIER",
+         *           "matched_identifier": {
+         *             "identifier_type_code": "I",
+         *             "normalized_value": "I-236",
+         *             "original_value": "I-0236"
+         *           },
+         *           "piece": {
+         *             "category": {
+         *               "code": "CERAMICA",
+         *               "id": "01920000-0000-7000-8000-000000000302",
+         *               "label": "Cerámica"
+         *             },
+         *             "code_i": "I-0236",
+         *             "codes": [
+         *               {
+         *                 "identifier_type_code": "I",
+         *                 "normalized_value": "I-236",
+         *                 "original_value": "I-0236"
+         *               }
+         *             ],
+         *             "collection": {
+         *               "acronym": "M.M.Z.",
+         *               "id": "01920000-0000-7000-8000-000000000201",
+         *               "name": "Colección MMZ (ficticia)"
+         *             },
+         *             "conservation_status": {
+         *               "code": "REGULAR",
+         *               "id": "01920000-0000-7000-8000-000000000301",
+         *               "label": "Regular"
+         *             },
+         *             "denomination": "Vasija ceremonial (sintética)",
+         *             "has_location": true,
+         *             "id": "01920000-0000-7000-8000-000000000101",
+         *             "location_label": "Sede 1 (ficticia) › Depósito A (ficticio)",
+         *             "media_count": 2,
+         *             "period_text": "ca. 1950",
+         *             "tenure_regime": "Propiedad",
+         *             "updated_at": "2026-09-17T10:30:00Z"
+         *           }
+         *         }
+         *       ],
+         *       "limit": 20,
+         *       "page": 1,
+         *       "total": 1
+         *     }
+         */
+        SearchResultPage: {
+            /** Items */
+            items: components["schemas"]["SearchHit"][];
+            /** Limit */
+            limit: number;
+            /** Page */
+            page: number;
+            /** Total */
+            total: number;
         };
         /** SkippedPiece */
         SkippedPiece: {
@@ -9117,12 +9169,16 @@ export interface operations {
     searchPieces: {
         parameters: {
             query: {
+                /** @description Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.). */
+                collection_code?: string | null;
+                /** @description Resultados por página (máx. 100). */
+                limit?: number;
                 /** @description Número de página (desde 1). */
                 page?: number;
-                /** @description Resultados por página (máx. 100). */
-                page_size?: number;
                 /** @description Código o texto. */
                 q: string;
+                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             };
             header?: never;
             path?: never;
@@ -9136,7 +9192,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_SearchHit_"];
+                    "application/json": components["schemas"]["SearchResultPage"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

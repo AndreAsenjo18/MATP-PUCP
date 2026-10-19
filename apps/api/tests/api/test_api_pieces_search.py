@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.models import Collection, Piece, PieceIdentifier
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.catalog.enums import TenureRegime
 from app.modules.identification.normalization import TYPE_INVENTORY
 from tests.api.conftest import ADMIN, CATALOGUER, SeededApi, as_user
 
@@ -112,7 +113,73 @@ def test_search_by_title_fragment(seeded_api: SeededApi) -> None:
 
 def test_search_without_results(client: TestClient) -> None:
     body = client.get("/api/v1/search", params={"q": "ZZZ-NO-EXISTE-999"}, headers=H).json()
-    assert body == {"items": [], "total": 0, "page": 1, "page_size": 20}
+    assert body == {"items": [], "total": 0, "page": 1, "limit": 20}
+
+
+def test_search_combines_collection_and_tenure_regime_filters(seeded_api: SeededApi) -> None:
+    with seeded_api.session() as session:
+        piece = session.scalar(
+            select(Piece)
+            .join(Collection, Collection.id == Piece.collection_id)
+            .where(
+                Collection.acronym_normalized == "AJB",
+                Piece.tenure_regime == TenureRegime.LOAN_FOR_USE,
+                Piece.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+        assert piece is not None
+        fragment = piece.denomination.split()[0].lower()
+
+    response = seeded_api.client.get(
+        "/api/v1/search",
+        params={
+            "q": fragment,
+            "collection_code": "A.J.B.",  # código "sucio": debe normalizar igual que "AJB"
+            "tenure_regime": "Comodato",
+        },
+        headers=H,
+    ).json()
+    assert response["total"] > 0
+    for hit in response["items"]:
+        assert hit["piece"]["tenure_regime"] == "Comodato"
+
+    # Un régimen que no coincide con la colección filtrada no debe devolver nada.
+    mismatched = seeded_api.client.get(
+        "/api/v1/search",
+        params={"q": fragment, "collection_code": "AJB", "tenure_regime": "Propiedad"},
+        headers=H,
+    ).json()
+    assert mismatched["total"] == 0
+
+
+def test_search_unknown_collection_code_returns_empty(client: TestClient) -> None:
+    body = client.get(
+        "/api/v1/search", params={"q": "cualquiera", "collection_code": "NO-EXISTE"}, headers=H
+    ).json()
+    assert body == {"items": [], "total": 0, "page": 1, "limit": 20}
+
+
+def test_search_pagination_respects_limit_and_page(seeded_api: SeededApi) -> None:
+    with seeded_api.session() as session:
+        title = session.scalar(
+            select(Piece.denomination).where(Piece.deleted_at.is_(None)).limit(1)
+        )
+    fragment = title.split()[0].lower()
+    client = seeded_api.client
+
+    first = client.get(
+        "/api/v1/search", params={"q": fragment, "limit": 1, "page": 1}, headers=H
+    ).json()
+    assert first["limit"] == 1
+    assert first["page"] == 1
+    assert len(first["items"]) <= 1
+
+    if first["total"] > 1:
+        second = client.get(
+            "/api/v1/search", params={"q": fragment, "limit": 1, "page": 2}, headers=H
+        ).json()
+        assert second["items"][0]["piece"]["id"] != first["items"][0]["piece"]["id"]
 
 
 def test_piece_detail_and_sub_resources(seeded_api: SeededApi) -> None:
