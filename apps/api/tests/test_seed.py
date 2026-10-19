@@ -12,10 +12,12 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.db import make_session_factory
 from app.models import (
+    AiSuggestion,
     AppUser,
     AuditLog,
     Base,
     DuplicateCandidate,
+    ImportMappingTemplate,
     MediaAsset,
     Piece,
     PieceIdentifier,
@@ -105,6 +107,36 @@ def test_duplicates_photos_and_history(seeded: tuple[Session, Any]) -> None:
     assert per_piece and max(count for _, count in per_piece) > 1
     assert summary.uploaded_media == 0
     assert summary.soft_deleted_pieces == 2
+
+
+OLD_FIELD_NAMES = {"title", "period_text", "period_from", "period_to", "period_type"}
+
+
+def _json_keys_and_strings(value: Any) -> Iterator[str]:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from _json_keys_and_strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _json_keys_and_strings(item)
+    elif isinstance(value, str):
+        yield value
+
+
+def test_seed_json_uses_contract_field_names(seeded: tuple[Session, Any]) -> None:
+    """Task 2.4: same volumes as before and no pre-contract field names in seed JSON."""
+    session, summary = seeded
+    assert summary.pieces == 300
+    assert _count(session, select(func.count()).select_from(DuplicateCandidate)) == 10
+    assert 0.4 <= summary.pieces_without_inventory_code / summary.pieces <= 0.6
+    documents: list[Any] = []
+    documents += session.scalars(select(DuplicateCandidate.matched_fields)).all()
+    documents += session.scalars(select(ImportMappingTemplate.mapping)).all()
+    documents += session.scalars(select(AiSuggestion.input_data)).all()
+    assert len(documents) > 10
+    found = {text for text in _json_keys_and_strings(documents) if text in OLD_FIELD_NAMES}
+    assert found == set()
 
 
 def test_every_seeded_change_is_audited_as_system_or_synthetic_user(

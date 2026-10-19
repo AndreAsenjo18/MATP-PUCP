@@ -609,7 +609,7 @@ class SyntheticCatalogBuilder:
                     score=score,
                     matched_fields=[
                         {"field": "identifier:COLECCION", "similarity": 1.0},
-                        {"field": "title", "similarity": round(title_similarity, 4)},
+                        {"field": "denomination", "similarity": round(title_similarity, 4)},
                         {"field": "collection_id", "similarity": 1.0},
                     ],
                 )
@@ -624,9 +624,9 @@ class SyntheticCatalogBuilder:
             source_name=SOURCE_NAME,
             header_signature="sintetica-v1",
             mapping={
-                "DENOMINACIÓN": {"target": "title"},
+                "DENOMINACIÓN": {"target": "denomination"},
                 "CÓDIGOS": {"target": "identifiers:auto"},
-                "ÉPOCA": {"target": "period_text"},
+                "ÉPOCA": {"target": "epoch_original_text"},
                 "PROCEDENCIA": {"target": "provenance"},
                 "OBS. CONSULTORÍA": {"target": "payload"},
             },
@@ -687,7 +687,10 @@ class SyntheticCatalogBuilder:
                     provider="mock",
                     model="mock-deterministic",
                     piece_id=piece.id,
-                    input_data={"title": piece.denomination, "description": piece.description},
+                    input_data={
+                        "denomination": piece.denomination,
+                        "description": piece.description,
+                    },
                     output_data={
                         "category": self.piece_categories.get(piece.id),
                         "confidence": 0.8,

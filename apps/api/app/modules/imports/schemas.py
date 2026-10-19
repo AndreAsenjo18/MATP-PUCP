@@ -54,6 +54,46 @@ class ImportBatchOut(BaseModel):
     created_at: datetime
 
 
+class ImportBatchCounters(BaseModel):
+    """Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``)."""
+
+    new_records: int
+    updates: int
+    conflicts: int
+
+
+class ImportBatchSummary(BaseModel):
+    """Response of ``POST /imports/upload`` as the team contract defines it (task 4.4, D8).
+
+    How the four row classifications map to the three counters (I7) and the Spanish values of
+    ``status`` (I8) stay open until ``importacion-pipeline-reconciliacion``.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "batch_id": EX_BATCH_ID,
+                    "filename": "sabana_sintetica_v1.xlsx",
+                    "total_rows": 120,
+                    "summary": {"new_records": 70, "updates": 35, "conflicts": 5},
+                    "status": None,
+                }
+            ]
+        }
+    )
+
+    batch_id: uuid.UUID
+    filename: str
+    total_rows: int
+    summary: ImportBatchCounters = Field(
+        description="Agrupación de NEW, UPDATE, POSSIBLE_DUPLICATE y CONFLICT pendiente (I7)."
+    )
+    status: str | None = Field(
+        None, description="Estado del lote; valores en español pendientes (I8)."
+    )
+
+
 class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
