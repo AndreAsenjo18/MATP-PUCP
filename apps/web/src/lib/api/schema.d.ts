@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: d4d5d2f05f77ac6a1547c63762e160af8a83a91e205cce1ecef598d0c96276e2
+ * openapi-sha256: 58508f25eea7a22d32d5a6befc3e0ba76125f3a42d1d104594237d6b6123f67f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1018,6 +1018,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/duplicates/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
+        post: operations["scanDuplicates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/incomplete": {
         parameters: {
             query?: never;
@@ -1027,6 +1044,23 @@ export interface paths {
         };
         /** Piezas con información incompleta (RF-019, RF-035) */
         get: operations["listIncompletePieces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estado y avance de una detección de duplicados (RF-030, RNF-015) */
+        get: operations["getQualityJob"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3769,6 +3803,70 @@ export interface components {
             /** Issues */
             issues: components["schemas"]["FieldIssue"][];
         };
+        /**
+         * QualityJobOut
+         * @description State and progress of a full duplicate scan run in the background (design D3).
+         * @example {
+         *       "candidates_created": 0,
+         *       "candidates_reopened": 0,
+         *       "heartbeat_at": "2026-09-17T10:30:00Z",
+         *       "id": "01920000-0000-7000-8000-000000000921",
+         *       "job_type": "FULL_SCAN",
+         *       "pairs_evaluated": 610,
+         *       "processed_pieces": 120,
+         *       "requested_by_id": "01920000-0000-7000-8000-000000000501",
+         *       "started_at": "2026-09-17T10:30:00Z",
+         *       "status": "RUNNING",
+         *       "total_pieces": 298
+         *     }
+         */
+        QualityJobOut: {
+            /** Candidates Created */
+            candidates_created: number;
+            /**
+             * Candidates Reopened
+             * @description Pares «distintos» que vuelven a la cola porque cambió su huella.
+             */
+            candidates_reopened: number;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            job_type: components["schemas"]["QualityJobType"];
+            /**
+             * Pairs Evaluated
+             * @description Pares comparados; nunca todos contra todos.
+             */
+            pairs_evaluated: number;
+            /** Processed Pieces */
+            processed_pieces: number;
+            /** Requested By Id */
+            requested_by_id: string | null;
+            /** Started At */
+            started_at: string | null;
+            status: components["schemas"]["QualityJobStatus"];
+            /** Total Pieces */
+            total_pieces: number;
+        };
+        /**
+         * QualityJobStatus
+         * @enum {string}
+         */
+        QualityJobStatus: "RUNNING" | "SUCCEEDED" | "FAILED";
+        /**
+         * QualityJobType
+         * @enum {string}
+         */
+        QualityJobType: "FULL_SCAN";
         /**
          * ReportOut
          * @example {
@@ -8798,6 +8896,53 @@ export interface operations {
             };
         };
     };
+    scanDuplicates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityJobOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listIncompletePieces: {
         parameters: {
             query?: {
@@ -8858,6 +9003,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getQualityJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityJobOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -83,7 +83,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | Operación actual | Por qué existe |
 |---|---|
 | `POST /ai/suggestions/{id}/approve` · `/reject`, `GET /ai/suggestions` | RN-009: ninguna salida de IA se guarda sin aprobación humana registrada |
-| `GET /quality/duplicates`, `POST /quality/duplicates/{id}/resolve` | RF-030: cola de revisión de duplicados |
+| `GET /quality/duplicates`, `POST /quality/duplicates/{id}/resolve`, `POST /quality/duplicates/scan`, `GET /quality/jobs/{job_id}` | RF-030: cola de revisión de duplicados, detección completa en segundo plano y su avance (`deteccion-duplicados-y-cola-revision`, tarea 2.3) |
 | `GET /vocabularies*`, `POST /vocabularies/{code}/terms`, … | RN-010: vocabularios parametrizables (materiales, técnicas, tipos de vista) |
 | `GET /identifier-types`, `POST /identifiers/normalize` | RF-023, RN-010: tipos de identificador y normalizador como datos |
 | `POST /pieces/{id}/restore`, `POST /pieces/validate` | RN-005 (restaurar en lugar de borrar) y RF-043 (validación en tiempo real) |
