@@ -14,6 +14,7 @@ from app.modules.quality.scoring import (
     PieceProfile,
     ScoringConfig,
     comparison_fingerprint,
+    known_author,
     normalize_text,
     score_pair,
     text_similarity,
@@ -153,6 +154,41 @@ def test_author_and_provenance_are_averaged_over_the_fields_both_have() -> None:
     assert found.field == "author"
     assert found.similarity == 1.0
     assert signal(score_pair(piece(1), piece(2)), "author_provenance") is None
+
+
+def test_two_anonymous_authors_do_not_add_the_author_signal() -> None:
+    a = piece(1, author="Anónimo", provenance="Lima")
+    b = piece(2, author="Anónimo", provenance="Cusco")
+    found = signal(score_pair(a, b), "author_provenance")
+    assert found.field == "provenance"  # only the provenance is compared
+    assert "author" not in found.values
+    assert found.similarity < 0.5  # Lima ≠ Cusco: no free point from the author
+
+
+@pytest.mark.parametrize(
+    "unknown",
+    ["Anónimo", "ANONIMO", "anónima", "Autor anónimo", "Desconocido", "No presenta", "S/N", "-"],
+)
+def test_unknown_author_markers_count_as_missing_author(unknown: str) -> None:
+    assert known_author(unknown) == ""
+    a = piece(1, author=unknown)
+    b = piece(2, author="Jesús Urbano")
+    assert signal(score_pair(a, b), "author_provenance") is None
+
+
+def test_a_known_author_still_counts() -> None:
+    assert known_author("Taller Urbano") == "taller urbano"
+    found = signal(
+        score_pair(piece(1, author="Taller Urbano"), piece(2, author="TALLER URBANO")),
+        "author_provenance",
+    )
+    assert found.field == "author"
+    assert found.similarity == 1.0
+
+
+def test_an_anonymous_author_does_not_change_the_fingerprint() -> None:
+    a, b = piece(1, author="Anónimo"), piece(2)
+    assert comparison_fingerprint(a, b) == comparison_fingerprint(piece(1, author=None), b)
 
 
 @pytest.mark.parametrize(

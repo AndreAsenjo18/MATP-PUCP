@@ -38,6 +38,7 @@ from app.modules.quality.scoring import (
     PairScore,
     PieceProfile,
     ScoringConfig,
+    known_author,
     normalize_text,
     score_pair,
     trigrams,
@@ -160,7 +161,7 @@ def _root(profile: PieceProfile) -> uuid.UUID | None:
 
 
 def _author_provenance_key(profile: PieceProfile) -> tuple[str, str] | None:
-    author, provenance = normalize_text(profile.author), normalize_text(profile.provenance)
+    author, provenance = known_author(profile.author), normalize_text(profile.provenance)
     return (author, provenance) if author and provenance else None
 
 

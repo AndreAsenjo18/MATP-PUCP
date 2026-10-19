@@ -92,8 +92,8 @@ def test_pairs_outside_the_planted_ones_need_a_code_or_several_agreeing_signals(
     Outside the planted pairs a candidate either shares a normalized code (the seed draws PUCP
     codes at random, so two unrelated pieces can share one: spec scenario «Mismo código histórico
     en dos piezas») or reaches the threshold because several signals agree: near-equal
-    denomination, same collection, and author/provenance or epoch. The seed has 10 such pairs
-    (design D1, reweighted weights).
+    denomination, same collection, and author/provenance or epoch. The seed has 7 such pairs
+    (design D1: reweighted weights, an anonymous author is missing data).
     """
     config = ScoringConfig()
     by_signals = []
@@ -109,7 +109,7 @@ def test_pairs_outside_the_planted_ones_need_a_code_or_several_agreeing_signals(
         assert signals["collection"]["similarity"] == 1.0
         assert {"author_provenance", "epoch"} & set(signals)
         by_signals.append(candidate)
-    assert len(by_signals) == 10
+    assert len(by_signals) == 7
 
 
 def test_detection_does_not_compare_every_pair(detection: Any) -> None:
