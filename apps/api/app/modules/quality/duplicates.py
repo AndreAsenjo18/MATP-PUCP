@@ -20,7 +20,7 @@ and the background jobs belong to tasks 2.3 and 2.4.
 
 import uuid
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -38,6 +38,7 @@ from app.modules.quality.scoring import (
     PairScore,
     PieceProfile,
     ScoringConfig,
+    known_author,
     normalize_text,
     score_pair,
     trigrams,
@@ -46,6 +47,8 @@ from app.modules.quality.scoring import (
 BLOCK_IDENTIFIER = "identifier"
 BLOCK_DENOMINATION = "denomination"
 BLOCK_AUTHOR_PROVENANCE = "author_provenance"
+#: How many subjects are processed between two progress reports.
+PROGRESS_EVERY = 100
 
 
 @dataclass(frozen=True)
@@ -158,7 +161,7 @@ def _root(profile: PieceProfile) -> uuid.UUID | None:
 
 
 def _author_provenance_key(profile: PieceProfile) -> tuple[str, str] | None:
-    author, provenance = normalize_text(profile.author), normalize_text(profile.provenance)
+    author, provenance = known_author(profile.author), normalize_text(profile.provenance)
     return (author, provenance) if author and provenance else None
 
 
@@ -250,11 +253,13 @@ def find_candidates(
     session: Session,
     config: ScoringConfig | None = None,
     piece_ids: Iterable[uuid.UUID] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> DetectionResult:
     """Duplicate candidates of the whole catalogue, or only those involving ``piece_ids``.
 
     Each pair appears once, with ``piece_a_id`` < ``piece_b_id`` (by their text form), and is
-    scored once even if it falls into several blocks.
+    scored once even if it falls into several blocks. ``on_progress(processed, total)`` is called
+    every ``PROGRESS_EVERY`` subjects and at the end (heartbeat of the background scan).
     """
     config = config or load_scoring_config(session)
     index = CatalogIndex(load_profiles(session), config)
@@ -265,7 +270,9 @@ def find_candidates(
     )
     result = DetectionResult(pieces=len(index.profiles))
     seen: set[tuple[uuid.UUID, uuid.UUID]] = set()
-    for subject in subjects:
+    for position, subject in enumerate(subjects, start=1):
+        if on_progress is not None and position % PROGRESS_EVERY == 0:
+            on_progress(position, len(subjects))
         subject_id = subject.piece_id
         if subject_id is None:
             continue
@@ -279,4 +286,6 @@ def find_candidates(
             if scored.enters_queue(config):
                 result.candidates.append(CandidatePair(a_id, b_id, scored, frozenset(blocks)))
     result.candidates.sort(key=lambda c: (-c.result.score, str(c.piece_a_id), str(c.piece_b_id)))
+    if on_progress is not None:
+        on_progress(len(subjects), len(subjects))
     return result

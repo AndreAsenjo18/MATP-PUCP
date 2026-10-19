@@ -14,6 +14,7 @@ from app.modules.quality.scoring import (
     PieceProfile,
     ScoringConfig,
     comparison_fingerprint,
+    known_author,
     normalize_text,
     score_pair,
     text_similarity,
@@ -155,6 +156,41 @@ def test_author_and_provenance_are_averaged_over_the_fields_both_have() -> None:
     assert signal(score_pair(piece(1), piece(2)), "author_provenance") is None
 
 
+def test_two_anonymous_authors_do_not_add_the_author_signal() -> None:
+    a = piece(1, author="Anónimo", provenance="Lima")
+    b = piece(2, author="Anónimo", provenance="Cusco")
+    found = signal(score_pair(a, b), "author_provenance")
+    assert found.field == "provenance"  # only the provenance is compared
+    assert "author" not in found.values
+    assert found.similarity < 0.5  # Lima ≠ Cusco: no free point from the author
+
+
+@pytest.mark.parametrize(
+    "unknown",
+    ["Anónimo", "ANONIMO", "anónima", "Autor anónimo", "Desconocido", "No presenta", "S/N", "-"],
+)
+def test_unknown_author_markers_count_as_missing_author(unknown: str) -> None:
+    assert known_author(unknown) == ""
+    a = piece(1, author=unknown)
+    b = piece(2, author="Jesús Urbano")
+    assert signal(score_pair(a, b), "author_provenance") is None
+
+
+def test_a_known_author_still_counts() -> None:
+    assert known_author("Taller Urbano") == "taller urbano"
+    found = signal(
+        score_pair(piece(1, author="Taller Urbano"), piece(2, author="TALLER URBANO")),
+        "author_provenance",
+    )
+    assert found.field == "author"
+    assert found.similarity == 1.0
+
+
+def test_an_anonymous_author_does_not_change_the_fingerprint() -> None:
+    a, b = piece(1, author="Anónimo"), piece(2)
+    assert comparison_fingerprint(a, b) == comparison_fingerprint(piece(1, author=None), b)
+
+
 @pytest.mark.parametrize(
     ("a", "b", "expected"),
     [
@@ -211,7 +247,7 @@ def test_score_is_the_sum_of_weighted_signals() -> None:
         identifiers=(IdentifierValue("COLECCION", "MMZ 12", "M.M.Z. 012"),),
     )
     result = score_pair(a, b)
-    assert result.score == pytest.approx(0.35 + 0.25 + 0.10 + 0.10)
+    assert result.score == pytest.approx(0.35 + 0.30 + 0.10 + 0.15)
     assert [s["signal"] for s in result.matched_fields()] == [
         "identifier",
         "denomination",
@@ -220,12 +256,40 @@ def test_score_is_the_sum_of_weighted_signals() -> None:
     ]
 
 
-def test_a_pair_without_shared_identifier_needs_the_threshold() -> None:
+def test_a_near_equal_denomination_in_the_same_collection_is_not_enough() -> None:
     a = piece(1, "Retablo ayacuchano", collection_lineage=(ROOT,))
     b = piece(2, "Retablo ayacuchano", collection_lineage=(ROOT,))
     result = score_pair(a, b)
-    assert result.score == pytest.approx(0.35)
+    assert result.score == pytest.approx(0.40)
     assert not result.enters_queue(CONFIG)
+
+
+def test_several_agreeing_signals_enter_the_queue_without_a_shared_identifier() -> None:
+    """Spec: «Detección incremental al editar» — same collection, author, provenance and epoch."""
+    shared = {
+        "collection_lineage": (ROOT,),
+        "author": "Taller Urbano",
+        "provenance": "Ayacucho",
+        "epoch_start_year": 1950,
+        "epoch_end_year": 1950,
+    }
+    a = piece(1, "Retablo ayacuchano de tres pisos", **shared)
+    b = piece(2, "Retablo ayacuchano de 3 pisos", **shared)
+    result = score_pair(a, b)
+    assert not result.shared_identifier
+    assert result.score >= CONFIG.min_score
+    assert result.enters_queue(CONFIG)
+
+
+def test_without_a_shared_identifier_the_score_tops_out_at_075() -> None:
+    same = {
+        "collection_lineage": (ROOT,),
+        "author": "Urbano",
+        "provenance": "Ayacucho",
+        "epoch_start_year": 1950,
+        "dimensions": (Dimension("alto", 35),),
+    }
+    assert score_pair(piece(1, **same), piece(2, **same)).score == pytest.approx(0.75)
 
 
 def test_score_never_exceeds_one() -> None:

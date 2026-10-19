@@ -23,7 +23,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, replace
 from typing import Any
 
-from app.modules.identification.normalization import TYPE_INVENTORY
+from app.modules.identification.normalization import ABSENCE_MARKERS, TYPE_INVENTORY
 
 #: Key of the ``quality_setting`` row that overrides ``ScoringConfig`` defaults.
 SETTING_KEY = "duplicates.scoring"
@@ -31,16 +31,21 @@ SETTING_KEY = "duplicates.scoring"
 
 @dataclass(frozen=True)
 class ScoringConfig:
-    """Weights and thresholds of the detection rules (design D1) [SUPUESTO]."""
+    """Weights and thresholds of the detection rules (design D1) [SUPUESTO].
+
+    Without a shared identifier a pair can reach at most 0.75, so it enters the queue only when
+    several signals agree (denomination, collection, author and provenance, epoch); a near-equal
+    denomination in the same collection alone adds 0.40.
+    """
 
     #: Weight of a shared normalized identifier, by identifier type; I weighs more.
     inventory_code_weight: float = 0.45
     other_identifier_weight: float = 0.35
-    denomination_weight: float = 0.25
+    denomination_weight: float = 0.30
     collection_weight: float = 0.10
-    author_provenance_weight: float = 0.10
-    epoch_weight: float = 0.05
-    dimensions_weight: float = 0.05
+    author_provenance_weight: float = 0.15
+    epoch_weight: float = 0.10
+    dimensions_weight: float = 0.10
     #: Pairs without a shared identifier enter the queue from this score (DUPLICATE_MIN_SCORE).
     min_score: float = 0.6
     #: Relative tolerance for two measures of the same dimension to be compatible (±5 %).
@@ -171,6 +176,34 @@ def normalize_text(value: str | None) -> str:
     return _NON_ALNUM.sub(" ", without_accents.casefold()).strip()
 
 
+#: Author values that mean «no known author» [SUPUESTO]: the forms already used in the project
+#: (seed «Anónimo», API example «Autor anónimo», «No presenta» as «sin dato» per question L7), the
+#: «sin código» markers of question A5, and «Desconocido». Compared after ``normalize_text``.
+UNKNOWN_AUTHOR_MARKERS = frozenset(
+    {
+        "anonimo",
+        "anonima",
+        "autor anonimo",
+        "desconocido",
+        "desconocida",
+        "autor desconocido",
+        "no presenta",
+        "sin autor",
+    }
+    | {normalize_text(marker) for marker in ABSENCE_MARKERS}
+)
+
+
+def known_author(value: str | None) -> str:
+    """Normalized author, or ``""`` when it only says that the author is not known.
+
+    Two pieces by «Anónimo» do not share an author: treating that as a match would pair any two
+    anonymous pieces from the same place.
+    """
+    normalized = normalize_text(value)
+    return "" if normalized in UNKNOWN_AUTHOR_MARKERS else normalized
+
+
 def text_similarity(a: str | None, b: str | None) -> float:
     """Similarity in [0, 1] of two free texts after ``normalize_text``; 0 if either is empty."""
     left, right = normalize_text(a), normalize_text(b)
@@ -260,6 +293,8 @@ def _author_provenance_signal(
     similarities: list[float] = []
     for name in ("author", "provenance"):
         left, right = getattr(a, name), getattr(b, name)
+        if name == "author" and not (known_author(left) and known_author(right)):
+            continue  # an anonymous or unknown author is missing data, not a match
         if normalize_text(left) and normalize_text(right):
             compared[name] = [left, right]
             similarities.append(text_similarity(left, right))
@@ -332,7 +367,7 @@ def _fingerprint_payload(profile: PieceProfile) -> dict[str, Any]:
         "identifiers": sorted(f"{t}:{v}" for t, v in profile.shared_identifier_keys()),
         "denomination": normalize_text(profile.denomination),
         "collection": str(profile.collection_id) if profile.collection_id else "",
-        "author": normalize_text(profile.author),
+        "author": known_author(profile.author),
         "provenance": normalize_text(profile.provenance),
         "epoch": [profile.epoch_start_year, profile.epoch_end_year],
         "dimensions": sorted([*_dimension_key(d), round(d.value, 4)] for d in profile.dimensions),
