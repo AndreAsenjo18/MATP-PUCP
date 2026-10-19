@@ -125,3 +125,55 @@ def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) 
 
     listed = client.get("/api/v1/locations", headers=as_user(VIEWER)).json()
     assert {item["level"] for item in listed} <= {"Sede", "Depósito"}
+
+
+
+
+def test_auth_login_remains_stub(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "admin@matp.local",
+            "password": "clave-ficticia-para-prueba",
+        },
+    )
+
+    assert response.status_code == 501
+
+
+def test_auth_me_returns_user_role_and_permissions(client: TestClient) -> None:
+    response = client.get(
+        "/api/v1/auth/me",
+        headers=as_user(CATALOGUER),
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["email"] == CATALOGUER
+    assert "CATALOGUER" in body["roles"]
+    assert "pieces.update" in body["permissions"]
+    assert body["auth_mode"] == "dev-header"
+
+
+def test_auth_me_rejects_anonymous_user(client: TestClient) -> None:
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "authentication_required"
+
+
+def test_auth_endpoints_openapi_contract(client: TestClient) -> None:
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+
+    paths = response.json()["paths"]
+
+    login = paths["/api/v1/auth/login"]["post"]
+    assert login["operationId"] == "login"
+    assert login["x-status"] == "stub"
+    assert login["x-change"] == "autenticacion-y-matriz-permisos"
+
+    me = paths["/api/v1/auth/me"]["get"]
+    assert me["operationId"] == "getMe"
+    assert me["x-status"] == "implemented"
