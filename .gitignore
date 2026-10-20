@@ -12,3 +12,6 @@ build/
 .next/
 coverage/
 *.tsbuildinfo
+
+# Worktrees temporales de los subagentes de Claude Code
+.claude/worktrees/
