@@ -26,7 +26,7 @@
 - [x] 4.4 Importación, solo forma y firma del contrato: `POST /imports/upload`, `GET /imports/{batch_id}/diffs` y `POST /imports/{batch_id}/confirm` siguen respondiendo 501. `upload` declara la respuesta 202 con `ImportBatchSummary` y solo `file` en el formulario `multipart/form-data`. El cuerpo de `confirm` y la respuesta de `diffs` no cambian: quedan para `importacion-pipeline-reconciliacion` (D8). Prueba sobre el OpenAPI generado, sin llamada real: código 202, esquema `ImportBatchSummary` y formulario con solo `file` (Req: Conformidad con el contrato de interfaces del equipo; Valores de enumerado del contrato en la API; RF-021, RF-026, RF-027)
 - [x] 4.5 Búsqueda `GET /search` con `q`, `collection_code`, `tenure_regime`, `page` y `limit`; pruebas de filtros combinados y de paginación (Req: Búsqueda y paginación del contrato; RF-031, RF-032) — `apps/api/tests/api/test_api_pieces_search.py` (`test_search_combines_collection_and_tenure_regime_filters`, `test_search_pagination_respects_limit_and_page`)
 - [x] 4.6 Multimedia `POST /media/upload` (`multipart/form-data` con `piece_id`, `view_type`, `file`); pruebas de alta y de restricción de uso en comodato (Req: Carga de multimedia en la ruta del contrato; RF-013, RF-014, RN-008)
-- [ ] 4.7 Autenticación: `POST /auth/login` (stub hasta `autenticacion-y-matriz-permisos`) y `GET /auth/me` con el rol del usuario; pruebas de ambas (Req: Perfil y rol en las rutas del contrato; RF-039, RNF-012; secundario: RF-041, porque `/auth/me` expone los permisos sobre campos sensibles, pero no es el requisito principal de esta tarea)
+- [x] 4.7 Autenticación: `POST /auth/login` (stub hasta `autenticacion-y-matriz-permisos`) y `GET /auth/me` con el rol del usuario; pruebas de ambas (Req: Perfil y rol en las rutas del contrato; RF-039, RNF-012; secundario: RF-041, porque `/auth/me` expone los permisos sobre campos sensibles, pero no es el requisito principal de esta tarea)
 
 ## 5. Operaciones de las fases 2 y 3 del documento (21 a 45)
 
@@ -43,5 +43,5 @@
 ## 7. Cierre
 
 - [x] 7.1 `npm run lint`, `npm test`, `npm run openapi:check`, `npm run build:web` y `openspec validate --all --strict` en verde
-- [ ] 7.2 Verificar en contenedores (`npm run dev`, `npm run migrate`, `npm run seed`) que la fase 1 responde contra PostgreSQL real — requiere Docker
+- [x] 7.2 Verificar en contenedores (`npm run dev`, `npm run migrate`, `npm run seed`) que la fase 1 responde contra PostgreSQL real — requiere Docker
 - [x] 7.3 Sección del manual de usuario si alguna pantalla cambia de ruta, y `openspec archive alinear-api-endpoints-v1` tras aprobar el PR
