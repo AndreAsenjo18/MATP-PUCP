@@ -18,7 +18,11 @@ from app.core.config import Settings, get_settings
 from app.core.db import check_database, make_engine, make_session_factory
 from app.core.health import HealthCheck
 from app.core.health import router as health_router
+from app.core.jobs import recover_interrupted, start_workers, stop_workers
 from app.core.storage import ObjectStorage
+from app.modules.imports.worker import register_import_jobs
+from app.modules.quality.incremental import register_incremental_jobs
+from app.modules.quality.scan import register_scan_jobs
 
 logger = logging.getLogger("matp.api")
 
@@ -69,6 +73,9 @@ def create_app(
     engine: Engine | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
+    register_scan_jobs()
+    register_incremental_jobs()
+    register_import_jobs()
     owns_engine = engine is None
     engine = engine or make_engine(
         settings.database_url, connect_timeout=settings.health_check_timeout_seconds
@@ -83,7 +90,15 @@ def create_app(
                     logger.info("Bucket %s creado", settings.s3_bucket)
             except Exception:  # noqa: BLE001 - storage may start later; health reports it
                 logger.warning("No se pudo verificar/crear el bucket %s", settings.s3_bucket)
+        # ADR-010: jobs interrupted by a restart are repaired before serving requests.
+        recovered = recover_interrupted(app.state.session_factory)
+        if any(recovered.values()):
+            logger.warning("Trabajos interrumpidos recuperados: %s", recovered)
+        # Queues fed by ordinary writes are drained in this process; tests drain them explicitly.
+        if settings.app_env != "test":
+            start_workers(app.state.session_factory)
         yield
+        stop_workers()
         if owns_engine:
             engine.dispose()
 

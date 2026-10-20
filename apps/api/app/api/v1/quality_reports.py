@@ -3,9 +3,9 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 
-from app.api.deps import CurrentUser, SessionDep, require_permission
+from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES
 from app.api.pagination import (
@@ -26,15 +26,19 @@ from app.api.stubs import (
     page_example,
     stub,
 )
+from app.core.errors import NotFound
+from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
-from app.modules.quality.models import DuplicateStatus
+from app.modules.quality.models import DuplicateStatus, QualityJob
+from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
     AlertType,
     CompletenessKpis,
     DuplicateCandidateOut,
     DuplicateResolution,
     IncompletePiece,
+    QualityJobOut,
 )
 from app.modules.search.schemas import (
     ExportFormat,
@@ -110,6 +114,44 @@ def resolve_duplicate_candidate(
     user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
 ) -> DuplicateCandidateOut:
     raise not_implemented(CHANGE_DUPLICATES, DuplicateCandidateOut)
+
+
+@router.post(
+    "/quality/duplicates/scan",
+    response_model=QualityJobOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary=(
+        "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso "
+        "(RF-030)"
+    ),
+    tags=["Calidad"],
+    **implemented(),
+)
+def scan_duplicates(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
+) -> QualityJobOut:
+    writer(session, user)
+    job = start_scan(session, user.id)
+    session.commit()
+    run_in_background(background_tasks, run_full_scan, request.app.state.session_factory, job.id)
+    return QualityJobOut.model_validate(job)
+
+
+@router.get(
+    "/quality/jobs/{job_id}",
+    response_model=QualityJobOut,
+    summary="Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> QualityJobOut:
+    job = session.get(QualityJob, job_id)
+    if job is None:
+        raise NotFound("No existe esa detección de duplicados.")
+    return QualityJobOut.model_validate(job)
 
 
 # ------------------------------------------------------------------------- search

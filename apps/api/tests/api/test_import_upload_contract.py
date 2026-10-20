@@ -1,10 +1,11 @@
 """Change alinear-api-endpoints-v1, tarea 4.4 — forma y firma de la importación del contrato.
 
-Solo se verifica el OpenAPI generado: las tres rutas siguen en 501 hasta
-`importacion-pipeline-reconciliacion` (design D8). `upload` declara 202 con
-`ImportBatchSummary` y solo `file` en el formulario; `diffs` y `confirm` no cambian
-(Req: Conformidad con el contrato de interfaces del equipo; Valores de enumerado del
-contrato en la API; RF-021, RF-026, RF-027).
+Solo se verifica el OpenAPI generado (design D8). `upload` declara 202 con
+`ImportBatchSummary` y solo `file` en el formulario. `upload` y `diffs` ya los implementa
+`importacion-pipeline-reconciliacion` (tareas 2.1 y 3.4; su comportamiento se prueba en
+`test_import_pipeline_api.py`); `confirm` sigue en 501 hasta su tarea 4.2 (Req: Conformidad
+con el contrato de interfaces del equipo; Valores de enumerado del contrato en la API; RF-021,
+RF-026, RF-027).
 """
 
 from pathlib import Path
@@ -13,16 +14,13 @@ from typing import Any
 import pytest
 import yaml
 
-from app.api.stubs import STATUS_STUB, X_CHANGE, X_STATUS
+from app.api.stubs import STATUS_IMPLEMENTED, STATUS_STUB, X_CHANGE, X_STATUS
 from app.openapi_export import build_spec
 
 CONTRACT = Path(__file__).resolve().parents[4] / "docs" / "fuentes" / "endpoints-api-v1.yaml"
 UPLOAD = "/api/v1/imports/upload"
-STUBS = [
-    ("post", UPLOAD),
-    ("get", "/api/v1/imports/{batch_id}/diffs"),
-    ("post", "/api/v1/imports/{batch_id}/confirm"),
-]
+IMPLEMENTED = [("post", UPLOAD), ("get", "/api/v1/imports/{batch_id}/diffs")]
+STUBS = [("post", "/api/v1/imports/{batch_id}/confirm")]
 
 
 @pytest.fixture(scope="module")
@@ -45,6 +43,15 @@ def test_import_routes_remain_stubs(spec: dict[str, Any], method: str, path: str
     assert operation[X_STATUS] == STATUS_STUB
     assert operation[X_CHANGE] == "importacion-pipeline-reconciliacion"
     assert "501" in operation["responses"]
+
+
+@pytest.mark.parametrize(("method", "path"), IMPLEMENTED)
+def test_ingestion_and_preview_routes_are_implemented(
+    spec: dict[str, Any], method: str, path: str
+) -> None:
+    operation = spec["paths"][path][method]
+    assert operation[X_STATUS] == STATUS_IMPLEMENTED
+    assert "501" not in operation["responses"]
 
 
 def test_upload_declares_202_with_import_batch_summary(spec: dict[str, Any]) -> None:

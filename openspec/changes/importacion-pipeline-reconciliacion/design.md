@@ -43,7 +43,7 @@ stateDiagram-v2
 
 - Transiciones en `imports/state.py` con `SELECT ... FOR UPDATE` del lote; una transición no permitida → `409 invalid_batch_transition`.
 - Cada etapa pesada (ingesta de filas, validación/matching, aplicación) es **idempotente**: borra y recalcula sus propios resultados intermedios del lote (`import_row` antes de la aprobación no es información del catálogo) y registra `stage_timestamps`.
-- Worker en proceso: `BackgroundTasks` + marca `processing_started_at`/`heartbeat_at` en el lote. Al arrancar la API, los lotes con latido vencido (> 5 min) vuelven a su estado estable anterior con `status_reason="interrumpido; reintente"`.
+- Worker en proceso: `BackgroundTasks` + marca `processing_started_at`/`heartbeat_at` en el lote. Al arrancar la API, los lotes con latido vencido (más de `HEARTBEAT_TIMEOUT`, 2 min, el umbral compartido de `app.core.jobs`) vuelven a su estado estable anterior con `status_reason="interrumpido; reintente"`.
 - *Alternativa*: Celery/RQ + Redis → servicio adicional sin justificación para ≤ 10 usuarios; queda como contingencia documentada si los tiempos medidos superan 10 min por lote.
 
 ### D2. Ingesta

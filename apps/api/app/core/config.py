@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     health_check_timeout_seconds: float = 2.0
 
+    # Import pipeline limits (design D2 of importacion-pipeline-reconciliacion) [SUPUESTO].
+    import_max_bytes: int = Field(50 * 1024 * 1024, ge=1)
+    import_max_rows: int = Field(20_000, ge=1)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

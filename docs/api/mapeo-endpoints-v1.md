@@ -83,7 +83,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | Operación actual | Por qué existe |
 |---|---|
 | `POST /ai/suggestions/{id}/approve` · `/reject`, `GET /ai/suggestions` | RN-009: ninguna salida de IA se guarda sin aprobación humana registrada |
-| `GET /quality/duplicates`, `POST /quality/duplicates/{id}/resolve` | RF-030: cola de revisión de duplicados |
+| `GET /quality/duplicates`, `POST /quality/duplicates/{id}/resolve`, `POST /quality/duplicates/scan`, `GET /quality/jobs/{job_id}` | RF-030: cola de revisión de duplicados, detección completa en segundo plano y su avance (`deteccion-duplicados-y-cola-revision`, tarea 2.3) |
 | `GET /vocabularies*`, `POST /vocabularies/{code}/terms`, … | RN-010: vocabularios parametrizables (materiales, técnicas, tipos de vista) |
 | `GET /identifier-types`, `POST /identifiers/normalize` | RF-023, RN-010: tipos de identificador y normalizador como datos |
 | `POST /pieces/{id}/restore`, `POST /pieces/validate` | RN-005 (restaurar en lugar de borrar) y RF-043 (validación en tiempo real) |
@@ -137,12 +137,12 @@ Decisiones registradas en `openspec/changes/alinear-api-endpoints-v1/design.md`,
 
 ## Desviaciones declaradas de la importación (tarea 4.4, 2026-10-18)
 
-La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Las tres siguen respondiendo `501` con `x-change: importacion-pipeline-reconciliacion`, que es el change que las implementa. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
+La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4); `confirm` sigue respondiendo `501` hasta su tarea 4.2. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
 
 | Operación | Contrato | API tras la tarea 4.4 | Motivo / pregunta |
 |---|---|---|---|
 | `POST /imports/upload` | `202` con `ImportBatchSummary`; formulario con `file` | Igual. Se quitó el campo `source_name` del formulario | Conforme al contrato. De dónde sale el nombre de la fuente del lote lo decide `importacion-pipeline-reconciliacion` |
 | `ImportBatchSummary.summary` | `new_records`, `updates`, `conflicts` | Igual | Cómo se agrupan `NEW`, `UPDATE`, `POSSIBLE_DUPLICATE` y `CONFLICT` en los tres contadores sigue abierto (I7) |
 | `ImportBatchSummary.status` | `string` sin valores definidos | `string` opcional, `null` en el ejemplo | Los valores en español del estado del lote siguen abiertos (I8); no se añaden a `app/api/enums.py` hasta resolverlos |
-| `GET /imports/{batch_id}/diffs` | `200` sin esquema | Sin cambios: `Page[ImportRowOut]` | Lo fija `importacion-pipeline-reconciliacion` |
+| `GET /imports/{batch_id}/diffs` | `200` sin esquema | `ImportDiffsPage`: `Page[ImportRowOut]` con el diff campo a campo y `classification_rules` (RF-025, RF-026) | Añadido justificado: el contrato no define el esquema |
 | `POST /imports/{batch_id}/confirm` | Sin cuerpo; `200` sin esquema | Sin cambios: cuerpo `ApprovalRequest` (confirmación de totales, RF-027, RNF-010) y respuesta `ImportBatchOut` | El cuerpo definitivo sigue abierto (I9) |

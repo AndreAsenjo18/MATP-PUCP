@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 8b9b145e5ff421f3720c79e450391990ea5e79b3d9f4365477bc82315fcf3a3f
+ * openapi-sha256: 305ad9ee2d733e347cb9cf20e48e118b4a1a2017f72e45243e072c2a69a0e3ce
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -411,7 +411,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Estado de un lote */
+        /** Estado de un lote, con la etapa en curso y su avance */
         get: operations["getImport"];
         put?: never;
         post?: never;
@@ -445,7 +445,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 5. Previsualización con diff y clasificación de filas */
+        /**
+         * 5. Previsualización con diff y clasificación de filas
+         * @description Filas del lote con su clasificación, coincidencias, errores y diff campo a campo, más las reglas y umbrales usados para clasificarlas (RF-025, RF-026).
+         */
         get: operations["getImportBatchDiffs"];
         put?: never;
         post?: never;
@@ -480,7 +483,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** 2. Mapeo: asignar columnas (o aplicar una plantilla) */
+        /**
+         * 2. Mapeo: asignar columnas (o aplicar una plantilla)
+         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).
+         */
         put: operations["setImportMapping"];
         post?: never;
         delete?: never;
@@ -532,7 +538,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 3-4. Normalizar, validar y hacer matching multi-código */
+        /**
+         * 3-4. Normalizar, validar y hacer matching multi-código
+         * @description Lanza la validación en segundo plano y responde de inmediato; al terminar, el lote queda en previsualización con los conteos por clasificación (RF-026).
+         */
         post: operations["validateImport"];
         delete?: never;
         options?: never;
@@ -549,7 +558,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 1. Ingesta: subir un Excel y crear el lote */
+        /**
+         * 1. Ingesta: subir un Excel y crear el lote
+         * @description Guarda el archivo original sin modificarlo y lo lee en segundo plano; el avance se consulta en `GET /imports/{batch_id}`. Un formato no admitido o un archivo con más de IMPORT_MAX_ROWS filas deja el lote «fallido en ingesta» con el motivo.
+         */
         post: operations["uploadImportBatch"];
         delete?: never;
         options?: never;
@@ -1018,6 +1030,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/duplicates/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
+        post: operations["scanDuplicates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/incomplete": {
         parameters: {
             query?: never;
@@ -1027,6 +1056,23 @@ export interface paths {
         };
         /** Piezas con información incompleta (RF-019, RF-035) */
         get: operations["listIncompletePieces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estado y avance de una detección de duplicados (RF-030, RNF-015) */
+        get: operations["getQualityJob"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1601,7 +1647,7 @@ export interface components {
         Body_uploadImportBatch: {
             /**
              * File
-             * @description Archivo .xlsx de origen.
+             * @description Archivo .xlsx o .csv de origen.
              */
             file: string;
         };
@@ -1699,6 +1745,20 @@ export interface components {
              * @description Texto explícito si no se toma de la ficha.
              */
             text?: string | null;
+        };
+        /** ClassificationRule */
+        ClassificationRule: {
+            /** Description */
+            description: string;
+            /** Order */
+            order: number;
+            /**
+             * Result
+             * @description Clasificación resultante o `validation_errors`.
+             */
+            result: string;
+            /** Threshold */
+            threshold?: number | null;
         };
         /** CodeBrief */
         CodeBrief: {
@@ -1857,13 +1917,13 @@ export interface components {
             source_column: string;
             /**
              * Split Compound
-             * @description La celda puede tener varios códigos (N7).
+             * @description La celda puede tener varios códigos (N7); cada parte toma el tipo que se reconoce en ella.
              * @default false
              */
             split_compound: boolean;
             /**
              * Target Field
-             * @description Campo de la ficha o identificador (p. ej. identifier:I); null = payload.
+             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen.
              */
             target_field: string | null;
         };
@@ -2002,7 +2062,7 @@ export interface components {
          * DuplicateStatus
          * @enum {string}
          */
-        DuplicateStatus: "PENDING" | "MERGED" | "DISTINCT" | "POSTPONED";
+        DuplicateStatus: "PENDING" | "MERGED" | "DISTINCT" | "POSTPONED" | "SUPERSEDED";
         /**
          * ErrorResponse
          * @description Error body shared by every endpoint.
@@ -2068,7 +2128,15 @@ export interface components {
         FieldDiff: {
             /** Current Value */
             current_value: unknown | null;
-            /** Field */
+            /**
+             * Default Action
+             * @description `keep` cuando el archivo trae el campo vacío [SUPUESTO B10].
+             */
+            default_action?: ("accept" | "keep") | null;
+            /**
+             * Field
+             * @description Campo de la ficha o `identifier:<TIPO>` (códigos nuevos).
+             */
             field: string;
             /** Incoming Value */
             incoming_value: unknown | null;
@@ -2285,7 +2353,18 @@ export interface components {
          *       "created_at": "2026-09-17T10:30:00Z",
          *       "file_name": "sabana_sintetica_v1.xlsx",
          *       "file_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "header_row": 1,
+         *       "headers": [
+         *         "CÓDIGOS",
+         *         "DENOMINACIÓN",
+         *         "OBS. CONSULTORÍA"
+         *       ],
          *       "id": "01920000-0000-7000-8000-000000000601",
+         *       "processing": false,
+         *       "sheet_name": "SABANA",
+         *       "sheet_names": [
+         *         "SABANA"
+         *       ],
          *       "source_name": "Sábana consultoría 2024/25 (sintética)",
          *       "stage_timestamps": {
          *         "UPLOADED": "2026-09-17T10:30:00Z"
@@ -2299,7 +2378,10 @@ export interface components {
             approved_at: string | null;
             /** Approved By Id */
             approved_by_id: string | null;
-            /** Counts */
+            /**
+             * Counts
+             * @description Filas leídas, filas vacías omitidas y, tras validar, filas por clasificación.
+             */
             counts: {
                 [key: string]: number;
             } | null;
@@ -2312,11 +2394,45 @@ export interface components {
             file_name: string;
             /** File Sha256 */
             file_sha256: string | null;
+            /** Header Row */
+            header_row?: number | null;
+            /**
+             * Headers
+             * @description Cabeceras leídas del archivo.
+             */
+            headers?: string[];
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /**
+             * Mapping
+             * @description Mapeo de columnas confirmado.
+             */
+            mapping?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Processing
+             * @description Hay una etapa ejecutándose en segundo plano.
+             * @default false
+             */
+            processing: boolean;
+            /**
+             * Progress
+             * @description Etapa en curso y avance: `{stage, done, total}` (RF-021).
+             */
+            progress?: {
+                [key: string]: unknown;
+            } | null;
+            /** Sheet Name */
+            sheet_name?: string | null;
+            /**
+             * Sheet Names
+             * @description Hojas del libro.
+             */
+            sheet_names?: string[];
             /** Source Name */
             source_name: string;
             /** Stage Timestamps */
@@ -2363,13 +2479,35 @@ export interface components {
             filename: string;
             /**
              * Status
-             * @description Estado del lote; valores en español pendientes (I8).
+             * @description Estado del lote con el código interno (`UPLOADED`, `FAILED_INGESTION`…); los valores en español siguen pendientes (I8).
              */
             status?: string | null;
             /** @description Agrupación de NEW, UPDATE, POSSIBLE_DUPLICATE y CONFLICT pendiente (I7). */
             summary: components["schemas"]["ImportBatchCounters"];
             /** Total Rows */
             total_rows: number;
+        };
+        /**
+         * ImportDiffsPage
+         * @description Preview of a batch: rows with their diff plus the rules that classified them (RF-025).
+         */
+        ImportDiffsPage: {
+            /**
+             * Classification Rules
+             * @description Reglas y umbrales usados para clasificar las filas, en orden de evaluación.
+             */
+            classification_rules: components["schemas"]["ClassificationRule"][];
+            /** Items */
+            items: components["schemas"]["ImportRowOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
         };
         /**
          * ImportLog
@@ -2427,17 +2565,29 @@ export interface components {
          *       "diff": [
          *         {
          *           "current_value": "Retablo",
-         *           "field": "title",
-         *           "incoming_value": "Retablo"
+         *           "default_action": "accept",
+         *           "field": "denomination",
+         *           "incoming_value": "Retablo ayacuchano"
          *         }
          *       ],
+         *       "has_validation_errors": false,
          *       "id": "01920000-0000-7000-8000-000000000611",
          *       "mapped_data": {
-         *         "title": "Retablo"
+         *         "fields": {
+         *           "denomination": "Retablo ayacuchano"
+         *         }
          *       },
          *       "matches": [
          *         {
-         *           "matched_by": "I-2362",
+         *           "contradicts": [],
+         *           "identifiers": [
+         *             {
+         *               "identifier_type": "I",
+         *               "value": "I-2362",
+         *               "via": "current"
+         *             }
+         *           ],
+         *           "kind": "piece",
          *           "piece_id": "01920000-0000-7000-8000-000000000101"
          *         }
          *       ],
@@ -2462,6 +2612,11 @@ export interface components {
             decision_reason: string | null;
             /** Diff */
             diff: components["schemas"]["FieldDiff"][];
+            /**
+             * Has Validation Errors
+             * @default false
+             */
+            has_validation_errors: boolean;
             /**
              * Id
              * Format: uuid
@@ -2713,11 +2868,13 @@ export interface components {
          *         },
          *         {
          *           "source_column": "DENOMINACION",
-         *           "target_field": "title"
+         *           "target_field": "denomination"
          *         }
          *       ],
+         *       "defaults": {
+         *         "tenure_regime": "Propiedad"
+         *       },
          *       "header_row": 1,
-         *       "save_as_template_name": "Sábana consultoría (sintética)",
          *       "sheet_name": "Hoja1"
          *     }
          */
@@ -2725,15 +2882,31 @@ export interface components {
             /** Columns */
             columns?: components["schemas"]["ColumnMapping"][];
             /**
-             * Header Row
-             * @default 1
+             * Defaults
+             * @description Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal) y `collection` (sigla).
              */
-            header_row: number;
-            /** Save As Template Name */
+            defaults?: {
+                [key: string]: string;
+            };
+            /**
+             * Header Row
+             * @description Otra fila de cabeceras: se vuelve a leer el archivo.
+             */
+            header_row?: number | null;
+            /**
+             * Save As Template Name
+             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             */
             save_as_template_name?: string | null;
-            /** Sheet Name */
+            /**
+             * Sheet Name
+             * @description Otra hoja: se vuelve a leer el archivo.
+             */
             sheet_name?: string | null;
-            /** Template Id */
+            /**
+             * Template Id
+             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             */
             template_id?: string | null;
         };
         /** MappingTemplateCreate */
@@ -3197,20 +3370,6 @@ export interface components {
         Page_ImportBatchOut_: {
             /** Items */
             items: components["schemas"]["ImportBatchOut"][];
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /**
-             * Total
-             * @description Total de resultados que cumplen los filtros.
-             */
-            total: number;
-        };
-        /** Page[ImportRowOut] */
-        Page_ImportRowOut_: {
-            /** Items */
-            items: components["schemas"]["ImportRowOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -3769,6 +3928,70 @@ export interface components {
             /** Issues */
             issues: components["schemas"]["FieldIssue"][];
         };
+        /**
+         * QualityJobOut
+         * @description State and progress of a full duplicate scan run in the background (design D3).
+         * @example {
+         *       "candidates_created": 0,
+         *       "candidates_reopened": 0,
+         *       "heartbeat_at": "2026-09-17T10:30:00Z",
+         *       "id": "01920000-0000-7000-8000-000000000921",
+         *       "job_type": "FULL_SCAN",
+         *       "pairs_evaluated": 610,
+         *       "processed_pieces": 120,
+         *       "requested_by_id": "01920000-0000-7000-8000-000000000501",
+         *       "started_at": "2026-09-17T10:30:00Z",
+         *       "status": "RUNNING",
+         *       "total_pieces": 298
+         *     }
+         */
+        QualityJobOut: {
+            /** Candidates Created */
+            candidates_created: number;
+            /**
+             * Candidates Reopened
+             * @description Pares «distintos» que vuelven a la cola porque cambió su huella.
+             */
+            candidates_reopened: number;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            job_type: components["schemas"]["QualityJobType"];
+            /**
+             * Pairs Evaluated
+             * @description Pares comparados; nunca todos contra todos.
+             */
+            pairs_evaluated: number;
+            /** Processed Pieces */
+            processed_pieces: number;
+            /** Requested By Id */
+            requested_by_id: string | null;
+            /** Started At */
+            started_at: string | null;
+            status: components["schemas"]["QualityJobStatus"];
+            /** Total Pieces */
+            total_pieces: number;
+        };
+        /**
+         * QualityJobStatus
+         * @enum {string}
+         */
+        QualityJobStatus: "RUNNING" | "SUCCEEDED" | "FAILED";
+        /**
+         * QualityJobType
+         * @enum {string}
+         */
+        QualityJobType: "FULL_SCAN";
         /**
          * ReportOut
          * @example {
@@ -6108,15 +6331,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     getImport: {
@@ -6157,8 +6371,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6166,13 +6380,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6263,7 +6477,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_ImportRowOut_"];
+                    "application/json": components["schemas"]["ImportDiffsPage"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -6284,8 +6498,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6293,13 +6507,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6404,8 +6618,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6413,13 +6627,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6561,7 +6775,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6587,8 +6801,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6596,13 +6810,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6654,15 +6868,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -8798,6 +9003,53 @@ export interface operations {
             };
         };
     };
+    scanDuplicates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityJobOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listIncompletePieces: {
         parameters: {
             query?: {
@@ -8858,6 +9110,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getQualityJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityJobOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
