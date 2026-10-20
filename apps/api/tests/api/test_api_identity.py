@@ -127,8 +127,6 @@ def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) 
     assert {item["level"] for item in listed} <= {"Sede", "Depósito"}
 
 
-
-
 def test_auth_login_remains_stub(client: TestClient) -> None:
     response = client.post(
         "/api/v1/auth/login",
