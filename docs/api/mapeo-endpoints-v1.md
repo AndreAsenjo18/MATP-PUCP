@@ -91,6 +91,8 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `PUT /imports/{batch_id}/mapping`, `GET /import-templates` | RF-022: plantillas de mapeo reutilizables |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
 | `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005, RNF-006: nunca se borra información, así que lo eliminado lógicamente se consulta y se restaura verificando dependencias (`auditoria-y-soft-delete-transversal`, diseño D2) |
+| `GET /audit/change-sets/{id}`, `POST /audit/change-sets/{id}/revert-preview` | RNF-007: resumen del conjunto de cambios y vista previa de la reversión, que el contrato no contempla y sin la cual no se puede confirmar una reversión (change `auditoria-y-soft-delete-transversal`) |
+| `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005 y RNF-006: papelera y restauración con verificación de dependencias (mismo change) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 
 ## Conflictos resueltos por el equipo (2026-09-29)

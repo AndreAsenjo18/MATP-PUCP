@@ -5,14 +5,14 @@
 
 ## 2. Reversión
 
-- [ ] 2.1 Crear `audit/revert.py` con el planificador (UPDATE, CREATE, SOFT_DELETE, CORRECTION, filas de solo inserción) y `preview_token`; pruebas unitarias por tipo de fila y por conflicto (Req: Reversión por conjunto de cambios con vista previa; RNF-007)
-- [ ] 2.2 Implementar `revert_change_set()` en una transacción con `AuditContext(action=REVERT)`, rechazo de conjuntos ya revertidos y permisos por origen; pruebas: edición sin conflictos, plan cambiado 409, ya revertido 409, revertir la reversión, código I sin permiso 403 (Req: Reversión por conjunto de cambios…; RN-002)
-- [ ] 2.3 Implementar `POST /api/v1/audit/change-sets/{change_set_id}/revert` y operaciones nuevas `GET /api/v1/audit/change-sets/{change_set_id}` y `POST .../revert-preview`; pruebas de API (Req: Reversión por conjunto de cambios…)
+- [x] 2.1 Crear `audit/revert.py` con el planificador (UPDATE, CREATE, SOFT_DELETE, CORRECTION, filas de solo inserción) y `preview_token`; pruebas unitarias por tipo de fila y por conflicto (Req: Reversión por conjunto de cambios con vista previa; RNF-007)
+- [x] 2.2 Implementar `revert_change_set()` en una transacción con `AuditContext(action=REVERT)`, rechazo de conjuntos ya revertidos y permisos por origen; pruebas: edición sin conflictos, plan cambiado 409, ya revertido 409, revertir la reversión, código I sin permiso 403 (Req: Reversión por conjunto de cambios…; RN-002)
+- [x] 2.3 Implementar `POST /api/v1/audit/change-sets/{change_set_id}/revert` y operaciones nuevas `GET /api/v1/audit/change-sets/{change_set_id}` y `POST .../revert-preview`; pruebas de API (Req: Reversión por conjunto de cambios…)
 
 ## 3. Papelera y consulta
 
-- [ ] 3.1 Crear `audit/trash.py` con verificadores de dependencias por tipo y operaciones nuevas `GET /api/v1/trash` y `POST /api/v1/trash/{entity_type}/{entity_id}/restore`; pruebas: restaurar término, foto con pieza eliminada 409, Catalogador 403 (Req: Papelera con restauración que verifica dependencias; RNF-006)
-- [ ] 3.2 Extender `GET /api/v1/audit-logs` con `group_by=change_set`, `format=csv` en streaming y enmascarado de valores sensibles; pruebas de ambos escenarios (Req: Consulta agrupada y exportable de la auditoría; RF-040, RF-041)
+- [x] 3.1 Crear `audit/trash.py` con verificadores de dependencias por tipo y operaciones nuevas `GET /api/v1/trash` y `POST /api/v1/trash/{entity_type}/{entity_id}/restore`; pruebas: restaurar término, foto con pieza eliminada 409, Catalogador 403 (Req: Papelera con restauración que verifica dependencias; RNF-006)
+- [x] 3.2 Extender `GET /api/v1/audit-logs` con `group_by=change_set`, `format=csv` en streaming y enmascarado de valores sensibles; pruebas de ambos escenarios (Req: Consulta agrupada y exportable de la auditoría; RF-040, RF-041)
 
 ## 4. Integridad
 

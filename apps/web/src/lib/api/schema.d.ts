@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 305ad9ee2d733e347cb9cf20e48e118b4a1a2017f72e45243e072c2a69a0e3ce
+ * openapi-sha256: ca8fd4bb3c393e0c1fee32ac49e2fd8d4be38c4e77d104bba698a869b8e52297
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -133,7 +133,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consultar la auditoría campo a campo (más reciente primero) */
+        /**
+         * Consultar la auditoría campo a campo o agrupada por conjunto de cambios, exportable a CSV (RF-040, RF-041)
+         * @description Devuelve `items` (una fila por campo, de la más reciente a la más antigua) o, con `group_by=change_set`, `change_sets` con el resumen de cada operación: usuario, fecha, origen, motivo, entidades afectadas por tipo, campos y estado de reversión. Con `format=csv` la misma vista se descarga en streaming. Los valores anteriores y nuevos de los campos sensibles se ocultan según los permisos del rol (RF-041): la fila sigue mostrando qué campo cambió, quién y cuándo, con `values_masked` en verdadero.
+         */
         get: operations["getAuditLogs"];
         put?: never;
         post?: never;
@@ -160,6 +163,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/change-sets/{change_set_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resumen de un conjunto de cambios: quién, cuándo, origen y alcance (RF-040) */
+        get: operations["getChangeSet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/change-sets/{change_set_id}/revert": {
         parameters: {
             query?: never;
@@ -169,8 +189,35 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007) */
+        /**
+         * Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)
+         * @description Aplica la reversión en una transacción, como un conjunto de cambios de tipo reversión.
+         *
+         *     Exige el `preview_token` de la vista previa: la reversión solo se aplica ligada a ella. El
+         *     permiso depende del origen del conjunto revertido (design D1), así que lo verifica el
+         *     servicio: aquí basta con una identidad válida.
+         */
         post: operations["revertChangeSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/change-sets/{change_set_id}/revert-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa de una reversión: valores por restaurar, registros y conflictos
+         * @description No escribe nada. Devuelve el `preview_token` que exige la confirmación (RNF-007).
+         */
+        post: operations["previewChangeSetRevert"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1200,6 +1247,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar los registros eliminados lógicamente, con motivo y responsable (RN-005) */
+        get: operations["listTrashEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash/{entity_type}/{entity_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restaurar un registro eliminado verificando sus dependencias (Administrador) */
+        post: operations["restoreTrashEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -1568,6 +1649,78 @@ export interface components {
          */
         AuditAction: "CREATE" | "UPDATE" | "SOFT_DELETE" | "RESTORE" | "CORRECTION" | "MERGE" | "REVERT";
         /**
+         * AuditChangeSetSummary
+         * @description Resumen de un conjunto de cambios (una operación: edición, carga, fusión, reversión).
+         * @example {
+         *       "actions": [
+         *         "CREATE"
+         *       ],
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entity_count": 54,
+         *       "entity_counts": {
+         *         "piece": 54
+         *       },
+         *       "field_count": 486,
+         *       "last_occurred_at": "2026-09-17T10:30:00Z",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "IMPORT",
+         *       "origin_ref": "01920000-0000-7000-8000-000000000601",
+         *       "reason": "Carga de la sábana 2024",
+         *       "reverted": false,
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        AuditChangeSetSummary: {
+            /** Actions */
+            actions: components["schemas"]["AuditAction"][];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /**
+             * Entity Count
+             * @description Entidades distintas afectadas.
+             */
+            entity_count: number;
+            /**
+             * Entity Counts
+             * @description Entidades distintas por tipo, p. ej. 54 piezas en una carga.
+             */
+            entity_counts: {
+                [key: string]: number;
+            };
+            /**
+             * Field Count
+             * @description Campos registrados en el conjunto.
+             */
+            field_count: number;
+            /**
+             * Last Occurred At
+             * Format: date-time
+             */
+            last_occurred_at: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             * @description Primer registro del conjunto.
+             */
+            occurred_at: string;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Reverted */
+            reverted: boolean;
+            /** Reverted By Change Set Id */
+            reverted_by_change_set_id: string | null;
+            /** User Id */
+            user_id: string | null;
+        };
+        /**
          * AuditEntryOut
          * @example {
          *       "action": "UPDATE",
@@ -1621,6 +1774,100 @@ export interface components {
             reason: string | null;
             /** User Id */
             user_id: string | null;
+        };
+        /**
+         * AuditEntryView
+         * @description Fila de auditoría como la ve un rol concreto: con los valores sensibles ocultos.
+         * @example {
+         *       "action": "UPDATE",
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entity_id": "01920000-0000-7000-8000-000000000101",
+         *       "entity_type": "piece",
+         *       "field": "lender_name",
+         *       "id": "01920000-0000-7000-8000-000000000a01",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "MANUAL",
+         *       "user_id": "01920000-0000-7000-8000-000000000501",
+         *       "values_masked": true
+         *     }
+         */
+        AuditEntryView: {
+            action: components["schemas"]["AuditAction"];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Field */
+            field: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** New Value */
+            new_value: unknown | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Old Value */
+            old_value: unknown | null;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /** User Id */
+            user_id: string | null;
+            /**
+             * Values Masked
+             * @description El campo cambió, pero su valor anterior y nuevo están ocultos porque el rol no tiene el permiso correspondiente (RF-041).
+             * @default false
+             */
+            values_masked: boolean;
+        };
+        /**
+         * AuditExportFormat
+         * @enum {string}
+         */
+        AuditExportFormat: "csv";
+        /**
+         * AuditGroupBy
+         * @enum {string}
+         */
+        AuditGroupBy: "change_set";
+        /**
+         * AuditLogPage
+         * @description Página de la consulta de auditoría: filas campo a campo o conjuntos agrupados.
+         */
+        AuditLogPage: {
+            /**
+             * Change Sets
+             * @description Solo con `group_by=change_set`.
+             */
+            change_sets?: components["schemas"]["AuditChangeSetSummary"][];
+            /**
+             * Items
+             * @description Vacío cuando se agrupa por conjunto de cambios.
+             */
+            items?: components["schemas"]["AuditEntryView"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
         };
         /**
          * AuditOrigin
@@ -1745,6 +1992,89 @@ export interface components {
              * @description Texto explícito si no se toma de la ficha.
              */
             text?: string | null;
+        };
+        /** ChangeSetEntityOut */
+        ChangeSetEntityOut: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @description Tabla de la entidad afectada, p. ej. `piece`.
+             */
+            entity_type: string;
+            /**
+             * Field Count
+             * @description Campos registrados para esta entidad.
+             */
+            field_count: number;
+        };
+        /**
+         * ChangeSetSummaryOut
+         * @description Resumen agrupado de un conjunto de cambios (design D3).
+         * @example {
+         *       "actions": [
+         *         "UPDATE"
+         *       ],
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entities": [
+         *         {
+         *           "entity_id": "01920000-0000-7000-8000-000000000101",
+         *           "entity_type": "piece",
+         *           "field_count": 2
+         *         }
+         *       ],
+         *       "entity_count": 1,
+         *       "field_count": 2,
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "MANUAL",
+         *       "reason": "Corrección de procedencia según el libro de inventario",
+         *       "reverted": false,
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        ChangeSetSummaryOut: {
+            /** Actions */
+            actions: components["schemas"]["AuditAction"][];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /** Entities */
+            entities: components["schemas"]["ChangeSetEntityOut"][];
+            /** Entity Count */
+            entity_count: number;
+            /** Field Count */
+            field_count: number;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Reverted
+             * @description Verdadero cuando ya existe un conjunto de reversión.
+             */
+            reverted: boolean;
+            /** Reverted By Change Set Id */
+            reverted_by_change_set_id: string | null;
+            /**
+             * Reverts Change Set Id
+             * @description Conjunto original cuando este conjunto es una reversión.
+             */
+            reverts_change_set_id?: string | null;
+            /** User Id */
+            user_id: string | null;
         };
         /** ClassificationRule */
         ClassificationRule: {
@@ -1968,6 +2298,11 @@ export interface components {
             /** Without Photo */
             without_photo: number;
         };
+        /**
+         * ConflictReason
+         * @enum {string}
+         */
+        ConflictReason: "changed_after" | "entity_missing" | "already_deleted" | "not_deleted" | "no_soft_delete";
         /** DependencyStatus */
         DependencyStatus: {
             /** Detail */
@@ -3394,6 +3729,20 @@ export interface components {
              */
             total: number;
         };
+        /** Page[TrashEntryOut] */
+        Page_TrashEntryOut_: {
+            /** Items */
+            items: components["schemas"]["TrashEntryOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
         /** Page[UserOut] */
         Page_UserOut_: {
             /** Items */
@@ -4045,38 +4394,34 @@ export interface components {
          * @enum {string}
          */
         ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
-        /** RevertChangeSetRequest */
-        RevertChangeSetRequest: {
-            /** Reason */
-            reason: string;
-        };
-        /** RevertRequest */
-        RevertRequest: {
-            /** Reason */
-            reason: string;
-        };
         /**
-         * RevertResult
+         * RevertChangeSetOut
+         * @description Resultado de una reversión aplicada.
          * @example {
          *       "conflicts": [],
+         *       "deleted_entities": 0,
          *       "new_change_set_id": "01920000-0000-7000-8000-000000000a10",
+         *       "notes": [],
+         *       "restored_entities": 0,
          *       "reverted_change_set_id": "01920000-0000-7000-8000-000000000a00",
-         *       "reverted_fields": 3
+         *       "reverted_fields": 2
          *     }
          */
-        RevertResult: {
-            /**
-             * Conflicts
-             * @description Campos modificados después; no se revierten.
-             */
-            conflicts?: {
-                [key: string]: unknown;
-            }[];
+        RevertChangeSetOut: {
+            /** Conflicts */
+            conflicts?: components["schemas"]["RevertConflictOut"][];
+            /** Deleted Entities */
+            deleted_entities: number;
             /**
              * New Change Set Id
              * Format: uuid
+             * @description Conjunto de cambios de tipo reversión, que a su vez puede revertirse.
              */
             new_change_set_id: string;
+            /** Notes */
+            notes?: string[];
+            /** Restored Entities */
+            restored_entities: number;
             /**
              * Reverted Change Set Id
              * Format: uuid
@@ -4084,6 +4429,192 @@ export interface components {
             reverted_change_set_id: string;
             /** Reverted Fields */
             reverted_fields: number;
+        };
+        /**
+         * RevertConfirmRequest
+         * @description Confirmación de una reversión, ligada a la vista previa que la generó.
+         * @example {
+         *       "confirm_conflicts": false,
+         *       "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+         *       "reason": "La edición masiva del 20/10 se aplicó al lote equivocado"
+         *     }
+         */
+        RevertConfirmRequest: {
+            /**
+             * Confirm Conflicts
+             * @description Confirma explícitamente que los cambios posteriores en conflicto se descartarán.
+             * @default false
+             */
+            confirm_conflicts: boolean;
+            /**
+             * Preview Token
+             * @description Huella devuelta por la vista previa, obligatoria: la reversión solo se aplica ligada a una vista previa. Si el plan cambió, se rechaza con `revert_plan_changed`.
+             */
+            preview_token: string;
+            /**
+             * Reason
+             * @description Motivo de la reversión (queda en auditoría).
+             */
+            reason: string;
+        };
+        /** RevertConflictOut */
+        RevertConflictOut: {
+            /** Changed At */
+            changed_at?: string | null;
+            /** Changed By Id */
+            changed_by_id?: string | null;
+            /**
+             * Current Value
+             * @description Valor almacenado hoy.
+             */
+            current_value?: unknown | null;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Expected Value
+             * @description Valor que dejó el conjunto de cambios.
+             */
+            expected_value?: unknown | null;
+            /** Field */
+            field: string | null;
+            /**
+             * Message
+             * @description Explicación en español para la persona usuaria.
+             */
+            message: string;
+            reason: components["schemas"]["ConflictReason"];
+        };
+        /**
+         * RevertItemKind
+         * @enum {string}
+         */
+        RevertItemKind: "RESTORE_VALUE" | "CORRECT_INVENTORY_CODE" | "SOFT_DELETE_ENTITY" | "RESTORE_ENTITY" | "APPEND_ONLY_NOTE";
+        /** RevertItemOut */
+        RevertItemOut: {
+            /**
+             * Applicable
+             * @description Falso en filas informativas (solo inserción) y estados ya resueltos.
+             */
+            applicable: boolean;
+            conflict?: components["schemas"]["RevertConflictOut"] | null;
+            /**
+             * Current Value
+             * @description Valor almacenado hoy.
+             */
+            current_value?: unknown | null;
+            /**
+             * Description
+             * @description Qué hará la reversión con este registro, en español.
+             */
+            description: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Field */
+            field: string | null;
+            kind: components["schemas"]["RevertItemKind"];
+            source_action: components["schemas"]["AuditAction"];
+            /**
+             * Target Value
+             * @description Valor que se restauraría.
+             */
+            target_value?: unknown | null;
+        };
+        /**
+         * RevertPreviewOut
+         * @description Vista previa de una reversión: qué cambia, qué no se toca y qué está en conflicto.
+         * @example {
+         *       "applicable_count": 1,
+         *       "change_set": {
+         *         "actions": [
+         *           "UPDATE"
+         *         ],
+         *         "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *         "entities": [
+         *           {
+         *             "entity_id": "01920000-0000-7000-8000-000000000101",
+         *             "entity_type": "piece",
+         *             "field_count": 2
+         *           }
+         *         ],
+         *         "entity_count": 1,
+         *         "field_count": 2,
+         *         "occurred_at": "2026-09-17T10:30:00Z",
+         *         "origin": "MANUAL",
+         *         "reason": "Corrección de procedencia según el libro de inventario",
+         *         "reverted": false,
+         *         "user_id": "01920000-0000-7000-8000-000000000501"
+         *       },
+         *       "conflicts": [],
+         *       "items": [
+         *         {
+         *           "applicable": true,
+         *           "current_value": "Huancavelica",
+         *           "description": "Restaurar «provenance» al valor anterior.",
+         *           "entity_id": "01920000-0000-7000-8000-000000000101",
+         *           "entity_type": "piece",
+         *           "field": "provenance",
+         *           "kind": "RESTORE_VALUE",
+         *           "source_action": "UPDATE",
+         *           "target_value": "Ayacucho"
+         *         }
+         *       ],
+         *       "notes": [],
+         *       "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+         *       "required_permissions": [
+         *         "pieces.update"
+         *       ],
+         *       "requires_admin": false,
+         *       "touches_inventory_code": false
+         *     }
+         */
+        RevertPreviewOut: {
+            /**
+             * Applicable Count
+             * @description Elementos que la reversión aplicaría.
+             */
+            applicable_count: number;
+            change_set: components["schemas"]["ChangeSetSummaryOut"];
+            /**
+             * Conflicts
+             * @description Campos modificados después del conjunto; exigen confirmación explícita.
+             */
+            conflicts?: components["schemas"]["RevertConflictOut"][];
+            /** Items */
+            items: components["schemas"]["RevertItemOut"][];
+            /**
+             * Notes
+             * @description Avisos en español, p. ej. movimientos que requieren un movimiento correctivo.
+             */
+            notes?: string[];
+            /**
+             * Preview Token
+             * @description Huella del plan. Debe enviarse al confirmar la reversión.
+             */
+            preview_token: string;
+            /** Required Permissions */
+            required_permissions: string[];
+            /** Requires Admin */
+            requires_admin: boolean;
+            /**
+             * Touches Inventory Code
+             * @description Verdadero cuando la reversión afecta un código I (RN-002).
+             */
+            touches_inventory_code: boolean;
+        };
+        /** RevertRequest */
+        RevertRequest: {
+            /** Reason */
+            reason: string;
         };
         /**
          * RoleOut
@@ -4463,6 +4994,79 @@ export interface components {
              * @default bearer
              */
             token_type: string;
+        };
+        /**
+         * TrashEntryOut
+         * @description Registro eliminado lógicamente, con quién lo eliminó, cuándo y por qué.
+         * @example {
+         *       "deleted_at": "2026-09-17T10:30:00Z",
+         *       "deleted_by_id": "01920000-0000-7000-8000-000000000501",
+         *       "deleted_by_name": "Administradora de prueba (sintética)",
+         *       "deletion_reason": "Duplicado del término Totora",
+         *       "entity_id": "01920000-0000-7000-8000-000000000301",
+         *       "entity_label": "Totora",
+         *       "entity_type": "term",
+         *       "type_label": "Término de vocabulario"
+         *     }
+         */
+        TrashEntryOut: {
+            /** Deleted At */
+            deleted_at: string | null;
+            /** Deleted By Id */
+            deleted_by_id: string | null;
+            /** Deleted By Name */
+            deleted_by_name: string | null;
+            /** Deletion Reason */
+            deletion_reason: string | null;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Label
+             * @description Texto con el que se reconoce el registro.
+             */
+            entity_label: string;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Type Label
+             * @description Nombre del tipo de entidad, en español.
+             */
+            type_label: string;
+        };
+        /**
+         * TrashRestoreResult
+         * @description Resultado de una restauración desde la papelera.
+         * @example {
+         *       "entity_id": "01920000-0000-7000-8000-000000000301",
+         *       "entity_label": "Totora",
+         *       "entity_type": "term",
+         *       "previous_deletion_reason": "Duplicado del término Totora",
+         *       "restored": true,
+         *       "type_label": "Término de vocabulario"
+         *     }
+         */
+        TrashRestoreResult: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Label */
+            entity_label: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Previous Deletion Reason */
+            previous_deletion_reason: string | null;
+            /**
+             * Restored
+             * @default true
+             */
+            restored: boolean;
+            /** Type Label */
+            type_label: string;
         };
         /**
          * UploadUrlRequest
@@ -5084,13 +5688,21 @@ export interface operations {
     getAuditLogs: {
         parameters: {
             query?: {
+                action?: components["schemas"]["AuditAction"] | null;
+                change_set_id?: string | null;
                 entity_id?: string | null;
                 /** @description p. ej. piece, collection. */
                 entity_type?: string | null;
                 field?: string | null;
+                /** @description Descargar en CSV. */
+                format?: components["schemas"]["AuditExportFormat"] | null;
+                /** @description Agrupar por conjunto de cambios. */
+                group_by?: components["schemas"]["AuditGroupBy"] | null;
                 occurred_from?: string | null;
                 occurred_to?: string | null;
                 origin?: components["schemas"]["AuditOrigin"] | null;
+                /** @description Lote de importación o sugerencia de IA del cambio. */
+                origin_ref?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -5109,7 +5721,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_AuditEntryOut_"];
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -5204,7 +5816,7 @@ export interface operations {
             };
         };
     };
-    revertChangeSet: {
+    getChangeSet: {
         parameters: {
             query?: never;
             header?: never;
@@ -5213,11 +5825,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RevertChangeSetRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -5225,7 +5833,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RevertResult"];
+                    "application/json": components["schemas"]["ChangeSetSummaryOut"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -5246,6 +5854,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -5255,13 +5872,133 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
-            501: {
+        };
+    };
+    revertChangeSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevertConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["RevertChangeSetOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `already_reverted` (ya existe un conjunto de reversión), `revert_plan_changed` (los datos cambiaron tras la vista previa), `revert_has_conflicts` (hay cambios posteriores sin confirmar) o `nothing_to_revert`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewChangeSetRevert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevertPreviewOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -9548,6 +10285,136 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTrashEntries: {
+        parameters: {
+            query?: {
+                /** @description Quién eliminó. */
+                deleted_by?: string | null;
+                /** @description Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary. */
+                entity_type?: string | null;
+                from?: string | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrashEntryOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restoreTrashEntry: {
+        parameters: {
+            query?: {
+                /** @description Motivo de la restauración. */
+                reason?: string | null;
+            };
+            header?: never;
+            path: {
+                entity_id: string;
+                /** @description Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary. */
+                entity_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrashRestoreResult"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El registro no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `restore_dependency`: alguna dependencia sigue eliminada (hay que restaurarla primero) o `not_deleted`: el registro no está en la papelera. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

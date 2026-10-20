@@ -45,7 +45,7 @@ from app.modules.audit.query import (
     stream_change_sets_csv,
     stream_entries_csv,
 )
-from app.modules.audit.schemas import AuditEntryOut, RevertChangeSetRequest, RevertResult
+from app.modules.audit.schemas import AuditEntryOut
 from app.modules.users.models import Permission, Role, RolePermission
 from app.modules.users.schemas import (
     LoginRequest,
@@ -438,18 +438,3 @@ def validate_data_quality(body: AiSuggestionCreate, user: AiRequester) -> AiSugg
 def batch_ai_enrichment(body: BatchEnrichRequest, user: AiRequester) -> AiBatchOut:
     """Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación."""
     raise not_implemented(CHANGE_BULK, AiBatchOut)
-
-
-@router.post(
-    "/audit/change-sets/{change_set_id}/revert",
-    response_model=RevertResult,
-    summary="Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)",
-    tags=["Auditoría"],
-    **stub(CHANGE_AUDIT),
-)
-def revert_change_set(
-    change_set_id: uuid.UUID,
-    body: RevertChangeSetRequest,
-    user: Annotated[CurrentUser, Depends(require_permission("pieces.restore"))],
-) -> RevertResult:
-    raise not_implemented(CHANGE_AUDIT, RevertResult)

@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    audit_revert,
     collections,
     imports,
     loans,
@@ -26,6 +27,7 @@ for module in (
     imports,
     quality_reports,
     admin,
+    audit_revert,
     trash,
 ):
     api_router.include_router(module.router)
