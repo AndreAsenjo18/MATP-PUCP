@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
+    @property
+    def media_allowed_types_set(self) -> set[str]:
+        return {t.strip() for t in self.media_allowed_types.split(",") if t.strip()}
+
     @field_validator("s3_access_key_id", "s3_secret_access_key", "app_release", mode="before")
     @classmethod
     def _empty_string_is_none(cls, value: object) -> object:

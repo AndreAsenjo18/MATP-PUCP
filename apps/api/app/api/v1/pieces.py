@@ -2,9 +2,11 @@
 multimedia, ubicacion-movimientos, calidad-datos)."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
@@ -22,6 +24,7 @@ from app.api.stubs import (
     stub,
 )
 from app.core.errors import NotFound, ValidationFailed
+from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog import service as catalog_service
@@ -454,16 +457,75 @@ def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> 
 @router.post(
     "/{piece_id}/media/upload-url",
     response_model=UploadUrlResponse,
+    status_code=status.HTTP_201_CREATED,
     summary="Obtener URL prefirmada para subir una foto al almacenamiento",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def create_media_upload_url(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
     piece_id: uuid.UUID,
     body: UploadUrlRequest,
-    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> UploadUrlResponse:
-    raise not_implemented(CHANGE_MEDIA, UploadUrlResponse)
+    # 1. Pieza existe
+    get_piece(session, piece_id)
+
+    # 2. Valida content_type declarado
+    allowed = request.app.state.settings.media_allowed_types_set
+    if body.content_type not in allowed:
+        raise ValidationFailed(
+            f'Tipo "{body.content_type}" no admitido. Admitidos: {", ".join(sorted(allowed))}.',
+            code="unsupported_media_type",
+            details={"field": "content_type", "allowed": sorted(allowed)},
+        )
+
+    # 3. Valida tamaño
+    if body.size_bytes > request.app.state.settings.media_max_bytes:
+        raise ValidationFailed(
+            f"Archivo excede {request.app.state.settings.media_max_bytes} bytes.",
+            code="file_too_large",
+            details={"field": "size_bytes", "max": request.app.state.settings.media_max_bytes},
+        )
+
+    # 4. Duplicate check (si envía sha256)
+    warning = None
+    if body.content_sha256:
+        exists = session.scalar(
+            select(MediaAsset.id).where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.content_sha256 == body.content_sha256,
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+        if exists:
+            warning = "duplicate_content"
+
+    # 5. Genera storage_key en pending/ + URL prefirmada
+    asset_id = new_uuid()
+    ext = body.content_type.split("/")[-1]  # "jpeg" | "png" | "tiff"
+    storage_key = f"pieces/{piece_id}/pending/{asset_id}.{ext}"
+    ttl = request.app.state.settings.media_upload_url_ttl_seconds
+    presigned = request.app.state.storage.presign_put(storage_key, body.content_type, ttl)
+
+    # 6. Respuesta
+    expires_at = datetime.now(UTC) + timedelta(seconds=ttl)
+    resp_data = UploadUrlResponse(
+        storage_key=storage_key,
+        upload_url=presigned["url"],
+        method=presigned["method"],
+        headers=presigned["headers"],
+        expires_at=expires_at,
+    )
+    response_headers = {"Content-Type": "application/json"}
+    if warning:
+        response_headers["X-Warning"] = warning
+    return JSONResponse(
+        content=resp_data.model_dump(mode="json"),
+        headers=response_headers,
+        status_code=status.HTTP_201_CREATED,
+    )
 
 
 @router.post(
