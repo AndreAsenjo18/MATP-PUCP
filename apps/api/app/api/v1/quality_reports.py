@@ -17,7 +17,6 @@ from app.api.pagination import (
     paginate,
 )
 from app.api.stubs import (
-    CHANGE_DUPLICATES,
     CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
     CHANGE_SEARCH_EXPORT,
@@ -134,10 +133,7 @@ def list_duplicate_candidates(
 @router.post(
     "/quality/duplicates/{candidate_id}/resolve",
     response_model=DuplicateCandidateOut,
-    summary=(
-        "Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con "
-        "la tarea 3.3 (RF-030)"
-    ),
+    summary="Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030)",
     tags=["Calidad"],
     **implemented(),
 )
@@ -147,8 +143,6 @@ def resolve_duplicate_candidate(
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
 ) -> DuplicateCandidateOut:
-    if body.resolution == "MERGED":  # merge procedure: task 3.3 of the same change
-        raise not_implemented(CHANGE_DUPLICATES, DuplicateCandidateOut)
     writer(session, user, reason=body.note)
     try:
         candidate = resolve_candidate(
@@ -158,6 +152,8 @@ def resolve_duplicate_candidate(
             reviewer_id=user.id,
             note=body.note,
             postponed_until=body.postponed_until,
+            surviving_piece_id=body.surviving_piece_id,
+            field_choices=body.field_choices,
         )
     except StaleCandidate:
         session.commit()  # the pair stays SUPERSEDED (spec: «Candidato obsoleto»)

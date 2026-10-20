@@ -1566,9 +1566,36 @@
             "note": "Esperar la ficha física",
             "postponed_until": "2026-12-01T00:00:00Z",
             "resolution": "POSTPONED"
+          },
+          {
+            "field_choices": {
+              "provenance": "ABSORBED"
+            },
+            "note": "Misma pieza registrada en el libro y en la sábana",
+            "resolution": "MERGED",
+            "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
           }
         ],
         "properties": {
+          "field_choices": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "enum": [
+                    "SURVIVING",
+                    "ABSORBED"
+                  ],
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.",
+            "title": "Field Choices"
+          },
           "note": {
             "anyOf": [
               {
@@ -4070,6 +4097,93 @@
         "title": "MediaAssetUpdate",
         "type": "object"
       },
+      "MergedFrom": {
+        "description": "A piece merged into this one; its movements and source records stay on it (D4).",
+        "properties": {
+          "denomination": {
+            "title": "Denomination",
+            "type": "string"
+          },
+          "merged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged At"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "piece_id",
+          "denomination",
+          "merged_at",
+          "reason"
+        ],
+        "title": "MergedFrom",
+        "type": "object"
+      },
+      "MergedInto": {
+        "description": "Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4).",
+        "properties": {
+          "merged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged At"
+          },
+          "piece_id": {
+            "description": "Pieza conservada a la que redirigir.",
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo registrado al fusionar.",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "piece_id",
+          "merged_at",
+          "reason"
+        ],
+        "title": "MergedInto",
+        "type": "object"
+      },
       "MovementCreate": {
         "examples": [
           {
@@ -5397,6 +5511,25 @@
           "media_count": {
             "title": "Media Count",
             "type": "integer"
+          },
+          "merged_from": {
+            "description": "Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y evaluaciones siguen en ellas (calidad-datos; RF-030).",
+            "items": {
+              "$ref": "#/components/schemas/MergedFrom"
+            },
+            "title": "Merged From",
+            "type": "array"
+          },
+          "merged_into": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MergedInto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo (calidad-datos; RF-030)."
           },
           "notes": {
             "anyOf": [
@@ -14308,7 +14441,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030)",
+        "summary": "Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030)",
         "tags": [
           "Calidad"
         ],

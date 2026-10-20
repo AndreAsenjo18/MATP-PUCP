@@ -91,6 +91,7 @@ class CompletenessKpis(BaseModel):
 
 
 DuplicateOrigin = Literal["CATALOG", "IMPORT"]
+MergeChoice = Literal["SURVIVING", "ABSORBED"]
 
 
 class DuplicateSignal(BaseModel):
@@ -180,12 +181,25 @@ class DuplicateResolution(BaseModel):
                     "postponed_until": "2026-12-01T00:00:00Z",
                     "note": "Esperar la ficha física",
                 },
+                {
+                    "resolution": "MERGED",
+                    "surviving_piece_id": EX_PIECE_ID,
+                    "field_choices": {"provenance": "ABSORBED"},
+                    "note": "Misma pieza registrada en el libro y en la sábana",
+                },
             ]
         }
     )
 
     resolution: Literal["MERGED", "DISTINCT", "POSTPONED"]
     surviving_piece_id: uuid.UUID | None = Field(None, description="Obligatorio para MERGED.")
+    field_choices: dict[str, MergeChoice] | None = Field(
+        None,
+        description=(
+            "Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de "
+            "la pieza conservada y, si está vacío, el de la absorbida."
+        ),
+    )
     postponed_until: datetime | None = Field(
         None,
         description="Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].",

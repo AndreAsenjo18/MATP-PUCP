@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7c325850c0cb97862c0a69b7b687fc78e626df16e1922c057b32db5c0f2b51ac
+ * openapi-sha256: 0ec4b1565c4a9e79f0a04e8733413ecc14964dce72a09cc00aaf4b45f9659d9d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1022,7 +1022,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030) */
+        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -2079,8 +2079,23 @@ export interface components {
          *       "postponed_until": "2026-12-01T00:00:00Z",
          *       "resolution": "POSTPONED"
          *     }
+         * @example {
+         *       "field_choices": {
+         *         "provenance": "ABSORBED"
+         *       },
+         *       "note": "Misma pieza registrada en el libro y en la sábana",
+         *       "resolution": "MERGED",
+         *       "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
          */
         DuplicateResolution: {
+            /**
+             * Field Choices
+             * @description Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.
+             */
+            field_choices?: {
+                [key: string]: "SURVIVING" | "ABSORBED";
+            } | null;
             /** Note */
             note?: string | null;
             /**
@@ -3190,6 +3205,42 @@ export interface components {
             view_type_term_id?: string | null;
         };
         /**
+         * MergedFrom
+         * @description A piece merged into this one; its movements and source records stay on it (D4).
+         */
+        MergedFrom: {
+            /** Denomination */
+            denomination: string;
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * MergedInto
+         * @description Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4).
+         */
+        MergedInto: {
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description Pieza conservada a la que redirigir.
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Motivo registrado al fusionar.
+             */
+            reason: string | null;
+        };
+        /**
          * MovementCreate
          * @example {
          *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
@@ -3746,6 +3797,13 @@ export interface components {
             materials: components["schemas"]["TermRef"][];
             /** Media Count */
             media_count: number;
+            /**
+             * Merged From
+             * @description Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y evaluaciones siguen en ellas (calidad-datos; RF-030).
+             */
+            merged_from?: components["schemas"]["MergedFrom"][];
+            /** @description Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo (calidad-datos; RF-030). */
+            merged_into?: components["schemas"]["MergedInto"] | null;
             /** Notes */
             notes: string | null;
             object_type: components["schemas"]["TermRef"] | null;
