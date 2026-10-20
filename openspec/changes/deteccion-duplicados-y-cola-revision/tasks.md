@@ -18,7 +18,7 @@
 
 ## 4. Frontend
 
-- [ ] 4.1 Cola `app/duplicados` en modo `live` con filtros y comparación lado a lado resaltando señales; pruebas de componente (Req: Detección explicable…; RNF-010)
+- [x] 4.1 Cola `app/duplicados` en modo `live` con filtros y comparación lado a lado resaltando señales; pruebas de componente (Req: Detección explicable…; RNF-010)
 - [ ] 4.2 Asistente de fusión: elegir pieza conservada, elegir valores por campo, resumen de lo que se trasladará y confirmación; aviso de bloqueo por código I o régimen; pruebas de componente (Req: Fusión con elección de valores…)
 
 ## 5. Cierre del change
