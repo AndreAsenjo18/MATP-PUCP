@@ -24,5 +24,5 @@
 - [x] 5.1 Tests requeridos: `npm run lint`, `npm test` (con las pruebas de PostgreSQL omitidas), `npm run test:api:pg` con Docker y los **cinco** jobs de CI en verde en el PR — en verde: lint completo, «288 passed, 8 skipped», «8 passed» contra PostgreSQL, `openapi:check` y `diagrams:check` al día
 - [x] 5.2 OpenAPI y cliente tipado: sin cambios en la API; confirmar `npm run openapi:check` en verde
 - [x] 5.3 Manual de usuario: no aplica (sin pantallas). La guía de trabajo del equipo (`docs/capacitacion/`) solo contiene un PDF, sin markdown que actualizar
-- [ ] 5.4 Tras el merge, agregar el check «Migraciones (PostgreSQL)» a los checks requeridos de la protección de `main` y registrarlo en el PR
-- [ ] 5.5 `openspec validate ci-migraciones-postgresql --strict` en verde y, tras aprobar el PR, `openspec archive ci-migraciones-postgresql -y`
+- [ ] 5.4 **Bloqueada**: Tras el merge, agregar el check «Migraciones (PostgreSQL)» a los checks requeridos de la protección de `main` y registrarlo en el PR — requiere permisos de administrador del repositorio que el equipo no tiene; pendiente de que el admin del repo lo configure en GitHub (Settings > Branches > main)
+- [x] 5.5 `openspec validate ci-migraciones-postgresql --strict` en verde y, tras aprobar el PR, `openspec archive ci-migraciones-postgresql -y` — PR #46 ya aprobado y mergeado a `main` (commit `dd98c1f`); se archiva con 5.4 pendiente por la razón indicada
