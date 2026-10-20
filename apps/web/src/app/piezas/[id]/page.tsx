@@ -14,12 +14,18 @@
  * - Corregir el código I (`identifiers.correct_inventory_code`, código nuevo + motivo).
  * - Registrar identificadores (`identifiers.manage`); si el valor junta varios códigos, se pide
  *   confirmar la separación antes de registrarlos.
+ *
+ * Tarea 5.1 de `auditoria-y-soft-delete-transversal`: la pestaña «Auditoría» muestra el historial
+ * agrupado por conjunto de cambios con vista previa de reversión, conflictos y confirmación en
+ * lenguaje claro (`components/domain/AuditTrailPanel`). En modo `live` todo viene de la API; en
+ * modo demostración se agrupan las filas del store de la sesión.
  */
 import { ArrowRight, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { use, useState } from "react";
+import { use, useMemo, useState } from "react";
 
+import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { IdentifierAddForm } from "@/components/domain/IdentifierAddForm";
 import {
@@ -37,7 +43,7 @@ import {
   PieceMediaGallery,
   PieceSheetHeader,
 } from "@/components/domain/PieceSheet";
-import { auditActionStatus, suggestionStatus } from "@/components/domain/status-intents";
+import { suggestionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -48,8 +54,10 @@ import { Select } from "@/components/ui/Select";
 import type { ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { toEntryView } from "@/lib/data/audit";
 import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
+import { getApiMode } from "@/lib/data/mode";
 import { correctInventoryCode, deletePiece, restorePiece } from "@/lib/data/pieces";
 import {
   alertsForPiece,
@@ -210,7 +218,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
           {tab === "Datos de origen" && <SourceTab records={sourceRecords} />}
 
-          {tab === "Auditoría" && <AuditTab entries={audit} />}
+          {tab === "Auditoría" && <AuditTab pieceId={pieceId} demoEntries={audit} />}
 
           {tab === "Sugerencias IA" && <SuggestionsTab suggestions={suggestions} />}
         </>
@@ -383,33 +391,27 @@ function SourceTab({ records }: { records: ReturnType<typeof getPieceSourceRecor
   );
 }
 
-function AuditTab({ entries }: { entries: ReturnType<typeof useMockStore>["auditLog"] }) {
-  const { hasPermission } = useSession();
+/**
+ * Pestaña «Auditoría»: historial agrupado por conjunto de cambios y reversión con vista previa
+ * (RF-040, RF-041, RNF-007). Los permisos salen de la sesión aquí, no dentro del componente:
+ * `pieces.update` para los cambios manuales, `imports.revert` para las cargas y Administrador
+ * para el resto (design D1, [SUPUESTO B7]). El servidor los vuelve a comprobar.
+ */
+function AuditTab({ pieceId, demoEntries }: { pieceId: string; demoEntries: ReturnType<typeof useMockStore>["auditLog"] }) {
+  const { hasPermission, currentRole } = useSession();
+  const live = getApiMode() === "live";
+  // En modo demostración el historial son las filas del store de la sesión; en `live` las trae la API.
+  const entries = useMemo(() => (live ? undefined : demoEntries.map(toEntryView)), [live, demoEntries]);
+
   if (!hasPermission("audit.read")) {
     return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>;
   }
   return (
-    <ol className="flex flex-col gap-3">
-      {entries
-        .slice()
-        .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
-        .map((entry) => (
-          <Card as="li" key={entry.id} className="p-3 text-base">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={auditActionStatus(entry.action)} />
-              <span className="text-sm text-gris-texto">{new Date(entry.occurred_at).toLocaleString("es-PE")}</span>
-              <span className="text-sm text-gris-texto">· {entry.actor_label ?? "Sistema"} · origen {entry.origin}</span>
-            </div>
-            {entry.field && (
-              <p className="mt-1 text-tinta">
-                <strong>{entry.field}</strong>: {String(entry.old_value ?? "—")} → {String(entry.new_value ?? "—")}
-              </p>
-            )}
-            {entry.reason && <p className="mt-1 text-sm text-gris-texto">{entry.reason}</p>}
-          </Card>
-        ))}
-      {entries.length === 0 && <li className="text-base text-gris-texto">Sin registros de auditoría para esta pieza.</li>}
-    </ol>
+    <AuditTrailPanel
+      pieceId={pieceId}
+      access={{ hasPermission, isAdmin: currentRole?.code === "ADMIN" }}
+      demoEntries={entries}
+    />
   );
 }
 
