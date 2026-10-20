@@ -90,6 +90,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `POST /pieces/{id}/identifiers/{id}/correction` | RN-002: corrección auditada del código I, en lugar de borrarlo |
 | `PUT /imports/{batch_id}/mapping`, `GET /import-templates` | RF-022: plantillas de mapeo reutilizables |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
+| `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005, RNF-006: nunca se borra información, así que lo eliminado lógicamente se consulta y se restaura verificando dependencias (`auditoria-y-soft-delete-transversal`, diseño D2) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 
 ## Conflictos resueltos por el equipo (2026-09-29)

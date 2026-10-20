@@ -83,6 +83,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/reports/{}"),
     ("get", "/roles"),
     ("put", "/roles/{}/permissions"),
+    # Papelera (change auditoria-y-soft-delete-transversal, diseño D2).
+    ("get", "/trash"),
+    ("post", "/trash/{}/{}/restore"),
     ("get", "/users/{}"),
     ("patch", "/users/{}"),
     ("get", "/vocabularies"),
