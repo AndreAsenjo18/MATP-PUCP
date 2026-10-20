@@ -23,7 +23,13 @@ from pathlib import Path
 #: Tablas de solo inserción. Debe coincidir con `__append_only__` en los modelos y con los
 #: disparadores que crean las migraciones (`APPEND_ONLY_TABLES` en `alembic/versions/`).
 APPEND_ONLY_TABLES: frozenset[str] = frozenset(
-    {"audit_log", "piece_movement", "piece_source_record", "conservation_assessment"}
+    {
+        "audit_log",
+        "piece_movement",
+        "piece_source_record",
+        "conservation_assessment",
+        "audit_digest",
+    }
 )
 
 SCOPE_SOFT_DELETE = "soft_delete"

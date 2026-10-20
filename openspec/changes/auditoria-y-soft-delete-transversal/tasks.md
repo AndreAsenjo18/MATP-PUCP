@@ -16,7 +16,7 @@
 
 ## 4. Integridad
 
-- [ ] 4.1 Migración `audit_digest` y comando `python -m app.audit.digest` (`--verify`; script `npm run audit:verify`); pruebas: 30 días intactos, alteración simulada (desactivando el trigger en SQLite de prueba) detectada (Req: Evidencia diaria de integridad de la auditoría)
+- [x] 4.1 Migración `audit_digest` y comando `python -m app.audit.digest` (`--verify`; script `npm run audit:verify`); pruebas: 30 días intactos, alteración simulada (desactivando el trigger en SQLite de prueba) detectada (Req: Evidencia diaria de integridad de la auditoría)
 
 ## 5. Frontend
 
