@@ -116,20 +116,26 @@ def _dimensions(raw: Sequence[Mapping[str, Any]] | None) -> tuple[Dimension, ...
     return tuple(result)
 
 
-def load_profiles(session: Session) -> list[PieceProfile]:
-    """Profiles of every active piece that was not merged into another one."""
+def load_profiles(
+    session: Session, piece_ids: Iterable[uuid.UUID] | None = None
+) -> list[PieceProfile]:
+    """Profiles of the active pieces that were not merged (all of them, or only ``piece_ids``)."""
     lineages = _lineages(session)
-    pieces = session.scalars(select(Piece).where(Piece.merged_into_id.is_(None))).all()
+    piece_query = select(Piece).where(Piece.merged_into_id.is_(None))
+    identifier_query = select(
+        PieceIdentifier.piece_id,
+        PieceIdentifier.identifier_type_code,
+        PieceIdentifier.normalized_value,
+        PieceIdentifier.original_value,
+        PieceIdentifier.is_current,
+    )
+    if piece_ids is not None:
+        wanted = list(piece_ids)
+        piece_query = piece_query.where(Piece.id.in_(wanted))
+        identifier_query = identifier_query.where(PieceIdentifier.piece_id.in_(wanted))
+    pieces = session.scalars(piece_query).all()
     identifiers: dict[uuid.UUID, list[IdentifierValue]] = defaultdict(list)
-    for row in session.execute(
-        select(
-            PieceIdentifier.piece_id,
-            PieceIdentifier.identifier_type_code,
-            PieceIdentifier.normalized_value,
-            PieceIdentifier.original_value,
-            PieceIdentifier.is_current,
-        )
-    ):
+    for row in session.execute(identifier_query):
         identifiers[row.piece_id].append(
             IdentifierValue(
                 row.identifier_type_code, row.normalized_value, row.original_value, row.is_current

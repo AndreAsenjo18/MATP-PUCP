@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a3c7e4796eb9b57e39c3d0d1a3c5a56ecf516ea0bd4852ecd19bf680fb33c01d
+ * openapi-sha256: 7c325850c0cb97862c0a69b7b687fc78e626df16e1922c057b32db5c0f2b51ac
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1022,7 +1022,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar) */
+        /** Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -2074,10 +2074,20 @@ export interface components {
          *       "note": "Piezas distintas del mismo taller",
          *       "resolution": "DISTINCT"
          *     }
+         * @example {
+         *       "note": "Esperar la ficha física",
+         *       "postponed_until": "2026-12-01T00:00:00Z",
+         *       "resolution": "POSTPONED"
+         *     }
          */
         DuplicateResolution: {
             /** Note */
             note?: string | null;
+            /**
+             * Postponed Until
+             * @description Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].
+             */
+            postponed_until?: string | null;
             /**
              * Resolution
              * @enum {string}
@@ -9045,15 +9055,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

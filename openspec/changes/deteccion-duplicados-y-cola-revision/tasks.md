@@ -12,7 +12,7 @@
 ## 3. Cola y resolución
 
 - [x] 3.1 Implementar `GET /api/v1/quality/duplicates` con filtros (estado, colección, puntaje, origen) y reapertura de pospuestos vencidos en lectura; pruebas (Req: Pares distintos estables…)
-- [ ] 3.2 Implementar `resolve` con acciones `distinct` y `postpone`; pruebas: distinto sin cambios no reaparece, reaparece con huella distinta, posponer > 180 días 422, Consulta interna 403 (Req: Pares distintos estables…)
+- [x] 3.2 Implementar `resolve` con acciones `distinct` y `postpone`; pruebas: distinto sin cambios no reaparece, reaparece con huella distinta, posponer > 180 días 422, Consulta interna 403 (Req: Pares distintos estables…)
 - [ ] 3.3 Crear `quality/merge.py` y acción `merge` (validaciones, elección de campos, traslado de identificadores/fotos/movimientos/datos de origen/evaluaciones/sugerencias, pieza absorbida fusionada, candidatos reemplazados, `change_set_id`); pruebas de los cuatro escenarios y de identificador repetido conservado como no vigente (Req: Fusión con elección de valores y reasignación de datos relacionados; RN-002, RN-003, RN-005)
 - [ ] 3.4 Exponer `merged_into` en la ficha de piezas fusionadas (lectura con `include_deleted` para la redirección); prueba (Req: Fusión… — escenario "Consulta de la pieza absorbida")
 

@@ -77,7 +77,7 @@ flowchart TD
 6. Otros candidatos que involucran a la absorbida → `SUPERSEDED`. Todo con un `change_set_id` para permitir reversión.
 
 ### D5. Posponer
-`action: "postpone", until` (máx. 180 días); al vencer vuelve a `PENDING` en la siguiente lectura de la cola (sin cron).
+`POST /quality/duplicates/{candidate_id}/resolve` con `{resolution: "POSTPONED", postponed_until, note}`, siguiendo el esquema `DuplicateResolution` del contrato. `postponed_until` es obligatorio, debe ser una fecha futura y no puede superar los 180 días [SUPUESTO]; si no cumple, la API responde 422 con el máximo en `details`. Al vencer, el par vuelve a `PENDING` en la siguiente lectura de la cola (sin cron). Marcar un par como distinto usa el mismo esquema con `resolution: "DISTINCT"` y guarda la huella de los valores actuales (D2).
 
 ## Risks / Trade-offs
 

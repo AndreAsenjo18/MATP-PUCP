@@ -173,12 +173,23 @@ class DuplicateResolution(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"resolution": "DISTINCT", "note": "Piezas distintas del mismo taller"}]
+            "examples": [
+                {"resolution": "DISTINCT", "note": "Piezas distintas del mismo taller"},
+                {
+                    "resolution": "POSTPONED",
+                    "postponed_until": "2026-12-01T00:00:00Z",
+                    "note": "Esperar la ficha física",
+                },
+            ]
         }
     )
 
     resolution: Literal["MERGED", "DISTINCT", "POSTPONED"]
     surviving_piece_id: uuid.UUID | None = Field(None, description="Obligatorio para MERGED.")
+    postponed_until: datetime | None = Field(
+        None,
+        description="Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].",
+    )
     note: str | None = None
 
 

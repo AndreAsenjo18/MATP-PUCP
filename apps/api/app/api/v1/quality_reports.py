@@ -31,7 +31,12 @@ from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
 from app.modules.quality.models import DuplicateStatus, QualityJob
-from app.modules.quality.queue import queue_query, reopen_expired_postponements
+from app.modules.quality.queue import (
+    StaleCandidate,
+    queue_query,
+    reopen_expired_postponements,
+    resolve_candidate,
+)
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
     AlertType,
@@ -129,16 +134,36 @@ def list_duplicate_candidates(
 @router.post(
     "/quality/duplicates/{candidate_id}/resolve",
     response_model=DuplicateCandidateOut,
-    summary="Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar)",
+    summary=(
+        "Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con "
+        "la tarea 3.3 (RF-030)"
+    ),
     tags=["Calidad"],
-    **stub(CHANGE_DUPLICATES),
+    **implemented(),
 )
 def resolve_duplicate_candidate(
     candidate_id: uuid.UUID,
     body: DuplicateResolution,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
 ) -> DuplicateCandidateOut:
-    raise not_implemented(CHANGE_DUPLICATES, DuplicateCandidateOut)
+    if body.resolution == "MERGED":  # merge procedure: task 3.3 of the same change
+        raise not_implemented(CHANGE_DUPLICATES, DuplicateCandidateOut)
+    writer(session, user, reason=body.note)
+    try:
+        candidate = resolve_candidate(
+            session,
+            candidate_id,
+            resolution=body.resolution,
+            reviewer_id=user.id,
+            note=body.note,
+            postponed_until=body.postponed_until,
+        )
+    except StaleCandidate:
+        session.commit()  # the pair stays SUPERSEDED (spec: «Candidato obsoleto»)
+        raise
+    session.commit()
+    return DuplicateCandidateOut.model_validate(candidate)
 
 
 @router.post(

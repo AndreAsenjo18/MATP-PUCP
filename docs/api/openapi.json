@@ -1561,6 +1561,11 @@
           {
             "note": "Piezas distintas del mismo taller",
             "resolution": "DISTINCT"
+          },
+          {
+            "note": "Esperar la ficha física",
+            "postponed_until": "2026-12-01T00:00:00Z",
+            "resolution": "POSTPONED"
           }
         ],
         "properties": {
@@ -1574,6 +1579,19 @@
               }
             ],
             "title": "Note"
+          },
+          "postponed_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].",
+            "title": "Postponed Until"
           },
           "resolution": {
             "enum": [
@@ -14283,16 +14301,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`."
           }
         },
         "security": [
@@ -14300,12 +14308,11 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar)",
+        "summary": "Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030)",
         "tags": [
           "Calidad"
         ],
-        "x-change": "deteccion-duplicados-y-cola-revision",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/quality/incomplete": {
