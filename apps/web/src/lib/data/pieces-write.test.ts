@@ -196,6 +196,25 @@ describe("updatePiece (modo live)", () => {
   });
 });
 
+describe("updatePiece (modo live): conflicto de edición", () => {
+  it("informa conflict, con el mensaje de la API, cuando el servidor responde 409 edit_conflict", async () => {
+    const message = "Otra persona modificó la pieza mientras usted la editaba.";
+    useLive(async () => json(409, { code: "edit_conflict", message }));
+
+    expect(await updatePiece(ids.piece(1), { notes: "x" })).toEqual({ status: "conflict", message });
+  });
+
+  it("otros 409 (código I inmutable) siguen siendo rejected y no se tratan como conflicto", async () => {
+    useLive(async () => json(409, { code: "immutable_inventory_code", message: "El código I está bloqueado." }));
+
+    expect(await updatePiece(ids.piece(1), { notes: "x" })).toEqual({
+      status: "rejected",
+      code: "immutable_inventory_code",
+      message: "El código I está bloqueado.",
+    });
+  });
+});
+
 describe("validatePiece (modo live)", () => {
   it("envía POST /api/v1/pieces/validate con piece_id y devuelve el resultado", async () => {
     const issue = { field: "code_i", code: "duplicate_inventory_code", message: "El código I ya existe.", severity: "error" };

@@ -94,7 +94,17 @@ export type PieceWriteFailure =
   | { status: "unavailable"; message: string };
 
 export type PieceCreateResult = { status: "ok"; piece: PieceSummary } | PieceWriteFailure;
-export type PieceUpdateResult = { status: "ok"; piece: PieceDetail } | PieceWriteFailure;
+/**
+ * `conflict`: la pieza cambió mientras se editaba (409 `edit_conflict`, design D2). Los demás 409
+ * (`immutable_inventory_code`, `integrity_conflict`…) siguen siendo `rejected` con su mensaje.
+ */
+export type PieceUpdateResult =
+  | { status: "ok"; piece: PieceDetail }
+  | { status: "conflict"; message: string }
+  | PieceWriteFailure;
+
+/** Código de error de la edición concurrente (design D2 de `ficha-pieza-crud`). */
+export const EDIT_CONFLICT_CODE = "edit_conflict";
 /** `aborted`: la validación fue reemplazada o cancelada; quien llama debe ignorarla. */
 export type PieceValidationOutcome =
   | { status: "ok"; result: PieceValidationResult }
@@ -117,6 +127,10 @@ function failureFrom(error: unknown): PieceWriteFailure {
 
 function isAbortError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { name?: unknown }).name === "AbortError";
+}
+
+function isEditConflict(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === EDIT_CONFLICT_CODE;
 }
 
 /** Respuesta simulada de `POST /pieces` en modo mock: no persiste nada (no hay store de altas). */
@@ -191,8 +205,10 @@ export async function createPiece(input: PieceCreateInput): Promise<PieceCreateR
 }
 
 /**
- * `PUT /pieces/{piece_id}` (actualización parcial). Todavía no envía `If-Match`: la columna
- * `version` y el 409/428 llegan con las tareas 1.1 y 2.2 del backend; el conflicto es la 4.3.
+ * `PUT /pieces/{piece_id}` (actualización parcial). Un 409 `edit_conflict` se informa como
+ * `conflict`. Todavía no envía `If-Match`: la columna `version` y la precondición (409/428) llegan
+ * con las tareas 1.1 y 2.2 del backend, y `PieceDetail` aún no expone `version`. En modo mock
+ * nunca hay conflicto (una sola sesión).
  */
 export async function updatePiece(id: string, input: PieceUpdateInput): Promise<PieceUpdateResult> {
   if (getApiMode() === "mock") {
@@ -205,7 +221,10 @@ export async function updatePiece(id: string, input: PieceUpdateInput): Promise<
       params: { path: { piece_id: id } },
       body: input,
     });
-    if (error) return failureFrom(error);
+    if (error) {
+      if (isEditConflict(error)) return { status: "conflict", message: apiErrorMessage(error) };
+      return failureFrom(error);
+    }
     return { status: "ok", piece: data };
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };

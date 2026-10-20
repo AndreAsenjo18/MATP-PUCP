@@ -14,7 +14,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 
-import { PieceForm, type SaveOutcome } from "@/components/domain/PieceForm";
+import { PieceForm, outcomeFromUpdate, type SaveOutcome } from "@/components/domain/PieceForm";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import type { ApiSchemas } from "@/lib/api/client";
@@ -43,12 +43,18 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
   async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {
     const input = toUpdateInput(values);
     const result = await updatePiece(piece.id, input);
-    if (result.status !== "ok") return { status: "error", message: result.message };
-    afterSave?.(result.piece, input);
-    return {
-      status: "ok",
-      message: getApiMode() === "live" ? "Cambios guardados." : "Cambios guardados en esta sesión de demostración.",
-    };
+    const outcome = outcomeFromUpdate(
+      result,
+      getApiMode() === "live" ? "Cambios guardados." : "Cambios guardados en esta sesión de demostración.",
+    );
+    if (result.status === "ok") afterSave?.(result.piece, input);
+    return outcome;
+  }
+
+  /** Versión actual de la ficha en el servidor: solo se pide tras un 409, para «Ver cambios del otro usuario». */
+  async function loadCurrentValues(): Promise<PieceFormValues | null> {
+    const current = await fetchPieceDetail(piece.id);
+    return current.status === "ok" ? toFormValues(current.piece) : null;
   }
 
   return (
@@ -70,7 +76,9 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
         mode="edit"
         pieceId={piece.id}
         initialValues={toFormValues(piece)}
+        draftBase={piece.updated_at}
         onSave={handleSave}
+        loadCurrentValues={loadCurrentValues}
         onCancel={() => router.push(`/piezas/${piece.id}`)}
       />
     </div>
