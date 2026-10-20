@@ -62,13 +62,16 @@ PERMISSION_BY_ORIGIN: dict[AuditOrigin, str] = {
 }
 INVENTORY_CODE_PERMISSION = "identifiers.correct_inventory_code"
 
-# Only used for the message of the informational items: the authoritative list of append-only
-# tables is the ``__append_only__`` flag of each model (see app/core/cross_cutting.py).
+# Spanish wording of the informational items only. Which tables are append-only is read from the
+# ``__append_only__`` flag of each model (the authoritative list lives in
+# app/core/cross_cutting.py), so a new append-only table needs no change here: it just falls back
+# to "registros de <tabla>" until someone adds its label.
 APPEND_ONLY_LABELS: dict[str, str] = {
     "piece_movement": "movimientos de ubicación",
     "piece_source_record": "registros de datos de origen",
     "conservation_assessment": "evaluaciones de conservación",
     "audit_log": "registros de auditoría",
+    "audit_digest": "resúmenes de integridad de la auditoría",
 }
 APPEND_ONLY_NOTE = (
     "El conjunto incluye {count} {label} que no se modifican (son de solo inserción): "
