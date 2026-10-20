@@ -2,10 +2,10 @@
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import ForeignKey, Index, String, Text, Uuid
+from sqlalchemy import Date, ForeignKey, Index, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models_base import Base, JsonType, UUIDPrimaryKeyMixin, str_enum, utcnow
@@ -50,3 +50,30 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
     reason: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (Index("ix_audit_log_entity", "entity_type", "entity_id", "occurred_at"),)
+
+
+class AuditDigest(UUIDPrimaryKeyMixin, Base):
+    """Daily cryptographic digest of ``audit_log`` (change auditoria-y-soft-delete-transversal,
+    decisión D5; RNF-007).
+
+    One row per closed day, written by ``python -m app.modules.audit.digest``. Each digest
+    chains the previous sealed day (``previous_day`` / ``previous_sha256``) so a day cannot be
+    recomputed in isolation, and the table is append-only in the database (trigger), so an
+    existing digest cannot be rewritten to hide an alteration.
+    """
+
+    __tablename__ = "audit_digest"
+    __audited__: ClassVar[bool] = False
+    __append_only__: ClassVar[bool] = True
+
+    day: Mapped[date] = mapped_column(Date, unique=True)
+    row_count: Mapped[int]
+    # First and last audit row of the day, ordered by (occurred_at, id). Null when the day is empty.
+    first_entry_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    last_entry_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    sha256: Mapped[str] = mapped_column(String(64))
+    previous_day: Mapped[date | None] = mapped_column(Date)
+    previous_sha256: Mapped[str | None] = mapped_column(String(64))
+    # Recipe used to build the digest (e.g. "sha256/v1"), so a future format can coexist.
+    algorithm: Mapped[str] = mapped_column(String(40))
+    computed_at: Mapped[datetime] = mapped_column(default=utcnow)
