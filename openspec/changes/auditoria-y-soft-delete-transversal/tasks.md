@@ -20,7 +20,7 @@
 
 ## 5. Frontend
 
-- [ ] 5.1 Pestaña de auditoría de la ficha agrupada por conjunto de cambios con vista previa de reversión, conflictos y confirmación en lenguaje claro, en modo `live`; pruebas de componente (Req: Reversión por conjunto de cambios…; RNF-010)
+- [x] 5.1 Pestaña de auditoría de la ficha agrupada por conjunto de cambios con vista previa de reversión, conflictos y confirmación en lenguaje claro, en modo `live`; pruebas de componente (Req: Reversión por conjunto de cambios…; RNF-010)
 - [ ] 5.2 Papelera en `app/administracion` (filtros, motivo, restaurar con aviso de dependencia) y consulta global de auditoría con exportación CSV; pruebas de componente (Req: Papelera…; Req: Consulta agrupada…)
 
 ## 6. Cierre del change
