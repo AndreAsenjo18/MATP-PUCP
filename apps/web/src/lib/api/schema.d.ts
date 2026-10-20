@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 0e39c247dbb341cd183264ebd3b69661a97f4b6f3e3dd4de71abaf3711bef9a9
+ * openapi-sha256: 0ec4b1565c4a9e79f0a04e8733413ecc14964dce72a09cc00aaf4b45f9659d9d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3205,6 +3205,42 @@ export interface components {
             view_type_term_id?: string | null;
         };
         /**
+         * MergedFrom
+         * @description A piece merged into this one; its movements and source records stay on it (D4).
+         */
+        MergedFrom: {
+            /** Denomination */
+            denomination: string;
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * MergedInto
+         * @description Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4).
+         */
+        MergedInto: {
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description Pieza conservada a la que redirigir.
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Motivo registrado al fusionar.
+             */
+            reason: string | null;
+        };
+        /**
          * MovementCreate
          * @example {
          *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
@@ -3761,6 +3797,13 @@ export interface components {
             materials: components["schemas"]["TermRef"][];
             /** Media Count */
             media_count: number;
+            /**
+             * Merged From
+             * @description Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y evaluaciones siguen en ellas (calidad-datos; RF-030).
+             */
+            merged_from?: components["schemas"]["MergedFrom"][];
+            /** @description Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo (calidad-datos; RF-030). */
+            merged_into?: components["schemas"]["MergedInto"] | null;
             /** Notes */
             notes: string | null;
             object_type: components["schemas"]["TermRef"] | null;

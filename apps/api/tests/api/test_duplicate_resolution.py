@@ -18,6 +18,7 @@ from app.core.models_base import utcnow
 from app.main import create_app
 from app.models import AppUser, Base, DuplicateCandidate, Piece, PieceIdentifier
 from app.modules.audit.context import audit_context
+from app.modules.audit.soft_delete import soft_delete
 from app.modules.identification.normalization import TYPE_COLLECTION
 from app.modules.identification.service import add_identifier
 from app.modules.quality.duplicates import load_profiles
@@ -229,3 +230,43 @@ def test_merge_over_http(client: TestClient, factory: sessionmaker[Session]) -> 
         gone = session.get(Piece, absorbed, execution_options={"include_deleted": True})
         assert gone.merged_into_id == surviving
         assert session.get(DuplicateCandidate, candidate.id).change_set_id is not None
+
+
+def test_the_absorbed_piece_sheet_links_to_the_surviving_one(
+    client: TestClient, factory: sessionmaker[Session]
+) -> None:
+    """Spec: «Consulta de la pieza absorbida» — merged, date, reason and link (task 3.4)."""
+    with factory() as session:
+        absorbed = session.scalars(
+            select(Piece)
+            .where(Piece.merged_into_id.is_not(None), Piece.deleted_at.is_not(None))
+            .execution_options(include_deleted=True)
+        ).first()
+    assert absorbed is not None, "requires test_merge_over_http to have merged a pair"
+    response = client.get(f"/api/v1/pieces/{absorbed.id}", headers=as_user(VIEWER))
+    assert response.status_code == 200, response.text
+    link = response.json()["merged_into"]
+    assert link["piece_id"] == str(absorbed.merged_into_id)
+    assert link["merged_at"] is not None
+    assert "Misma pieza en el libro y en la sábana" in link["reason"]
+
+    surviving = client.get(f"/api/v1/pieces/{absorbed.merged_into_id}", headers=as_user(VIEWER))
+    assert surviving.status_code == 200
+    assert surviving.json()["merged_into"] is None
+    # The surviving piece lists what was merged into it, to reach its history (D4).
+    merged_from = surviving.json()["merged_from"]
+    assert [item["piece_id"] for item in merged_from] == [str(absorbed.id)]
+    assert merged_from[0]["denomination"] == absorbed.denomination
+    assert "Misma pieza en el libro y en la sábana" in merged_from[0]["reason"]
+    assert response.json()["merged_from"] == []
+
+
+def test_a_deleted_piece_that_was_not_merged_is_still_404(
+    client: TestClient, factory: sessionmaker[Session]
+) -> None:
+    with factory() as session, audit_context(session, SYSTEM_CONTEXT):
+        piece = session.scalars(select(Piece).where(Piece.merged_into_id.is_(None))).first()
+        soft_delete(session, piece, "Baja sintética para la prueba")
+        session.commit()
+        piece_id = piece.id
+    assert client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(VIEWER)).status_code == 404
