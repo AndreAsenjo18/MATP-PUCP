@@ -11,10 +11,21 @@ from app.api.v1 import (
     media,
     pieces,
     quality_reports,
+    trash,
 )
 
 API_PREFIX = "/api/v1"
 
 api_router = APIRouter(prefix=API_PREFIX)
-for module in (pieces, collections, locations, loans, media, imports, quality_reports, admin):
+for module in (
+    pieces,
+    collections,
+    locations,
+    loans,
+    media,
+    imports,
+    quality_reports,
+    admin,
+    trash,
+):
     api_router.include_router(module.router)

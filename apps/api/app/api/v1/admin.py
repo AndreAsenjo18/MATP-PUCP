@@ -5,7 +5,8 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, CurrentUserDep, SessionDep, require_permission
@@ -32,7 +33,18 @@ from app.modules.ai_suggestions.schemas import (
     BatchEnrichRequest,
     CatalogingSuggestionRequest,
 )
-from app.modules.audit.models import AuditLog, AuditOrigin
+from app.modules.audit.models import AuditAction, AuditOrigin
+from app.modules.audit.query import (
+    CSV_FILENAME,
+    AuditExportFormat,
+    AuditFilters,
+    AuditGroupBy,
+    AuditLogPage,
+    list_change_sets,
+    list_entries,
+    stream_change_sets_csv,
+    stream_entries_csv,
+)
 from app.modules.audit.schemas import AuditEntryOut, RevertChangeSetRequest, RevertResult
 from app.modules.users.models import Permission, Role, RolePermission
 from app.modules.users.schemas import (
@@ -303,45 +315,91 @@ def reject_ai_suggestion(
 # -------------------------------------------------------------------------- audit
 @router.get(
     "/audit-logs",
-    response_model=Page[AuditEntryOut],
-    summary="Consultar la auditoría campo a campo (más reciente primero)",
+    response_model=AuditLogPage,
+    summary=(
+        "Consultar la auditoría campo a campo o agrupada por conjunto de cambios, "
+        "exportable a CSV (RF-040, RF-041)"
+    ),
+    description=(
+        "Devuelve `items` (una fila por campo, de la más reciente a la más antigua) o, con "
+        "`group_by=change_set`, `change_sets` con el resumen de cada operación: usuario, fecha, "
+        "origen, motivo, entidades afectadas por tipo, campos y estado de reversión. Con "
+        "`format=csv` la misma vista se descarga en streaming. Los valores anteriores y nuevos "
+        "de los campos sensibles se ocultan según los permisos del rol (RF-041): la fila sigue "
+        "mostrando qué campo cambió, quién y cuándo, con `values_masked` en verdadero."
+    ),
     tags=["Auditoría"],
     **implemented(),
 )
 def get_audit_logs(
+    request: Request,
     session: SessionDep,
     user: AuditReader,
     params: Annotated[PageParams, Depends(page_params)],
     entity_type: Annotated[str | None, Query(description="p. ej. piece, collection.")] = None,
     entity_id: uuid.UUID | None = None,
+    change_set_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
     origin: AuditOrigin | None = None,
+    origin_ref: Annotated[
+        str | None, Query(description="Lote de importación o sugerencia de IA del cambio.")
+    ] = None,
+    action: AuditAction | None = None,
     field: str | None = None,
     occurred_from: datetime | None = None,
     occurred_to: datetime | None = None,
-) -> Page[AuditEntryOut]:
-    statement = select(AuditLog).order_by(AuditLog.occurred_at.desc(), AuditLog.id.desc())
-    if entity_type:
-        statement = statement.where(AuditLog.entity_type == entity_type)
-    if entity_id is not None:
-        statement = statement.where(AuditLog.entity_id == entity_id)
-    if user_id is not None:
-        statement = statement.where(AuditLog.user_id == user_id)
-    if origin is not None:
-        statement = statement.where(AuditLog.origin == origin)
-    if field:
-        statement = statement.where(AuditLog.field == field)
-    if occurred_from is not None:
-        statement = statement.where(AuditLog.occurred_at >= occurred_from)
-    if occurred_to is not None:
-        statement = statement.where(AuditLog.occurred_at <= occurred_to)
-    rows, total = paginate(session, statement, params)
-    return Page(
-        items=[AuditEntryOut.model_validate(row) for row in rows],
-        total=total,
-        page=params.page,
-        page_size=params.page_size,
+    group_by: Annotated[
+        AuditGroupBy | None, Query(description="Agrupar por conjunto de cambios.")
+    ] = None,
+    export_format: Annotated[
+        AuditExportFormat | None, Query(alias="format", description="Descargar en CSV.")
+    ] = None,
+) -> AuditLogPage | StreamingResponse:
+    filters = AuditFilters(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        change_set_id=change_set_id,
+        user_id=user_id,
+        origin=origin,
+        origin_ref=origin_ref,
+        action=action,
+        field=field,
+        occurred_from=occurred_from,
+        occurred_to=occurred_to,
     )
+    grouped = group_by is AuditGroupBy.CHANGE_SET
+    if export_format is AuditExportFormat.CSV:
+        # El cuerpo se genera después de cerrar la sesión de la petición, así que la exportación
+        # abre la suya propia y la lee por lotes (diseño D3: CSV en streaming).
+        factory = request.app.state.session_factory
+        lines = (
+            stream_change_sets_csv(factory, filters)
+            if grouped
+            else stream_entries_csv(factory, filters, permissions=user.permissions)
+        )
+        return StreamingResponse(
+            lines,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{CSV_FILENAME}"'},
+        )
+    if grouped:
+        change_sets, total = list_change_sets(
+            session, filters, limit=params.page_size, offset=params.offset
+        )
+        return AuditLogPage(
+            change_sets=change_sets,
+            total=total,
+            page=params.page,
+            page_size=params.page_size,
+        )
+    items, total = list_entries(
+        session,
+        filters,
+        permissions=user.permissions,
+        limit=params.page_size,
+        offset=params.offset,
+    )
+    return AuditLogPage(items=items, total=total, page=params.page, page_size=params.page_size)
 
 
 @router.get(
