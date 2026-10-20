@@ -76,7 +76,7 @@ describe("textos del historial", () => {
     expect(originLabel("RARO")).toBe("origen RARO");
     expect(entityLabel("piece", 1)).toBe("pieza");
     expect(entityLabel("piece", 54)).toBe("piezas");
-    expect(entityLabel("piece_media", 2)).toBe("fotografías");
+    expect(entityLabel("media_asset", 2)).toBe("fotografías");
     expect(entityLabel("tabla_nueva", 2)).toBe("registros de tipo tabla_nueva");
   });
 
@@ -84,7 +84,7 @@ describe("textos del historial", () => {
     expect(joinWithAnd(["1 pieza"])).toBe("1 pieza");
     expect(joinWithAnd(["1 pieza", "2 fotografías"])).toBe("1 pieza y 2 fotografías");
     expect(scopeSentence(summary({ entity_counts: { piece: 54 }, entity_count: 54, field_count: 486 }))).toBe("54 piezas · 486 campos registrados");
-    expect(scopeSentence(summary({ entity_counts: { piece: 1, piece_media: 2 }, field_count: 1 }))).toBe("1 pieza y 2 fotografías · 1 campo registrado");
+    expect(scopeSentence(summary({ entity_counts: { piece: 1, media_asset: 2 }, field_count: 1 }))).toBe("1 pieza y 2 fotografías · 1 campo registrado");
   });
 
   it("traduce los nombres de campo y los valores sin usar JSON", () => {

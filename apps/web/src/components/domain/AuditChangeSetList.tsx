@@ -41,18 +41,29 @@ export function originLabel(origin: AuditOrigin | string): string {
   return ORIGIN_LABELS[origin as AuditOrigin] ?? `origen ${origin}`;
 }
 
-/** Singular y plural de cada tipo de registro que puede aparecer en la auditoría. */
+/**
+ * Singular y plural de cada tipo de registro que puede aparecer en la auditoría.
+ *
+ * Las claves son los **nombres de tabla** que envía la API (`audit_log.entity_type` = `__tablename__`),
+ * no nombres inventados: si no coincide, la pantalla mostraría «registros de tipo media_asset».
+ */
 const ENTITY_LABELS: Record<string, [string, string]> = {
   piece: ["pieza", "piezas"],
   piece_identifier: ["identificador", "identificadores"],
-  piece_media: ["fotografía", "fotografías"],
+  media_asset: ["fotografía", "fotografías"],
+  piece_material: ["material de la pieza", "materiales de la pieza"],
   piece_movement: ["movimiento de ubicación", "movimientos de ubicación"],
   piece_source_record: ["dato de origen", "datos de origen"],
   collection: ["colección", "colecciones"],
-  vocabulary_term: ["término de vocabulario", "términos de vocabulario"],
+  term: ["término de vocabulario", "términos de vocabulario"],
+  vocabulary: ["vocabulario", "vocabularios"],
   location: ["ubicación", "ubicaciones"],
   conservation_assessment: ["evaluación de conservación", "evaluaciones de conservación"],
-  import_template: ["plantilla de importación", "plantillas de importación"],
+  import_mapping_template: ["plantilla de importación", "plantillas de importación"],
+  import_batch: ["lote de importación", "lotes de importación"],
+  loan: ["préstamo", "préstamos"],
+  loan_item: ["pieza del préstamo", "piezas del préstamo"],
+  app_user: ["usuario", "usuarios"],
 };
 
 export function entityLabel(entityType: string, count: number): string {
