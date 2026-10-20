@@ -5,7 +5,7 @@
  * normalizado o tal como está escrito) o denominación (RF-031), filtros combinados en AND
  * (RF-032) y exportación de resultados a Excel (RF-036).
  */
-import { Eraser, FileSpreadsheet, SearchX } from "lucide-react";
+import { Eraser, FileSpreadsheet, Plus, SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { alertsForPiece, COLLECTIONS, getPieceDetail, listPieces, termsByVocabulary } from "@/lib/fixtures";
+import Link from "next/link";
 
 function BusquedaContent() {
   const { hasPermission } = useSession();
@@ -112,11 +113,19 @@ function BusquedaContent() {
             <p className="text-base text-gris-texto">
               <strong className="text-tinta">{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
             </p>
-            {hasPermission("exports.run") && (
-              <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-                Exportar a Excel
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-2">
+  <Link href="/piezas/nueva">
+    <Button icon={Plus}>
+      Nueva pieza
+    </Button>
+  </Link>
+
+  {hasPermission("exports.run") && (
+    <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+      Exportar a Excel
+    </Button>
+  )}
+</div>
           </div>
           {exported && (
             <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">

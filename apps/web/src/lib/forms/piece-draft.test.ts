@@ -35,7 +35,7 @@ describe("saveDraft y loadDraft", () => {
     expect(loadDraft(KEY, storage)).toEqual({ savedAt: NOW.toISOString(), base: "2026-10-01T08:00:00Z", values: VALUES });
   });
 
-  it("solo guarda versión, fecha, base y los siete campos del formulario", () => {
+  it("solo guarda versión, fecha, base y los campos del formulario", () => {
     const storage = memoryStorage();
 
     saveDraft(KEY, VALUES, null, storage, NOW);
@@ -162,10 +162,74 @@ describe("almacenamiento por defecto (window.sessionStorage)", () => {
   });
 });
 
+describe("borradores de la primera versión (siete campos)", () => {
+  it("se siguen recuperando: los campos nuevos toman su valor por defecto", () => {
+    const storage = memoryStorage();
+    const legacy = {
+      denomination: "Toro de Pucará",
+      tenure_regime: "Propiedad",
+      code_i: "",
+      description: "Cerámica policroma",
+      provenance: "Puno",
+      dimensions_text: "20 x 15 cm",
+      notes: "Revisar la base",
+    };
+    storage.setItem(KEY, JSON.stringify({ v: DRAFT_VERSION, savedAt: NOW.toISOString(), base: null, values: legacy }));
+
+    expect(loadDraft(KEY, storage)?.values).toEqual({
+      ...legacy,
+      collection_id: "",
+      category_id: "",
+      object_type_term_id: "",
+      availability_term_id: "",
+      lender_name: "",
+      loan_agreement_ref: "",
+      author: "",
+      period_text: "",
+      acquisition_method_term_id: "",
+      entry_date: "",
+      material_term_ids: [],
+      conservation_state_id: "",
+    });
+  });
+
+  it("conserva materiales, época, autor, estado de conservación y los campos de catalogación al guardar y recuperar", () => {
+    const storage = memoryStorage();
+    const values: PieceFormValues = {
+      ...VALUES,
+      collection_id: "col-1",
+      category_id: "cat-1",
+      object_type_term_id: "ot-1",
+      availability_term_id: "av-1",
+      acquisition_method_term_id: "aq-1",
+      entry_date: "1998-05-12",
+      lender_name: "Familia Bermúdez",
+      loan_agreement_ref: "Conv. 2024-03",
+      author: "Taller Santos",
+      period_text: "s. XX",
+      material_term_ids: ["m-1", "m-2"],
+      conservation_state_id: "c-1",
+    };
+
+    saveDraft(KEY, values, null, storage, NOW);
+
+    expect(loadDraft(KEY, storage)?.values).toEqual(values);
+  });
+});
+
 describe("sameFormValues", () => {
-  it("compara los siete campos", () => {
+  it("compara todos los campos", () => {
     expect(sameFormValues(VALUES, { ...VALUES })).toBe(true);
     expect(sameFormValues(VALUES, { ...VALUES, notes: "otra" })).toBe(false);
     expect(sameFormValues(VALUES, { ...VALUES, tenure_regime: "Comodato" })).toBe(false);
+    expect(sameFormValues(VALUES, { ...VALUES, author: "otro" })).toBe(false);
+  });
+
+  it("compara la lista de materiales por contenido y no por referencia", () => {
+    const left = { ...VALUES, material_term_ids: ["m-1", "m-2"] };
+
+    expect(sameFormValues(left, { ...VALUES, material_term_ids: ["m-1", "m-2"] })).toBe(true);
+    expect(sameFormValues(left, { ...VALUES, material_term_ids: ["m-1"] })).toBe(false);
+    expect(sameFormValues(left, { ...VALUES, material_term_ids: ["m-1", "m-3"] })).toBe(false);
   });
 });

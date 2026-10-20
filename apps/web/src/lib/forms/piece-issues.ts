@@ -13,11 +13,28 @@ export const ALL_FORM_FIELDS: readonly PieceFormField[] = [
   "denomination",
   "tenure_regime",
   "code_i",
+  "collection_id",
+  "category_id",
+  "object_type_term_id",
+  "availability_term_id",
+  "lender_name",
+  "loan_agreement_ref",
   "description",
+  "author",
   "provenance",
+  "period_text",
+  "acquisition_method_term_id",
+  "entry_date",
   "dimensions_text",
+  "material_term_ids",
+  "conservation_state_id",
   "notes",
 ];
+
+/** Campos del servidor que el formulario muestra con otro nombre (la época es un solo campo de texto). */
+const SERVER_FIELD_ALIASES: Readonly<Record<string, PieceFormField>> = {
+  "period.text": "period_text",
+};
 
 /**
  * Campo del formulario al que apunta el `field` de una incidencia, o `null` si no corresponde a
@@ -25,6 +42,8 @@ export const ALL_FORM_FIELDS: readonly PieceFormField[] = [
  * `identifiers[0].value` → `identifiers`) y solo se acepta si es un campo del formulario.
  */
 export function formFieldFor(serverField: string): PieceFormField | null {
+  const alias = SERVER_FIELD_ALIASES[serverField.trim()];
+  if (alias) return alias;
   const root = serverField.trim().split(/[.[]/)[0] ?? "";
   return (ALL_FORM_FIELDS as readonly string[]).includes(root) ? (root as PieceFormField) : null;
 }

@@ -23,6 +23,10 @@ describe("formFieldFor", () => {
     ["  description  ", "description"],
     ["dimensions_text[0]", "dimensions_text"],
     ["notes.extra", "notes"],
+    ["author", "author"],
+    ["period.text", "period_text"],
+    ["material_term_ids[0]", "material_term_ids"],
+    ["conservation_state_id", "conservation_state_id"],
   ])("«%s» apunta al campo %s", (serverField, expected) => {
     expect(formFieldFor(serverField)).toBe(expected);
   });

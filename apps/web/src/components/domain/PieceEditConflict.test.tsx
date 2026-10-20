@@ -145,15 +145,99 @@ describe("computeConflictChanges", () => {
     const theirs: PieceFormValues = {
       ...BASE,
       denomination: "A",
+      collection_id: "col-1",
+      category_id: "cat-1",
+      object_type_term_id: "ot-1",
+      availability_term_id: "av-1",
+      lender_name: "L",
+      loan_agreement_ref: "R",
       description: "B",
-      provenance: "C",
-      dimensions_text: "D",
-      notes: "E",
+      author: "C",
+      provenance: "D",
+      period_text: "E",
+      acquisition_method_term_id: "aq-1",
+      entry_date: "1998-05-12",
+      dimensions_text: "F",
+      material_term_ids: ["m-1"],
+      conservation_state_id: "c-1",
+      notes: "G",
     };
 
     const changes = computeConflictChanges(BASE, BASE, theirs);
 
     expect(changes.map((change) => change.field)).toEqual(CONFLICT_FIELDS.map(({ field }) => field));
     expect(changes.map((change) => change.label)).toEqual(CONFLICT_FIELDS.map(({ label }) => label));
+  });
+
+  it("cubre todos los campos que el editor permite modificar (el régimen y el código I no)", () => {
+    const covered = CONFLICT_FIELDS.map(({ field }) => field as string).sort();
+    const editable = Object.keys(EMPTY_PIECE_FORM)
+      .filter((field) => field !== "tenure_regime" && field !== "code_i")
+      .sort();
+
+    expect(covered).toEqual(editable);
+  });
+
+  it("muestra por su etiqueta los campos de lista (colección, categoría, tipo de bien, disponibilidad, adquisición)", () => {
+    const catalogs = {
+      collections: [{ id: "col-1", label: "Colección MMZ" }],
+      categories: [{ id: "cat-1", label: "Retablo" }],
+      objectTypes: [{ id: "ot-1", label: "Bien mueble" }],
+      availabilities: [{ id: "av-1", label: "En sala" }],
+      acquisitionMethods: [{ id: "aq-1", label: "Donación" }],
+    };
+    const theirs: PieceFormValues = {
+      ...BASE,
+      collection_id: "col-1",
+      category_id: "cat-1",
+      object_type_term_id: "ot-1",
+      availability_term_id: "av-1",
+      acquisition_method_term_id: "aq-1",
+      entry_date: "1998-05-12",
+    };
+
+    expect(computeConflictChanges(BASE, BASE, theirs, catalogs)).toEqual([
+      { field: "collection_id", label: "Colección", mine: "", theirs: "Colección MMZ" },
+      { field: "category_id", label: "Categoría", mine: "", theirs: "Retablo" },
+      { field: "object_type_term_id", label: "Tipo de bien", mine: "", theirs: "Bien mueble" },
+      { field: "availability_term_id", label: "Disponibilidad", mine: "", theirs: "En sala" },
+      { field: "acquisition_method_term_id", label: "Forma de adquisición", mine: "", theirs: "Donación" },
+      { field: "entry_date", label: "Fecha de ingreso", mine: "", theirs: "1998-05-12" },
+    ]);
+  });
+
+  it("muestra materiales y estado de conservación por su etiqueta cuando hay catálogos", () => {
+    const catalogs = {
+      materials: [
+        { id: "m-1", label: "Madera" },
+        { id: "m-2", label: "Arcilla" },
+      ],
+      conservationStates: [
+        { id: "c-1", label: "Bueno" },
+        { id: "c-2", label: "Regular" },
+      ],
+    };
+    const mine = { ...BASE, material_term_ids: ["m-1"], conservation_state_id: "c-1" };
+    const theirs = { ...BASE, material_term_ids: ["m-2", "m-1"], conservation_state_id: "c-2" };
+
+    expect(computeConflictChanges(BASE, mine, theirs, catalogs)).toEqual([
+      { field: "material_term_ids", label: "Materiales", mine: "Madera", theirs: "Arcilla, Madera" },
+      { field: "conservation_state_id", label: "Estado de conservación", mine: "Bueno", theirs: "Regular" },
+    ]);
+  });
+
+  it("la lista de materiales no cuenta como cambio si solo difiere el orden", () => {
+    const base = { ...BASE, material_term_ids: ["m-1", "m-2"] };
+    const theirs = { ...BASE, material_term_ids: ["m-2", "m-1"] };
+
+    expect(computeConflictChanges(base, base, theirs)).toEqual([]);
+  });
+
+  it("sin catálogos muestra el id en lugar de fallar", () => {
+    const theirs = { ...BASE, conservation_state_id: "c-9" };
+
+    expect(computeConflictChanges(BASE, BASE, theirs)).toEqual([
+      { field: "conservation_state_id", label: "Estado de conservación", mine: "", theirs: "c-9" },
+    ]);
   });
 });

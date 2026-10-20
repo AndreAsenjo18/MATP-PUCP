@@ -7,6 +7,8 @@ import {
   VALIDATION_DEBOUNCE_MS,
   createPiece,
   createPieceValidator,
+  fetchPieceCatalogs,
+  initialPieceCatalogs,
   updatePiece,
   validatePiece,
   type PieceCreateInput,
@@ -92,6 +94,164 @@ describe("updatePiece (modo mock)", () => {
   it("rechaza con not_found una pieza que no existe", async () => {
     const result = await updatePiece("no-existe", { notes: "x" });
     expect(result).toMatchObject({ status: "rejected", code: "not_found" });
+  });
+
+  it("aplica autor, época, materiales y estado de conservación sin perder el rango de años", async () => {
+    const original = detailOf(1);
+    const [wood, clay] = initialPieceCatalogs().materials;
+    const [good] = initialPieceCatalogs().conservationStates;
+    if (!wood || !clay || !good) throw new Error("Faltan términos de catálogo en los fixtures");
+
+    const result = await updatePiece(original.id, {
+      author: "Taller Santos",
+      period: { text: "s. XX" },
+      material_term_ids: [wood.id, clay.id],
+      conservation_state_id: good.id,
+    });
+
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.piece.author).toBe("Taller Santos");
+      expect(result.piece.period.text).toBe("s. XX");
+      expect(result.piece.period.year_from).toBe(original.period.year_from);
+      expect(result.piece.materials.map((material) => material.id)).toEqual([wood.id, clay.id]);
+      expect(result.piece.conservation_status?.id).toBe(good.id);
+    }
+  });
+
+  it("vaciar el estado de conservación y los materiales los quita de la ficha", async () => {
+    const result = await updatePiece(detailOf(1).id, { conservation_state_id: null, material_term_ids: [] });
+
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.piece.conservation_status).toBeNull();
+      expect(result.piece.materials).toEqual([]);
+    }
+  });
+
+  it("aplica disponibilidad, comodante y convenio, y conserva lo que no se envía", async () => {
+    const original = detailOf(1);
+    const [availability] = initialPieceCatalogs().availabilities;
+    if (!availability) throw new Error("Faltan términos de disponibilidad en los fixtures");
+
+    const result = await updatePiece(original.id, { availability_term_id: availability.id, lender_name: "Familia Bermúdez" });
+
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.piece.availability?.id).toBe(availability.id);
+      expect(result.piece.lender_name).toBe("Familia Bermúdez");
+      expect(result.piece.loan_agreement_ref).toBe(original.loan_agreement_ref);
+    }
+  });
+});
+
+describe("catálogos del editor", () => {
+  it("en modo mock salen de los fixtures al instante, sin llamar a la red", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const initial = initialPieceCatalogs();
+    const result = await fetchPieceCatalogs();
+
+    expect(initial.materials.length).toBeGreaterThan(0);
+    expect(initial.conservationStates.length).toBeGreaterThan(0);
+    for (const list of [initial.collections, initial.categories, initial.objectTypes, initial.acquisitionMethods, initial.availabilities]) {
+      expect(list.length).toBeGreaterThan(0);
+    }
+    expect(result).toEqual({ status: "ok", catalogs: initial });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("en modo live empiezan vacíos hasta que responde la API", () => {
+    useLive(async () => json(200, []));
+
+    expect(initialPieceCatalogs()).toEqual({
+      collections: [],
+      categories: [],
+      objectTypes: [],
+      acquisitionMethods: [],
+      availabilities: [],
+      materials: [],
+      conservationStates: [],
+    });
+  });
+
+  it("en modo live pide colecciones, categorías y los vocabularios del editor, y descarta los inactivos", async () => {
+    const term = (vocabulary: string, code: string, label: string, isActive: boolean) => ({
+      id: `id-${code}`,
+      code,
+      name: label,
+      label,
+      description: null,
+      external_uri: null,
+      is_active: isActive,
+      parent_id: null,
+      sort_order: 0,
+      vocabulary_code: vocabulary,
+    });
+    const collection = (id: string, name: string, isActive: boolean) => ({ id, name, acronym: null, is_active: isActive });
+    const fetchMock = useLive(async (request) => {
+      const path = new URL(request.url).pathname;
+      if (path === "/api/v1/collections") return json(200, [collection("col-1", "Colección MMZ", true), collection("col-2", "Cerrada", false)]);
+      if (path === "/api/v1/categories") return json(200, [term("CATEGORY", "RETABLO", "Retablo", true)]);
+      if (path.endsWith("/MATERIAL/terms")) {
+        return json(200, [term("MATERIAL", "MADERA", "Madera", true), term("MATERIAL", "VIEJO", "Obsoleto", false)]);
+      }
+      if (path.endsWith("/OBJECT_TYPE/terms")) return json(200, [term("OBJECT_TYPE", "BIEN_MUEBLE", "Bien mueble", true)]);
+      if (path.endsWith("/ACQUISITION_METHOD/terms")) return json(200, [term("ACQUISITION_METHOD", "DONACION", "Donación", true)]);
+      if (path.endsWith("/AVAILABILITY/terms")) return json(200, [term("AVAILABILITY", "EN_SALA", "En sala", true)]);
+      return json(200, [term("CONSERVATION_STATUS", "BUENO", "Bueno", true)]);
+    });
+
+    const result = await fetchPieceCatalogs();
+
+    const paths = fetchMock.mock.calls.map(([request]) => new URL(request.url).pathname).sort();
+    expect(paths).toEqual(
+      [
+        "/api/v1/categories",
+        "/api/v1/collections",
+        "/api/v1/vocabularies/ACQUISITION_METHOD/terms",
+        "/api/v1/vocabularies/AVAILABILITY/terms",
+        "/api/v1/vocabularies/CONSERVATION_STATUS/terms",
+        "/api/v1/vocabularies/MATERIAL/terms",
+        "/api/v1/vocabularies/OBJECT_TYPE/terms",
+      ].sort(),
+    );
+    expect(result).toEqual({
+      status: "ok",
+      catalogs: {
+        collections: [{ id: "col-1", label: "Colección MMZ" }],
+        categories: [{ id: "id-RETABLO", label: "Retablo" }],
+        objectTypes: [{ id: "id-BIEN_MUEBLE", label: "Bien mueble" }],
+        acquisitionMethods: [{ id: "id-DONACION", label: "Donación" }],
+        availabilities: [{ id: "id-EN_SALA", label: "En sala" }],
+        materials: [{ id: "id-MADERA", label: "Madera" }],
+        conservationStates: [{ id: "id-BUENO", label: "Bueno" }],
+      },
+    });
+  });
+
+  it("en modo live informa unavailable si falla alguna de las listas", async () => {
+    useLive(async (request) =>
+      new URL(request.url).pathname.endsWith("/MATERIAL/terms")
+        ? json(403, { code: "forbidden", message: "Sin permiso." })
+        : json(200, []),
+    );
+
+    const result = await fetchPieceCatalogs();
+
+    expect(result.status).toBe("unavailable");
+  });
+
+  it("en modo live informa unavailable si no hay conexión", async () => {
+    useLive(async () => {
+      throw new TypeError("fetch failed");
+    });
+
+    expect(await fetchPieceCatalogs()).toEqual({
+      status: "unavailable",
+      message: "No se pudo conectar con el servidor. Intente nuevamente.",
+    });
   });
 });
 

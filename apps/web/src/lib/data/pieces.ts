@@ -20,6 +20,8 @@
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
 import type { paths } from "@/lib/api/schema";
 import { getPieceDetail, listPieces, PIECES } from "@/lib/fixtures";
+import { COLLECTIONS } from "@/lib/fixtures/collections";
+import { TERMS, termsByVocabulary } from "@/lib/fixtures/reference-data";
 
 import { apiBaseUrl, getApiMode } from "./mode";
 
@@ -165,16 +167,52 @@ function mockSummaryFrom(input: PieceCreateInput): PieceSummary {
   };
 }
 
-/** Respuesta simulada de `PUT /pieces/{id}` en modo mock: aplica solo los campos de texto del editor. */
+/** Término del catálogo de fixtures por id (modo mock); `undefined` si el id no existe. */
+function mockTermRef(id: string): PieceDetail["materials"][number] | undefined {
+  const term = TERMS.find((candidate) => candidate.id === id);
+  return term ? { id: term.id, code: term.code, label: term.label } : undefined;
+}
+
+/** Resuelve un id de término opcional: `undefined` = no cambia, `null` = se vacía, id desconocido = no cambia. */
+function mockTermUpdate(
+  currentValue: PieceDetail["materials"][number] | null,
+  id: string | null | undefined,
+): PieceDetail["materials"][number] | null {
+  if (id === undefined) return currentValue;
+  if (id === null) return null;
+  return mockTermRef(id) ?? currentValue;
+}
+
+/** Respuesta simulada de `PUT /pieces/{id}` en modo mock: aplica solo los campos del editor. */
 function mockApplyUpdate(current: PieceDetail, input: PieceUpdateInput): PieceDetail {
+  const collectionId = input.collection_id;
+  const collection =
+    collectionId === undefined
+      ? current.collection
+      : collectionId === null
+        ? null
+        : (COLLECTIONS.find((candidate) => candidate.id === collectionId) ?? null);
   return {
     ...current,
     denomination: input.denomination ?? current.denomination,
+    collection: collection && "name" in collection ? { id: collection.id, name: collection.name, acronym: collection.acronym } : null,
+    category: mockTermUpdate(current.category, input.category_id),
+    object_type: mockTermUpdate(current.object_type, input.object_type_term_id),
+    acquisition_method: mockTermUpdate(current.acquisition_method, input.acquisition_method_term_id),
+    availability: mockTermUpdate(current.availability, input.availability_term_id),
+    lender_name: input.lender_name === undefined ? current.lender_name : input.lender_name,
+    loan_agreement_ref: input.loan_agreement_ref === undefined ? current.loan_agreement_ref : input.loan_agreement_ref,
+    entry_date: input.entry_date === undefined ? current.entry_date : input.entry_date,
     description: input.description === undefined ? current.description : input.description,
     provenance: input.provenance === undefined ? current.provenance : input.provenance,
+    period: input.period ? { ...current.period, ...input.period } : current.period,
     dimensions_text: input.dimensions_text === undefined ? current.dimensions_text : input.dimensions_text,
     notes: input.notes === undefined ? current.notes : input.notes,
     author: input.author === undefined ? current.author : input.author,
+    conservation_status: mockTermUpdate(current.conservation_status, input.conservation_state_id),
+    materials: input.material_term_ids
+      ? input.material_term_ids.map(mockTermRef).filter((term): term is NonNullable<typeof term> => term !== undefined)
+      : current.materials,
     updated_at: new Date().toISOString(),
   };
 }
@@ -313,6 +351,116 @@ export function createPieceValidator({ delayMs = VALIDATION_DEBOUNCE_MS }: { del
   }
 
   return { validate, cancel };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Catálogos del editor (design D8: materiales y estado de conservación)
+// ---------------------------------------------------------------------------------------------
+
+/** Una opción de un vocabulario: el `id` es el que viaja en `material_term_ids` / `conservation_state_id`. */
+export interface TermOption {
+  id: string;
+  label: string;
+}
+
+export interface PieceFormCatalogs {
+  collections: TermOption[];
+  categories: TermOption[];
+  objectTypes: TermOption[];
+  acquisitionMethods: TermOption[];
+  availabilities: TermOption[];
+  materials: TermOption[];
+  conservationStates: TermOption[];
+}
+
+/** Códigos de los vocabularios del seed que alimentan las listas del editor. */
+export const MATERIAL_VOCABULARY = "MATERIAL";
+export const CONSERVATION_VOCABULARY = "CONSERVATION_STATUS";
+export const OBJECT_TYPE_VOCABULARY = "OBJECT_TYPE";
+export const ACQUISITION_VOCABULARY = "ACQUISITION_METHOD";
+export const AVAILABILITY_VOCABULARY = "AVAILABILITY";
+export const CATEGORY_VOCABULARY = "CATEGORY";
+
+function mockOptions(vocabularyCode: string): TermOption[] {
+  return termsByVocabulary(vocabularyCode)
+    .filter((term) => term.is_active)
+    .map((term) => ({ id: term.id, label: term.label }));
+}
+
+function mockCollectionOptions(): TermOption[] {
+  return COLLECTIONS.filter((collection) => collection.is_active).map((collection) => ({ id: collection.id, label: collection.name }));
+}
+
+/**
+ * Catálogos con los que arranca el formulario. En modo mock salen de los fixtures al instante (el
+ * primer render ya los tiene); en modo `live` empiezan vacíos hasta que `fetchPieceCatalogs` responda.
+ */
+export function initialPieceCatalogs(): PieceFormCatalogs {
+  if (getApiMode() === "mock") {
+    return {
+      collections: mockCollectionOptions(),
+      categories: mockOptions(CATEGORY_VOCABULARY),
+      objectTypes: mockOptions(OBJECT_TYPE_VOCABULARY),
+      acquisitionMethods: mockOptions(ACQUISITION_VOCABULARY),
+      availabilities: mockOptions(AVAILABILITY_VOCABULARY),
+      materials: mockOptions(MATERIAL_VOCABULARY),
+      conservationStates: mockOptions(CONSERVATION_VOCABULARY),
+    };
+  }
+  return { collections: [], categories: [], objectTypes: [], acquisitionMethods: [], availabilities: [], materials: [], conservationStates: [] };
+}
+
+export type PieceCatalogsResult = { status: "ok"; catalogs: PieceFormCatalogs } | { status: "unavailable"; message: string };
+
+async function fetchTermOptions(vocabularyCode: string): Promise<TermOption[] | null> {
+  const { data, error } = await client().GET("/api/v1/vocabularies/{vocabulary_code}/terms", {
+    params: { path: { vocabulary_code: vocabularyCode } },
+  });
+  if (error) return null;
+  return data.filter((term) => term.is_active).map((term) => ({ id: term.id, label: term.label }));
+}
+
+/** `GET /categories`: las categorías (tipologías) activas; el contrato las expone como términos. */
+async function fetchCategoryOptions(): Promise<TermOption[] | null> {
+  const { data, error } = await client().GET("/api/v1/categories", {});
+  if (error) return null;
+  return data.filter((term) => term.is_active).map((term) => ({ id: term.id, label: term.label }));
+}
+
+/** `GET /collections`: las colecciones activas. */
+async function fetchCollectionOptions(): Promise<TermOption[] | null> {
+  const { data, error } = await client().GET("/api/v1/collections", {});
+  if (error) return null;
+  return data.filter((collection) => collection.is_active).map((collection) => ({ id: collection.id, label: collection.name }));
+}
+
+/**
+ * Carga las siete listas del editor: colecciones, categorías, tipos de bien, formas de adquisición,
+ * disponibilidad, materiales y estados de conservación (solo elementos activos). Si una falla, se informa
+ * `unavailable` y el formulario sigue usable con los valores que ya tiene la pieza.
+ */
+export async function fetchPieceCatalogs(): Promise<PieceCatalogsResult> {
+  if (getApiMode() === "mock") return { status: "ok", catalogs: initialPieceCatalogs() };
+  try {
+    const [collections, categories, objectTypes, acquisitionMethods, availabilities, materials, conservationStates] = await Promise.all([
+      fetchCollectionOptions(),
+      fetchCategoryOptions(),
+      fetchTermOptions(OBJECT_TYPE_VOCABULARY),
+      fetchTermOptions(ACQUISITION_VOCABULARY),
+      fetchTermOptions(AVAILABILITY_VOCABULARY),
+      fetchTermOptions(MATERIAL_VOCABULARY),
+      fetchTermOptions(CONSERVATION_VOCABULARY),
+    ]);
+    if (!collections || !categories || !objectTypes || !acquisitionMethods || !availabilities || !materials || !conservationStates) {
+      return { status: "unavailable", message: "No se pudieron cargar todas las listas del formulario (colecciones, categorías, materiales…)." };
+    }
+    return {
+      status: "ok",
+      catalogs: { collections, categories, objectTypes, acquisitionMethods, availabilities, materials, conservationStates },
+    };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import { RequireSession } from "@/components/layout/RequireSession";
 import type { ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
+import { maskPieceForRole } from "@/lib/data/masking";
 import { getApiMode } from "@/lib/data/mode";
 import { fetchPieceDetail, updatePiece, type PieceUpdateInput } from "@/lib/data/pieces";
 import { toFormValues, toUpdateInput, type PieceFormValues } from "@/lib/forms/piece-form";
@@ -41,7 +42,7 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
   }
 
   async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {
-    const input = toUpdateInput(values);
+    const input = toUpdateInput(values, piece.period, piece.masked_fields ?? []);
     const result = await updatePiece(piece.id, input);
     const outcome = outcomeFromUpdate(
       result,
@@ -79,6 +80,8 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
         draftBase={piece.updated_at}
         onSave={handleSave}
         loadCurrentValues={loadCurrentValues}
+        legalOwner={piece.legal_owner}
+        maskedFields={piece.masked_fields ?? []}
         onCancel={() => router.push(`/piezas/${piece.id}`)}
       />
     </div>
@@ -87,9 +90,11 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
 
 function MockEditorLoader({ pieceId }: { pieceId: string }) {
   const store = useMockStore();
-  const { currentUser, currentRole } = useSession();
-  const piece = store.pieces[pieceId];
-  if (!piece) notFound();
+  const { currentUser, currentRole, hasPermission } = useSession();
+  const stored = store.pieces[pieceId];
+  if (!stored) notFound();
+  // Igual que la API real: el rol sin permiso sobre datos de comodato no recibe comodante ni convenio (RF-041).
+  const piece = maskPieceForRole(stored, hasPermission);
 
   return (
     <EditorView
@@ -99,9 +104,22 @@ function MockEditorLoader({ pieceId }: { pieceId: string }) {
           pieceId,
           {
             denomination: updated.denomination,
+            collection: updated.collection,
+            category: updated.category,
+            object_type: updated.object_type,
+            availability: updated.availability,
+            acquisition_method: updated.acquisition_method,
+            entry_date: updated.entry_date,
+            // Con el dato restringido, `updated` conserva el valor original: no se pierde.
+            lender_name: updated.lender_name,
+            loan_agreement_ref: updated.loan_agreement_ref,
             description: updated.description,
+            author: updated.author,
             provenance: updated.provenance,
+            period: updated.period,
             dimensions_text: updated.dimensions_text,
+            materials: updated.materials,
+            conservation_status: updated.conservation_status,
             notes: updated.notes,
           },
           currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
