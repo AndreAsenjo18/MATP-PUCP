@@ -156,9 +156,11 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
 
       {current?.status === "ok" && (
         <>
-          <p aria-live="polite" className="text-sm text-gris-texto">
-            {current.total === 1 ? "1 conjunto de cambios" : `${current.total} conjuntos de cambios`}
-          </p>
+          {current.total > 0 && (
+            <p aria-live="polite" className="text-sm text-gris-texto">
+              {current.total === 1 ? "1 conjunto de cambios" : `${current.total} conjuntos de cambios`}
+            </p>
+          )}
           <AuditLogChangeSetList
             changeSets={current.changeSets}
             hasFilters={hasActiveAuditFilters(filters)}

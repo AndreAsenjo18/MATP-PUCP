@@ -236,9 +236,11 @@ export function TrashPanel({ canRestore }: TrashPanelProps) {
 
       {current?.status === "ok" && (
         <>
-          <p aria-live="polite" className="text-sm text-gris-texto">
-            {current.data.total === 1 ? "1 registro eliminado" : `${current.data.total} registros eliminados`}
-          </p>
+          {current.data.total > 0 && (
+            <p aria-live="polite" className="text-sm text-gris-texto">
+              {current.data.total === 1 ? "1 registro eliminado" : `${current.data.total} registros eliminados`}
+            </p>
+          )}
           {focusId && !entries.some((entry) => entry.entity_id === focusId) && <p className="text-sm text-ambar-texto">{TRASH_FOCUS_MISSING}</p>}
           <TrashEntryList
             entries={entries}

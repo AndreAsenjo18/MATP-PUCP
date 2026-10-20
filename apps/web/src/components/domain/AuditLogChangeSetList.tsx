@@ -40,6 +40,11 @@ export function auditScopeSentence(summary: Pick<AuditChangeSetSummary, "entity_
   return `${scope} · ${fields}`;
 }
 
+/** Primera letra en mayúscula, para abrir una frase con el nombre de un tipo de registro. */
+function sentenceCase(text: string): string {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
 /** Los primeros caracteres de un identificador, para reconocerlo sin leer 36 símbolos. */
 export function shortId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}…` : id;
@@ -158,7 +163,7 @@ export function AuditLogEntryList({ entries, total, loading = false, error, onLo
           {entries.map((entry) => (
             <li key={entry.id} className="flex flex-col text-base text-tinta">
               <span className="text-sm text-gris-texto">
-                {auditEntityLabel(entry.entity_type)} <span className="font-mono">{shortId(entry.entity_id)}</span> · {formatMoment(entry.occurred_at)}
+                {sentenceCase(auditEntityLabel(entry.entity_type))} <span className="font-mono">{shortId(entry.entity_id)}</span> · {formatMoment(entry.occurred_at)}
               </span>
               {entry.values_masked ? (
                 <>

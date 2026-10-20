@@ -158,7 +158,7 @@ describe("AuditLogEntryList", () => {
     const text = visibleText(html);
 
     expect(html).toContain('aria-label="Campos cambiados en el conjunto"');
-    expect(text).toContain("pieza");
+    expect(text).toContain("Pieza");
     expect(text).toContain(shortId(PIECE));
     expect(text).toContain("procedencia: Ayacucho → Huancavelica");
   });
@@ -184,8 +184,8 @@ describe("AuditLogEntryList", () => {
       render(<AuditLogEntryList entries={[entry({ entity_type: "piece_identifier", entity_id: ids.identifier(108), field: "is_current" }), entry({ id: ids.audit(2), entity_type: "media_asset", entity_id: ids.media(1) })]} total={2} />),
     );
 
-    expect(text).toContain("identificador de pieza");
-    expect(text).toContain("fotografía o documento");
+    expect(text).toContain("Identificador de pieza");
+    expect(text).toContain("Fotografía o documento");
   });
 
   it("cuando faltan filas ofrece cargar más y dice cuántas se ven", () => {

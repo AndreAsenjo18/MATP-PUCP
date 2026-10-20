@@ -456,7 +456,7 @@ function demoRestore(entry: Pick<TrashEntry, "entity_type" | "entity_id">): Tras
       entityType: parent.entity_type,
       entityId: parent.entity_id,
       label: parent.entity_label,
-      message: `No se puede restaurar: «${parent.entity_label}» (${parent.type_label}) también está eliminado. Restáurelo primero.`,
+      message: `No se puede restaurar: «${parent.entity_label}» (${parent.type_label}) sigue en la papelera. Restaure ese registro primero.`,
     });
   }
   if (blockers.length > 0) return { status: "blocked", message: blockers[0].message, blockers };

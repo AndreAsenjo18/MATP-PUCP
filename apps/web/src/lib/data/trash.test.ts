@@ -283,7 +283,7 @@ describe("papelera en modo mock", () => {
     if (outcome.status === "blocked") {
       expect(outcome.blockers).toHaveLength(1);
       expect(outcome.blockers[0]).toMatchObject({ entityType: "piece", entityId: PIECE });
-      expect(outcome.message).toContain("Restáurelo primero");
+      expect(outcome.message).toContain("sigue en la papelera");
       expect(blockerDestination({ entity_type: "media_asset" }, outcome.blockers[0])).toEqual({ kind: "trash", entityType: "piece", entityId: PIECE });
     }
   });
