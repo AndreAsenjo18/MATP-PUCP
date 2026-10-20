@@ -29,7 +29,13 @@ DEFAULT_OUTPUT = (
 BOILERPLATE = {"created_at", "updated_at", "deleted_at", "deleted_by_id", "deletion_reason"}
 
 # Tablas de solo inserción (ADR-004, triggers en BD).
-APPEND_ONLY = {"audit_log", "piece_movement", "piece_source_record", "conservation_assessment"}
+APPEND_ONLY = {
+    "audit_log",
+    "audit_digest",
+    "piece_movement",
+    "piece_source_record",
+    "conservation_assessment",
+}
 
 # Agrupación por módulo funcional del SRS.
 GROUPS = [
@@ -70,7 +76,15 @@ GROUPS = [
     (
         "Usuarios, Seguridad y Auditoría (EP-05)",
         "#EDF0F7",
-        ["app_user", "role", "permission", "role_permission", "user_role", "audit_log"],
+        [
+            "app_user",
+            "role",
+            "permission",
+            "role_permission",
+            "user_role",
+            "audit_log",
+            "audit_digest",
+        ],
     ),
 ]
 
