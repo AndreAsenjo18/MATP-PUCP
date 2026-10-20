@@ -49,7 +49,7 @@ function DuplicadosContent() {
             <Card key={candidate.id} className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm text-gris-texto">
-                  Similitud: <strong className="text-tinta">{Math.round(candidate.score * 100)} %</strong> · coincide en: {candidate.matched_fields.join(", ")}
+                  Similitud: <strong className="text-tinta">{Math.round(candidate.score * 100)} %</strong> · coincide en: {candidate.matched_fields.map((signal) => signal.field).join(", ")}
                 </span>
                 <StatusBadge status={duplicateStatus(candidate.status)} />
               </div>

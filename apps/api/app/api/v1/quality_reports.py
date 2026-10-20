@@ -31,11 +31,13 @@ from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
 from app.modules.quality.models import DuplicateStatus, QualityJob
+from app.modules.quality.queue import queue_query, reopen_expired_postponements
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
     AlertType,
     CompletenessKpis,
     DuplicateCandidateOut,
+    DuplicateOrigin,
     DuplicateResolution,
     IncompletePiece,
     QualityJobOut,
@@ -88,17 +90,40 @@ def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
 @router.get(
     "/quality/duplicates",
     response_model=Page[DuplicateCandidateOut],
-    summary="Cola de posibles duplicados por revisar (RF-030)",
+    summary="Cola de posibles duplicados por revisar, con filtros (RF-030)",
     tags=["Calidad"],
-    **stub(CHANGE_DUPLICATES),
+    **implemented(),
 )
 def list_duplicate_candidates(
+    session: SessionDep,
     user: Reader,
     params: Annotated[PageParams, Depends(page_params)],
     candidate_status: Annotated[DuplicateStatus | None, Query(alias="status")] = None,
+    collection_id: Annotated[
+        uuid.UUID | None, Query(description="Incluye las subcolecciones.")
+    ] = None,
     min_score: Annotated[float | None, Query(ge=0, le=1)] = None,
+    origin: Annotated[
+        DuplicateOrigin | None,
+        Query(description="CATALOG: dos piezas del catálogo; IMPORT: fila de importación."),
+    ] = None,
 ) -> Page[DuplicateCandidateOut]:
-    raise not_implemented(CHANGE_DUPLICATES, page_example(DuplicateCandidateOut))
+    if reopen_expired_postponements(session):  # design D5: no cron, reopened on read
+        session.commit()
+    statement = queue_query(
+        session,
+        status=candidate_status,
+        collection_id=collection_id,
+        min_score=min_score,
+        origin=origin,
+    )
+    rows, total = paginate(session, statement, params)
+    return Page[DuplicateCandidateOut](
+        items=[DuplicateCandidateOut.model_validate(row) for row in rows],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.post(

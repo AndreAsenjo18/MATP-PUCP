@@ -1407,12 +1407,33 @@
       "DuplicateCandidateOut": {
         "examples": [
           {
+            "blocking_conflict": false,
             "detected_by": "rules",
             "id": "01920000-0000-7000-8000-000000000911",
             "matched_fields": [
-              "title",
-              "provenance",
-              "dimensions_text"
+              {
+                "contribution": 0.35,
+                "field": "identifier:COLECCION",
+                "signal": "identifier",
+                "similarity": 1.0,
+                "values": {
+                  "a": "MMZ 012",
+                  "b": "M.M.Z. 012",
+                  "normalized": "MMZ 12"
+                },
+                "weight": 0.35
+              },
+              {
+                "contribution": 0.279,
+                "field": "denomination",
+                "signal": "denomination",
+                "similarity": 0.93,
+                "values": {
+                  "a": "Retablo ayacuchano",
+                  "b": "RETABLO AYACUCHANO"
+                },
+                "weight": 0.3
+              }
             ],
             "piece_a_id": "01920000-0000-7000-8000-000000000101",
             "piece_b_id": "01920000-0000-7000-8000-000000000102",
@@ -1421,6 +1442,11 @@
           }
         ],
         "properties": {
+          "blocking_conflict": {
+            "description": "Dos códigos I vigentes distintos: la fusión queda bloqueada (RN-002).",
+            "title": "Blocking Conflict",
+            "type": "boolean"
+          },
           "detected_by": {
             "title": "Detected By",
             "type": "string"
@@ -1444,7 +1470,7 @@
           },
           "matched_fields": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/DuplicateSignal"
             },
             "title": "Matched Fields",
             "type": "array"
@@ -1465,6 +1491,19 @@
               }
             ],
             "title": "Piece B Id"
+          },
+          "postponed_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Un par pospuesto vuelve a pendiente al leer la cola después de esta fecha.",
+            "title": "Postponed Until"
           },
           "resolution_note": {
             "anyOf": [
@@ -1508,6 +1547,8 @@
           "matched_fields",
           "status",
           "detected_by",
+          "blocking_conflict",
+          "postponed_until",
           "reviewed_at",
           "resolution_note"
         ],
@@ -1561,6 +1602,64 @@
           "resolution"
         ],
         "title": "DuplicateResolution",
+        "type": "object"
+      },
+      "DuplicateSignal": {
+        "additionalProperties": true,
+        "description": "One explained reason of a candidate score (``quality.scoring.Signal``, design D1).\n\nRows written before the detection rules (seed, imports) may carry only ``field`` and\n``similarity``, so the rest is optional and unknown keys are kept.",
+        "properties": {
+          "contribution": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contribution"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "signal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "identifier, denomination, collection, …",
+            "title": "Signal"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          },
+          "values": {
+            "description": "Valores comparados de ambas piezas.",
+            "title": "Values"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "field",
+          "similarity"
+        ],
+        "title": "DuplicateSignal",
         "type": "object"
       },
       "DuplicateStatus": {
@@ -13922,6 +14021,25 @@
             }
           },
           {
+            "description": "Incluye las subcolecciones.",
+            "in": "query",
+            "name": "collection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Incluye las subcolecciones.",
+              "title": "Collection Id"
+            }
+          },
+          {
             "in": "query",
             "name": "min_score",
             "required": false,
@@ -13937,6 +14055,28 @@
                 }
               ],
               "title": "Min Score"
+            }
+          },
+          {
+            "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "CATALOG",
+                    "IMPORT"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+              "title": "Origin"
             }
           },
           {
@@ -14007,16 +14147,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`."
           }
         },
         "security": [
@@ -14024,12 +14154,11 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Cola de posibles duplicados por revisar (RF-030)",
+        "summary": "Cola de posibles duplicados por revisar, con filtros (RF-030)",
         "tags": [
           "Calidad"
         ],
-        "x-change": "deteccion-duplicados-y-cola-revision",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/quality/duplicates/scan": {

@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -90,8 +90,29 @@ class CompletenessKpis(BaseModel):
     computed_at: datetime
 
 
+DuplicateOrigin = Literal["CATALOG", "IMPORT"]
+
+
+class DuplicateSignal(BaseModel):
+    """One explained reason of a candidate score (``quality.scoring.Signal``, design D1).
+
+    Rows written before the detection rules (seed, imports) may carry only ``field`` and
+    ``similarity``, so the rest is optional and unknown keys are kept.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    signal: str | None = Field(None, description="identifier, denomination, collection, …")
+    field: str
+    similarity: float
+    weight: float | None = None
+    contribution: float | None = None
+    values: Any = Field(None, description="Valores comparados de ambas piezas.")
+
+
 class DuplicateCandidateOut(BaseModel):
     model_config = ConfigDict(
+        from_attributes=True,
         json_schema_extra={
             "examples": [
                 {
@@ -100,14 +121,33 @@ class DuplicateCandidateOut(BaseModel):
                     "piece_b_id": "01920000-0000-7000-8000-000000000102",
                     "import_row_id": None,
                     "score": 0.91,
-                    "matched_fields": ["title", "provenance", "dimensions_text"],
+                    "matched_fields": [
+                        {
+                            "signal": "identifier",
+                            "field": "identifier:COLECCION",
+                            "similarity": 1.0,
+                            "weight": 0.35,
+                            "contribution": 0.35,
+                            "values": {"normalized": "MMZ 12", "a": "MMZ 012", "b": "M.M.Z. 012"},
+                        },
+                        {
+                            "signal": "denomination",
+                            "field": "denomination",
+                            "similarity": 0.93,
+                            "weight": 0.3,
+                            "contribution": 0.279,
+                            "values": {"a": "Retablo ayacuchano", "b": "RETABLO AYACUCHANO"},
+                        },
+                    ],
                     "status": "PENDING",
                     "detected_by": "rules",
+                    "blocking_conflict": False,
+                    "postponed_until": None,
                     "reviewed_at": None,
                     "resolution_note": None,
                 }
             ]
-        }
+        },
     )
 
     id: uuid.UUID
@@ -115,9 +155,15 @@ class DuplicateCandidateOut(BaseModel):
     piece_b_id: uuid.UUID | None
     import_row_id: uuid.UUID | None
     score: float = Field(ge=0, le=1)
-    matched_fields: list[str]
+    matched_fields: list[DuplicateSignal]
     status: DuplicateStatus
     detected_by: str
+    blocking_conflict: bool = Field(
+        description="Dos códigos I vigentes distintos: la fusión queda bloqueada (RN-002)."
+    )
+    postponed_until: datetime | None = Field(
+        description="Un par pospuesto vuelve a pendiente al leer la cola después de esta fecha."
+    )
     reviewed_at: datetime | None
     resolution_note: str | None
 
