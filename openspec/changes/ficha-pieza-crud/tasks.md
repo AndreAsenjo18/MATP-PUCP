@@ -22,7 +22,7 @@
 - [x] 4.1 Decidir y registrar ADR Propuesto sobre librería de formularios (`react-hook-form` + `zod` o `useReducer`), instalar versiones estables vigentes si se adoptan; verificar `npm run lint:web` (RNF-004)
 - [x] 4.2 Crear `app/piezas/nueva` (no existe en la maqueta) y conectar `app/piezas/[id]/editar` al modo `live` (`lib/data/pieces.ts`: `createPiece`, `updatePiece`, `validatePiece`) con debounce y `AbortController`; pruebas Vitest de la capa de datos (rama mock y rama live con `fetch` simulado) (Req: Validación previa sin persistencia; RF-043)
 - [x] 4.3 Mostrar errores y advertencias junto al campo, conflicto 409 con opción "ver cambios del otro usuario" y borrador en `sessionStorage`; prueba de componente del conflicto (Req: Control de concurrencia en la edición; RNF-010)
-- [ ] 4.4 Diálogos de eliminación (motivo obligatorio), restauración, corrección de código I (solo con permiso) y confirmación de separación de códigos concatenados; pruebas de componente (Req: Operación de corrección auditada del código I)
+- [x] 4.4 Diálogos de eliminación (motivo obligatorio), restauración, corrección de código I (solo con permiso) y confirmación de separación de códigos concatenados; pruebas de componente (Req: Operación de corrección auditada del código I)
 
 ## 5. Cierre del change
 

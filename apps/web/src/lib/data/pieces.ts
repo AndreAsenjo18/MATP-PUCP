@@ -90,7 +90,13 @@ export type PieceIssue = PieceValidationResult["issues"][number];
  * es un stub 501 en este entorno o no hubo conexión.
  */
 export type PieceWriteFailure =
-  | { status: "rejected"; code: string; message: string }
+  | {
+      status: "rejected";
+      code: string;
+      message: string;
+      /** `details` del cuerpo de error (p. ej. la pieza que ya usa un código I), si la API lo envía. */
+      details?: Record<string, unknown>;
+    }
   | { status: "unavailable"; message: string };
 
 export type PieceCreateResult = { status: "ok"; piece: PieceSummary } | PieceWriteFailure;
@@ -122,7 +128,13 @@ const CONNECTION_MESSAGE = "No se pudo conectar con el servidor. Intente nuevame
 function failureFrom(error: unknown): PieceWriteFailure {
   if (isNotImplemented(error)) return { status: "unavailable", message: apiErrorMessage(error) };
   const code = (error as { code?: unknown } | null)?.code;
-  return { status: "rejected", code: typeof code === "string" ? code : "error", message: apiErrorMessage(error) };
+  const details = (error as { details?: unknown } | null)?.details;
+  return {
+    status: "rejected",
+    code: typeof code === "string" ? code : "error",
+    message: apiErrorMessage(error),
+    ...(isRecord(details) ? { details } : {}),
+  };
 }
 
 function isAbortError(error: unknown): boolean {
@@ -301,4 +313,248 @@ export function createPieceValidator({ delayMs = VALIDATION_DEBOUNCE_MS }: { del
   }
 
   return { validate, cancel };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Eliminar, restaurar e identificadores (change ficha-pieza-crud, tarea 4.4)
+// ---------------------------------------------------------------------------------------------
+
+type IdentifierOut = ApiSchemas["IdentifierOut"];
+
+/**
+ * Cuerpo de `POST /pieces/{id}/identifiers`. `confirmed_split` (design D5) todavía no figura en
+ * `IdentifierCreate` del contrato: el tipo lo añade aquí y el cuerpo lo envía igualmente. Pendiente
+ * de backend/OpenAPI (tareas 3.1 y 5.2).
+ */
+export type IdentifierCreateInput = ApiSchemas["IdentifierCreate"] & { confirmed_split?: boolean };
+/** Cuerpo de `POST .../identifiers/{identifier_id}/correction` (design D6). */
+export type InventoryCodeCorrectionInput = ApiSchemas["InventoryCodeCorrection"];
+
+/** Código de error 422 cuando el valor reune varios códigos (design D5). */
+export const CONCATENATED_IDENTIFIER_CODE = "concatenated_identifier";
+
+/** Un identificador propuesto por el servidor al separar un valor concatenado (nunca se separa solo). */
+export interface SplitProposal {
+  identifier_type_code: string;
+  original_value: string;
+  normalized_value: string | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Lee `details.proposals` de un 422 `concatenated_identifier`. La forma de cada propuesta no está
+ * en el contrato (solo en design D5: tipo, valor original, normalizado); si no coincide con
+ * `identifier_type_code` / `original_value` / `normalized_value`, devuelve `[]` y el error se
+ * muestra como un rechazo normal en lugar de proponer algo inventado.
+ */
+export function parseSplitProposals(details: unknown): SplitProposal[] {
+  const raw = isRecord(details) ? details.proposals : undefined;
+  if (!Array.isArray(raw)) return [];
+  const proposals: SplitProposal[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) return [];
+    const { identifier_type_code: type, original_value: value, normalized_value: normalized } = item;
+    if (typeof type !== "string" || typeof value !== "string") return [];
+    proposals.push({ identifier_type_code: type, original_value: value, normalized_value: typeof normalized === "string" ? normalized : null });
+  }
+  return proposals;
+}
+
+const PIECE_MISSING: PieceWriteFailure = { status: "rejected", code: "not_found", message: "La pieza no existe." };
+
+/** Resultado de una operación sin datos de vuelta (`DELETE` responde 204). */
+export type PieceActionResult = { status: "ok" } | PieceWriteFailure;
+export type PieceRestoreResult = { status: "ok"; piece: PieceDetail } | PieceWriteFailure;
+/** `needs_split`: 422 `concatenated_identifier`; hay que mostrar las propuestas y pedir confirmación. */
+export type IdentifierAddResult =
+  | { status: "ok"; identifier: IdentifierOut }
+  | { status: "needs_split"; message: string; proposals: SplitProposal[] }
+  | PieceWriteFailure;
+export type InventoryCorrectionResult = { status: "ok"; identifier: IdentifierOut } | PieceWriteFailure;
+/**
+ * Registro de varios identificadores confirmados por separado. No es atómico (cada uno es una
+ * petición): si uno falla, `identifiers` trae los que ya quedaron registrados.
+ */
+export type SplitIdentifiersResult =
+  | { status: "ok"; identifiers: IdentifierOut[] }
+  | { status: "failed"; identifiers: IdentifierOut[]; failedValue: string; failure: PieceWriteFailure };
+
+function normalizedForMock(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+/** Identificador sintético del modo mock (no se conserva en ningún store). */
+function mockIdentifier(pieceId: string, input: Pick<IdentifierCreateInput, "identifier_type_code" | "value" | "source" | "notes">): IdentifierOut {
+  return {
+    id: crypto.randomUUID(),
+    piece_id: pieceId,
+    identifier_type_code: input.identifier_type_code,
+    original_value: input.value.trim(),
+    normalized_value: normalizedForMock(input.value),
+    detected_format: null,
+    normalization_status: "NORMALIZED",
+    is_current: true,
+    is_locked: input.identifier_type_code === "I",
+    notes: input.notes ?? null,
+    source: input.source ?? null,
+    recorded_at: new Date().toISOString(),
+    replaced_by_id: null,
+  };
+}
+
+/** Detección de concatenados del modo mock: solo separa por «/» o «;». El normalizador real es del servidor. */
+function mockSplitProposals(value: string): SplitProposal[] {
+  const parts = value
+    .split(/[/;]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return [];
+  return parts.map((part) => ({
+    identifier_type_code: /^I[\s.-]?\d/i.test(part) ? "I" : "COLLECTION",
+    original_value: part,
+    normalized_value: normalizedForMock(part),
+  }));
+}
+
+/**
+ * `DELETE /pieces/{piece_id}?reason=...` (eliminación lógica, RN-005). El contrato manda el motivo
+ * como *query*, no en el cuerpo que describe design D7. Sin motivo no se llama a la API.
+ */
+export async function deletePiece(id: string, reason: string): Promise<PieceActionResult> {
+  const trimmed = reason.trim();
+  if (!trimmed) return { status: "rejected", code: "validation_failed", message: "Indique el motivo de la eliminación." };
+  if (getApiMode() === "mock") return getPieceDetail(id) ? { status: "ok" } : PIECE_MISSING;
+  try {
+    const { error } = await client().DELETE("/api/v1/pieces/{piece_id}", {
+      params: { path: { piece_id: id }, query: { reason: trimmed } },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok" };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/** `POST /pieces/{piece_id}/restore` (motivo opcional, como *query* según el contrato). 409 si el código I ya lo usa otra pieza activa. */
+export async function restorePiece(id: string, reason?: string | null): Promise<PieceRestoreResult> {
+  const trimmed = reason?.trim() || undefined;
+  if (getApiMode() === "mock") {
+    const current = getPieceDetail(id);
+    return current ? { status: "ok", piece: current } : PIECE_MISSING;
+  }
+  try {
+    const { data, error } = await client().POST("/api/v1/pieces/{piece_id}/restore", {
+      params: { path: { piece_id: id }, query: { reason: trimmed } },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok", piece: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/**
+ * `POST /pieces/{piece_id}/identifiers`. Un 422 `concatenated_identifier` con propuestas legibles se
+ * informa como `needs_split`; el cliente nunca separa por su cuenta (RF-023). En modo mock la
+ * detección es una simulación simple y no se conserva nada.
+ */
+export async function addIdentifier(pieceId: string, input: IdentifierCreateInput): Promise<IdentifierAddResult> {
+  if (getApiMode() === "mock") {
+    if (!getPieceDetail(pieceId)) return PIECE_MISSING;
+    if (!input.value.trim()) return { status: "rejected", code: "validation_failed", message: "Escriba el código que quiere registrar." };
+    if (!input.confirmed_split) {
+      const proposals = mockSplitProposals(input.value);
+      if (proposals.length > 0) {
+        return { status: "needs_split", message: "El valor parece reunir varios códigos; confirme cómo separarlos.", proposals };
+      }
+    }
+    return { status: "ok", identifier: mockIdentifier(pieceId, input) };
+  }
+  try {
+    const { data, error } = await client().POST("/api/v1/pieces/{piece_id}/identifiers", {
+      params: { path: { piece_id: pieceId } },
+      body: input,
+    });
+    if (error) {
+      if ((error as { code?: unknown }).code === CONCATENATED_IDENTIFIER_CODE) {
+        const proposals = parseSplitProposals((error as { details?: unknown }).details);
+        if (proposals.length > 0) return { status: "needs_split", message: apiErrorMessage(error), proposals };
+      }
+      return failureFrom(error);
+    }
+    return { status: "ok", identifier: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/**
+ * Registra **cada** propuesta por separado con `confirmed_split: true` (design D5), en orden y
+ * deteniéndose en el primer fallo. Solo se llama tras la confirmación explícita de la persona.
+ */
+export async function registerSplitIdentifiers(
+  pieceId: string,
+  proposals: readonly SplitProposal[],
+  extras: { source?: string | null; notes?: string | null } = {},
+): Promise<SplitIdentifiersResult> {
+  const identifiers: IdentifierOut[] = [];
+  for (const proposal of proposals) {
+    const result = await addIdentifier(pieceId, {
+      identifier_type_code: proposal.identifier_type_code,
+      value: proposal.original_value,
+      source: extras.source ?? null,
+      notes: extras.notes ?? null,
+      confirmed_split: true,
+    });
+    if (result.status === "ok") {
+      identifiers.push(result.identifier);
+      continue;
+    }
+    const failure: PieceWriteFailure =
+      result.status === "needs_split" ? { status: "rejected", code: CONCATENATED_IDENTIFIER_CODE, message: result.message } : result;
+    return { status: "failed", identifiers, failedValue: proposal.original_value, failure };
+  }
+  return { status: "ok", identifiers };
+}
+
+/**
+ * `POST /pieces/{piece_id}/identifiers/{identifier_id}/correction` (design D6; permiso
+ * `identifiers.correct_inventory_code`). 409 con `details` si el nuevo valor es de otra pieza.
+ */
+export async function correctInventoryCode(
+  pieceId: string,
+  identifierId: string,
+  input: InventoryCodeCorrectionInput,
+): Promise<InventoryCorrectionResult> {
+  const newValue = input.new_value.trim();
+  const reason = input.reason.trim();
+  if (!newValue || !reason) {
+    return { status: "rejected", code: "validation_failed", message: "Indique el código I nuevo y el motivo de la corrección." };
+  }
+  if (getApiMode() === "mock") {
+    if (!getPieceDetail(pieceId)) return PIECE_MISSING;
+    const owner = PIECES.find((piece) => piece.id !== pieceId && piece.code_i?.toUpperCase() === newValue.toUpperCase());
+    if (owner) {
+      return {
+        status: "rejected",
+        code: "duplicate_inventory_code",
+        message: `El código I ${newValue} ya pertenece a «${owner.denomination}».`,
+        details: { piece_id: owner.id },
+      };
+    }
+    return { status: "ok", identifier: mockIdentifier(pieceId, { identifier_type_code: "I", value: newValue }) };
+  }
+  try {
+    const { data, error } = await client().POST("/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction", {
+      params: { path: { piece_id: pieceId, identifier_id: identifierId } },
+      body: { new_value: newValue, reason },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok", identifier: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
 }

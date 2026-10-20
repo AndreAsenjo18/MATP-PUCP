@@ -5,13 +5,31 @@
  * Ubicación e historial de movimientos · Datos de origen · Auditoría · Sugerencias IA.
  * Badges de completitud y de régimen (comodato). Prioridad alta (docs/PROMPT_BASE.md Fase 6).
  * Las secciones visuales vienen de `components/domain/PieceSheet`; aquí quedan sesión, store y acciones.
+ *
+ * Tarea 4.4 de `ficha-pieza-crud` (diálogos de `components/domain/PieceActionDialogs`, operaciones de
+ * `lib/data/pieces`):
+ * - Eliminar la pieza (`pieces.delete`, motivo obligatorio). Tras eliminarla, la ficha muestra el aviso
+ *   «Pieza eliminada» con «Restaurar pieza» (`pieces.restore`). Una pieza eliminada ya no se puede abrir
+ *   (la API responde 404), así que restaurar solo se ofrece aquí, en la misma visita.
+ * - Corregir el código I (`identifiers.correct_inventory_code`, código nuevo + motivo).
+ * - Registrar identificadores (`identifiers.manage`); si el valor junta varios códigos, se pide
+ *   confirmar la separación antes de registrarlos.
  */
-import { ArrowRight, Pencil, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { use, useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
+import { IdentifierAddForm } from "@/components/domain/IdentifierAddForm";
+import {
+  InventoryCodeCorrectionDialog,
+  PieceDeleteDialog,
+  PieceRestoreDialog,
+  toDialogOutcome,
+  type DialogOutcome,
+} from "@/components/domain/PieceActionDialogs";
+import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import {
   PieceCurrentLocation,
   PieceGeneralData,
@@ -32,6 +50,7 @@ import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
+import { correctInventoryCode, deletePiece, restorePiece } from "@/lib/data/pieces";
 import {
   alertsForPiece,
   getPieceMedia,
@@ -41,6 +60,7 @@ import {
   LOCATIONS,
   locationPath,
 } from "@/lib/fixtures";
+import { IDENTIFIER_TYPES } from "@/lib/fixtures/reference-data";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 type MovementOut = ApiSchemas["MovementOut"];
@@ -60,6 +80,9 @@ function FichaContent({ pieceId }: { pieceId: string }) {
   const { hasPermission, currentUser } = useSession();
   const store = useMockStore();
   const [tab, setTab] = useState<Tab>("Datos generales");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   const basePiece = store.pieces[pieceId];
   if (!basePiece) notFound();
@@ -73,17 +96,40 @@ function FichaContent({ pieceId }: { pieceId: string }) {
   const movements = store.movementsFor(pieceId, getPieceMovements(pieceId));
   const parent = piece.parent_piece_id ? store.pieces[piece.parent_piece_id] : undefined;
 
+  /** Eliminación lógica con motivo (design D7). Al terminar bien, la ficha pasa a mostrar el aviso de pieza eliminada. */
+  async function handleDelete(reason: string): Promise<DialogOutcome> {
+    const result = await deletePiece(pieceId, reason);
+    if (result.status === "ok") setDeleted(true);
+    return toDialogOutcome(result);
+  }
+
+  /** Restauración (design D7). Un 409 por código I duplicado llega como mensaje y se muestra dentro del diálogo. */
+  async function handleRestore(reason: string | null): Promise<DialogOutcome> {
+    const result = await restorePiece(pieceId, reason);
+    if (result.status === "ok") setDeleted(false);
+    return toDialogOutcome(result);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PieceSheetHeader
         piece={piece}
         alerts={alerts}
         actions={
-          hasPermission("pieces.update") && (
-            <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
-              <Pencil size={18} aria-hidden="true" />
-              Editar ficha
-            </Link>
+          !deleted && (
+            <div className="flex flex-wrap items-center gap-2">
+              {hasPermission("pieces.update") && (
+                <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
+                  <Pencil size={18} aria-hidden="true" />
+                  Editar ficha
+                </Link>
+              )}
+              {hasPermission("pieces.delete") && (
+                <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
+                  Eliminar pieza
+                </Button>
+              )}
+            </div>
           )
         }
         notices={
@@ -106,60 +152,69 @@ function FichaContent({ pieceId }: { pieceId: string }) {
         }
       />
 
-      <div role="tablist" aria-label="Pestañas de la ficha" className="flex flex-wrap gap-1 border-b border-borde">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={cn(
-              "flex min-h-11 items-center gap-1 rounded-t-md px-3 py-2 text-base font-medium focus-visible:outline-2 focus-visible:outline-terracota",
-              tab === t ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
-            )}
-          >
-            {t}
-            {t === "Sugerencias IA" && pendingSuggestions > 0 && (
-              <Badge intent="warning" className="px-2 py-0">
-                {pendingSuggestions}
-              </Badge>
-            )}
-          </button>
-        ))}
-      </div>
+      <PieceDeleteDialog pieceName={piece.denomination} open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
+      <PieceRestoreDialog pieceName={piece.denomination} open={restoreOpen} onClose={() => setRestoreOpen(false)} onRestore={handleRestore} />
 
-      {tab === "Datos generales" && <PieceGeneralData piece={piece} />}
+      {deleted ? (
+        <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
+      ) : (
+        <>
+          <div role="tablist" aria-label="Pestañas de la ficha" className="flex flex-wrap gap-1 border-b border-borde">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  "flex min-h-11 items-center gap-1 rounded-t-md px-3 py-2 text-base font-medium focus-visible:outline-2 focus-visible:outline-terracota",
+                  tab === t ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
+                )}
+              >
+                {t}
+                {t === "Sugerencias IA" && pendingSuggestions > 0 && (
+                  <Badge intent="warning" className="px-2 py-0">
+                    {pendingSuggestions}
+                  </Badge>
+                )}
+              </button>
+            ))}
+          </div>
 
-      {tab === "Identificadores" && <IdentifiersTab pieceId={pieceId} piece={piece} />}
+          {tab === "Datos generales" && <PieceGeneralData piece={piece} />}
 
-      {tab === "Fotografías" && (
-        <PieceMediaGallery
-          media={media}
-          pieceTitle={piece.denomination}
-          renderActions={() =>
-            hasPermission("media.retire") && (
-              <ConfirmButton
-                label="Retirar foto"
-                variant="danger"
-                confirmTitle="Retirar fotografía"
-                confirmDescription="La foto se marca como retirada; no se elimina del historial (RN-005). En esta maqueta el retiro es solo una simulación visual."
-                confirmLabel="Retirar"
-                onConfirm={() => {}}
-                className="mt-1 self-start"
-              />
-            )
-          }
-        />
+          {tab === "Identificadores" && <IdentifiersTab pieceId={pieceId} piece={piece} />}
+
+          {tab === "Fotografías" && (
+            <PieceMediaGallery
+              media={media}
+              pieceTitle={piece.denomination}
+              renderActions={() =>
+                hasPermission("media.retire") && (
+                  <ConfirmButton
+                    label="Retirar foto"
+                    variant="danger"
+                    confirmTitle="Retirar fotografía"
+                    confirmDescription="La foto se marca como retirada; no se elimina del historial (RN-005). En esta maqueta el retiro es solo una simulación visual."
+                    confirmLabel="Retirar"
+                    onConfirm={() => {}}
+                    className="mt-1 self-start"
+                  />
+                )
+              }
+            />
+          )}
+
+          {tab === "Ubicación e historial" && <LocationTab pieceId={pieceId} piece={piece} movements={movements} />}
+
+          {tab === "Datos de origen" && <SourceTab records={sourceRecords} />}
+
+          {tab === "Auditoría" && <AuditTab entries={audit} />}
+
+          {tab === "Sugerencias IA" && <SuggestionsTab suggestions={suggestions} />}
+        </>
       )}
-
-      {tab === "Ubicación e historial" && <LocationTab pieceId={pieceId} piece={piece} movements={movements} />}
-
-      {tab === "Datos de origen" && <SourceTab records={sourceRecords} />}
-
-      {tab === "Auditoría" && <AuditTab entries={audit} />}
-
-      {tab === "Sugerencias IA" && <SuggestionsTab suggestions={suggestions} />}
     </div>
   );
 }
@@ -167,29 +222,46 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 function IdentifiersTab({ pieceId, piece }: { pieceId: string; piece: PieceDetail }) {
   const { hasPermission, currentUser, currentRole } = useSession();
   const store = useMockStore();
+  const [correcting, setCorrecting] = useState(false);
   const canCorrect = hasPermission("identifiers.correct_inventory_code");
+  const actorLabel = currentUser?.full_name ?? currentRole?.name ?? "Persona sintética";
+  const actorId = currentUser?.id ?? "";
+  const inventoryIdentifier =
+    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I" && identifier.is_current) ??
+    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I");
+
+  /** Corrección auditada (design D6): código nuevo + motivo. El store de la maqueta refleja el cambio en la sesión. */
+  async function handleCorrect({ newValue, reason }: { newValue: string; reason: string }): Promise<DialogOutcome> {
+    if (!inventoryIdentifier) return { ok: false, message: "La pieza no tiene un código I que corregir." };
+    const result = await correctInventoryCode(pieceId, inventoryIdentifier.id, { new_value: newValue, reason });
+    if (result.status === "ok") {
+      store.correctInventoryCode(pieceId, result.identifier.original_value, reason, actorLabel, actorId);
+    }
+    return toDialogOutcome(result);
+  }
 
   return (
     <PieceIdentifiersTable piece={piece}>
-      {piece.code_i && canCorrect && (
-        <ConfirmButton
-          label="Corregir código I (procedimiento auditado)"
-          variant="danger"
-          icon={ShieldCheck}
-          className="self-start"
-          confirmTitle="Corregir el código I"
-          confirmDescription={
-            <>
-              Está a punto de retirar el código <strong>{piece.code_i}</strong> de esta pieza. Esta acción queda registrada
-              en la auditoría con su usuario y el motivo indicado, y nunca borra el historial (RN-005).
-            </>
-          }
-          requireReason
-          reasonLabel="Motivo de la corrección (obligatorio)"
-          onConfirm={(reason) =>
-            store.correctInventoryCode(pieceId, null, reason, currentUser?.full_name ?? currentRole?.name ?? "Administrador", currentUser?.id ?? "")
-          }
+      {hasPermission("identifiers.manage") && (
+        <IdentifierAddForm
+          pieceId={pieceId}
+          types={IDENTIFIER_TYPES.filter((type) => type.is_active)}
+          onRegistered={(identifiers, originalValue) => store.addIdentifiers(pieceId, identifiers, originalValue, actorLabel, actorId)}
         />
+      )}
+      {piece.code_i && canCorrect && inventoryIdentifier && (
+        <>
+          <Button variant="danger" icon={ShieldCheck} className="self-start" onClick={() => setCorrecting(true)}>
+            Corregir código I (procedimiento auditado)
+          </Button>
+          <InventoryCodeCorrectionDialog
+            pieceName={piece.denomination}
+            currentCode={piece.code_i}
+            open={correcting}
+            onClose={() => setCorrecting(false)}
+            onCorrect={handleCorrect}
+          />
+        </>
       )}
     </PieceIdentifiersTable>
   );
