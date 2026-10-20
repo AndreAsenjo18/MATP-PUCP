@@ -40,6 +40,31 @@ class Settings(BaseSettings):
     s3_bucket: str = Field(min_length=1)
     s3_auto_create_bucket: bool = False
 
+    # --- Media upload (fotografias-multiples-por-pieza, D2) --------------------
+    media_max_bytes: int = Field(
+        default=52_428_800,  # 50 MB [SUPUESTO C1]
+        gt=0,
+        description="Tamaño máximo de archivo de imagen subido (bytes).",
+    )
+    media_allowed_types: str = Field(
+        default="image/jpeg,image/png,image/tiff",
+        description="Tipos MIME admitidos, separados por comas.",
+    )
+    media_url_ttl_seconds: int = Field(
+        default=300,
+        gt=0,
+        description="TTL de URLs prefirmadas de descarga (segundos).",
+    )
+    media_upload_url_ttl_seconds: int = Field(
+        default=900,
+        gt=0,
+        description="TTL de URLs prefirmadas de subida (segundos).",
+    )
+    media_upload_mode: Literal["presigned", "proxy"] = Field(
+        default="presigned",
+        description="Modo de subida: presigned (directo a S3) o proxy (a través de la API).",
+    )
+
     # Authentication (JWT). Implemented in a later change; the secret is required from day one.
     jwt_secret: str = Field(min_length=16)
     jwt_algorithm: str = "HS256"
