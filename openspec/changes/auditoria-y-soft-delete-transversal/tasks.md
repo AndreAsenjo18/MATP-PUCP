@@ -26,6 +26,6 @@
 ## 6. Cierre del change
 
 - [ ] 6.1 Tests requeridos: secciones 1–5 en verde (`npm test`, `npm run lint`); repetir 2.x y 4.1 contra PostgreSQL en compose (triggers reales, reversión de un lote sintético grande) cuando Docker esté disponible
-- [ ] 6.2 Actualizar OpenAPI: implementar el stub de `revert` y añadir `change-sets/{id}`, `revert-preview`, `trash` y parámetros de agrupación/CSV de `audit-logs`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
+- [x] 6.2 Actualizar OpenAPI: implementar el stub de `revert` y añadir `change-sets/{id}`, `revert-preview`, `trash` y parámetros de agrupación/CSV de `audit-logs`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
 - [ ] 6.3 Actualizar el manual de usuario: `docs/manual-usuario/auditoria.md` (historial, revertir, papelera) y documentar la prueba transversal en `CLAUDE.md` (sección de guardrails)
 - [ ] 6.4 Registrar supuestos (permisos de reversión, anonimización Ley 29733) en `docs/preguntas-contraparte.md`, `openspec validate auditoria-y-soft-delete-transversal --strict` y, tras aprobar el PR, `openspec archive auditoria-y-soft-delete-transversal -y`
