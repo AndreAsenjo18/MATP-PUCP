@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 305ad9ee2d733e347cb9cf20e48e118b4a1a2017f72e45243e072c2a69a0e3ce
+ * openapi-sha256: 7c325850c0cb97862c0a69b7b687fc78e626df16e1922c057b32db5c0f2b51ac
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1003,7 +1003,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Cola de posibles duplicados por revisar (RF-030) */
+        /** Cola de posibles duplicados por revisar, con filtros (RF-030) */
         get: operations["listDuplicateCandidates"];
         put?: never;
         post?: never;
@@ -1022,7 +1022,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar) */
+        /** Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -1996,12 +1996,33 @@ export interface components {
         /**
          * DuplicateCandidateOut
          * @example {
+         *       "blocking_conflict": false,
          *       "detected_by": "rules",
          *       "id": "01920000-0000-7000-8000-000000000911",
          *       "matched_fields": [
-         *         "title",
-         *         "provenance",
-         *         "dimensions_text"
+         *         {
+         *           "contribution": 0.35,
+         *           "field": "identifier:COLECCION",
+         *           "signal": "identifier",
+         *           "similarity": 1,
+         *           "values": {
+         *             "a": "MMZ 012",
+         *             "b": "M.M.Z. 012",
+         *             "normalized": "MMZ 12"
+         *           },
+         *           "weight": 0.35
+         *         },
+         *         {
+         *           "contribution": 0.279,
+         *           "field": "denomination",
+         *           "signal": "denomination",
+         *           "similarity": 0.93,
+         *           "values": {
+         *             "a": "Retablo ayacuchano",
+         *             "b": "RETABLO AYACUCHANO"
+         *           },
+         *           "weight": 0.3
+         *         }
          *       ],
          *       "piece_a_id": "01920000-0000-7000-8000-000000000101",
          *       "piece_b_id": "01920000-0000-7000-8000-000000000102",
@@ -2010,6 +2031,11 @@ export interface components {
          *     }
          */
         DuplicateCandidateOut: {
+            /**
+             * Blocking Conflict
+             * @description Dos códigos I vigentes distintos: la fusión queda bloqueada (RN-002).
+             */
+            blocking_conflict: boolean;
             /** Detected By */
             detected_by: string;
             /**
@@ -2020,7 +2046,7 @@ export interface components {
             /** Import Row Id */
             import_row_id: string | null;
             /** Matched Fields */
-            matched_fields: string[];
+            matched_fields: components["schemas"]["DuplicateSignal"][];
             /**
              * Piece A Id
              * Format: uuid
@@ -2028,6 +2054,11 @@ export interface components {
             piece_a_id: string;
             /** Piece B Id */
             piece_b_id: string | null;
+            /**
+             * Postponed Until
+             * @description Un par pospuesto vuelve a pendiente al leer la cola después de esta fecha.
+             */
+            postponed_until: string | null;
             /** Resolution Note */
             resolution_note: string | null;
             /** Reviewed At */
@@ -2043,10 +2074,20 @@ export interface components {
          *       "note": "Piezas distintas del mismo taller",
          *       "resolution": "DISTINCT"
          *     }
+         * @example {
+         *       "note": "Esperar la ficha física",
+         *       "postponed_until": "2026-12-01T00:00:00Z",
+         *       "resolution": "POSTPONED"
+         *     }
          */
         DuplicateResolution: {
             /** Note */
             note?: string | null;
+            /**
+             * Postponed Until
+             * @description Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].
+             */
+            postponed_until?: string | null;
             /**
              * Resolution
              * @enum {string}
@@ -2057,6 +2098,35 @@ export interface components {
              * @description Obligatorio para MERGED.
              */
             surviving_piece_id?: string | null;
+        };
+        /**
+         * DuplicateSignal
+         * @description One explained reason of a candidate score (``quality.scoring.Signal``, design D1).
+         *
+         *     Rows written before the detection rules (seed, imports) may carry only ``field`` and
+         *     ``similarity``, so the rest is optional and unknown keys are kept.
+         */
+        DuplicateSignal: {
+            /** Contribution */
+            contribution?: number | null;
+            /** Field */
+            field: string;
+            /**
+             * Signal
+             * @description identifier, denomination, collection, …
+             */
+            signal?: string | null;
+            /** Similarity */
+            similarity: number;
+            /**
+             * Values
+             * @description Valores comparados de ambas piezas.
+             */
+            values?: unknown;
+            /** Weight */
+            weight?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DuplicateStatus
@@ -8881,7 +8951,11 @@ export interface operations {
     listDuplicateCandidates: {
         parameters: {
             query?: {
+                /** @description Incluye las subcolecciones. */
+                collection_id?: string | null;
                 min_score?: number | null;
+                /** @description CATALOG: dos piezas del catálogo; IMPORT: fila de importación. */
+                origin?: ("CATALOG" | "IMPORT") | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -8928,15 +9002,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -8990,15 +9055,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
