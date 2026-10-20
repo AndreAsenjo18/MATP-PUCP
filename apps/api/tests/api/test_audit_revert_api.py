@@ -104,6 +104,11 @@ class RevertApi:
             assert row is not None
             return piece.id, row.change_set_id
 
+    def token(self, change_set: uuid.UUID, email: str = ADMIN) -> str:
+        response = self.post(PREVIEW_PATH.format(change_set), headers=as_user(email))
+        assert response.status_code == 200, response.text
+        return str(response.json()["preview_token"])
+
     def update_provenance(self, piece_id: uuid.UUID, value: str, email: str) -> None:
         with self.session() as session, audit_context(session, self.acting_as(email)):
             piece = session.get(Piece, piece_id)
@@ -214,13 +219,13 @@ def test_reverting_an_already_reverted_change_set_returns_409(api: RevertApi) ->
     _piece_id, change_set = api.edit_a_piece()
     first = api.post(
         REVERT_PATH.format(change_set),
-        json={"reason": "Primera reversión"},
+        json={"reason": "Primera reversión", "preview_token": api.token(change_set)},
         headers=as_user(ADMIN),
     )
-    assert first.status_code == 200
+    assert first.status_code == 200, first.text
     again = api.post(
         REVERT_PATH.format(change_set),
-        json={"reason": "Segunda reversión"},
+        json={"reason": "Segunda reversión", "preview_token": api.token(change_set)},
         headers=as_user(ADMIN),
     )
     assert again.status_code == 409
@@ -228,9 +233,10 @@ def test_reverting_an_already_reverted_change_set_returns_409(api: RevertApi) ->
     assert body["code"] == "already_reverted"
     assert body["details"]["reverted_by_change_set_id"] == first.json()["new_change_set_id"]
     # El conjunto de reversión sí puede revertirse.
+    reversal = uuid.UUID(first.json()["new_change_set_id"])
     undo = api.post(
-        REVERT_PATH.format(first.json()["new_change_set_id"]),
-        json={"reason": "Deshacer la reversión"},
+        REVERT_PATH.format(reversal),
+        json={"reason": "Deshacer la reversión", "preview_token": api.token(reversal)},
         headers=as_user(ADMIN),
     )
     assert undo.status_code == 200, undo.text
@@ -281,9 +287,14 @@ def test_revert_touching_an_inventory_code_without_the_procedure_returns_403(
 
 def test_revert_without_the_origin_permission_returns_403(api: RevertApi) -> None:
     _piece_id, change_set = api.edit_a_piece()
+    # La consulta interna no puede ni abrir la vista previa (no tiene `audit.read`).
+    assert api.post(PREVIEW_PATH.format(change_set), headers=as_user(VIEWER)).status_code == 403
     response = api.post(
         REVERT_PATH.format(change_set),
-        json={"reason": "Intento sin permiso de edición"},
+        json={
+            "reason": "Intento sin permiso de edición",
+            "preview_token": api.token(change_set),
+        },
         headers=as_user(VIEWER),
     )
     assert response.status_code == 403
@@ -293,9 +304,10 @@ def test_revert_without_the_origin_permission_returns_403(api: RevertApi) -> Non
 def test_conflicts_require_explicit_confirmation(api: RevertApi) -> None:
     piece_id, change_set = api.edit_a_piece()
     api.update_provenance(piece_id, "Cusco", CATALOGUER)
+    token = api.token(change_set)
     response = api.post(
         REVERT_PATH.format(change_set),
-        json={"reason": "Reversión con conflicto"},
+        json={"reason": "Reversión con conflicto", "preview_token": token},
         headers=as_user(ADMIN),
     )
     assert response.status_code == 409
@@ -304,7 +316,11 @@ def test_conflicts_require_explicit_confirmation(api: RevertApi) -> None:
     assert (conflict["field"], conflict["current_value"]) == ("provenance", "Cusco")
     confirmed = api.post(
         REVERT_PATH.format(change_set),
-        json={"reason": "Reversión con conflicto", "confirm_conflicts": True},
+        json={
+            "reason": "Reversión con conflicto",
+            "preview_token": token,
+            "confirm_conflicts": True,
+        },
         headers=as_user(ADMIN),
     )
     assert confirmed.status_code == 200, confirmed.text
@@ -317,7 +333,9 @@ def test_unknown_change_set_returns_404(api: RevertApi) -> None:
     assert api.get(SUMMARY_PATH.format(missing), headers=as_user(ADMIN)).status_code == 404
     assert api.post(PREVIEW_PATH.format(missing), headers=as_user(ADMIN)).status_code == 404
     response = api.post(
-        REVERT_PATH.format(missing), json={"reason": "No existe"}, headers=as_user(ADMIN)
+        REVERT_PATH.format(missing),
+        json={"reason": "No existe", "preview_token": "cualquiera"},
+        headers=as_user(ADMIN),
     )
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"
@@ -332,13 +350,24 @@ def test_operations_require_identity_and_the_audit_permission(api: RevertApi) ->
     assert api.post(PREVIEW_PATH.format(change_set), headers=as_user(CATALOGUER)).status_code == 403
 
 
-def test_revert_requires_a_reason(api: RevertApi) -> None:
+def test_revert_requires_a_reason_and_a_preview_token(api: RevertApi) -> None:
     _piece_id, change_set = api.edit_a_piece()
-    response = api.post(
-        REVERT_PATH.format(change_set), json={"reason": "x"}, headers=as_user(ADMIN)
+    short_reason = api.post(
+        REVERT_PATH.format(change_set),
+        json={"reason": "x", "preview_token": api.token(change_set)},
+        headers=as_user(ADMIN),
     )
-    assert response.status_code == 422
-    assert response.json()["code"] == "request_validation_failed"
+    assert short_reason.status_code == 422
+    assert short_reason.json()["code"] == "request_validation_failed"
+    without_token = api.post(
+        REVERT_PATH.format(change_set),
+        json={"reason": "Reversión sin vista previa"},
+        headers=as_user(ADMIN),
+    )
+    assert without_token.status_code == 422
+    assert ["body", "preview_token"] in [
+        field["location"] for field in without_token.json()["details"]["fields"]
+    ]
 
 
 def test_the_three_operations_are_declared_as_implemented() -> None:

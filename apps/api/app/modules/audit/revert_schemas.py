@@ -248,11 +248,11 @@ class RevertConfirmRequest(BaseModel):
     )
 
     reason: str = Field(min_length=3, description="Motivo de la reversión (queda en auditoría).")
-    preview_token: str | None = Field(
-        default=None,
+    preview_token: str = Field(
+        min_length=1,
         description=(
-            "Huella devuelta por la vista previa. Si el plan cambió, la reversión se rechaza "
-            "con `revert_plan_changed`."
+            "Huella devuelta por la vista previa, obligatoria: la reversión solo se aplica "
+            "ligada a una vista previa. Si el plan cambió, se rechaza con `revert_plan_changed`."
         ),
     )
     confirm_conflicts: bool = Field(

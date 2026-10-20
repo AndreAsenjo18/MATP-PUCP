@@ -94,8 +94,9 @@ def revert_change_set(
 ) -> RevertChangeSetOut:
     """Aplica la reversión en una transacción, como un conjunto de cambios de tipo reversión.
 
-    El permiso exigido depende del origen del conjunto revertido (design D1), así que lo
-    verifica el servicio: aquí basta con una identidad válida.
+    Exige el `preview_token` de la vista previa: la reversión solo se aplica ligada a ella. El
+    permiso depende del origen del conjunto revertido (design D1), así que lo verifica el
+    servicio: aquí basta con una identidad válida.
     """
     writer(session, user, body.reason)
     outcome = apply_revert(
