@@ -1566,9 +1566,36 @@
             "note": "Esperar la ficha física",
             "postponed_until": "2026-12-01T00:00:00Z",
             "resolution": "POSTPONED"
+          },
+          {
+            "field_choices": {
+              "provenance": "ABSORBED"
+            },
+            "note": "Misma pieza registrada en el libro y en la sábana",
+            "resolution": "MERGED",
+            "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
           }
         ],
         "properties": {
+          "field_choices": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "enum": [
+                    "SURVIVING",
+                    "ABSORBED"
+                  ],
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.",
+            "title": "Field Choices"
+          },
           "note": {
             "anyOf": [
               {
@@ -14308,7 +14335,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030)",
+        "summary": "Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030)",
         "tags": [
           "Calidad"
         ],

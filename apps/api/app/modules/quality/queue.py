@@ -1,6 +1,6 @@
-"""Duplicate review queue: listing, expired postponements and DISTINCT/POSTPONED resolution.
+"""Duplicate review queue: listing, expired postponements and resolution of a pair.
 
-Change deteccion-duplicados-y-cola-revision, tasks 3.1 and 3.2 (design D2 and D5).
+Change deteccion-duplicados-y-cola-revision, tasks 3.1 to 3.3 (design D2, D4 and D5).
 A ``POSTPONED`` pair returns to ``PENDING`` on the first queue read after its ``postponed_until``
 date: there is no cron.
 """
@@ -20,6 +20,7 @@ from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import _descendants
 from app.modules.collections.models import Collection
 from app.modules.quality.duplicates import load_profiles
+from app.modules.quality.merge import merge_pieces
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
 from app.modules.quality.schemas import DuplicateOrigin
 from app.modules.quality.scoring import comparison_fingerprint
@@ -157,8 +158,10 @@ def resolve_candidate(
     reviewer_id: uuid.UUID,
     note: str | None = None,
     postponed_until: datetime | None = None,
+    surviving_piece_id: uuid.UUID | None = None,
+    field_choices: dict[str, str] | None = None,
 ) -> DuplicateCandidate:
-    """Mark a pair as DISTINCT or POSTPONED (requires a manual audit context; RN-005).
+    """Resolve a pair as DISTINCT, POSTPONED or MERGED (requires a manual audit context; RN-005).
 
     A DISTINCT pair keeps the fingerprint of the compared values, so the detection proposes it
     again only when those values change (RF-030).
@@ -181,6 +184,16 @@ def resolve_candidate(
             "Una de las piezas ya fue fusionada o dada de baja; el par queda reemplazado.",
             details={"candidate_id": str(candidate.id)},
         )
+    if resolution == DuplicateStatus.MERGED:
+        merge_pieces(
+            session,
+            candidate,
+            surviving_id=surviving_piece_id,
+            reviewer_id=reviewer_id,
+            note=note,
+            field_choices=field_choices,
+        )
+        return candidate
     if resolution == DuplicateStatus.DISTINCT:
         candidate.compared_fingerprint = _current_fingerprint(session, candidate)
         candidate.status = DuplicateStatus.DISTINCT

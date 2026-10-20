@@ -128,7 +128,7 @@ def _before_flush(session: Session, _flush_context: object, _instances: object) 
         return
 
     context = require_audit_context(session)
-    change_set_id = new_uuid()
+    change_set_id = context.change_set_id or new_uuid()
     entries: list[AuditLog] = []
     for obj in audited_new:
         if getattr(obj, "id", None) is None:

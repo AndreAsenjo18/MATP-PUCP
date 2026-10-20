@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7c325850c0cb97862c0a69b7b687fc78e626df16e1922c057b32db5c0f2b51ac
+ * openapi-sha256: 0e39c247dbb341cd183264ebd3b69661a97f4b6f3e3dd4de71abaf3711bef9a9
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1022,7 +1022,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: marcar distinto o posponer (nunca borrar); la fusión llega con la tarea 3.3 (RF-030) */
+        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -2079,8 +2079,23 @@ export interface components {
          *       "postponed_until": "2026-12-01T00:00:00Z",
          *       "resolution": "POSTPONED"
          *     }
+         * @example {
+         *       "field_choices": {
+         *         "provenance": "ABSORBED"
+         *       },
+         *       "note": "Misma pieza registrada en el libro y en la sábana",
+         *       "resolution": "MERGED",
+         *       "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
          */
         DuplicateResolution: {
+            /**
+             * Field Choices
+             * @description Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.
+             */
+            field_choices?: {
+                [key: string]: "SURVIVING" | "ABSORBED";
+            } | null;
             /** Note */
             note?: string | null;
             /**

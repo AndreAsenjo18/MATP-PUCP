@@ -173,17 +173,6 @@ def test_internal_viewer_cannot_resolve(client: TestClient, factory: sessionmake
     assert response.status_code == 403
 
 
-def test_merge_arrives_with_task_3_3(client: TestClient, factory: sessionmaker[Session]) -> None:
-    with factory() as session:
-        candidate = _catalog_pairs(session)[0]
-    response = _resolve(
-        client, candidate.id, resolution="MERGED", surviving_piece_id=str(candidate.piece_a_id)
-    )
-    assert response.status_code == 501
-    assert response.json()["code"] == "not_implemented"
-    assert response.json()["change"] == "deteccion-duplicados-y-cola-revision"
-
-
 def test_a_pair_with_a_merged_piece_is_superseded(
     client: TestClient, factory: sessionmaker[Session]
 ) -> None:
@@ -208,3 +197,35 @@ def test_a_pair_with_a_merged_piece_is_superseded(
 
 def test_unknown_candidate_is_404(client: TestClient) -> None:
     assert _resolve(client, uuid.uuid4(), resolution="DISTINCT").status_code == 404
+
+
+def test_merge_over_http(client: TestClient, factory: sessionmaker[Session]) -> None:
+    """MERGED through the API: the pair is merged and the absorbed piece points to the other."""
+    with factory() as session:
+        codes = {
+            row.piece_id
+            for row in session.scalars(
+                select(PieceIdentifier).where(
+                    PieceIdentifier.identifier_type_code == "I", PieceIdentifier.is_current
+                )
+            )
+        }
+        candidate = next(  # a pair where at most one piece holds a code I
+            c for c in _catalog_pairs(session) if not {c.piece_a_id, c.piece_b_id} <= codes
+        )
+    surviving = candidate.piece_b_id if candidate.piece_b_id in codes else candidate.piece_a_id
+    absorbed = candidate.piece_a_id if surviving == candidate.piece_b_id else candidate.piece_b_id
+    response = _resolve(
+        client,
+        candidate.id,
+        resolution="MERGED",
+        surviving_piece_id=str(surviving),
+        field_choices={"provenance": "ABSORBED"},
+        note="Misma pieza en el libro y en la sábana",
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "MERGED"
+    with factory() as session:
+        gone = session.get(Piece, absorbed, execution_options={"include_deleted": True})
+        assert gone.merged_into_id == surviving
+        assert session.get(DuplicateCandidate, candidate.id).change_set_id is not None

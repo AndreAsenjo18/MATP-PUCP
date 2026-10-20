@@ -68,13 +68,28 @@ flowchart TD
 - `SimilarityScorer.score(subject: PieceProfile) -> list[Candidate]` expone los mismos bloques y pesos para `importacion-pipeline-reconciliacion`: el pipeline construye un `PieceProfile` con `piece_id=None` a partir de la fila mapeada (denominación, colección, autor, procedencia, época, medidas e identificadores normalizados) y recibe las piezas que entran en la cola con esa fila, de mayor a menor puntaje. La implementación es `RuleBasedSimilarityScorer` en `quality/duplicates.py`.
 
 ### D4. Fusión
-`resolve {action: "merge", keep_piece_id, field_choices: {field: "a"|"b"}, reason}` en una transacción:
-1. Validaciones: ambas piezas activas y no fusionadas (`409 stale_candidate`); códigos I vigentes distintos → `409 merge_blocked_inventory_code` (usar corrección de código I); regímenes distintos → `409 merge_blocked_tenure`.
-2. Campos escalares según `field_choices` (por defecto, los de la pieza conservada; los vacíos se completan con los de la otra).
-3. Identificadores de la pieza absorbida → pasan a la conservada; duplicados exactos de valor normalizado quedan como **no vigentes** en la conservada con nota "fusión" (nunca se borran). El código I vigente de la absorbida (si la conservada no tiene) se traslada manteniendo el bloqueo.
-4. Fotos, movimientos, datos de origen, evaluaciones y sugerencias de IA se reasignan (`piece_id`) con auditoría.
-5. Pieza absorbida: `merged_into_id=keep`, eliminación lógica con motivo "fusionada en <id>"; la API devuelve `301`-like `merged_into` en su ficha para redirigir.
-6. Otros candidatos que involucran a la absorbida → `SUPERSEDED`. Todo con un `change_set_id` para permitir reversión.
+`POST /quality/duplicates/{candidate_id}/resolve` con `{resolution: "MERGED", surviving_piece_id, field_choices, note}`, siguiendo el esquema `DuplicateResolution` del contrato. `note` es el motivo y es obligatorio al fusionar. `field_choices` es el único campo añadido al contrato: lo exige la spec («elige… el valor de cada campo en conflicto»). Es un objeto `{campo: "SURVIVING" | "ABSORBED"}` limitado a los campos editables de la ficha. Todo ocurre en una transacción:
+1. Validaciones:
+   - el par debe ser de dos piezas del catálogo y `surviving_piece_id` una de ellas (422);
+   - ambas activas y no fusionadas (`409 stale_candidate`, como en la tarea 3.2);
+   - regímenes distintos: `409 merge_blocked_tenure`;
+   - códigos I vigentes distintos: `409 merge_blocked_inventory_code` (usar la corrección de código I);
+   - **si solo una pieza tiene código I vigente, esa debe ser la conservada** (`409 merge_surviving_must_hold_inventory_code`). Así ningún código I cambia de pieza y RN-002 queda intacto (decisión del 2026-10-20).
+2. Campos de la ficha: el valor elegido en `field_choices`. Sin elección, queda el de la conservada, y si está vacío se completa con el de la absorbida.
+3. Identificadores de la absorbida:
+   - pasan a la conservada;
+   - los que repiten un valor normalizado de la conservada quedan como **no vigentes**, con nota «fusión» (nunca se borran);
+   - los códigos I bloqueados no se mueven: quedan en la absorbida y se ven por el enlace (paso 1).
+4. Pasan también a la conservada (decisión del 2026-10-20):
+   - **fotografías** (si la conservada tiene portada, la de la absorbida queda como foto normal);
+   - **componentes** (piezas hijas);
+   - **materiales** (unión sin repetir; los repetidos se quedan en la absorbida);
+   - **préstamos** (salvo que la conservada ya esté en el mismo préstamo);
+   - **sugerencias de IA**.
+5. **Movimientos, datos de origen y evaluaciones de conservación no se trasladan**: sus tablas son de solo inserción (la base rechaza `UPDATE`). Se quedan en la absorbida, intactos, y la conservada los muestra a través de `merged_into` (decisión del 2026-10-20).
+6. Pieza absorbida: `merged_into_id = surviving` y baja lógica con motivo «Fusionada en <id>: <note>». Su ficha devuelve `merged_into` (pieza, fecha y motivo) para redirigir (tarea 3.4).
+7. El par queda `MERGED` y los demás candidatos de la pieza absorbida pasan a `SUPERSEDED`. Los de la conservada no se tocan: siguen siendo comparaciones válidas y la detección incremental los vuelve a evaluar.
+8. **Un único conjunto de cambios.** `AuditContext` admite un `change_set_id` fijo, de modo que todos los `flush` de la fusión comparten uno y la acción registrada es `MERGE`. El par guarda ese `change_set_id` para que `auditoria-y-soft-delete-transversal` pueda revertir la fusión.
 
 ### D5. Posponer
 `POST /quality/duplicates/{candidate_id}/resolve` con `{resolution: "POSTPONED", postponed_until, note}`, siguiendo el esquema `DuplicateResolution` del contrato. `postponed_until` es obligatorio, debe ser una fecha futura y no puede superar los 180 días [SUPUESTO]; si no cumple, la API responde 422 con el máximo en `details`. Al vencer, el par vuelve a `PENDING` en la siguiente lectura de la cola (sin cron). Marcar un par como distinto usa el mismo esquema con `resolution: "DISTINCT"` y guarda la huella de los valores actuales (D2).

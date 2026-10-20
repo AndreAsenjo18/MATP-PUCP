@@ -39,7 +39,7 @@ El sistema MUST guardar, al marcar un par como distinto, una huella de los valor
 - **THEN** la API responde 422 indicando el máximo [SUPUESTO: máximo de 180 días; ver F3 y G8]
 
 ### Requirement: Fusión con elección de valores y reasignación de datos relacionados
-El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado que elige la pieza que se conserva y el valor de cada campo en conflicto, SHALL trasladar a la pieza conservada los identificadores (conservando como no vigentes los repetidos), fotografías, movimientos, datos de origen y evaluaciones de la otra, y MUST marcar la pieza absorbida como fusionada y eliminada lógicamente, consultable y enlazada a la conservada, todo en una única operación auditada y reversible. SHALL rechazar la fusión cuando ambas piezas tienen códigos I vigentes distintos o regímenes de tenencia distintos. (RF-030, RN-002, RN-003, RN-005, RF-040, RNF-007)
+El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado que elige la pieza que se conserva y el valor de cada campo en conflicto, SHALL trasladar a la pieza conservada los identificadores (conservando como no vigentes los repetidos) y las fotografías de la otra, SHALL conservar en la pieza absorbida, sin modificarlos, sus movimientos, datos de origen y evaluaciones (registros de solo inserción), visibles desde la conservada, y MUST marcar la pieza absorbida como fusionada y eliminada lógicamente, consultable y enlazada a la conservada, todo en una única operación auditada y reversible. SHALL rechazar la fusión cuando ambas piezas tienen códigos I vigentes distintos o regímenes de tenencia distintos, y cuando solo la pieza absorbida tiene código I vigente. (RF-030, RN-002, RN-003, RN-005, RF-040, RNF-007)
 
 #### Scenario: Fusión con elección de procedencia
 - **WHEN** un Gestor de colecciones fusiona la pieza B en la pieza A eligiendo la procedencia de B y el resto de A
@@ -52,6 +52,11 @@ El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado 
 #### Scenario: Regímenes distintos
 - **WHEN** se intenta fusionar una pieza en propiedad con una pieza en comodato
 - **THEN** la API responde 409 indicando que primero debe corregirse el régimen de una de ellas
+
+#### Scenario: Código I solo en la pieza absorbida
+- **GIVEN** un par en el que solo la pieza B tiene código I vigente
+- **WHEN** un Gestor de colecciones intenta fusionar B en A
+- **THEN** la API responde 409 indicando que debe conservarse la pieza con código I, y ninguna pieza cambia
 
 #### Scenario: Candidato obsoleto
 - **WHEN** un revisor intenta resolver un par en el que una de las piezas ya fue fusionada con otra
