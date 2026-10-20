@@ -13337,16 +13337,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -13358,8 +13348,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/media/upload-url": {

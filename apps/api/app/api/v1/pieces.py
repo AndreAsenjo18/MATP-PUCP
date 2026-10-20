@@ -5,9 +5,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
@@ -28,7 +29,8 @@ from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog import service as catalog_service
-from app.modules.catalog.models import PieceSourceRecord
+from app.modules.catalog.enums import TenureRegime
+from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
     PieceFilters,
@@ -47,6 +49,7 @@ from app.modules.catalog.schemas import (
     PieceValidationResult,
     SourceRecordOut,
 )
+from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.schemas import (
     IdentifierCreate,
@@ -58,6 +61,7 @@ from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
 from app.modules.locations.service import move_piece as move_piece_service
 from app.modules.locations.service import verify_location
+from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
     MediaAssetCreate,
@@ -66,6 +70,7 @@ from app.modules.media.schemas import (
     UploadUrlRequest,
     UploadUrlResponse,
 )
+from app.modules.media.service import EXTENSION_BY_FORMAT, verify_image_stream
 from app.modules.quality.schemas import PieceAlert
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -528,20 +533,151 @@ def create_media_upload_url(
     )
 
 
+def _comodato_restriction_term_id(session: Session) -> uuid.UUID:
+    """Restricción de imágenes en comodato (RN-008): hereda `NO_PUBLICAR`."""
+    term = session.scalar(
+        select(Term)
+        .join(Vocabulary)
+        .where(
+            Vocabulary.code == VocabularyCode.USAGE_RESTRICTION,
+            Term.code == "NO_PUBLICAR",
+        )
+    )
+    if term is None:
+        raise ValidationFailed(
+            "Falta el vocabulario de restricciones de uso.",
+            code="usage_restriction_missing",
+        )
+    return term.id
+
+
 @router.post(
     "/{piece_id}/media",
     response_model=MediaAssetOut,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar una foto ya subida (tipo de vista, orden, restricciones)",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def register_media(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
     piece_id: uuid.UUID,
     body: MediaAssetCreate,
-    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    raise not_implemented(CHANGE_MEDIA, MediaAssetOut)
+    # 1. Pieza existe
+    get_piece(session, piece_id)
+
+    # 2. HEAD object en storage (existe, tamaño, content-type)
+    try:
+        head = request.app.state.storage.head(body.storage_key)
+    except FileNotFoundError as err:
+        raise ValidationFailed(
+            "El archivo no existe en el almacenamiento.", code="object_not_found"
+        ) from err
+
+    # 3. Stream + Pillow verify + SHA-256 recalc
+    sha256, width, height, content_type = verify_image_stream(
+        request.app.state.storage,
+        body.storage_key,
+        body.content_sha256,
+    )
+
+    # 4. Copia pending/ -> pieces/{id}/{media_id}/original.<ext>
+    asset_id = new_uuid()
+    ext = EXTENSION_BY_FORMAT.get(content_type.split("/")[-1], "jpg")
+    final_key = f"pieces/{piece_id}/{asset_id}/original.{ext}"
+    request.app.state.storage.copy(body.storage_key, final_key)
+    request.app.state.storage.delete_pending(body.storage_key)
+
+    # 5. Determina is_primary, sort_order
+    max_order = session.scalar(
+        select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece_id)
+    )
+    is_primary = max_order is None
+    sort_order = (max_order + 1) if max_order is not None else 0
+
+    # 6. Restricción comodato (hereda de colección si LOAN_FOR_USE)
+    piece = session.get(Piece, piece_id)
+    restriction_term_id: uuid.UUID | None = None
+    restriction_note: str | None = None
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        restriction_term_id = _comodato_restriction_term_id(session)
+        restriction_note = "Restricción contractual del comodato (RN-008)"
+
+    # 7. Crea MediaAsset con auditoría MANUAL
+    asset = MediaAsset(
+        id=asset_id,
+        piece_id=piece_id,
+        storage_key=final_key,
+        original_filename=body.original_filename,
+        content_type=content_type,
+        size_bytes=head["content_length"],
+        content_sha256=sha256,
+        width_px=width,
+        height_px=height,
+        view_type_term_id=body.view_type_term_id,
+        sort_order=sort_order,
+        is_primary=is_primary,
+        usage_restriction_term_id=restriction_term_id,
+        restriction_note=restriction_note,
+    )
+    session.add(asset)
+    writer(session, user)
+    session.commit()
+
+    # 8. Derivados en BackgroundTask (thumb.webp 320px, display.webp 1600px)
+    def _generate_derivatives() -> None:
+        try:
+            derivatives.generate_derivatives(
+                request.app.state.storage, str(piece_id), str(asset_id), final_key
+            )
+        except (OSError, ValueError, RuntimeError):
+            # Si falla, la foto queda registrada con extra_metadata.derivatives="failed"
+            asset.extra_metadata = {"derivatives": "failed"}
+            session.add(asset)
+            session.commit()
+
+    background_tasks.add_task(_generate_derivatives)
+
+    # 9. Respuesta MediaAssetOut (mapeo igual que list_piece_media)
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for term_id in (body.view_type_term_id, restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    view_term = terms.get(body.view_type_term_id)
+    restriction_term = terms.get(restriction_term_id) if restriction_term_id else None
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
+        restriction_note=asset.restriction_note,
+        download_url=None,
+        created_at=asset.created_at,
+    )
 
 
 @router.patch(
