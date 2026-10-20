@@ -4,74 +4,64 @@
  * Pantalla 5 — Editor de pieza con validación en tiempo real (RF-043). El código I no aparece
  * como editable (RN-002): su corrección vive en la pestaña Identificadores de la ficha, con
  * procedimiento auditado y solo para el rol Administrador.
+ *
+ * Funciona en los dos modos (`NEXT_PUBLIC_API_MODE`): `mock` lee y actualiza el store de la
+ * sesión de demostración; `live` carga la ficha con `fetchPieceDetail` y guarda con `updatePiece`
+ * (`PUT /pieces/{id}`). El formulario es `PieceForm` (react-hook-form + zod, ADR-015).
  */
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 
+import { PieceForm, outcomeFromUpdate, type SaveOutcome } from "@/components/domain/PieceForm";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
+import type { ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
+import { maskPieceForRole } from "@/lib/data/masking";
+import { getApiMode } from "@/lib/data/mode";
+import { fetchPieceDetail, updatePiece, type PieceUpdateInput } from "@/lib/data/pieces";
+import { toFormValues, toUpdateInput, type PieceFormValues } from "@/lib/forms/piece-form";
 
-interface FormState {
-  title: string;
-  description: string;
-  provenance: string;
-  dimensionsText: string;
-  notes: string;
+type PieceDetail = ApiSchemas["PieceDetail"];
+
+interface EditorViewProps {
+  piece: PieceDetail;
+  /** Solo en modo mock: refleja el cambio en el store de la sesión de demostración. */
+  afterSave?: (updated: PieceDetail, input: PieceUpdateInput) => void;
 }
 
-interface FieldErrors {
-  title?: string;
-  description?: string;
-}
-
-function validate(form: FormState): FieldErrors {
-  const errors: FieldErrors = {};
-  if (!form.title.trim()) {
-    errors.title = "La denominación es obligatoria.";
-  } else if (form.title.trim().length < 3) {
-    errors.title = "La denominación debe tener al menos 3 caracteres.";
-  }
-  if (form.description.length > 600) {
-    errors.description = "La descripción no puede superar los 600 caracteres.";
-  }
-  return errors;
-}
-
-function EditorContent({ pieceId }: { pieceId: string }) {
+function EditorView({ piece, afterSave }: EditorViewProps) {
   const router = useRouter();
-  const { hasPermission, currentUser, currentRole } = useSession();
-  const store = useMockStore();
-  const piece = store.pieces[pieceId];
-  if (!piece) notFound();
-
-  const [form, setForm] = useState<FormState>({
-    title: piece.denomination,
-    description: piece.description ?? "",
-    provenance: piece.provenance ?? "",
-    dimensionsText: piece.dimensions_text ?? "",
-    notes: piece.notes ?? "",
-  });
-  const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
-  const [saved, setSaved] = useState(false);
-  const errors = useMemo(() => validate(form), [form]);
-  const isValid = Object.keys(errors).length === 0;
+  const { hasPermission } = useSession();
 
   if (!hasPermission("pieces.update")) {
     return <PermissionNotice>Su rol no tiene permiso para editar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
+  async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {
+    const input = toUpdateInput(values, piece.period, piece.masked_fields ?? []);
+    const result = await updatePiece(piece.id, input);
+    const outcome = outcomeFromUpdate(
+      result,
+      getApiMode() === "live" ? "Cambios guardados." : "Cambios guardados en esta sesión de demostración.",
+    );
+    if (result.status === "ok") afterSave?.(result.piece, input);
+    return outcome;
+  }
+
+  /** Versión actual de la ficha en el servidor: solo se pide tras un 409, para «Ver cambios del otro usuario». */
+  async function loadCurrentValues(): Promise<PieceFormValues | null> {
+    const current = await fetchPieceDetail(piece.id);
+    return current.status === "ok" ? toFormValues(current.piece) : null;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href={`/piezas/${pieceId}`} className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
+        <Link href={`/piezas/${piece.id}`} className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
           <ArrowLeft size={16} aria-hidden="true" />
           Volver a la ficha
         </Link>
@@ -82,74 +72,98 @@ function EditorContent({ pieceId }: { pieceId: string }) {
         </p>
       </header>
 
-      <Card as="section" aria-label="Formulario de edición">
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setTouched({ title: true, description: true, provenance: true, dimensionsText: true, notes: true });
-            if (!isValid) return;
-            store.updatePiece(
-              pieceId,
-              { denomination: form.title.trim(), description: form.description || null, provenance: form.provenance || null, dimensions_text: form.dimensionsText || null, notes: form.notes || null },
-              currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
-              currentUser?.id ?? "",
-            );
-            setSaved(true);
-          }}
-        >
-          <Input
-            id="title"
-            label={
-              <>
-                Denominación <span className="text-carmin-texto">*</span>
-              </>
-            }
-            value={form.title}
-            onChange={(event) => setForm((f) => ({ ...f, title: event.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, title: true }))}
-            error={touched.title ? errors.title : undefined}
-            required
-            className="p-2.5"
-          />
-          <Textarea
-            id="description"
-            label="Descripción"
-            value={form.description}
-            onChange={(event) => setForm((f) => ({ ...f, description: event.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, description: true }))}
-            error={touched.description ? errors.description : undefined}
-            hint={touched.description && errors.description ? undefined : `${form.description.length}/600 caracteres`}
-            rows={3}
-            className="p-2.5"
-          />
-          <Input id="provenance" label="Procedencia" value={form.provenance} onChange={(event) => setForm((f) => ({ ...f, provenance: event.target.value }))} className="p-2.5" />
-          <Input
-            id="dimensions"
-            label="Medidas (texto original)"
-            value={form.dimensionsText}
-            onChange={(event) => setForm((f) => ({ ...f, dimensionsText: event.target.value }))}
-            className="p-2.5"
-          />
-          <Textarea id="notes" label="Observaciones" value={form.notes} onChange={(event) => setForm((f) => ({ ...f, notes: event.target.value }))} rows={3} className="p-2.5" />
-
-          <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-4">
-            <Button type="submit" icon={Save} disabled={!isValid}>
-              Guardar cambios
-            </Button>
-            <Button variant="secondary" onClick={() => router.push(`/piezas/${pieceId}`)}>
-              Cancelar
-            </Button>
-            {saved && (
-              <span role="status" className="text-base font-medium text-verde-exito">
-                Cambios guardados en esta sesión de demostración.
-              </span>
-            )}
-          </div>
-        </form>
-      </Card>
+      <PieceForm
+        key={piece.id}
+        mode="edit"
+        pieceId={piece.id}
+        initialValues={toFormValues(piece)}
+        draftBase={piece.updated_at}
+        onSave={handleSave}
+        loadCurrentValues={loadCurrentValues}
+        legalOwner={piece.legal_owner}
+        maskedFields={piece.masked_fields ?? []}
+        onCancel={() => router.push(`/piezas/${piece.id}`)}
+      />
     </div>
   );
+}
+
+function MockEditorLoader({ pieceId }: { pieceId: string }) {
+  const store = useMockStore();
+  const { currentUser, currentRole, hasPermission } = useSession();
+  const stored = store.pieces[pieceId];
+  if (!stored) notFound();
+  // Igual que la API real: el rol sin permiso sobre datos de comodato no recibe comodante ni convenio (RF-041).
+  const piece = maskPieceForRole(stored, hasPermission);
+
+  return (
+    <EditorView
+      piece={piece}
+      afterSave={(updated) =>
+        store.updatePiece(
+          pieceId,
+          {
+            denomination: updated.denomination,
+            collection: updated.collection,
+            category: updated.category,
+            object_type: updated.object_type,
+            availability: updated.availability,
+            acquisition_method: updated.acquisition_method,
+            entry_date: updated.entry_date,
+            // Con el dato restringido, `updated` conserva el valor original: no se pierde.
+            lender_name: updated.lender_name,
+            loan_agreement_ref: updated.loan_agreement_ref,
+            description: updated.description,
+            author: updated.author,
+            provenance: updated.provenance,
+            period: updated.period,
+            dimensions_text: updated.dimensions_text,
+            materials: updated.materials,
+            conservation_status: updated.conservation_status,
+            notes: updated.notes,
+          },
+          currentUser?.full_name ?? currentRole?.name ?? "Persona sintética",
+          currentUser?.id ?? "",
+        )
+      }
+    />
+  );
+}
+
+type LoadState =
+  | { status: "loading" }
+  | { status: "ready"; piece: PieceDetail }
+  | { status: "not_found" }
+  | { status: "unavailable"; message: string };
+
+function LiveEditorLoader({ pieceId }: { pieceId: string }) {
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+
+  useEffect(() => {
+    let active = true;
+    fetchPieceDetail(pieceId)
+      .then((result) => {
+        if (!active) return;
+        if (result.status === "ok") setState({ status: "ready", piece: result.piece });
+        else if (result.status === "not_found") setState({ status: "not_found" });
+        else setState({ status: "unavailable", message: result.message });
+      })
+      .catch(() => {
+        if (active) setState({ status: "unavailable", message: "No se pudo conectar con el servidor. Intente nuevamente." });
+      });
+    return () => {
+      active = false;
+    };
+  }, [pieceId]);
+
+  if (state.status === "not_found") notFound();
+  if (state.status === "loading") return <p role="status" className="text-base text-gris-texto">Cargando la ficha…</p>;
+  if (state.status === "unavailable") return <PermissionNotice>{state.message}</PermissionNotice>;
+  return <EditorView piece={state.piece} />;
+}
+
+function EditorContent({ pieceId }: { pieceId: string }) {
+  return getApiMode() === "live" ? <LiveEditorLoader pieceId={pieceId} /> : <MockEditorLoader pieceId={pieceId} />;
 }
 
 export default function EditorPage({ params }: PageProps<"/piezas/[id]/editar">) {

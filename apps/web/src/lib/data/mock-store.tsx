@@ -30,6 +30,7 @@ type ImportRowOut = ApiSchemas["ImportRowOut"];
 type PieceDetail = ApiSchemas["PieceDetail"];
 type AuditEntryOut = ApiSchemas["AuditEntryOut"];
 type MovementOut = ApiSchemas["MovementOut"];
+type IdentifierOut = ApiSchemas["IdentifierOut"];
 
 interface MockState {
   pieces: Record<string, PieceDetail>;
@@ -63,6 +64,7 @@ type Action =
   | { type: "APPLY_IMPORT_BATCH"; batchId: string; actor: string; actorId: string }
   | { type: "REGISTER_MOVEMENT"; pieceId: string; toLocation: ApiSchemas["LocationRef"]; movementType: MovementOut["movement_type"]; reason: string; actor: string; actorId: string }
   | { type: "CORRECT_INVENTORY_CODE"; pieceId: string; newValue: string | null; reason: string; actor: string; actorId: string }
+  | { type: "ADD_IDENTIFIERS"; pieceId: string; identifiers: IdentifierOut[]; originalValue: string | null; actor: string; actorId: string }
   | { type: "UPDATE_PIECE"; pieceId: string; patch: Partial<PieceDetail>; actor: string; actorId: string };
 
 function pushAudit(
@@ -273,6 +275,46 @@ function reducer(state: MockState, action: Action): MockState {
         pieces: { ...state.pieces, [action.pieceId]: { ...piece, code_i: action.newValue } },
       };
     }
+    case "ADD_IDENTIFIERS": {
+      const piece = state.pieces[action.pieceId];
+      if (!piece || action.identifiers.length === 0) return state;
+      let audit = state.auditLog;
+      let seq = state.nextSeq;
+      for (const identifier of action.identifiers) {
+        const pushed = pushAudit(
+          { ...state, auditLog: audit, nextSeq: seq },
+          {
+            entity_type: "piece",
+            entity_id: action.pieceId,
+            action: "UPDATE",
+            field: "identifier",
+            old_value: null,
+            new_value: identifier.original_value,
+            user_id: action.actorId,
+            actor_label: action.actor,
+            origin: "MANUAL",
+            origin_ref: null,
+            reason: action.originalValue ? `Separación confirmada del valor «${action.originalValue}» (RF-023).` : null,
+          },
+        );
+        audit = pushed.auditLog;
+        seq = pushed.seq;
+      }
+      const firstInventory = action.identifiers.find((identifier) => identifier.identifier_type_code === "I" && identifier.is_current);
+      return {
+        ...state,
+        nextSeq: seq,
+        auditLog: audit,
+        pieces: {
+          ...state.pieces,
+          [action.pieceId]: {
+            ...piece,
+            identifiers: [...piece.identifiers, ...action.identifiers],
+            code_i: piece.code_i ?? firstInventory?.normalized_value ?? null,
+          },
+        },
+      };
+    }
     case "UPDATE_PIECE": {
       const piece = state.pieces[action.pieceId];
       if (!piece) return state;
@@ -319,6 +361,7 @@ interface MockStoreValue extends MockState {
   applyImportBatch: (batchId: string, actor: string, actorId: string) => void;
   registerMovement: (pieceId: string, toLocation: ApiSchemas["LocationRef"], movementType: MovementOut["movement_type"], reason: string, actor: string, actorId: string) => void;
   correctInventoryCode: (pieceId: string, newValue: string | null, reason: string, actor: string, actorId: string) => void;
+  addIdentifiers: (pieceId: string, identifiers: IdentifierOut[], originalValue: string | null, actor: string, actorId: string) => void;
   updatePiece: (pieceId: string, patch: Partial<PieceDetail>, actor: string, actorId: string) => void;
   movementsFor: (pieceId: string, seeded: MovementOut[]) => MovementOut[];
 }
@@ -335,12 +378,13 @@ export function MockStoreProvider({ children }: { children: ReactNode }) {
   const applyImportBatch = useCallback((batchId: string, actor: string, actorId: string) => dispatch({ type: "APPLY_IMPORT_BATCH", batchId, actor, actorId }), []);
   const registerMovement = useCallback((pieceId: string, toLocation: ApiSchemas["LocationRef"], movementType: MovementOut["movement_type"], reason: string, actor: string, actorId: string) => dispatch({ type: "REGISTER_MOVEMENT", pieceId, toLocation, movementType, reason, actor, actorId }), []);
   const correctInventoryCode = useCallback((pieceId: string, newValue: string | null, reason: string, actor: string, actorId: string) => dispatch({ type: "CORRECT_INVENTORY_CODE", pieceId, newValue, reason, actor, actorId }), []);
+  const addIdentifiers = useCallback((pieceId: string, identifiers: IdentifierOut[], originalValue: string | null, actor: string, actorId: string) => dispatch({ type: "ADD_IDENTIFIERS", pieceId, identifiers, originalValue, actor, actorId }), []);
   const updatePiece = useCallback((pieceId: string, patch: Partial<PieceDetail>, actor: string, actorId: string) => dispatch({ type: "UPDATE_PIECE", pieceId, patch, actor, actorId }), []);
   const movementsFor = useCallback((pieceId: string, seeded: MovementOut[]) => [...seeded, ...(state.extraMovements[pieceId] ?? [])], [state.extraMovements]);
 
   const value = useMemo<MockStoreValue>(
-    () => ({ ...state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, updatePiece, movementsFor }),
-    [state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, updatePiece, movementsFor],
+    () => ({ ...state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor }),
+    [state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor],
   );
 
   return <MockStoreContext.Provider value={value}>{children}</MockStoreContext.Provider>;
