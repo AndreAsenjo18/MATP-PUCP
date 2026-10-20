@@ -2,28 +2,55 @@
 
 /**
  * Pantalla 10 — Administración: usuarios y roles (RF-039), vocabularios/categorías (RN-010),
- * tipos de identificador (parametrizables, RN-010) y ubicaciones (RF-016).
+ * tipos de identificador (parametrizables, RN-010), ubicaciones (RF-016), papelera con
+ * restauración (RN-005) y consulta global de auditoría con exportación a CSV (RF-040, RF-041);
+ * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { StatusBadge } from "@/components/domain/StatusBadges";
+import { TrashPanel } from "@/components/domain/TrashPanel";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { toEntryView } from "@/lib/data/audit";
+import { useMockStore } from "@/lib/data/mock-store";
+import { getApiMode } from "@/lib/data/mode";
 import { IDENTIFIER_TYPES, LOCATIONS, locationPath, ROLES, USERS, VOCABULARIES, termsByVocabulary } from "@/lib/fixtures";
 
-const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones"] as const;
+const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Papelera", "Auditoría"] as const;
 type Tab = (typeof TABS)[number];
 
+/**
+ * Consulta global de auditoría. En modo demostración el historial son las filas del store de la
+ * sesión; en `live` las trae la API (igual que la pestaña «Auditoría» de la ficha de pieza).
+ */
+function AuditSection() {
+  const { auditLog } = useMockStore();
+  const live = getApiMode() === "live";
+  const entries = useMemo(() => (live ? undefined : auditLog.map(toEntryView)), [live, auditLog]);
+  return <AuditLogPanel demoEntries={entries} />;
+}
+
 function AdministracionContent() {
-  const { hasPermission } = useSession();
+  const { hasPermission, currentRole } = useSession();
   const [tab, setTab] = useState<Tab>("Usuarios y roles");
   const [selectedVocabulary, setSelectedVocabulary] = useState(VOCABULARIES[0]?.code ?? "");
 
-  if (!hasPermission("users.manage") && !hasPermission("vocabularies.manage") && !hasPermission("locations.manage")) {
+  const canOpenTrash = hasPermission("pieces.restore");
+  const canReadAudit = hasPermission("audit.read");
+
+  if (
+    !hasPermission("users.manage") &&
+    !hasPermission("vocabularies.manage") &&
+    !hasPermission("locations.manage") &&
+    !canOpenTrash &&
+    !canReadAudit
+  ) {
     return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
@@ -177,6 +204,17 @@ function AdministracionContent() {
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar ubicaciones.</PermissionNotice>
         ))}
+
+      {tab === "Papelera" &&
+        (canOpenTrash ? (
+          // Abrir la papelera exige `pieces.restore`; restaurar es solo del Administrador (el servidor lo vuelve a comprobar).
+          <TrashPanel canRestore={currentRole?.code === "ADMIN"} />
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para abrir la papelera.</PermissionNotice>
+        ))}
+
+      {tab === "Auditoría" &&
+        (canReadAudit ? <AuditSection /> : <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>)}
     </div>
   );
 }
