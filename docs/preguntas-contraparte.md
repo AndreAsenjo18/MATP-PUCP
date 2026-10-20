@@ -185,3 +185,13 @@ Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar 
 | M3 | Al subir un Excel con varias hojas, ¿cuál se lee por defecto? | La primera hoja; el usuario elige otra hoja o fila de cabeceras en el mapeo y el archivo original se vuelve a leer | importacion-datos (RF-021) | C |
 | M4 | ¿Qué valores de la columna de régimen de tenencia traen las sábanas? | Se aceptan `Propiedad`/`Propio`, `Comodato` y `Préstamo Temporal` (sin distinguir mayúsculas ni tildes) y los códigos del sistema; cualquier otro valor es un error de la fila. Si el archivo no tiene esa columna, el mapeo admite un valor por defecto | importacion-datos (RF-022), catalogo-piezas (RF-005) | A |
 | M5 | Una celda con varios códigos (`I-0236 / M.M.Z. 015`), ¿siempre trae códigos de tipos distintos? | Al marcar la columna como compuesta, cada parte toma el tipo que se reconoce en ella (N7); la parte que no se reconoce toma el tipo de la columna o, si no tiene, `OTRO` | importacion-datos (RF-023, RF-024) | B |
+
+## N. Excepciones a «nunca se borra información» (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
+
+Preguntas **internas del equipo**: las levanta la verificación transversal de la tarea 1.1 (`app/core/cross_cutting.py`, `apps/api/tests/test_cross_cutting_rules.py`). Las siete tablas sin borrado lógico están justificadas en esa lista; estas dos son deuda con dueño, no excepciones definitivas. Retirar una excepción es trabajo de la célula dueña, no de Plataforma.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| N1 | `quality_setting` se actualiza en sitio y desactivar un parámetro borra su fila. ¿Los parámetros de calidad llevan borrado lógico con motivo, como el resto de los datos configurables (RN-005, RN-010)? | Excepción con deuda: se audita cada cambio, pero la fila se puede borrar | `deteccion-duplicados-y-cola-revision` (parámetros de calidad) | B |
+| N2 | Descartar una sugerencia de IA, ¿es un estado `REJECTED` o un borrado lógico con motivo? Hoy la sugerencia nunca se borra, pero `ai_suggestion` no tiene columnas de borrado lógico. | Excepción con deuda: estado `REJECTED` auditado (RN-009) | `ia-extraccion-texto-libre` | C |
+| N3 | El pipeline de importación borra físicamente `import_row` y `duplicate_candidate` al volver a mapear o validar un lote (4 llamadas autorizadas en `PHYSICAL_DELETE_EXCEPTIONS`). ¿Se acepta, dado que lo que entra al catálogo queda en `piece_source_record` (solo inserción) y cada decisión queda auditada? | Autorizado y documentado, con la lista revisada por el Arquitecto | `importacion-pipeline-reconciliacion` | A |

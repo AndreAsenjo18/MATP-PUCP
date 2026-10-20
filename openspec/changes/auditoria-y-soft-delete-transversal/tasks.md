@@ -1,7 +1,7 @@
 ## 1. Verificación transversal (primero, para proteger a las demás células)
 
-- [ ] 1.1 Crear `app/core/cross_cutting.py` (listas de solo inserción y exclusiones justificadas) y `tests/test_cross_cutting_rules.py` (soft-delete o solo inserción con trigger, cobertura de auditoría, búsqueda AST de borrado físico, triggers en migraciones); verificar que pasa con el modelo actual y falla con un modelo de prueba sin soft-delete (Req: Verificación automática de cobertura de soft-delete y auditoría; RNF-006)
-- [ ] 1.2 Asegurar que CI ejecuta la prueba en el job `api` y proponer `CODEOWNERS` para `app/core/cross_cutting.py`; verificar con `npm run test:api` (Req: Verificación automática…; RNF-004)
+- [x] 1.1 Crear `app/core/cross_cutting.py` (listas de solo inserción y exclusiones justificadas) y `tests/test_cross_cutting_rules.py` (soft-delete o solo inserción con trigger, cobertura de auditoría, búsqueda AST de borrado físico, triggers en migraciones); verificar que pasa con el modelo actual y falla con un modelo de prueba sin soft-delete (Req: Verificación automática de cobertura de soft-delete y auditoría; RNF-006)
+- [x] 1.2 Asegurar que CI ejecuta la prueba en el job `api` y proponer `CODEOWNERS` para `app/core/cross_cutting.py`; verificar con `npm run test:api` (Req: Verificación automática…; RNF-004)
 
 ## 2. Reversión
 
