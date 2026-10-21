@@ -7,11 +7,11 @@
 ## 2. Autenticación
 
 - [x] 2.1 Crear `users/passwords.py` (Argon2 con `pwdlib`, rehash, política de 12 caracteres y lista de comunes) y filtro de logging que redacta contraseñas; pruebas: hash y verificación, rehash, contraseña débil, log sin contraseña (Req: Administración de usuarios con contraseña temporal; Req: Bloqueo temporal… — escenario "Contraseña en registros"; RNF-013)
-- [ ] 2.2 Crear `users/sessions.py` (emisión, huella, expiración por inactividad y absoluta, revocación masiva) y reescribir `get_current_user` en `api/deps.py` (cookie; `X-MATP-User` solo con `APP_ENV=test`); pruebas de expiración, revocación, huella y cabecera en desarrollo 401 (Req: Sesiones de servidor revocables; Req: Retiro de la identidad provisional de desarrollo)
-- [ ] 2.3 Implementar `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, operación nueva `POST /api/v1/auth/change-password` y `GET /api/v1/auth/me` con sesión; bloqueo, respuestas genéricas, límite por IP, `auth_event`, `must_change_password`, sintéticos rechazados en producción; pruebas de todos los escenarios de bloqueo y primer ingreso (Req: Bloqueo temporal y registro de eventos de autenticación; RNF-012)
-- [ ] 2.4 Middleware CSRF de doble envío para escrituras con cookie; pruebas: sin cabecera 403, cabecera distinta 403, correcta ok (Req: Protección contra falsificación de peticiones)
+- [x] 2.2 Crear `users/sessions.py` (emisión, huella, expiración por inactividad y absoluta, revocación masiva) y reescribir `get_current_user` en `api/deps.py` (cookie; `X-MATP-User` solo con `APP_ENV=test`); pruebas de expiración, revocación, huella y cabecera en desarrollo 401 (Req: Sesiones de servidor revocables; Req: Retiro de la identidad provisional de desarrollo)
+- [x] 2.3 Implementar `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, operación nueva `POST /api/v1/auth/change-password` y `GET /api/v1/auth/me` con sesión; bloqueo, respuestas genéricas, límite por IP, `auth_event`, `must_change_password`, sintéticos rechazados en producción; pruebas de todos los escenarios de bloqueo y primer ingreso (Req: Bloqueo temporal y registro de eventos de autenticación; RNF-012)
+- [x] 2.4 Middleware CSRF de doble envío para escrituras con cookie; pruebas: sin cabecera 403, cabecera distinta 403, correcta ok (Req: Protección contra falsificación de peticiones)
 - [x] 2.5 Interfaz `IdentityProvider` con `LocalPasswordProvider` y `OidcProvider` stub documentado; prueba de la selección por configuración (RNF-012)
-- [ ] 2.6 Fixture de pytest `login_as(role_code)` y guía de migración de pruebas en `docs/api/README.md` (RNF-004)
+- [x] 2.6 Fixture de pytest `login_as(role_code)` y guía de migración de pruebas en `docs/api/README.md` (RNF-004)
 
 ## 3. Usuarios, roles y datos sensibles
 
@@ -27,7 +27,7 @@
 
 ## 5. Cierre del change
 
-- [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de extremo a extremo en compose detrás del proxy HTTPS de `despliegue-vm-y-respaldos` (cookie `Secure`, CSRF, expiración) cuando Docker esté disponible
+- [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de extremo a extremo en compose detrás del proxy HTTPS de `despliegue-vm-y-respaldos` (cookie `Secure`, CSRF, expiración) cuando Docker esté disponible. **Pendiente declarada (sprint 3, sin Docker):** la parte de compose y proxy HTTPS no se ha ejecutado; la cookie `Secure`, el CSRF y la expiración sí están cubiertos por pruebas de API en SQLite con un cliente HTTPS
 - [ ] 5.2 Actualizar OpenAPI: implementar los 7 stubs, añadir `change-password` y `audit/sensitive-access`, esquema de seguridad `cookieAuth` y retirar `DevUserHeader` salvo documentación de pruebas; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
 - [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/acceso.md` (iniciar sesión, contraseña, bloqueo, sesión expirada) y `docs/manual-usuario/administracion.md` (usuarios y permisos)
 - [ ] 5.4 Actualizar `docs/adr/ADR-009-autenticacion-sesiones.md` (ya Propuesto) con lo implementado y ADR-005 a "Reemplazado parcialmente"; registrar supuestos (tiempos de sesión, bloqueo, política de contraseñas, retención de eventos) en `docs/preguntas-contraparte.md`; `openspec validate autenticacion-y-matriz-permisos --strict` y, tras aprobar el PR, `openspec archive autenticacion-y-matriz-permisos -y`
