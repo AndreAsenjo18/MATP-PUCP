@@ -57,7 +57,6 @@ def test_empty_release_variable_means_no_release() -> None:
         app_env="test",
         database_url="sqlite+pysqlite:///:memory:",
         s3_bucket="matp-test",
-        jwt_secret=SECRET,
         app_release="",
     )
     assert settings.app_release is None

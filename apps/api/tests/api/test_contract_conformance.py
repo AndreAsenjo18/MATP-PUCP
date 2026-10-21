@@ -45,6 +45,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/ai/suggestions/{}/approve"),
     ("post", "/ai/suggestions/{}/reject"),
     ("post", "/audit/change-sets/{}/revert"),
+    ("post", "/auth/change-password"),
     ("post", "/auth/logout"),
     ("delete", "/collections/{}"),
     ("get", "/collections/{}"),

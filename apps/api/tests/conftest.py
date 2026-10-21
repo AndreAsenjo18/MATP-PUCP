@@ -50,7 +50,6 @@ def settings() -> Settings:
         s3_access_key_id="test-access-key",
         s3_secret_access_key=SECRET,
         s3_bucket="matp-test",
-        jwt_secret=SECRET,
     )
 
 

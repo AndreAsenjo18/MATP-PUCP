@@ -1,5 +1,6 @@
 """Spec usuarios-roles — Identidad provisional de desarrollo sin exposición pública (RF-042)."""
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -13,8 +14,7 @@ from app.modules.locations.models import Location, LocationLevel
 from tests.api.conftest import (
     ADMIN,
     CATALOGUER,
-    SECRET,
-    VIEWER,
+    LoginAs,
     SeededApi,
     api_settings,
     as_user,
@@ -51,14 +51,18 @@ def test_non_synthetic_user_is_rejected(seeded_api: SeededApi) -> None:
     assert response.status_code == 401
 
 
-def test_dev_header_is_rejected_in_production(seeded_api: SeededApi) -> None:
-    settings = api_settings(app_env="production", jwt_secret=SECRET)
-    app = create_app(settings, health_checks={}, engine=seeded_api.engine)
-    with TestClient(app) as client:
-        response = client.get("/api/v1/pieces", headers=as_user(ADMIN))
-        health = client.get("/health/live")
+@pytest.mark.parametrize("app_env", ["development", "production"])
+def test_dev_header_is_only_accepted_under_app_env_test(
+    seeded_api: SeededApi, app_env: str
+) -> None:
+    """Spec "Retiro de la identidad provisional de desarrollo" (ADR-009 D7)."""
+    app = create_app(api_settings(app_env=app_env), health_checks={}, engine=seeded_api.engine)
+    # No `with`: outside APP_ENV=test the lifespan starts workers on the shared SQLite connection.
+    client = TestClient(app)
+    response = client.get("/api/v1/pieces", headers=as_user(ADMIN))
+    health = client.get("/health/live")
     assert response.status_code == 401
-    assert response.json()["code"] == "production_auth_unavailable"
+    assert response.json()["code"] == "authentication_required"
     assert health.status_code == 200
 
 
@@ -72,17 +76,15 @@ def test_user_id_is_accepted_as_identity(client: TestClient) -> None:
     assert me["auth_mode"] == "dev-header"
 
 
-def test_insufficient_permission_is_forbidden(client: TestClient) -> None:
-    response = client.post(
-        "/api/v1/collections",
-        json={"name": "Colección no permitida (sintética)"},
-        headers=as_user(VIEWER),
+def test_insufficient_permission_is_forbidden(login_as: LoginAs) -> None:
+    response = login_as("INTERNAL_VIEWER").post(
+        "/api/v1/collections", json={"name": "Colección no permitida (sintética)"}
     )
     assert response.status_code == 403
     body = response.json()
     assert body["code"] == "permission_denied"
     assert body["details"]["permission"] == "collections.manage"
-    listed = client.get("/api/v1/collections", headers=as_user(ADMIN)).json()
+    listed = login_as("ADMIN").get("/api/v1/collections").json()
     assert all(item["name"] != "Colección no permitida (sintética)" for item in listed)
 
 
@@ -108,42 +110,28 @@ def _loan_piece_with_exact_location(seeded_api: SeededApi) -> str:
 
 def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) -> None:
     piece_id = _loan_piece_with_exact_location(seeded_api)
-    client = seeded_api.client
+    viewer_client = seeded_api.login_as("INTERNAL_VIEWER")
+    admin_client = seeded_api.login_as("ADMIN")
 
-    viewer = client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(VIEWER)).json()
+    viewer = viewer_client.get(f"/api/v1/pieces/{piece_id}").json()
     assert viewer["lender_name"] is None
     assert viewer["loan_agreement_ref"] is None
     assert {"lender_name", "loan_agreement_ref", "location.path"} <= set(viewer["masked_fields"])
     assert viewer["location"]["is_exact"] is False
     assert {node["level"] for node in viewer["location"]["path"]} <= {"Sede", "Depósito"}
 
-    admin = client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(ADMIN)).json()
+    admin = admin_client.get(f"/api/v1/pieces/{piece_id}").json()
     assert admin["lender_name"] == "Comodante sintético AJB"
     assert admin["masked_fields"] == []
     assert admin["location"]["is_exact"] is True
     assert len(admin["location"]["path"]) > len(viewer["location"]["path"])
 
-    listed = client.get("/api/v1/locations", headers=as_user(VIEWER)).json()
+    listed = viewer_client.get("/api/v1/locations").json()
     assert {item["level"] for item in listed} <= {"Sede", "Depósito"}
 
 
-def test_auth_login_remains_stub(client: TestClient) -> None:
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "admin@matp.local",
-            "password": "clave-ficticia-para-prueba",
-        },
-    )
-
-    assert response.status_code == 501
-
-
-def test_auth_me_returns_user_role_and_permissions(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/auth/me",
-        headers=as_user(CATALOGUER),
-    )
+def test_auth_me_returns_user_role_and_permissions(login_as: LoginAs) -> None:
+    response = login_as("CATALOGUER").get("/api/v1/auth/me")
 
     assert response.status_code == 200
 
@@ -151,7 +139,8 @@ def test_auth_me_returns_user_role_and_permissions(client: TestClient) -> None:
     assert body["email"] == CATALOGUER
     assert "CATALOGUER" in body["roles"]
     assert "pieces.update" in body["permissions"]
-    assert body["auth_mode"] == "dev-header"
+    assert body["auth_mode"] == "session"
+    assert body["must_change_password"] is False
 
 
 def test_auth_me_rejects_anonymous_user(client: TestClient) -> None:
@@ -169,8 +158,17 @@ def test_auth_endpoints_openapi_contract(client: TestClient) -> None:
 
     login = paths["/api/v1/auth/login"]["post"]
     assert login["operationId"] == "login"
-    assert login["x-status"] == "stub"
-    assert login["x-change"] == "autenticacion-y-matriz-permisos"
+    assert login["x-status"] == "implemented"
+    assert "x-change" not in login
+    assert {"401", "429"} <= set(login["responses"])
+
+    for path, operation_id in (
+        ("/api/v1/auth/logout", "logout"),
+        ("/api/v1/auth/change-password", "changePassword"),
+    ):
+        operation = paths[path]["post"]
+        assert operation["operationId"] == operation_id
+        assert operation["x-status"] == "implemented"
 
     me = paths["/api/v1/auth/me"]["get"]
     assert me["operationId"] == "getMe"
