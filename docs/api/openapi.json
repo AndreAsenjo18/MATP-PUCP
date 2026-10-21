@@ -373,12 +373,11 @@
           {
             "comment": "Revisado",
             "confirm_counts": {
-              "CONFLICT": 5,
-              "NEW": 70,
-              "POSSIBLE_DUPLICATE": 10,
-              "UPDATE": 35,
-              "rows": 120
-            }
+              "create": 70,
+              "skip": 15,
+              "update": 35
+            },
+            "summary_token": "00000000000000000000000000000000"
           }
         ],
         "properties": {
@@ -394,18 +393,63 @@
             "title": "Comment"
           },
           "confirm_counts": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "description": "Totales que la persona confirmó en pantalla (RNF-010, RF-027).",
-            "title": "Confirm Counts",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Totales que la persona confirmó en pantalla (informativo).",
+            "title": "Confirm Counts"
+          },
+          "summary_token": {
+            "description": "`approval_summary.summary_token` del resumen mostrado (RF-027, RNF-010).",
+            "title": "Summary Token",
+            "type": "string"
           }
         },
         "required": [
-          "confirm_counts"
+          "summary_token"
         ],
         "title": "ApprovalRequest",
+        "type": "object"
+      },
+      "ApprovalSummaryOut": {
+        "description": "What applying the batch would do now; approve with its ``summary_token`` (D6).",
+        "properties": {
+          "create": {
+            "description": "Filas que crearán una pieza nueva.",
+            "title": "Create",
+            "type": "integer"
+          },
+          "skip": {
+            "description": "Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).",
+            "title": "Skip",
+            "type": "integer"
+          },
+          "summary_token": {
+            "description": "Huella del resumen; se envía al aprobar.",
+            "title": "Summary Token",
+            "type": "string"
+          },
+          "update": {
+            "description": "Filas que actualizarán una pieza existente.",
+            "title": "Update",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "create",
+          "update",
+          "skip",
+          "summary_token"
+        ],
+        "title": "ApprovalSummaryOut",
         "type": "object"
       },
       "AuditAction": {
@@ -2472,6 +2516,37 @@
         "title": "IdentifierTypeUpdate",
         "type": "object"
       },
+      "ImageAssociateRequest": {
+        "properties": {
+          "piece_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pieza de destino; por defecto, la de la fila donde está anclada la imagen.",
+            "title": "Piece Id"
+          },
+          "view_type_term_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Type Term Id"
+          }
+        },
+        "title": "ImageAssociateRequest",
+        "type": "object"
+      },
       "ImportBatchCounters": {
         "description": "Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``).",
         "properties": {
@@ -2499,6 +2574,12 @@
       "ImportBatchOut": {
         "examples": [
           {
+            "approval_summary": {
+              "create": 70,
+              "skip": 15,
+              "summary_token": "00000000000000000000000000000000",
+              "update": 35
+            },
             "counts": {
               "CONFLICT": 5,
               "NEW": 70,
@@ -2530,6 +2611,17 @@
           }
         ],
         "properties": {
+          "approval_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resumen para aprobar; solo en previsualización (RF-027, RNF-010)."
+          },
           "approved_at": {
             "anyOf": [
               {
@@ -2841,6 +2933,14 @@
             "minimum": 0.0,
             "title": "Total",
             "type": "integer"
+          },
+          "unassigned_images": {
+            "description": "Bandeja de imágenes sin fila: ancladas en filas sin datos (RF-029).",
+            "items": {
+              "$ref": "#/components/schemas/ImportImageOut"
+            },
+            "title": "Unassigned Images",
+            "type": "array"
           }
         },
         "required": [
@@ -2853,6 +2953,100 @@
         "title": "ImportDiffsPage",
         "type": "object"
       },
+      "ImportImageOut": {
+        "description": "Image extracted from the workbook, pending until a person associates it (RF-029).",
+        "properties": {
+          "anchor_row_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fila del Excel donde está anclada.",
+            "title": "Anchor Row Number"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "image_number": {
+            "title": "Image Number",
+            "type": "integer"
+          },
+          "import_row_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fila del lote propuesta; null = bandeja sin asignar.",
+            "title": "Import Row Id"
+          },
+          "media_asset_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Foto registrada al asociarla.",
+            "title": "Media Asset Id"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL temporal para ver la imagen.",
+            "title": "Preview Url"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportImageStatus"
+          }
+        },
+        "required": [
+          "id",
+          "image_number",
+          "anchor_row_number",
+          "import_row_id",
+          "status",
+          "content_type",
+          "size_bytes"
+        ],
+        "title": "ImportImageOut",
+        "type": "object"
+      },
+      "ImportImageStatus": {
+        "enum": [
+          "PENDING",
+          "ASSOCIATED"
+        ],
+        "title": "ImportImageStatus",
+        "type": "string"
+      },
       "ImportLog": {
         "examples": [
           {
@@ -2861,8 +3055,10 @@
               "id": "01920000-0000-7000-8000-000000000601",
               "status": "APPLIED"
             },
+            "download_url": "/api/v1/imports/01920000-0000-7000-8000-000000000601/log?format=xlsx",
             "entries": [
               {
+                "action": "SKIP",
                 "classification": "CONFLICT",
                 "decision": "REJECTED",
                 "reason": "Código I asignado a otra pieza.",
@@ -2874,11 +3070,20 @@
         ],
         "properties": {
           "applied_rows": {
-            "title": "Applied Rows",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo en lotes aplicados o revertidos.",
+            "title": "Applied Rows"
           },
           "batch": {
             "additionalProperties": true,
+            "description": "Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa y conteos.",
             "title": "Batch",
             "type": "object"
           },
@@ -2891,10 +3096,11 @@
                 "type": "null"
               }
             ],
-            "description": "Rechazos descargables en Excel.",
+            "description": "La misma bitácora en Excel.",
             "title": "Download Url"
           },
           "entries": {
+            "description": "Filas no aplicadas con su motivo y filas resueltas por una persona.",
             "items": {
               "$ref": "#/components/schemas/ImportLogEntry"
             },
@@ -2902,8 +3108,16 @@
             "type": "array"
           },
           "rejected_rows": {
-            "title": "Rejected Rows",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filas no aplicadas; null si el lote no llegó a leer filas.",
+            "title": "Rejected Rows"
           }
         },
         "required": [
@@ -2917,6 +3131,15 @@
       },
       "ImportLogEntry": {
         "properties": {
+          "action": {
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "SKIP"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
           "classification": {
             "anyOf": [
               {
@@ -2941,6 +3164,18 @@
             ],
             "title": "Reason"
           },
+          "resolution": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
           "source_row_number": {
             "title": "Source Row Number",
             "type": "integer"
@@ -2962,6 +3197,7 @@
           "source_row_number",
           "classification",
           "decision",
+          "action",
           "reason",
           "target_piece_id"
         ],
@@ -2971,6 +3207,7 @@
       "ImportRowOut": {
         "examples": [
           {
+            "action": "UPDATE",
             "batch_id": "01920000-0000-7000-8000-000000000601",
             "classification": "UPDATE",
             "decision": "PENDING",
@@ -2984,6 +3221,7 @@
             ],
             "has_validation_errors": false,
             "id": "01920000-0000-7000-8000-000000000611",
+            "images": [],
             "mapped_data": {
               "fields": {
                 "denomination": "Retablo ayacuchano"
@@ -3013,6 +3251,23 @@
           }
         ],
         "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "CREATE",
+                  "UPDATE",
+                  "SKIP"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Qué hará la aplicación del lote con la fila.",
+            "title": "Action"
+          },
           "batch_id": {
             "format": "uuid",
             "title": "Batch Id",
@@ -3059,6 +3314,14 @@
             "title": "Id",
             "type": "string"
           },
+          "images": {
+            "description": "Imágenes ancladas en la fila (RF-029).",
+            "items": {
+              "$ref": "#/components/schemas/ImportImageOut"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "mapped_data": {
             "anyOf": [
               {
@@ -3083,6 +3346,19 @@
             "additionalProperties": true,
             "title": "Raw Data",
             "type": "object"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resolución de una persona: `target_piece_id` o `as_new`, `field_decisions`, `decided_by_id`, `decided_at`.",
+            "title": "Resolution"
           },
           "source_row_number": {
             "title": "Source Row Number",
@@ -6862,7 +7138,24 @@
         "type": "string"
       },
       "RowDecisionRequest": {
+        "examples": [
+          {
+            "as_new": false,
+            "decision": "ACCEPTED",
+            "field_decisions": {
+              "author": "exclude",
+              "provenance": "accept"
+            },
+            "target_piece_id": "01920000-0000-7000-8000-000000000101"
+          }
+        ],
         "properties": {
+          "as_new": {
+            "default": false,
+            "description": "Conflicto o posible duplicado: la fila crea una pieza nueva.",
+            "title": "As New",
+            "type": "boolean"
+          },
           "decision": {
             "enum": [
               "ACCEPTED",
@@ -6871,6 +7164,18 @@
             ],
             "title": "Decision",
             "type": "string"
+          },
+          "field_decisions": {
+            "additionalProperties": {
+              "enum": [
+                "accept",
+                "exclude"
+              ],
+              "type": "string"
+            },
+            "description": "Por campo del diff: aceptar el valor entrante o conservar el actual.",
+            "title": "Field Decisions",
+            "type": "object"
           },
           "reason": {
             "anyOf": [
@@ -6894,6 +7199,7 @@
                 "type": "null"
               }
             ],
+            "description": "Conflicto o posible duplicado: la fila actualiza esta pieza.",
             "title": "Target Piece Id"
           }
         },
@@ -10795,6 +11101,7 @@
     },
     "/api/v1/imports/{batch_id}/confirm": {
       "post": {
+        "description": "Aprueba el lote con el `summary_token` del resumen mostrado y lo aplica en segundo plano, en una sola transacción. Si el resumen cambió responde 409 `summary_changed` con el resumen actual. Si una fila viola una regla de dominio no se aplica ninguna y el lote queda «fallido al aplicar» con la fila y el motivo.",
         "operationId": "confirmImportBatch",
         "parameters": [
           {
@@ -10849,6 +11156,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -10858,16 +11175,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -10882,13 +11189,12 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/diffs": {
       "get": {
-        "description": "Filas del lote con su clasificación, coincidencias, errores y diff campo a campo, más las reglas y umbrales usados para clasificarlas (RF-025, RF-026).",
+        "description": "Filas del lote con su clasificación, coincidencias, errores, diff campo a campo, la acción que hará la aplicación y sus imágenes, más las reglas y umbrales usados para clasificarlas y la bandeja de imágenes sin fila (RF-025, RF-026, RF-029).",
         "operationId": "getImportBatchDiffs",
         "parameters": [
           {
@@ -11022,9 +11328,10 @@
         "x-status": "implemented"
       }
     },
-    "/api/v1/imports/{batch_id}/log": {
-      "get": {
-        "operationId": "getImportLog",
+    "/api/v1/imports/{batch_id}/images/{image_id}/associate": {
+      "post": {
+        "description": "Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 antes): nunca se asocian automáticamente.",
+        "operationId": "associateImportImage",
         "parameters": [
           {
             "in": "path",
@@ -11035,14 +11342,34 @@
               "title": "Batch Id",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageAssociateRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportLog"
+                  "$ref": "#/components/schemas/ImportImageOut"
                 }
               }
             },
@@ -11068,6 +11395,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11077,16 +11414,103 @@
               }
             },
             "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
           },
-          "501": {
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Asociar una imagen extraída del Excel a una pieza (RF-029)",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/log": {
+      "get": {
+        "description": "Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa, conteos y cada fila no aplicada con su número de fila y motivo. `format=xlsx` la descarga en Excel.",
+        "operationId": "getImportLog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`json` o `xlsx`.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "description": "`json` o `xlsx`.",
+              "pattern": "^(json|xlsx)$",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
+                  "$ref": "#/components/schemas/ImportLog"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            },
+            "description": "Bitácora en JSON o, con `format=xlsx`, como hoja de cálculo."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
           }
         },
         "security": [
@@ -11101,8 +11525,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/mapping": {
@@ -11293,6 +11716,7 @@
     },
     "/api/v1/imports/{batch_id}/rows/{row_id}": {
       "patch": {
+        "description": "Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino (`target_piece_id`) o marcándola como nueva (`as_new`). Una fila con errores o un conflicto sin resolver no se puede aceptar (422).",
         "operationId": "decideImportRow",
         "parameters": [
           {
@@ -11357,6 +11781,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -11366,16 +11800,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -11390,8 +11814,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/validate": {

@@ -14,7 +14,7 @@ from sqlalchemy.exc import DatabaseError
 
 from tests.test_migrations import _config, _migrate, _sqlite_engine
 
-PREVIOUS = "06fcd85b7c46"
+PREVIOUS = "0007_import_decisions_and_images"
 REVISION = "0006_auth_sessions_and_events"
 NEW_TABLES = {"user_session", "auth_event", "sensitive_access_log"}
 POSTGRES_URL = "postgresql+psycopg://matp:unused@localhost:5432/matp"

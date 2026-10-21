@@ -8,7 +8,8 @@ guide in ``docs/api/README.md``. The ``X-MATP-User`` header (``as_user``) still 
 """
 
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -175,3 +176,57 @@ def login_as(seeded_api: SeededApi) -> LoginAs:
     """``login_as("ADMIN")`` -> a client signed in as the seeded user holding that role."""
 
     return seeded_api.login_as
+
+
+# --- Import pipeline (importacion-pipeline-reconciliacion) ----------------------------------
+@dataclass
+class Pipeline:
+    engine: Any
+    client: TestClient
+    stored: dict[str, bytes]
+    app_for: Callable[..., TestClient]
+    sessions: dict[str, TestClient] = field(default_factory=dict)
+
+    def session(self) -> Session:
+        return make_session_factory(self.engine)()
+
+    def login(self, role: str) -> TestClient:
+        """A client signed in as ``role`` on the same application as ``client``."""
+        if role not in self.sessions:
+            self.sessions[role] = login_client(self.client.app, self.engine, role)  # type: ignore[arg-type]
+        return self.sessions[role]
+
+
+def _fake_storage(app: Any, stored: dict[str, bytes]) -> None:
+    app.state.storage.put_bytes = lambda key, data, _type: stored.__setitem__(key, data)
+    app.state.storage.get_bytes = lambda key: stored[key]
+
+
+@pytest.fixture(scope="module")
+def pipeline() -> Iterator[Pipeline]:
+    """A seeded database per test module for the import pipeline: validation writes review
+    links and applying creates pieces that other modules count."""
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
+    event.listen(engine, "connect", lambda conn, _r: conn.execute("PRAGMA foreign_keys=ON"))
+    Base.metadata.create_all(engine)
+    with make_session_factory(engine)() as session:
+        run_seed(session, SeedOptions(upload_media=False))
+        session.commit()
+    stored: dict[str, bytes] = {}
+    clients: list[TestClient] = []
+
+    def app_for(role: str = "CATALOGUER", **overrides: object) -> TestClient:
+        """A client signed in as ``role`` on an application built with these settings."""
+        app = create_app(api_settings(**overrides), health_checks={}, engine=engine)
+        _fake_storage(app, stored)
+        lifespan = TestClient(app)
+        lifespan.__enter__()
+        clients.append(lifespan)
+        return login_client(app, engine, role)
+
+    yield Pipeline(engine, app_for(), stored, app_for)
+    for client in clients:
+        client.__exit__(None, None, None)
+    engine.dispose()

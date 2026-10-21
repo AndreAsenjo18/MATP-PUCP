@@ -50,7 +50,7 @@ from app.modules.catalog.schemas import (
     PieceValidationResult,
     SourceRecordOut,
 )
-from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
+from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.schemas import (
     IdentifierCreate,
@@ -75,7 +75,11 @@ from app.modules.media.schemas import (
     UploadUrlRequest,
     UploadUrlResponse,
 )
-from app.modules.media.service import EXTENSION_BY_FORMAT, verify_image_stream
+from app.modules.media.service import (
+    EXTENSION_BY_FORMAT,
+    comodato_restriction_term_id,
+    verify_image_stream,
+)
 from app.modules.quality.schemas import PieceAlert
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -573,24 +577,6 @@ def create_media_upload_url(
     )
 
 
-def _comodato_restriction_term_id(session: Session) -> uuid.UUID:
-    """Restricción de imágenes en comodato (RN-008): hereda `NO_PUBLICAR`."""
-    term = session.scalar(
-        select(Term)
-        .join(Vocabulary)
-        .where(
-            Vocabulary.code == VocabularyCode.USAGE_RESTRICTION,
-            Term.code == "NO_PUBLICAR",
-        )
-    )
-    if term is None:
-        raise ValidationFailed(
-            "Falta el vocabulario de restricciones de uso.",
-            code="usage_restriction_missing",
-        )
-    return term.id
-
-
 @router.post(
     "/{piece_id}/media",
     response_model=MediaAssetOut,
@@ -644,7 +630,7 @@ def register_media(
     restriction_term_id: uuid.UUID | None = None
     restriction_note: str | None = None
     if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
-        restriction_term_id = _comodato_restriction_term_id(session)
+        restriction_term_id = comodato_restriction_term_id(session)
         restriction_note = "Restricción contractual del comodato (RN-008)"
 
     # 7. Crea MediaAsset con auditoría MANUAL

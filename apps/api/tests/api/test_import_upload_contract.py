@@ -1,11 +1,11 @@
 """Change alinear-api-endpoints-v1, tarea 4.4 — forma y firma de la importación del contrato.
 
 Solo se verifica el OpenAPI generado (design D8). `upload` declara 202 con
-`ImportBatchSummary` y solo `file` en el formulario. `upload` y `diffs` ya los implementa
-`importacion-pipeline-reconciliacion` (tareas 2.1 y 3.4; su comportamiento se prueba en
-`test_import_pipeline_api.py`); `confirm` sigue en 501 hasta su tarea 4.2 (Req: Conformidad
-con el contrato de interfaces del equipo; Valores de enumerado del contrato en la API; RF-021,
-RF-026, RF-027).
+`ImportBatchSummary` y solo `file` en el formulario. `upload`, `diffs` y `confirm` ya los
+implementa `importacion-pipeline-reconciliacion` (tareas 2.1, 3.4 y 4.2; su comportamiento se
+prueba en `test_import_pipeline_api.py` y `test_import_decisions_api.py`); `rollback` sigue en
+501 hasta su tarea 5.2 (Req: Conformidad con el contrato de interfaces del equipo; Valores de
+enumerado del contrato en la API; RF-021, RF-026, RF-027).
 """
 
 from pathlib import Path
@@ -19,8 +19,12 @@ from app.openapi_export import build_spec
 
 CONTRACT = Path(__file__).resolve().parents[4] / "docs" / "fuentes" / "endpoints-api-v1.yaml"
 UPLOAD = "/api/v1/imports/upload"
-IMPLEMENTED = [("post", UPLOAD), ("get", "/api/v1/imports/{batch_id}/diffs")]
-STUBS = [("post", "/api/v1/imports/{batch_id}/confirm")]
+IMPLEMENTED = [
+    ("post", UPLOAD),
+    ("get", "/api/v1/imports/{batch_id}/diffs"),
+    ("post", "/api/v1/imports/{batch_id}/confirm"),
+]
+STUBS = [("post", "/api/v1/imports/{batch_id}/rollback")]
 
 
 @pytest.fixture(scope="module")

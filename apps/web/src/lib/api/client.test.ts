@@ -82,9 +82,9 @@ describe("createApiClient", () => {
         }),
     });
 
-    const { error } = await client.POST("/api/v1/imports/{batch_id}/confirm", {
+    const { error } = await client.POST("/api/v1/imports/{batch_id}/rollback", {
       params: { path: { batch_id: "01920000-0000-7000-8000-000000000601" } },
-      body: { confirm_counts: { rows: 10 } },
+      body: { reason: "Lote sintético" },
     });
 
     expect(isNotImplemented(error)).toBe(true);

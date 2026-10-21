@@ -89,3 +89,18 @@ En la ingesta de `.xlsx` se leen las imágenes del libro (`ws._images`, anclaje 
 - **Worker en proceso se pierde al reiniciar** → etapas idempotentes y recuperación por latido.
 - **Transacción larga al aplicar** → bloqueo de filas de piezas afectadas; se recomienda aplicar lotes fuera de horario y se mide en PostgreSQL (tarea de verificación con Docker).
 - **Dependencia de tres changes hermanos** → interfaces fijadas y dobles provisionales; la reversión se implementa al final.
+
+## Prueba de volumen (tarea 7.1, 2026-10-21)
+
+Sábana sintética de 20 000 filas contra PostgreSQL 18 en el compose local (base `matp_volume` aparte, migrada a `head` y con el seed de 300 piezas). Las etapas se ejecutaron con `worker.run_stage`, como en la API; cada fila nueva trae un código I y un código de colección.
+
+| Etapa | Filas | Tiempo |
+|---|---|---|
+| Ingesta (CSV) | 20 000 | 1,5 s |
+| Mapeo | — | 0,2 s |
+| Validación, matching y clasificación | 20 000 (19 782 nuevas, 138 actualizaciones, 40 conflictos, 40 posibles duplicados) | 6,6 s |
+| Resumen de aprobación | 20 000 | 0,2 s |
+| Aplicación en una transacción | 19 920 aplicadas, 80 omitidas; 19 920 registros de datos de origen | 200,4 s |
+
+- La aplicación (unos 3,3 min) queda por debajo del umbral de 10 min de D1, así que no hace falta una cola externa. Parte del tiempo coincidió con otras pruebas sobre el mismo servidor; la medida es una cota superior.
+- La prueba encontró un bloqueo que SQLite no reproduce. En PostgreSQL el latido de una etapa se escribe desde otra conexión; si la etapa ya había escrito la fila del lote (`change_set_id` al aplicar, o los conteos al validar con posibles duplicados), el latido esperaba ese bloqueo y la etapa esperaba al latido. Ahora las dos etapas escriben la fila del lote solo al final. `tests/test_import_stages_postgresql.py` (marcada `postgres`) lo cubre con un latido por fila y `lock_timeout`.

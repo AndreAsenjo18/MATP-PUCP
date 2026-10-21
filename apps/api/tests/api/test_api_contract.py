@@ -136,7 +136,7 @@ def test_business_operations_declare_the_dev_identity_scheme(spec: dict) -> None
 
 def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     stubs = [r for r in _api_routes() if r.openapi_extra.get(X_STATUS) == STATUS_STUB]
-    assert len(stubs) >= 40
+    assert len(stubs) >= 35
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:
@@ -150,8 +150,8 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
 def test_stub_over_http_returns_501_with_change_and_example(login_as: LoginAs) -> None:
     client = login_as("ADMIN")
     response = client.post(
-        f"/api/v1/imports/{uuid.uuid4()}/confirm",
-        json={"confirm_counts": {"rows": 10}},
+        f"/api/v1/imports/{uuid.uuid4()}/rollback",
+        json={"reason": "Lote sintético"},
     )
     assert response.status_code == 501
     body = response.json()
