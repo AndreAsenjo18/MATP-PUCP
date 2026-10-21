@@ -23,7 +23,7 @@
 
 ## 5. Cierre del change
 
-- [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de volumen con 20 000 piezas sintéticas contra PostgreSQL en compose (duración del scan y calibración de umbrales de trigramas) cuando Docker esté disponible
+- [x] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de volumen con 20 000 piezas sintéticas contra PostgreSQL en compose (duración del scan y calibración de umbrales de trigramas) cuando Docker esté disponible — 2026-10-20: `npm test`, `npm run lint` y `npm run test:api:pg` en verde; escaneo de 20 000 piezas en 30,7 min y calibración en design D7; la elección del puntaje mínimo queda pendiente (O2)
 - [x] 5.2 Actualizar OpenAPI: implementar los 2 stubs y añadir `duplicates/scan` y `quality/jobs/{job_id}`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
 - [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (cola de duplicados, marcar distintos, posponer, fusionar)
-- [ ] 5.4 Registrar supuestos (pesos, umbral, máximo de posposición, regímenes en fusión) en `docs/preguntas-contraparte.md`, `openspec validate deteccion-duplicados-y-cola-revision --strict` y, tras aprobar el PR, `openspec archive deteccion-duplicados-y-cola-revision -y` — supuestos registrados el 2026-10-20 (O1–O5, G8, F2, F3; design D6; spec delta) y `validate --strict` en verde; queda sin marcar hasta archivar tras aprobar el PR
+- [x] 5.4 Registrar supuestos (pesos, umbral, máximo de posposición, regímenes en fusión) en `docs/preguntas-contraparte.md`, `openspec validate deteccion-duplicados-y-cola-revision --strict` y, tras aprobar el PR, `openspec archive deteccion-duplicados-y-cola-revision -y` — supuestos registrados el 2026-10-20 (O1–O5, G8, F2, F3; design D6; spec delta) y `validate --strict` en verde; se archiva con `openspec archive` una vez mergeada la 5.1
