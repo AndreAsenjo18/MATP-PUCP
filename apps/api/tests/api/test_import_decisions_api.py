@@ -32,7 +32,7 @@ from app.modules.identification.service import add_identifier
 from app.modules.imports.models import ImportBatch, ImportImage, ImportRow
 from app.modules.media.models import MediaAsset
 from app.modules.users.models import AppUser
-from tests.api.conftest import ADMIN, CATALOGUER, MANAGER, Pipeline, as_user
+from tests.api.conftest import ADMIN, Pipeline
 from tests.api.test_import_pipeline_api import (
     BASE,
     SABANA,
@@ -104,11 +104,11 @@ def prepared(pipeline: Pipeline) -> Batch:
     return Batch(batch_id, tag, catalog, _rows(pipeline, batch_id))
 
 
-def decide(pipeline: Pipeline, batch: Batch, row: int, user: str = CATALOGUER, **body: Any) -> Any:
+def decide(
+    pipeline: Pipeline, batch: Batch, row: int, role: str = "CATALOGUER", **body: Any
+) -> Any:
     row_id = batch.rows[row]["id"]
-    return pipeline.client.patch(
-        f"{BASE}/{batch.id}/rows/{row_id}", json=body, headers=as_user(user)
-    )
+    return pipeline.login(role).patch(f"{BASE}/{batch.id}/rows/{row_id}", json=body)
 
 
 def summary(pipeline: Pipeline, batch_id: str) -> dict[str, Any]:
@@ -117,11 +117,12 @@ def summary(pipeline: Pipeline, batch_id: str) -> dict[str, Any]:
     return approval
 
 
-def confirm(pipeline: Pipeline, batch_id: str, token: str, user: str = MANAGER) -> Any:
-    return pipeline.client.post(
+def confirm(
+    pipeline: Pipeline, batch_id: str, token: str, role: str = "COLLECTIONS_MANAGER"
+) -> Any:
+    return pipeline.login(role).post(
         f"{BASE}/{batch_id}/confirm",
         json={"summary_token": token, "comment": "Revisado (sintético)"},
-        headers=as_user(user),
     )
 
 
@@ -147,7 +148,7 @@ def test_resolving_a_conflict_choosing_the_target_piece(pipeline: Pipeline) -> N
     assert row["action"] == "UPDATE" and row["target_piece_id"] == piece_a
     assert {change["field"] for change in row["diff"]} >= {"denomination"}
     assert row["resolution"]["target_piece_id"] == piece_a
-    log = pipeline.client.get(f"{BASE}/{batch.id}/log", headers=as_user(CATALOGUER)).json()
+    log = pipeline.client.get(f"{BASE}/{batch.id}/log").json()
     entry = next(entry for entry in log["entries"] if entry["source_row_number"] == 4)
     assert entry["resolution"]["target_piece_id"] == piece_a
 
@@ -228,7 +229,9 @@ def test_a_row_whose_code_i_is_in_use_cannot_be_new(pipeline: Pipeline) -> None:
 def test_cataloguer_cannot_approve(pipeline: Pipeline) -> None:
     batch = prepared(pipeline)
 
-    response = confirm(pipeline, batch.id, summary(pipeline, batch.id)["summary_token"], CATALOGUER)
+    response = confirm(
+        pipeline, batch.id, summary(pipeline, batch.id)["summary_token"], "CATALOGUER"
+    )
 
     assert response.status_code == 403
 
@@ -395,7 +398,6 @@ def test_a_rule_violated_at_apply_rolls_back_every_row(pipeline: Pipeline) -> No
     excluded = pipeline.client.patch(
         f"{BASE}/{batch_id}/rows/{row_id}",
         json={"decision": "EXCLUDED"},
-        headers=as_user(CATALOGUER),
     )
     assert excluded.status_code == 200
     assert get_batch(pipeline.client, batch_id)["status"] == "IN_PREVIEW"
@@ -411,7 +413,7 @@ def test_a_rule_violated_at_apply_rolls_back_every_row(pipeline: Pipeline) -> No
 def test_log_of_an_applied_batch_lists_the_rows_not_applied(
     pipeline: Pipeline, applied: Batch
 ) -> None:
-    response = pipeline.client.get(f"{BASE}/{applied.id}/log", headers=as_user(CATALOGUER))
+    response = pipeline.client.get(f"{BASE}/{applied.id}/log")
 
     assert response.status_code == 200
     log = response.json()
@@ -429,9 +431,7 @@ def test_log_of_an_applied_batch_lists_the_rows_not_applied(
 
 
 def test_log_downloads_as_a_spreadsheet(pipeline: Pipeline, applied: Batch) -> None:
-    response = pipeline.client.get(
-        f"{BASE}/{applied.id}/log", params={"format": "xlsx"}, headers=as_user(CATALOGUER)
-    )
+    response = pipeline.client.get(f"{BASE}/{applied.id}/log", params={"format": "xlsx"})
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith(
@@ -450,7 +450,7 @@ def test_log_downloads_as_a_spreadsheet(pipeline: Pipeline, applied: Batch) -> N
 def test_log_of_a_batch_failed_in_ingestion_shows_the_reason(pipeline: Pipeline) -> None:
     batch_id = upload(pipeline.client, "inventario.pdf", b"%PDF-1.4 sintetico")["batch_id"]
 
-    log = pipeline.client.get(f"{BASE}/{batch_id}/log", headers=as_user(CATALOGUER)).json()
+    log = pipeline.client.get(f"{BASE}/{batch_id}/log").json()
 
     assert log["batch"]["status"] == "FAILED_INGESTION"
     assert ".pdf" in log["batch"]["status_reason"]
@@ -483,9 +483,7 @@ def test_sabana_images_are_proposed_for_their_rows_or_left_unassigned(pipeline: 
     assert get_batch(pipeline.client, batch_id)["counts"]["images"] == 3
 
     image_id = by_row[2][0]["id"]
-    early = pipeline.client.post(
-        f"{BASE}/{batch_id}/images/{image_id}/associate", json={}, headers=as_user(CATALOGUER)
-    )
+    early = pipeline.client.post(f"{BASE}/{batch_id}/images/{image_id}/associate", json={})
     assert early.status_code == 409 and early.json()["code"] == "batch_not_applied"
 
 
@@ -540,8 +538,8 @@ def test_associating_an_image_registers_it_as_a_photo_of_the_piece(
     image_id = row["images"][0]["id"]
     url = f"{BASE}/{batch_id}/images/{image_id}/associate"
 
-    response = pipeline.client.post(url, json={}, headers=as_user(CATALOGUER))
-    again = pipeline.client.post(url, json={}, headers=as_user(CATALOGUER))
+    response = pipeline.client.post(url, json={})
+    again = pipeline.client.post(url, json={})
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -571,12 +569,12 @@ def test_an_unassigned_image_needs_the_piece(
     assert [image["anchor_row_number"] for image in tray] == [10]
     url = f"{BASE}/{batch_id}/images/{tray[0]['id']}/associate"
 
-    missing = pipeline.client.post(url, json={}, headers=as_user(CATALOGUER))
+    missing = pipeline.client.post(url, json={})
     with pipeline.session() as session:
         piece = session.scalar(select(Piece).where(Piece.denomination == f"Pieza sin foto {tag}"))
         assert piece is not None
         piece_id = str(piece.id)
-    chosen = pipeline.client.post(url, json={"piece_id": piece_id}, headers=as_user(CATALOGUER))
+    chosen = pipeline.client.post(url, json={"piece_id": piece_id})
 
     assert missing.status_code == 422 and missing.json()["code"] == "piece_required"
     assert chosen.status_code == 200 and chosen.json()["status"] == "ASSOCIATED"

@@ -9,6 +9,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -27,7 +28,7 @@ from app.modules.quality.models import (
 )
 from app.modules.quality.scan import recover_interrupted_scans
 from app.seed.synthetic import SeedOptions, run_seed
-from tests.api.conftest import MANAGER, VIEWER, api_settings, as_user
+from tests.api.conftest import MANAGER, api_settings, login_client
 from tests.conftest import SYSTEM_CONTEXT
 
 SCAN = "/api/v1/quality/duplicates/scan"
@@ -49,11 +50,20 @@ def factory() -> Iterator[sessionmaker[Session]]:
 
 
 @pytest.fixture(scope="module")
-def client(factory: sessionmaker[Session]) -> Iterator[TestClient]:
-    engine = factory.kw["bind"]
-    app = create_app(api_settings(), health_checks={}, engine=engine)
-    with TestClient(app) as test_client:
-        yield test_client
+def app(factory: sessionmaker[Session]) -> Iterator[FastAPI]:
+    application = create_app(api_settings(), health_checks={}, engine=factory.kw["bind"])
+    with TestClient(application):  # runs the lifespan; requests use the signed-in clients below
+        yield application
+
+
+@pytest.fixture(scope="module")
+def client(app: FastAPI, factory: sessionmaker[Session]) -> TestClient:
+    return login_client(app, factory.kw["bind"], "COLLECTIONS_MANAGER")
+
+
+@pytest.fixture(scope="module")
+def viewer(app: FastAPI, factory: sessionmaker[Session]) -> TestClient:
+    return login_client(app, factory.kw["bind"], "INTERNAL_VIEWER")
 
 
 def _candidates(session: Session) -> list[DuplicateCandidate]:
@@ -80,16 +90,16 @@ def _add_job(session: Session, *, heartbeat_age: timedelta) -> QualityJob:
 
 
 def test_scan_runs_in_the_background_and_records_its_result(
-    client: TestClient, factory: sessionmaker[Session]
+    client: TestClient, viewer: TestClient, factory: sessionmaker[Session]
 ) -> None:
-    response = client.post(SCAN, headers=as_user(MANAGER))
+    response = client.post(SCAN)
     assert response.status_code == 202
     accepted = response.json()
     assert accepted["status"] == "RUNNING"
     assert accepted["job_type"] == "FULL_SCAN"
 
     # The TestClient runs background tasks before returning: the job has already finished.
-    job = client.get(f"/api/v1/quality/jobs/{accepted['id']}", headers=as_user(VIEWER)).json()
+    job = viewer.get(f"/api/v1/quality/jobs/{accepted['id']}").json()
     assert job["status"] == "SUCCEEDED"
     assert job["total_pieces"] == job["processed_pieces"] == 298
     assert 0 < job["pairs_evaluated"] < 298 * 297 // 2  # «sin comparar todos los pares»
@@ -111,8 +121,8 @@ def test_a_second_scan_does_not_duplicate_candidates(
 ) -> None:
     with factory() as session:
         before = session.scalar(select(func.count()).select_from(DuplicateCandidate))
-    job_id = client.post(SCAN, headers=as_user(MANAGER)).json()["id"]
-    job = client.get(f"/api/v1/quality/jobs/{job_id}", headers=as_user(MANAGER)).json()
+    job_id = client.post(SCAN).json()["id"]
+    job = client.get(f"/api/v1/quality/jobs/{job_id}").json()
     assert job["status"] == "SUCCEEDED"
     assert job["candidates_created"] == 0
     with factory() as session:
@@ -133,8 +143,8 @@ def test_distinct_pairs_return_only_when_their_fingerprint_changes(
         session.commit()
         same_id, changed_id = same.id, changed.id
 
-    job_id = client.post(SCAN, headers=as_user(MANAGER)).json()["id"]
-    job = client.get(f"/api/v1/quality/jobs/{job_id}", headers=as_user(MANAGER)).json()
+    job_id = client.post(SCAN).json()["id"]
+    job = client.get(f"/api/v1/quality/jobs/{job_id}").json()
     assert job["candidates_reopened"] == 1
     with factory() as session:
         assert session.get(DuplicateCandidate, same_id).status == DuplicateStatus.DISTINCT
@@ -150,7 +160,7 @@ def test_scan_in_progress_answers_409_with_its_progress(
     with factory() as session:
         running = _add_job(session, heartbeat_age=timedelta(seconds=10))
     try:
-        response = client.post(SCAN, headers=as_user(MANAGER))
+        response = client.post(SCAN)
         assert response.status_code == 409
         body = response.json()
         assert body["code"] == "scan_in_progress"
@@ -168,7 +178,7 @@ def test_a_scan_without_heartbeat_does_not_block_a_new_one(
 ) -> None:
     with factory() as session:
         stale = _add_job(session, heartbeat_age=timedelta(minutes=10))
-    response = client.post(SCAN, headers=as_user(MANAGER))
+    response = client.post(SCAN)
     assert response.status_code == 202
     with factory() as session:
         old = session.get(QualityJob, stale.id)
@@ -193,14 +203,14 @@ def test_startup_recovery_marks_interrupted_scans_as_failed(
             session.commit()
 
 
-def test_only_authorized_roles_can_launch_a_scan(client: TestClient) -> None:
-    response = client.post(SCAN, headers=as_user(VIEWER))
+def test_only_authorized_roles_can_launch_a_scan(viewer: TestClient) -> None:
+    response = viewer.post(SCAN)
     assert response.status_code == 403
     assert response.json()["code"] == "permission_denied"
 
 
-def test_unknown_job_is_404(client: TestClient) -> None:
-    response = client.get(f"/api/v1/quality/jobs/{new_uuid()}", headers=as_user(VIEWER))
+def test_unknown_job_is_404(viewer: TestClient) -> None:
+    response = viewer.get(f"/api/v1/quality/jobs/{new_uuid()}")
     assert response.status_code == 404
 
 

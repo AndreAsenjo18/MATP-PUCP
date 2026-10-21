@@ -10,9 +10,7 @@ from sqlalchemy import select
 
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
-from tests.api.conftest import CATALOGUER, VIEWER, SeededApi, as_user
-
-H = as_user(CATALOGUER)
+from tests.api.conftest import SeededApi
 
 
 def _jpeg_bytes(color: tuple[int, int, int] = (200, 30, 30)) -> bytes:
@@ -46,13 +44,13 @@ def fake_storage(seeded_api: SeededApi, monkeypatch: pytest.MonkeyPatch) -> dict
 def test_upload_registers_photo_with_verified_hash(
     seeded_api: SeededApi, fake_storage: dict[str, bytes]
 ) -> None:
+    client = seeded_api.login_as("CATALOGUER")
     piece_id = _piece_id(seeded_api, TenureRegime.OWNED)
     data = _jpeg_bytes()
-    response = seeded_api.client.post(
+    response = client.post(
         "/api/v1/media/upload",
         data={"piece_id": str(piece_id), "view_type": "Frontal"},
         files={"file": ("foto_frontal.jpg", data, "image/jpeg")},
-        headers=H,
     )
     assert response.status_code == 201, response.text
     body = response.json()
@@ -69,12 +67,12 @@ def test_upload_registers_photo_with_verified_hash(
 def test_disguised_pdf_is_rejected_without_storing(
     seeded_api: SeededApi, fake_storage: dict[str, bytes]
 ) -> None:
+    client = seeded_api.login_as("CATALOGUER")
     piece_id = _piece_id(seeded_api)
-    response = seeded_api.client.post(
+    response = client.post(
         "/api/v1/media/upload",
         data={"piece_id": str(piece_id), "view_type": "Frontal"},
         files={"file": ("foto.jpg", b"%PDF-1.4 falso", "image/jpeg")},
-        headers=H,
     )
     assert response.status_code == 422
     assert response.json()["code"] == "invalid_image"
@@ -84,12 +82,12 @@ def test_disguised_pdf_is_rejected_without_storing(
 def test_viewer_without_upload_permission_is_rejected(
     seeded_api: SeededApi, fake_storage: dict[str, bytes]
 ) -> None:
+    client = seeded_api.login_as("INTERNAL_VIEWER")
     piece_id = _piece_id(seeded_api)
-    response = seeded_api.client.post(
+    response = client.post(
         "/api/v1/media/upload",
         data={"piece_id": str(piece_id), "view_type": "Frontal"},
         files={"file": ("foto.jpg", _jpeg_bytes(), "image/jpeg")},
-        headers=as_user(VIEWER),
     )
     assert response.status_code == 403
     assert response.json()["code"] == "permission_denied"
@@ -99,12 +97,12 @@ def test_viewer_without_upload_permission_is_rejected(
 def test_comodato_photo_inherits_no_publicar_restriction(
     seeded_api: SeededApi, fake_storage: dict[str, bytes]
 ) -> None:
+    client = seeded_api.login_as("CATALOGUER")
     piece_id = _piece_id(seeded_api, TenureRegime.LOAN_FOR_USE)
-    response = seeded_api.client.post(
+    response = client.post(
         "/api/v1/media/upload",
         data={"piece_id": str(piece_id), "view_type": "Perfil"},
         files={"file": ("foto_perfil.jpg", _jpeg_bytes((30, 120, 30)), "image/jpeg")},
-        headers=H,
     )
     assert response.status_code == 201, response.text
     body = response.json()

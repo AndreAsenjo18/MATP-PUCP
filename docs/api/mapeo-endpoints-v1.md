@@ -28,8 +28,8 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 16 | `POST /imports/{batch_id}/confirm` · `confirmImportBatch` | `RF-024` → RF-027 | `POST /imports/{batch_id}/approve` (stub) | Hecho: `POST /imports/{batch_id}/confirm` |
 | 17 | `GET /search` · `searchPieces` | `RF-031` → RF-031, RF-032 | `GET /search` (implementado) | Parcial: `searchPieces` renombrado; faltan `collection_code`, `tenure_regime` y `page`/`limit` |
 | 18 | `POST /media/upload` · `uploadMediaAsset` | `RF-032` → RF-013, RF-014, RN-008 | `POST /pieces/{piece_id}/media` + `.../media/upload-url` (stubs) | Hecho: `POST /media/upload` (stub) |
-| 19 | `POST /auth/login` · `login` | `RF-041` → RNF-012 | `POST /auth/login` (stub) | Pendiente: cuerpo `username`/`password` (tarea 4.7) |
-| 20 | `GET /auth/me` · `getMe` | `RF-042` → RF-039 | `GET /auth/me` (implementado) | Pendiente: cerrar la tarea 4.7. Se mantiene la matriz de roles (resolución C4-g) y `/auth/me` ya devuelve `roles` y `permissions`; no queda ningún «rol único» por implementar |
+| 19 | `POST /auth/login` · `login` | `RF-041` → RNF-012 | `POST /auth/login` (implementado, ADR-009) | Hecho: cuerpo `username`/`password` (el nombre de usuario es el correo). Responde `200` con el usuario, `csrf_token` y `session_expires_at`; la sesión viaja en la cookie `HttpOnly` `matp_session`, no en un token JWT como dice la descripción del documento (ADR-009). Todo fallo es el mismo `401 invalid_credentials`; `429` por exceso de intentos desde una dirección |
+| 20 | `GET /auth/me` · `getMe` | `RF-042` → RF-039 | `GET /auth/me` (implementado) | Hecho: lee la sesión real y añade `must_change_password`. Se mantiene la matriz de roles (resolución C4-g) y `/auth/me` ya devuelve `roles` y `permissions`; no queda ningún «rol único» por implementar |
 
 ¹ El catálogo no tiene un requisito de listado de piezas. La paginación de listados y búsqueda está trazada a RF-031, RF-032 y RF-038 en la spec delta de `plataforma`, pero eso no identifica el requisito del listado.
 
@@ -91,6 +91,8 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `PUT /imports/{batch_id}/mapping`, `GET /import-templates` | RF-022: plantillas de mapeo reutilizables |
 | `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
+| `POST /auth/logout` | RNF-012: cierre de sesión que revoca la sesión de servidor (ADR-009); el documento solo trae el inicio de sesión |
+| `POST /auth/change-password` | RNF-012, RNF-013: cambio de contraseña propio, obligatorio con una contraseña temporal; revoca todas las sesiones y abre una nueva (`autenticacion-y-matriz-permisos`, tarea 2.3) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 | `POST /movements/batch` | RF-017, RNF-001, RNF-005: mover o verificar varias piezas escaneadas hacia un mismo destino en una sola operación todo o nada, con `Idempotency-Key` para reintentos en conexión lenta desde la vista móvil de depósito (`ubicacion-jerarquica-y-movimientos`, tarea 3.3) |
 

@@ -3,7 +3,8 @@
  *
  * Types come from ./schema.d.ts, generated with `npm run openapi:client`. The provisional
  * development identity header (ADR-005) is added when `devUser` is given; it is replaced by
- * JWT in the change autenticacion-y-matriz-permisos.
+ * the opaque server-side session cookie (ADR-009) in the change
+ * autenticacion-y-matriz-permisos.
  */
 import createClient, { type Client, type Middleware } from "openapi-fetch";
 
