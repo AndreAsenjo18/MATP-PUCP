@@ -17,7 +17,6 @@ from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
-    CHANGE_MEDIA,
     CHANGE_PIECE_CRUD,
     example_of,
     implemented,
@@ -685,15 +684,166 @@ def register_media(
     response_model=MediaAssetOut,
     summary="Editar metadatos, orden o restricción de una foto",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def update_media(
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
     body: MediaAssetUpdate,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    raise not_implemented(CHANGE_MEDIA, MediaAssetOut)
+    get_piece(session, piece_id)
+    asset = session.get(MediaAsset, media_id)
+    if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
+        raise NotFound("La foto no existe en esta pieza.")
+
+    # Si se marca como principal, desmarcar la anterior
+    if body.is_primary is True:
+        current_primary = session.scalar(
+            select(MediaAsset).where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.is_primary.is_(True),
+                MediaAsset.id != media_id,
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+        if current_primary:
+            current_primary.is_primary = False
+
+    # Actualizar campos proporcionados
+    if body.view_type_term_id is not None:
+        asset.view_type_term_id = body.view_type_term_id
+    if body.sort_order is not None:
+        asset.sort_order = body.sort_order
+    if body.is_primary is not None:
+        asset.is_primary = body.is_primary
+    if body.usage_restriction_term_id is not None:
+        asset.usage_restriction_term_id = body.usage_restriction_term_id
+    if body.restriction_note is not None:
+        asset.restriction_note = body.restriction_note
+
+    writer(session, user)
+    session.commit()
+
+    # Respuesta
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    view_term = terms.get(asset.view_type_term_id)
+    restriction_term = (
+        terms.get(asset.usage_restriction_term_id) if asset.usage_restriction_term_id else None
+    )
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
+        restriction_note=asset.restriction_note,
+        download_url=None,
+        created_at=asset.created_at,
+    )
+
+
+@router.put(
+    "/{piece_id}/media/order",
+    response_model=list[MediaAssetOut],
+    summary="Reordenar fotos de una pieza (lista completa de IDs)",
+    tags=["Multimedia"],
+    **implemented(),
+)
+def reorder_media(
+    piece_id: uuid.UUID,
+    body: list[uuid.UUID],
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
+) -> list[MediaAssetOut]:
+    get_piece(session, piece_id)
+    # Obtener todas las fotos activas de la pieza
+    assets = list(
+        session.scalars(
+            select(MediaAsset)
+            .where(MediaAsset.piece_id == piece_id, MediaAsset.deleted_at.is_(None))
+            .order_by(MediaAsset.sort_order, MediaAsset.created_at)
+        )
+    )
+    asset_ids = [a.id for a in assets]
+    # Validar que la lista enviada contenga exactamente los mismos IDs
+    if set(body) != set(asset_ids):
+        raise ValidationFailed(
+            "La lista debe contener exactamente todos los IDs de fotos de la pieza.",
+            code="invalid_reorder_list",
+            details={"expected": [str(a) for a in asset_ids], "received": [str(a) for a in body]},
+        )
+    # Reordenar
+    for idx, media_id in enumerate(body):
+        asset = next(a for a in assets if a.id == media_id)
+        asset.sort_order = idx
+    writer(session, user)
+    session.commit()
+    # Respuesta ordenada
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for a in assets
+                        for term_id in (a.view_type_term_id, a.usage_restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    return [
+        MediaAssetOut(
+            id=a.id,
+            piece_id=a.piece_id,
+            original_filename=a.original_filename,
+            content_type=a.content_type,
+            size_bytes=a.size_bytes,
+            content_sha256=a.content_sha256,
+            width_px=a.width_px,
+            height_px=a.height_px,
+            view_type=translate_view_term(TermRef.model_validate(terms[a.view_type_term_id]))
+            if a.view_type_term_id and a.view_type_term_id in terms
+            else None,
+            sort_order=a.sort_order,
+            is_primary=a.is_primary,
+            photographer=a.photographer,
+            taken_on=a.taken_on,
+            usage_restriction=TermRef.model_validate(terms[a.usage_restriction_term_id])
+            if a.usage_restriction_term_id and a.usage_restriction_term_id in terms
+            else None,
+            restriction_note=a.restriction_note,
+            download_url=None,
+            created_at=a.created_at,
+        )
+        for a in sorted(assets, key=lambda x: x.sort_order)
+    ]
 
 
 @router.delete(
@@ -701,15 +851,42 @@ def update_media(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Retirar una foto (eliminación lógica con motivo)",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def retire_media(
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
-    reason: Annotated[str, Query(min_length=3)],
+    reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio.")],
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.retire"))],
 ) -> None:
-    raise not_implemented(CHANGE_MEDIA)
+    get_piece(session, piece_id)
+    asset = session.get(MediaAsset, media_id)
+    if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
+        raise NotFound("La foto no existe en esta pieza.")
+
+    was_primary = asset.is_primary
+    asset.deleted_at = datetime.now(UTC)
+    asset.deletion_reason = reason
+    asset.deleted_by_id = user.id
+    asset.is_primary = False
+
+    # Si era la principal, la siguiente en orden pasa a ser principal
+    if was_primary:
+        next_asset = session.scalar(
+            select(MediaAsset)
+            .where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.deleted_at.is_(None),
+                MediaAsset.id != media_id,
+            )
+            .order_by(MediaAsset.sort_order, MediaAsset.created_at)
+        )
+        if next_asset:
+            next_asset.is_primary = True
+
+    writer(session, user)
+    session.commit()
 
 
 # ---------------------------------------------------------------------- conjuntos

@@ -73,6 +73,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/pieces/{}/media/upload-url"),
     ("delete", "/pieces/{}/media/{}"),
     ("patch", "/pieces/{}/media/{}"),
+    ("put", "/pieces/{}/media/order"),
     ("post", "/pieces/{}/restore"),
     ("get", "/pieces/{}/source-records"),
     ("get", "/quality/duplicates"),

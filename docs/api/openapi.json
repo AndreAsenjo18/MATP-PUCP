@@ -13351,6 +13351,94 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/pieces/{piece_id}/media/order": {
+      "put": {
+        "operationId": "reorderMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "title": "Body",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaAssetOut"
+                  },
+                  "title": "Response Reordermedia",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Reordenar fotos de una pieza (lista completa de IDs)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/pieces/{piece_id}/media/upload-url": {
       "post": {
         "operationId": "createMediaUploadUrl",
@@ -13455,10 +13543,12 @@
             }
           },
           {
+            "description": "Motivo obligatorio.",
             "in": "query",
             "name": "reason",
             "required": true,
             "schema": {
+              "description": "Motivo obligatorio.",
               "minLength": 3,
               "title": "Reason",
               "type": "string"
@@ -13498,16 +13588,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -13519,8 +13599,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "patch": {
         "operationId": "updateMedia",
@@ -13596,16 +13675,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -13617,8 +13686,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/move": {
