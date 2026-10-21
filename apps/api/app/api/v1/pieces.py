@@ -68,6 +68,8 @@ from app.modules.media.schemas import (
     MediaAssetCreate,
     MediaAssetOut,
     MediaAssetUpdate,
+    StorageEstimateRequest,
+    StorageEstimateResponse,
     UploadUrlRequest,
     UploadUrlResponse,
 )
@@ -915,6 +917,87 @@ def get_media_download_url(
         expires_at=datetime.now(UTC) + timedelta(seconds=ttl),
         effective_restriction=effective_restriction,
         restriction_origin=restriction_origin,
+    )
+
+
+@router.get(
+    "/media/storage-estimate",
+    response_model=StorageEstimateResponse,
+    summary="Estimación del volumen fotográfico",
+    tags=["Multimedia"],
+    **implemented(),
+)
+def get_media_storage_estimate(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("reports.view"))],
+    query: Annotated[StorageEstimateRequest, Depends()],
+) -> StorageEstimateResponse:
+    # Current volume from database
+    from app.modules.media.models import MediaAsset
+
+    originals_stats = session.execute(
+        select(
+            func.coalesce(func.sum(MediaAsset.size_bytes), 0),
+            func.count(MediaAsset.id),
+        ).where(MediaAsset.deleted_at.is_(None))
+    ).first()
+    total_originals_bytes, photo_count = originals_stats or (0, 0)
+
+    # Estimate derivatives: thumb (~20KB) + display (~300KB) per photo
+    estimated_derivatives_per_photo = 320 * 1024  # ~320KB (thumb 20KB + display 300KB)
+    estimated_derivatives_bytes = photo_count * estimated_derivatives_per_photo
+
+    current_volume_bytes = total_originals_bytes + estimated_derivatives_bytes
+    current_originals_bytes = total_originals_bytes
+    current_derivatives_bytes = estimated_derivatives_bytes
+
+    avg_photos_per_piece = (
+        photo_count / session.scalar(select(func.count()).where(MediaAsset.deleted_at.is_(None)))
+        if photo_count > 0
+        else None
+    )
+    avg_mb_per_photo = (
+        (total_originals_bytes / photo_count / 1024 / 1024) if photo_count > 0 else None
+    )
+
+    # Build projection if parameters provided
+    projection = None
+    has_projection_params = (
+        query.pieces is not None
+        or query.photos_per_piece is not None
+        or query.mb_per_photo is not None
+    )
+    if has_projection_params:
+        pieces = query.pieces or 0
+        photos_per_piece = query.photos_per_piece or (avg_photos_per_piece or 0)
+        mb_per_photo = query.mb_per_photo or (avg_mb_per_photo or 0)
+
+        if pieces < 0 or photos_per_piece < 0 or mb_per_photo < 0:
+            raise ValidationFailed(
+                "Los parámetros no pueden ser negativos.",
+                code="invalid_storage_estimate_params",
+            )
+
+        projected_originals = pieces * photos_per_piece * mb_per_photo * 1024 * 1024
+        projected_derivatives = pieces * photos_per_piece * 320 * 1024  # 320KB per photo
+
+        projection = {
+            "pieces": pieces,
+            "photos_per_piece": photos_per_piece,
+            "mb_per_photo": mb_per_photo,
+            "projected_originals_bytes": int(projected_originals),
+            "projected_derivatives_bytes": int(projected_derivatives),
+            "projected_total_bytes": int(projected_originals + projected_derivatives),
+        }
+
+    return StorageEstimateResponse(
+        current_volume_bytes=current_volume_bytes,
+        current_originals_bytes=current_originals_bytes,
+        current_derivatives_bytes=current_derivatives_bytes,
+        avg_photos_per_piece=avg_photos_per_piece,
+        avg_mb_per_photo=avg_mb_per_photo,
+        projection=projection,
     )
 
 
