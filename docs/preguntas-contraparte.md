@@ -188,7 +188,7 @@ Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar 
 
 ## O. Supuestos de la detección de duplicados y la fusión (change `deteccion-duplicados-y-cola-revision`, 2026-10-20)
 
-Se usa la letra O porque N1–N7 ya nombran las reglas de normalización. El máximo para posponer (180 días) y el rechazo de la fusión con regímenes distintos siguen en G8. Detalle en `openspec/changes/deteccion-duplicados-y-cola-revision/design.md` (D1, D4, D5 y D6).
+Se usa la letra O porque N1–N7 ya nombran las reglas de normalización. El máximo para posponer (180 días) y el rechazo de la fusión con regímenes distintos siguen en G8. Detalle en `openspec/changes/archive/2026-10-20-deteccion-duplicados-y-cola-revision/design.md` (D1, D4, D5, D6 y D7).
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
