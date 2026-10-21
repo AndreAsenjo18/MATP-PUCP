@@ -8,7 +8,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, CurrentUserDep, SessionDep, require_permission
+from app.api.deps import (
+    CurrentUser,
+    CurrentUserDep,
+    SessionDep,
+    SessionUserDep,
+    require_permission,
+)
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
@@ -87,14 +93,15 @@ def logout(user: CurrentUserDep) -> None:
     tags=["Autenticación"],
     **implemented(),
 )
-def get_me(user: CurrentUserDep) -> Me:
+def get_me(user: SessionUserDep) -> Me:
     return Me(
         id=user.id,
         email=user.email,
         full_name=user.full_name,
         roles=list(user.roles),
         permissions=sorted(user.permissions),
-        auth_mode="dev-header",
+        auth_mode=user.auth_mode,
+        must_change_password=user.must_change_password,
     )
 
 

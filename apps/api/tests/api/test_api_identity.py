@@ -1,5 +1,6 @@
 """Spec usuarios-roles — Identidad provisional de desarrollo sin exposición pública (RF-042)."""
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -13,7 +14,6 @@ from app.modules.locations.models import Location, LocationLevel
 from tests.api.conftest import (
     ADMIN,
     CATALOGUER,
-    SECRET,
     VIEWER,
     SeededApi,
     api_settings,
@@ -51,14 +51,17 @@ def test_non_synthetic_user_is_rejected(seeded_api: SeededApi) -> None:
     assert response.status_code == 401
 
 
-def test_dev_header_is_rejected_in_production(seeded_api: SeededApi) -> None:
-    settings = api_settings(app_env="production", jwt_secret=SECRET)
-    app = create_app(settings, health_checks={}, engine=seeded_api.engine)
+@pytest.mark.parametrize("app_env", ["development", "production"])
+def test_dev_header_is_only_accepted_under_app_env_test(
+    seeded_api: SeededApi, app_env: str
+) -> None:
+    """Spec "Retiro de la identidad provisional de desarrollo" (ADR-009 D7)."""
+    app = create_app(api_settings(app_env=app_env), health_checks={}, engine=seeded_api.engine)
     with TestClient(app) as client:
         response = client.get("/api/v1/pieces", headers=as_user(ADMIN))
         health = client.get("/health/live")
     assert response.status_code == 401
-    assert response.json()["code"] == "production_auth_unavailable"
+    assert response.json()["code"] == "authentication_required"
     assert health.status_code == 200
 
 

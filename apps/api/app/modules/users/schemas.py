@@ -18,7 +18,8 @@ class Me(BaseModel):
                     "full_name": "Catalogador (sintético)",
                     "roles": ["CATALOGUER"],
                     "permissions": ["pieces.read", "pieces.update"],
-                    "auth_mode": "dev-header",
+                    "auth_mode": "session",
+                    "must_change_password": False,
                 }
             ]
         }
@@ -29,7 +30,12 @@ class Me(BaseModel):
     full_name: str
     roles: list[str]
     permissions: list[str]
-    auth_mode: str = Field(description="dev-header (provisional, ADR-005) o jwt.")
+    auth_mode: str = Field(
+        description="session (cookie de sesión, ADR-009) o dev-header (solo pruebas)."
+    )
+    must_change_password: bool = Field(
+        False, description="Hay una contraseña temporal vigente: debe cambiarla antes de seguir."
+    )
 
 
 class LoginRequest(BaseModel):
