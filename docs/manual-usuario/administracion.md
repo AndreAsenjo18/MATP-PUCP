@@ -1,6 +1,46 @@
 # Administración
 
-> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora solo está escrita «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+
+## Ubicaciones
+
+Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito (ver [Vista de depósito](deposito.md)) solo mueve o verifica piezas; no crea lugares nuevos.
+
+### La jerarquía
+
+Cada lugar tiene un nivel, de mayor a menor:
+
+**Sede** → **Depósito** (o sala, taller u otro) → **Mueble** → **Nivel** → **Contenedor**
+
+Un lugar solo puede crearse dentro del nivel inmediatamente superior (por ejemplo, un Mueble solo dentro de un Depósito, nunca directamente en una Sede). El sistema avisa con un mensaje claro cuando el nivel elegido no es válido para el padre seleccionado.
+
+> **[SUPUESTO]** Los nombres exactos de los niveles y la forma de los códigos del museo todavía no están confirmados con la contraparte (pregunta A7 en `docs/preguntas-contraparte.md`); por ahora se usan los que muestra esta pantalla.
+
+### Crear un lugar
+
+1. Vaya a **Administración › Ubicaciones**.
+2. En «Crear ubicación», elija el **nivel**, el **lugar padre** (vacío solo para crear una Sede nueva), un **código** (debe ser único entre los lugares activos; mayúsculas y espacios se ajustan solos) y un **nombre**.
+3. Presione **Crear**. El árbol se actualiza con el lugar nuevo.
+
+Si el código ya existe, el sistema lo indica y no crea un lugar repetido.
+
+### Tipo de espacio
+
+A un **Depósito** se le puede asignar un tipo: depósito, sala de exhibición, taller u otro. Esto permite que, al mover una pieza a una sala, el sistema proponga automáticamente la disponibilidad «En sala»; al moverla a un depósito, «En depósito». Si alguien intenta marcar manualmente una disponibilidad que no corresponde a la ubicación actual de la pieza (por ejemplo, «En sala» mientras la pieza sigue en un depósito), el sistema lo rechaza y explica por qué.
+
+### Desactivar un lugar
+
+Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
+
+### Reubicar un mueble o contenedor completo
+
+Cuando se reorganiza un depósito (por ejemplo, mover un rack entero a otra sala), se cambia el padre del mueble desde la ficha de esa ubicación:
+
+1. El sistema muestra cuántas piezas hay dentro de ese mueble (incluyendo niveles y cajas).
+2. Hay que confirmar ese número exacto para completar el cambio; si alguien más movió piezas mientras tanto, el número ya no coincide y el sistema pide confirmar el número actualizado.
+3. Al confirmar, cada pieza queda con un registro de "reubicación" en su historial de movimientos, aunque su caja o nivel exacto no cambió: solo cambió de qué depósito depende ese mueble.
+
+No se puede colocar un mueble dentro de uno de sus propios niveles o cajas (el sistema lo rechaza).
 
 ## Versión del sistema y actualizaciones
 

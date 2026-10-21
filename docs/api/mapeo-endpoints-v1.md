@@ -94,6 +94,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `POST /auth/logout` | RNF-012: cierre de sesión que revoca la sesión de servidor (ADR-009); el documento solo trae el inicio de sesión |
 | `POST /auth/change-password` | RNF-012, RNF-013: cambio de contraseña propio, obligatorio con una contraseña temporal; revoca todas las sesiones y abre una nueva (`autenticacion-y-matriz-permisos`, tarea 2.3) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
+| `POST /movements/batch` | RF-017, RNF-001, RNF-005: mover o verificar varias piezas escaneadas hacia un mismo destino en una sola operación todo o nada, con `Idempotency-Key` para reintentos en conexión lenta desde la vista móvil de depósito (`ubicacion-jerarquica-y-movimientos`, tarea 3.3) |
 
 ## Conflictos resueltos por el equipo (2026-09-29)
 
