@@ -1,7 +1,7 @@
 """Location space_kind, corrective and batch movements, idempotency.
 
 Revision ID: 0008_locations_idempotency
-Revises: 0007_import_decisions_and_images
+Revises: 0006_auth_sessions_and_events
 Create Date: 2026-10-21
 
 Change de OpenSpec: ubicacion-jerarquica-y-movimientos (tarea 1.1). Additive only:
@@ -22,7 +22,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0008_locations_idempotency"
-down_revision: str | None = "0007_import_decisions_and_images"
+down_revision: str | None = "0006_auth_sessions_and_events"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
