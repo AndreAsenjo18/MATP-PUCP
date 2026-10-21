@@ -1,12 +1,17 @@
 ## ADDED Requirements
 
 ### Requirement: Detección explicable con ejecución completa e incremental
-El sistema MUST generar candidatos a duplicado combinando coincidencias de identificadores normalizados, vigentes o históricos, con similitud de denominación, colección, autor, procedencia, época y medidas, con pesos y umbral configurables [SUPUESTO]; SHALL registrar para cada candidato su puntaje y cada señal con los valores comparados, y MUST poder ejecutarse sobre todo el catálogo bajo demanda y de forma incremental cuando se crea o edita una pieza. (RF-030, RIA-02, RNF-015)
+El sistema MUST generar candidatos a duplicado combinando coincidencias de identificadores normalizados, vigentes o históricos, con similitud de denominación, colección, autor, procedencia, época y medidas, con pesos y umbral configurables [SUPUESTO: pesos por señal y umbral 0,6; ver O1 y O2]; SHALL registrar para cada candidato su puntaje y cada señal con los valores comparados, y MUST poder ejecutarse sobre todo el catálogo bajo demanda y de forma incremental cuando se crea o edita una pieza. (RF-030, RIA-02, RNF-015)
 
 #### Scenario: Mismo código histórico en dos piezas
 - **GIVEN** dos piezas activas con denominaciones distintas que comparten el código INC histórico normalizado `001234`
 - **WHEN** se ejecuta la detección
 - **THEN** el par entra en la cola con la señal "identificador INC igual" y ambos valores originales
+
+#### Scenario: Autor anónimo no cuenta como coincidencia
+- **GIVEN** dos piezas activas cuyo autor es «Anónimo» en ambas y cuyas procedencias son distintas
+- **WHEN** se ejecuta la detección
+- **THEN** el autor no suma en la señal de autor y procedencia ni en la huella de comparación [SUPUESTO: un autor anónimo o desconocido es un autor ausente; ver O3]
 
 #### Scenario: Detección incremental al editar
 - **GIVEN** dos piezas de la misma colección con el mismo autor, la misma procedencia y épocas que se superponen, y denominaciones distintas
@@ -39,7 +44,7 @@ El sistema MUST guardar, al marcar un par como distinto, una huella de los valor
 - **THEN** la API responde 422 indicando el máximo [SUPUESTO: máximo de 180 días; ver F3 y G8]
 
 ### Requirement: Fusión con elección de valores y reasignación de datos relacionados
-El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado que elige la pieza que se conserva y el valor de cada campo en conflicto, SHALL trasladar a la pieza conservada los identificadores (conservando como no vigentes los repetidos) y las fotografías de la otra, SHALL conservar en la pieza absorbida, sin modificarlos, sus movimientos, datos de origen y evaluaciones (registros de solo inserción), visibles desde la conservada, y MUST marcar la pieza absorbida como fusionada y eliminada lógicamente, consultable y enlazada a la conservada, todo en una única operación auditada y reversible. SHALL rechazar la fusión cuando ambas piezas tienen códigos I vigentes distintos o regímenes de tenencia distintos, y cuando solo la pieza absorbida tiene código I vigente. (RF-030, RN-002, RN-003, RN-005, RF-040, RNF-007)
+El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado que elige la pieza que se conserva y el valor de cada campo en conflicto, SHALL trasladar a la pieza conservada los identificadores (conservando como no vigentes los repetidos) y las fotografías de la otra, SHALL conservar en la pieza absorbida, sin modificarlos, sus movimientos, datos de origen y evaluaciones (registros de solo inserción), visibles desde la conservada, y MUST marcar la pieza absorbida como fusionada y eliminada lógicamente, consultable y enlazada a la conservada, todo en una única operación auditada y reversible. SHALL rechazar la fusión cuando ambas piezas tienen códigos I vigentes distintos o regímenes de tenencia distintos [SUPUESTO: ver G8], y cuando solo la pieza absorbida tiene código I vigente [SUPUESTO: ver O5]. (RF-030, RN-002, RN-003, RN-005, RF-040, RNF-007)
 
 #### Scenario: Fusión con elección de procedencia
 - **WHEN** un Gestor de colecciones fusiona la pieza B en la pieza A eligiendo la procedencia de B y el resto de A
@@ -51,7 +56,7 @@ El sistema MUST fusionar dos piezas solo por decisión de un usuario autorizado 
 
 #### Scenario: Regímenes distintos
 - **WHEN** se intenta fusionar una pieza en propiedad con una pieza en comodato
-- **THEN** la API responde 409 indicando que primero debe corregirse el régimen de una de ellas
+- **THEN** la API responde 409 indicando que primero debe corregirse el régimen de una de ellas [SUPUESTO: ver G8]
 
 #### Scenario: Código I solo en la pieza absorbida
 - **GIVEN** un par en el que solo la pieza B tiene código I vigente
