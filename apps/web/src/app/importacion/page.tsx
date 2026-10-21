@@ -3,13 +3,16 @@
 /**
  * Pantalla 6 — Asistente de importación (RF-021..029): ingesta → mapeo → normalización y
  * validación → previsualización con diff y clasificación → aprobación → bitácora con rechazos
- * descargables. Usa el mismo lote y filas "sucias" de `sabana_sintetica_v1.xlsx` (RIA-01/02).
+ * descargables. En modo `mock` usa el mismo lote y filas "sucias" de `sabana_sintetica_v1.xlsx`
+ * (RIA-01/02); en modo `live`, `LiveImportWizard` trabaja contra la API
+ * (`importacion-pipeline-reconciliacion`, tareas 6.1 y 6.2).
  */
 import { ArrowLeft, ArrowRight, Check, Download, FileSpreadsheet, MinusCircle, SearchCheck } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportConflictModal } from "@/components/domain/ImportConflictModal";
+import { LiveImportWizard } from "@/components/domain/LiveImportWizard";
 import { importClassificationStatus, importDecisionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
@@ -19,6 +22,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
+import { getApiMode } from "@/lib/data/mode";
 import { IMPORT_TEMPLATES, rowsForBatch } from "@/lib/fixtures";
 
 const STEPS = ["Subir archivo", "Mapeo", "Normalización y validación", "Previsualización", "Aprobación", "Bitácora"] as const;
@@ -283,10 +287,24 @@ function PreviewStep({ rows }: { rows: ReturnType<typeof rowsForBatch> }) {
   );
 }
 
+function LiveImportacion() {
+  const { hasPermission } = useSession();
+  if (!hasPermission("imports.prepare")) {
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas (RF-027). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+  }
+  return <LiveImportWizard />;
+}
+
 export default function ImportacionPage() {
   return (
     <RequireSession>
-      <ImportacionContent />
+      {getApiMode() === "live" ? (
+        <Suspense fallback={null}>
+          <LiveImportacion />
+        </Suspense>
+      ) : (
+        <ImportacionContent />
+      )}
     </RequireSession>
   );
 }
