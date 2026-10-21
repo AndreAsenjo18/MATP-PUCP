@@ -3,7 +3,7 @@
 import enum
 import uuid
 from datetime import date, datetime
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -32,6 +32,15 @@ class LocationLevel(enum.StrEnum):
     CONTAINER = "CONTAINER"
 
 
+class SpaceKind(enum.StrEnum):
+    """[SUPUESTO] Tipo de espacio (design D5), solo aplicable a `LocationLevel.SPACE`."""
+
+    DEPOSIT = "DEPOSIT"
+    EXHIBITION_ROOM = "EXHIBITION_ROOM"
+    WORKSHOP = "WORKSHOP"
+    OTHER = "OTHER"
+
+
 class MovementType(enum.StrEnum):
     MOVE = "MOVE"
     VERIFICATION = "VERIFICATION"  # physical check without location change
@@ -47,6 +56,7 @@ class Location(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    space_kind: Mapped[SpaceKind | None] = mapped_column(str_enum(SpaceKind, "location_space_kind"))
 
 
 class PieceMovement(UUIDPrimaryKeyMixin, Base):
@@ -62,6 +72,33 @@ class PieceMovement(UUIDPrimaryKeyMixin, Base):
     performed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     performed_by_label: Mapped[str | None] = mapped_column(String(200))
     occurred_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    # Movimiento correctivo que repara un registro anterior mal hecho (design D2); el anterior
+    # nunca se edita (RN-005).
+    corrects_movement_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("piece_movement.id"))
+    # Referencia común a todos los movimientos generados por una misma operación de reubicación
+    # de nodo (design D4) o de lote (design D3); no es una FK porque agrupa registros de tablas
+    # distintas de entidades (piezas) sin un "lote" propio.
+    origin_ref: Mapped[str | None] = mapped_column(String(80), index=True)
+
+
+class IdempotencyKey(UUIDPrimaryKeyMixin, Base):
+    """Respuesta guardada de una operación de lote para que un reintento no la repita.
+
+    (design D3, RNF-005). No se audita: es infraestructura de transporte, no un hecho del
+    dominio. Limpieza periódica fuera de este change (ver ADR Propuesto sobre idempotencia).
+    """
+
+    __tablename__ = "idempotency_key"
+    __audited__: ClassVar[bool] = False
+
+    key: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    scope: Mapped[str] = mapped_column(String(80))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_status: Mapped[int] = mapped_column()
+    response_body: Mapped[dict[str, Any]] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column()
 
 
 class Loan(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):

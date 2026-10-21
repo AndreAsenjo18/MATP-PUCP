@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a033ceff9185f0de4c828c8e5c79c1b1d30f1a2aa26beeb092433ac830844673
+ * openapi-sha256: 5781708bd4ecf4c0b8b3e085fd4200709ad57a7ddeb784d6da278982b7eaf826
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -686,7 +686,7 @@ export interface paths {
         };
         /** Detalle de una ubicación con su ruta */
         get: operations["getLocation"];
-        /** Editar o desactivar una ubicación */
+        /** Editar, desactivar o reubicar una ubicación (design D4) */
         put: operations["updateLocation"];
         post?: never;
         delete?: never;
@@ -763,6 +763,23 @@ export interface paths {
         put?: never;
         /** Subir una fotografía de una pieza al almacenamiento de objetos (RF-013) */
         post: operations["uploadMediaAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil) */
+        post: operations["movePiecesBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1026,7 +1043,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Registrar un movimiento o verificación física */
+        /** Registrar un movimiento, verificación física o corrección */
         post: operations["movePiece"];
         delete?: never;
         options?: never;
@@ -1778,6 +1795,64 @@ export interface components {
              * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
              */
             piece_ids: string[];
+        };
+        /** BatchMovementFailureOut */
+        BatchMovementFailureOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+        };
+        /** BatchMovementItem */
+        BatchMovementItem: {
+            /**
+             * Expected From Location Id
+             * @description Ubicación que el usuario vio para esta pieza (control de concurrencia).
+             */
+            expected_from_location_id?: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+        };
+        /**
+         * BatchMovementRequest
+         * @example {
+         *       "items": [
+         *         {
+         *           "piece_id": "01920000-0000-7000-8000-000000000101"
+         *         }
+         *       ],
+         *       "movement_type": "MOVE",
+         *       "reason": "Traslado masivo de depósito",
+         *       "to_location_id": "01920000-0000-7000-8000-000000000401"
+         *     }
+         */
+        BatchMovementRequest: {
+            /** Items */
+            items: components["schemas"]["BatchMovementItem"][];
+            /** @default MOVE */
+            movement_type: components["schemas"]["MovementType"];
+            /** Reason */
+            reason?: string | null;
+            /**
+             * To Location Id
+             * Format: uuid
+             */
+            to_location_id: string;
+        };
+        /** BatchMovementResponse */
+        BatchMovementResponse: {
+            /** Failures */
+            failures?: components["schemas"]["BatchMovementFailureOut"][];
+            /** Registered */
+            registered?: components["schemas"]["MovementOut"][];
         };
         /** Body_uploadImportBatch */
         Body_uploadImportBatch: {
@@ -3126,6 +3201,11 @@ export interface components {
             name: string;
             /** Parent Id */
             parent_id?: string | null;
+            /**
+             * Space Kind
+             * @description [SUPUESTO] Tipo de espacio; solo admitido en el nivel Depósito.
+             */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /**
          * LocationNode
@@ -3212,6 +3292,11 @@ export interface components {
              * @description Ruta desde la sede.
              */
             path?: components["schemas"]["LocationRef"][];
+            /**
+             * Space Kind
+             * @description [SUPUESTO] Tipo de espacio; solo aplica al nivel Depósito.
+             */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /** LocationRef */
         LocationRef: {
@@ -3231,14 +3316,32 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** LocationUpdate */
+        /**
+         * LocationUpdate
+         * @example {
+         *       "is_active": true,
+         *       "name": "Rack B"
+         *     }
+         */
         LocationUpdate: {
+            /**
+             * Confirm Affected Count
+             * @description Obligatorio al reubicar un nodo con piezas: número de piezas afectadas que la pantalla mostró antes de confirmar.
+             */
+            confirm_affected_count?: number | null;
             /** Description */
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Name */
             name?: string | null;
+            /**
+             * Parent Id
+             * @description Nuevo padre; reubica el nodo y sus piezas (design D4).
+             */
+            parent_id?: string | null;
+            /** Space Kind */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /**
          * LoginRequest
@@ -3632,17 +3735,27 @@ export interface components {
          */
         MovementCreate: {
             /**
+             * Corrects Movement Id
+             * @description Obligatorio para CORRECTION: movimiento que se corrige (RN-005).
+             */
+            corrects_movement_id?: string | null;
+            /**
              * Destination Location Id
              * @description Alias del contrato de interfaces (MovePieceRequest).
              */
             destination_location_id?: string | null;
+            /**
+             * Expected From Location Id
+             * @description Ubicación que el usuario vio antes de mover la pieza; si ya cambió, la API responde 409 (design D2, control de concurrencia).
+             */
+            expected_from_location_id?: string | null;
             /** @default MOVE */
             movement_type: components["schemas"]["MovementType"];
             /** Reason */
             reason?: string | null;
             /**
              * To Location Id
-             * @description Obligatorio para MOVE.
+             * @description Obligatorio para MOVE y CORRECTION.
              */
             to_location_id?: string | null;
         };
@@ -3664,6 +3777,8 @@ export interface components {
          *     }
          */
         MovementOut: {
+            /** Corrects Movement Id */
+            corrects_movement_id?: string | null;
             from_location: components["schemas"]["LocationRef"] | null;
             /**
              * Id
@@ -7814,8 +7929,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El padre indicado no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7823,13 +7938,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description El código ya está en uso (RF-016). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nivel de padre no permitido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7934,8 +8058,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La ubicación o el nuevo padre no existen. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7943,13 +8067,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description La ubicación tiene piezas (desactivación o confirmación de conteo). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Ciclo o nivel de padre no permitido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7992,8 +8125,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description No existe o no es visible. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8001,13 +8134,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8169,6 +8302,77 @@ export interface operations {
                 };
             };
             /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    movePiecesBatch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchMovementResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El destino no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El destino cambió respecto a lo visto, o la clave no coincide. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Lote vacío, destino inválido o límite excedido. */
             422: {
                 headers: {
                     [name: string]: unknown;
