@@ -23,7 +23,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound, ValidationFailed
+from app.core.errors import NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
@@ -60,8 +60,13 @@ from app.modules.identification.schemas import (
 from app.modules.identification.service import retire_identifier, set_inventory_code
 from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
+from app.modules.locations.service import UNSET as LOCATION_UNSET
+from app.modules.locations.service import (
+    assert_availability_coherent,
+    correct_movement,
+    verify_location,
+)
 from app.modules.locations.service import move_piece as move_piece_service
-from app.modules.locations.service import verify_location
 from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
@@ -284,6 +289,8 @@ def update_piece(
         changes["epoch_type"] = period.get("type")
         changes["epoch_start_year"] = period.get("year_from")
         changes["epoch_end_year"] = period.get("year_to")
+    if "availability_term_id" in changes and changes["availability_term_id"] is not None:
+        assert_availability_coherent(session, piece, changes["availability_term_id"])
     if changes:
         catalog_service.update_piece(session, piece, **changes)
     if "code_i" in body.model_fields_set:
@@ -1108,6 +1115,7 @@ def _movement_out(reader: CatalogReader, movement: PieceMovement) -> MovementOut
         from_location=visible_ref(movement.from_location_id),
         to_location=visible_ref(movement.to_location_id),
         reason=movement.reason,
+        corrects_movement_id=movement.corrects_movement_id,
         performed_by_label=movement.performed_by_label,
         occurred_at=movement.occurred_at,
     )
@@ -1138,7 +1146,7 @@ def get_piece_location_history(
     "/{piece_id}/move",
     response_model=MovementOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Registrar un movimiento o verificación física",
+    summary="Registrar un movimiento, verificación física o corrección",
     tags=["Ubicaciones"],
     **implemented(),
 )
@@ -1151,6 +1159,11 @@ def move_piece(
     piece = get_piece(session, piece_id)
     writer(session, user, body.reason)
     target_loc_id = body.to_location_id or body.destination_location_id
+    expected_from = (
+        body.expected_from_location_id
+        if "expected_from_location_id" in body.model_fields_set
+        else LOCATION_UNSET
+    )
     if body.movement_type == MovementType.MOVE:
         if target_loc_id is None:
             raise ValidationFailed(
@@ -1161,10 +1174,41 @@ def move_piece(
         if destination is None or destination.deleted_at is not None:
             raise NotFound("La ubicación de destino no existe o fue eliminada.")
         movement = move_piece_service(
-            session, piece, destination, body.reason, performed_by_label=user.full_name
+            session,
+            piece,
+            destination,
+            body.reason,
+            performed_by_label=user.full_name,
+            expected_from_location_id=expected_from,
         )
     elif body.movement_type == MovementType.VERIFICATION:
-        movement = verify_location(session, piece)
+        movement = verify_location(
+            session,
+            piece,
+            expected_location_id=target_loc_id if target_loc_id is not None else LOCATION_UNSET,
+        )
+    elif body.movement_type == MovementType.CORRECTION:
+        if not user.can("locations.manage"):
+            raise PermissionDenied(
+                "Solo un Administrador puede registrar un movimiento correctivo.",
+                details={"permission": "locations.manage"},
+            )
+        if target_loc_id is None or body.corrects_movement_id is None:
+            raise ValidationFailed(
+                "to_location_id y corrects_movement_id son obligatorios para una corrección.",
+                code="correction_requires_reference",
+            )
+        destination = session.get(Location, target_loc_id)
+        if destination is None or destination.deleted_at is not None:
+            raise NotFound("La ubicación de destino no existe o fue eliminada.")
+        movement = correct_movement(
+            session,
+            piece,
+            destination,
+            corrects_movement_id=body.corrects_movement_id,
+            reason=body.reason,
+            performed_by_label=user.full_name,
+        )
     else:
         raise ValidationFailed(
             f"Tipo de movimiento no admitido: {body.movement_type}.",

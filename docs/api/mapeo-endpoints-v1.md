@@ -92,6 +92,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
+| `POST /movements/batch` | RF-017, RNF-001, RNF-005: mover o verificar varias piezas escaneadas hacia un mismo destino en una sola operación todo o nada, con `Idempotency-Key` para reintentos en conexión lenta desde la vista móvil de depósito (`ubicacion-jerarquica-y-movimientos`, tarea 3.3) |
 
 ## Conflictos resueltos por el equipo (2026-09-29)
 

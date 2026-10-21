@@ -643,6 +643,128 @@
         "title": "BatchEnrichRequest",
         "type": "object"
       },
+      "BatchMovementFailureOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id",
+          "code",
+          "message"
+        ],
+        "title": "BatchMovementFailureOut",
+        "type": "object"
+      },
+      "BatchMovementItem": {
+        "properties": {
+          "expected_from_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación que el usuario vio para esta pieza (control de concurrencia).",
+            "title": "Expected From Location Id"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id"
+        ],
+        "title": "BatchMovementItem",
+        "type": "object"
+      },
+      "BatchMovementRequest": {
+        "examples": [
+          {
+            "items": [
+              {
+                "piece_id": "01920000-0000-7000-8000-000000000101"
+              }
+            ],
+            "movement_type": "MOVE",
+            "reason": "Traslado masivo de depósito",
+            "to_location_id": "01920000-0000-7000-8000-000000000401"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchMovementItem"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "movement_type": {
+            "$ref": "#/components/schemas/MovementType",
+            "default": "MOVE"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "to_location_id": {
+            "format": "uuid",
+            "title": "To Location Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_location_id",
+          "items"
+        ],
+        "title": "BatchMovementRequest",
+        "type": "object"
+      },
+      "BatchMovementResponse": {
+        "properties": {
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/BatchMovementFailureOut"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "registered": {
+            "items": {
+              "$ref": "#/components/schemas/MovementOut"
+            },
+            "title": "Registered",
+            "type": "array"
+          }
+        },
+        "title": "BatchMovementResponse",
+        "type": "object"
+      },
       "Body_uploadImportBatch": {
         "properties": {
           "file": {
@@ -3552,6 +3674,24 @@
               }
             ],
             "title": "Parent Id"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[SUPUESTO] Tipo de espacio; solo admitido en el nivel Depósito.",
+            "title": "Space Kind"
           }
         },
         "required": [
@@ -3695,6 +3835,24 @@
             },
             "title": "Path",
             "type": "array"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[SUPUESTO] Tipo de espacio; solo aplica al nivel Depósito.",
+            "title": "Space Kind"
           }
         },
         "required": [
@@ -3747,7 +3905,25 @@
         "type": "object"
       },
       "LocationUpdate": {
+        "examples": [
+          {
+            "is_active": true,
+            "name": "Rack B"
+          }
+        ],
         "properties": {
+          "confirm_affected_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatorio al reubicar un nodo con piezas: número de piezas afectadas que la pantalla mostró antes de confirmar.",
+            "title": "Confirm Affected Count"
+          },
           "description": {
             "anyOf": [
               {
@@ -3782,6 +3958,36 @@
               }
             ],
             "title": "Name"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nuevo padre; reubica el nodo y sus piezas (design D4).",
+            "title": "Parent Id"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Kind"
           }
         },
         "title": "LocationUpdate",
@@ -4551,6 +4757,19 @@
           }
         ],
         "properties": {
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatorio para CORRECTION: movimiento que se corrige (RN-005).",
+            "title": "Corrects Movement Id"
+          },
           "destination_location_id": {
             "anyOf": [
               {
@@ -4563,6 +4782,19 @@
             ],
             "description": "Alias del contrato de interfaces (MovePieceRequest).",
             "title": "Destination Location Id"
+          },
+          "expected_from_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación que el usuario vio antes de mover la pieza; si ya cambió, la API responde 409 (design D2, control de concurrencia).",
+            "title": "Expected From Location Id"
           },
           "movement_type": {
             "$ref": "#/components/schemas/MovementType",
@@ -4589,7 +4821,7 @@
                 "type": "null"
               }
             ],
-            "description": "Obligatorio para MOVE.",
+            "description": "Obligatorio para MOVE y CORRECTION.",
             "title": "To Location Id"
           }
         },
@@ -4614,6 +4846,18 @@
           }
         ],
         "properties": {
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Movement Id"
+          },
           "from_location": {
             "anyOf": [
               {
@@ -11995,6 +12239,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El padre indicado no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El código ya está en uso (RF-016)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12003,17 +12267,7 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
+            "description": "Nivel de padre no permitido."
           }
         },
         "security": [
@@ -12025,8 +12279,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/locations/tree": {
@@ -12224,6 +12477,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La ubicación o el nuevo padre no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La ubicación tiene piezas (desactivación o confirmación de conteo)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12232,17 +12505,7 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
+            "description": "Ciclo o nivel de padre no permitido."
           }
         },
         "security": [
@@ -12250,12 +12513,11 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Editar o desactivar una ubicación",
+        "summary": "Editar, desactivar o reubicar una ubicación (design D4)",
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/locations/{location_id}/pieces": {
@@ -12308,6 +12570,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o no es visible."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12317,16 +12589,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
           }
         },
         "security": [
@@ -12338,8 +12600,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/media/bulk-download": {
@@ -12494,6 +12755,111 @@
         "summary": "Subir una fotografía de una pieza al almacenamiento de objetos (RF-013)",
         "tags": [
           "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/movements/batch": {
+      "post": {
+        "operationId": "movePiecesBatch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchMovementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchMovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El destino no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El destino cambió respecto a lo visto, o la clave no coincide."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Lote vacío, destino inválido o límite excedido."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil)",
+        "tags": [
+          "Ubicaciones"
         ],
         "x-status": "implemented"
       }
@@ -14793,7 +15159,7 @@
             "DevUserHeader": []
           }
         ],
-        "summary": "Registrar un movimiento o verificación física",
+        "summary": "Registrar un movimiento, verificación física o corrección",
         "tags": [
           "Ubicaciones"
         ],
