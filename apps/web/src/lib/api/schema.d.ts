@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c1b2e4f8f775b8359e1e3afd6839aabd10b6fc6ae5471966ec00ca5756f68394
+ * openapi-sha256: e18dcb037b32e4bdd29fba6f26bb1faab6a1bee22f99dc0215d946219a818775
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1054,7 +1054,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Cola de posibles duplicados por revisar (RF-030) */
+        /** Cola de posibles duplicados por revisar, con filtros (RF-030) */
         get: operations["listDuplicateCandidates"];
         put?: never;
         post?: never;
@@ -1073,7 +1073,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar) */
+        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -2102,12 +2102,33 @@ export interface components {
         /**
          * DuplicateCandidateOut
          * @example {
+         *       "blocking_conflict": false,
          *       "detected_by": "rules",
          *       "id": "01920000-0000-7000-8000-000000000911",
          *       "matched_fields": [
-         *         "title",
-         *         "provenance",
-         *         "dimensions_text"
+         *         {
+         *           "contribution": 0.35,
+         *           "field": "identifier:COLECCION",
+         *           "signal": "identifier",
+         *           "similarity": 1,
+         *           "values": {
+         *             "a": "MMZ 012",
+         *             "b": "M.M.Z. 012",
+         *             "normalized": "MMZ 12"
+         *           },
+         *           "weight": 0.35
+         *         },
+         *         {
+         *           "contribution": 0.279,
+         *           "field": "denomination",
+         *           "signal": "denomination",
+         *           "similarity": 0.93,
+         *           "values": {
+         *             "a": "Retablo ayacuchano",
+         *             "b": "RETABLO AYACUCHANO"
+         *           },
+         *           "weight": 0.3
+         *         }
          *       ],
          *       "piece_a_id": "01920000-0000-7000-8000-000000000101",
          *       "piece_b_id": "01920000-0000-7000-8000-000000000102",
@@ -2116,6 +2137,11 @@ export interface components {
          *     }
          */
         DuplicateCandidateOut: {
+            /**
+             * Blocking Conflict
+             * @description Dos códigos I vigentes distintos: la fusión queda bloqueada (RN-002).
+             */
+            blocking_conflict: boolean;
             /** Detected By */
             detected_by: string;
             /**
@@ -2126,7 +2152,7 @@ export interface components {
             /** Import Row Id */
             import_row_id: string | null;
             /** Matched Fields */
-            matched_fields: string[];
+            matched_fields: components["schemas"]["DuplicateSignal"][];
             /**
              * Piece A Id
              * Format: uuid
@@ -2134,6 +2160,11 @@ export interface components {
             piece_a_id: string;
             /** Piece B Id */
             piece_b_id: string | null;
+            /**
+             * Postponed Until
+             * @description Un par pospuesto vuelve a pendiente al leer la cola después de esta fecha.
+             */
+            postponed_until: string | null;
             /** Resolution Note */
             resolution_note: string | null;
             /** Reviewed At */
@@ -2149,10 +2180,35 @@ export interface components {
          *       "note": "Piezas distintas del mismo taller",
          *       "resolution": "DISTINCT"
          *     }
+         * @example {
+         *       "note": "Esperar la ficha física",
+         *       "postponed_until": "2026-12-01T00:00:00Z",
+         *       "resolution": "POSTPONED"
+         *     }
+         * @example {
+         *       "field_choices": {
+         *         "provenance": "ABSORBED"
+         *       },
+         *       "note": "Misma pieza registrada en el libro y en la sábana",
+         *       "resolution": "MERGED",
+         *       "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
          */
         DuplicateResolution: {
+            /**
+             * Field Choices
+             * @description Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.
+             */
+            field_choices?: {
+                [key: string]: "SURVIVING" | "ABSORBED";
+            } | null;
             /** Note */
             note?: string | null;
+            /**
+             * Postponed Until
+             * @description Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].
+             */
+            postponed_until?: string | null;
             /**
              * Resolution
              * @enum {string}
@@ -2163,6 +2219,35 @@ export interface components {
              * @description Obligatorio para MERGED.
              */
             surviving_piece_id?: string | null;
+        };
+        /**
+         * DuplicateSignal
+         * @description One explained reason of a candidate score (``quality.scoring.Signal``, design D1).
+         *
+         *     Rows written before the detection rules (seed, imports) may carry only ``field`` and
+         *     ``similarity``, so the rest is optional and unknown keys are kept.
+         */
+        DuplicateSignal: {
+            /** Contribution */
+            contribution?: number | null;
+            /** Field */
+            field: string;
+            /**
+             * Signal
+             * @description identifier, denomination, collection, …
+             */
+            signal?: string | null;
+            /** Similarity */
+            similarity: number;
+            /**
+             * Values
+             * @description Valores comparados de ambas piezas.
+             */
+            values?: unknown;
+            /** Weight */
+            weight?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DuplicateStatus
@@ -3226,6 +3311,42 @@ export interface components {
             view_type_term_id?: string | null;
         };
         /**
+         * MergedFrom
+         * @description A piece merged into this one; its movements and source records stay on it (D4).
+         */
+        MergedFrom: {
+            /** Denomination */
+            denomination: string;
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * MergedInto
+         * @description Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4).
+         */
+        MergedInto: {
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description Pieza conservada a la que redirigir.
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Motivo registrado al fusionar.
+             */
+            reason: string | null;
+        };
+        /**
          * MovementCreate
          * @example {
          *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
@@ -3782,6 +3903,13 @@ export interface components {
             materials: components["schemas"]["TermRef"][];
             /** Media Count */
             media_count: number;
+            /**
+             * Merged From
+             * @description Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y evaluaciones siguen en ellas (calidad-datos; RF-030).
+             */
+            merged_from?: components["schemas"]["MergedFrom"][];
+            /** @description Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo (calidad-datos; RF-030). */
+            merged_into?: components["schemas"]["MergedInto"] | null;
             /** Notes */
             notes: string | null;
             object_type: components["schemas"]["TermRef"] | null;
@@ -9163,7 +9291,11 @@ export interface operations {
     listDuplicateCandidates: {
         parameters: {
             query?: {
+                /** @description Incluye las subcolecciones. */
+                collection_id?: string | null;
                 min_score?: number | null;
+                /** @description CATALOG: dos piezas del catálogo; IMPORT: fila de importación. */
+                origin?: ("CATALOG" | "IMPORT") | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -9210,15 +9342,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -9272,15 +9395,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
