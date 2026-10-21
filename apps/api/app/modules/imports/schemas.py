@@ -1,7 +1,8 @@
 """API schemas for the import reconciliation pipeline (spec importacion-datos; RF-021..RF-029).
 
-Ingestion, mapping, validation and preview are implemented (``importacion-pipeline-
-reconciliacion`` 2.1, 3.1 and 3.4); decisions, approval, log and rollback are still stubs.
+Implemented by ``importacion-pipeline-reconciliacion``: ingestion, mapping, validation,
+preview, decisions, approval, log and embedded images. Rollback waits for the revert engine of
+``auditoria-y-soft-delete-transversal`` (task 5.2).
 """
 
 import uuid
@@ -15,12 +16,26 @@ from app.api.refs import EX_BATCH_ID, EX_DATETIME, EX_PIECE_ID, EX_USER_ID
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchStatus,
+    ImportImage,
+    ImportImageStatus,
     ImportRow,
     RowClassification,
     RowDecision,
 )
 
 _COUNTS = {"rows": 120, "NEW": 70, "UPDATE": 35, "POSSIBLE_DUPLICATE": 10, "CONFLICT": 5}
+_SUMMARY = {"create": 70, "update": 35, "skip": 15, "summary_token": "0" * 32}
+
+
+class ApprovalSummaryOut(BaseModel):
+    """What applying the batch would do now; approve with its ``summary_token`` (D6)."""
+
+    create: int = Field(description="Filas que crearán una pieza nueva.")
+    update: int = Field(description="Filas que actualizarán una pieza existente.")
+    skip: int = Field(
+        description="Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver)."
+    )
+    summary_token: str = Field(description="Huella del resumen; se envía al aprobar.")
 
 
 class ImportBatchOut(BaseModel):
@@ -47,6 +62,7 @@ class ImportBatchOut(BaseModel):
                     "mapping": None,
                     "processing": False,
                     "progress": None,
+                    "approval_summary": _SUMMARY,
                     "created_at": EX_DATETIME,
                 }
             ]
@@ -76,10 +92,15 @@ class ImportBatchOut(BaseModel):
     progress: dict[str, Any] | None = Field(
         None, description="Etapa en curso y avance: `{stage, done, total}` (RF-021)."
     )
+    approval_summary: ApprovalSummaryOut | None = Field(
+        None, description="Resumen para aprobar; solo en previsualización (RF-027, RNF-010)."
+    )
     created_at: datetime
 
     @classmethod
-    def from_batch(cls, batch: ImportBatch) -> "ImportBatchOut":
+    def from_batch(
+        cls, batch: ImportBatch, approval: dict[str, Any] | None = None
+    ) -> "ImportBatchOut":
         raw = batch.counts or {}
         return cls(
             id=batch.id,
@@ -105,6 +126,7 @@ class ImportBatchOut(BaseModel):
             mapping=batch.mapping,
             processing=batch.processing_started_at is not None,
             progress=raw.get("progress"),
+            approval_summary=ApprovalSummaryOut(**approval) if approval else None,
             created_at=batch.created_at,
         )
 
@@ -252,6 +274,36 @@ class FieldDiff(BaseModel):
     )
 
 
+class ImportImageOut(BaseModel):
+    """Image extracted from the workbook, pending until a person associates it (RF-029)."""
+
+    id: uuid.UUID
+    image_number: int
+    anchor_row_number: int | None = Field(description="Fila del Excel donde está anclada.")
+    import_row_id: uuid.UUID | None = Field(
+        description="Fila del lote propuesta; null = bandeja sin asignar."
+    )
+    status: ImportImageStatus
+    content_type: str
+    size_bytes: int
+    media_asset_id: uuid.UUID | None = Field(None, description="Foto registrada al asociarla.")
+    preview_url: str | None = Field(None, description="URL temporal para ver la imagen.")
+
+    @classmethod
+    def from_image(cls, image: ImportImage, preview_url: str | None = None) -> "ImportImageOut":
+        return cls(
+            id=image.id,
+            image_number=image.image_number,
+            anchor_row_number=image.anchor_row_number,
+            import_row_id=image.import_row_id,
+            status=image.status,
+            content_type=image.content_type,
+            size_bytes=image.size_bytes,
+            media_asset_id=image.media_asset_id,
+            preview_url=preview_url,
+        )
+
+
 class ImportRowOut(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -286,6 +338,9 @@ class ImportRowOut(BaseModel):
                     "decision": "PENDING",
                     "decision_reason": None,
                     "target_piece_id": EX_PIECE_ID,
+                    "resolution": None,
+                    "action": "UPDATE",
+                    "images": [],
                 }
             ]
         }
@@ -304,9 +359,26 @@ class ImportRowOut(BaseModel):
     decision: RowDecision
     decision_reason: str | None
     target_piece_id: uuid.UUID | None
+    resolution: dict[str, Any] | None = Field(
+        None,
+        description="Resolución de una persona: `target_piece_id` o `as_new`, "
+        "`field_decisions`, `decided_by_id`, `decided_at`.",
+    )
+    action: Literal["CREATE", "UPDATE", "SKIP"] | None = Field(
+        None, description="Qué hará la aplicación del lote con la fila."
+    )
+    images: list[ImportImageOut] = Field(
+        default_factory=list, description="Imágenes ancladas en la fila (RF-029)."
+    )
 
     @classmethod
-    def from_row(cls, row: ImportRow) -> "ImportRowOut":
+    def from_row(
+        cls,
+        row: ImportRow,
+        *,
+        action: str | None = None,
+        images: list[ImportImageOut] | None = None,
+    ) -> "ImportRowOut":
         return cls(
             id=row.id,
             batch_id=row.batch_id,
@@ -329,6 +401,9 @@ class ImportRowOut(BaseModel):
             decision=row.decision,
             decision_reason=row.decision_reason,
             target_piece_id=row.target_piece_id,
+            resolution=row.resolution,
+            action=action,
+            images=images or [],
         )
 
 
@@ -345,30 +420,78 @@ class ImportDiffsPage(Page[ImportRowOut]):
     classification_rules: list[ClassificationRule] = Field(
         description="Reglas y umbrales usados para clasificar las filas, en orden de evaluación."
     )
+    unassigned_images: list[ImportImageOut] = Field(
+        default_factory=list,
+        description="Bandeja de imágenes sin fila: ancladas en filas sin datos (RF-029).",
+    )
 
 
 class RowDecisionRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "decision": "ACCEPTED",
+                    "reason": None,
+                    "target_piece_id": EX_PIECE_ID,
+                    "as_new": False,
+                    "field_decisions": {"provenance": "accept", "author": "exclude"},
+                }
+            ]
+        }
+    )
+
     decision: Literal["ACCEPTED", "EXCLUDED", "REJECTED"]
     reason: str | None = Field(None, description="Obligatorio para REJECTED (RF-028).")
-    target_piece_id: uuid.UUID | None = None
+    target_piece_id: uuid.UUID | None = Field(
+        None, description="Conflicto o posible duplicado: la fila actualiza esta pieza."
+    )
+    as_new: bool = Field(
+        False, description="Conflicto o posible duplicado: la fila crea una pieza nueva."
+    )
+    field_decisions: dict[str, Literal["accept", "exclude"]] = Field(
+        default_factory=dict,
+        description="Por campo del diff: aceptar el valor entrante o conservar el actual.",
+    )
 
 
 class ApprovalRequest(BaseModel):
     model_config = ConfigDict(
-        json_schema_extra={"examples": [{"confirm_counts": _COUNTS, "comment": "Revisado"}]}
+        json_schema_extra={
+            "examples": [
+                {
+                    "summary_token": "0" * 32,
+                    "confirm_counts": {"create": 70, "update": 35, "skip": 15},
+                    "comment": "Revisado",
+                }
+            ]
+        }
     )
 
-    confirm_counts: dict[str, int] = Field(
-        description="Totales que la persona confirmó en pantalla (RNF-010, RF-027)."
+    summary_token: str = Field(
+        description="`approval_summary.summary_token` del resumen mostrado (RF-027, RNF-010)."
+    )
+    confirm_counts: dict[str, int] | None = Field(
+        None, description="Totales que la persona confirmó en pantalla (informativo)."
     )
     comment: str | None = None
+
+
+class ImageAssociateRequest(BaseModel):
+    piece_id: uuid.UUID | None = Field(
+        None,
+        description="Pieza de destino; por defecto, la de la fila donde está anclada la imagen.",
+    )
+    view_type_term_id: uuid.UUID | None = None
 
 
 class ImportLogEntry(BaseModel):
     source_row_number: int
     classification: RowClassification | None
     decision: RowDecision
+    action: Literal["CREATE", "UPDATE", "SKIP"]
     reason: str | None
+    resolution: dict[str, Any] | None = None
     target_piece_id: uuid.UUID | None
 
 
@@ -385,21 +508,29 @@ class ImportLog(BaseModel):
                             "source_row_number": 20,
                             "classification": "CONFLICT",
                             "decision": "REJECTED",
+                            "action": "SKIP",
                             "reason": "Código I asignado a otra pieza.",
+                            "resolution": None,
                             "target_piece_id": None,
                         }
                     ],
-                    "download_url": None,
+                    "download_url": f"/api/v1/imports/{EX_BATCH_ID}/log?format=xlsx",
                 }
             ]
         }
     )
 
-    batch: dict[str, Any]
-    applied_rows: int
-    rejected_rows: int
-    entries: list[ImportLogEntry]
-    download_url: str | None = Field(None, description="Rechazos descargables en Excel.")
+    batch: dict[str, Any] = Field(
+        description="Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa y conteos."
+    )
+    applied_rows: int | None = Field(description="Solo en lotes aplicados o revertidos.")
+    rejected_rows: int | None = Field(
+        description="Filas no aplicadas; null si el lote no llegó a leer filas."
+    )
+    entries: list[ImportLogEntry] = Field(
+        description="Filas no aplicadas con su motivo y filas resueltas por una persona."
+    )
+    download_url: str | None = Field(None, description="La misma bitácora en Excel.")
 
 
 class RevertRequest(BaseModel):

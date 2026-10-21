@@ -2,12 +2,16 @@
 
 import hashlib
 import io
+import uuid
 from dataclasses import dataclass
 
 from PIL import Image, UnidentifiedImageError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.errors import ValidationFailed
 from app.core.storage import ObjectStorage
+from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 
 
 @dataclass(frozen=True)
@@ -102,3 +106,21 @@ def verify_image_stream(
 
     verified = verify_image(data)
     return verified.sha256, verified.width, verified.height, verified.content_type
+
+
+def comodato_restriction_term_id(session: Session) -> uuid.UUID:
+    """Restricción de imágenes en comodato (RN-008): hereda `NO_PUBLICAR`."""
+    term = session.scalar(
+        select(Term)
+        .join(Vocabulary)
+        .where(
+            Vocabulary.code == VocabularyCode.USAGE_RESTRICTION,
+            Term.code == "NO_PUBLICAR",
+        )
+    )
+    if term is None:
+        raise ValidationFailed(
+            "Falta el vocabulario de restricciones de uso.",
+            code="usage_restriction_missing",
+        )
+    return term.id
