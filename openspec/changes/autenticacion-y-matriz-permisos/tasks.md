@@ -1,16 +1,16 @@
 ## 1. Modelo y configuración
 
-- [ ] 1.1 Migración: `user_session`, `auth_event`, `sensitive_access_log`, `app_user.must_change_password`; `tests/test_migrations.py` en verde (Req: Sesiones de servidor revocables; Req: Bloqueo temporal…; Req: Registro de accesos a datos sensibles)
-- [ ] 1.2 Añadir a `Settings` y `.env.example`: `SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`, `WEB_ORIGIN`, `COOKIE_SECURE`, `SEED_DEV_PASSWORD`; prueba existente de documentación de variables en verde (RNF-004)
-- [ ] 1.3 Eliminar `JWT_SECRET`, `JWT_ALGORITHM` y `JWT_EXPIRE_MINUTES` de `app/core/config.py` y `.env.example` y reemplazarlos por los parámetros de sesión de ADR-009 (expiración por inactividad y absoluta); actualizar `tests/test_env_example.py` y el comentario de `apps/web/src/lib/api/client.ts` que menciona JWT (ADR-009)
+- [x] 1.1 Migración: `user_session`, `auth_event`, `sensitive_access_log`, `app_user.must_change_password`; `tests/test_migrations.py` en verde (Req: Sesiones de servidor revocables; Req: Bloqueo temporal…; Req: Registro de accesos a datos sensibles)
+- [x] 1.2 Añadir a `Settings` y `.env.example`: `SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`, `WEB_ORIGIN`, `COOKIE_SECURE`, `SEED_DEV_PASSWORD`; prueba existente de documentación de variables en verde (RNF-004)
+- [x] 1.3 Eliminar `JWT_SECRET`, `JWT_ALGORITHM` y `JWT_EXPIRE_MINUTES` de `app/core/config.py` y `.env.example` y reemplazarlos por los parámetros de sesión de ADR-009 (expiración por inactividad y absoluta); actualizar `tests/test_env_example.py` y el comentario de `apps/web/src/lib/api/client.ts` que menciona JWT (ADR-009)
 
 ## 2. Autenticación
 
-- [ ] 2.1 Crear `users/passwords.py` (Argon2 con `pwdlib`, rehash, política de 12 caracteres y lista de comunes) y filtro de logging que redacta contraseñas; pruebas: hash y verificación, rehash, contraseña débil, log sin contraseña (Req: Administración de usuarios con contraseña temporal; Req: Bloqueo temporal… — escenario "Contraseña en registros"; RNF-013)
+- [x] 2.1 Crear `users/passwords.py` (Argon2 con `pwdlib`, rehash, política de 12 caracteres y lista de comunes) y filtro de logging que redacta contraseñas; pruebas: hash y verificación, rehash, contraseña débil, log sin contraseña (Req: Administración de usuarios con contraseña temporal; Req: Bloqueo temporal… — escenario "Contraseña en registros"; RNF-013)
 - [ ] 2.2 Crear `users/sessions.py` (emisión, huella, expiración por inactividad y absoluta, revocación masiva) y reescribir `get_current_user` en `api/deps.py` (cookie; `X-MATP-User` solo con `APP_ENV=test`); pruebas de expiración, revocación, huella y cabecera en desarrollo 401 (Req: Sesiones de servidor revocables; Req: Retiro de la identidad provisional de desarrollo)
 - [ ] 2.3 Implementar `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, operación nueva `POST /api/v1/auth/change-password` y `GET /api/v1/auth/me` con sesión; bloqueo, respuestas genéricas, límite por IP, `auth_event`, `must_change_password`, sintéticos rechazados en producción; pruebas de todos los escenarios de bloqueo y primer ingreso (Req: Bloqueo temporal y registro de eventos de autenticación; RNF-012)
 - [ ] 2.4 Middleware CSRF de doble envío para escrituras con cookie; pruebas: sin cabecera 403, cabecera distinta 403, correcta ok (Req: Protección contra falsificación de peticiones)
-- [ ] 2.5 Interfaz `IdentityProvider` con `LocalPasswordProvider` y `OidcProvider` stub documentado; prueba de la selección por configuración (RNF-012)
+- [x] 2.5 Interfaz `IdentityProvider` con `LocalPasswordProvider` y `OidcProvider` stub documentado; prueba de la selección por configuración (RNF-012)
 - [ ] 2.6 Fixture de pytest `login_as(role_code)` y guía de migración de pruebas en `docs/api/README.md` (RNF-004)
 
 ## 3. Usuarios, roles y datos sensibles

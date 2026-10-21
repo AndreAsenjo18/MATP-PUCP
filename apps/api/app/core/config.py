@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     web_origin: str = "http://localhost:3000"
     # `Secure` flag of the session and CSRF cookies: only local development may turn it off.
     cookie_secure: bool = True
+    # Identity provider (ADR-009, decision D8): "local" verifies a password against the
+    # database; "oidc" (institutional PUCP account) is a documented stub in phase 1 (RNF-012).
+    auth_provider: Literal["local", "oidc"] = "local"
     # Password of the synthetic seed users, so development can sign in without the dev header.
     # Never set in production: synthetic users cannot sign in there (ADR-009, point 7).
     seed_dev_password: str | None = None

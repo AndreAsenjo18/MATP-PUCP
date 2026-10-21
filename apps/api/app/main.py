@@ -23,6 +23,7 @@ from app.core.storage import ObjectStorage
 from app.modules.imports.worker import register_import_jobs
 from app.modules.quality.incremental import register_incremental_jobs
 from app.modules.quality.scan import register_scan_jobs
+from app.modules.users.passwords import install_password_log_redaction
 
 logger = logging.getLogger("matp.api")
 
@@ -73,6 +74,8 @@ def create_app(
     engine: Engine | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
+    # No password may reach a log file, whoever writes the record (RNF-013, ADR-009 D2).
+    install_password_log_redaction("matp.api", "uvicorn.access", "uvicorn.error")
     register_scan_jobs()
     register_incremental_jobs()
     register_import_jobs()
