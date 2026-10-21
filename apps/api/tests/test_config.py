@@ -7,7 +7,7 @@ import pytest
 from app.core.config import ConfigurationError, load_settings
 from app.core.storage import ObjectStorage
 
-REQUIRED = ["DATABASE_URL", "S3_BUCKET", "JWT_SECRET"]
+REQUIRED = ["DATABASE_URL", "S3_BUCKET"]
 
 
 @pytest.fixture
@@ -30,20 +30,32 @@ def test_single_missing_variable(clean_env: pytest.MonkeyPatch) -> None:
     clean_env.setenv("DATABASE_URL", "postgresql+psycopg://u:p@db:5432/matp")
     clean_env.setenv("S3_ACCESS_KEY_ID", "key")
     clean_env.setenv("S3_SECRET_ACCESS_KEY", "secret")
-    clean_env.setenv("JWT_SECRET", "x" * 32)
     with pytest.raises(ConfigurationError) as excinfo:
         load_settings()
     assert "S3_BUCKET" in str(excinfo.value)
     assert "DATABASE_URL" not in str(excinfo.value)
 
 
-def test_short_jwt_secret_is_rejected(clean_env: pytest.MonkeyPatch) -> None:
+def test_out_of_range_session_lifetime_is_rejected(clean_env: pytest.MonkeyPatch) -> None:
+    """ADR-009 reemplaza JWT_* por los tiempos de sesión; un valor fuera de rango se nombra."""
     for name in REQUIRED:
         clean_env.setenv(name, "value")
+    clean_env.setenv("SESSION_IDLE_MINUTES", "0")
     with pytest.raises(ConfigurationError) as excinfo:
         load_settings()
-    assert "JWT_SECRET" in str(excinfo.value)
+    assert "SESSION_IDLE_MINUTES" in str(excinfo.value)
     assert "no válido" in str(excinfo.value)
+
+
+def test_insecure_cookies_are_rejected_in_production(clean_env: pytest.MonkeyPatch) -> None:
+    """La cookie de sesión solo viaja por HTTPS en producción (RNF-013, ADR-009)."""
+    for name in REQUIRED:
+        clean_env.setenv(name, "a-sufficiently-long-value")
+    clean_env.setenv("APP_ENV", "production")
+    clean_env.setenv("COOKIE_SECURE", "false")
+    with pytest.raises(ConfigurationError) as excinfo:
+        load_settings()
+    assert "COOKIE_SECURE" in str(excinfo.value)
 
 
 def test_valid_environment_loads(clean_env: pytest.MonkeyPatch) -> None:
