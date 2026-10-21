@@ -23,7 +23,7 @@
 
 ## 5. Cierre del change
 
-- [x] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); repetir 2.x y 3.x contra PostgreSQL en compose (CTE recursiva, `FOR UPDATE`) cuando Docker esté disponible — **pendiente**: este entorno no tiene Docker disponible; `tests/test_migrations_postgresql.py` se omite automáticamente sin `TEST_POSTGRES_URL` y debe correrse en CI o en un entorno con Docker antes de aprobar el PR
+- [x] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); repetido contra PostgreSQL en compose con `npm run test:api:pg` (10/10 en verde contra `matp_test`, sin tocar `matp`). Esa corrida detectó que el id de la migración 0008 (40 caracteres) excedía `alembic_version.version_num` (`VARCHAR(32)`) — invisible en SQLite, que no aplica el límite de longitud; se acortó a `0008_locations_idempotency` (26 caracteres)
 - [x] 5.2 Actualizar OpenAPI: implementar los 3 stubs y añadir `movements/batch`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
 - [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/deposito.md` (vista móvil, mover, verificar, lotes) y `docs/manual-usuario/administracion.md` (ubicaciones)
 - [x] 5.4 Registrar supuestos (niveles, tipo de espacio; referenciar D4 para cajas en el piso) en `docs/preguntas-contraparte.md`, ADR Propuesto sobre idempotencia, `openspec validate ubicacion-jerarquica-y-movimientos --strict` y, tras aprobar el PR, `openspec archive ubicacion-jerarquica-y-movimientos -y`

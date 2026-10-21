@@ -1,6 +1,6 @@
 """Location space_kind, corrective and batch movements, idempotency.
 
-Revision ID: 0008_locations_movements_and_idempotency
+Revision ID: 0008_locations_idempotency
 Revises: 0007_import_decisions_and_images
 Create Date: 2026-10-21
 
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0008_locations_movements_and_idempotency"
+revision: str = "0008_locations_idempotency"
 down_revision: str | None = "0007_import_decisions_and_images"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
