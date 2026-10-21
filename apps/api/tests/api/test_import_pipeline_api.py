@@ -30,7 +30,7 @@ from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import TYPE_COLLECTION, TYPE_INVENTORY
 from app.modules.imports.models import ImportBatch, ImportRow
 from app.seed.synthetic import SeedOptions, run_seed
-from tests.api.conftest import CATALOGUER, MANAGER, VIEWER, api_settings, as_user
+from tests.api.conftest import api_settings, login_client
 
 FIXTURES = Path(__file__).resolve().parents[4] / "data" / "fixtures"
 SABANA = (FIXTURES / "sabana_sintetica_v1.xlsx").read_bytes()
@@ -68,13 +68,14 @@ def pipeline() -> Iterator[Pipeline]:
     stored: dict[str, bytes] = {}
     clients: list[TestClient] = []
 
-    def app_for(**overrides: object) -> TestClient:
+    def app_for(role: str = "CATALOGUER", **overrides: object) -> TestClient:
+        """A client signed in as ``role`` on an application built with these settings."""
         app = create_app(api_settings(**overrides), health_checks={}, engine=engine)
         _fake_storage(app, stored)
-        client = TestClient(app)
-        client.__enter__()
-        clients.append(client)
-        return client
+        lifespan = TestClient(app)
+        lifespan.__enter__()
+        clients.append(lifespan)
+        return login_client(app, engine, role)
 
     yield Pipeline(engine, app_for(), stored, app_for)
     for client in clients:
@@ -82,28 +83,28 @@ def pipeline() -> Iterator[Pipeline]:
     engine.dispose()
 
 
-def upload(client: TestClient, name: str, content: bytes, user: str = CATALOGUER) -> dict[str, Any]:
-    response = client.post(f"{BASE}/upload", files={"file": (name, content)}, headers=as_user(user))
+def upload(client: TestClient, name: str, content: bytes) -> dict[str, Any]:
+    response = client.post(f"{BASE}/upload", files={"file": (name, content)})
     assert response.status_code == 202, response.text
     return response.json()
 
 
 def get_batch(client: TestClient, batch_id: str) -> dict[str, Any]:
-    response = client.get(f"{BASE}/{batch_id}", headers=as_user(CATALOGUER))
+    response = client.get(f"{BASE}/{batch_id}")
     assert response.status_code == 200, response.text
     return response.json()
 
 
 def put_mapping(client: TestClient, batch_id: str, body: dict[str, Any]) -> Any:
-    return client.put(f"{BASE}/{batch_id}/mapping", json=body, headers=as_user(CATALOGUER))
+    return client.put(f"{BASE}/{batch_id}/mapping", json=body)
 
 
 def validate(client: TestClient, batch_id: str) -> Any:
-    return client.post(f"{BASE}/{batch_id}/validate", headers=as_user(CATALOGUER))
+    return client.post(f"{BASE}/{batch_id}/validate")
 
 
 def diffs(client: TestClient, batch_id: str, **params: object) -> Any:
-    return client.get(f"{BASE}/{batch_id}/diffs", params=params, headers=as_user(CATALOGUER))
+    return client.get(f"{BASE}/{batch_id}/diffs", params=params)
 
 
 SABANA_MAPPING = {
@@ -159,9 +160,7 @@ def test_file_over_the_size_limit_creates_no_batch(pipeline: Pipeline) -> None:
     with pipeline.session() as session:
         before = session.scalar(select(func.count()).select_from(ImportBatch))
 
-    response = small.post(
-        f"{BASE}/upload", files={"file": ("grande.xlsx", SABANA)}, headers=as_user(CATALOGUER)
-    )
+    response = small.post(f"{BASE}/upload", files={"file": ("grande.xlsx", SABANA)})
 
     assert response.status_code == 422
     assert response.json()["code"] == "file_too_large"
@@ -170,18 +169,16 @@ def test_file_over_the_size_limit_creates_no_batch(pipeline: Pipeline) -> None:
 
 
 def test_viewer_cannot_upload(pipeline: Pipeline) -> None:
-    response = pipeline.client.post(
-        f"{BASE}/upload", files={"file": ("x.csv", b"A\n1\n")}, headers=as_user(VIEWER)
-    )
+    viewer = pipeline.app_for("INTERNAL_VIEWER")
+    response = viewer.post(f"{BASE}/upload", files={"file": ("x.csv", b"A\n1\n")})
     assert response.status_code == 403
 
 
 def test_list_filters_by_status(pipeline: Pipeline) -> None:
     failed = upload(pipeline.client, "otro.docx", b"no es una hoja")["batch_id"]
 
-    response = pipeline.client.get(
-        BASE, params={"status": "FAILED_INGESTION"}, headers=as_user(MANAGER)
-    )
+    manager = pipeline.app_for("COLLECTIONS_MANAGER")
+    response = manager.get(BASE, params={"status": "FAILED_INGESTION"})
 
     assert response.status_code == 200
     items = response.json()["items"]
@@ -190,7 +187,7 @@ def test_list_filters_by_status(pipeline: Pipeline) -> None:
 
 
 def test_unknown_batch_is_404(pipeline: Pipeline) -> None:
-    response = pipeline.client.get(f"{BASE}/{uuid.uuid4()}", headers=as_user(CATALOGUER))
+    response = pipeline.client.get(f"{BASE}/{uuid.uuid4()}")
     assert response.status_code == 404
 
 
