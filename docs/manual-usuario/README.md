@@ -11,7 +11,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
 | Depósito: vista móvil, movimientos y verificaciones | `deposito.md` | `ubicacion-jerarquica-y-movimientos` | pendiente |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | pendiente |
-| Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | pendiente |
+| Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | parcial: «Posibles duplicados» (`deteccion-duplicados-y-cola-revision`) |
 | Búsqueda y exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion` | pendiente |
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | pendiente |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | pendiente |

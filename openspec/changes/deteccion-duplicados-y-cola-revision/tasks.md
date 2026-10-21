@@ -25,5 +25,5 @@
 
 - [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de volumen con 20 000 piezas sintéticas contra PostgreSQL en compose (duración del scan y calibración de umbrales de trigramas) cuando Docker esté disponible
 - [x] 5.2 Actualizar OpenAPI: implementar los 2 stubs y añadir `duplicates/scan` y `quality/jobs/{job_id}`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (cola de duplicados, marcar distintos, posponer, fusionar)
+- [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (cola de duplicados, marcar distintos, posponer, fusionar)
 - [ ] 5.4 Registrar supuestos (pesos, umbral, máximo de posposición, regímenes en fusión) en `docs/preguntas-contraparte.md`, `openspec validate deteccion-duplicados-y-cola-revision --strict` y, tras aprobar el PR, `openspec archive deteccion-duplicados-y-cola-revision -y`
