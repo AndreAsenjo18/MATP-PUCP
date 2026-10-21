@@ -61,39 +61,73 @@ def _catalogador_user(seeded_api: SeededApi) -> "CurrentUser":
 
 @pytest.fixture
 def fake_storage(seeded_api: SeededApi, monkeypatch: pytest.MonkeyPatch) -> dict:
-    """Mock storage for testing without network."""
+    """Mock storage for testing without network - replaces entire storage object."""
     objects: dict[str, bytes] = {}
 
-    def put_bytes(key: str, data: bytes, content_type: str) -> None:
-        objects[key] = data
+    class FakeStorage:
+        def __init__(self):
+            self.objects = objects
+            self.presigned_puts = []
+            self.presigned_gets = []
+            self.copies = []
+            self.deleted = []
 
-    def head(key: str) -> dict:
-        if key not in objects:
-            raise FileNotFoundError(key)
-        data = objects[key]
-        return {"content_type": "image/jpeg", "content_length": len(data), "etag": "fake"}
+        def ensure_bucket(self) -> bool:
+            return True
 
-    def stream(key: str, chunk_size: int = 8192):
-        if key not in objects:
-            raise FileNotFoundError(key)
-        data = objects[key]
-        for i in range(0, len(data), chunk_size):
-            yield data[i : i + chunk_size]
+        def check(self) -> None:
+            pass
 
-    def copy(src: str, dst: str) -> None:
-        if src not in objects:
-            raise FileNotFoundError(src)
-        objects[dst] = objects[src]
+        def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+            self.objects[key] = data
 
-    def delete_pending(key: str) -> None:
-        objects.pop(key, None)
+        def get_bytes(self, key: str) -> bytes:
+            if key not in self.objects:
+                raise FileNotFoundError(key)
+            return self.objects[key]
 
-    monkeypatch.setattr(seeded_api.app.state.storage, "put_bytes", put_bytes)
-    monkeypatch.setattr(seeded_api.app.state.storage, "head", head)
-    monkeypatch.setattr(seeded_api.app.state.storage, "stream", stream)
-    monkeypatch.setattr(seeded_api.app.state.storage, "copy", copy)
-    monkeypatch.setattr(seeded_api.app.state.storage, "delete_pending", delete_pending)
-    return {"objects": objects}
+        # --- Presigned (fake returns predictable URLs) ---
+        def presign_put(self, key: str, content_type: str, ttl_seconds: int = 900) -> dict:
+            fake_url = f"http://test-storage/{self.bucket}/{key}?presigned=put&ttl={ttl_seconds}"
+            self.presigned_puts.append(
+                {"key": key, "content_type": content_type, "ttl": ttl_seconds, "url": fake_url}
+            )
+            return {"url": fake_url, "method": "PUT", "headers": {"Content-Type": content_type}}
+
+        def presign_get(self, key: str, ttl_seconds: int = 300) -> str:
+            fake_url = f"http://test-storage/{self.bucket}/{key}?presigned=get&ttl={ttl_seconds}"
+            self.presigned_gets.append({"key": key, "ttl": ttl_seconds, "url": fake_url})
+            return fake_url
+
+        # --- Metadata & streaming ---
+        def head(self, key: str) -> dict:
+            if key not in self.objects:
+                raise FileNotFoundError(key)
+            data = self.objects[key]
+            return {"content_type": "image/jpeg", "content_length": len(data), "etag": "fake-etag"}
+
+        def stream(self, key: str, chunk_size: int = 8192):
+            if key not in self.objects:
+                raise FileNotFoundError(key)
+            data = self.objects[key]
+            for i in range(0, len(data), chunk_size):
+                yield data[i : i + chunk_size]
+
+        # --- Copy & delete ---
+        def copy(self, src_key: str, dst_key: str) -> None:
+            if src_key not in self.objects:
+                raise FileNotFoundError(src_key)
+            self.objects[dst_key] = self.objects[src_key]
+            self.copies.append((src_key, dst_key))
+
+        def delete_pending(self, key: str) -> None:
+            self.objects.pop(key, None)
+            self.deleted.append(key)
+
+    fake = FakeStorage()
+    fake.bucket = seeded_api.app.state.storage.bucket
+    monkeypatch.setattr(seeded_api.app.state, "storage", fake)
+    return {"objects": objects, "fake": fake}
 
 
 def _setup_audit_context(session, seeded_api: SeededApi):
@@ -138,7 +172,8 @@ def test_register_ok(seeded_api: SeededApi, fake_storage: dict) -> None:
         for k in fake_storage["objects"]
         if k.startswith(f"pieces/{piece_id}/") and not k.startswith("pending/")
     ]
-    assert len(final_keys) == 1
+    # Original + thumb.webp + display.webp = 3 files
+    assert len(final_keys) == 3
 
 
 def test_register_pdf_disguised(seeded_api: SeededApi, fake_storage: dict) -> None:

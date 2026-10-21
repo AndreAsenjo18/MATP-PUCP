@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 305ad9ee2d733e347cb9cf20e48e118b4a1a2017f72e45243e072c2a69a0e3ce
+ * openapi-sha256: c1b2e4f8f775b8359e1e3afd6839aabd10b6fc6ae5471966ec00ca5756f68394
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -911,6 +911,40 @@ export interface paths {
         patch: operations["updateMedia"];
         trace?: never;
     };
+    "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener URL prefirmada para descargar una foto */
+        get: operations["getMediaDownloadUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/media/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reordenar fotos de una pieza (lista completa de IDs) */
+        put: operations["reorderMedia"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pieces/{piece_id}/media/upload-url": {
         parameters: {
             query?: never;
@@ -971,6 +1005,23 @@ export interface paths {
         };
         /** Datos de origen sin mapeo (payload, solo lectura) */
         get: operations["listSourceRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/media/storage-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estimación del volumen fotográfico */
+        get: operations["getMediaStorageEstimate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1992,6 +2043,61 @@ export interface components {
             unit: string;
             /** Value */
             value: number;
+        };
+        /**
+         * DownloadUrlRequest
+         * @description Request for download URL with purpose.
+         * @example {
+         *       "purpose": "internal"
+         *     }
+         * @example {
+         *       "purpose": "external"
+         *     }
+         */
+        DownloadUrlRequest: {
+            /**
+             * Purpose
+             * @description Uso previsto: internal (visualización) o external (descarga).
+             * @default internal
+             * @enum {string}
+             */
+            purpose: "internal" | "external";
+        };
+        /**
+         * DownloadUrlResponse
+         * @description Response with pre-signed download URL.
+         * @example {
+         *       "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+         *       "effective_restriction": {
+         *         "code": "NO_PUBLICAR",
+         *         "id": "01920000-0000-7000-8000-000000000333",
+         *         "label": "No publicar"
+         *       },
+         *       "expires_at": "2026-09-17T10:30:00Z",
+         *       "restriction_origin": "colección"
+         *     }
+         */
+        DownloadUrlResponse: {
+            /**
+             * Download Url
+             * @description URL prefirmada para descarga.
+             */
+            download_url: string;
+            /** @description Restricción efectiva aplicada a la foto. */
+            effective_restriction?: components["schemas"]["TermRef"] | null;
+            /**
+             * Expires At
+             * Format: date-time
+             * @description Expiración de la URL.
+             */
+            expires_at: string;
+            /**
+             * Restriction Origin
+             * @description Origen de la restricción efectiva.
+             * @default ninguna
+             * @enum {string}
+             */
+            restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
         };
         /**
          * DuplicateCandidateOut
@@ -4339,6 +4445,59 @@ export interface components {
             source_name: string;
             /** Source Row Number */
             source_row_number: number | null;
+        };
+        /**
+         * StorageEstimateResponse
+         * @description Response with current storage volume and projection.
+         * @example {
+         *       "avg_mb_per_photo": 2.1,
+         *       "avg_photos_per_piece": 3.5,
+         *       "current_derivatives_bytes": 246913569,
+         *       "current_originals_bytes": 987654321,
+         *       "current_volume_bytes": 1234567890,
+         *       "projection": {
+         *         "mb_per_photo": 4,
+         *         "photos_per_piece": 5,
+         *         "pieces": 20000,
+         *         "projected_derivatives_bytes": 50000000000,
+         *         "projected_originals_bytes": 400000000000,
+         *         "projected_total_bytes": 450000000000
+         *       }
+         *     }
+         */
+        StorageEstimateResponse: {
+            /**
+             * Avg Mb Per Photo
+             * @description Promedio real de MB por foto (originales).
+             */
+            avg_mb_per_photo?: number | null;
+            /**
+             * Avg Photos Per Piece
+             * @description Promedio real de fotos por pieza.
+             */
+            avg_photos_per_piece?: number | null;
+            /**
+             * Current Derivatives Bytes
+             * @description Tamaño total de derivados (thumb + display).
+             */
+            current_derivatives_bytes: number;
+            /**
+             * Current Originals Bytes
+             * @description Tamaño total de originales activos.
+             */
+            current_originals_bytes: number;
+            /**
+             * Current Volume Bytes
+             * @description Volumen actual almacenado (originales + derivados).
+             */
+            current_volume_bytes: number;
+            /**
+             * Projection
+             * @description Proyección de volumen según parámetros indicados.
+             */
+            projection?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * SuggestionStatus
@@ -8449,20 +8608,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     retireMedia: {
         parameters: {
             query: {
+                /** @description Motivo obligatorio. */
                 reason: string;
             };
             header?: never;
@@ -8506,15 +8657,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -8571,13 +8713,111 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
+        };
+    };
+    getMediaDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["DownloadUrlResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reorderMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": string[];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8598,7 +8838,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8631,15 +8871,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -8797,6 +9028,57 @@ export interface operations {
             };
             /** @description La pieza no existe o fue eliminada. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMediaStorageEstimate: {
+        parameters: {
+            query?: {
+                mb_per_photo?: number | null;
+                photos_per_piece?: number | null;
+                pieces?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageEstimateResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
