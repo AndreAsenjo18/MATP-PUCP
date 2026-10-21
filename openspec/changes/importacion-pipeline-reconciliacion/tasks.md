@@ -17,23 +17,23 @@
 
 ## 4. Decisiones, aprobación y aplicación
 
-- [ ] 4.1 Implementar `PATCH /api/v1/imports/{batch_id}/rows/{row_id}` (decisión de fila, decisiones por campo, resolución de conflictos, motivo obligatorio al rechazar); pruebas de los escenarios del requirement (Req: Decisiones por fila y por campo…)
-- [ ] 4.2 Implementar `POST /api/v1/imports/{batch_id}/confirm` con `summary_token` y `imports/apply.py` en una transacción con servicios de dominio, `piece_source_record` y `AuditContext(origin=IMPORT)`; pruebas: aplicación ok, resumen desactualizado 409, fila que viola RN-003 → rollback total y `FAILED_APPLY`, Catalogador 403 (Req: Aplicación atómica con datos de origen y reversión del lote; RF-027, RF-008)
-- [ ] 4.3 Implementar `GET /api/v1/imports/{batch_id}/log` (JSON y descarga `.xlsx`); pruebas: lote aplicado con filas rechazadas, lote fallido en ingesta (Req: Bitácora descargable del lote; RF-028)
+- [x] 4.1 Implementar `PATCH /api/v1/imports/{batch_id}/rows/{row_id}` (decisión de fila, decisiones por campo, resolución de conflictos, motivo obligatorio al rechazar); pruebas de los escenarios del requirement (Req: Decisiones por fila y por campo…)
+- [x] 4.2 Implementar `POST /api/v1/imports/{batch_id}/confirm` con `summary_token` y `imports/apply.py` en una transacción con servicios de dominio, `piece_source_record` y `AuditContext(origin=IMPORT)`; pruebas: aplicación ok, resumen desactualizado 409, fila que viola RN-003 → rollback total y `FAILED_APPLY`, Catalogador 403 (Req: Aplicación atómica con datos de origen y reversión del lote; RF-027, RF-008)
+- [x] 4.3 Implementar `GET /api/v1/imports/{batch_id}/log` (JSON y descarga `.xlsx`); pruebas: lote aplicado con filas rechazadas, lote fallido en ingesta (Req: Bitácora descargable del lote; RF-028)
 
 ## 5. Imágenes y reversión
 
-- [ ] 5.1 Extraer imágenes incrustadas en la ingesta (`imports/images.py`) con fila de anclaje y bandeja sin asignar; operación nueva `POST /api/v1/imports/{batch_id}/images/{image_id}/associate`; pruebas con `sabana_sintetica_v1.xlsx`: anclada, sin fila, asociación antes de aplicar 409 (Req: Revisión manual de imágenes extraídas de Excel; RF-029)
-- [ ] 5.2 Implementar `POST /api/v1/imports/{batch_id}/rollback` sobre el motor de reversión de `auditoria-y-soft-delete-transversal` (bloqueada hasta que ese change esté aplicado); pruebas: reversión limpia, reversión con edición posterior exige confirmación (Req: Aplicación atómica… — escenario "Reversión del lote"; RNF-007)
+- [x] 5.1 Extraer imágenes incrustadas en la ingesta (`imports/images.py`) con fila de anclaje y bandeja sin asignar; operación nueva `POST /api/v1/imports/{batch_id}/images/{image_id}/associate`; pruebas con `sabana_sintetica_v1.xlsx`: anclada, sin fila, asociación antes de aplicar 409 (Req: Revisión manual de imágenes extraídas de Excel; RF-029)
+- [ ] 5.2 Implementar `POST /api/v1/imports/{batch_id}/rollback` sobre el motor de reversión de `auditoria-y-soft-delete-transversal` (bloqueada hasta que ese change esté aplicado); pruebas: reversión limpia, reversión con edición posterior exige confirmación (Req: Aplicación atómica… — escenario "Reversión del lote"; RNF-007) — **bloqueada (2026-10-21)**: `POST /audit/change-sets/{change_set_id}/revert` sigue siendo stub; el lote ya guarda `import_batch.change_set_id` para revertirlo (M10)
 
 ## 6. Frontend
 
-- [ ] 6.1 `lib/data/imports.ts` (mock/live) y asistente `app/importacion` en modo `live`: subida, hoja y cabeceras, mapeo, progreso, previsualización con filtros por clasificación, diff, decisiones, resumen y confirmación en lenguaje claro; pruebas Vitest y de componente (Req: Decisiones por fila y por campo…; RNF-010)
-- [ ] 6.2 Bitácora y bandeja de imágenes en la UI; pruebas de componente (Req: Bitácora descargable del lote; Req: Revisión manual de imágenes extraídas de Excel)
+- [x] 6.1 `lib/data/imports.ts` (mock/live) y asistente `app/importacion` en modo `live`: subida, hoja y cabeceras, mapeo, progreso, previsualización con filtros por clasificación, diff, decisiones, resumen y confirmación en lenguaje claro; pruebas Vitest y de componente (Req: Decisiones por fila y por campo…; RNF-010)
+- [x] 6.2 Bitácora y bandeja de imágenes en la UI; pruebas de componente (Req: Bitácora descargable del lote; Req: Revisión manual de imágenes extraídas de Excel)
 
 ## 7. Cierre del change
 
-- [ ] 7.1 Tests requeridos: secciones 1–6 en verde (`npm test`, `npm run lint`); prueba de volumen con una sábana sintética de 20 000 filas contra PostgreSQL en compose (tiempo de validación y de aplicación registrados en el PR) cuando Docker esté disponible
-- [ ] 7.2 Actualizar OpenAPI: implementar los 10 stubs y añadir `images/{image_id}/associate`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 7.3 Actualizar el manual de usuario: `docs/manual-usuario/importacion.md` (preparar archivo, pasos del asistente, resolver conflictos, aprobar, bitácora, revertir)
-- [ ] 7.4 Registrar supuestos (formatos, límites, celdas combinadas, política de vacíos) en `docs/preguntas-contraparte.md`, `openspec validate importacion-pipeline-reconciliacion --strict` y, tras aprobar el PR, `openspec archive importacion-pipeline-reconciliacion -y`
+- [x] 7.1 Tests requeridos: secciones 1–6 en verde (`npm test`, `npm run lint`); prueba de volumen con una sábana sintética de 20 000 filas contra PostgreSQL en compose (tiempo de validación y de aplicación registrados en el PR) cuando Docker esté disponible — 2026-10-21: validación 6,6 s y aplicación 200,4 s (design, «Prueba de volumen»); `npm run test:api:pg` en verde, con `tests/test_import_stages_postgresql.py`
+- [ ] 7.2 Actualizar OpenAPI: implementar los 10 stubs y añadir `images/{image_id}/associate`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — 9 de 10 stubs implementados y `images/{image_id}/associate` añadido, `openapi:check` en verde; falta `rollback` (5.2)
+- [x] 7.3 Actualizar el manual de usuario: `docs/manual-usuario/importacion.md` (preparar archivo, pasos del asistente, resolver conflictos, aprobar, bitácora, revertir)
+- [ ] 7.4 Registrar supuestos (formatos, límites, celdas combinadas, política de vacíos) en `docs/preguntas-contraparte.md`, `openspec validate importacion-pipeline-reconciliacion --strict` y, tras aprobar el PR, `openspec archive importacion-pipeline-reconciliacion -y` — supuestos M6–M10 e I9 registrados y `validate --strict` en verde el 2026-10-21; falta archivar tras aprobar el PR

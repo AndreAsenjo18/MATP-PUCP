@@ -24,7 +24,11 @@ from sqlalchemy.orm import Session
 
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.service import find_collection_by_code
-from app.modules.identification.models import IdentifierType, NormalizationRule
+from app.modules.identification.models import (
+    IdentifierType,
+    NormalizationRule,
+    NormalizationStatus,
+)
 from app.modules.identification.normalization import (
     TYPE_OTHER,
     is_absence_marker,
@@ -176,6 +180,28 @@ class MappedRow:
             ],
             "source_payload": self.source_payload,
         }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "MappedRow":
+        """Inverse of ``as_json`` (transformation errors are not stored, so they are empty)."""
+        collection_id = data.get("collection_id")
+        tenure = data.get("tenure_regime")
+        return cls(
+            fields=dict(data.get("fields") or {}),
+            identifiers=[
+                RowIdentifier(
+                    type_code=item["type"],
+                    original_value=item["original_value"],
+                    normalized_value=item.get("normalized_value"),
+                    status=NormalizationStatus(item["status"]),
+                    is_absent=bool(item.get("is_absent")),
+                )
+                for item in data.get("identifiers") or []
+            ],
+            source_payload=dict(data.get("source_payload") or {}),
+            collection_id=uuid.UUID(collection_id) if collection_id else None,
+            tenure_regime=TenureRegime(tenure) if tenure else None,
+        )
 
     def row_input(self, row_number: int) -> RowInput:
         return RowInput(

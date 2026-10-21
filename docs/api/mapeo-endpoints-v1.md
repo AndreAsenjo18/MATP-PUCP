@@ -89,6 +89,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `POST /pieces/{id}/restore`, `POST /pieces/validate` | RN-005 (restaurar en lugar de borrar) y RF-043 (validación en tiempo real) |
 | `POST /pieces/{id}/identifiers/{id}/correction` | RN-002: corrección auditada del código I, en lugar de borrarlo |
 | `PUT /imports/{batch_id}/mapping`, `GET /import-templates` | RF-022: plantillas de mapeo reutilizables |
+| `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 
@@ -137,7 +138,7 @@ Decisiones registradas en `openspec/changes/alinear-api-endpoints-v1/design.md`,
 
 ## Desviaciones declaradas de la importación (tarea 4.4, 2026-10-18)
 
-La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4); `confirm` sigue respondiendo `501` hasta su tarea 4.2. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
+La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4) y desde el 2026-10-21 `confirm` (tarea 4.2); `rollback` sigue respondiendo `501` hasta su tarea 5.2. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
 
 | Operación | Contrato | API tras la tarea 4.4 | Motivo / pregunta |
 |---|---|---|---|
@@ -145,4 +146,4 @@ La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design 
 | `ImportBatchSummary.summary` | `new_records`, `updates`, `conflicts` | Igual | Cómo se agrupan `NEW`, `UPDATE`, `POSSIBLE_DUPLICATE` y `CONFLICT` en los tres contadores sigue abierto (I7) |
 | `ImportBatchSummary.status` | `string` sin valores definidos | `string` opcional, `null` en el ejemplo | Los valores en español del estado del lote siguen abiertos (I8); no se añaden a `app/api/enums.py` hasta resolverlos |
 | `GET /imports/{batch_id}/diffs` | `200` sin esquema | `ImportDiffsPage`: `Page[ImportRowOut]` con el diff campo a campo y `classification_rules` (RF-025, RF-026) | Añadido justificado: el contrato no define el esquema |
-| `POST /imports/{batch_id}/confirm` | Sin cuerpo; `200` sin esquema | Sin cambios: cuerpo `ApprovalRequest` (confirmación de totales, RF-027, RNF-010) y respuesta `ImportBatchOut` | El cuerpo definitivo sigue abierto (I9) |
+| `POST /imports/{batch_id}/confirm` | Sin cuerpo; `200` sin esquema | Cuerpo `ApprovalRequest` con `summary_token` obligatorio (huella del resumen de `ImportBatchOut.approval_summary`, RF-027, RNF-010) y respuesta `ImportBatchOut` en estado `APPROVED`; la aplicación sigue en segundo plano | El cuerpo definitivo sigue abierto (I9, supuesto provisional M7) |
