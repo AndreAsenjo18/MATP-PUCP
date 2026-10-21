@@ -123,6 +123,116 @@ class MediaAssetUpdate(BaseModel):
     restriction_note: str | None = None
 
 
+class DownloadUrlRequest(BaseModel):
+    """Request for download URL with purpose."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"purpose": "internal"},
+                {"purpose": "external"},
+            ]
+        }
+    )
+
+    purpose: Literal["internal", "external"] = Field(
+        default="internal",
+        description="Uso previsto: internal (visualización) o external (descarga).",
+    )
+
+
+class DownloadUrlResponse(BaseModel):
+    """Response with pre-signed download URL."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+                    "expires_at": EX_DATETIME,
+                    "effective_restriction": {
+                        "id": "01920000-0000-7000-8000-000000000333",
+                        "code": "NO_PUBLICAR",
+                        "label": "No publicar",
+                    },
+                    "restriction_origin": "colección",
+                }
+            ]
+        }
+    )
+
+    download_url: str = Field(description="URL prefirmada para descarga.")
+    expires_at: datetime = Field(description="Expiración de la URL.")
+    effective_restriction: TermRef | None = Field(
+        None, description="Restricción efectiva aplicada a la foto."
+    )
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+        default="ninguna", description="Origen de la restricción efectiva."
+    )
+
+
+restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+    default="ninguna", description="Origen de la restricción efectiva."
+)
+
+
+class StorageEstimateRequest(BaseModel):
+    """Query parameters for storage estimation."""
+
+    pieces: int | None = Field(
+        default=None, ge=0, description="Número de piezas para la proyección."
+    )
+    photos_per_piece: int | None = Field(
+        default=None, ge=0, description="Fotos promedio por pieza para la proyección."
+    )
+    mb_per_photo: int | None = Field(
+        default=None, ge=0, description="MB promedio por foto para la proyección."
+    )
+
+
+class StorageEstimateResponse(BaseModel):
+    """Response with current storage volume and projection."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "current_volume_bytes": 1234567890,
+                    "current_originals_bytes": 987654321,
+                    "current_derivatives_bytes": 246913569,
+                    "avg_photos_per_piece": 3.5,
+                    "avg_mb_per_photo": 2.1,
+                    "projection": {
+                        "pieces": 20000,
+                        "photos_per_piece": 5,
+                        "mb_per_photo": 4,
+                        "projected_originals_bytes": 400000000000,
+                        "projected_derivatives_bytes": 50000000000,
+                        "projected_total_bytes": 450000000000,
+                    },
+                }
+            ]
+        }
+    )
+
+    current_volume_bytes: int = Field(
+        description="Volumen actual almacenado (originales + derivados)."
+    )
+    current_originals_bytes: int = Field(description="Tamaño total de originales activos.")
+    current_derivatives_bytes: int = Field(
+        description="Tamaño total de derivados (thumb + display)."
+    )
+    avg_photos_per_piece: float | None = Field(
+        default=None, description="Promedio real de fotos por pieza."
+    )
+    avg_mb_per_photo: float | None = Field(
+        default=None, description="Promedio real de MB por foto (originales)."
+    )
+    projection: dict | None = Field(
+        default=None, description="Proyección de volumen según parámetros indicados."
+    )
+
+
 # Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_BULK_DOWNLOAD_PIECES = 200
 

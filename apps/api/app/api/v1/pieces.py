@@ -2,10 +2,12 @@
 multimedia, ubicacion-movimientos, calidad-datos)."""
 
 import uuid
-from typing import Annotated
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi.responses import JSONResponse
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
@@ -15,7 +17,6 @@ from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
-    CHANGE_MEDIA,
     CHANGE_PIECE_CRUD,
     example_of,
     implemented,
@@ -23,9 +24,11 @@ from app.api.stubs import (
     stub,
 )
 from app.core.errors import NotFound, ValidationFailed
+from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog import service as catalog_service
+from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
@@ -47,6 +50,7 @@ from app.modules.catalog.schemas import (
     PieceValidationResult,
     SourceRecordOut,
 )
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.schemas import (
     IdentifierCreate,
@@ -58,14 +62,20 @@ from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
 from app.modules.locations.service import move_piece as move_piece_service
 from app.modules.locations.service import verify_location
+from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
+    DownloadUrlRequest,
+    DownloadUrlResponse,
     MediaAssetCreate,
     MediaAssetOut,
     MediaAssetUpdate,
+    StorageEstimateRequest,
+    StorageEstimateResponse,
     UploadUrlRequest,
     UploadUrlResponse,
 )
+from app.modules.media.service import EXTENSION_BY_FORMAT, verify_image_stream
 from app.modules.quality.schemas import PieceAlert
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -492,16 +502,93 @@ def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> 
 @router.post(
     "/{piece_id}/media/upload-url",
     response_model=UploadUrlResponse,
+    status_code=status.HTTP_201_CREATED,
     summary="Obtener URL prefirmada para subir una foto al almacenamiento",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def create_media_upload_url(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
     piece_id: uuid.UUID,
     body: UploadUrlRequest,
-    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> UploadUrlResponse:
-    raise not_implemented(CHANGE_MEDIA, UploadUrlResponse)
+    # 1. Pieza existe
+    get_piece(session, piece_id)
+
+    # 2. Valida content_type declarado
+    allowed = request.app.state.settings.media_allowed_types_set
+    if body.content_type not in allowed:
+        raise ValidationFailed(
+            f'Tipo "{body.content_type}" no admitido. Admitidos: {", ".join(sorted(allowed))}.',
+            code="unsupported_media_type",
+            details={"field": "content_type", "allowed": sorted(allowed)},
+        )
+
+    # 3. Valida tamaño
+    if body.size_bytes > request.app.state.settings.media_max_bytes:
+        raise ValidationFailed(
+            f"Archivo excede {request.app.state.settings.media_max_bytes} bytes.",
+            code="file_too_large",
+            details={"field": "size_bytes", "max": request.app.state.settings.media_max_bytes},
+        )
+
+    # 4. Duplicate check (si envía sha256)
+    warning = None
+    if body.content_sha256:
+        exists = session.scalar(
+            select(MediaAsset.id).where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.content_sha256 == body.content_sha256,
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+        if exists:
+            warning = "duplicate_content"
+
+    # 5. Genera storage_key en pending/ + URL prefirmada
+    asset_id = new_uuid()
+    ext = body.content_type.split("/")[-1]  # "jpeg" | "png" | "tiff"
+    storage_key = f"pieces/{piece_id}/pending/{asset_id}.{ext}"
+    ttl = request.app.state.settings.media_upload_url_ttl_seconds
+    presigned = request.app.state.storage.presign_put(storage_key, body.content_type, ttl)
+
+    # 6. Respuesta
+    expires_at = datetime.now(UTC) + timedelta(seconds=ttl)
+    resp_data = UploadUrlResponse(
+        storage_key=storage_key,
+        upload_url=presigned["url"],
+        method=presigned["method"],
+        headers=presigned["headers"],
+        expires_at=expires_at,
+    )
+    response_headers = {"Content-Type": "application/json"}
+    if warning:
+        response_headers["X-Warning"] = warning
+    return JSONResponse(
+        content=resp_data.model_dump(mode="json"),
+        headers=response_headers,
+        status_code=status.HTTP_201_CREATED,
+    )
+
+
+def _comodato_restriction_term_id(session: Session) -> uuid.UUID:
+    """Restricción de imágenes en comodato (RN-008): hereda `NO_PUBLICAR`."""
+    term = session.scalar(
+        select(Term)
+        .join(Vocabulary)
+        .where(
+            Vocabulary.code == VocabularyCode.USAGE_RESTRICTION,
+            Term.code == "NO_PUBLICAR",
+        )
+    )
+    if term is None:
+        raise ValidationFailed(
+            "Falta el vocabulario de restricciones de uso.",
+            code="usage_restriction_missing",
+        )
+    return term.id
 
 
 @router.post(
@@ -510,14 +597,127 @@ def create_media_upload_url(
     status_code=status.HTTP_201_CREATED,
     summary="Registrar una foto ya subida (tipo de vista, orden, restricciones)",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def register_media(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
     piece_id: uuid.UUID,
     body: MediaAssetCreate,
-    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    raise not_implemented(CHANGE_MEDIA, MediaAssetOut)
+    # 1. Pieza existe
+    get_piece(session, piece_id)
+
+    # 2. HEAD object en storage (existe, tamaño, content-type)
+    try:
+        head = request.app.state.storage.head(body.storage_key)
+    except FileNotFoundError as err:
+        raise ValidationFailed(
+            "El archivo no existe en el almacenamiento.", code="object_not_found"
+        ) from err
+
+    # 3. Stream + Pillow verify + SHA-256 recalc
+    sha256, width, height, content_type = verify_image_stream(
+        request.app.state.storage,
+        body.storage_key,
+        body.content_sha256,
+    )
+
+    # 4. Copia pending/ -> pieces/{id}/{media_id}/original.<ext>
+    asset_id = new_uuid()
+    ext = EXTENSION_BY_FORMAT.get(content_type.split("/")[-1], "jpg")
+    final_key = f"pieces/{piece_id}/{asset_id}/original.{ext}"
+    request.app.state.storage.copy(body.storage_key, final_key)
+    request.app.state.storage.delete_pending(body.storage_key)
+
+    # 5. Determina is_primary, sort_order
+    max_order = session.scalar(
+        select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece_id)
+    )
+    is_primary = max_order is None
+    sort_order = (max_order + 1) if max_order is not None else 0
+
+    # 6. Restricción comodato (hereda de colección si LOAN_FOR_USE)
+    piece = session.get(Piece, piece_id)
+    restriction_term_id: uuid.UUID | None = None
+    restriction_note: str | None = None
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        restriction_term_id = _comodato_restriction_term_id(session)
+        restriction_note = "Restricción contractual del comodato (RN-008)"
+
+    # 7. Crea MediaAsset con auditoría MANUAL
+    asset = MediaAsset(
+        id=asset_id,
+        piece_id=piece_id,
+        storage_key=final_key,
+        original_filename=body.original_filename,
+        content_type=content_type,
+        size_bytes=head["content_length"],
+        content_sha256=sha256,
+        width_px=width,
+        height_px=height,
+        view_type_term_id=body.view_type_term_id,
+        sort_order=sort_order,
+        is_primary=is_primary,
+        usage_restriction_term_id=restriction_term_id,
+        restriction_note=restriction_note,
+    )
+    session.add(asset)
+    writer(session, user)
+    session.commit()
+
+    # 8. Derivados en BackgroundTask (thumb.webp 320px, display.webp 1600px)
+    def _generate_derivatives() -> None:
+        try:
+            derivatives.generate_derivatives(
+                request.app.state.storage, str(piece_id), str(asset_id), final_key
+            )
+        except (OSError, ValueError, RuntimeError):
+            # Si falla, la foto queda registrada con extra_metadata.derivatives="failed"
+            asset.extra_metadata = {"derivatives": "failed"}
+            session.add(asset)
+            session.commit()
+
+    background_tasks.add_task(_generate_derivatives)
+
+    # 9. Respuesta MediaAssetOut (mapeo igual que list_piece_media)
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for term_id in (body.view_type_term_id, restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    view_term = terms.get(body.view_type_term_id)
+    restriction_term = terms.get(restriction_term_id) if restriction_term_id else None
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
+        restriction_note=asset.restriction_note,
+        download_url=None,
+        created_at=asset.created_at,
+    )
 
 
 @router.patch(
@@ -525,15 +725,317 @@ def register_media(
     response_model=MediaAssetOut,
     summary="Editar metadatos, orden o restricción de una foto",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def update_media(
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
     body: MediaAssetUpdate,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    raise not_implemented(CHANGE_MEDIA, MediaAssetOut)
+    get_piece(session, piece_id)
+    asset = session.get(MediaAsset, media_id)
+    if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
+        raise NotFound("La foto no existe en esta pieza.")
+
+    # Si se marca como principal, desmarcar la anterior
+    if body.is_primary is True:
+        current_primary = session.scalar(
+            select(MediaAsset).where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.is_primary.is_(True),
+                MediaAsset.id != media_id,
+                MediaAsset.deleted_at.is_(None),
+            )
+        )
+        if current_primary:
+            current_primary.is_primary = False
+
+    # Actualizar campos proporcionados
+    if body.view_type_term_id is not None:
+        asset.view_type_term_id = body.view_type_term_id
+    if body.sort_order is not None:
+        asset.sort_order = body.sort_order
+    if body.is_primary is not None:
+        asset.is_primary = body.is_primary
+    if body.usage_restriction_term_id is not None:
+        asset.usage_restriction_term_id = body.usage_restriction_term_id
+    if body.restriction_note is not None:
+        asset.restriction_note = body.restriction_note
+
+    writer(session, user)
+    session.commit()
+
+    # Respuesta
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    view_term = terms.get(asset.view_type_term_id)
+    restriction_term = (
+        terms.get(asset.usage_restriction_term_id) if asset.usage_restriction_term_id else None
+    )
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
+        restriction_note=asset.restriction_note,
+        download_url=None,
+        created_at=asset.created_at,
+    )
+
+
+@router.put(
+    "/{piece_id}/media/order",
+    response_model=list[MediaAssetOut],
+    summary="Reordenar fotos de una pieza (lista completa de IDs)",
+    tags=["Multimedia"],
+    **implemented(),
+)
+def reorder_media(
+    piece_id: uuid.UUID,
+    body: list[uuid.UUID],
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
+) -> list[MediaAssetOut]:
+    get_piece(session, piece_id)
+    # Obtener todas las fotos activas de la pieza
+    assets = list(
+        session.scalars(
+            select(MediaAsset)
+            .where(MediaAsset.piece_id == piece_id, MediaAsset.deleted_at.is_(None))
+            .order_by(MediaAsset.sort_order, MediaAsset.created_at)
+        )
+    )
+    asset_ids = [a.id for a in assets]
+    # Validar que la lista enviada contenga exactamente los mismos IDs
+    if set(body) != set(asset_ids):
+        raise ValidationFailed(
+            "La lista debe contener exactamente todos los IDs de fotos de la pieza.",
+            code="invalid_reorder_list",
+            details={"expected": [str(a) for a in asset_ids], "received": [str(a) for a in body]},
+        )
+    # Reordenar
+    for idx, media_id in enumerate(body):
+        asset = next(a for a in assets if a.id == media_id)
+        asset.sort_order = idx
+    writer(session, user)
+    session.commit()
+    # Respuesta ordenada
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(
+                Term.id.in_(
+                    [
+                        term_id
+                        for a in assets
+                        for term_id in (a.view_type_term_id, a.usage_restriction_term_id)
+                        if term_id
+                    ]
+                )
+            )
+        )
+    }
+    return [
+        MediaAssetOut(
+            id=a.id,
+            piece_id=a.piece_id,
+            original_filename=a.original_filename,
+            content_type=a.content_type,
+            size_bytes=a.size_bytes,
+            content_sha256=a.content_sha256,
+            width_px=a.width_px,
+            height_px=a.height_px,
+            view_type=translate_view_term(TermRef.model_validate(terms[a.view_type_term_id]))
+            if a.view_type_term_id and a.view_type_term_id in terms
+            else None,
+            sort_order=a.sort_order,
+            is_primary=a.is_primary,
+            photographer=a.photographer,
+            taken_on=a.taken_on,
+            usage_restriction=TermRef.model_validate(terms[a.usage_restriction_term_id])
+            if a.usage_restriction_term_id and a.usage_restriction_term_id in terms
+            else None,
+            restriction_note=a.restriction_note,
+            download_url=None,
+            created_at=a.created_at,
+        )
+        for a in sorted(assets, key=lambda x: x.sort_order)
+    ]
+
+
+@router.get(
+    "/{piece_id}/media/{media_id}/download-url",
+    response_model=DownloadUrlResponse,
+    summary="Obtener URL prefirmada para descargar una foto",
+    tags=["Multimedia"],
+    **implemented(),
+)
+def get_media_download_url(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("pieces.read"))],
+    piece_id: uuid.UUID,
+    media_id: uuid.UUID,
+    body: DownloadUrlRequest,
+) -> DownloadUrlResponse:
+    piece = get_piece(session, piece_id)
+    asset = session.get(MediaAsset, media_id)
+    if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
+        raise NotFound("La foto no existe en esta pieza.")
+
+    # Calcular restricción efectiva: foto > pieza > colección (comodato)
+    effective_restriction_term_id: uuid.UUID | None = None
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = "ninguna"
+
+    if asset.usage_restriction_term_id is not None:
+        effective_restriction_term_id = asset.usage_restriction_term_id
+        restriction_origin = "foto"
+    elif piece.usage_restriction_term_id is not None:
+        effective_restriction_term_id = piece.usage_restriction_term_id
+        restriction_origin = "pieza"
+    elif piece.collection_id is not None:
+        collection = session.get(Collection, piece.collection_id)
+        if collection and collection.default_usage_restriction_term_id is not None:
+            effective_restriction_term_id = collection.default_usage_restriction_term_id
+            restriction_origin = "colección"
+
+    # Validar propósito y restricción
+    if body.purpose == "external" and effective_restriction_term_id is not None:
+        term = session.get(Term, effective_restriction_term_id)
+        if term and term.extra and term.extra.get("blocks_external_download") is True:
+            raise ValidationFailed(
+                "Descarga externa bloqueada por restricción "
+                f"'{term.label}' (origen: {restriction_origin}).",
+                code="usage_restricted",
+                details={"restriction": term.code, "origin": restriction_origin},
+            )
+
+    # Generar URL prefirmada
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    presigned = request.app.state.storage.presign_get(asset.storage_key, ttl)
+
+    # Respuesta
+    terms = {
+        term.id: term
+        for term in session.scalars(select(Term).where(Term.id == effective_restriction_term_id))
+    }
+    effective_restriction = (
+        TermRef.model_validate(terms[effective_restriction_term_id])
+        if effective_restriction_term_id and effective_restriction_term_id in terms
+        else None
+    )
+
+    return DownloadUrlResponse(
+        download_url=presigned["url"],
+        expires_at=datetime.now(UTC) + timedelta(seconds=ttl),
+        effective_restriction=effective_restriction,
+        restriction_origin=restriction_origin,
+    )
+
+
+@router.get(
+    "/media/storage-estimate",
+    response_model=StorageEstimateResponse,
+    summary="Estimación del volumen fotográfico",
+    tags=["Multimedia"],
+    **implemented(),
+)
+def get_media_storage_estimate(
+    request: Request,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("reports.view"))],
+    query: Annotated[StorageEstimateRequest, Depends()],
+) -> StorageEstimateResponse:
+    # Current volume from database
+    from app.modules.media.models import MediaAsset
+
+    originals_stats = session.execute(
+        select(
+            func.coalesce(func.sum(MediaAsset.size_bytes), 0),
+            func.count(MediaAsset.id),
+        ).where(MediaAsset.deleted_at.is_(None))
+    ).first()
+    total_originals_bytes, photo_count = originals_stats or (0, 0)
+
+    # Estimate derivatives: thumb (~20KB) + display (~300KB) per photo
+    estimated_derivatives_per_photo = 320 * 1024  # ~320KB (thumb 20KB + display 300KB)
+    estimated_derivatives_bytes = photo_count * estimated_derivatives_per_photo
+
+    current_volume_bytes = total_originals_bytes + estimated_derivatives_bytes
+    current_originals_bytes = total_originals_bytes
+    current_derivatives_bytes = estimated_derivatives_bytes
+
+    avg_photos_per_piece = (
+        photo_count / session.scalar(select(func.count()).where(MediaAsset.deleted_at.is_(None)))
+        if photo_count > 0
+        else None
+    )
+    avg_mb_per_photo = (
+        (total_originals_bytes / photo_count / 1024 / 1024) if photo_count > 0 else None
+    )
+
+    # Build projection if parameters provided
+    projection = None
+    has_projection_params = (
+        query.pieces is not None
+        or query.photos_per_piece is not None
+        or query.mb_per_photo is not None
+    )
+    if has_projection_params:
+        pieces = query.pieces or 0
+        photos_per_piece = query.photos_per_piece or (avg_photos_per_piece or 0)
+        mb_per_photo = query.mb_per_photo or (avg_mb_per_photo or 0)
+
+        if pieces < 0 or photos_per_piece < 0 or mb_per_photo < 0:
+            raise ValidationFailed(
+                "Los parámetros no pueden ser negativos.",
+                code="invalid_storage_estimate_params",
+            )
+
+        projected_originals = pieces * photos_per_piece * mb_per_photo * 1024 * 1024
+        projected_derivatives = pieces * photos_per_piece * 320 * 1024  # 320KB per photo
+
+        projection = {
+            "pieces": pieces,
+            "photos_per_piece": photos_per_piece,
+            "mb_per_photo": mb_per_photo,
+            "projected_originals_bytes": int(projected_originals),
+            "projected_derivatives_bytes": int(projected_derivatives),
+            "projected_total_bytes": int(projected_originals + projected_derivatives),
+        }
+
+    return StorageEstimateResponse(
+        current_volume_bytes=current_volume_bytes,
+        current_originals_bytes=current_originals_bytes,
+        current_derivatives_bytes=current_derivatives_bytes,
+        avg_photos_per_piece=avg_photos_per_piece,
+        avg_mb_per_photo=avg_mb_per_photo,
+        projection=projection,
+    )
 
 
 @router.delete(
@@ -541,15 +1043,42 @@ def update_media(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Retirar una foto (eliminación lógica con motivo)",
     tags=["Multimedia"],
-    **stub(CHANGE_MEDIA),
+    **implemented(),
 )
 def retire_media(
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
-    reason: Annotated[str, Query(min_length=3)],
+    reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio.")],
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.retire"))],
 ) -> None:
-    raise not_implemented(CHANGE_MEDIA)
+    get_piece(session, piece_id)
+    asset = session.get(MediaAsset, media_id)
+    if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
+        raise NotFound("La foto no existe en esta pieza.")
+
+    was_primary = asset.is_primary
+    asset.deleted_at = datetime.now(UTC)
+    asset.deletion_reason = reason
+    asset.deleted_by_id = user.id
+    asset.is_primary = False
+
+    # Si era la principal, la siguiente en orden pasa a ser principal
+    if was_primary:
+        next_asset = session.scalar(
+            select(MediaAsset)
+            .where(
+                MediaAsset.piece_id == piece_id,
+                MediaAsset.deleted_at.is_(None),
+                MediaAsset.id != media_id,
+            )
+            .order_by(MediaAsset.sort_order, MediaAsset.created_at)
+        )
+        if next_asset:
+            next_asset.is_primary = True
+
+    writer(session, user)
+    session.commit()
 
 
 # ---------------------------------------------------------------------- conjuntos

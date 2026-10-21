@@ -1,12 +1,14 @@
 """Collections and controlled vocabularies (spec colecciones-vocabularios; RF-010..012, RN-010)."""
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.models_base import (
     Base,
+    JsonType,
     SoftDeleteMixin,
     TimestampMixin,
     UUIDPrimaryKeyMixin,
@@ -55,6 +57,8 @@ class Term(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Optional equivalence with an external thesaurus (e.g. Getty AAT URI).
     external_uri: Mapped[str | None] = mapped_column(String(500))
+    # Optional extra metadata (e.g. blocks_external_download for USAGE_RESTRICTION) [SUPUESTO B2].
+    extra: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
 
     vocabulary: Mapped[Vocabulary] = relationship(back_populates="terms")
 
@@ -76,8 +80,15 @@ class Collection(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     # Origin / donor description. Personal data: restricted by role (RF-041, RNF-014).
     origin_description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Default usage restriction for pieces in this collection (comodato heritage, RN-008).
+    default_usage_restriction_term_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("term.id"), index=True
+    )
 
     parent: Mapped["Collection | None"] = relationship(remote_side="Collection.id")
+    default_usage_restriction: Mapped["Term | None"] = relationship(
+        foreign_keys=[default_usage_restriction_term_id]
+    )
 
     __table_args__ = (
         Index(
