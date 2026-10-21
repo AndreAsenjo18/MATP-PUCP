@@ -10,76 +10,26 @@ has finished when the next request is made.
 
 import hashlib
 import uuid
-from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
 
-from app.core.db import make_session_factory
-from app.main import create_app
-from app.models import Base
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import TYPE_COLLECTION, TYPE_INVENTORY
 from app.modules.imports.models import ImportBatch, ImportRow
-from app.seed.synthetic import SeedOptions, run_seed
-from tests.api.conftest import CATALOGUER, MANAGER, VIEWER, api_settings, as_user
+from tests.api.conftest import CATALOGUER, MANAGER, VIEWER, Pipeline, as_user
 
 FIXTURES = Path(__file__).resolve().parents[4] / "data" / "fixtures"
 SABANA = (FIXTURES / "sabana_sintetica_v1.xlsx").read_bytes()
 VARIAS_HOJAS = (FIXTURES / "ingesta_varias_hojas.xlsx").read_bytes()
 BASE = "/api/v1/imports"
-
-
-@dataclass
-class Pipeline:
-    engine: Any
-    client: TestClient
-    stored: dict[str, bytes]
-    app_for: Callable[..., TestClient]
-
-    def session(self) -> Session:
-        return make_session_factory(self.engine)()
-
-
-def _fake_storage(app: Any, stored: dict[str, bytes]) -> None:
-    app.state.storage.put_bytes = lambda key, data, _type: stored.__setitem__(key, data)
-    app.state.storage.get_bytes = lambda key: stored[key]
-
-
-@pytest.fixture(scope="module")
-def pipeline() -> Iterator[Pipeline]:
-    """A seeded database of its own: validation writes review links other modules count."""
-    engine = create_engine(
-        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
-    )
-    event.listen(engine, "connect", lambda conn, _r: conn.execute("PRAGMA foreign_keys=ON"))
-    Base.metadata.create_all(engine)
-    with make_session_factory(engine)() as session:
-        run_seed(session, SeedOptions(upload_media=False))
-        session.commit()
-    stored: dict[str, bytes] = {}
-    clients: list[TestClient] = []
-
-    def app_for(**overrides: object) -> TestClient:
-        app = create_app(api_settings(**overrides), health_checks={}, engine=engine)
-        _fake_storage(app, stored)
-        client = TestClient(app)
-        client.__enter__()
-        clients.append(client)
-        return client
-
-    yield Pipeline(engine, app_for(), stored, app_for)
-    for client in clients:
-        client.__exit__(None, None, None)
-    engine.dispose()
 
 
 def upload(client: TestClient, name: str, content: bytes, user: str = CATALOGUER) -> dict[str, Any]:

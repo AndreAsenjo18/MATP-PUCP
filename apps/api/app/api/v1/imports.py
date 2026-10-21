@@ -1,13 +1,26 @@
 """Import reconciliation pipeline (importacion-datos; RF-021..RF-029).
 
-Implemented: ingestion, mapping, validation and preview (``importacion-pipeline-
-reconciliacion`` 2.1, 3.1, 3.4). Decisions, approval, log and rollback are still stubs.
+Implemented by ``importacion-pipeline-reconciliacion``: ingestion, mapping, validation and
+preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3) and embedded images (5.1).
+Rollback stays a stub until the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 """
 
+import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Request, UploadFile, status
+from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
@@ -22,21 +35,36 @@ from app.api.stubs import (
     stub,
 )
 from app.core.errors import ConflictError, NotFound, ValidationFailed
+from app.core.storage import ObjectStorage
+from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
+from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
+from app.modules.imports.images import associate_image, batch_images
+from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
     PAYLOAD_TARGET,
     ColumnSpec,
     MappingSpec,
 )
-from app.modules.imports.models import ImportBatch, ImportBatchStatus, ImportRow, RowClassification
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportBatchStatus,
+    ImportImage,
+    ImportRow,
+    RowClassification,
+    RowDecision,
+)
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
+    ImageAssociateRequest,
     ImportBatchOut,
     ImportBatchSummary,
     ImportDiffsPage,
+    ImportImageOut,
     ImportLog,
+    ImportLogEntry,
     ImportRowOut,
     MappingRequest,
     MappingTemplateCreate,
@@ -53,12 +81,15 @@ from app.modules.imports.service import (
 )
 from app.modules.imports.state import STATUS_LABELS
 from app.modules.imports.worker import Stage, launch_stage
+from app.modules.media import derivatives
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Importación"])
+logger = logging.getLogger("matp.imports")
 
 Preparer = Annotated[CurrentUser, Depends(require_permission("imports.prepare"))]
 Approver = Annotated[CurrentUser, Depends(require_permission("imports.approve"))]
 Reverter = Annotated[CurrentUser, Depends(require_permission("imports.revert"))]
+MediaUploader = Annotated[CurrentUser, Depends(require_permission("media.upload"))]
 
 NOT_FOUND = {404: {"model": ErrorResponse, "description": "El lote no existe o fue eliminado."}}
 PREVIEW_STATUSES = frozenset(
@@ -71,6 +102,8 @@ PREVIEW_STATUSES = frozenset(
         ImportBatchStatus.ABANDONED,
     }
 )
+# States whose approval summary is shown: the batch can still be approved (RF-027).
+APPROVABLE_STATUSES = frozenset({ImportBatchStatus.IN_PREVIEW, ImportBatchStatus.FAILED_APPLY})
 
 
 def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
@@ -78,6 +111,36 @@ def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
     if batch is None or batch.deleted_at is not None:
         raise NotFound("El lote de importación no existe.", code="batch_not_found")
     return batch
+
+
+def batch_out(session: SessionDep, batch: ImportBatch) -> ImportBatchOut:
+    approval = (
+        approval_summary(session, batch.id).as_json()
+        if batch.status in APPROVABLE_STATUSES
+        else None
+    )
+    return ImportBatchOut.from_batch(batch, approval)
+
+
+def _preview_url(storage: ObjectStorage, image: ImportImage) -> str | None:
+    try:
+        return storage.presign_get(image.storage_key)
+    except (BotoCoreError, ClientError):  # a convenience: the image stays listed without it
+        return None
+
+
+def _generate_derivatives(
+    storage: ObjectStorage, piece_id: uuid.UUID, asset_id: uuid.UUID, key: str
+) -> None:
+    """Thumbnails like a manual upload; the photo stays registered if they fail."""
+    try:
+        derivatives.generate_derivatives(storage, str(piece_id), str(asset_id), key)
+    except (OSError, ValueError, RuntimeError, BotoCoreError, ClientError):
+        logger.exception("No se generaron los derivados de la foto %s", asset_id)
+
+
+def _row_out(row: ImportRow, images: list[ImportImageOut] | None = None) -> ImportRowOut:
+    return ImportRowOut.from_row(row, action=row_action(row)[0].value, images=images)
 
 
 def _read_upload(file: UploadFile, max_bytes: int) -> bytes:
@@ -127,7 +190,7 @@ def upload_import_batch(
             request.app.state.session_factory,
             batch.id,
             Stage.INGEST,
-            ingest_stage(content, max_rows=settings.import_max_rows),
+            ingest_stage(content, request.app.state.storage, max_rows=settings.import_max_rows),
             user.id,
         )
     return ImportBatchSummary.from_batch(batch)
@@ -169,7 +232,7 @@ def list_import_batches(
     **implemented(),
 )
 def get_import(batch_id: uuid.UUID, session: SessionDep, user: Preparer) -> ImportBatchOut:
-    return ImportBatchOut.from_batch(get_batch(session, batch_id))
+    return batch_out(session, get_batch(session, batch_id))
 
 
 def _mapping_spec(body: MappingRequest) -> MappingSpec:
@@ -271,11 +334,13 @@ def validate_import(
     response_model=ImportDiffsPage,
     responses=NOT_FOUND,
     summary="5. Previsualización con diff y clasificación de filas",
-    description="Filas del lote con su clasificación, coincidencias, errores y diff campo a "
-    "campo, más las reglas y umbrales usados para clasificarlas (RF-025, RF-026).",
+    description="Filas del lote con su clasificación, coincidencias, errores, diff campo a "
+    "campo, la acción que hará la aplicación y sus imágenes, más las reglas y umbrales usados "
+    "para clasificarlas y la bandeja de imágenes sin fila (RF-025, RF-026, RF-029).",
     **implemented(),
 )
 def get_import_batch_diffs(
+    request: Request,
     batch_id: uuid.UUID,
     session: SessionDep,
     user: Preparer,
@@ -301,8 +366,14 @@ def get_import_batch_diffs(
     if only_errors:
         statement = statement.where(ImportRow.has_validation_errors.is_(True))
     rows, total = paginate(session, statement, params)
+    storage: ObjectStorage = request.app.state.storage
+    images: dict[uuid.UUID | None, list[ImportImageOut]] = {}
+    for image in batch_images(session, batch.id):
+        images.setdefault(image.import_row_id, []).append(
+            ImportImageOut.from_image(image, _preview_url(storage, image))
+        )
     return ImportDiffsPage(
-        items=[ImportRowOut.from_row(row) for row in rows],
+        items=[_row_out(row, images.get(row.id)) for row in rows],
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -310,41 +381,155 @@ def get_import_batch_diffs(
             ClassificationRule.model_validate(rule)
             for rule in classification_rules(ProvisionalSimilarityScorer(session))
         ],
+        unassigned_images=images.get(None, []),
     )
 
 
 @router.patch(
     "/imports/{batch_id}/rows/{row_id}",
     response_model=ImportRowOut,
+    responses=NOT_FOUND,
     summary="Decidir sobre una fila (aceptar, excluir o rechazar con motivo)",
-    **stub(CHANGE_IMPORTS),
+    description="Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del "
+    "diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino "
+    "(`target_piece_id`) o marcándola como nueva (`as_new`). Una fila con errores o un "
+    "conflicto sin resolver no se puede aceptar (422).",
+    **implemented(),
 )
 def decide_import_row(
-    batch_id: uuid.UUID, row_id: uuid.UUID, body: RowDecisionRequest, user: Preparer
+    batch_id: uuid.UUID,
+    row_id: uuid.UUID,
+    body: RowDecisionRequest,
+    session: SessionDep,
+    user: Preparer,
 ) -> ImportRowOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportRowOut)
+    writer(session, user)
+    row = decide_row(
+        session,
+        batch_id,
+        row_id,
+        decision=RowDecision(body.decision),
+        user_id=user.id,
+        reason=body.reason,
+        target_piece_id=body.target_piece_id,
+        as_new=body.as_new,
+        field_decisions=dict(body.field_decisions),
+    )
+    session.commit()
+    return _row_out(row)
 
 
 @router.post(
     "/imports/{batch_id}/confirm",
     response_model=ImportBatchOut,
+    responses=NOT_FOUND,
     summary="6. Aprobación explícita por rol autorizado (RF-027)",
-    **stub(CHANGE_IMPORTS),
+    description="Aprueba el lote con el `summary_token` del resumen mostrado y lo aplica en "
+    "segundo plano, en una sola transacción. Si el resumen cambió responde 409 "
+    "`summary_changed` con el resumen actual. Si una fila viola una regla de dominio no se "
+    "aplica ninguna y el lote queda «fallido al aplicar» con la fila y el motivo.",
+    **implemented(),
 )
 def confirm_import_batch(
-    batch_id: uuid.UUID, body: ApprovalRequest, user: Approver
+    request: Request,
+    background_tasks: BackgroundTasks,
+    batch_id: uuid.UUID,
+    body: ApprovalRequest,
+    session: SessionDep,
+    user: Approver,
 ) -> ImportBatchOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
+    writer(session, user, reason=body.comment)
+    approve(session, batch_id, body.summary_token, user.id)
+    session.commit()
+    batch = launch_stage(
+        session,
+        background_tasks,
+        request.app.state.session_factory,
+        batch_id,
+        Stage.APPLY,
+        apply_stage(),
+        user.id,
+    )
+    return ImportBatchOut.from_batch(batch)
 
 
 @router.get(
     "/imports/{batch_id}/log",
     response_model=ImportLog,
+    responses={
+        **NOT_FOUND,
+        200: {
+            "content": {XLSX_CONTENT_TYPE: {}},
+            "description": "Bitácora en JSON o, con `format=xlsx`, como hoja de cálculo.",
+        },
+    },
     summary="7. Bitácora de carga con motivos de rechazo (RF-028)",
-    **stub(CHANGE_IMPORTS),
+    description="Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa, conteos y cada "
+    "fila no aplicada con su número de fila y motivo. `format=xlsx` la descarga en Excel.",
+    **implemented(),
 )
-def get_import_log(batch_id: uuid.UUID, user: Preparer) -> ImportLog:
-    raise not_implemented(CHANGE_IMPORTS, ImportLog)
+def get_import_log(
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    output_format: Annotated[
+        str, Query(alias="format", pattern="^(json|xlsx)$", description="`json` o `xlsx`.")
+    ] = "json",
+) -> ImportLog | Response:
+    batch = get_batch(session, batch_id)
+    log = build_log(session, batch)
+    if output_format == "xlsx":
+        return Response(
+            content=log_workbook(log),
+            media_type=XLSX_CONTENT_TYPE,
+            headers={"Content-Disposition": f'attachment; filename="bitacora-{batch.id}.xlsx"'},
+        )
+    return ImportLog(
+        batch=log["batch"],
+        applied_rows=log["applied_rows"],
+        rejected_rows=log["rejected_rows"],
+        entries=[ImportLogEntry.model_validate(entry) for entry in log["entries"]],
+        download_url=f"/api/v1/imports/{batch.id}/log?format=xlsx",
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/images/{image_id}/associate",
+    response_model=ImportImageOut,
+    responses=NOT_FOUND,
+    summary="Asociar una imagen extraída del Excel a una pieza (RF-029)",
+    description="Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con "
+    "referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 "
+    "antes): nunca se asocian automáticamente.",
+    **implemented(),
+)
+def associate_import_image(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    batch_id: uuid.UUID,
+    image_id: uuid.UUID,
+    body: ImageAssociateRequest,
+    session: SessionDep,
+    user: MediaUploader,
+) -> ImportImageOut:
+    storage: ObjectStorage = request.app.state.storage
+    batch = get_batch(session, batch_id)
+    asset = associate_image(
+        session,
+        storage,
+        batch,
+        image_id,
+        user_id=user.id,
+        piece_id=body.piece_id,
+        view_type_term_id=body.view_type_term_id,
+    )
+    session.commit()
+    background_tasks.add_task(
+        _generate_derivatives, storage, asset.piece_id, asset.id, asset.storage_key
+    )
+    image = session.get(ImportImage, image_id)
+    assert image is not None
+    return ImportImageOut.from_image(image, _preview_url(storage, image))
 
 
 @router.post(

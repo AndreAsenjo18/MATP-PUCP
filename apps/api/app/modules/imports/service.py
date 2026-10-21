@@ -28,6 +28,7 @@ from app.modules.imports.classify import (
     classify_batch,
     record_duplicate_candidates,
 )
+from app.modules.imports.images import store_images
 from app.modules.imports.ingest import (
     IngestedRow,
     IngestionFailed,
@@ -44,7 +45,13 @@ from app.modules.imports.mapping import (
     apply_mapping,
     validate_mapping,
 )
-from app.modules.imports.models import ImportBatch, ImportRow, RowClassification, RowDecision
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportImage,
+    ImportRow,
+    RowClassification,
+    RowDecision,
+)
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.state import STATUS_LABELS, lock_batch, transition
 from app.modules.imports.worker import Progress, StageWork
@@ -119,8 +126,9 @@ def create_batch(
 
 
 def clear_rows(session: Session, batch: ImportBatch) -> None:
-    """Remove the staging rows of a batch and the pending review links that point to them."""
+    """Remove the staging rows of a batch, its extracted images and the pending review links."""
     row_ids = select(ImportRow.id).where(ImportRow.batch_id == batch.id)
+    session.execute(delete(ImportImage).where(ImportImage.batch_id == batch.id))
     session.execute(delete(DuplicateCandidate).where(DuplicateCandidate.import_row_id.in_(row_ids)))
     session.execute(delete(ImportRow).where(ImportRow.batch_id == batch.id))
 
@@ -166,12 +174,14 @@ def store_ingested_rows(
 
 def ingest_stage(
     content: bytes,
+    storage: ObjectStorage | None = None,
     *,
     sheet_name: str | None = None,
     header_row: int | None = None,
     max_rows: int | None = None,
 ) -> StageWork:
-    """Stage work that reads the original file and stores its rows (batch stays ``UPLOADED``)."""
+    """Stage work that reads the original file and stores its rows and, given the storage, its
+    embedded images (batch stays ``UPLOADED``)."""
 
     def work(session: Session, batch: ImportBatch, progress: Progress) -> None:
         result = ingest(
@@ -182,13 +192,19 @@ def ingest_stage(
             max_rows=max_rows,
         )
         store_ingested_rows(session, batch, result, progress)
+        if storage is not None:
+            store_images(session, storage, batch, content)
 
     return work
 
 
 # --- Mapeo (D3) -----------------------------------------------------------------------------------
-def reset_validation(session: Session, batch: ImportBatch) -> None:
-    """Discard classification, diff and decisions: re-mapping invalidates the preview (D1)."""
+def reset_validation(session: Session, batch: ImportBatch, *, reset_counts: bool = True) -> None:
+    """Discard classification, diff and decisions: re-mapping invalidates the preview (D1).
+
+    ``reset_counts=False`` leaves the batch row untouched, for the validation stage: it replaces
+    the counts at the end, and writing the row earlier would block its heartbeat on PostgreSQL.
+    """
     row_ids = select(ImportRow.id).where(ImportRow.batch_id == batch.id)
     session.execute(
         delete(DuplicateCandidate).where(
@@ -209,11 +225,15 @@ def reset_validation(session: Session, batch: ImportBatch) -> None:
             decision=RowDecision.PENDING,
             decision_reason=None,
             target_piece_id=None,
+            resolution=None,
         )
     )
-    batch.counts = {
-        key: value for key, value in (batch.counts or {}).items() if key not in VALIDATION_COUNTS
-    }
+    if reset_counts:
+        batch.counts = {
+            key: value
+            for key, value in (batch.counts or {}).items()
+            if key not in VALIDATION_COUNTS
+        }
 
 
 def set_mapping(
@@ -253,14 +273,16 @@ def set_mapping(
     )
     if reread:
         assert batch.file_storage_key is not None
+        content = storage.get_bytes(batch.file_storage_key)
         result = ingest(
-            storage.get_bytes(batch.file_storage_key),
+            content,
             batch.file_name,
             sheet_name=sheet_name or batch.sheet_name,
             header_row=header_row,
             max_rows=max_rows,
         )
         store_ingested_rows(session, batch, result)
+        store_images(session, storage, batch, content)
     errors = validate_mapping(spec, list((batch.counts or {})["headers"]), MappingContext(session))
     if errors:
         raise ValidationFailed(
@@ -382,7 +404,7 @@ def validate_stage() -> StageWork:
             .order_by(ImportRow.source_row_number)
         ).all()
         total = len(rows)
-        reset_validation(session, batch)
+        reset_validation(session, batch, reset_counts=False)  # counts are replaced at the end
 
         mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
         classified = classify_batch(

@@ -266,6 +266,7 @@ entity IMPORT_BATCH {
     processing_started_at : timestamptz
     heartbeat_at : timestamptz
     mapping : jsonb
+    change_set_id : uuid
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -284,6 +285,23 @@ entity IMPORT_ROW {
   * decision : varchar(40)
     decision_reason : text
     target_piece_id : uuid <<FK>>
+    resolution : jsonb
+  ..
+  <i>+ timestamps</i>
+}
+entity IMPORT_IMAGE {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * image_number : integer
+  * storage_key : varchar(500)
+  * content_type : varchar(100)
+  * size_bytes : integer
+  * content_sha256 : varchar(64)
+    anchor_row_number : integer
+    import_row_id : uuid <<FK>>
+  * status : varchar(40)
+    media_asset_id : uuid <<FK>>
   ..
   <i>+ timestamps</i>
 }
@@ -494,6 +512,9 @@ PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
 PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
 IMPORT_ROW |o--o{ DUPLICATE_CANDIDATE : "fila vs pieza"
 APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
+IMPORT_BATCH ||--o{ IMPORT_IMAGE : "imágenes del lote"
+IMPORT_ROW |o--o{ IMPORT_IMAGE : "anclada en"
+MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
 
 note as N1
   <b>Convenciones</b>

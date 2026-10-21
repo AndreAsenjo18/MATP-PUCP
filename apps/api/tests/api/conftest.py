@@ -1,7 +1,8 @@
 """Shared fixtures for HTTP contract tests: one synthetic seeded SQLite database per session."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -75,3 +76,49 @@ def seeded_api() -> Iterator[SeededApi]:
 @pytest.fixture
 def client(seeded_api: SeededApi) -> TestClient:
     return seeded_api.client
+
+
+# --- Import pipeline (importacion-pipeline-reconciliacion) ----------------------------------
+@dataclass
+class Pipeline:
+    engine: Any
+    client: TestClient
+    stored: dict[str, bytes]
+    app_for: Callable[..., TestClient]
+
+    def session(self) -> Session:
+        return make_session_factory(self.engine)()
+
+
+def _fake_storage(app: Any, stored: dict[str, bytes]) -> None:
+    app.state.storage.put_bytes = lambda key, data, _type: stored.__setitem__(key, data)
+    app.state.storage.get_bytes = lambda key: stored[key]
+
+
+@pytest.fixture(scope="module")
+def pipeline() -> Iterator[Pipeline]:
+    """A seeded database per test module for the import pipeline: validation writes review
+    links and applying creates pieces that other modules count."""
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
+    event.listen(engine, "connect", lambda conn, _r: conn.execute("PRAGMA foreign_keys=ON"))
+    Base.metadata.create_all(engine)
+    with make_session_factory(engine)() as session:
+        run_seed(session, SeedOptions(upload_media=False))
+        session.commit()
+    stored: dict[str, bytes] = {}
+    clients: list[TestClient] = []
+
+    def app_for(**overrides: object) -> TestClient:
+        app = create_app(api_settings(**overrides), health_checks={}, engine=engine)
+        _fake_storage(app, stored)
+        client = TestClient(app)
+        client.__enter__()
+        clients.append(client)
+        return client
+
+    yield Pipeline(engine, app_for(), stored, app_for)
+    for client in clients:
+        client.__exit__(None, None, None)
+    engine.dispose()
