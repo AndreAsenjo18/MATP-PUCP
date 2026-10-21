@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { ApiSchemas } from "@/lib/api/client";
 import type { DuplicateCandidate, QualityJob } from "@/lib/data/duplicates";
+import { IMPORT_ROW_MERGE_MESSAGE } from "@/lib/data/merge-plan";
 import { DUPLICATE_CANDIDATES, getPieceDetail, ids } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
@@ -9,21 +11,25 @@ import {
   DEFAULT_FILTERS,
   DuplicateCandidateCard,
   DuplicateFilters,
-  MERGE_PENDING_NOTE,
+  MERGE_LOADING_NOTE,
+  MERGE_UNAVAILABLE_NOTE,
   SCAN_STARTING_TEXT,
   ScanPanel,
   canBeResolved,
   jobProgressText,
   markedRows,
+  mergeUnavailableReason,
   signalLabel,
   signalValueLines,
 } from "./DuplicateReview";
 import { qualityJobStatus } from "./status-intents";
 
 type Signal = DuplicateCandidate["matched_fields"][number];
+type PieceDetail = ApiSchemas["PieceDetail"];
 
 const noop = () => {};
 const disabledButton = /<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Fusionar/;
+const enabledMerge = /<button(?![^>]*\sdisabled="")[^>]*>(?:(?!<\/button>)[\s\S])*Fusionar<\/button>/;
 
 function candidate(overrides: Partial<DuplicateCandidate> = {}): DuplicateCandidate {
   return { ...DUPLICATE_CANDIDATES[0], ...overrides };
@@ -98,7 +104,7 @@ describe("DuplicateCandidateCard", () => {
 
   it("compara las dos fichas lado a lado con las filas de las señales resaltadas y con texto", () => {
     const html = render(
-      <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onDistinct={noop} onPostpone={noop} />,
+      <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
     );
     const text = visibleText(html);
     expect(text).toContain("Similitud 93 %");
@@ -112,22 +118,42 @@ describe("DuplicateCandidateCard", () => {
     expect(html).toContain(`href="/piezas/${ids.piece(1)}"`);
   });
 
-  it("deja Fusionar deshabilitado con su nota y muestra distinto y posponer", () => {
+  it("habilita Fusionar con las dos fichas y muestra distinto y posponer", () => {
     const html = render(
-      <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onDistinct={noop} onPostpone={noop} />,
+      <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
     );
-    expect(html).toMatch(disabledButton);
-    expect(visibleText(html)).toContain(MERGE_PENDING_NOTE);
+    expect(html).toMatch(enabledMerge);
+    expect(html).not.toMatch(disabledButton);
+    expect(html).not.toContain("merge-note-");
     expect(visibleText(html)).toContain("Marcar como distinto");
     expect(visibleText(html)).toContain("Posponer");
   });
 
+  it("deshabilita Fusionar con el motivo a la vista: códigos I distintos, regímenes distintos o fichas sin cargar", () => {
+    const otherCode = getPieceDetail(ids.piece(7))!; // código I-0450 frente a I-0236
+    const comodato = getPieceDetail(ids.piece(5))!; // Comodato frente a Propiedad
+    const cases: [DuplicateCandidate, PieceDetail | null | undefined, PieceDetail | null | undefined, boolean, RegExp | string][] = [
+      [candidate({ blocking_conflict: true }), pieceA, otherCode, false, /códigos I vigentes distintos \(I-0236 y I-0450\)/],
+      [candidate(), pieceA, comodato, false, /regímenes de tenencia distintos \(Propiedad y Comodato\)/],
+      [candidate({ blocking_conflict: true }), undefined, undefined, true, /códigos I vigentes distintos\./],
+      [candidate(), undefined, undefined, true, MERGE_LOADING_NOTE],
+      [candidate(), pieceA, null, false, MERGE_UNAVAILABLE_NOTE],
+    ];
+    for (const [pair, a, b, loading, message] of cases) {
+      const html = render(<DuplicateCandidateCard candidate={pair} pieceA={a} pieceB={b} piecesLoading={loading} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />);
+      expect(html).toMatch(disabledButton);
+      expect(html).toContain(`aria-describedby="merge-note-${pair.id}"`);
+      expect(visibleText(html)).toMatch(message);
+    }
+    expect(mergeUnavailableReason(candidate(), pieceA, pieceB, false)).toBeNull();
+  });
+
   it("sin duplicates.resolve o con el par cerrado no muestra acciones", () => {
     const withoutPermission = visibleText(
-      render(<DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve={false} onDistinct={noop} onPostpone={noop} />),
+      render(<DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve={false} onMerge={noop} onDistinct={noop} onPostpone={noop} />),
     );
     const merged = visibleText(
-      render(<DuplicateCandidateCard candidate={candidate({ status: "MERGED" })} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onDistinct={noop} onPostpone={noop} />),
+      render(<DuplicateCandidateCard candidate={candidate({ status: "MERGED" })} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
     );
     for (const text of [withoutPermission, merged]) {
       expect(text).not.toContain("Marcar como distinto");
@@ -142,9 +168,10 @@ describe("DuplicateCandidateCard", () => {
         <DuplicateCandidateCard
           candidate={candidate({ blocking_conflict: true, status: "POSTPONED", postponed_until: "2026-12-01T12:00:00Z", resolution_note: "Esperar ficha física" })}
           pieceA={pieceA}
-          pieceB={pieceB}
+          pieceB={getPieceDetail(ids.piece(7))}
           piecesLoading={false}
           canResolve
+          onMerge={noop}
           onDistinct={noop}
           onPostpone={noop}
         />,
@@ -157,13 +184,17 @@ describe("DuplicateCandidateCard", () => {
 
   it("una fila de importación enlaza al asistente y una ficha que no llega se indica", () => {
     const importRow = DUPLICATE_CANDIDATES.find((c) => c.import_row_id !== null)!;
-    const html = render(<DuplicateCandidateCard candidate={importRow} pieceA={null} pieceB={null} piecesLoading={false} canResolve onDistinct={noop} onPostpone={noop} />);
+    const html = render(<DuplicateCandidateCard candidate={importRow} pieceA={null} pieceB={null} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />);
     expect(visibleText(html)).toContain("Fila de importación");
     expect(visibleText(html)).toContain("Pieza del catálogo: ficha no disponible");
     expect(html).toContain('href="/importacion"');
+    // Una fila de importación no se fusiona desde la cola: no hay botón y se explica dónde decidirla.
+    expect(html).not.toMatch(/Fusionar<\/button>/);
+    expect(visibleText(html)).toContain(IMPORT_ROW_MERGE_MESSAGE);
+    expect(visibleText(html)).toContain("Marcar como distinto");
 
     const loading = visibleText(
-      render(<DuplicateCandidateCard candidate={candidate()} pieceA={undefined} pieceB={undefined} piecesLoading canResolve onDistinct={noop} onPostpone={noop} />),
+      render(<DuplicateCandidateCard candidate={candidate()} pieceA={undefined} pieceB={undefined} piecesLoading canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
     );
     expect(loading).toContain("Pieza A: cargando ficha…");
   });

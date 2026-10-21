@@ -15,10 +15,16 @@
  * Los errores 409 y 422 de la API llegan como `rejected` con un mensaje claro en español
  * (`DUPLICATE_ERROR_MESSAGES`); `stale_candidate` y `candidate_closed` indican que el par ya no
  * se puede resolver y la pantalla debe recargar la cola.
+ *
+ * Fusión (tarea 4.2, design D4): `resolveDuplicate` con `resolution: "MERGED"` envía la pieza
+ * conservada, `field_choices` y el motivo obligatorio. Los bloqueos (regímenes distintos, códigos I
+ * distintos, código I solo en la absorbida) llegan como 409 con su mensaje. `fetchPieceSheet` lee la
+ * ficha con la identidad de la sesión para mostrar `merged_into` y `merged_from`.
  */
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
 import { COLLECTIONS, DUPLICATE_CANDIDATES, getPieceDetail } from "@/lib/fixtures";
 
+import { mergeBlock, mergeReasonError, survivorRestriction, type MergeChoice } from "./merge-plan";
 import { apiBaseUrl, getApiMode } from "./mode";
 
 export type DuplicateCandidate = ApiSchemas["DuplicateCandidateOut"];
@@ -69,6 +75,16 @@ export const DUPLICATE_ERROR_MESSAGES: Record<string, string> = {
   postpone_too_long: `Solo se puede posponer hasta ${MAX_POSTPONE_DAYS} días.`,
   [SCAN_IN_PROGRESS_CODE]: "Ya hay una detección completa en curso: se muestra su avance.",
   permission_denied: "Su rol no tiene permiso para resolver duplicados.",
+  merge_blocked_tenure: "Las piezas tienen regímenes de tenencia distintos: primero corrija el régimen de una de ellas. No se fusionó nada.",
+  merge_blocked_inventory_code:
+    "Las dos piezas tienen códigos I vigentes distintos: corrija primero el código I con el procedimiento auditado (RN-002). No se fusionó nada.",
+  merge_surviving_must_hold_inventory_code:
+    "Solo la pieza que iba a absorberse tiene código I vigente: conserve esa pieza, porque un código I nunca cambia de pieza (RN-002). No se fusionó nada.",
+  merge_reason_required: "Indique el motivo de la fusión (al menos 3 caracteres): quedará registrado en la auditoría (RN-005).",
+  merge_requires_two_pieces: "Una fila de importación no se fusiona desde la cola: se decide en su lote de importación.",
+  surviving_not_in_pair: "Elija cuál de las dos piezas del par se conserva.",
+  unknown_merge_fields: "Uno de los campos elegidos ya no se puede fusionar. Recargue la cola e intente nuevamente.",
+  invalid_period_range: "La época que resultaría de la fusión es incoherente (el año desde es mayor que el año hasta): elija la época completa de una sola pieza.",
 };
 
 export type DuplicateFailure =
@@ -83,7 +99,10 @@ export type QualityJobResult = { status: "ok"; job: QualityJob } | DuplicateFail
 
 export type DuplicateResolutionInput =
   | { resolution: "DISTINCT"; note: string }
-  | { resolution: "POSTPONED"; postponedUntil: string; note?: string | null };
+  | { resolution: "POSTPONED"; postponedUntil: string; note?: string | null }
+  | { resolution: "MERGED"; survivingPieceId: string; fieldChoices: Partial<Record<string, MergeChoice>>; note: string };
+
+export type PieceSheetResult = { status: "ok"; piece: PieceDetail } | { status: "not_found" } | DuplicateFailure;
 
 const CONNECTION_MESSAGE = "No se pudo conectar con el servidor. Intente nuevamente.";
 
@@ -178,6 +197,7 @@ function mockResolve(candidateId: string, input: DuplicateResolutionInput): Dupl
     const problem = postponementError(input.postponedUntil, new Date());
     if (problem) return { status: "rejected", code: problem.code, message: problem.message };
   }
+  if (input.resolution === "MERGED") return mockMerge(current, input);
   const resolved: DuplicateCandidate = {
     ...current,
     status: input.resolution,
@@ -187,6 +207,37 @@ function mockResolve(candidateId: string, input: DuplicateResolutionInput): Dupl
   };
   mockResolutions.set(candidateId, resolved);
   return { status: "ok", candidate: resolved };
+}
+
+function rejected(code: string): DuplicateFailure {
+  return { status: "rejected", code, message: duplicateErrorMessage(code) };
+}
+
+/**
+ * Fusión simulada: aplica los mismos bloqueos que la API sobre las fichas de los fixtures y solo
+ * cambia el estado de los pares en memoria (no modifica ninguna ficha).
+ */
+function mockMerge(current: DuplicateCandidate, input: Extract<DuplicateResolutionInput, { resolution: "MERGED" }>): DuplicateResolveResult {
+  const pieceA = getPieceDetail(current.piece_a_id);
+  const pieceB = current.piece_b_id ? getPieceDetail(current.piece_b_id) : undefined;
+  const block = mergeBlock(current, pieceA, pieceB);
+  if (block) return rejected(block.code);
+  if (!pieceA || !pieceB) return rejected(STALE_CANDIDATE_CODE);
+  if (input.survivingPieceId !== pieceA.id && input.survivingPieceId !== pieceB.id) return rejected("surviving_not_in_pair");
+  if (mergeReasonError(input.note)) return rejected("merge_reason_required");
+  if (survivorRestriction(input.survivingPieceId, pieceA, pieceB)) return rejected("merge_surviving_must_hold_inventory_code");
+
+  const absorbedId = input.survivingPieceId === pieceA.id ? pieceB.id : pieceA.id;
+  const now = new Date().toISOString();
+  const merged: DuplicateCandidate = { ...current, status: "MERGED", postponed_until: null, resolution_note: input.note.trim(), reviewed_at: now };
+  mockResolutions.set(current.id, merged);
+  for (const other of mockCandidates()) {
+    const touchesAbsorbed = other.piece_a_id === absorbedId || other.piece_b_id === absorbedId;
+    if (other.id !== current.id && touchesAbsorbed && other.status !== "MERGED" && other.status !== "SUPERSEDED") {
+      mockResolutions.set(other.id, { ...other, status: "SUPERSEDED", reviewed_at: now });
+    }
+  }
+  return { status: "ok", candidate: merged };
 }
 
 function mockScanJob(): QualityJob {
@@ -307,6 +358,27 @@ export async function fetchComparedPieces(pieceIds: readonly string[], devUser?:
   return Object.fromEntries(entries);
 }
 
+/**
+ * Ficha de una pieza con la identidad de la sesión (`GET /pieces/{piece_id}`), incluida una pieza
+ * fusionada, que responde con `merged_into` en vez de 404 (tarea 3.4).
+ */
+export async function fetchPieceSheet(pieceId: string, devUser?: string): Promise<PieceSheetResult> {
+  if (getApiMode() === "mock") {
+    const piece = getPieceDetail(pieceId);
+    return piece ? { status: "ok", piece } : { status: "not_found" };
+  }
+  try {
+    const { data, error } = await client(devUser).GET("/api/v1/pieces/{piece_id}", { params: { path: { piece_id: pieceId } } });
+    if (error) {
+      const failure = failureFrom(error);
+      return failure.status === "rejected" && failure.code === "not_found" ? { status: "not_found" } : failure;
+    }
+    return { status: "ok", piece: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
 /** Colecciones para el filtro (`GET /collections`); vacío si no se pueden leer. */
 export async function fetchDuplicateCollections(devUser?: string): Promise<CollectionOut[]> {
   if (getApiMode() === "mock") return COLLECTIONS;
@@ -318,16 +390,29 @@ export async function fetchDuplicateCollections(devUser?: string): Promise<Colle
   }
 }
 
+type ResolutionBody = NonNullable<ApiSchemas["DuplicateResolution"]>;
+
+function resolutionBody(input: DuplicateResolutionInput): ResolutionBody {
+  switch (input.resolution) {
+    case "DISTINCT":
+      return { resolution: input.resolution, note: input.note.trim() || null };
+    case "POSTPONED":
+      return { resolution: input.resolution, postponed_until: input.postponedUntil, note: input.note?.trim() || null };
+    case "MERGED": {
+      const fieldChoices: Record<string, MergeChoice> = {};
+      for (const [field, choice] of Object.entries(input.fieldChoices)) if (choice) fieldChoices[field] = choice;
+      return { resolution: input.resolution, surviving_piece_id: input.survivingPieceId, field_choices: fieldChoices, note: input.note.trim() };
+    }
+  }
+}
+
 /**
- * `POST /quality/duplicates/{candidate_id}/resolve` como distinto o pospuesto (design D5). La
- * fusión la hace el asistente de la tarea 4.2.
+ * `POST /quality/duplicates/{candidate_id}/resolve`: distinto o pospuesto (design D5) o fusión con
+ * la pieza conservada, `field_choices` y motivo (design D4).
  */
 export async function resolveDuplicate(candidateId: string, input: DuplicateResolutionInput, devUser?: string): Promise<DuplicateResolveResult> {
   if (getApiMode() === "mock") return mockResolve(candidateId, input);
-  const body =
-    input.resolution === "DISTINCT"
-      ? { resolution: input.resolution, note: input.note.trim() || null }
-      : { resolution: input.resolution, postponed_until: input.postponedUntil, note: input.note?.trim() || null };
+  const body = resolutionBody(input);
   try {
     const { data, error } = await client(devUser).POST("/api/v1/quality/duplicates/{candidate_id}/resolve", {
       params: { path: { candidate_id: candidateId } },

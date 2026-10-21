@@ -6,6 +6,7 @@ import {
   MAX_POSTPONE_DAYS,
   fetchComparedPieces,
   fetchDuplicateQueue,
+  fetchPieceSheet,
   fetchQualityJob,
   isClosedPairFailure,
   postponeBounds,
@@ -104,6 +105,24 @@ describe("cola de duplicados (modo mock)", () => {
     expect(pending.status === "ok" && pending.page.items.some((c) => c.id === target.id)).toBe(false);
   });
 
+  it("simula la fusión con los mismos bloqueos que la API y la recuerda solo en memoria", async () => {
+    const pair = DUPLICATE_CANDIDATES[0]; // «Toro de Pucará» (I-0236) y «Toro de Pucará (3 cuernos)»
+    const merge = (survivingPieceId: string, note = "Misma pieza") =>
+      resolveDuplicate(pair.id, { resolution: "MERGED", survivingPieceId, fieldChoices: { provenance: "ABSORBED" }, note });
+    expect(await merge(ids.piece(2))).toMatchObject({ status: "rejected", code: "merge_surviving_must_hold_inventory_code" });
+    expect(await merge(ids.piece(1), "no")).toMatchObject({ status: "rejected", code: "merge_reason_required" });
+    const importRow = DUPLICATE_CANDIDATES.find((c) => c.import_row_id !== null)!;
+    expect(await resolveDuplicate(importRow.id, { resolution: "MERGED", survivingPieceId: ids.piece(9), fieldChoices: {}, note: "Misma pieza" })).toMatchObject({
+      status: "rejected",
+      code: "merge_requires_two_pieces",
+    });
+
+    expect(await merge(ids.piece(1))).toMatchObject({ status: "ok", candidate: { status: "MERGED", resolution_note: "Misma pieza" } });
+    const merged = await fetchDuplicateQueue({ status: "MERGED" });
+    expect(merged.status === "ok" && merged.page.items.map((c) => c.id)).toEqual([pair.id]);
+    expect(await merge(ids.piece(1))).toMatchObject({ status: "rejected", code: "candidate_closed" });
+  });
+
   it("las fichas comparadas salen de los fixtures; una pieza desconocida queda en null", async () => {
     const pieces = await fetchComparedPieces([ids.piece(1), ids.piece(1), "desconocida"]);
     expect(Object.keys(pieces)).toHaveLength(2);
@@ -154,6 +173,55 @@ describe("cola de duplicados (modo live)", () => {
     expect(result).toMatchObject({ status: "rejected", code });
     expect(result.status === "rejected" && result.message).toMatch(message);
     expect(isClosedPairFailure(result)).toBe(closed);
+  });
+
+  it("fusiona con la pieza conservada, field_choices y el motivo del contrato", async () => {
+    const fetchMock = useLive(async () => json(200, { ...DUPLICATE_CANDIDATES[0], status: "MERGED" }));
+    const result = await resolveDuplicate(
+      ids.duplicate(1),
+      { resolution: "MERGED", survivingPieceId: ids.piece(1), fieldChoices: { provenance: "ABSORBED", denomination: "SURVIVING", notes: undefined }, note: " Misma pieza " },
+      DEV_USER,
+    );
+    expect(result).toMatchObject({ status: "ok", candidate: { status: "MERGED" } });
+    const request = requestAt(fetchMock);
+    expect(new URL(request.url).pathname).toBe(`/api/v1/quality/duplicates/${ids.duplicate(1)}/resolve`);
+    expect(request.headers.get("X-MATP-User")).toBe(DEV_USER);
+    expect(await request.json()).toEqual({
+      resolution: "MERGED",
+      surviving_piece_id: ids.piece(1),
+      field_choices: { provenance: "ABSORBED", denomination: "SURVIVING" },
+      note: "Misma pieza",
+    });
+  });
+
+  it.each([
+    ["merge_blocked_inventory_code", /códigos I vigentes distintos.*No se fusionó nada/],
+    ["merge_blocked_tenure", /regímenes de tenencia distintos.*No se fusionó nada/],
+    ["merge_surviving_must_hold_inventory_code", /conserve esa pieza, porque un código I nunca cambia de pieza/],
+  ])("un 409 %s llega con un mensaje claro y no recarga la cola", async (code, message) => {
+    useLive(async () => json(409, { code, message: "mensaje de la API" }));
+    const result = await resolveDuplicate(ids.duplicate(1), { resolution: "MERGED", survivingPieceId: ids.piece(1), fieldChoices: {}, note: "Misma pieza" }, DEV_USER);
+    expect(result).toMatchObject({ status: "rejected", code });
+    expect(result.status === "rejected" && result.message).toMatch(message);
+    expect(isClosedPairFailure(result)).toBe(false);
+  });
+
+  it("lee la ficha con la identidad de la sesión, también la de una pieza fusionada", async () => {
+    const mergedInto = { piece_id: ids.piece(1), merged_at: "2026-10-20T15:00:00Z", reason: "Fusionada en x: Misma pieza" };
+    const fetchMock = useLive(async (request) =>
+      request.url.endsWith(ids.piece(2)) ? json(200, { id: ids.piece(2), denomination: "Toro", merged_into: mergedInto }) : json(404, { code: "not_found", message: "x" }),
+    );
+    const merged = await fetchPieceSheet(ids.piece(2), DEV_USER);
+    expect(merged).toMatchObject({ status: "ok", piece: { merged_into: mergedInto } });
+    expect(requestAt(fetchMock).headers.get("X-MATP-User")).toBe(DEV_USER);
+    expect(await fetchPieceSheet(ids.piece(3), DEV_USER)).toEqual({ status: "not_found" });
+
+    useLive(async () => json(401, { code: "authentication_required", message: "Debe identificarse." }));
+    expect(await fetchPieceSheet(ids.piece(2))).toMatchObject({ status: "rejected", message: "Debe identificarse." });
+    useLive(async () => {
+      throw new TypeError("network");
+    });
+    expect((await fetchPieceSheet(ids.piece(2), DEV_USER)).status).toBe("unavailable");
   });
 
   it("el 422 por más de 180 días usa el máximo que envía la API", async () => {

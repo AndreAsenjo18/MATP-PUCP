@@ -13,7 +13,9 @@
  * - `ScanPanel`: detección completa bajo demanda y su avance (design D3).
  *
  * Son presentacionales: reciben datos y acciones (`Promise<DialogOutcome>`) y no llaman a la API.
- * Fusionar queda deshabilitado hasta el asistente de la tarea 4.2.
+ * «Fusionar» abre el asistente de la tarea 4.2 (`MergeWizard`); queda deshabilitado, con el motivo
+ * a la vista, si el par está bloqueado (regímenes o códigos I distintos) o si es una fila de
+ * importación, que se decide en su lote.
  */
 import { ArrowRight, CalendarClock, GitMerge, ScanSearch, Split } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +28,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
+import { IMPORT_ROW_MERGE_MESSAGE, mergeBlock } from "@/lib/data/merge-plan";
 import {
   postponeBounds,
   postponedUntilFromDate,
@@ -49,7 +52,16 @@ type CollectionOut = ApiSchemas["CollectionOut"];
 // ---------------------------------------------------------------------------------------------
 
 export const DISTINCT_REASON_REQUIRED = "Indique por qué son piezas distintas: quedará registrado en la auditoría (RN-005).";
-export const MERGE_PENDING_NOTE = "La fusión se hará con el asistente de fusión, que aún no está disponible en esta versión.";
+export const MERGE_LOADING_NOTE = "Cargando las dos fichas para poder fusionar…";
+export const MERGE_UNAVAILABLE_NOTE = "No se pudieron leer las dos fichas: recargue la cola para poder fusionar.";
+
+/** Por qué «Fusionar» no está disponible para el par, o `null` si se puede abrir el asistente. */
+export function mergeUnavailableReason(candidate: DuplicateCandidate, pieceA: PieceSlot, pieceB: PieceSlot, piecesLoading: boolean): string | null {
+  const block = mergeBlock(candidate, pieceA, pieceB);
+  if (block) return block.message;
+  if (pieceA && pieceB) return null;
+  return piecesLoading ? MERGE_LOADING_NOTE : MERGE_UNAVAILABLE_NOTE;
+}
 
 /** Estados en los que un par ya no admite resolución (design D4). */
 const CLOSED: ReadonlySet<string> = new Set(["MERGED", "SUPERSEDED"]);
@@ -367,12 +379,14 @@ export interface DuplicateCandidateCardProps {
   piecesLoading: boolean;
   /** Permiso `duplicates.resolve`: sin él no se muestran las acciones. */
   canResolve: boolean;
+  onMerge: () => void;
   onDistinct: () => void;
   onPostpone: () => void;
 }
 
-export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoading, canResolve, onDistinct, onPostpone }: DuplicateCandidateCardProps) {
+export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoading, canResolve, onMerge, onDistinct, onPostpone }: DuplicateCandidateCardProps) {
   const isImportRow = candidate.piece_b_id === null;
+  const mergeNote = isImportRow ? IMPORT_ROW_MERGE_MESSAGE : mergeUnavailableReason(candidate, pieceA, pieceB, piecesLoading);
   return (
     <Card as="article" className="flex flex-col gap-4" aria-label={`Par con similitud ${scorePercent(candidate.score)}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -381,7 +395,9 @@ export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoadin
           {isImportRow && " · fila de importación"}
         </p>
         <div className="flex flex-wrap gap-2">
-          {candidate.blocking_conflict && <Badge intent="danger">Códigos I distintos: fusión bloqueada (RN-002)</Badge>}
+          {mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code" && (
+            <Badge intent="danger">Códigos I distintos: fusión bloqueada (RN-002)</Badge>
+          )}
           <StatusBadge status={duplicateStatus(candidate.status)} />
         </div>
       </div>
@@ -414,9 +430,17 @@ export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoadin
       {canResolve && canBeResolved(candidate) && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-3">
-            <Button variant="primary" icon={GitMerge} disabled aria-describedby={`merge-note-${candidate.id}`}>
-              Fusionar
-            </Button>
+            {!isImportRow && (
+              <Button
+                variant="primary"
+                icon={GitMerge}
+                disabled={mergeNote !== null}
+                aria-describedby={mergeNote ? `merge-note-${candidate.id}` : undefined}
+                onClick={onMerge}
+              >
+                Fusionar
+              </Button>
+            )}
             <Button variant="outline" icon={Split} onClick={onDistinct}>
               Marcar como distinto
             </Button>
@@ -424,9 +448,11 @@ export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoadin
               Posponer
             </Button>
           </div>
-          <p id={`merge-note-${candidate.id}`} className="text-sm text-gris-texto">
-            {MERGE_PENDING_NOTE}
-          </p>
+          {mergeNote && (
+            <p id={`merge-note-${candidate.id}`} className="text-sm text-gris-texto">
+              {mergeNote}
+            </p>
+          )}
         </div>
       )}
     </Card>
@@ -515,7 +541,8 @@ function ResolutionDialog({
   );
 }
 
-function useSubmit() {
+/** Estado de envío de un diálogo de resolución: bloquea reenvíos y guarda el mensaje de error. */
+export function useSubmit() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
