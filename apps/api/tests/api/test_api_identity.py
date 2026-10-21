@@ -14,7 +14,7 @@ from app.modules.locations.models import Location, LocationLevel
 from tests.api.conftest import (
     ADMIN,
     CATALOGUER,
-    VIEWER,
+    LoginAs,
     SeededApi,
     api_settings,
     as_user,
@@ -75,17 +75,15 @@ def test_user_id_is_accepted_as_identity(client: TestClient) -> None:
     assert me["auth_mode"] == "dev-header"
 
 
-def test_insufficient_permission_is_forbidden(client: TestClient) -> None:
-    response = client.post(
-        "/api/v1/collections",
-        json={"name": "Colección no permitida (sintética)"},
-        headers=as_user(VIEWER),
+def test_insufficient_permission_is_forbidden(login_as: LoginAs) -> None:
+    response = login_as("INTERNAL_VIEWER").post(
+        "/api/v1/collections", json={"name": "Colección no permitida (sintética)"}
     )
     assert response.status_code == 403
     body = response.json()
     assert body["code"] == "permission_denied"
     assert body["details"]["permission"] == "collections.manage"
-    listed = client.get("/api/v1/collections", headers=as_user(ADMIN)).json()
+    listed = login_as("ADMIN").get("/api/v1/collections").json()
     assert all(item["name"] != "Colección no permitida (sintética)" for item in listed)
 
 
@@ -111,22 +109,23 @@ def _loan_piece_with_exact_location(seeded_api: SeededApi) -> str:
 
 def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) -> None:
     piece_id = _loan_piece_with_exact_location(seeded_api)
-    client = seeded_api.client
+    viewer_client = seeded_api.login_as("INTERNAL_VIEWER")
+    admin_client = seeded_api.login_as("ADMIN")
 
-    viewer = client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(VIEWER)).json()
+    viewer = viewer_client.get(f"/api/v1/pieces/{piece_id}").json()
     assert viewer["lender_name"] is None
     assert viewer["loan_agreement_ref"] is None
     assert {"lender_name", "loan_agreement_ref", "location.path"} <= set(viewer["masked_fields"])
     assert viewer["location"]["is_exact"] is False
     assert {node["level"] for node in viewer["location"]["path"]} <= {"Sede", "Depósito"}
 
-    admin = client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(ADMIN)).json()
+    admin = admin_client.get(f"/api/v1/pieces/{piece_id}").json()
     assert admin["lender_name"] == "Comodante sintético AJB"
     assert admin["masked_fields"] == []
     assert admin["location"]["is_exact"] is True
     assert len(admin["location"]["path"]) > len(viewer["location"]["path"])
 
-    listed = client.get("/api/v1/locations", headers=as_user(VIEWER)).json()
+    listed = viewer_client.get("/api/v1/locations").json()
     assert {item["level"] for item in listed} <= {"Sede", "Depósito"}
 
 
@@ -142,11 +141,8 @@ def test_auth_login_remains_stub(client: TestClient) -> None:
     assert response.status_code == 501
 
 
-def test_auth_me_returns_user_role_and_permissions(client: TestClient) -> None:
-    response = client.get(
-        "/api/v1/auth/me",
-        headers=as_user(CATALOGUER),
-    )
+def test_auth_me_returns_user_role_and_permissions(login_as: LoginAs) -> None:
+    response = login_as("CATALOGUER").get("/api/v1/auth/me")
 
     assert response.status_code == 200
 
@@ -154,7 +150,8 @@ def test_auth_me_returns_user_role_and_permissions(client: TestClient) -> None:
     assert body["email"] == CATALOGUER
     assert "CATALOGUER" in body["roles"]
     assert "pieces.update" in body["permissions"]
-    assert body["auth_mode"] == "dev-header"
+    assert body["auth_mode"] == "session"
+    assert body["must_change_password"] is False
 
 
 def test_auth_me_rejects_anonymous_user(client: TestClient) -> None:
