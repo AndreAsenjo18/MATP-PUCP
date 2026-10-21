@@ -14,7 +14,7 @@ from app.modules.catalog.service import create_piece
 from app.modules.locations.models import LocationLevel
 from app.modules.locations.service import create_location
 from app.modules.users.models import AppUser
-from tests.api.conftest import ADMIN, STORAGE, VIEWER, SeededApi, as_user
+from tests.api.conftest import ADMIN, SeededApi
 
 
 @pytest.fixture(scope="module")
@@ -87,8 +87,8 @@ def hierarchy_data(seeded_api: SeededApi) -> dict[str, str]:
 
 def test_locations_tree_five_levels(seeded_api: SeededApi, hierarchy_data: dict[str, str]) -> None:
     """RF-016: GET /locations/tree returns the complete 5-level nested hierarchy."""
-    client = seeded_api.client
-    res = client.get("/api/v1/locations/tree", headers=as_user(STORAGE))
+    client = seeded_api.login_as("STORAGE_STAFF")
+    res = client.get("/api/v1/locations/tree")
     assert res.status_code == 200
     roots = res.json()
 
@@ -140,8 +140,8 @@ def test_locations_tree_pruned_for_viewer(
     seeded_api: SeededApi, hierarchy_data: dict[str, str]
 ) -> None:
     """RF-041: Levels deeper than SPACE are pruned for roles without exact_location."""
-    client = seeded_api.client
-    res = client.get("/api/v1/locations/tree", headers=as_user(VIEWER))
+    client = seeded_api.login_as("INTERNAL_VIEWER")
+    res = client.get("/api/v1/locations/tree")
     assert res.status_code == 200
     roots = res.json()
 
@@ -160,15 +160,13 @@ def test_piece_movement_and_location_history(
     seeded_api: SeededApi, hierarchy_data: dict[str, str]
 ) -> None:
     """RF-017: POST /pieces/{id}/move registers movements and GET location-history reflects them."""
-    client = seeded_api.client
+    client = seeded_api.login_as("STORAGE_STAFF")
     piece_id = hierarchy_data["piece_id"]
     box_id = hierarchy_data["box_id"]
     space_id = hierarchy_data["space_id"]
 
     # 1. Initial state: no movements
-    res_initial = client.get(
-        f"/api/v1/pieces/{piece_id}/location-history", headers=as_user(STORAGE)
-    )
+    res_initial = client.get(f"/api/v1/pieces/{piece_id}/location-history")
     assert res_initial.status_code == 200
     assert res_initial.json() == []
 
@@ -181,7 +179,6 @@ def test_piece_movement_and_location_history(
     res_move_1 = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json=move_payload_1,
-        headers=as_user(STORAGE),
     )
     assert res_move_1.status_code == 201
     move_1 = res_move_1.json()
@@ -193,7 +190,7 @@ def test_piece_movement_and_location_history(
     assert move_1["occurred_at"] is not None
 
     # Check location history has 1 record
-    res_hist_1 = client.get(f"/api/v1/pieces/{piece_id}/location-history", headers=as_user(STORAGE))
+    res_hist_1 = client.get(f"/api/v1/pieces/{piece_id}/location-history")
     assert res_hist_1.status_code == 200
     hist_1 = res_hist_1.json()
     assert len(hist_1) == 1
@@ -208,7 +205,6 @@ def test_piece_movement_and_location_history(
     res_move_2 = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json=move_payload_2,
-        headers=as_user(STORAGE),
     )
     assert res_move_2.status_code == 201
     move_2 = res_move_2.json()
@@ -221,7 +217,6 @@ def test_piece_movement_and_location_history(
     res_verify = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json=verify_payload,
-        headers=as_user(STORAGE),
     )
     assert res_verify.status_code == 201
     verify_out = res_verify.json()
@@ -230,9 +225,7 @@ def test_piece_movement_and_location_history(
     assert verify_out["to_location"]["id"] == space_id
 
     # 5. History should now have 3 records (most recent first)
-    res_hist_final = client.get(
-        f"/api/v1/pieces/{piece_id}/location-history", headers=as_user(STORAGE)
-    )
+    res_hist_final = client.get(f"/api/v1/pieces/{piece_id}/location-history")
     assert res_hist_final.status_code == 200
     history = res_hist_final.json()
     assert len(history) == 3
@@ -247,7 +240,7 @@ def test_piece_move_business_rule_validations(
     seeded_api: SeededApi, hierarchy_data: dict[str, str]
 ) -> None:
     """Validate business rules on piece movements."""
-    client = seeded_api.client
+    client = seeded_api.login_as("STORAGE_STAFF")
     piece_id = hierarchy_data["piece_id"]
     site_id = hierarchy_data["site_id"]
     space_id = hierarchy_data["space_id"]
@@ -256,7 +249,6 @@ def test_piece_move_business_rule_validations(
     res_site = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json={"movement_type": "MOVE", "to_location_id": site_id},
-        headers=as_user(STORAGE),
     )
     assert res_site.status_code == 422
     assert res_site.json()["code"] == "space_required"
@@ -265,7 +257,6 @@ def test_piece_move_business_rule_validations(
     res_same = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json={"movement_type": "MOVE", "to_location_id": space_id},
-        headers=as_user(STORAGE),
     )
     assert res_same.status_code == 409
     assert res_same.json()["code"] == "same_location"
@@ -274,7 +265,6 @@ def test_piece_move_business_rule_validations(
     res_missing_loc = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json={"movement_type": "MOVE", "to_location_id": str(uuid.uuid4())},
-        headers=as_user(STORAGE),
     )
     assert res_missing_loc.status_code == 404
 
@@ -282,7 +272,6 @@ def test_piece_move_business_rule_validations(
     res_missing_piece = client.post(
         f"/api/v1/pieces/{uuid.uuid4()}/move",
         json={"movement_type": "MOVE", "to_location_id": space_id},
-        headers=as_user(STORAGE),
     )
     assert res_missing_piece.status_code == 404
 
@@ -290,14 +279,12 @@ def test_piece_move_business_rule_validations(
     res_no_dest = client.post(
         f"/api/v1/pieces/{piece_id}/move",
         json={"movement_type": "MOVE"},
-        headers=as_user(STORAGE),
     )
     assert res_no_dest.status_code == 422
 
     # Forbidden for role without movements.register
-    res_forbidden = client.post(
+    res_forbidden = seeded_api.login_as("INTERNAL_VIEWER").post(
         f"/api/v1/pieces/{piece_id}/move",
         json={"movement_type": "MOVE", "to_location_id": space_id},
-        headers=as_user(VIEWER),
     )
     assert res_forbidden.status_code == 403

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 4b01f22d37a1664ebbc472ca7dbfa036f0befbcd427fc3afe2510182e2804024
+ * openapi-sha256: a033ceff9185f0de4c828c8e5c79c1b1d30f1a2aa26beeb092433ac830844673
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -177,6 +177,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambiar la contraseña propia (obligatorio con una contraseña temporal)
+         * @description Exige la contraseña actual y una nueva de al menos 12 caracteres que no sea común. Revoca todas las sesiones del usuario y abre una nueva en este dispositivo. Es la única operación, junto con `me` y `logout`, que acepta una cuenta con contraseña temporal (`403 password_change_required` en las demás).
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -186,7 +206,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos) */
+        /**
+         * Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos)
+         * @description Abre una sesión de servidor y entrega las cookies `matp_session` (HttpOnly) y `matp_csrf`. Cualquier fallo (correo inexistente, contraseña incorrecta, cuenta inactiva o bloqueada) responde el mismo `401 invalid_credentials`; si la cuenta tiene una contraseña temporal, `must_change_password` es verdadero (ADR-009).
+         */
         post: operations["login"];
         delete?: never;
         options?: never;
@@ -203,7 +226,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cerrar sesión */
+        /**
+         * Cerrar sesión
+         * @description Revoca la sesión actual y elimina las cookies de sesión y CSRF.
+         */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -1856,6 +1882,19 @@ export interface components {
              */
             text?: string | null;
         };
+        /**
+         * ChangePasswordRequest
+         * @example {
+         *       "current_password": "contraseña-temporal-entregada",
+         *       "new_password": "una frase larga y propia"
+         *     }
+         */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
         /** ClassificationRule */
         ClassificationRule: {
             /** Description */
@@ -3203,16 +3242,79 @@ export interface components {
         };
         /**
          * LoginRequest
+         * @description Body of ``POST /auth/login``; ``username`` is the e-mail, as in the team's contract.
          * @example {
-         *       "email": "admin@matp.local",
-         *       "password": "********"
+         *       "password": "********",
+         *       "username": "admin@matp.local"
          *     }
          */
         LoginRequest: {
-            /** Email */
-            email: string;
             /** Password */
             password: string;
+            /**
+             * Username
+             * @description Correo de la cuenta.
+             */
+            username: string;
+        };
+        /**
+         * LoginResponse
+         * @description The signed-in user plus what the web client needs to keep going (ADR-009 D1, D4).
+         *
+         *     The session token itself never appears here: it travels only in the ``HttpOnly`` cookie.
+         * @example {
+         *       "auth_mode": "session",
+         *       "csrf_token": "6f1c0e5e0b8e4c7aa0d3c9f2b1a45e87",
+         *       "email": "catalogador@matp.local",
+         *       "full_name": "Catalogador (sintético)",
+         *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "must_change_password": false,
+         *       "permissions": [
+         *         "pieces.read",
+         *         "pieces.update"
+         *       ],
+         *       "roles": [
+         *         "CATALOGUER"
+         *       ],
+         *       "session_expires_at": "2026-09-17T10:30:00Z"
+         *     }
+         */
+        LoginResponse: {
+            /**
+             * Auth Mode
+             * @description session (cookie de sesión, ADR-009) o dev-header (solo pruebas).
+             */
+            auth_mode: string;
+            /**
+             * Csrf Token
+             * @description Valor que las escrituras envían en `X-CSRF-Token`. También viaja en la cookie `matp_csrf`, pero un cliente en otro dominio no puede leerla.
+             */
+            csrf_token: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Must Change Password
+             * @description Hay una contraseña temporal vigente: debe cambiarla antes de seguir.
+             * @default false
+             */
+            must_change_password: boolean;
+            /** Permissions */
+            permissions: string[];
+            /** Roles */
+            roles: string[];
+            /**
+             * Session Expires At
+             * Format: date-time
+             * @description Fin absoluto de la sesión (UTC).
+             */
+            session_expires_at: string;
         };
         /**
          * MappingRequest
@@ -3321,10 +3423,11 @@ export interface components {
         /**
          * Me
          * @example {
-         *       "auth_mode": "dev-header",
+         *       "auth_mode": "session",
          *       "email": "catalogador@matp.local",
          *       "full_name": "Catalogador (sintético)",
          *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "must_change_password": false,
          *       "permissions": [
          *         "pieces.read",
          *         "pieces.update"
@@ -3337,7 +3440,7 @@ export interface components {
         Me: {
             /**
              * Auth Mode
-             * @description dev-header (provisional, ADR-005) o jwt.
+             * @description session (cookie de sesión, ADR-009) o dev-header (solo pruebas).
              */
             auth_mode: string;
             /** Email */
@@ -3349,6 +3452,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Must Change Password
+             * @description Hay una contraseña temporal vigente: debe cambiarla antes de seguir.
+             * @default false
+             */
+            must_change_password: boolean;
             /** Permissions */
             permissions: string[];
             /** Roles */
@@ -4927,25 +5036,6 @@ export interface components {
             sort_order?: number | null;
         };
         /**
-         * TokenResponse
-         * @example {
-         *       "access_token": "eyJ...",
-         *       "expires_in": 3600,
-         *       "token_type": "bearer"
-         *     }
-         */
-        TokenResponse: {
-            /** Access Token */
-            access_token: string;
-            /** Expires In */
-            expires_in: number;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-        };
-        /**
          * UploadUrlRequest
          * @example {
          *       "content_type": "image/jpeg",
@@ -5747,6 +5837,57 @@ export interface operations {
             };
         };
     };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Contraseña actual incorrecta o nueva que no cumple la política. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -5766,10 +5907,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": components["schemas"]["LoginResponse"];
                 };
             };
-            /** @description Falta identificar al usuario (RF-042). */
+            /** @description Credenciales incorrectas (genérico). */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5796,13 +5937,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Demasiados intentos desde esta dirección. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -5848,15 +5989,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

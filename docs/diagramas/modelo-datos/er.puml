@@ -399,6 +399,7 @@ entity APP_USER {
     last_login_at : timestamptz
   * failed_login_count : integer
     locked_until : timestamptz
+  * must_change_password : boolean
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -436,6 +437,41 @@ entity USER_ROLE {
   ..
   <i>+ timestamps + soft-delete</i>
 }
+entity USER_SESSION {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * token_hash : varchar(64) <<UK>>
+  * last_seen_at : timestamptz
+  * expires_at : timestamptz
+    revoked_at : timestamptz
+    revoked_reason : varchar(60)
+    ip_address : varchar(45)
+    user_agent : varchar(300)
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity AUTH_EVENT <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * event : varchar(40)
+    user_id : uuid <<FK>>
+    email_attempted_hash : varchar(64)
+    ip_address : varchar(45)
+    user_agent : varchar(300)
+    detail : varchar(120)
+}
+entity SENSITIVE_ACCESS_LOG <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * user_id : uuid <<FK>>
+  * route : varchar(200)
+  * entity_type : varchar(60)
+  * entity_ids : jsonb
+  * fields : jsonb
+}
 entity AUDIT_LOG <<solo inserción>> {
   * id : uuid <<PK>>
   --
@@ -456,8 +492,11 @@ entity AUDIT_LOG <<solo inserción>> {
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
+APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
+APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
+APP_USER ||--o{ USER_SESSION : "sesiones abiertas"
 IMPORT_MAPPING_TEMPLATE |o--o{ IMPORT_BATCH : "plantilla"
 APP_USER |o--o{ IMPORT_BATCH : "carga"
 APP_USER |o--o{ IMPORT_BATCH : "aprueba"
