@@ -1432,6 +1432,88 @@
         "title": "Dimension",
         "type": "object"
       },
+      "DownloadUrlRequest": {
+        "description": "Request for download URL with purpose.",
+        "examples": [
+          {
+            "purpose": "internal"
+          },
+          {
+            "purpose": "external"
+          }
+        ],
+        "properties": {
+          "purpose": {
+            "default": "internal",
+            "description": "Uso previsto: internal (visualización) o external (descarga).",
+            "enum": [
+              "internal",
+              "external"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "title": "DownloadUrlRequest",
+        "type": "object"
+      },
+      "DownloadUrlResponse": {
+        "description": "Response with pre-signed download URL.",
+        "examples": [
+          {
+            "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+            "effective_restriction": {
+              "code": "NO_PUBLICAR",
+              "id": "01920000-0000-7000-8000-000000000333",
+              "label": "No publicar"
+            },
+            "expires_at": "2026-09-17T10:30:00Z",
+            "restriction_origin": "colección"
+          }
+        ],
+        "properties": {
+          "download_url": {
+            "description": "URL prefirmada para descarga.",
+            "title": "Download Url",
+            "type": "string"
+          },
+          "effective_restriction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Restricción efectiva aplicada a la foto."
+          },
+          "expires_at": {
+            "description": "Expiración de la URL.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "restriction_origin": {
+            "default": "ninguna",
+            "description": "Origen de la restricción efectiva.",
+            "enum": [
+              "foto",
+              "pieza",
+              "colección",
+              "ninguna"
+            ],
+            "title": "Restriction Origin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_url",
+          "expires_at"
+        ],
+        "title": "DownloadUrlResponse",
+        "type": "object"
+      },
       "DuplicateCandidateOut": {
         "examples": [
           {
@@ -7127,6 +7209,87 @@
         "title": "SourceRecordOut",
         "type": "object"
       },
+      "StorageEstimateResponse": {
+        "description": "Response with current storage volume and projection.",
+        "examples": [
+          {
+            "avg_mb_per_photo": 2.1,
+            "avg_photos_per_piece": 3.5,
+            "current_derivatives_bytes": 246913569,
+            "current_originals_bytes": 987654321,
+            "current_volume_bytes": 1234567890,
+            "projection": {
+              "mb_per_photo": 4,
+              "photos_per_piece": 5,
+              "pieces": 20000,
+              "projected_derivatives_bytes": 50000000000,
+              "projected_originals_bytes": 400000000000,
+              "projected_total_bytes": 450000000000
+            }
+          }
+        ],
+        "properties": {
+          "avg_mb_per_photo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Promedio real de MB por foto (originales).",
+            "title": "Avg Mb Per Photo"
+          },
+          "avg_photos_per_piece": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Promedio real de fotos por pieza.",
+            "title": "Avg Photos Per Piece"
+          },
+          "current_derivatives_bytes": {
+            "description": "Tamaño total de derivados (thumb + display).",
+            "title": "Current Derivatives Bytes",
+            "type": "integer"
+          },
+          "current_originals_bytes": {
+            "description": "Tamaño total de originales activos.",
+            "title": "Current Originals Bytes",
+            "type": "integer"
+          },
+          "current_volume_bytes": {
+            "description": "Volumen actual almacenado (originales + derivados).",
+            "title": "Current Volume Bytes",
+            "type": "integer"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Proyección de volumen según parámetros indicados.",
+            "title": "Projection"
+          }
+        },
+        "required": [
+          "current_volume_bytes",
+          "current_originals_bytes",
+          "current_derivatives_bytes"
+        ],
+        "title": "StorageEstimateResponse",
+        "type": "object"
+      },
       "SuggestionStatus": {
         "enum": [
           "PENDING",
@@ -12672,6 +12835,119 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/pieces/media/storage-estimate": {
+      "get": {
+        "operationId": "getMediaStorageEstimate",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pieces",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pieces"
+            }
+          },
+          {
+            "in": "query",
+            "name": "photos_per_piece",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Photos Per Piece"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mb_per_photo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mb Per Photo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageEstimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Estimación del volumen fotográfico",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/pieces/validate": {
       "post": {
         "operationId": "validatePiece",
@@ -13937,16 +14213,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -13961,8 +14227,98 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/pieces/{piece_id}/media/order": {
+      "put": {
+        "operationId": "reorderMedia",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "title": "Body",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaAssetOut"
+                  },
+                  "title": "Response Reordermedia",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Reordenar fotos de una pieza (lista completa de IDs)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/media/upload-url": {
@@ -13991,7 +14347,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -14030,16 +14386,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -14054,8 +14400,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/media/{media_id}": {
@@ -14083,10 +14428,12 @@
             }
           },
           {
+            "description": "Motivo obligatorio.",
             "in": "query",
             "name": "reason",
             "required": true,
             "schema": {
+              "description": "Motivo obligatorio.",
               "minLength": 3,
               "title": "Reason",
               "type": "string"
@@ -14126,16 +14473,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -14150,8 +14487,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "patch": {
         "operationId": "updateMedia",
@@ -14227,16 +14563,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`."
           }
         },
         "security": [
@@ -14251,8 +14577,99 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "fotografias-multiples-por-pieza",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
+      "get": {
+        "operationId": "getMediaDownloadUrl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Obtener URL prefirmada para descargar una foto",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/move": {

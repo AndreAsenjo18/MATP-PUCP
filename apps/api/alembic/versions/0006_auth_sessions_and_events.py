@@ -1,7 +1,7 @@
 """Server-side sessions, authentication ledger and sensitive-access log (ADR-009).
 
 Revision ID: 0006_auth_sessions_and_events
-Revises: 0005_import_batch_processing
+Revises: 06fcd85b7c46
 Create Date: 2026-10-20
 
 Change de OpenSpec: autenticacion-y-matriz-permisos (tarea 1.1, decisiones D1, D3 y D6).
@@ -27,7 +27,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0006_auth_sessions_and_events"
-down_revision: str | None = "0005_import_batch_processing"
+down_revision: str | None = "06fcd85b7c46"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

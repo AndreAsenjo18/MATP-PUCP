@@ -31,6 +31,7 @@ entity COLLECTION {
   * default_tenure_regime : varchar(40)
     origin_description : text
   * is_active : boolean
+    default_usage_restriction_term_id : uuid <<FK>>
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -175,6 +176,7 @@ entity TERM {
   * sort_order : integer
   * is_active : boolean
     external_uri : varchar(500)
+    extra : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -473,7 +475,6 @@ entity AUDIT_LOG <<solo inserción>> {
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
 APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
-COLLECTION |o--o{ COLLECTION : "subcolección de"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
 APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
@@ -487,6 +488,8 @@ VOCABULARY ||--o{ TERM : "contiene"
 TERM |o--o{ TERM : "parent_id"
 APP_USER ||--o{ USER_ROLE
 ROLE ||--o{ USER_ROLE
+COLLECTION |o--o{ COLLECTION : "subcolección de"
+TERM |o--o{ COLLECTION : "default_usage_restriction_term_id"
 TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"

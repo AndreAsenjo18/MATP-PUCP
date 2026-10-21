@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 import boto3
@@ -61,3 +62,69 @@ class ObjectStorage:
     def get_bytes(self, key: str) -> bytes:
         response = self._client.get_object(Bucket=self.bucket, Key=key)
         return response["Body"].read()
+
+    # --- Presigned URLs (D1, D5) -------------------------------------------
+    def presign_put(
+        self,
+        key: str,
+        content_type: str,
+        ttl_seconds: int = 900,
+    ) -> dict[str, Any]:
+        """URL prefirmada PUT para subida directa del navegador."""
+        url = self._client.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": self.bucket, "Key": key, "ContentType": content_type},
+            ExpiresIn=ttl_seconds,
+        )
+        return {"url": url, "method": "PUT", "headers": {"Content-Type": content_type}}
+
+    def presign_get(
+        self,
+        key: str,
+        ttl_seconds: int = 300,
+    ) -> str:
+        """URL prefirmada GET para descarga/visualización."""
+        return self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self.bucket, "Key": key},
+            ExpiresIn=ttl_seconds,
+        )
+
+    # --- Object metadata & streaming (D1 verification) -----------------------
+    def head(self, key: str) -> dict[str, Any]:
+        """HEAD object: existe, content_type, content_length, etag."""
+        try:
+            resp = self._client.head_object(Bucket=self.bucket, Key=key)
+            return {
+                "content_type": resp.get("ContentType"),
+                "content_length": resp.get("ContentLength"),
+                "etag": resp.get("ETag", "").strip('"'),
+            }
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "404":
+                raise FileNotFoundError(key) from exc
+            raise
+
+    def stream(self, key: str, chunk_size: int = 8192) -> Iterator[bytes]:
+        """Stream object body in chunks (for SHA-256 recalculation)."""
+        resp = self._client.get_object(Bucket=self.bucket, Key=key)
+        body = resp["Body"]
+        while chunk := body.read(chunk_size):
+            yield chunk
+
+    # --- Copy & delete pending (D1) ----------------------------------------
+    def copy(self, src_key: str, dst_key: str) -> None:
+        """Server-side copy within the same bucket."""
+        self._client.copy_object(
+            Bucket=self.bucket,
+            CopySource={"Bucket": self.bucket, "Key": src_key},
+            Key=dst_key,
+        )
+
+    def delete_pending(self, key: str) -> None:
+        """Delete a pending upload object (no-op if missing)."""
+        try:
+            self._client.delete_object(Bucket=self.bucket, Key=key)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "404":
+                raise

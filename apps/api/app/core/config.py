@@ -40,6 +40,31 @@ class Settings(BaseSettings):
     s3_bucket: str = Field(min_length=1)
     s3_auto_create_bucket: bool = False
 
+    # --- Media upload (fotografias-multiples-por-pieza, D2) --------------------
+    media_max_bytes: int = Field(
+        default=52_428_800,  # 50 MB [SUPUESTO C1]
+        gt=0,
+        description="Tamaño máximo de archivo de imagen subido (bytes).",
+    )
+    media_allowed_types: str = Field(
+        default="image/jpeg,image/png,image/tiff",
+        description="Tipos MIME admitidos, separados por comas.",
+    )
+    media_url_ttl_seconds: int = Field(
+        default=300,
+        gt=0,
+        description="TTL de URLs prefirmadas de descarga (segundos).",
+    )
+    media_upload_url_ttl_seconds: int = Field(
+        default=900,
+        gt=0,
+        description="TTL de URLs prefirmadas de subida (segundos).",
+    )
+    media_upload_mode: Literal["presigned", "proxy"] = Field(
+        default="presigned",
+        description="Modo de subida: presigned (directo a S3) o proxy (a través de la API).",
+    )
+
     # Authentication: opaque server-side sessions, not JWT (ADR-009). There is no shared secret
     # to configure: the session token is random and only its SHA-256 digest is stored.
     # Idle and absolute session lifetimes [SUPUESTO C7].
@@ -77,6 +102,10 @@ class Settings(BaseSettings):
     def session_max_minutes(self) -> int:
         """Absolute session lifetime in minutes (ADR-009, decision D1)."""
         return self.session_max_hours * 60
+
+    @property
+    def media_allowed_types_set(self) -> set[str]:
+        return {t.strip() for t in self.media_allowed_types.split(",") if t.strip()}
 
     @field_validator(
         "s3_access_key_id",
