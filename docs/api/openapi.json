@@ -1404,6 +1404,88 @@
         "title": "Dimension",
         "type": "object"
       },
+      "DownloadUrlRequest": {
+        "description": "Request for download URL with purpose.",
+        "examples": [
+          {
+            "purpose": "internal"
+          },
+          {
+            "purpose": "external"
+          }
+        ],
+        "properties": {
+          "purpose": {
+            "default": "internal",
+            "description": "Uso previsto: internal (visualización) o external (descarga).",
+            "enum": [
+              "internal",
+              "external"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "title": "DownloadUrlRequest",
+        "type": "object"
+      },
+      "DownloadUrlResponse": {
+        "description": "Response with pre-signed download URL.",
+        "examples": [
+          {
+            "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+            "effective_restriction": {
+              "code": "NO_PUBLICAR",
+              "id": "01920000-0000-7000-8000-000000000333",
+              "label": "No publicar"
+            },
+            "expires_at": "2026-09-17T10:30:00Z",
+            "restriction_origin": "colección"
+          }
+        ],
+        "properties": {
+          "download_url": {
+            "description": "URL prefirmada para descarga.",
+            "title": "Download Url",
+            "type": "string"
+          },
+          "effective_restriction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Restricción efectiva aplicada a la foto."
+          },
+          "expires_at": {
+            "description": "Expiración de la URL.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "restriction_origin": {
+            "default": "ninguna",
+            "description": "Origen de la restricción efectiva.",
+            "enum": [
+              "foto",
+              "pieza",
+              "colección",
+              "ninguna"
+            ],
+            "title": "Restriction Origin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_url",
+          "expires_at"
+        ],
+        "title": "DownloadUrlResponse",
+        "type": "object"
+      },
       "DuplicateCandidateOut": {
         "examples": [
           {
@@ -13683,6 +13765,95 @@
           }
         ],
         "summary": "Editar metadatos, orden o restricción de una foto",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
+      "get": {
+        "operationId": "getMediaDownloadUrl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadUrlResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          }
+        ],
+        "summary": "Obtener URL prefirmada para descargar una foto",
         "tags": [
           "Multimedia"
         ],

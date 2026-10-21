@@ -123,6 +123,54 @@ class MediaAssetUpdate(BaseModel):
     restriction_note: str | None = None
 
 
+class DownloadUrlRequest(BaseModel):
+    """Request for download URL with purpose."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"purpose": "internal"},
+                {"purpose": "external"},
+            ]
+        }
+    )
+
+    purpose: Literal["internal", "external"] = Field(
+        default="internal",
+        description="Uso previsto: internal (visualización) o external (descarga).",
+    )
+
+
+class DownloadUrlResponse(BaseModel):
+    """Response with pre-signed download URL."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+                    "expires_at": EX_DATETIME,
+                    "effective_restriction": {
+                        "id": "01920000-0000-7000-8000-000000000333",
+                        "code": "NO_PUBLICAR",
+                        "label": "No publicar",
+                    },
+                    "restriction_origin": "colección",
+                }
+            ]
+        }
+    )
+
+    download_url: str = Field(description="URL prefirmada para descarga.")
+    expires_at: datetime = Field(description="Expiración de la URL.")
+    effective_restriction: TermRef | None = Field(
+        None, description="Restricción efectiva aplicada a la foto."
+    )
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+        default="ninguna", description="Origen de la restricción efectiva."
+    )
+
+
 # Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_BULK_DOWNLOAD_PIECES = 200
 
