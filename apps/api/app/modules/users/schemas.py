@@ -39,24 +39,63 @@ class Me(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """Body of ``POST /auth/login``; ``username`` is the e-mail, as in the team's contract."""
+
     model_config = ConfigDict(
-        json_schema_extra={"examples": [{"email": "admin@matp.local", "password": "********"}]}
+        json_schema_extra={"examples": [{"username": "admin@matp.local", "password": "********"}]}
     )
 
-    email: str = Field(min_length=3, max_length=254)
+    username: str = Field(min_length=3, max_length=254, description="Correo de la cuenta.")
     password: str = Field(min_length=1, max_length=200)
 
 
-class TokenResponse(BaseModel):
+class LoginResponse(Me):
+    """The signed-in user plus what the web client needs to keep going (ADR-009 D1, D4).
+
+    The session token itself never appears here: it travels only in the ``HttpOnly`` cookie.
+    """
+
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"access_token": "eyJ...", "token_type": "bearer", "expires_in": 3600}]
+            "examples": [
+                {
+                    "id": EX_USER_ID,
+                    "email": "catalogador@matp.local",
+                    "full_name": "Catalogador (sintético)",
+                    "roles": ["CATALOGUER"],
+                    "permissions": ["pieces.read", "pieces.update"],
+                    "auth_mode": "session",
+                    "must_change_password": False,
+                    "csrf_token": "6f1c0e5e0b8e4c7aa0d3c9f2b1a45e87",
+                    "session_expires_at": EX_DATETIME,
+                }
+            ]
         }
     )
 
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
+    csrf_token: str = Field(
+        description=(
+            "Valor que las escrituras envían en `X-CSRF-Token`. También viaja en la cookie "
+            "`matp_csrf`, pero un cliente en otro dominio no puede leerla."
+        )
+    )
+    session_expires_at: datetime = Field(description="Fin absoluto de la sesión (UTC).")
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "current_password": "contraseña-temporal-entregada",
+                    "new_password": "una frase larga y propia",
+                }
+            ]
+        }
+    )
+
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
 
 
 class UserOut(BaseModel):

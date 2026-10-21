@@ -26,6 +26,12 @@ class PermissionDenied(DomainError):
     code = "permission_denied"
 
 
+class TooManyAttempts(DomainError):
+    """A rate limit was exceeded (login attempts per address); it says nothing about accounts."""
+
+    code = "too_many_attempts"
+
+
 class BusinessRuleViolation(DomainError):
     code = "business_rule_violation"
 

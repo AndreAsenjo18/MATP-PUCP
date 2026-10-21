@@ -5,14 +5,15 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.deps import (
     CurrentUser,
-    CurrentUserDep,
     SessionDep,
     SessionUserDep,
+    load_permissions,
     require_permission,
 )
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
@@ -38,20 +39,30 @@ from app.modules.ai_suggestions.schemas import (
     BatchEnrichRequest,
     CatalogingSuggestionRequest,
 )
+from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditLog, AuditOrigin
 from app.modules.audit.schemas import AuditEntryOut, RevertChangeSetRequest, RevertResult
-from app.modules.users.models import Permission, Role, RolePermission
+from app.modules.users import auth
+from app.modules.users.auth import LoginResult
+from app.modules.users.models import Permission, Role, RolePermission, UserSession
 from app.modules.users.schemas import (
+    ChangePasswordRequest,
     LoginRequest,
+    LoginResponse,
     Me,
     PermissionOut,
     RoleOut,
     RolePermissionsUpdate,
-    TokenResponse,
     UserCreate,
     UserOut,
     UserRoleUpdate,
     UserUpdate,
+)
+from app.modules.users.sessions import (
+    RevokeReason,
+    clear_session_cookies,
+    revoke_session,
+    set_session_cookies,
 )
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
@@ -64,26 +75,121 @@ AuditReader = Annotated[CurrentUser, Depends(require_permission("audit.read"))]
 
 
 # --------------------------------------------------------------------------- auth
+def _session_response(
+    response: Response, request: Request, db: Session, result: LoginResult
+) -> LoginResponse:
+    """Set the cookies of a freshly issued session and describe its user."""
+    settings = request.app.state.settings
+    roles, permissions = load_permissions(db, result.user.id)
+    set_session_cookies(response, settings, result.issued)
+    return LoginResponse(
+        id=result.user.id,
+        email=result.user.email,
+        full_name=result.user.full_name,
+        roles=list(roles),
+        permissions=sorted(permissions),
+        auth_mode="session",
+        must_change_password=result.user.must_change_password,
+        csrf_token=result.issued.csrf_token,
+        session_expires_at=result.issued.expires_at,
+    )
+
+
+def _client_address(request: Request) -> str | None:
+    return request.client.host if request.client else None
+
+
 @router.post(
     "/auth/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
     summary="Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos)",
+    description=(
+        "Abre una sesión de servidor y entrega las cookies `matp_session` (HttpOnly) y "
+        "`matp_csrf`. Cualquier fallo (correo inexistente, contraseña incorrecta, cuenta "
+        "inactiva o bloqueada) responde el mismo `401 invalid_credentials`; si la cuenta tiene "
+        "una contraseña temporal, `must_change_password` es verdadero (ADR-009)."
+    ),
     tags=["Autenticación"],
-    **stub(CHANGE_AUTH),
+    responses={
+        401: {"model": ErrorResponse, "description": "Credenciales incorrectas (genérico)."},
+        429: {"model": ErrorResponse, "description": "Demasiados intentos desde esta dirección."},
+    },
+    **implemented(),
 )
-def login(body: LoginRequest) -> TokenResponse:
-    raise not_implemented(CHANGE_AUTH, TokenResponse)
+def login(
+    body: LoginRequest, request: Request, response: Response, db: SessionDep
+) -> LoginResponse:
+    result = auth.login(
+        db,
+        request.app.state.settings,
+        request.app.state.login_throttle,
+        username=body.username,
+        password=body.password,
+        ip_address=_client_address(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    return _session_response(response, request, db, result)
 
 
 @router.post(
     "/auth/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Cerrar sesión",
+    description="Revoca la sesión actual y elimina las cookies de sesión y CSRF.",
     tags=["Autenticación"],
-    **stub(CHANGE_AUTH),
+    **implemented(),
 )
-def logout(user: CurrentUserDep) -> None:
-    raise not_implemented(CHANGE_AUTH)
+def logout(user: SessionUserDep, request: Request, db: SessionDep) -> Response:
+    if user.session_id is not None:
+        context = AuditContext(
+            origin=AuditOrigin.MANUAL, user_id=user.id, reason="Cierre de sesión"
+        )
+        with audit_context(db, context):
+            live = db.get(UserSession, user.session_id)
+            if live is not None:
+                revoke_session(db, live, RevokeReason.LOGOUT)
+            db.commit()
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_session_cookies(response, request.app.state.settings)
+    return response
+
+
+@router.post(
+    "/auth/change-password",
+    response_model=LoginResponse,
+    summary="Cambiar la contraseña propia (obligatorio con una contraseña temporal)",
+    description=(
+        "Exige la contraseña actual y una nueva de al menos 12 caracteres que no sea común. "
+        "Revoca todas las sesiones del usuario y abre una nueva en este dispositivo. Es la "
+        "única operación, junto con `me` y `logout`, que acepta una cuenta con contraseña "
+        "temporal (`403 password_change_required` en las demás)."
+    ),
+    tags=["Autenticación"],
+    responses={
+        422: {
+            "model": ErrorResponse,
+            "description": "Contraseña actual incorrecta o nueva que no cumple la política.",
+        }
+    },
+    **implemented(),
+)
+def change_password(
+    body: ChangePasswordRequest,
+    user: SessionUserDep,
+    request: Request,
+    response: Response,
+    db: SessionDep,
+) -> LoginResponse:
+    result = auth.change_password(
+        db,
+        request.app.state.settings,
+        user.id,
+        current_password=body.current_password,
+        new_password=body.new_password,
+        ip_address=_client_address(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    return _session_response(response, request, db, result)
 
 
 @router.get(

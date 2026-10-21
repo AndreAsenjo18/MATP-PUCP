@@ -27,6 +27,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.responses import Response
 
 from app.core.config import Settings
 from app.core.errors import AuthenticationRequired
@@ -176,6 +177,26 @@ def issue_session(
         db.add(row)
         db.flush()
     return IssuedSession(token=token, csrf_token=csrf_token_for(token), session=row)
+
+
+def set_session_cookies(response: Response, settings: Settings, issued: IssuedSession) -> None:
+    """Hand the browser its session and CSRF cookies (ADR-009, decisions D1 and D4).
+
+    The session cookie is ``HttpOnly`` so scripts never see the token; the CSRF cookie is the
+    opposite on purpose, because the web client must read it to echo it in ``X-CSRF-Token``.
+    ``Secure`` follows ``COOKIE_SECURE`` (only local development may turn it off).
+    """
+    max_age = settings.session_max_minutes * 60
+    common = {"max_age": max_age, "path": "/", "secure": settings.cookie_secure, "samesite": "lax"}
+    response.set_cookie(SESSION_COOKIE, issued.token, httponly=True, **common)  # type: ignore[arg-type]
+    response.set_cookie(CSRF_COOKIE, issued.csrf_token, httponly=False, **common)  # type: ignore[arg-type]
+
+
+def clear_session_cookies(response: Response, settings: Settings) -> None:
+    for name, http_only in ((SESSION_COOKIE, True), (CSRF_COOKIE, False)):
+        response.delete_cookie(
+            name, path="/", secure=settings.cookie_secure, httponly=http_only, samesite="lax"
+        )
 
 
 def find_session(db: Session, token: str) -> UserSession | None:

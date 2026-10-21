@@ -21,6 +21,7 @@ from app.core.errors import (
     DomainError,
     NotFound,
     PermissionDenied,
+    TooManyAttempts,
     ValidationFailed,
 )
 
@@ -81,6 +82,7 @@ class NotImplementedEndpoint(Exception):
 
 STATUS_BY_ERROR: list[tuple[type[DomainError], int]] = [
     (AuthenticationRequired, status.HTTP_401_UNAUTHORIZED),
+    (TooManyAttempts, status.HTTP_429_TOO_MANY_REQUESTS),
     (NotFound, status.HTTP_404_NOT_FOUND),
     (PermissionDenied, status.HTTP_403_FORBIDDEN),
     (ValidationFailed, status.HTTP_422_UNPROCESSABLE_CONTENT),
@@ -97,6 +99,7 @@ HTTP_CODES = {
     413: "payload_too_large",
     415: "unsupported_media_type",
     422: "request_validation_failed",
+    429: "too_many_requests",
 }
 
 HTTP_MESSAGES = {

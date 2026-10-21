@@ -129,18 +129,6 @@ def test_sensitive_fields_are_masked_for_internal_viewer(seeded_api: SeededApi) 
     assert {item["level"] for item in listed} <= {"Sede", "Depósito"}
 
 
-def test_auth_login_remains_stub(client: TestClient) -> None:
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "admin@matp.local",
-            "password": "clave-ficticia-para-prueba",
-        },
-    )
-
-    assert response.status_code == 501
-
-
 def test_auth_me_returns_user_role_and_permissions(login_as: LoginAs) -> None:
     response = login_as("CATALOGUER").get("/api/v1/auth/me")
 
@@ -169,8 +157,17 @@ def test_auth_endpoints_openapi_contract(client: TestClient) -> None:
 
     login = paths["/api/v1/auth/login"]["post"]
     assert login["operationId"] == "login"
-    assert login["x-status"] == "stub"
-    assert login["x-change"] == "autenticacion-y-matriz-permisos"
+    assert login["x-status"] == "implemented"
+    assert "x-change" not in login
+    assert {"401", "429"} <= set(login["responses"])
+
+    for path, operation_id in (
+        ("/api/v1/auth/logout", "logout"),
+        ("/api/v1/auth/change-password", "changePassword"),
+    ):
+        operation = paths[path]["post"]
+        assert operation["operationId"] == operation_id
+        assert operation["x-status"] == "implemented"
 
     me = paths["/api/v1/auth/me"]["get"]
     assert me["operationId"] == "getMe"

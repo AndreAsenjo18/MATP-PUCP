@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from sqlalchemy import Engine
 
+from app.api.csrf import CsrfMiddleware
 from app.api.errors import install_error_handlers
 from app.api.v1 import api_router
 from app.core.config import Settings, get_settings
@@ -23,6 +24,7 @@ from app.core.storage import ObjectStorage
 from app.modules.imports.worker import register_import_jobs
 from app.modules.quality.incremental import register_incremental_jobs
 from app.modules.quality.scan import register_scan_jobs
+from app.modules.users.auth import LoginThrottle
 from app.modules.users.passwords import install_password_log_redaction
 
 logger = logging.getLogger("matp.api")
@@ -34,8 +36,9 @@ API_DESCRIPTION = """API del Sistema de Gestión y Digitalización de Coleccione
 - Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará
   (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.
 - Errores con formato uniforme `{code, message, details}` y mensajes en español.
-- Identidad **provisional** de desarrollo: cabecera `X-MATP-User` con el correo de un usuario
-  sintético (ADR-005); rechazada en producción.
+- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie
+  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera
+  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.
 """
 
 OPENAPI_TAGS = [
@@ -117,12 +120,15 @@ def create_app(
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
     app.state.storage = storage
+    app.state.login_throttle = LoginThrottle()
     app.state.health_checks = (
         health_checks
         if health_checks is not None
         else {"database": lambda: check_database(engine), "storage": storage.check}
     )
 
+    # Added first so it sits *inside* CORS: a rejected write still carries the CORS headers.
+    app.add_middleware(CsrfMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
