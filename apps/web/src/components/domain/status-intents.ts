@@ -114,6 +114,19 @@ export function duplicateStatus(status: DuplicateStatus | string | null | undefi
   return lookup(DUPLICATE, status, "Estado");
 }
 
+type QualityJobStatus = ApiSchemas["QualityJobStatus"];
+
+const QUALITY_JOB: Record<QualityJobStatus, StatusStyle> = {
+  RUNNING: { label: "En curso", intent: "info" },
+  SUCCEEDED: { label: "Terminada", intent: "success" },
+  FAILED: { label: "Falló", intent: "danger" },
+};
+
+/** Detección completa de duplicados (design D3 de `deteccion-duplicados-y-cola-revision`). */
+export function qualityJobStatus(status: QualityJobStatus | string | null | undefined): StatusStyle {
+  return lookup(QUALITY_JOB, status, "Estado");
+}
+
 const AUDIT: Record<AuditAction, StatusStyle> = {
   CREATE: { label: "Creación", intent: "default" },
   UPDATE: { label: "Modificación", intent: "default" },
