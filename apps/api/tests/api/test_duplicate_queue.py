@@ -20,7 +20,7 @@ from app.models import AppUser, Base, Collection, DuplicateCandidate, Piece
 from app.modules.audit.context import audit_context
 from app.modules.quality.models import DuplicateStatus
 from app.seed.synthetic import SeedOptions, run_seed
-from tests.api.conftest import MANAGER, VIEWER, api_settings, as_user
+from tests.api.conftest import MANAGER, api_settings, login_client
 from tests.conftest import SYSTEM_CONTEXT
 
 QUEUE = "/api/v1/quality/duplicates"
@@ -43,13 +43,20 @@ def factory() -> Iterator[sessionmaker[Session]]:
 
 @pytest.fixture(scope="module")
 def client(factory: sessionmaker[Session]) -> Iterator[TestClient]:
-    app = create_app(api_settings(), health_checks={}, engine=factory.kw["bind"])
-    with TestClient(app) as test_client:
-        yield test_client
+    engine = factory.kw["bind"]
+    app = create_app(api_settings(), health_checks={}, engine=engine)
+    with TestClient(app):  # runs the lifespan; requests go through the signed-in client
+        yield login_client(app, engine, "INTERNAL_VIEWER")
+
+
+@pytest.fixture(scope="module")
+def anonymous(client: TestClient) -> TestClient:
+    """Same application, no session cookie."""
+    return TestClient(client.app, base_url=client.base_url)
 
 
 def _get(client: TestClient, **params: object) -> dict:
-    response = client.get(QUEUE, params={"page_size": 100, **params}, headers=as_user(VIEWER))
+    response = client.get(QUEUE, params={"page_size": 100, **params})
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -90,7 +97,7 @@ def test_filter_by_origin(client: TestClient, factory: sessionmaker[Session]) ->
     assert all(item["import_row_id"] and not item["piece_b_id"] for item in imported["items"])
     with factory() as session:
         assert catalog["total"] + imported["total"] == len(_all(session))
-    response = client.get(QUEUE, params={"origin": "EXCEL"}, headers=as_user(VIEWER))
+    response = client.get(QUEUE, params={"origin": "EXCEL"})
     assert response.status_code == 422
 
 
@@ -147,5 +154,5 @@ def test_an_expired_postponement_reopens_on_read(
         assert session.get(DuplicateCandidate, expired_id).postponed_until is None
 
 
-def test_queue_requires_an_identity(client: TestClient) -> None:
-    assert client.get(QUEUE).status_code == 401
+def test_queue_requires_an_identity(anonymous: TestClient) -> None:
+    assert anonymous.get(QUEUE).status_code == 401
