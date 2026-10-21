@@ -13160,6 +13160,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil)",
