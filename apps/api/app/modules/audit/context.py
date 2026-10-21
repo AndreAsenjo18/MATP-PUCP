@@ -24,6 +24,9 @@ class AuditContext:
     action: AuditAction | None = None
     # Enables the audited correction procedure of an inventory code (RN-002).
     allow_inventory_code_correction: bool = False
+    # Groups every flush of one operation in a single change set (e.g. a merge of two pieces,
+    # change deteccion-duplicados-y-cola-revision D4); by default each flush gets a new one.
+    change_set_id: uuid.UUID | None = None
 
     def __post_init__(self) -> None:
         if self.user_id is None and not (self.origin is AuditOrigin.SYSTEM and self.actor_label):

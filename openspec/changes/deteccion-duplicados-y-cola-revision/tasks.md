@@ -11,19 +11,19 @@
 
 ## 3. Cola y resolución
 
-- [ ] 3.1 Implementar `GET /api/v1/quality/duplicates` con filtros (estado, colección, puntaje, origen) y reapertura de pospuestos vencidos en lectura; pruebas (Req: Pares distintos estables…)
-- [ ] 3.2 Implementar `resolve` con acciones `distinct` y `postpone`; pruebas: distinto sin cambios no reaparece, reaparece con huella distinta, posponer > 180 días 422, Consulta interna 403 (Req: Pares distintos estables…)
-- [ ] 3.3 Crear `quality/merge.py` y acción `merge` (validaciones, elección de campos, traslado de identificadores/fotos/movimientos/datos de origen/evaluaciones/sugerencias, pieza absorbida fusionada, candidatos reemplazados, `change_set_id`); pruebas de los cuatro escenarios y de identificador repetido conservado como no vigente (Req: Fusión con elección de valores y reasignación de datos relacionados; RN-002, RN-003, RN-005)
-- [ ] 3.4 Exponer `merged_into` en la ficha de piezas fusionadas (lectura con `include_deleted` para la redirección); prueba (Req: Fusión… — escenario "Consulta de la pieza absorbida")
+- [x] 3.1 Implementar `GET /api/v1/quality/duplicates` con filtros (estado, colección, puntaje, origen) y reapertura de pospuestos vencidos en lectura; pruebas (Req: Pares distintos estables…)
+- [x] 3.2 Implementar `resolve` con acciones `distinct` y `postpone`; pruebas: distinto sin cambios no reaparece, reaparece con huella distinta, posponer > 180 días 422, Consulta interna 403 (Req: Pares distintos estables…)
+- [x] 3.3 Crear `quality/merge.py` y acción `merge` (validaciones, elección de campos, traslado de identificadores/fotos/componentes/materiales/préstamos/sugerencias, movimientos/datos de origen/evaluaciones conservados en la absorbida (D4), pieza absorbida fusionada, candidatos reemplazados, `change_set_id`); pruebas de los cuatro escenarios y de identificador repetido conservado como no vigente (Req: Fusión con elección de valores y reasignación de datos relacionados; RN-002, RN-003, RN-005)
+- [x] 3.4 Exponer `merged_into` en la ficha de piezas fusionadas (lectura con `include_deleted` para la redirección); prueba (Req: Fusión… — escenario "Consulta de la pieza absorbida")
 
 ## 4. Frontend
 
-- [ ] 4.1 Cola `app/duplicados` en modo `live` con filtros y comparación lado a lado resaltando señales; pruebas de componente (Req: Detección explicable…; RNF-010)
-- [ ] 4.2 Asistente de fusión: elegir pieza conservada, elegir valores por campo, resumen de lo que se trasladará y confirmación; aviso de bloqueo por código I o régimen; pruebas de componente (Req: Fusión con elección de valores…)
+- [x] 4.1 Cola `app/duplicados` en modo `live` con filtros y comparación lado a lado resaltando señales; pruebas de componente (Req: Detección explicable…; RNF-010)
+- [x] 4.2 Asistente de fusión: elegir pieza conservada, elegir valores por campo, resumen de lo que se trasladará y confirmación; aviso de bloqueo por código I o régimen; pruebas de componente (Req: Fusión con elección de valores…)
 
 ## 5. Cierre del change
 
 - [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de volumen con 20 000 piezas sintéticas contra PostgreSQL en compose (duración del scan y calibración de umbrales de trigramas) cuando Docker esté disponible
-- [ ] 5.2 Actualizar OpenAPI: implementar los 2 stubs y añadir `duplicates/scan` y `quality/jobs/{job_id}`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (cola de duplicados, marcar distintos, posponer, fusionar)
-- [ ] 5.4 Registrar supuestos (pesos, umbral, máximo de posposición, regímenes en fusión) en `docs/preguntas-contraparte.md`, `openspec validate deteccion-duplicados-y-cola-revision --strict` y, tras aprobar el PR, `openspec archive deteccion-duplicados-y-cola-revision -y`
+- [x] 5.2 Actualizar OpenAPI: implementar los 2 stubs y añadir `duplicates/scan` y `quality/jobs/{job_id}`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
+- [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (cola de duplicados, marcar distintos, posponer, fusionar)
+- [ ] 5.4 Registrar supuestos (pesos, umbral, máximo de posposición, regímenes en fusión) en `docs/preguntas-contraparte.md`, `openspec validate deteccion-duplicados-y-cola-revision --strict` y, tras aprobar el PR, `openspec archive deteccion-duplicados-y-cola-revision -y` — supuestos registrados el 2026-10-20 (O1–O5, G8, F2, F3; design D6; spec delta) y `validate --strict` en verde; queda sin marcar hasta archivar tras aprobar el PR

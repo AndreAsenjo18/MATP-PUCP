@@ -38,6 +38,8 @@ from app.modules.catalog.queries import (
     get_piece,
 )
 from app.modules.catalog.schemas import (
+    MergedFrom,
+    MergedInto,
     PieceChildLink,
     PieceCreate,
     PieceDetail,
@@ -210,6 +212,25 @@ def validate_piece(
     raise not_implemented(CHANGE_PIECE_CRUD, PieceValidationResult)
 
 
+def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
+    """Pieces merged into ``piece_id``: their append-only history stays on them (D4)."""
+    absorbed = session.scalars(
+        select(Piece)
+        .where(Piece.merged_into_id == piece_id, Piece.deleted_at.is_not(None))
+        .order_by(Piece.deleted_at)
+        .execution_options(**{INCLUDE_DELETED: True})
+    )
+    return [
+        MergedFrom(
+            piece_id=piece.id,
+            denomination=piece.denomination,
+            merged_at=piece.deleted_at,
+            reason=piece.deletion_reason,
+        )
+        for piece in absorbed
+    ]
+
+
 @router.get(
     "/{piece_id}",
     response_model=PieceDetail,
@@ -219,8 +240,24 @@ def validate_piece(
     **implemented(),
 )
 def get_piece_by_id(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> PieceDetail:
-    piece = get_piece(session, piece_id)
-    return CatalogReader(session, Viewer(user.permissions)).detail(piece)
+    reader = CatalogReader(session, Viewer(user.permissions))
+    merged_from = _merged_from(session, piece_id)
+    try:
+        piece = get_piece(session, piece_id)
+    except NotFound:
+        # A merged piece is logically deleted but still answers with a link to the surviving
+        # one (calidad-datos, «Consulta de la pieza absorbida»); any other deleted piece is 404.
+        merged = session.get(Piece, piece_id, execution_options={INCLUDE_DELETED: True})
+        if merged is None or merged.merged_into_id is None:
+            raise
+        link = MergedInto(
+            piece_id=merged.merged_into_id,
+            merged_at=merged.deleted_at,
+            reason=merged.deletion_reason,
+        )
+        detail = reader.detail(merged)
+        return detail.model_copy(update={"merged_into": link, "merged_from": merged_from})
+    return reader.detail(piece).model_copy(update={"merged_from": merged_from})
 
 
 @router.put(
