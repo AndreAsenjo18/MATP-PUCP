@@ -10,6 +10,7 @@ import {
   DuplicateCandidateCard,
   DuplicateFilters,
   MERGE_PENDING_NOTE,
+  SCAN_STARTING_TEXT,
   ScanPanel,
   canBeResolved,
   jobProgressText,
@@ -188,6 +189,7 @@ describe("filtros y detección completa", () => {
 
   it("describe el avance, el resultado y el fallo de una detección", () => {
     expect(jobProgressText(JOB)).toBe("Revisadas 120 de 298 piezas · 610 pares evaluados.");
+    expect(jobProgressText({ ...JOB, total_pieces: 0, processed_pieces: 0, pairs_evaluated: 0 })).toBe(SCAN_STARTING_TEXT);
     expect(jobProgressText({ ...JOB, status: "SUCCEEDED" })).toMatch(/^Detección terminada en 1[.,]5 s: 610 pares evaluados, 3 pares nuevos y 1 reabiertos\.$/);
     expect(jobProgressText({ ...JOB, status: "FAILED", error_message: "Detección interrumpida." })).toBe("Detección interrumpida.");
     expect(qualityJobStatus("FAILED")).toEqual({ label: "Falló", intent: "danger" });
@@ -198,6 +200,9 @@ describe("filtros y detección completa", () => {
     const running = render(<ScanPanel job={JOB} error={null} starting={false} canScan onStart={noop} />);
     expect(running).toMatch(/<button[^>]*\sdisabled=""[^>]*>[\s\S]*?Detección en curso…/);
     expect(visibleText(running)).toContain("En curso");
+    const starting = visibleText(render(<ScanPanel job={{ ...JOB, total_pieces: 0, processed_pieces: 0 }} error={null} starting={false} canScan onStart={noop} />));
+    expect(starting).toContain(`En curso ${SCAN_STARTING_TEXT}`);
+    expect(starting).not.toContain("Revisadas 0 de 0");
     const idle = visibleText(render(<ScanPanel job={null} error="Sin conexión." starting={false} canScan onStart={noop} />));
     expect(idle).toContain("Buscar duplicados");
     expect(idle).toContain("Sin conexión.");

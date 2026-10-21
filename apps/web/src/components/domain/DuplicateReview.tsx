@@ -173,9 +173,13 @@ export function markedRows(signals: readonly DuplicateSignal[]): Map<ComparisonR
   return marks;
 }
 
+/** Avance de una detección que aún no contó las piezas del catálogo (`total_pieces` en 0). */
+export const SCAN_STARTING_TEXT = "Iniciando…";
+
 /** Texto del avance o resultado de una detección completa. */
 export function jobProgressText(job: QualityJob): string {
   if (job.status === "RUNNING") {
+    if (job.total_pieces === 0) return SCAN_STARTING_TEXT;
     return `Revisadas ${job.processed_pieces} de ${job.total_pieces} piezas · ${job.pairs_evaluated} pares evaluados.`;
   }
   if (job.status === "FAILED") return job.error_message || "La detección se interrumpió. Puede lanzarla de nuevo.";
