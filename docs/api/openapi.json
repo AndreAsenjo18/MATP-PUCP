@@ -798,6 +798,34 @@
         "title": "CatalogingSuggestionRequest",
         "type": "object"
       },
+      "ChangePasswordRequest": {
+        "examples": [
+          {
+            "current_password": "contraseña-temporal-entregada",
+            "new_password": "una frase larga y propia"
+          }
+        ],
+        "properties": {
+          "current_password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
       "ClassificationRule": {
         "properties": {
           "description": {
@@ -3430,31 +3458,117 @@
         "type": "object"
       },
       "LoginRequest": {
+        "description": "Body of ``POST /auth/login``; ``username`` is the e-mail, as in the team's contract.",
         "examples": [
           {
-            "email": "admin@matp.local",
-            "password": "********"
+            "password": "********",
+            "username": "admin@matp.local"
           }
         ],
         "properties": {
-          "email": {
-            "maxLength": 254,
-            "minLength": 3,
-            "title": "Email",
-            "type": "string"
-          },
           "password": {
             "maxLength": 200,
             "minLength": 1,
             "title": "Password",
             "type": "string"
+          },
+          "username": {
+            "description": "Correo de la cuenta.",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Username",
+            "type": "string"
           }
         },
         "required": [
-          "email",
+          "username",
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "LoginResponse": {
+        "description": "The signed-in user plus what the web client needs to keep going (ADR-009 D1, D4).\n\nThe session token itself never appears here: it travels only in the ``HttpOnly`` cookie.",
+        "examples": [
+          {
+            "auth_mode": "session",
+            "csrf_token": "6f1c0e5e0b8e4c7aa0d3c9f2b1a45e87",
+            "email": "catalogador@matp.local",
+            "full_name": "Catalogador (sintético)",
+            "id": "01920000-0000-7000-8000-000000000501",
+            "must_change_password": false,
+            "permissions": [
+              "pieces.read",
+              "pieces.update"
+            ],
+            "roles": [
+              "CATALOGUER"
+            ],
+            "session_expires_at": "2026-09-17T10:30:00Z"
+          }
+        ],
+        "properties": {
+          "auth_mode": {
+            "description": "session (cookie de sesión, ADR-009) o dev-header (solo pruebas).",
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "csrf_token": {
+            "description": "Valor que las escrituras envían en `X-CSRF-Token`. También viaja en la cookie `matp_csrf`, pero un cliente en otro dominio no puede leerla.",
+            "title": "Csrf Token",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "must_change_password": {
+            "default": false,
+            "description": "Hay una contraseña temporal vigente: debe cambiarla antes de seguir.",
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "session_expires_at": {
+            "description": "Fin absoluto de la sesión (UTC).",
+            "format": "date-time",
+            "title": "Session Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "roles",
+          "permissions",
+          "auth_mode",
+          "csrf_token",
+          "session_expires_at"
+        ],
+        "title": "LoginResponse",
         "type": "object"
       },
       "MappingRequest": {
@@ -3672,10 +3786,11 @@
       "Me": {
         "examples": [
           {
-            "auth_mode": "dev-header",
+            "auth_mode": "session",
             "email": "catalogador@matp.local",
             "full_name": "Catalogador (sintético)",
             "id": "01920000-0000-7000-8000-000000000501",
+            "must_change_password": false,
             "permissions": [
               "pieces.read",
               "pieces.update"
@@ -3687,7 +3802,7 @@
         ],
         "properties": {
           "auth_mode": {
-            "description": "dev-header (provisional, ADR-005) o jwt.",
+            "description": "session (cookie de sesión, ADR-009) o dev-header (solo pruebas).",
             "title": "Auth Mode",
             "type": "string"
           },
@@ -3703,6 +3818,12 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "must_change_password": {
+            "default": false,
+            "description": "Hay una contraseña temporal vigente: debe cambiarla antes de seguir.",
+            "title": "Must Change Password",
+            "type": "boolean"
           },
           "permissions": {
             "items": {
@@ -7273,36 +7394,6 @@
         "title": "TermUpdate",
         "type": "object"
       },
-      "TokenResponse": {
-        "examples": [
-          {
-            "access_token": "eyJ...",
-            "expires_in": 3600,
-            "token_type": "bearer"
-          }
-        ],
-        "properties": {
-          "access_token": {
-            "title": "Access Token",
-            "type": "string"
-          },
-          "expires_in": {
-            "title": "Expires In",
-            "type": "integer"
-          },
-          "token_type": {
-            "default": "bearer",
-            "title": "Token Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "access_token",
-          "expires_in"
-        ],
-        "title": "TokenResponse",
-        "type": "object"
-      },
       "UploadUrlRequest": {
         "examples": [
           {
@@ -7728,15 +7819,21 @@
     },
     "securitySchemes": {
       "DevUserHeader": {
-        "description": "Identidad PROVISIONAL de desarrollo (ADR-005): correo o UUID de un usuario sintético activo, p. ej. `catalogador@matp.local`. Rechazada con APP_ENV=production. Se reemplaza por JWT en el change autenticacion-y-matriz-permisos.",
+        "description": "Identidad de PRUEBAS (ADR-005): correo o UUID de un usuario sintético activo, p. ej. `catalogador@matp.local`. Solo se acepta con APP_ENV=test; en desarrollo, demostración y producción se usa el inicio de sesión (ADR-009).",
         "in": "header",
         "name": "X-MATP-User",
+        "type": "apiKey"
+      },
+      "cookieAuth": {
+        "description": "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega `POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`.",
+        "in": "cookie",
+        "name": "matp_session",
         "type": "apiKey"
       }
     }
   },
   "info": {
-    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Identidad **provisional** de desarrollo: cabecera `X-MATP-User` con el correo de un usuario\n  sintético (ADR-005); rechazada en producción.\n",
+    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie\n  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera\n  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.\n",
     "title": "MATP API",
     "version": "0.1.0"
   },
@@ -7811,6 +7908,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)",
@@ -7889,6 +7989,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009)",
@@ -8026,6 +8129,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Sugerencias de IA (pendientes por defecto)",
@@ -8105,6 +8211,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Detalle de una sugerencia de IA",
@@ -8194,6 +8303,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Aprobar (total, parcial o editada) y aplicar con auditoría de origen IA",
@@ -8284,6 +8396,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Rechazar una sugerencia con motivo",
@@ -8362,6 +8477,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Escaneo de calidad e inconsistencias asistido por IA (queda PENDIENTE, RN-009)",
@@ -8567,6 +8685,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Consultar la auditoría campo a campo (más reciente primero)",
@@ -8673,6 +8794,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)",
@@ -8763,6 +8887,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)",
@@ -8773,14 +8900,15 @@
         "x-status": "stub"
       }
     },
-    "/api/v1/auth/login": {
+    "/api/v1/auth/change-password": {
       "post": {
-        "operationId": "login",
+        "description": "Exige la contraseña actual y una nueva de al menos 12 caracteres que no sea común. Revoca todas las sesiones del usuario y abre una nueva en este dispositivo. Es la única operación, junto con `me` y `logout`, que acepta una cuenta con contraseña temporal (`403 password_change_required` en las demás).",
+        "operationId": "changePassword",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
+                "$ref": "#/components/schemas/ChangePasswordRequest"
               }
             }
           },
@@ -8791,7 +8919,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             },
@@ -8825,29 +8953,100 @@
                 }
               }
             },
-            "description": "Datos no válidos."
+            "description": "Contraseña actual incorrecta o nueva que no cumple la política."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
           },
-          "501": {
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Cambiar la contraseña propia (obligatorio con una contraseña temporal)",
+        "tags": [
+          "Autenticación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Abre una sesión de servidor y entrega las cookies `matp_session` (HttpOnly) y `matp_csrf`. Cualquier fallo (correo inexistente, contraseña incorrecta, cuenta inactiva o bloqueada) responde el mismo `401 invalid_credentials`; si la cuenta tiene una contraseña temporal, `must_change_password` es verdadero (ADR-009).",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Credenciales incorrectas (genérico)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Demasiados intentos desde esta dirección."
           }
         },
         "summary": "Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos)",
         "tags": [
           "Autenticación"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/auth/logout": {
       "post": {
+        "description": "Revoca la sesión actual y elimina las cookies de sesión y CSRF.",
         "operationId": "logout",
         "responses": {
           "204": {
@@ -8882,29 +9081,21 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Cerrar sesión",
         "tags": [
           "Autenticación"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/auth/me": {
@@ -8955,6 +9146,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Usuario actual con roles y permisos efectivos",
@@ -9028,6 +9222,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar las líneas artesanales y categorías del catálogo (RF-011)",
@@ -9103,6 +9300,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear una línea artesanal o categoría (RF-011)",
@@ -9178,6 +9378,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar colecciones y subcolecciones (plano, con parent_id)",
@@ -9243,6 +9446,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear una colección o subcolección (sigla normalizada única)",
@@ -9337,6 +9543,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Eliminar lógicamente una colección vacía, con motivo (RN-005)",
@@ -9414,6 +9623,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Detalle de una colección",
@@ -9511,6 +9723,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar o mover una colección (sin ciclos)",
@@ -9584,6 +9799,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar la escala de estados de conservación (RF-012)",
@@ -9662,6 +9880,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Exportación completa de la base en formato abierto (RF-044)",
@@ -9724,6 +9945,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Tipos de identificador parametrizables (RN-010)",
@@ -9799,6 +10023,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear un tipo de identificador",
@@ -9888,6 +10115,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar o desactivar un tipo de identificador",
@@ -9956,6 +10186,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Vista previa de la normalización de una celda de códigos (RF-023)",
@@ -10047,6 +10280,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Plantillas de mapeo reutilizables (RF-022)",
@@ -10123,6 +10359,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Guardar una plantilla de mapeo",
@@ -10226,6 +10465,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar lotes de importación",
@@ -10294,6 +10536,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "1. Ingesta: subir un Excel y crear el lote",
@@ -10373,6 +10618,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Estado de un lote, con la etapa en curso y su avance",
@@ -10462,6 +10710,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "6. Aprobación explícita por rol autorizado (RF-027)",
@@ -10596,6 +10847,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "5. Previsualización con diff y clasificación de filas",
@@ -10675,6 +10929,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "7. Bitácora de carga con motivos de rechazo (RF-028)",
@@ -10766,6 +11023,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "2. Mapeo: asignar columnas (o aplicar una plantilla)",
@@ -10855,6 +11115,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Revertir un lote aplicado (RNF-007)",
@@ -10955,6 +11218,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Decidir sobre una fila (aceptar, excluir o rechazar con motivo)",
@@ -11036,6 +11302,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "3-4. Normalizar, validar y hacer matching multi-código",
@@ -11107,6 +11376,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar préstamos y exposiciones temporales",
@@ -11173,6 +11445,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Registrar un préstamo o salida de exhibición",
@@ -11253,6 +11528,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Actualizar el estado de un préstamo",
@@ -11361,6 +11639,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar ubicaciones (sin niveles de ubicación exacta si el rol no lo permite)",
@@ -11436,6 +11717,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear una ubicación en la jerarquía sede › espacio › mueble › nivel › contenedor",
@@ -11499,6 +11783,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Árbol jerárquico de ubicaciones, de la sede al contenedor (RF-016)",
@@ -11578,6 +11865,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Detalle de una ubicación con su ruta",
@@ -11665,6 +11955,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar o desactivar una ubicación",
@@ -11749,6 +12042,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar las piezas guardadas en un espacio, mueble, nivel o contenedor (RF-034, RF-016)",
@@ -11828,6 +12124,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
@@ -11906,6 +12205,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Subir una fotografía de una pieza al almacenamiento de objetos (RF-013)",
@@ -11967,6 +12269,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Catálogo de permisos",
@@ -12287,6 +12592,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar piezas con filtros combinados (AND) y paginación",
@@ -12352,6 +12660,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Registrar una pieza",
@@ -12450,6 +12761,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Validar en tiempo real un formulario de ficha (RF-043)",
@@ -12535,6 +12849,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Eliminar lógicamente una pieza con motivo (RN-005)",
@@ -12612,6 +12929,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Ficha de una pieza (campos sensibles según rol)",
@@ -12699,6 +13019,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar la ficha (auditoría campo a campo)",
@@ -12782,6 +13105,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Alertas de información incompleta de la pieza (RF-019)",
@@ -12866,6 +13192,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar las piezas componentes de un conjunto (RF-009)",
@@ -12953,6 +13282,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Asociar una pieza existente como componente de un conjunto (RF-009)",
@@ -13049,6 +13381,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja)",
@@ -13136,6 +13471,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Registrar un identificador externo (I bloqueado; comodato sin I)",
@@ -13249,6 +13587,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Dar de baja un código histórico mal asignado (baja lógica, RN-005)",
@@ -13348,6 +13689,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Corregir un código I con procedimiento auditado (Administrador, RN-002)",
@@ -13432,6 +13776,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Historial de movimientos y verificaciones (más reciente primero)",
@@ -13515,6 +13862,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Fotografías de la pieza ordenadas (metadatos)",
@@ -13602,6 +13952,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Registrar una foto ya subida (tipo de vista, orden, restricciones)",
@@ -13692,6 +14045,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Obtener URL prefirmada para subir una foto al almacenamiento",
@@ -13785,6 +14141,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Retirar una foto (eliminación lógica con motivo)",
@@ -13883,6 +14242,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar metadatos, orden o restricción de una foto",
@@ -13963,6 +14325,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Registrar un movimiento o verificación física",
@@ -14058,6 +14423,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Restaurar una pieza eliminada (Administrador)",
@@ -14142,6 +14510,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Datos de origen sin mapeo (payload, solo lectura)",
@@ -14303,6 +14674,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Cola de posibles duplicados por revisar, con filtros (RF-030)",
@@ -14360,6 +14734,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
@@ -14439,6 +14816,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030)",
@@ -14580,6 +14960,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Piezas con información incompleta (RF-019, RF-035)",
@@ -14650,6 +15033,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Estado y avance de una detección de duplicados (RF-030, RNF-015)",
@@ -14717,6 +15103,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "KPI de completitud general y por colección (RF-035)",
@@ -14795,6 +15184,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Exportar a Excel los resultados de la consulta actual (RF-036)",
@@ -14875,6 +15267,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
@@ -15003,6 +15398,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Reportes: inventario, por colección, por ubicación, incompletas, valorización",
@@ -15065,6 +15463,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Roles y su matriz de permisos [SUPUESTO]",
@@ -15153,6 +15554,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Actualizar los permisos de un rol",
@@ -15294,6 +15698,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
@@ -15400,6 +15807,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar usuarios",
@@ -15476,6 +15886,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear un usuario individual con roles",
@@ -15556,6 +15969,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Detalle de un usuario",
@@ -15644,6 +16060,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar, desactivar o cambiar roles de un usuario",
@@ -15734,6 +16153,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Reemplazar los roles asignados a un usuario (RF-039)",
@@ -15796,6 +16218,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Listar vocabularios controlados",
@@ -15871,6 +16296,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Crear un vocabulario nuevo",
@@ -15950,6 +16378,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Detalle de un vocabulario",
@@ -16042,6 +16473,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Términos de un vocabulario (activos por defecto)",
@@ -16128,6 +16562,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Agregar un término (sin duplicar código ni etiqueta)",
@@ -16231,6 +16668,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Eliminar lógicamente un término no usado (si está en uso, desactívelo)",
@@ -16327,6 +16767,9 @@
         "security": [
           {
             "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
           }
         ],
         "summary": "Editar o desactivar un término",
