@@ -23,12 +23,22 @@ from app.modules.quality.models import (
     QualityJobItem,
     QualitySetting,
 )
-from app.modules.users.models import AppUser, Permission, Role, RolePermission, UserRole
+from app.modules.users.models import (
+    AppUser,
+    AuthEvent,
+    Permission,
+    Role,
+    RolePermission,
+    SensitiveAccessLog,
+    UserRole,
+    UserSession,
+)
 
 __all__ = [
     "AiSuggestion",
     "AppUser",
     "AuditLog",
+    "AuthEvent",
     "Base",
     "Collection",
     "ConservationAssessment",
@@ -52,7 +62,9 @@ __all__ = [
     "QualitySetting",
     "Role",
     "RolePermission",
+    "SensitiveAccessLog",
     "Term",
     "UserRole",
+    "UserSession",
     "Vocabulary",
 ]
