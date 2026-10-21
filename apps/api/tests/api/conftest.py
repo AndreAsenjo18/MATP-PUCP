@@ -61,6 +61,10 @@ class SeededApi:
     def session(self) -> Session:
         return make_session_factory(self.engine)()
 
+    def login_as(self, who: str) -> TestClient:
+        """A client holding a real session of the seeded user with that role (or e-mail)."""
+        return login_client(self.app, self.engine, who)
+
     def system_session(self) -> Session:
         """A session that may write: its audit context is the ``tests`` system process."""
         db = self.session()
@@ -170,7 +174,4 @@ def client(seeded_api: SeededApi) -> TestClient:
 def login_as(seeded_api: SeededApi) -> LoginAs:
     """``login_as("ADMIN")`` -> a client signed in as the seeded user holding that role."""
 
-    def factory(who: str) -> TestClient:
-        return login_client(seeded_api.app, seeded_api.engine, who)
-
-    return factory
+    return seeded_api.login_as
