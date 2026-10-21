@@ -57,9 +57,10 @@ def test_dev_header_is_only_accepted_under_app_env_test(
 ) -> None:
     """Spec "Retiro de la identidad provisional de desarrollo" (ADR-009 D7)."""
     app = create_app(api_settings(app_env=app_env), health_checks={}, engine=seeded_api.engine)
-    with TestClient(app) as client:
-        response = client.get("/api/v1/pieces", headers=as_user(ADMIN))
-        health = client.get("/health/live")
+    # No `with`: outside APP_ENV=test the lifespan starts workers on the shared SQLite connection.
+    client = TestClient(app)
+    response = client.get("/api/v1/pieces", headers=as_user(ADMIN))
+    health = client.get("/health/live")
     assert response.status_code == 401
     assert response.json()["code"] == "authentication_required"
     assert health.status_code == 200

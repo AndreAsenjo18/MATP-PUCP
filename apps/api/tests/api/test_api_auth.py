@@ -245,9 +245,11 @@ def test_synthetic_users_cannot_sign_in_in_production(seeded_api: SeededApi) -> 
     production = create_app(
         api_settings(app_env="production"), health_checks={}, engine=seeded_api.engine
     )
-    with TestClient(production, base_url=BASE_URL) as client:
-        refused = _login(client, synthetic.email)
-        allowed = _login(client, real.email)
+    # No `with`: outside APP_ENV=test the lifespan starts background workers that would share
+    # this in-memory SQLite connection with the request thread.
+    client = TestClient(production, base_url=BASE_URL)
+    refused = _login(client, synthetic.email)
+    allowed = _login(client, real.email)
 
     assert refused.status_code == 401 and refused.json()["code"] == "invalid_credentials"
     assert allowed.status_code == 200
