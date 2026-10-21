@@ -116,11 +116,53 @@ Los supuestos de este change están en `docs/preguntas-contraparte.md` (sección
 
 Pendientes:
 - **Pares con una pieza dada de baja (O4).** Un par pendiente cuya pieza se elimina sin fusionarse sigue en la cola, y cuenta como pendiente, hasta que alguien intenta resolverlo: entonces la API responde `409 stale_candidate`, el par pasa a `SUPERSEDED` y no cambia ninguna pieza (comprobado en vivo en la tarea 4.1; la prueba automática cubre la pieza ya fusionada). Retirarlo al dar de baja la pieza, y reabrirlo al restaurarla, queda para la detección incremental o para `auditoria-y-soft-delete-transversal`.
-- **Calibración y volumen (tarea 5.1).** Los pesos y los mínimos de trigramas se calibran con la prueba de 20 000 piezas en PostgreSQL cuando haya Docker, y con la muestra real (A1).
+- **Calibración y volumen (tarea 5.1).** La prueba de 20 000 piezas en PostgreSQL ya se hizo (D7). Queda pendiente decidir el puntaje mínimo con la muestra real (A1, O2).
+
+### D7. Prueba de volumen (tarea 5.1, 2026-10-20)
+**Entorno.** PostgreSQL 18.6 del servicio `db` de Docker Compose, en una base aparte (`matp_volume`) migrada hasta `0005`. El escaneo sigue el mismo camino que `POST /quality/duplicates/scan` (`start_scan` y luego `run_full_scan`, el cuerpo que la API corre en segundo plano), lanzado desde un script con el entorno virtual de la API en el equipo de desarrollo (Windows, 31,7 GB de RAM), sin HTTP.
+
+**Siembra y rodeo.** El seed del repo no admite 20 000 piezas: reparte los números de inventario con `rng.sample(range(100, 9000), base_count)` (`app/seed/synthetic.py`) y falla con `ValueError` por encima de unas 8 900 piezas, sin escribir nada. Para la prueba, un script desechable fuera del repo reutilizó `SyntheticCatalogBuilder` sin cambios y solo amplió ese rango (`range(100, 40062)`). Sembró 20 000 piezas (19 998 activas y 2 dadas de baja) en 92 min. El seed no se modificó: queda pendiente.
+
+**Resultado del escaneo completo.**
+
+| Medida | Valor |
+|---|---|
+| Estado | `SUCCEEDED` |
+| Duración registrada (`duration_ms`) | 1 841 s = **30,7 min**: unos 25 min de detección y unos 5 de escritura de la cola |
+| Piezas revisadas | 19 998 |
+| Pares evaluados | **5 932 478** de 199 950 003 posibles (**2,97 %**) |
+| Pares nuevos en la cola | **116 949** (unos 5,8 por pieza); 0 reabiertos; los 10 pares sembrados se vuelven a detectar |
+| Puntajes en la cola | 111 593 entre 0.6 y 0.7; 2 454 bajo 0.6 que entran por un identificador compartido |
+| Pares con códigos I vigentes distintos | 36 436 |
+| Memoria del proceso | unos **4,7 GB** como máximo, durante la escritura de la cola (observado con el administrador de procesos) |
+
+Cumple el escenario «Catálogo de volumen objetivo»: no compara todos los pares y registra la duración y los pares evaluados. La spec no fija un tiempo máximo, y 30,7 min cumple el objetivo «minutos, no horas» de este design.
+
+**Calibración.** Se repitió el bucle de `find_candidates` (sin escribir) sobre una muestra de 1 000 piezas, extrapolada al catálogo, cambiando un parámetro cada vez:
+
+| Variante | Pares evaluados | Entran en la cola |
+|---|---|---|
+| Valores actuales (denominación ≥ 0.45, autor+procedencia ≥ 0.3, puntaje mínimo 0.6) | ~5,78 M | ~109 300 |
+| `denomination_block_min` = 0.6 | ~4,78 M | ~108 600 |
+| `denomination_block_min` = 0.8 | ~4,78 M | ~108 600 |
+| `author_provenance_block_min` = 0.5 | ~5,78 M | ~109 300 |
+| `min_score` = 0.65 | ~5,78 M | ~68 700 |
+| `min_score` = 0.7 | ~5,78 M | ~5 800 (unos 3 200 por identificador compartido) |
+
+Conclusiones:
+- Los umbrales de trigramas no son la palanca. El 99,9 % de los pares sale del bloque de denominación por títulos idénticos (similitud 1), que entran con cualquier umbral: el seed usa 48 denominaciones para 19 998 piezas, entre 7 y 13 por colección. Subir el bloque a 0.8 recorta un 17 % de los pares evaluados y apenas cambia la cola.
+- El tiempo de la detección se va en puntuar pares (más de 8 de cada 10 segundos en la muestra, contando cada par una vez), no en generar los bloques. Pasar el bloque a `%` de `pg_trgm` (D1) no lo acortaría.
+- Lo que reduce la cola es el puntaje mínimo (O2). No se cambió ningún valor: los datos sintéticos no son representativos y la decisión se toma con la muestra real (A1).
+
+Pendientes que deja la prueba:
+- El seed no genera más de unas 8 900 piezas, y eso afecta a cualquier prueba de volumen.
+- Los 4,7 GB de memoria cuentan para el dimensionamiento de la VM (G14).
+- La siembra masiva dejó 20 000 piezas encoladas en `quality_job_item`. El worker incremental las procesaría al arrancar la API, en lotes de 500 y cargando el catálogo en cada lote; no se midió.
+- No se midió cómo responde la API mientras corre un escaneo completo.
 
 ## Risks / Trade-offs
 
 - **Pesos y umbrales [SUPUESTO O1, O2]** → configurables y visibles; se calibrarán con la muestra real (A1).
-- **Similitud de trigramas diferente en SQLite** → pruebas de lógica con `difflib`; calibración y rendimiento solo válidos en PostgreSQL (tarea con Docker).
+- **Similitud de trigramas diferente en SQLite** → pruebas de lógica con `difflib`; calibración y rendimiento solo válidos en PostgreSQL (medidos en D7).
 - **Fusión incorrecta** → confirmación con comparación lado a lado, auditoría completa y reversión por conjunto de cambios.
 - **Worker incremental en proceso** → mismo patrón y limitaciones que el pipeline de importación.
