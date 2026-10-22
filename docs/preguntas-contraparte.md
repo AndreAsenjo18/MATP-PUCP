@@ -212,3 +212,17 @@ Detalle en `openspec/changes/ubicacion-jerarquica-y-movimientos/design.md` (D1, 
 | P1 | ¿Hay cajas o piezas apoyadas directamente en el piso de un depósito, sin pasar por un mueble o rack? | No: un Contenedor solo puede colgar de un Nivel o directamente de un Mueble; nunca de un Espacio/Depósito. Si la contraparte confirma cajas en el piso, se agrega el nivel Depósito a los padres permitidos de Contenedor en `app/modules/locations/hierarchy.py` (tabla `ALLOWED_PARENT`), sin tocar el resto de la lógica | ubicacion-movimientos (RF-016), relacionado con A7 | B |
 | P2 | ¿Qué tipos de espacio existen además de depósito y sala de exhibición (por ejemplo, taller de restauración, archivo documental, área de recepción)? | Depósito, Sala de exhibición, Taller u Otro; "Otro" no propone ni exige ninguna disponibilidad en particular | ubicacion-movimientos (RF-020) | B |
 | P3 | Al reubicar un mueble o contenedor completo (cambiar de qué depósito depende), ¿debe quedar algún aviso especial en el historial de cada pieza, más allá del motivo de texto "Reubicación de <código>"? | No: por ahora basta un movimiento con ese motivo y una referencia común a la reubicación (para poder agruparlos si se pide un reporte); ninguna pantalla de reportes los distingue todavía de un movimiento manual | ubicacion-movimientos (RF-017), reportes-inventario (pendiente) | C |
+
+## Q. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
+
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Q1 | ¿Cuánto debe durar una sesión sin actividad y cuánto como máximo? | 30 minutos de inactividad y 12 horas de duración absoluta (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`) | usuarios-roles (RNF-012) | Media |
+| Q2 | ¿Cuántos intentos fallidos bloquean una cuenta y por cuánto tiempo? | 5 intentos seguidos y 15 minutos (`LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`); además 20 intentos en 5 minutos por dirección | usuarios-roles (RNF-012, RNF-013) | Media |
+| Q3 | ¿Qué política de contraseñas exige el museo o la PUCP? | Mínimo 12 caracteres, sin exigir composición, rechazo de contraseñas comunes y de la igual al correo; el Administrador entrega una contraseña temporal de cambio obligatorio | usuarios-roles (RNF-013) | Media |
+| Q4 | ¿Cuánto tiempo se conservan los registros de inicio de sesión y de acceso a datos sensibles? | Sin vencimiento en la fase 1 (nunca se borran, RN-005); la retención y la anonimización bajo la Ley 29733 se deciden con la PUCP | usuarios-roles (RNF-014) | Alta |
+| Q5 | ¿Quién puede consultar el registro de accesos a datos sensibles? | Quien tenga el permiso `audit.read` (hoy el Administrador) | usuarios-roles (RF-041) | Media |
+| Q6 | ¿Hay un servicio de correo institucional para recuperar contraseñas olvidadas? | No: la recuperación es que un Administrador restablezca la contraseña temporal. Sin correo, sin doble factor en la fase 1 | usuarios-roles (RNF-012) | Media |
+| Q7 | ¿Cuándo se podrá iniciar sesión con la cuenta PUCP y con qué protocolo (OIDC)? | Solo se prepara la interfaz de proveedor y el campo `external_subject`; los roles siguen siendo locales | usuarios-roles (RNF-012) | Baja |

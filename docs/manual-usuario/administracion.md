@@ -1,6 +1,53 @@
 # Administración
 
-> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+
+## Usuarios y permisos
+
+Solo el rol **Administrador** gestiona cuentas y permisos. Las cuentas son individuales y **nunca se eliminan**: se desactivan, y todo lo que hicieron queda en la auditoría.
+
+### Crear un usuario
+
+1. Vaya a **Administración › Usuarios** y pulse **Nuevo usuario**.
+2. Escriba el **correo** (no puede repetirse, aunque cambien las mayúsculas), el **nombre** y elija uno o más **roles**.
+3. Pulse **Crear**. El sistema muestra una **contraseña temporal** en pantalla.
+4. **Anótela y entréguela en persona o por un canal privado: se muestra una sola vez** y no se puede volver a consultar. Si se pierde, restablezca la contraseña.
+
+La persona deberá cambiar esa contraseña la primera vez que ingrese (ver [Acceso](acceso.md)).
+
+El rol «Consulta externa / investigador» aparece desactivado en esta fase y no se puede asignar.
+
+### Cambiar roles, desactivar o restablecer la contraseña
+
+1. En **Administración › Usuarios**, abra a la persona.
+2. Cambie sus roles, pulse **Desactivar** o pulse **Restablecer contraseña**.
+
+Cualquiera de las tres cosas **cierra de inmediato las sesiones abiertas** de esa persona: en su siguiente acción deberá volver a iniciar sesión (y no podrá, si fue desactivada). Restablecer la contraseña además quita un bloqueo por intentos fallidos y genera una temporal nueva.
+
+Siempre debe quedar **al menos un administrador activo**. Si un cambio dejaría el sistema sin ninguno (desactivarse a sí mismo, quitarse el rol o quitar el permiso de administrar usuarios al rol Administrador), el sistema lo rechaza y no cambia nada.
+
+### Matriz de permisos por rol
+
+1. Vaya a **Administración › Permisos** y elija el rol.
+2. Marque o desmarque los permisos y escriba el **motivo** del cambio.
+3. Pulse **Guardar**.
+
+El cambio vale **desde la siguiente acción** de las personas con ese rol, sin que tengan que volver a entrar. Cada permiso dado o quitado queda en la auditoría con quién, cuándo y el motivo.
+
+> **[SUPUESTO]** La lista de campos sensibles y el permiso que abre cada uno siguen por validar con el museo (pregunta B7).
+
+### Quién consultó datos sensibles
+
+Cada vez que el sistema entrega, sin ocultar, datos del comodante o la ubicación exacta de una pieza, se anota **quién, cuándo y qué campos** (nunca los valores). El Administrador lo consulta en **Auditoría › Accesos a datos sensibles**. Quienes ven esos campos ocultos no generan registro.
+
+### Si algo sale mal
+
+| Qué ve | Qué hacer |
+|---|---|
+| «Ya existe un usuario con ese correo» | Busque a la persona (incluya las desactivadas) y reactívela en vez de crear otra cuenta. |
+| «Los roles … están desactivados» | Ese rol no está disponible en esta fase; elija otro. |
+| «La operación dejaría el sistema sin ningún administrador activo» | Asigne primero el rol Administrador a otra persona activa. |
+| Perdí la contraseña temporal | Pulse **Restablecer contraseña** para generar otra. |
 
 ## Ubicaciones
 
