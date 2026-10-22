@@ -29,13 +29,13 @@ from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
     CHANGE_IMPORTS,
     CHANGE_TEMPLATES,
-    example_of,
     implemented,
     not_implemented,
     stub,
 )
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
+from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
@@ -44,6 +44,7 @@ from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
     PAYLOAD_TARGET,
+    TERMS_TARGET,
     ColumnSpec,
     MappingSpec,
 )
@@ -51,6 +52,7 @@ from app.modules.imports.models import (
     ImportBatch,
     ImportBatchStatus,
     ImportImage,
+    ImportMappingTemplate,
     ImportRow,
     RowClassification,
     RowDecision,
@@ -69,6 +71,7 @@ from app.modules.imports.schemas import (
     MappingRequest,
     MappingTemplateCreate,
     MappingTemplateOut,
+    MappingTemplateUpdate,
     RevertRequest,
     RowDecisionRequest,
     ValidationSummary,
@@ -241,6 +244,21 @@ def _mapping_spec(body: MappingRequest) -> MappingSpec:
             "Las plantillas de mapeo todavía no están disponibles; indique las columnas.",
             code="templates_not_available",
             details={"change": CHANGE_TEMPLATES},
+        )
+    # Phase 1 of design D1: the batch mapping stays v0, which has no transformations or terms.
+    with_v1_fields = [
+        column.source_column
+        for column in body.columns
+        if column.transforms
+        or column.value_map
+        or (column.target_field or "").startswith(f"{TERMS_TARGET}:")
+    ]
+    if with_v1_fields:
+        raise ValidationFailed(
+            "El mapeo de un lote todavía no admite transformaciones, correspondencias de valores "
+            "ni destinos a términos; guárdelos en una plantilla.",
+            code="transforms_not_yet_supported",
+            details={"change": CHANGE_TEMPLATES, "columns": with_v1_fields},
         )
     columns: list[ColumnSpec] = []
     for column in body.columns:
@@ -544,27 +562,121 @@ def rollback_import_batch(
     raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
 
 
+TEMPLATE_NOT_FOUND = {
+    404: {"model": ErrorResponse, "description": "La plantilla no existe o fue eliminada."}
+}
+
+
+def template_out(template: ImportMappingTemplate) -> MappingTemplateOut:
+    return MappingTemplateOut(
+        id=template.id,
+        name=template.name,
+        source_name=template.source_name,
+        header_signature=template.header_signature,
+        columns=templates.column_mappings(template),
+        description=template.description,
+        created_at=template.created_at,
+    )
+
+
 @router.get(
     "/import-templates",
     response_model=list[MappingTemplateOut],
     summary="Plantillas de mapeo reutilizables (RF-022)",
-    **stub(CHANGE_TEMPLATES),
+    description="Solo las plantillas activas. La sugerencia por cabeceras se pide con "
+    "`POST /import-templates/suggest` (design D3).",
+    **implemented(),
 )
 def list_import_templates(
+    session: SessionDep,
     user: Preparer,
-    header_signature: Annotated[
-        str | None, Query(description="Sugiere plantillas para estos encabezados.")
-    ] = None,
+    source_name: Annotated[str | None, Query(description="Solo las de esta fuente.")] = None,
 ) -> list[MappingTemplateOut]:
-    raise not_implemented(CHANGE_TEMPLATES, [example_of(MappingTemplateOut)])
+    return [template_out(t) for t in templates.list_templates(session, source_name)]
 
 
 @router.post(
     "/import-templates",
     response_model=MappingTemplateOut,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        409: {"model": ErrorResponse, "description": "Ya hay una plantilla activa con ese nombre."}
+    },
     summary="Guardar una plantilla de mapeo",
-    **stub(CHANGE_TEMPLATES),
+    description="El mapeo se valida contra `headers`, de los que se calcula `header_signature` "
+    "(design D3). Admite transformaciones, `value_map` y destinos `terms:<VOCABULARIO>`.",
+    **implemented(),
 )
-def create_import_template(body: MappingTemplateCreate, user: Preparer) -> MappingTemplateOut:
-    raise not_implemented(CHANGE_TEMPLATES, MappingTemplateOut)
+def create_import_template(
+    body: MappingTemplateCreate, session: SessionDep, user: Preparer
+) -> MappingTemplateOut:
+    template = templates.create_template(
+        writer(session, user),
+        name=body.name,
+        source_name=body.source_name,
+        headers=body.headers,
+        columns=body.columns,
+        description=body.description,
+    )
+    session.commit()
+    return template_out(template)
+
+
+@router.get(
+    "/import-templates/{template_id}",
+    response_model=MappingTemplateOut,
+    responses=TEMPLATE_NOT_FOUND,
+    summary="Detalle de una plantilla de mapeo",
+    **implemented(),
+)
+def get_import_template(
+    template_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> MappingTemplateOut:
+    return template_out(templates.get_template(session, template_id))
+
+
+@router.patch(
+    "/import-templates/{template_id}",
+    response_model=MappingTemplateOut,
+    responses=TEMPLATE_NOT_FOUND,
+    summary="Editar una plantilla de mapeo",
+    description="`headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la "
+    "firma se recalcula. Los lotes ya procesados conservan su mapeo.",
+    **implemented(),
+)
+def update_import_template(
+    template_id: uuid.UUID, body: MappingTemplateUpdate, session: SessionDep, user: Preparer
+) -> MappingTemplateOut:
+    template = templates.update_template(
+        writer(session, user),
+        templates.get_template(session, template_id),
+        name=body.name,
+        source_name=body.source_name,
+        headers=body.headers,
+        columns=body.columns,
+        description=body.description,
+        description_set="description" in body.model_fields_set,
+    )
+    session.commit()
+    return template_out(template)
+
+
+@router.delete(
+    "/import-templates/{template_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=TEMPLATE_NOT_FOUND,
+    summary="Eliminar lógicamente una plantilla con motivo (RN-005)",
+    description="La plantilla deja de listarse y sugerirse y pasa a la papelera; los lotes "
+    "que la usaron conservan la referencia y el mapeo con que se procesaron.",
+    **implemented(),
+)
+def delete_import_template(
+    template_id: uuid.UUID,
+    reason: Annotated[str, Query(min_length=3, description="Motivo obligatorio.")],
+    session: SessionDep,
+    user: Approver,
+) -> Response:
+    template = templates.get_template(session, template_id)
+    templates.delete_template(writer(session, user, reason), template, reason)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -63,6 +63,10 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/identifiers/normalize"),
     ("get", "/import-templates"),
     ("post", "/import-templates"),
+    # Plantillas por id (change plantillas-mapeo-y-normalizacion, tarea 3.1).
+    ("get", "/import-templates/{}"),
+    ("patch", "/import-templates/{}"),
+    ("delete", "/import-templates/{}"),
     ("get", "/imports/{}"),
     ("post", "/imports/{}/images/{}/associate"),
     ("get", "/imports/{}/log"),

@@ -1982,8 +1982,31 @@
                 "type": "null"
               }
             ],
-            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen.",
+            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, `terms:<VOCABULARIO>`; null = datos de origen.",
             "title": "Target Field"
+          },
+          "transforms": {
+            "description": "Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Transforms",
+            "type": "array"
+          },
+          "value_map": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Texto de origen → código de término, para la transformación `value_map`. Solo en plantillas por ahora.",
+            "title": "Value Map"
           }
         },
         "required": [
@@ -4876,7 +4899,7 @@
             "columns": [
               {
                 "source_column": "DENOMINACION",
-                "target_field": "title"
+                "target_field": "denomination"
               }
             ],
             "created_at": "2026-09-17T10:30:00Z",
@@ -4938,6 +4961,79 @@
           "created_at"
         ],
         "title": "MappingTemplateOut",
+        "type": "object"
+      },
+      "MappingTemplateUpdate": {
+        "description": "Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated\nagainst the headers and the signature is computed from them (design D3).",
+        "properties": {
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnMapping"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "headers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headers"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          }
+        },
+        "title": "MappingTemplateUpdate",
         "type": "object"
       },
       "Me": {
@@ -12753,12 +12849,13 @@
     },
     "/api/v1/import-templates": {
       "get": {
+        "description": "Solo las plantillas activas. La sugerencia por cabeceras se pide con `POST /import-templates/suggest` (design D3).",
         "operationId": "listImportTemplates",
         "parameters": [
           {
-            "description": "Sugiere plantillas para estos encabezados.",
+            "description": "Solo las de esta fuente.",
             "in": "query",
-            "name": "header_signature",
+            "name": "source_name",
             "required": false,
             "schema": {
               "anyOf": [
@@ -12769,8 +12866,8 @@
                   "type": "null"
                 }
               ],
-              "description": "Sugiere plantillas para estos encabezados.",
-              "title": "Header Signature"
+              "description": "Solo las de esta fuente.",
+              "title": "Source Name"
             }
           }
         ],
@@ -12818,16 +12915,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`."
           }
         },
         "security": [
@@ -12839,10 +12926,10 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "plantillas-mapeo-y-normalizacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "post": {
+        "description": "El mapeo se valida contra `headers`, de los que se calcula `header_signature` (design D3). Admite transformaciones, `value_map` y destinos `terms:<VOCABULARIO>`.",
         "operationId": "createImportTemplate",
         "requestBody": {
           "content": {
@@ -12885,6 +12972,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ya hay una plantilla activa con ese nombre."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12894,16 +12991,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`."
           }
         },
         "security": [
@@ -12915,8 +13002,257 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "plantillas-mapeo-y-normalizacion",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/import-templates/{template_id}": {
+      "delete": {
+        "description": "La plantilla deja de listarse y sugerirse y pasa a la papelera; los lotes que la usaron conservan la referencia y el mapeo con que se procesaron.",
+        "operationId": "deleteImportTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo obligatorio.",
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "description": "Motivo obligatorio.",
+              "minLength": 3,
+              "title": "Reason",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La plantilla no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Eliminar lógicamente una plantilla con motivo (RN-005)",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "get": {
+        "operationId": "getImportTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingTemplateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La plantilla no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Detalle de una plantilla de mapeo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "patch": {
+        "description": "`headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la firma se recalcula. Los lotes ya procesados conservan su mapeo.",
+        "operationId": "updateImportTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingTemplateUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingTemplateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La plantilla no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Editar una plantilla de mapeo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports": {

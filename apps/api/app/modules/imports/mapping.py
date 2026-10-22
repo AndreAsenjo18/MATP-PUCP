@@ -55,6 +55,8 @@ from app.modules.imports.transforms import (
 SPEC_VERSION = 0  # provisional; ``plantillas-mapeo-y-normalizacion`` defines version 1
 IDENTIFIER_TARGET = "identifier"
 PAYLOAD_TARGET = "payload"
+# ``target_field: "terms:<VOCABULARIO>"`` in ``ColumnMapping`` (design D1, pending confirmation).
+TERMS_TARGET = "terms"
 
 # Record fields a column can fill, as named in the API contract.
 FIELD_TARGETS: dict[str, str] = {
@@ -223,6 +225,8 @@ class ColumnMappingLike(Protocol):
     target_field: str | None
     identifier_type_code: str | None
     split_compound: bool
+    transforms: list[str]
+    value_map: dict[str, str] | None
 
 
 def _target_from_v0(column: ColumnSpec) -> ColumnTarget:
@@ -271,22 +275,50 @@ def from_column_mappings(
     columns: Sequence[ColumnMappingLike], defaults: Mapping[str, str] | None = None
 ) -> MappingSpecV1:
     """Translate the public ``ColumnMapping`` list (and ``MappingRequest.defaults``) into v1,
-    with the same reading of ``target_field`` as ``PUT /imports/{batch_id}/mapping``."""
-    specs: list[ColumnSpec] = []
+    with the same reading of ``target_field`` as ``PUT /imports/{batch_id}/mapping``, plus the
+    v1 fields: ``transforms``, ``value_map`` and ``terms:<VOCABULARIO>`` targets (design D1)."""
+    converted: list[ColumnSpecV1] = []
     for column in columns:
         target = column.target_field or PAYLOAD_TARGET
-        identifier_type = column.identifier_type_code
-        if target.startswith(f"{IDENTIFIER_TARGET}:"):
-            target, identifier_type = IDENTIFIER_TARGET, target.split(":", 1)[1] or None
-        specs.append(
-            ColumnSpec(
+        column_target: ColumnTarget
+        if target.startswith(f"{TERMS_TARGET}:"):
+            vocabulary = target.split(":", 1)[1]
+            if not vocabulary:
+                raise MappingConversionError(
+                    "vocabulary_required",
+                    f"Indique el vocabulario de la columna «{column.source_column}» "
+                    "(`terms:<VOCABULARIO>`).",
+                    column.source_column,
+                )
+            column_target = TermsTarget(vocabulary=vocabulary)
+        else:
+            identifier_type = column.identifier_type_code
+            if target.startswith(f"{IDENTIFIER_TARGET}:"):
+                target, identifier_type = IDENTIFIER_TARGET, target.split(":", 1)[1] or None
+            column_target = _target_from_v0(
+                ColumnSpec(
+                    source=column.source_column,
+                    target=target,
+                    identifier_type=identifier_type if target == IDENTIFIER_TARGET else None,
+                    split_compound=column.split_compound,
+                )
+            )
+        transforms = list(column.transforms)
+        try:
+            parse_transforms(transforms, column.value_map)
+        except TransformSpecError as exc:
+            raise MappingConversionError(
+                "invalid_transform", exc.message, column.source_column
+            ) from exc
+        converted.append(
+            ColumnSpecV1(
                 source=column.source_column,
-                target=target,
-                identifier_type=identifier_type if target == IDENTIFIER_TARGET else None,
-                split_compound=column.split_compound,
+                target=column_target,
+                transforms=transforms,
+                value_map=column.value_map,
             )
         )
-    return _from_v0_columns(specs, defaults or {})
+    return MappingSpecV1(columns=converted, defaults=_defaults_to_codes(defaults or {}))
 
 
 def _is_seed_form(data: Mapping[str, Any]) -> bool:

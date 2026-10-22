@@ -192,13 +192,24 @@ class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
         description="Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), "
-        "`identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen."
+        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, "
+        "`terms:<VOCABULARIO>`; null = datos de origen."
     )
     identifier_type_code: str | None = None
     split_compound: bool = Field(
         False,
         description="La celda puede tener varios códigos (N7); cada parte toma el tipo que se "
         "reconoce en ella.",
+    )
+    transforms: list[str] = Field(
+        default_factory=list,
+        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en "
+        "plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+    )
+    value_map: dict[str, str] | None = Field(
+        None,
+        description="Texto de origen → código de término, para la transformación `value_map`. "
+        "Solo en plantillas por ahora.",
     )
 
 
@@ -546,7 +557,7 @@ class MappingTemplateOut(BaseModel):
                     "name": "Sábana consultoría (sintética)",
                     "source_name": "Consultoría 2024/25",
                     "header_signature": "a" * 64,
-                    "columns": [{"source_column": "DENOMINACION", "target_field": "title"}],
+                    "columns": [{"source_column": "DENOMINACION", "target_field": "denomination"}],
                     "description": None,
                     "created_at": EX_DATETIME,
                 }
@@ -568,4 +579,15 @@ class MappingTemplateCreate(BaseModel):
     source_name: str = Field(min_length=1, max_length=200)
     headers: list[str] = Field(min_length=1)
     columns: list[ColumnMapping]
+    description: str | None = None
+
+
+class MappingTemplateUpdate(BaseModel):
+    """Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated
+    against the headers and the signature is computed from them (design D3)."""
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    source_name: str | None = Field(None, min_length=1, max_length=200)
+    headers: list[str] | None = Field(None, min_length=1)
+    columns: list[ColumnMapping] | None = None
     description: str | None = None
