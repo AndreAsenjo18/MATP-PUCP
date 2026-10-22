@@ -31,6 +31,7 @@ BOILERPLATE = {"created_at", "updated_at", "deleted_at", "deleted_by_id", "delet
 # Tablas de solo inserción (ADR-004, triggers en BD).
 APPEND_ONLY = {
     "audit_log",
+    "audit_digest",
     "piece_movement",
     "piece_source_record",
     "conservation_assessment",
@@ -88,6 +89,7 @@ GROUPS = [
             "auth_event",
             "sensitive_access_log",
             "audit_log",
+            "audit_digest",
         ],
     ),
     (

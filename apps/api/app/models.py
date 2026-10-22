@@ -5,7 +5,7 @@ Alembic (``alembic/env.py``), the seed and the tests import it.
 
 from app.core.models_base import Base
 from app.modules.ai_suggestions.models import AiSuggestion
-from app.modules.audit.models import AuditLog
+from app.modules.audit.models import AuditDigest, AuditLog
 from app.modules.catalog.models import (
     ConservationAssessment,
     Piece,
@@ -38,6 +38,7 @@ from app.modules.users.models import (
 __all__ = [
     "AiSuggestion",
     "AppUser",
+    "AuditDigest",
     "AuditLog",
     "AuthEvent",
     "Base",

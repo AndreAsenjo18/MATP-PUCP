@@ -14,7 +14,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | parcial: «Posibles duplicados» (`deteccion-duplicados-y-cola-revision`) |
 | Búsqueda y exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion` | pendiente |
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | pendiente |
-| Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | pendiente |
+| Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | hecho |
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
 | Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Usuarios y permisos» (`autenticacion-y-matriz-permisos`), «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) |
 
