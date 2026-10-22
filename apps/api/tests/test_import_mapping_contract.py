@@ -4,17 +4,11 @@
 Change plantillas-mapeo-y-normalizacion, task 1.1. Synthetic data only (RNF-014).
 """
 
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
 
 from app.api.v1.imports import _mapping_spec
-from app.core.db import make_session_factory
-from app.models import Base, ImportMappingTemplate
 from app.modules.imports.mapping import (
     ColumnSpec,
     ColumnSpecV1,
@@ -30,7 +24,6 @@ from app.modules.imports.mapping import (
     read_mapping,
 )
 from app.modules.imports.schemas import ColumnMapping, MappingRequest
-from app.seed.synthetic import SeedOptions, run_seed
 
 # Example of design D1 (illustrative column names, [SUPUESTO A1]).
 D1_EXAMPLE: dict[str, Any] = {
@@ -268,28 +261,23 @@ def test_identifier_column_without_type_is_an_error() -> None:
     assert error.value.code == "identifier_type_required"
 
 
-# --- seed template -------------------------------------------------------------------------
+# --- former seed template form -----------------------------------------------------------
+
+# The form the seed template had before task 3.4 (``{column: {"target": ...}}``, no version).
+# The seed now stores v1, but databases seeded earlier keep this form, so ``read_mapping``
+# must still convert it (design D1).
+FORMER_SEED_MAPPING: dict[str, Any] = {
+    "DENOMINACIÓN": {"target": "denomination"},
+    "CÓDIGOS": {"target": "identifiers:auto"},
+    "ÉPOCA": {"target": "epoch_original_text"},
+    "PROCEDENCIA": {"target": "provenance"},
+    "OBS. CONSULTORÍA": {"target": "payload"},
+}
 
 
-@pytest.fixture(scope="module")
-def seeded_session() -> Iterator[Session]:
-    engine = create_engine(
-        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
-    )
-    Base.metadata.create_all(engine)
-    session = make_session_factory(engine)()
-    run_seed(session, SeedOptions(upload_media=False, admin_password="demo-password-1"))
-    session.commit()
-    yield session
-    session.close()
-    engine.dispose()
-
-
-def test_seed_template_is_converted(seeded_session: Session) -> None:
-    template = seeded_session.scalars(select(ImportMappingTemplate)).one()
-    assert "version" not in template.mapping  # the seed form
-
-    spec = read_mapping(template.mapping)
+def test_seed_template_is_converted() -> None:
+    """The former seed form, as a literal since the seed stores v1 (task 3.4)."""
+    spec = read_mapping(FORMER_SEED_MAPPING)
 
     targets = {column.source: column.target for column in spec.columns}
     assert targets == {

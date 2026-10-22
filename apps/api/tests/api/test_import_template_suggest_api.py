@@ -14,6 +14,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from app.modules.imports.templates import similarity
+from app.seed.fixtures import HEADERS
 from tests.api.conftest import Pipeline
 
 TEMPLATES = "/api/v1/import-templates"
@@ -133,3 +134,12 @@ def test_similarity_formula() -> None:
     assert similarity({"A"}, set()) == 0.0
     # No header in common: J = 0, so the score never reaches the 0,6 threshold.
     assert similarity({"DENOMINACION ANFORA"}, {"DENOMINACION QUIPU"}) < 0.5
+
+
+def test_the_seed_template_is_suggested_for_the_synthetic_sabana(pipeline: Pipeline) -> None:
+    """Task 3.4: the headers of ``sabana_sintetica_v1.xlsx`` match the seed template fully."""
+    [first, *_] = suggest(pipeline.client, HEADERS)
+
+    assert first["template"]["name"] == "Plantilla sábana sintética v1"
+    assert first["score"] == 1.0
+    assert first["missing_columns"] == first["new_columns"] == []
