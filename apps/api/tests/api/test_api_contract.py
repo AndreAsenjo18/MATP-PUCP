@@ -14,7 +14,7 @@ from app.api.errors import NotImplementedEndpoint
 from app.api.stubs import STATUS_IMPLEMENTED, STATUS_STUB, X_CHANGE, X_STATUS
 from app.api.v1 import admin, collections, imports, loans, locations, pieces, quality_reports
 from app.openapi_export import DEFAULT_OUTPUT, build_spec, render
-from tests.api.conftest import ADMIN, SeededApi, as_user
+from tests.api.conftest import LoginAs, SeededApi
 
 CHANGES_DIR = Path(__file__).resolve().parents[4] / "openspec" / "changes"
 
@@ -136,7 +136,10 @@ def test_business_operations_declare_the_dev_identity_scheme(spec: dict) -> None
 
 def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     stubs = [r for r in _api_routes() if r.openapi_extra.get(X_STATUS) == STATUS_STUB]
-    assert len(stubs) >= 35
+    # Baja cada vez que un change implementa un stub (p. ej. ubicacion-jerarquica-y-movimientos
+    # implementó POST/PUT /locations y GET /locations/{id}/pieces); el umbral solo detecta un
+    # vaciado accidental de la lista, no fija cuántos quedan.
+    assert len(stubs) >= 34
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:
@@ -147,11 +150,11 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
             TypeAdapter(route.response_model).validate_python(raised.value.example)
 
 
-def test_stub_over_http_returns_501_with_change_and_example(client: TestClient) -> None:
+def test_stub_over_http_returns_501_with_change_and_example(login_as: LoginAs) -> None:
+    client = login_as("ADMIN")
     response = client.post(
         f"/api/v1/imports/{uuid.uuid4()}/rollback",
         json={"reason": "Lote sintético"},
-        headers=as_user(ADMIN),
     )
     assert response.status_code == 501
     body = response.json()
@@ -177,15 +180,17 @@ def test_export_is_reproducible() -> None:
     assert render(build_spec()) == render(build_spec())
 
 
-def test_request_validation_error_uses_uniform_format(client: TestClient) -> None:
-    response = client.get("/api/v1/pieces?page=0", headers=as_user(ADMIN))
+def test_request_validation_error_uses_uniform_format(login_as: LoginAs) -> None:
+    client = login_as("ADMIN")
+    response = client.get("/api/v1/pieces?page=0")
     assert response.status_code == 422
     body = response.json()
     assert body["code"] == "request_validation_failed"
     assert body["details"]["fields"][0]["location"] == ["query", "page"]
 
 
-def test_unknown_route_uses_uniform_format(client: TestClient) -> None:
-    response = client.get("/api/v1/does-not-exist", headers=as_user(ADMIN))
+def test_unknown_route_uses_uniform_format(login_as: LoginAs) -> None:
+    client = login_as("ADMIN")
+    response = client.get("/api/v1/does-not-exist")
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"

@@ -7,10 +7,8 @@ interfaces además de sus campos propios; `POST /collections` acepta `code`. RF-
 import pytest
 import yaml
 
-from tests.api.conftest import MANAGER, SeededApi, as_user
+from tests.api.conftest import SeededApi
 from tests.api.test_contract_conformance import CONTRACT
-
-H = as_user(MANAGER)
 
 
 @pytest.fixture(scope="module")
@@ -23,7 +21,8 @@ def collection_item_fields() -> set[str]:
 def test_listings_have_the_collection_item_fields(
     seeded_api: SeededApi, collection_item_fields: set[str], path: str
 ) -> None:
-    items = seeded_api.client.get(f"/api/v1{path}", headers=H).json()
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
+    items = client.get(f"/api/v1{path}").json()
     assert items
     for item in items:
         assert collection_item_fields <= set(item), f"{path}: {item}"
@@ -31,23 +30,24 @@ def test_listings_have_the_collection_item_fields(
 
 
 def test_collection_code_is_the_normalized_acronym(seeded_api: SeededApi) -> None:
-    collections = seeded_api.client.get("/api/v1/collections", headers=H).json()
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
+    collections = client.get("/api/v1/collections").json()
     assert all(item["code"] == item["acronym_normalized"] for item in collections)
     assert any(item["code"] for item in collections)
 
 
 def test_term_name_is_its_label(seeded_api: SeededApi) -> None:
-    states = seeded_api.client.get("/api/v1/conservation-states", headers=H).json()
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
+    states = client.get("/api/v1/conservation-states").json()
     assert {state["name"] for state in states} >= {"Bueno", "Regular", "Malo"}
     assert all(state["name"] == state["label"] for state in states)
 
 
 def test_create_collection_with_the_contract_body(seeded_api: SeededApi) -> None:
-    client = seeded_api.client
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
     created = client.post(
         "/api/v1/collections",
         json={"code": "F.L.T.", "name": "Colección FLT (ficticia)"},
-        headers=H,
     )
     assert created.status_code == 201
     body = created.json()
@@ -56,20 +56,18 @@ def test_create_collection_with_the_contract_body(seeded_api: SeededApi) -> None
         "F.L.T.",
         "Colección FLT (ficticia)",
     )
-    listed = {item["id"]: item for item in client.get("/api/v1/collections", headers=H).json()}
+    listed = {item["id"]: item for item in client.get("/api/v1/collections").json()}
     assert listed[body["id"]]["code"] == "FLT"
 
-    duplicate = client.post(
-        "/api/v1/collections", json={"code": "FLT", "name": "Otra FLT"}, headers=H
-    )
+    duplicate = client.post("/api/v1/collections", json={"code": "FLT", "name": "Otra FLT"})
     assert duplicate.status_code == 422
     assert duplicate.json()["code"] == "duplicate_acronym"
 
 
 def test_code_and_acronym_must_agree(seeded_api: SeededApi) -> None:
-    response = seeded_api.client.post(
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
+    response = client.post(
         "/api/v1/collections",
         json={"code": "AAA", "acronym": "BBB", "name": "Colección contradictoria"},
-        headers=H,
     )
     assert response.status_code == 422

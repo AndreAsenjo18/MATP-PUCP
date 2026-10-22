@@ -49,7 +49,7 @@ from app.modules.imports.models import (
     ImportRow,
     RowClassification,
 )
-from app.modules.locations.models import Location, LocationLevel
+from app.modules.locations.models import Location, LocationLevel, SpaceKind
 from app.modules.locations.service import create_location, move_piece
 from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
@@ -295,6 +295,7 @@ class SyntheticCatalogBuilder:
                 code=f"SC-DEP{number}",
                 name=f"Depósito {number}",
                 parent=site,
+                space_kind=SpaceKind.DEPOSIT,
             )
             for rack in ("A", "B"):
                 furniture = create_location(
@@ -332,6 +333,7 @@ class SyntheticCatalogBuilder:
                     code=f"SC-SALA{room}",
                     name=f"Sala {room}",
                     parent=site,
+                    space_kind=SpaceKind.EXHIBITION_ROOM,
                 )
             )
 

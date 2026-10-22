@@ -2,7 +2,7 @@
 
 URL resolution order: an existing connection passed by tests (``config.attributes``),
 ``-x url=...``, then the ``DATABASE_URL`` environment variable. Only the database URL is
-needed, so migrations can run without the S3/JWT variables of the API.
+needed, so migrations can run without the S3 or session variables of the API.
 """
 
 import os

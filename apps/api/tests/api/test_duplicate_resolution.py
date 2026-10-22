@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from datetime import timedelta
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -26,7 +27,7 @@ from app.modules.quality.incremental import process_pending_items
 from app.modules.quality.models import DuplicateStatus
 from app.modules.quality.scoring import comparison_fingerprint
 from app.seed.synthetic import SeedOptions, run_seed
-from tests.api.conftest import MANAGER, VIEWER, api_settings, as_user
+from tests.api.conftest import MANAGER, api_settings, login_client
 from tests.conftest import SYSTEM_CONTEXT
 
 
@@ -47,16 +48,24 @@ def factory() -> Iterator[sessionmaker[Session]]:
 
 
 @pytest.fixture(scope="module")
-def client(factory: sessionmaker[Session]) -> Iterator[TestClient]:
-    app = create_app(api_settings(), health_checks={}, engine=factory.kw["bind"])
-    with TestClient(app) as test_client:
-        yield test_client
+def app(factory: sessionmaker[Session]) -> Iterator[FastAPI]:
+    application = create_app(api_settings(), health_checks={}, engine=factory.kw["bind"])
+    with TestClient(application):  # runs the lifespan; requests use the signed-in clients below
+        yield application
 
 
-def _resolve(client: TestClient, candidate_id: uuid.UUID, user: str = MANAGER, **body: object):  # type: ignore[no-untyped-def]
-    return client.post(
-        f"/api/v1/quality/duplicates/{candidate_id}/resolve", json=body, headers=as_user(user)
-    )
+@pytest.fixture(scope="module")
+def client(app: FastAPI, factory: sessionmaker[Session]) -> TestClient:
+    return login_client(app, factory.kw["bind"], "COLLECTIONS_MANAGER")
+
+
+@pytest.fixture(scope="module")
+def viewer(app: FastAPI, factory: sessionmaker[Session]) -> TestClient:
+    return login_client(app, factory.kw["bind"], "INTERNAL_VIEWER")
+
+
+def _resolve(client: TestClient, candidate_id: uuid.UUID, **body: object):  # type: ignore[no-untyped-def]
+    return client.post(f"/api/v1/quality/duplicates/{candidate_id}/resolve", json=body)
 
 
 def _catalog_pairs(session: Session) -> list[DuplicateCandidate]:
@@ -73,8 +82,8 @@ def _catalog_pairs(session: Session) -> list[DuplicateCandidate]:
 
 
 def _scan(client: TestClient) -> dict:
-    job_id = client.post("/api/v1/quality/duplicates/scan", headers=as_user(MANAGER)).json()["id"]
-    return client.get(f"/api/v1/quality/jobs/{job_id}", headers=as_user(MANAGER)).json()
+    job_id = client.post("/api/v1/quality/duplicates/scan").json()["id"]
+    return client.get(f"/api/v1/quality/jobs/{job_id}").json()
 
 
 def test_distinct_pair_keeps_the_current_fingerprint_and_does_not_return(
@@ -166,11 +175,11 @@ def test_invalid_postponement_is_rejected(
         assert session.get(DuplicateCandidate, candidate.id).status == DuplicateStatus.PENDING
 
 
-def test_internal_viewer_cannot_resolve(client: TestClient, factory: sessionmaker[Session]) -> None:
+def test_internal_viewer_cannot_resolve(viewer: TestClient, factory: sessionmaker[Session]) -> None:
     """Spec task 3.2: Consulta interna gets 403."""
     with factory() as session:
         candidate = _catalog_pairs(session)[0]
-    response = _resolve(client, candidate.id, user=VIEWER, resolution="DISTINCT")
+    response = _resolve(viewer, candidate.id, resolution="DISTINCT")
     assert response.status_code == 403
 
 
@@ -233,7 +242,7 @@ def test_merge_over_http(client: TestClient, factory: sessionmaker[Session]) -> 
 
 
 def test_the_absorbed_piece_sheet_links_to_the_surviving_one(
-    client: TestClient, factory: sessionmaker[Session]
+    viewer: TestClient, factory: sessionmaker[Session]
 ) -> None:
     """Spec: «Consulta de la pieza absorbida» — merged, date, reason and link (task 3.4)."""
     with factory() as session:
@@ -243,14 +252,14 @@ def test_the_absorbed_piece_sheet_links_to_the_surviving_one(
             .execution_options(include_deleted=True)
         ).first()
     assert absorbed is not None, "requires test_merge_over_http to have merged a pair"
-    response = client.get(f"/api/v1/pieces/{absorbed.id}", headers=as_user(VIEWER))
+    response = viewer.get(f"/api/v1/pieces/{absorbed.id}")
     assert response.status_code == 200, response.text
     link = response.json()["merged_into"]
     assert link["piece_id"] == str(absorbed.merged_into_id)
     assert link["merged_at"] is not None
     assert "Misma pieza en el libro y en la sábana" in link["reason"]
 
-    surviving = client.get(f"/api/v1/pieces/{absorbed.merged_into_id}", headers=as_user(VIEWER))
+    surviving = viewer.get(f"/api/v1/pieces/{absorbed.merged_into_id}")
     assert surviving.status_code == 200
     assert surviving.json()["merged_into"] is None
     # The surviving piece lists what was merged into it, to reach its history (D4).
@@ -262,11 +271,11 @@ def test_the_absorbed_piece_sheet_links_to_the_surviving_one(
 
 
 def test_a_deleted_piece_that_was_not_merged_is_still_404(
-    client: TestClient, factory: sessionmaker[Session]
+    viewer: TestClient, factory: sessionmaker[Session]
 ) -> None:
     with factory() as session, audit_context(session, SYSTEM_CONTEXT):
         piece = session.scalars(select(Piece).where(Piece.merged_into_id.is_(None))).first()
         soft_delete(session, piece, "Baja sintética para la prueba")
         session.commit()
         piece_id = piece.id
-    assert client.get(f"/api/v1/pieces/{piece_id}", headers=as_user(VIEWER)).status_code == 404
+    assert viewer.get(f"/api/v1/pieces/{piece_id}").status_code == 404

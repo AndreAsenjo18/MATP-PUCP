@@ -29,7 +29,14 @@ DEFAULT_OUTPUT = (
 BOILERPLATE = {"created_at", "updated_at", "deleted_at", "deleted_by_id", "deletion_reason"}
 
 # Tablas de solo inserción (ADR-004, triggers en BD).
-APPEND_ONLY = {"audit_log", "piece_movement", "piece_source_record", "conservation_assessment"}
+APPEND_ONLY = {
+    "audit_log",
+    "piece_movement",
+    "piece_source_record",
+    "conservation_assessment",
+    "auth_event",
+    "sensitive_access_log",
+}
 
 # Agrupación por módulo funcional del SRS.
 GROUPS = [
@@ -51,7 +58,7 @@ GROUPS = [
     (
         "Ubicación y Control (EP-02)",
         "#FDF6E3",
-        ["location", "piece_movement", "loan", "loan_item"],
+        ["location", "piece_movement", "loan", "loan_item", "idempotency_key"],
     ),
     (
         "Importación y Calidad de Datos (EP-03)",
@@ -71,7 +78,17 @@ GROUPS = [
     (
         "Usuarios, Seguridad y Auditoría (EP-05)",
         "#EDF0F7",
-        ["app_user", "role", "permission", "role_permission", "user_role", "audit_log"],
+        [
+            "app_user",
+            "role",
+            "permission",
+            "role_permission",
+            "user_role",
+            "user_session",
+            "auth_event",
+            "sensitive_access_log",
+            "audit_log",
+        ],
     ),
 ]
 
@@ -105,6 +122,8 @@ LABELS = {
     ("piece_movement", "from_location_id"): "origen",
     ("piece_movement", "to_location_id"): "destino",
     ("piece_movement", "performed_by_user_id"): "ejecuta",
+    ("piece_movement", "corrects_movement_id"): "corrige",
+    ("idempotency_key", "user_id"): "solicita",
     ("import_batch", "template_id"): "plantilla",
     ("import_batch", "uploaded_by_id"): "carga",
     ("import_batch", "approved_by_id"): "aprueba",
@@ -127,6 +146,9 @@ LABELS = {
     ("role_permission", "permission_id"): "",
     ("user_role", "user_id"): "",
     ("user_role", "role_id"): "",
+    ("user_session", "user_id"): "sesiones abiertas",
+    ("auth_event", "user_id"): "eventos de autenticación",
+    ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
 }
