@@ -1,10 +1,15 @@
 "use client";
 
 /**
- * Sesión simulada de la maqueta (pantalla 1 "Login"): selector de rol para demostrar la matriz
- * de permisos (RF-039) sin autenticación real (RNF-012/013 llegan con
- * `autenticacion-y-matriz-permisos`). Se guarda solo en `localStorage` del navegador — nunca se
- * envía a ningún servicio ni sustituye una autenticación real.
+ * Perfil de la sesión en el navegador. Hay dos orígenes:
+ *
+ * - **Modo simulado (`mock`)**: selector de rol de la maqueta para demostrar la matriz de
+ *   permisos (RF-039) sin autenticación real.
+ * - **Modo `live`** (ADR-009): el perfil devuelto por `POST /auth/login` (correo, roles y
+ *   permisos efectivos). La sesión real vive en una cookie `HttpOnly` que el navegador envía
+ *   solo; aquí no se guarda ningún secreto, únicamente lo necesario para dibujar el menú.
+ *
+ * Se guarda solo en `localStorage` del navegador.
  *
  * Se lee con `useSyncExternalStore` (fuente externa mutable) en vez de `useEffect` + `setState`,
  * siguiendo la regla `react-hooks/set-state-in-effect` del linter del proyecto.
@@ -15,14 +20,24 @@ import { ROLES, USERS } from "@/lib/fixtures";
 
 const STORAGE_KEY = "matp-maqueta-sesion";
 
+/** Perfil real devuelto por el inicio de sesión (modo `live`). */
+export interface LiveProfile {
+  email: string;
+  fullName: string;
+  roles: string[];
+  permissions: string[];
+  mustChangePassword: boolean;
+}
+
 export interface Session {
   userId: string;
   roleCode: string;
+  live?: LiveProfile;
 }
 
 interface SessionContextValue {
   session: Session | null;
-  login: (userId: string, roleCode: string) => void;
+  login: (userId: string, roleCode: string, live?: LiveProfile) => void;
   logout: () => void;
   hasPermission: (permissionCode: string) => boolean;
   currentUser: (typeof USERS)[number] | undefined;
@@ -39,7 +54,11 @@ function parse(raw: string | null): Session | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Session;
-    if (typeof parsed.userId === "string" && typeof parsed.roleCode === "string") return parsed;
+    if (typeof parsed.userId === "string" && typeof parsed.roleCode === "string") {
+      const live = parsed.live;
+      if (live !== undefined && (typeof live.email !== "string" || !Array.isArray(live.permissions))) return null;
+      return parsed;
+    }
   } catch {
     // localStorage puede tener contenido corrupto: se trata como sesión ausente.
   }
@@ -105,11 +124,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // justo después de hidratar (antes de pintar), sin necesidad de un `useEffect` propio.
   const session = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const login = useCallback((userId: string, roleCode: string) => writeSession({ userId, roleCode }), []);
+  const login = useCallback(
+    (userId: string, roleCode: string, live?: LiveProfile) => writeSession({ userId, roleCode, ...(live ? { live } : {}) }),
+    [],
+  );
   const logout = useCallback(() => writeSession(null), []);
 
-  const currentUser = useMemo(() => USERS.find((u) => u.id === session?.userId), [session]);
-  const currentRole = useMemo(() => ROLES.find((r) => r.code === session?.roleCode), [session]);
+  const currentUser = useMemo<SessionContextValue["currentUser"]>(() => {
+    if (session?.live) {
+      return {
+        id: session.userId,
+        email: session.live.email,
+        full_name: session.live.fullName,
+        roles: session.live.roles,
+        is_active: true,
+        created_at: "",
+        last_login_at: null,
+        locked_until: null,
+        must_change_password: session.live.mustChangePassword,
+      };
+    }
+    return USERS.find((u) => u.id === session?.userId);
+  }, [session]);
+  const currentRole = useMemo<SessionContextValue["currentRole"]>(() => {
+    const known = ROLES.find((r) => r.code === session?.roleCode);
+    if (session?.live) {
+      return {
+        code: session.roleCode,
+        name: known?.name ?? session.roleCode,
+        description: known?.description ?? null,
+        is_enabled: true,
+        permissions: session.live.permissions,
+      };
+    }
+    return known;
+  }, [session]);
 
   const hasPermission = useCallback(
     (permissionCode: string) => currentRole?.permissions.includes(permissionCode) ?? false,

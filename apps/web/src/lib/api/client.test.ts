@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   apiErrorMessage,
   createApiClient,
+  CSRF_HEADER,
   DEV_USER_HEADER,
   isNotImplemented,
   type PieceSummary,
@@ -98,5 +99,52 @@ describe("createApiClient", () => {
     expect(apiErrorMessage({ code: "duplicate_acronym", message: "La sigla ya existe." })).toBe(
       "La sigla ya existe.",
     );
+  });
+});
+
+describe("session cookie and CSRF (ADR-009)", () => {
+  function clientWith(token: string | null, seen: Request[]) {
+    return createApiClient({
+      baseUrl: "http://api.test",
+      csrfToken: () => token,
+      fetch: async (input) => {
+        seen.push(input as Request);
+        return jsonResponse(200, {});
+      },
+    });
+  }
+
+  it("sends cookies and echoes the CSRF token on writes only", async () => {
+    const seen: Request[] = [];
+    const client = clientWith("token-csrf", seen);
+
+    await client.GET("/api/v1/auth/me");
+    await client.POST("/api/v1/auth/logout");
+
+    expect(seen[0].credentials).toBe("include");
+    expect(seen[0].headers.get(CSRF_HEADER)).toBeNull();
+    expect(seen[1].credentials).toBe("include");
+    expect(seen[1].headers.get(CSRF_HEADER)).toBe("token-csrf");
+  });
+
+  it("does not invent a CSRF header when there is no token", async () => {
+    const seen: Request[] = [];
+    await clientWith(null, seen).POST("/api/v1/auth/logout");
+    expect(seen[0].headers.get(CSRF_HEADER)).toBeNull();
+  });
+
+  it("reads the token from the matp_csrf cookie by default", async () => {
+    vi.stubGlobal("document", { cookie: "otra=1; matp_csrf=desde-la-cookie" });
+    const seen: Request[] = [];
+    const client = createApiClient({
+      baseUrl: "http://api.test",
+      fetch: async (input) => {
+        seen.push(input as Request);
+        return jsonResponse(200, {});
+      },
+    });
+    await client.POST("/api/v1/auth/logout");
+    expect(seen[0].headers.get(CSRF_HEADER)).toBe("desde-la-cookie");
+    vi.unstubAllGlobals();
   });
 });
