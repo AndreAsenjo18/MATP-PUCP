@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 92217c0ca7390fc19757612336de2d2935320d60acc1a99411ac8a3cc661107e
+ * openapi-sha256: 1fafacf12ff43ae2e80dac33ea05c57bc8623784f96b2f97c41032a3af5d9f60
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -529,11 +529,62 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Plantillas de mapeo reutilizables (RF-022) */
+        /**
+         * Plantillas de mapeo reutilizables (RF-022)
+         * @description Solo las plantillas activas. La sugerencia por cabeceras se pide con `POST /import-templates/suggest` (design D3).
+         */
         get: operations["listImportTemplates"];
         put?: never;
-        /** Guardar una plantilla de mapeo */
+        /**
+         * Guardar una plantilla de mapeo
+         * @description El mapeo se valida contra `headers`, de los que se calcula `header_signature` (design D3). Admite transformaciones, `value_map` y destinos `terms:<VOCABULARIO>`.
+         */
         post: operations["createImportTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de una plantilla de mapeo */
+        get: operations["getImportTemplate"];
+        put?: never;
+        post?: never;
+        /**
+         * Eliminar lógicamente una plantilla con motivo (RN-005)
+         * @description La plantilla deja de listarse y sugerirse y pasa a la papelera; los lotes que la usaron conservan la referencia y el mapeo con que se procesaron.
+         */
+        delete: operations["deleteImportTemplate"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar una plantilla de mapeo
+         * @description `headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la firma se recalcula. Los lotes ya procesados conservan su mapeo.
+         */
+        patch: operations["updateImportTemplate"];
+        trace?: never;
+    };
+    "/api/v1/import-templates/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sugerir plantillas para las cabeceras de un archivo (RF-022)
+         * @description Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).
+         */
+        post: operations["suggestImportTemplates"];
         delete?: never;
         options?: never;
         head?: never;
@@ -664,7 +715,7 @@ export interface paths {
         get?: never;
         /**
          * 2. Mapeo: asignar columnas (o aplicar una plantilla)
-         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).
+         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Con `template_id` (sin `columns`) se aplica una plantilla guardada; con una plantilla, transformaciones, `value_map` o destinos `terms:<VOCABULARIO>` el lote guarda el mapeo en versión 1 (design D1, fase 2).
          */
         put: operations["setImportMapping"];
         post?: never;
@@ -2566,9 +2617,21 @@ export interface components {
             split_compound: boolean;
             /**
              * Target Field
-             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen.
+             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, `terms:<VOCABULARIO>`; null = datos de origen.
              */
             target_field: string | null;
+            /**
+             * Transforms
+             * @description Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.
+             */
+            transforms?: string[];
+            /**
+             * Value Map
+             * @description Texto de origen → código de término, para la transformación `value_map`. Solo en plantillas por ahora.
+             */
+            value_map?: {
+                [key: string]: string;
+            } | null;
         };
         /**
          * CompletenessKpis
@@ -3894,7 +3957,7 @@ export interface components {
             header_row?: number | null;
             /**
              * Save As Template Name
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Aún no disponible: cree la plantilla con `POST /import-templates`.
              */
             save_as_template_name?: string | null;
             /**
@@ -3904,7 +3967,7 @@ export interface components {
             sheet_name?: string | null;
             /**
              * Template Id
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Plantilla guardada que define el mapeo (sin `columns`); `defaults` se aplican sobre los de la plantilla.
              */
             template_id?: string | null;
         };
@@ -3912,6 +3975,13 @@ export interface components {
         MappingTemplateCreate: {
             /** Columns */
             columns: components["schemas"]["ColumnMapping"][];
+            /**
+             * Defaults
+             * @description Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description?: string | null;
             /** Headers */
@@ -3927,7 +3997,7 @@ export interface components {
          *       "columns": [
          *         {
          *           "source_column": "DENOMINACION",
-         *           "target_field": "title"
+         *           "target_field": "denomination"
          *         }
          *       ],
          *       "created_at": "2026-09-17T10:30:00Z",
@@ -3945,6 +4015,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Defaults
+             * @description Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description: string | null;
             /** Header Signature */
@@ -3958,6 +4035,30 @@ export interface components {
             name: string;
             /** Source Name */
             source_name: string;
+        };
+        /**
+         * MappingTemplateUpdate
+         * @description Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated
+         *     against the headers and the signature is computed from them (design D3).
+         */
+        MappingTemplateUpdate: {
+            /** Columns */
+            columns?: components["schemas"]["ColumnMapping"][] | null;
+            /**
+             * Defaults
+             * @description Se envían con `headers` y `columns`; sin ellos se conservan.
+             */
+            defaults?: {
+                [key: string]: string;
+            } | null;
+            /** Description */
+            description?: string | null;
+            /** Headers */
+            headers?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Source Name */
+            source_name?: string | null;
         };
         /**
          * Me
@@ -5779,6 +5880,33 @@ export interface components {
          * @enum {string}
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
+        /** TemplateSuggestion */
+        TemplateSuggestion: {
+            /**
+             * Missing Columns
+             * @description Columnas de la plantilla que el archivo no trae.
+             */
+            missing_columns: string[];
+            /**
+             * New Columns
+             * @description Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen.
+             */
+            new_columns: string[];
+            /**
+             * Score
+             * @description 1 = mismas cabeceras (en cualquier orden y con otras tildes).
+             */
+            score: number;
+            template: components["schemas"]["MappingTemplateOut"];
+        };
+        /** TemplateSuggestRequest */
+        TemplateSuggestRequest: {
+            /**
+             * Headers
+             * @description Cabeceras del archivo, tal como vienen.
+             */
+            headers: string[];
+        };
         /**
          * TermCreate
          * @example {
@@ -7998,8 +8126,8 @@ export interface operations {
     listImportTemplates: {
         parameters: {
             query?: {
-                /** @description Sugiere plantillas para estos encabezados. */
-                header_signature?: string | null;
+                /** @description Solo las de esta fuente. */
+                source_name?: string | null;
             };
             header?: never;
             path?: never;
@@ -8041,15 +8169,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -8094,6 +8213,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Ya hay una plantilla activa con ese nombre. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -8103,13 +8231,234 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`. */
-            501: {
+        };
+    };
+    getImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["MappingTemplateOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteImportTemplate: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio. */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingTemplateOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestImportTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateSuggestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSuggestion"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -42,6 +42,7 @@ from app.modules.identification.normalization import (
     TYPE_PUCP,
 )
 from app.modules.identification.service import add_identifier, correct_locked_identifier
+from app.modules.imports.mapping import MappingSpecV1
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchStatus,
@@ -49,15 +50,65 @@ from app.modules.imports.models import (
     ImportRow,
     RowClassification,
 )
+from app.modules.imports.templates import header_signature
 from app.modules.locations.models import Location, LocationLevel, SpaceKind
 from app.modules.locations.service import create_location, move_piece
 from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, UserRole
+from app.seed.fixtures import HEADERS as SABANA_HEADERS
 from app.seed.images import placeholder_photo
 from app.seed.reference import UNSPECIFIED_VIEW_TYPE, ReferenceData, seed_reference_data
 
 SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
+# Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of
+# plantillas-mapeo-y-normalizacion). Column names are illustrative [SUPUESTO A1]; materials are
+# matched by code or label against the seeded ``MATERIAL`` vocabulary, with no correspondence
+# table, so nothing about the museum is assumed beyond that vocabulary [SUPUESTO T6].
+SABANA_TEMPLATE_MAPPING: dict[str, object] = {
+    "version": 1,
+    "columns": [
+        {"source": "N°", "target": {"kind": "source_payload"}},
+        {
+            "source": "CÓDIGOS",
+            "target": {"kind": "identifiers", "default_type": None},
+            "transforms": ["trim", "absence_markers", "split_concatenated"],
+        },
+        {
+            "source": "COLECCIÓN",
+            "target": {"kind": "field", "name": "collection"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "DENOMINACIÓN",
+            "target": {"kind": "field", "name": "denomination"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "ÉPOCA",
+            "target": {"kind": "field", "name": "epoch_original_text"},
+            "transforms": ["trim", "propose_period"],
+        },
+        {
+            "source": "MATERIAL",
+            "target": {"kind": "terms", "vocabulary": "MATERIAL"},
+            "transforms": ["trim", "split:,"],
+        },
+        {
+            "source": "MEDIDAS",
+            "target": {"kind": "field", "name": "dimensions_text"},
+            "transforms": ["trim", "propose_dimensions"],
+        },
+        {
+            "source": "PROCEDENCIA",
+            "target": {"kind": "field", "name": "provenance"},
+            "transforms": ["trim"],
+        },
+        {"source": "UBICACIÓN", "target": {"kind": "source_payload"}},
+        {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
+        {"source": "FOTO", "target": {"kind": "source_payload"}},
+    ],
+}
 SEED_ACTOR = "seed"
 
 
@@ -630,15 +681,10 @@ class SyntheticCatalogBuilder:
             id=new_uuid(),
             name="Plantilla sábana sintética v1",
             source_name=SOURCE_NAME,
-            header_signature="sintetica-v1",
-            mapping={
-                "DENOMINACIÓN": {"target": "denomination"},
-                "CÓDIGOS": {"target": "identifiers:auto"},
-                "ÉPOCA": {"target": "epoch_original_text"},
-                "PROCEDENCIA": {"target": "provenance"},
-                "OBS. CONSULTORÍA": {"target": "payload"},
-            },
-            description="[SUPUESTO] Columnas ilustrativas hasta recibir el Excel real.",
+            header_signature=header_signature(SABANA_HEADERS),
+            mapping=MappingSpecV1.model_validate(SABANA_TEMPLATE_MAPPING).as_json(),
+            description="[SUPUESTO] Columnas ilustrativas de data/fixtures/sabana_sintetica_v1.xlsx "
+            "hasta recibir el Excel real (A1).",
         )
         self.session.add(template)
         self.session.flush()
