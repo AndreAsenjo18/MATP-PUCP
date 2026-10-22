@@ -23,7 +23,7 @@
 
 - [x] 4.1 Pantalla `/login` real (modo `live`), cambio de contraseña obligatorio, cierre de sesión y envío de `X-CSRF-Token` en `lib/api/client.ts`; el selector de rol simulado queda solo en modo mock; pruebas Vitest del cliente (Req: Sesiones de servidor revocables; Req: Protección contra falsificación de peticiones)
 - [x] 4.2 Middleware de Next.js y manejo de 401 `session_expired` con guardado del formulario en `sessionStorage` y `returnTo`; prueba de componente (Req: Sesiones de servidor revocables — escenario "Sesión expirada por inactividad"; RNF-010)
-- [ ] 4.3 Administración de usuarios y editor de matriz de permisos en `app/administracion` con avisos de rol desactivado y último administrador; pruebas de componente (Req: Administración de usuarios…; Req: Edición auditada de la matriz…)
+- [x] 4.3 Administración de usuarios y editor de matriz de permisos en `app/administracion` con avisos de rol desactivado y último administrador; pruebas de componente (Req: Administración de usuarios…; Req: Edición auditada de la matriz…)
 
 ## 5. Cierre del change
 
