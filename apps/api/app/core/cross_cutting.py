@@ -29,6 +29,9 @@ APPEND_ONLY_TABLES: frozenset[str] = frozenset(
         "piece_source_record",
         "conservation_assessment",
         "audit_digest",
+        # Autenticación (ADR-009): trazas de seguridad que nadie debe poder reescribir.
+        "auth_event",
+        "sensitive_access_log",
     }
 )
 
@@ -111,6 +114,28 @@ TABLE_EXCEPTIONS: dict[str, TableException] = {
             owner="Importación",
         ),
         _exception(
+            "idempotency_key",
+            scopes=[SCOPE_SOFT_DELETE, SCOPE_AUDIT],
+            reason=(
+                "Respuesta guardada de un lote para que un reintento no lo repita: "
+                "infraestructura de transporte, no un hecho del museo. Lo que el lote cambia sí "
+                "queda en piece_movement (solo inserción) y en audit_log; esta fila se limpia "
+                "periódicamente."
+            ),
+            owner="Ubicaciones",
+        ),
+        _exception(
+            "import_image",
+            scopes=[SCOPE_SOFT_DELETE],
+            reason=(
+                "Imagen incrustada en un Excel a la espera de asociarse a una pieza: se regenera "
+                "al volver a validar el lote, igual que import_row. La foto ya asociada vive en "
+                "media_asset, que sí tiene borrado lógico, y el archivo original queda en el "
+                "almacenamiento de objetos."
+            ),
+            owner="Importación",
+        ),
+        _exception(
             "quality_setting",
             scopes=[SCOPE_SOFT_DELETE],
             reason=(
@@ -142,7 +167,10 @@ TABLE_EXCEPTIONS: dict[str, TableException] = {
 #: Borrados físicos autorizados: ruta relativa a `apps/api` → tablas que ese archivo puede borrar.
 #: Solo se admiten tablas con excepción de borrado lógico; la prueba lo verifica.
 PHYSICAL_DELETE_EXCEPTIONS: dict[str, frozenset[str]] = {
-    "app/modules/imports/service.py": frozenset({"import_row", "duplicate_candidate"}),
+    "app/modules/imports/service.py": frozenset(
+        {"import_row", "duplicate_candidate", "import_image"}
+    ),
+    "app/modules/imports/images.py": frozenset({"import_image"}),
     "app/modules/imports/classify.py": frozenset({"duplicate_candidate"}),
 }
 

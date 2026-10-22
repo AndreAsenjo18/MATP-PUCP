@@ -152,6 +152,23 @@ class PieceSearchResponse(BaseModel):
     items: list[PieceSummary]
 
 
+class MergedInto(BaseModel):
+    """Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4)."""
+
+    piece_id: uuid.UUID = Field(description="Pieza conservada a la que redirigir.")
+    merged_at: datetime | None
+    reason: str | None = Field(description="Motivo registrado al fusionar.")
+
+
+class MergedFrom(BaseModel):
+    """A piece merged into this one; its movements and source records stay on it (D4)."""
+
+    piece_id: uuid.UUID
+    denomination: str
+    merged_at: datetime | None
+    reason: str | None
+
+
 class PieceDetail(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -242,6 +259,20 @@ class PieceDetail(BaseModel):
     created_at: datetime
     updated_at: datetime
     masked_fields: list[str] = Field(default_factory=list)
+    merged_into: MergedInto | None = Field(
+        None,
+        description=(
+            "Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo "
+            "(calidad-datos; RF-030)."
+        ),
+    )
+    merged_from: list[MergedFrom] = Field(
+        default_factory=list,
+        description=(
+            "Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y "
+            "evaluaciones siguen en ellas (calidad-datos; RF-030)."
+        ),
+    )
 
 
 class PieceWrite(BaseModel):

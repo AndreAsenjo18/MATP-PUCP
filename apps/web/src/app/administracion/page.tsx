@@ -6,7 +6,7 @@
  * restauración (RN-005) y consulta global de auditoría con exportación a CSV (RF-040, RF-041);
  * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { StatusBadge } from "@/components/domain/StatusBadges";
@@ -14,13 +14,168 @@ import { TrashPanel } from "@/components/domain/TrashPanel";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { toEntryView } from "@/lib/data/audit";
 import { useMockStore } from "@/lib/data/mock-store";
+import {
+  createLocation,
+  fetchLocationsTree,
+  LOCATION_ERROR_MESSAGES,
+  updateLocation,
+  type LocationFailure,
+  type LocationLevelLabel,
+  type LocationNode,
+} from "@/lib/data/locations";
 import { getApiMode } from "@/lib/data/mode";
 import { IDENTIFIER_TYPES, LOCATIONS, locationPath, ROLES, USERS, VOCABULARIES, termsByVocabulary } from "@/lib/fixtures";
+
+const LOCATION_LEVELS: LocationLevelLabel[] = ["Sede", "Depósito", "Mueble", "Nivel", "Contenedor"];
+
+function flattenLocationTree(nodes: LocationNode[], prefix: string[] = []): { id: string; label: string }[] {
+  return nodes.flatMap((node) => {
+    const path = [...prefix, node.name];
+    return [{ id: node.id, label: path.join(" › ") }, ...flattenLocationTree(node.children ?? [], path)];
+  });
+}
+
+function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
+}
+
+function LocationTreeView({
+  nodes,
+  depth = 0,
+  onDeactivate,
+}: {
+  nodes: LocationNode[];
+  depth?: number;
+  onDeactivate: (id: string) => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {nodes.map((node) => (
+        <li key={node.id}>
+          <p className="flex items-center gap-2 text-base text-tinta" style={{ paddingLeft: `${depth * 16}px` }}>
+            {node.name} <span className="text-sm text-gris-texto">({node.level_type})</span>
+            {node.level_type === "Contenedor" && (
+              <button type="button" onClick={() => onDeactivate(node.id)} className="text-sm text-terracota underline">
+                Desactivar
+              </button>
+            )}
+          </p>
+          {node.children && node.children.length > 0 && <LocationTreeView nodes={node.children} depth={depth + 1} onDeactivate={onDeactivate} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function UbicacionesLive() {
+  const { currentUser } = useSession();
+  const devUser = currentUser?.email;
+  const [tree, setTree] = useState<LocationNode[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ level: "Depósito" as LocationLevelLabel, code: "", name: "", parentId: "" });
+
+  async function reload() {
+    const result = await fetchLocationsTree(devUser);
+    if (result.status === "ok") setTree(result.value);
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetchLocationsTree(devUser).then((result) => {
+      if (active && result.status === "ok") setTree(result.value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [devUser]);
+
+  const flat = flattenLocationTree(tree);
+
+  async function handleDeactivate(locationId: string) {
+    setError(null);
+    setMessage(null);
+    const result = await updateLocation(locationId, { is_active: false }, devUser);
+    if (result.status === "ok") {
+      setMessage("Ubicación desactivada.");
+      await reload();
+    } else {
+      setError(describeLocationFailure(result));
+    }
+  }
+
+  async function handleCreate() {
+    if (!form.code.trim() || !form.name.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    const result = await createLocation(
+      {
+        level: form.level,
+        code: form.code.trim(),
+        name: form.name.trim(),
+        parent_id: form.parentId || null,
+      },
+      devUser,
+    );
+    setBusy(false);
+    if (result.status === "ok") {
+      setMessage(`Ubicación "${result.value.name}" creada.`);
+      setForm((current) => ({ ...current, code: "", name: "" }));
+      await reload();
+    } else {
+      setError(describeLocationFailure(result));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card as="section" aria-label="Árbol de ubicaciones">
+        {tree.length === 0 ? (
+          <p className="text-base text-gris-texto">Sin ubicaciones registradas todavía.</p>
+        ) : (
+          <LocationTreeView nodes={tree} onDeactivate={handleDeactivate} />
+        )}
+      </Card>
+
+      <Card as="section" aria-label="Crear ubicación" className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-tinta">Crear ubicación</h2>
+        <Select label="Nivel" value={form.level} onChange={(event) => setForm((c) => ({ ...c, level: event.target.value as LocationLevelLabel }))}>
+          {LOCATION_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </Select>
+        <Select label="Ubicación padre" value={form.parentId} onChange={(event) => setForm((c) => ({ ...c, parentId: event.target.value }))}>
+          <option value="">Sin padre (solo para Sede)</option>
+          {flat.map((location) => (
+            <option key={location.id} value={location.id}>
+              {location.label}
+            </option>
+          ))}
+        </Select>
+        <Input label="Código" value={form.code} onChange={(event) => setForm((c) => ({ ...c, code: event.target.value }))} placeholder="p. ej. DEP2-RB" />
+        <Input label="Nombre" value={form.name} onChange={(event) => setForm((c) => ({ ...c, name: event.target.value }))} placeholder="p. ej. Rack B" />
+        <Button disabled={busy} onClick={handleCreate}>
+          Crear
+        </Button>
+        {message && <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">{message}</p>}
+        {error && <p className="rounded-md bg-carmin-peligro/10 px-3 py-2 text-base text-carmin-texto">{error}</p>}
+      </Card>
+    </div>
+  );
+}
 
 const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Papelera", "Auditoría"] as const;
 type Tab = (typeof TABS)[number];
@@ -192,15 +347,19 @@ function AdministracionContent() {
 
       {tab === "Ubicaciones" &&
         (hasPermission("locations.manage") ? (
-          <Card as="section" aria-label="Ubicaciones">
-            <ul className="flex flex-col gap-1">
-              {LOCATIONS.map((location) => (
-                <li key={location.id} className="text-base text-tinta" style={{ paddingLeft: `${(locationPath(location.id).length - 1) * 16}px` }}>
-                  {location.name} <span className="text-sm text-gris-texto">({location.level})</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          getApiMode() === "live" ? (
+            <UbicacionesLive />
+          ) : (
+            <Card as="section" aria-label="Ubicaciones">
+              <ul className="flex flex-col gap-1">
+                {LOCATIONS.map((location) => (
+                  <li key={location.id} className="text-base text-tinta" style={{ paddingLeft: `${(locationPath(location.id).length - 1) * 16}px` }}>
+                    {location.name} <span className="text-sm text-gris-texto">({location.level})</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar ubicaciones.</PermissionNotice>
         ))}

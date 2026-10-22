@@ -31,6 +31,7 @@ entity COLLECTION {
   * default_tenure_regime : varchar(40)
     origin_description : text
   * is_active : boolean
+    default_usage_restriction_term_id : uuid <<FK>>
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -175,6 +176,7 @@ entity TERM {
   * sort_order : integer
   * is_active : boolean
     external_uri : varchar(500)
+    extra : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -190,6 +192,7 @@ entity LOCATION {
   * name : varchar(200)
     description : text
   * is_active : boolean
+    space_kind : varchar(40)
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -204,6 +207,8 @@ entity PIECE_MOVEMENT <<solo inserción>> {
     performed_by_user_id : uuid <<FK>>
     performed_by_label : varchar(200)
   * occurred_at : timestamptz
+    corrects_movement_id : uuid <<FK>>
+    origin_ref : varchar(80)
 }
 entity LOAN {
   * id : uuid <<PK>>
@@ -229,6 +234,19 @@ entity LOAN_ITEM {
   * piece_id : uuid <<FK>>
   ..
   <i>+ timestamps + soft-delete</i>
+}
+entity IDEMPOTENCY_KEY {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(200) <<UK>>
+  * scope : varchar(80)
+    user_id : uuid <<FK>>
+  * request_hash : varchar(64)
+  * response_status : integer
+  * response_body : jsonb
+  * expires_at : timestamptz
+  ..
+  <i>+ timestamps</i>
 }
 }
 
@@ -264,6 +282,7 @@ entity IMPORT_BATCH {
     processing_started_at : timestamptz
     heartbeat_at : timestamptz
     mapping : jsonb
+    change_set_id : uuid
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -282,6 +301,23 @@ entity IMPORT_ROW {
   * decision : varchar(40)
     decision_reason : text
     target_piece_id : uuid <<FK>>
+    resolution : jsonb
+  ..
+  <i>+ timestamps</i>
+}
+entity IMPORT_IMAGE {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * image_number : integer
+  * storage_key : varchar(500)
+  * content_type : varchar(100)
+  * size_bytes : integer
+  * content_sha256 : varchar(64)
+    anchor_row_number : integer
+    import_row_id : uuid <<FK>>
+  * status : varchar(40)
+    media_asset_id : uuid <<FK>>
   ..
   <i>+ timestamps</i>
 }
@@ -379,6 +415,7 @@ entity APP_USER {
     last_login_at : timestamptz
   * failed_login_count : integer
     locked_until : timestamptz
+  * must_change_password : boolean
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -416,6 +453,41 @@ entity USER_ROLE {
   ..
   <i>+ timestamps + soft-delete</i>
 }
+entity USER_SESSION {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * token_hash : varchar(64) <<UK>>
+  * last_seen_at : timestamptz
+  * expires_at : timestamptz
+    revoked_at : timestamptz
+    revoked_reason : varchar(60)
+    ip_address : varchar(45)
+    user_agent : varchar(300)
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity AUTH_EVENT <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * event : varchar(40)
+    user_id : uuid <<FK>>
+    email_attempted_hash : varchar(64)
+    ip_address : varchar(45)
+    user_agent : varchar(300)
+    detail : varchar(120)
+}
+entity SENSITIVE_ACCESS_LOG <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * occurred_at : timestamptz
+  * user_id : uuid <<FK>>
+  * route : varchar(200)
+  * entity_type : varchar(60)
+  * entity_ids : jsonb
+  * fields : jsonb
+}
 entity AUDIT_LOG <<solo inserción>> {
   * id : uuid <<PK>>
   --
@@ -449,9 +521,12 @@ entity AUDIT_DIGEST <<solo inserción>> {
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
-COLLECTION |o--o{ COLLECTION : "subcolección de"
+APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
+APP_USER |o--o{ IDEMPOTENCY_KEY : "solicita"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
+APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
+APP_USER ||--o{ USER_SESSION : "sesiones abiertas"
 IMPORT_MAPPING_TEMPLATE |o--o{ IMPORT_BATCH : "plantilla"
 APP_USER |o--o{ IMPORT_BATCH : "carga"
 APP_USER |o--o{ IMPORT_BATCH : "aprueba"
@@ -461,6 +536,8 @@ VOCABULARY ||--o{ TERM : "contiene"
 TERM |o--o{ TERM : "parent_id"
 APP_USER ||--o{ USER_ROLE
 ROLE ||--o{ USER_ROLE
+COLLECTION |o--o{ COLLECTION : "subcolección de"
+TERM |o--o{ COLLECTION : "default_usage_restriction_term_id"
 TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"
@@ -497,6 +574,7 @@ PIECE ||--o{ PIECE_MOVEMENT : "movimientos"
 LOCATION |o--o{ PIECE_MOVEMENT : "origen"
 LOCATION |o--o{ PIECE_MOVEMENT : "destino"
 APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
+PIECE_MOVEMENT |o--o{ PIECE_MOVEMENT : "corrige"
 PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
 IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
 PIECE ||--o{ QUALITY_JOB_ITEM : "detección incremental"
@@ -504,6 +582,9 @@ PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
 PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
 IMPORT_ROW |o--o{ DUPLICATE_CANDIDATE : "fila vs pieza"
 APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
+IMPORT_BATCH ||--o{ IMPORT_IMAGE : "imágenes del lote"
+IMPORT_ROW |o--o{ IMPORT_IMAGE : "anclada en"
+MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
 
 note as N1
   <b>Convenciones</b>

@@ -35,6 +35,8 @@ APPEND_ONLY = {
     "piece_movement",
     "piece_source_record",
     "conservation_assessment",
+    "auth_event",
+    "sensitive_access_log",
 }
 
 # Agrupación por módulo funcional del SRS.
@@ -57,7 +59,7 @@ GROUPS = [
     (
         "Ubicación y Control (EP-02)",
         "#FDF6E3",
-        ["location", "piece_movement", "loan", "loan_item"],
+        ["location", "piece_movement", "loan", "loan_item", "idempotency_key"],
     ),
     (
         "Importación y Calidad de Datos (EP-03)",
@@ -66,6 +68,7 @@ GROUPS = [
             "import_mapping_template",
             "import_batch",
             "import_row",
+            "import_image",
             "duplicate_candidate",
             "quality_setting",
             "quality_job",
@@ -82,6 +85,9 @@ GROUPS = [
             "permission",
             "role_permission",
             "user_role",
+            "user_session",
+            "auth_event",
+            "sensitive_access_log",
             "audit_log",
             "audit_digest",
         ],
@@ -118,11 +124,16 @@ LABELS = {
     ("piece_movement", "from_location_id"): "origen",
     ("piece_movement", "to_location_id"): "destino",
     ("piece_movement", "performed_by_user_id"): "ejecuta",
+    ("piece_movement", "corrects_movement_id"): "corrige",
+    ("idempotency_key", "user_id"): "solicita",
     ("import_batch", "template_id"): "plantilla",
     ("import_batch", "uploaded_by_id"): "carga",
     ("import_batch", "approved_by_id"): "aprueba",
     ("import_row", "batch_id"): "filas / diffs",
     ("import_row", "target_piece_id"): "pieza objetivo",
+    ("import_image", "batch_id"): "imágenes del lote",
+    ("import_image", "import_row_id"): "anclada en",
+    ("import_image", "media_asset_id"): "registrada como",
     ("duplicate_candidate", "piece_a_id"): "pieza A",
     ("duplicate_candidate", "piece_b_id"): "pieza B",
     ("duplicate_candidate", "import_row_id"): "fila vs pieza",
@@ -137,6 +148,9 @@ LABELS = {
     ("role_permission", "permission_id"): "",
     ("user_role", "user_id"): "",
     ("user_role", "role_id"): "",
+    ("user_session", "user_id"): "sesiones abiertas",
+    ("auth_event", "user_id"): "eventos de autenticación",
+    ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
 }

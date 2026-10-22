@@ -288,9 +288,7 @@ def test_append_only_triggers_are_rendered_for_postgresql(
     """Sin Docker la migración se verifica en SQLite; el SQL de PostgreSQL se revisa offline."""
     url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
     monkeypatch.setenv("DATABASE_URL", url)
-    command.upgrade(
-        _alembic_config(url), "0005_import_batch_processing:0006_audit_digest", sql=True
-    )
+    command.upgrade(_alembic_config(url), "0008_locations_idempotency:0006_audit_digest", sql=True)
     sql = capsys.readouterr().out
     assert "CREATE TABLE audit_digest" in sql
     assert "CONSTRAINT uq_audit_digest_day UNIQUE (day)" in sql

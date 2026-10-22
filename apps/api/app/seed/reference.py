@@ -131,10 +131,14 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
     VocabularyCode.USAGE_RESTRICTION: (
         "Restricciones de uso de imágenes",
         [
-            ("SIN_RESTRICCION", "Sin restricción"),
-            ("SOLO_USO_INTERNO", "Solo uso interno"),
-            ("NO_PUBLICAR", "No publicar"),
-            ("AUTORIZACION_COMODANTE", "Requiere autorización del comodante"),
+            ("SIN_RESTRICCION", "Sin restricción", {"blocks_external_download": False}),
+            ("SOLO_USO_INTERNO", "Solo uso interno", {"blocks_external_download": True}),
+            ("NO_PUBLICAR", "No publicar", {"blocks_external_download": True}),
+            (
+                "AUTORIZACION_COMODANTE",
+                "Requiere autorización del comodante",
+                {"blocks_external_download": True},
+            ),
         ],
     ),
     VocabularyCode.LOAN_TYPE: (
@@ -256,13 +260,19 @@ def seed_reference_data(session: Session) -> ReferenceData:
         )
         session.add(vocabulary)
         terms[vocabulary_code] = {}
-        for order, (code, label) in enumerate(items):
+        for order, item in enumerate(items):
+            if len(item) == 3:
+                code, label, extra = item
+            else:
+                code, label = item
+                extra = None
             term = Term(
                 id=new_uuid(),
                 vocabulary_id=vocabulary.id,
                 code=code,
                 label=label,
                 sort_order=order,
+                extra=extra,
             )
             terms[vocabulary_code][code] = term
             session.add(term)

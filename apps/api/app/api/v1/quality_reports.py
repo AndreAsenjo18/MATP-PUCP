@@ -17,7 +17,6 @@ from app.api.pagination import (
     paginate,
 )
 from app.api.stubs import (
-    CHANGE_DUPLICATES,
     CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
     CHANGE_SEARCH_EXPORT,
@@ -31,11 +30,18 @@ from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
 from app.modules.quality.models import DuplicateStatus, QualityJob
+from app.modules.quality.queue import (
+    StaleCandidate,
+    queue_query,
+    reopen_expired_postponements,
+    resolve_candidate,
+)
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
     AlertType,
     CompletenessKpis,
     DuplicateCandidateOut,
+    DuplicateOrigin,
     DuplicateResolution,
     IncompletePiece,
     QualityJobOut,
@@ -88,32 +94,72 @@ def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
 @router.get(
     "/quality/duplicates",
     response_model=Page[DuplicateCandidateOut],
-    summary="Cola de posibles duplicados por revisar (RF-030)",
+    summary="Cola de posibles duplicados por revisar, con filtros (RF-030)",
     tags=["Calidad"],
-    **stub(CHANGE_DUPLICATES),
+    **implemented(),
 )
 def list_duplicate_candidates(
+    session: SessionDep,
     user: Reader,
     params: Annotated[PageParams, Depends(page_params)],
     candidate_status: Annotated[DuplicateStatus | None, Query(alias="status")] = None,
+    collection_id: Annotated[
+        uuid.UUID | None, Query(description="Incluye las subcolecciones.")
+    ] = None,
     min_score: Annotated[float | None, Query(ge=0, le=1)] = None,
+    origin: Annotated[
+        DuplicateOrigin | None,
+        Query(description="CATALOG: dos piezas del catálogo; IMPORT: fila de importación."),
+    ] = None,
 ) -> Page[DuplicateCandidateOut]:
-    raise not_implemented(CHANGE_DUPLICATES, page_example(DuplicateCandidateOut))
+    if reopen_expired_postponements(session):  # design D5: no cron, reopened on read
+        session.commit()
+    statement = queue_query(
+        session,
+        status=candidate_status,
+        collection_id=collection_id,
+        min_score=min_score,
+        origin=origin,
+    )
+    rows, total = paginate(session, statement, params)
+    return Page[DuplicateCandidateOut](
+        items=[DuplicateCandidateOut.model_validate(row) for row in rows],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.post(
     "/quality/duplicates/{candidate_id}/resolve",
     response_model=DuplicateCandidateOut,
-    summary="Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar)",
+    summary="Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030)",
     tags=["Calidad"],
-    **stub(CHANGE_DUPLICATES),
+    **implemented(),
 )
 def resolve_duplicate_candidate(
     candidate_id: uuid.UUID,
     body: DuplicateResolution,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
 ) -> DuplicateCandidateOut:
-    raise not_implemented(CHANGE_DUPLICATES, DuplicateCandidateOut)
+    writer(session, user, reason=body.note)
+    try:
+        candidate = resolve_candidate(
+            session,
+            candidate_id,
+            resolution=body.resolution,
+            reviewer_id=user.id,
+            note=body.note,
+            postponed_until=body.postponed_until,
+            surviving_piece_id=body.surviving_piece_id,
+            field_choices=body.field_choices,
+        )
+    except StaleCandidate:
+        session.commit()  # the pair stays SUPERSEDED (spec: «Candidato obsoleto»)
+        raise
+    session.commit()
+    return DuplicateCandidateOut.model_validate(candidate)
 
 
 @router.post(

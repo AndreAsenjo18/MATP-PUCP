@@ -19,11 +19,15 @@
  * agrupado por conjunto de cambios con vista previa de reversión, conflictos y confirmación en
  * lenguaje claro (`components/domain/AuditTrailPanel`). En modo `live` todo viene de la API; en
  * modo demostración se agrupan las filas del store de la sesión.
+ *
+ * Tarea 4.2 de `deteccion-duplicados-y-cola-revision`: la cabecera muestra los enlaces de fusión
+ * (`merged_into`, `merged_from`). En modo `live`, una pieza que no está en los fixtures se lee de la
+ * API (`LiveFichaContent`: datos generales, identificadores y enlaces de fusión).
  */
 import { ArrowRight, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 
 import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -35,6 +39,7 @@ import {
   toDialogOutcome,
   type DialogOutcome,
 } from "@/components/domain/PieceActionDialogs";
+import { MergeLinks } from "@/components/domain/MergedPieceLinks";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import {
   PieceCurrentLocation,
@@ -55,6 +60,7 @@ import type { ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { toEntryView } from "@/lib/data/audit";
+import { fetchPieceSheet, type PieceSheetResult } from "@/lib/data/duplicates";
 import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
 import { getApiMode } from "@/lib/data/mode";
@@ -93,7 +99,10 @@ function FichaContent({ pieceId }: { pieceId: string }) {
   const [deleted, setDeleted] = useState(false);
 
   const basePiece = store.pieces[pieceId];
-  if (!basePiece) notFound();
+  if (!basePiece) {
+    if (getApiMode() === "live") return <LiveFichaContent pieceId={pieceId} />;
+    notFound();
+  }
   const piece = maskPieceForRole(basePiece, hasPermission);
   const alerts = alertsForPiece(piece);
   const media = getPieceMedia(pieceId);
@@ -156,6 +165,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                 (RF-009).
               </p>
             )}
+            <MergeLinks piece={piece} />
           </>
         }
       />
@@ -223,6 +233,59 @@ function FichaContent({ pieceId }: { pieceId: string }) {
           {tab === "Sugerencias IA" && <SuggestionsTab suggestions={suggestions} />}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Ficha en modo `live` de una pieza que no está en los fixtures, leída con la identidad de la sesión
+ * (incluida una pieza fusionada, que la API devuelve con `merged_into`). Las demás pestañas se
+ * conectan a la API en sus changes.
+ */
+function LiveFichaContent({ pieceId }: { pieceId: string }) {
+  const { currentUser } = useSession();
+  const devUser = currentUser?.email;
+  const key = `${pieceId}|${devUser ?? ""}`;
+  const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchPieceSheet(pieceId, devUser).then((result) => {
+      if (active) setLoaded({ key, result });
+    });
+    return () => {
+      active = false;
+    };
+  }, [pieceId, devUser, key]);
+
+  if (loaded?.key !== key) {
+    return (
+      <p role="status" className="text-base text-gris-texto">
+        Cargando la ficha…
+      </p>
+    );
+  }
+  const { result } = loaded;
+  if (result.status === "not_found") notFound();
+  if (result.status !== "ok") return <PermissionNotice>{result.message}</PermissionNotice>;
+  const piece = result.piece;
+  return (
+    <div className="flex flex-col gap-6">
+      <PieceSheetHeader
+        piece={piece}
+        alerts={[]}
+        notices={
+          <>
+            {piece.masked_fields && piece.masked_fields.length > 0 && (
+              <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">Su rol no ve todos los campos: {piece.masked_fields.join(", ")} (RF-041).</p>
+            )}
+            <MergeLinks piece={piece} />
+          </>
+        }
+      />
+      <PieceGeneralData piece={piece} />
+      <PieceIdentifiersTable piece={piece} />
+      <p className="text-sm text-gris-texto">Fotografías, ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
     </div>
   );
 }

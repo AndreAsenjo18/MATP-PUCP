@@ -23,7 +23,6 @@ _EXPORT_SETTINGS = {
     "s3_access_key_id": "openapi-export",
     "s3_secret_access_key": "openapi-export-not-a-secret",
     "s3_bucket": "openapi-export",
-    "jwt_secret": "openapi-export-not-a-secret",
     "app_version": "0.1.0",
 }
 

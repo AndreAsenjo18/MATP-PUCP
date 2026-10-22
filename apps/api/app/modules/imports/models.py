@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models_base import (
@@ -83,6 +83,8 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     heartbeat_at: Mapped[datetime | None] = mapped_column()
     # Column mapping confirmed with ``PUT /imports/{batch_id}/mapping`` (design D3).
     mapping: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
+    # Change set of the application: every catalog change of the batch shares it (design D6, D7).
+    change_set_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
 
 
 class ImportRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -106,8 +108,38 @@ class ImportRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     decision_reason: Mapped[str | None] = mapped_column(Text)
     target_piece_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("piece.id"))
+    # Human resolution of the row (design D5): ``{target_piece_id | as_new, field_decisions,
+    # decided_by_id, decided_at}``. Kept apart from the classification, which stays as computed.
+    resolution: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
 
     __table_args__ = (
         UniqueConstraint("batch_id", "source_row_number"),
         Index("ix_import_row_batch_classification", "batch_id", "classification"),
     )
+
+
+class ImportImageStatus(enum.StrEnum):
+    PENDING = "PENDING"
+    ASSOCIATED = "ASSOCIATED"
+
+
+class ImportImage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Image embedded in an imported workbook, waiting for explicit association (RF-029; D8)."""
+
+    __tablename__ = "import_image"
+
+    batch_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("import_batch.id"), index=True)
+    image_number: Mapped[int] = mapped_column()
+    storage_key: Mapped[str] = mapped_column(String(500))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column()
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    # Spreadsheet row (1-based) where the image is anchored, and the batch row with that number.
+    anchor_row_number: Mapped[int | None] = mapped_column()
+    import_row_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_row.id"))
+    status: Mapped[ImportImageStatus] = mapped_column(
+        str_enum(ImportImageStatus, "import_image_status"), default=ImportImageStatus.PENDING
+    )
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("media_asset.id"))
+
+    __table_args__ = (UniqueConstraint("batch_id", "image_number"),)

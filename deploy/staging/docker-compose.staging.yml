@@ -1,0 +1,29 @@
+# MATP - Ambiente de calidad en AWS Academy (ADR-013).
+# Utiliza RDS y S3; no levanta PostgreSQL ni MinIO locales.
+
+name: matp-staging
+
+services:
+  api:
+    image: ghcr.io/andreasenjo18/matp-api:${MATP_VERSION:?Defina MATP_VERSION}
+    env_file:
+      - ${MATP_ENV_FILE:-/opt/matp/.env.pruebas}
+    restart: unless-stopped
+    networks:
+      - internal
+
+  web:
+    image: ghcr.io/andreasenjo18/matp-web:${MATP_VERSION:?Defina MATP_VERSION}
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      AI_MOUNT_PATH: /ai
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

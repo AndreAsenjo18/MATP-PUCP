@@ -40,10 +40,50 @@ class Settings(BaseSettings):
     s3_bucket: str = Field(min_length=1)
     s3_auto_create_bucket: bool = False
 
-    # Authentication (JWT). Implemented in a later change; the secret is required from day one.
-    jwt_secret: str = Field(min_length=16)
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60
+    # --- Media upload (fotografias-multiples-por-pieza, D2) --------------------
+    media_max_bytes: int = Field(
+        default=52_428_800,  # 50 MB [SUPUESTO C1]
+        gt=0,
+        description="Tamaño máximo de archivo de imagen subido (bytes).",
+    )
+    media_allowed_types: str = Field(
+        default="image/jpeg,image/png,image/tiff",
+        description="Tipos MIME admitidos, separados por comas.",
+    )
+    media_url_ttl_seconds: int = Field(
+        default=300,
+        gt=0,
+        description="TTL de URLs prefirmadas de descarga (segundos).",
+    )
+    media_upload_url_ttl_seconds: int = Field(
+        default=900,
+        gt=0,
+        description="TTL de URLs prefirmadas de subida (segundos).",
+    )
+    media_upload_mode: Literal["presigned", "proxy"] = Field(
+        default="presigned",
+        description="Modo de subida: presigned (directo a S3) o proxy (a través de la API).",
+    )
+
+    # Authentication: opaque server-side sessions, not JWT (ADR-009). There is no shared secret
+    # to configure: the session token is random and only its SHA-256 digest is stored.
+    # Idle and absolute session lifetimes [SUPUESTO C7].
+    session_idle_minutes: int = Field(30, ge=1)
+    session_max_hours: int = Field(12, ge=1)
+    # Temporary account lock after repeated failures [SUPUESTO C7].
+    login_max_failed_attempts: int = Field(5, ge=1)
+    login_lock_minutes: int = Field(15, ge=1)
+    # Web origin allowed to send credentials; it matters in the free-tier contingency, where the
+    # web and the API live on different domains (ADR-009, point 8).
+    web_origin: str = "http://localhost:3000"
+    # `Secure` flag of the session and CSRF cookies: only local development may turn it off.
+    cookie_secure: bool = True
+    # Identity provider (ADR-009, decision D8): "local" verifies a password against the
+    # database; "oidc" (institutional PUCP account) is a documented stub in phase 1 (RNF-012).
+    auth_provider: Literal["local", "oidc"] = "local"
+    # Password of the synthetic seed users, so development can sign in without the dev header.
+    # Never set in production: synthetic users cannot sign in there (ADR-009, point 7).
+    seed_dev_password: str | None = None
 
     # IA asistiva: se ejecuta dentro de este mismo proceso, montada en AI_MOUNT_PATH (ADR-008).
     ai_mount_path: str = "/ai"
@@ -58,7 +98,22 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
-    @field_validator("s3_access_key_id", "s3_secret_access_key", "app_release", mode="before")
+    @property
+    def session_max_minutes(self) -> int:
+        """Absolute session lifetime in minutes (ADR-009, decision D1)."""
+        return self.session_max_hours * 60
+
+    @property
+    def media_allowed_types_set(self) -> set[str]:
+        return {t.strip() for t in self.media_allowed_types.split(",") if t.strip()}
+
+    @field_validator(
+        "s3_access_key_id",
+        "s3_secret_access_key",
+        "app_release",
+        "seed_dev_password",
+        mode="before",
+    )
     @classmethod
     def _empty_string_is_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
@@ -71,6 +126,16 @@ class Settings(BaseSettings):
             raise ValueError(
                 "S3_ACCESS_KEY_ID y S3_SECRET_ACCESS_KEY deben definirse ambas o ninguna "
                 "(dejarlas vacías usa la cadena de credenciales por defecto de AWS)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _production_requires_secure_cookies(self) -> "Settings":
+        """HTTPS es obligatorio en producción, así que la cookie de sesión va siempre `Secure`."""
+        if self.app_env == "production" and not self.cookie_secure:
+            raise ValueError(
+                "COOKIE_SECURE no puede ser falso con APP_ENV=production: la cookie de sesión "
+                "solo viaja por HTTPS (RNF-013, ADR-009)"
             )
         return self
 

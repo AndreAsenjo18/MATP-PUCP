@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: ca8fd4bb3c393e0c1fee32ac49e2fd8d4be38c4e77d104bba698a869b8e52297
+ * openapi-sha256: 216b77b4ba483687186e16a386d4da3d8eb5bce519438546e5b4e2d03231f856
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -224,6 +224,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambiar la contraseña propia (obligatorio con una contraseña temporal)
+         * @description Exige la contraseña actual y una nueva de al menos 12 caracteres que no sea común. Revoca todas las sesiones del usuario y abre una nueva en este dispositivo. Es la única operación, junto con `me` y `logout`, que acepta una cuenta con contraseña temporal (`403 password_change_required` en las demás).
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -233,7 +253,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos) */
+        /**
+         * Iniciar sesión con cuenta individual (bloqueo tras intentos fallidos)
+         * @description Abre una sesión de servidor y entrega las cookies `matp_session` (HttpOnly) y `matp_csrf`. Cualquier fallo (correo inexistente, contraseña incorrecta, cuenta inactiva o bloqueada) responde el mismo `401 invalid_credentials`; si la cuenta tiene una contraseña temporal, `must_change_password` es verdadero (ADR-009).
+         */
         post: operations["login"];
         delete?: never;
         options?: never;
@@ -250,7 +273,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cerrar sesión */
+        /**
+         * Cerrar sesión
+         * @description Revoca la sesión actual y elimina las cookies de sesión y CSRF.
+         */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -477,7 +503,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 6. Aprobación explícita por rol autorizado (RF-027) */
+        /**
+         * 6. Aprobación explícita por rol autorizado (RF-027)
+         * @description Aprueba el lote con el `summary_token` del resumen mostrado y lo aplica en segundo plano, en una sola transacción. Si el resumen cambió responde 409 `summary_changed` con el resumen actual. Si una fila viola una regla de dominio no se aplica ninguna y el lote queda «fallido al aplicar» con la fila y el motivo.
+         */
         post: operations["confirmImportBatch"];
         delete?: never;
         options?: never;
@@ -494,11 +523,31 @@ export interface paths {
         };
         /**
          * 5. Previsualización con diff y clasificación de filas
-         * @description Filas del lote con su clasificación, coincidencias, errores y diff campo a campo, más las reglas y umbrales usados para clasificarlas (RF-025, RF-026).
+         * @description Filas del lote con su clasificación, coincidencias, errores, diff campo a campo, la acción que hará la aplicación y sus imágenes, más las reglas y umbrales usados para clasificarlas y la bandeja de imágenes sin fila (RF-025, RF-026, RF-029).
          */
         get: operations["getImportBatchDiffs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/images/{image_id}/associate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Asociar una imagen extraída del Excel a una pieza (RF-029)
+         * @description Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 antes): nunca se asocian automáticamente.
+         */
+        post: operations["associateImportImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -512,7 +561,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 7. Bitácora de carga con motivos de rechazo (RF-028) */
+        /**
+         * 7. Bitácora de carga con motivos de rechazo (RF-028)
+         * @description Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa, conteos y cada fila no aplicada con su número de fila y motivo. `format=xlsx` la descarga en Excel.
+         */
         get: operations["getImportLog"];
         put?: never;
         post?: never;
@@ -572,7 +624,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Decidir sobre una fila (aceptar, excluir o rechazar con motivo) */
+        /**
+         * Decidir sobre una fila (aceptar, excluir o rechazar con motivo)
+         * @description Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino (`target_piece_id`) o marcándola como nueva (`as_new`). Una fila con errores o un conflicto sin resolver no se puede aceptar (422).
+         */
         patch: operations["decideImportRow"];
         trace?: never;
     };
@@ -678,7 +733,7 @@ export interface paths {
         };
         /** Detalle de una ubicación con su ruta */
         get: operations["getLocation"];
-        /** Editar o desactivar una ubicación */
+        /** Editar, desactivar o reubicar una ubicación (design D4) */
         put: operations["updateLocation"];
         post?: never;
         delete?: never;
@@ -755,6 +810,23 @@ export interface paths {
         put?: never;
         /** Subir una fotografía de una pieza al almacenamiento de objetos (RF-013) */
         post: operations["uploadMediaAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/movements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil) */
+        post: operations["movePiecesBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -958,6 +1030,40 @@ export interface paths {
         patch: operations["updateMedia"];
         trace?: never;
     };
+    "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener URL prefirmada para descargar una foto */
+        get: operations["getMediaDownloadUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/media/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reordenar fotos de una pieza (lista completa de IDs) */
+        put: operations["reorderMedia"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pieces/{piece_id}/media/upload-url": {
         parameters: {
             query?: never;
@@ -984,7 +1090,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Registrar un movimiento o verificación física */
+        /** Registrar un movimiento, verificación física o corrección */
         post: operations["movePiece"];
         delete?: never;
         options?: never;
@@ -1026,6 +1132,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pieces/media/storage-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estimación del volumen fotográfico */
+        get: operations["getMediaStorageEstimate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pieces/validate": {
         parameters: {
             query?: never;
@@ -1050,7 +1173,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Cola de posibles duplicados por revisar (RF-030) */
+        /** Cola de posibles duplicados por revisar, con filtros (RF-030) */
         get: operations["listDuplicateCandidates"];
         put?: never;
         post?: never;
@@ -1069,7 +1192,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar) */
+        /** Resolver un candidato: fusionar, marcar distinto o posponer (nunca borrar; RF-030) */
         post: operations["resolveDuplicateCandidate"];
         delete?: never;
         options?: never;
@@ -1624,12 +1747,11 @@ export interface components {
          * @example {
          *       "comment": "Revisado",
          *       "confirm_counts": {
-         *         "CONFLICT": 5,
-         *         "NEW": 70,
-         *         "POSSIBLE_DUPLICATE": 10,
-         *         "UPDATE": 35,
-         *         "rows": 120
-         *       }
+         *         "create": 70,
+         *         "skip": 15,
+         *         "update": 35
+         *       },
+         *       "summary_token": "00000000000000000000000000000000"
          *     }
          */
         ApprovalRequest: {
@@ -1637,11 +1759,42 @@ export interface components {
             comment?: string | null;
             /**
              * Confirm Counts
-             * @description Totales que la persona confirmó en pantalla (RNF-010, RF-027).
+             * @description Totales que la persona confirmó en pantalla (informativo).
              */
-            confirm_counts: {
+            confirm_counts?: {
                 [key: string]: number;
-            };
+            } | null;
+            /**
+             * Summary Token
+             * @description `approval_summary.summary_token` del resumen mostrado (RF-027, RNF-010).
+             */
+            summary_token: string;
+        };
+        /**
+         * ApprovalSummaryOut
+         * @description What applying the batch would do now; approve with its ``summary_token`` (D6).
+         */
+        ApprovalSummaryOut: {
+            /**
+             * Create
+             * @description Filas que crearán una pieza nueva.
+             */
+            create: number;
+            /**
+             * Skip
+             * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).
+             */
+            skip: number;
+            /**
+             * Summary Token
+             * @description Huella del resumen; se envía al aprobar.
+             */
+            summary_token: string;
+            /**
+             * Update
+             * @description Filas que actualizarán una pieza existente.
+             */
+            update: number;
         };
         /**
          * AuditAction
@@ -1890,6 +2043,64 @@ export interface components {
              */
             piece_ids: string[];
         };
+        /** BatchMovementFailureOut */
+        BatchMovementFailureOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+        };
+        /** BatchMovementItem */
+        BatchMovementItem: {
+            /**
+             * Expected From Location Id
+             * @description Ubicación que el usuario vio para esta pieza (control de concurrencia).
+             */
+            expected_from_location_id?: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+        };
+        /**
+         * BatchMovementRequest
+         * @example {
+         *       "items": [
+         *         {
+         *           "piece_id": "01920000-0000-7000-8000-000000000101"
+         *         }
+         *       ],
+         *       "movement_type": "MOVE",
+         *       "reason": "Traslado masivo de depósito",
+         *       "to_location_id": "01920000-0000-7000-8000-000000000401"
+         *     }
+         */
+        BatchMovementRequest: {
+            /** Items */
+            items: components["schemas"]["BatchMovementItem"][];
+            /** @default MOVE */
+            movement_type: components["schemas"]["MovementType"];
+            /** Reason */
+            reason?: string | null;
+            /**
+             * To Location Id
+             * Format: uuid
+             */
+            to_location_id: string;
+        };
+        /** BatchMovementResponse */
+        BatchMovementResponse: {
+            /** Failures */
+            failures?: components["schemas"]["BatchMovementFailureOut"][];
+            /** Registered */
+            registered?: components["schemas"]["MovementOut"][];
+        };
         /** Body_uploadImportBatch */
         Body_uploadImportBatch: {
             /**
@@ -1992,6 +2203,19 @@ export interface components {
              * @description Texto explícito si no se toma de la ficha.
              */
             text?: string | null;
+        };
+        /**
+         * ChangePasswordRequest
+         * @example {
+         *       "current_password": "contraseña-temporal-entregada",
+         *       "new_password": "una frase larga y propia"
+         *     }
+         */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** ChangeSetEntityOut */
         ChangeSetEntityOut: {
@@ -2329,14 +2553,90 @@ export interface components {
             value: number;
         };
         /**
+         * DownloadUrlRequest
+         * @description Request for download URL with purpose.
+         * @example {
+         *       "purpose": "internal"
+         *     }
+         * @example {
+         *       "purpose": "external"
+         *     }
+         */
+        DownloadUrlRequest: {
+            /**
+             * Purpose
+             * @description Uso previsto: internal (visualización) o external (descarga).
+             * @default internal
+             * @enum {string}
+             */
+            purpose: "internal" | "external";
+        };
+        /**
+         * DownloadUrlResponse
+         * @description Response with pre-signed download URL.
+         * @example {
+         *       "download_url": "http://localhost:9000/matp-media/pieces/.../original.jpg?...",
+         *       "effective_restriction": {
+         *         "code": "NO_PUBLICAR",
+         *         "id": "01920000-0000-7000-8000-000000000333",
+         *         "label": "No publicar"
+         *       },
+         *       "expires_at": "2026-09-17T10:30:00Z",
+         *       "restriction_origin": "colección"
+         *     }
+         */
+        DownloadUrlResponse: {
+            /**
+             * Download Url
+             * @description URL prefirmada para descarga.
+             */
+            download_url: string;
+            /** @description Restricción efectiva aplicada a la foto. */
+            effective_restriction?: components["schemas"]["TermRef"] | null;
+            /**
+             * Expires At
+             * Format: date-time
+             * @description Expiración de la URL.
+             */
+            expires_at: string;
+            /**
+             * Restriction Origin
+             * @description Origen de la restricción efectiva.
+             * @default ninguna
+             * @enum {string}
+             */
+            restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
+        };
+        /**
          * DuplicateCandidateOut
          * @example {
+         *       "blocking_conflict": false,
          *       "detected_by": "rules",
          *       "id": "01920000-0000-7000-8000-000000000911",
          *       "matched_fields": [
-         *         "title",
-         *         "provenance",
-         *         "dimensions_text"
+         *         {
+         *           "contribution": 0.35,
+         *           "field": "identifier:COLECCION",
+         *           "signal": "identifier",
+         *           "similarity": 1,
+         *           "values": {
+         *             "a": "MMZ 012",
+         *             "b": "M.M.Z. 012",
+         *             "normalized": "MMZ 12"
+         *           },
+         *           "weight": 0.35
+         *         },
+         *         {
+         *           "contribution": 0.279,
+         *           "field": "denomination",
+         *           "signal": "denomination",
+         *           "similarity": 0.93,
+         *           "values": {
+         *             "a": "Retablo ayacuchano",
+         *             "b": "RETABLO AYACUCHANO"
+         *           },
+         *           "weight": 0.3
+         *         }
          *       ],
          *       "piece_a_id": "01920000-0000-7000-8000-000000000101",
          *       "piece_b_id": "01920000-0000-7000-8000-000000000102",
@@ -2345,6 +2645,11 @@ export interface components {
          *     }
          */
         DuplicateCandidateOut: {
+            /**
+             * Blocking Conflict
+             * @description Dos códigos I vigentes distintos: la fusión queda bloqueada (RN-002).
+             */
+            blocking_conflict: boolean;
             /** Detected By */
             detected_by: string;
             /**
@@ -2355,7 +2660,7 @@ export interface components {
             /** Import Row Id */
             import_row_id: string | null;
             /** Matched Fields */
-            matched_fields: string[];
+            matched_fields: components["schemas"]["DuplicateSignal"][];
             /**
              * Piece A Id
              * Format: uuid
@@ -2363,6 +2668,11 @@ export interface components {
             piece_a_id: string;
             /** Piece B Id */
             piece_b_id: string | null;
+            /**
+             * Postponed Until
+             * @description Un par pospuesto vuelve a pendiente al leer la cola después de esta fecha.
+             */
+            postponed_until: string | null;
             /** Resolution Note */
             resolution_note: string | null;
             /** Reviewed At */
@@ -2378,10 +2688,35 @@ export interface components {
          *       "note": "Piezas distintas del mismo taller",
          *       "resolution": "DISTINCT"
          *     }
+         * @example {
+         *       "note": "Esperar la ficha física",
+         *       "postponed_until": "2026-12-01T00:00:00Z",
+         *       "resolution": "POSTPONED"
+         *     }
+         * @example {
+         *       "field_choices": {
+         *         "provenance": "ABSORBED"
+         *       },
+         *       "note": "Misma pieza registrada en el libro y en la sábana",
+         *       "resolution": "MERGED",
+         *       "surviving_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
          */
         DuplicateResolution: {
+            /**
+             * Field Choices
+             * @description Solo para MERGED: valor que queda en cada campo de la ficha. Sin elección queda el de la pieza conservada y, si está vacío, el de la absorbida.
+             */
+            field_choices?: {
+                [key: string]: "SURVIVING" | "ABSORBED";
+            } | null;
             /** Note */
             note?: string | null;
+            /**
+             * Postponed Until
+             * @description Obligatorio para POSTPONED: fecha futura, como máximo 180 días [SUPUESTO].
+             */
+            postponed_until?: string | null;
             /**
              * Resolution
              * @enum {string}
@@ -2392,6 +2727,35 @@ export interface components {
              * @description Obligatorio para MERGED.
              */
             surviving_piece_id?: string | null;
+        };
+        /**
+         * DuplicateSignal
+         * @description One explained reason of a candidate score (``quality.scoring.Signal``, design D1).
+         *
+         *     Rows written before the detection rules (seed, imports) may carry only ``field`` and
+         *     ``similarity``, so the rest is optional and unknown keys are kept.
+         */
+        DuplicateSignal: {
+            /** Contribution */
+            contribution?: number | null;
+            /** Field */
+            field: string;
+            /**
+             * Signal
+             * @description identifier, denomination, collection, …
+             */
+            signal?: string | null;
+            /** Similarity */
+            similarity: number;
+            /**
+             * Values
+             * @description Valores comparados de ambas piezas.
+             */
+            values?: unknown;
+            /** Weight */
+            weight?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DuplicateStatus
@@ -2663,6 +3027,16 @@ export interface components {
             /** Sort Order */
             sort_order?: number | null;
         };
+        /** ImageAssociateRequest */
+        ImageAssociateRequest: {
+            /**
+             * Piece Id
+             * @description Pieza de destino; por defecto, la de la fila donde está anclada la imagen.
+             */
+            piece_id?: string | null;
+            /** View Type Term Id */
+            view_type_term_id?: string | null;
+        };
         /**
          * ImportBatchCounters
          * @description Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``).
@@ -2678,6 +3052,12 @@ export interface components {
         /**
          * ImportBatchOut
          * @example {
+         *       "approval_summary": {
+         *         "create": 70,
+         *         "skip": 15,
+         *         "summary_token": "00000000000000000000000000000000",
+         *         "update": 35
+         *       },
          *       "counts": {
          *         "CONFLICT": 5,
          *         "NEW": 70,
@@ -2709,6 +3089,8 @@ export interface components {
          *     }
          */
         ImportBatchOut: {
+            /** @description Resumen para aprobar; solo en previsualización (RF-027, RNF-010). */
+            approval_summary?: components["schemas"]["ApprovalSummaryOut"] | null;
             /** Approved At */
             approved_at: string | null;
             /** Approved By Id */
@@ -2843,7 +3225,55 @@ export interface components {
              * @description Total de resultados que cumplen los filtros.
              */
             total: number;
+            /**
+             * Unassigned Images
+             * @description Bandeja de imágenes sin fila: ancladas en filas sin datos (RF-029).
+             */
+            unassigned_images?: components["schemas"]["ImportImageOut"][];
         };
+        /**
+         * ImportImageOut
+         * @description Image extracted from the workbook, pending until a person associates it (RF-029).
+         */
+        ImportImageOut: {
+            /**
+             * Anchor Row Number
+             * @description Fila del Excel donde está anclada.
+             */
+            anchor_row_number: number | null;
+            /** Content Type */
+            content_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image Number */
+            image_number: number;
+            /**
+             * Import Row Id
+             * @description Fila del lote propuesta; null = bandeja sin asignar.
+             */
+            import_row_id: string | null;
+            /**
+             * Media Asset Id
+             * @description Foto registrada al asociarla.
+             */
+            media_asset_id?: string | null;
+            /**
+             * Preview Url
+             * @description URL temporal para ver la imagen.
+             */
+            preview_url?: string | null;
+            /** Size Bytes */
+            size_bytes: number;
+            status: components["schemas"]["ImportImageStatus"];
+        };
+        /**
+         * ImportImageStatus
+         * @enum {string}
+         */
+        ImportImageStatus: "PENDING" | "ASSOCIATED";
         /**
          * ImportLog
          * @example {
@@ -2852,8 +3282,10 @@ export interface components {
          *         "id": "01920000-0000-7000-8000-000000000601",
          *         "status": "APPLIED"
          *       },
+         *       "download_url": "/api/v1/imports/01920000-0000-7000-8000-000000000601/log?format=xlsx",
          *       "entries": [
          *         {
+         *           "action": "SKIP",
          *           "classification": "CONFLICT",
          *           "decision": "REJECTED",
          *           "reason": "Código I asignado a otra pieza.",
@@ -2864,28 +3296,49 @@ export interface components {
          *     }
          */
         ImportLog: {
-            /** Applied Rows */
-            applied_rows: number;
-            /** Batch */
+            /**
+             * Applied Rows
+             * @description Solo en lotes aplicados o revertidos.
+             */
+            applied_rows: number | null;
+            /**
+             * Batch
+             * @description Archivo, hoja, mapeo, cargador, aprobador, marcas por etapa y conteos.
+             */
             batch: {
                 [key: string]: unknown;
             };
             /**
              * Download Url
-             * @description Rechazos descargables en Excel.
+             * @description La misma bitácora en Excel.
              */
             download_url?: string | null;
-            /** Entries */
+            /**
+             * Entries
+             * @description Filas no aplicadas con su motivo y filas resueltas por una persona.
+             */
             entries: components["schemas"]["ImportLogEntry"][];
-            /** Rejected Rows */
-            rejected_rows: number;
+            /**
+             * Rejected Rows
+             * @description Filas no aplicadas; null si el lote no llegó a leer filas.
+             */
+            rejected_rows: number | null;
         };
         /** ImportLogEntry */
         ImportLogEntry: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "CREATE" | "UPDATE" | "SKIP";
             classification: components["schemas"]["RowClassification"] | null;
             decision: components["schemas"]["RowDecision"];
             /** Reason */
             reason: string | null;
+            /** Resolution */
+            resolution?: {
+                [key: string]: unknown;
+            } | null;
             /** Source Row Number */
             source_row_number: number;
             /** Target Piece Id */
@@ -2894,6 +3347,7 @@ export interface components {
         /**
          * ImportRowOut
          * @example {
+         *       "action": "UPDATE",
          *       "batch_id": "01920000-0000-7000-8000-000000000601",
          *       "classification": "UPDATE",
          *       "decision": "PENDING",
@@ -2907,6 +3361,7 @@ export interface components {
          *       ],
          *       "has_validation_errors": false,
          *       "id": "01920000-0000-7000-8000-000000000611",
+         *       "images": [],
          *       "mapped_data": {
          *         "fields": {
          *           "denomination": "Retablo ayacuchano"
@@ -2937,6 +3392,11 @@ export interface components {
          */
         ImportRowOut: {
             /**
+             * Action
+             * @description Qué hará la aplicación del lote con la fila.
+             */
+            action?: ("CREATE" | "UPDATE" | "SKIP") | null;
+            /**
              * Batch Id
              * Format: uuid
              */
@@ -2957,6 +3417,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Images
+             * @description Imágenes ancladas en la fila (RF-029).
+             */
+            images?: components["schemas"]["ImportImageOut"][];
             /** Mapped Data */
             mapped_data: {
                 [key: string]: unknown;
@@ -2969,6 +3434,13 @@ export interface components {
             raw_data: {
                 [key: string]: unknown;
             };
+            /**
+             * Resolution
+             * @description Resolución de una persona: `target_piece_id` o `as_new`, `field_decisions`, `decided_by_id`, `decided_at`.
+             */
+            resolution?: {
+                [key: string]: unknown;
+            } | null;
             /** Source Row Number */
             source_row_number: number;
             /** Target Piece Id */
@@ -3064,6 +3536,11 @@ export interface components {
             name: string;
             /** Parent Id */
             parent_id?: string | null;
+            /**
+             * Space Kind
+             * @description [SUPUESTO] Tipo de espacio; solo admitido en el nivel Depósito.
+             */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /**
          * LocationNode
@@ -3150,6 +3627,11 @@ export interface components {
              * @description Ruta desde la sede.
              */
             path?: components["schemas"]["LocationRef"][];
+            /**
+             * Space Kind
+             * @description [SUPUESTO] Tipo de espacio; solo aplica al nivel Depósito.
+             */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /** LocationRef */
         LocationRef: {
@@ -3169,27 +3651,108 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** LocationUpdate */
+        /**
+         * LocationUpdate
+         * @example {
+         *       "is_active": true,
+         *       "name": "Rack B"
+         *     }
+         */
         LocationUpdate: {
+            /**
+             * Confirm Affected Count
+             * @description Obligatorio al reubicar un nodo con piezas: número de piezas afectadas que la pantalla mostró antes de confirmar.
+             */
+            confirm_affected_count?: number | null;
             /** Description */
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Name */
             name?: string | null;
+            /**
+             * Parent Id
+             * @description Nuevo padre; reubica el nodo y sus piezas (design D4).
+             */
+            parent_id?: string | null;
+            /** Space Kind */
+            space_kind?: ("Depósito" | "Sala de exhibición" | "Taller" | "Otro") | null;
         };
         /**
          * LoginRequest
+         * @description Body of ``POST /auth/login``; ``username`` is the e-mail, as in the team's contract.
          * @example {
-         *       "email": "admin@matp.local",
-         *       "password": "********"
+         *       "password": "********",
+         *       "username": "admin@matp.local"
          *     }
          */
         LoginRequest: {
-            /** Email */
-            email: string;
             /** Password */
             password: string;
+            /**
+             * Username
+             * @description Correo de la cuenta.
+             */
+            username: string;
+        };
+        /**
+         * LoginResponse
+         * @description The signed-in user plus what the web client needs to keep going (ADR-009 D1, D4).
+         *
+         *     The session token itself never appears here: it travels only in the ``HttpOnly`` cookie.
+         * @example {
+         *       "auth_mode": "session",
+         *       "csrf_token": "6f1c0e5e0b8e4c7aa0d3c9f2b1a45e87",
+         *       "email": "catalogador@matp.local",
+         *       "full_name": "Catalogador (sintético)",
+         *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "must_change_password": false,
+         *       "permissions": [
+         *         "pieces.read",
+         *         "pieces.update"
+         *       ],
+         *       "roles": [
+         *         "CATALOGUER"
+         *       ],
+         *       "session_expires_at": "2026-09-17T10:30:00Z"
+         *     }
+         */
+        LoginResponse: {
+            /**
+             * Auth Mode
+             * @description session (cookie de sesión, ADR-009) o dev-header (solo pruebas).
+             */
+            auth_mode: string;
+            /**
+             * Csrf Token
+             * @description Valor que las escrituras envían en `X-CSRF-Token`. También viaja en la cookie `matp_csrf`, pero un cliente en otro dominio no puede leerla.
+             */
+            csrf_token: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Must Change Password
+             * @description Hay una contraseña temporal vigente: debe cambiarla antes de seguir.
+             * @default false
+             */
+            must_change_password: boolean;
+            /** Permissions */
+            permissions: string[];
+            /** Roles */
+            roles: string[];
+            /**
+             * Session Expires At
+             * Format: date-time
+             * @description Fin absoluto de la sesión (UTC).
+             */
+            session_expires_at: string;
         };
         /**
          * MappingRequest
@@ -3298,10 +3861,11 @@ export interface components {
         /**
          * Me
          * @example {
-         *       "auth_mode": "dev-header",
+         *       "auth_mode": "session",
          *       "email": "catalogador@matp.local",
          *       "full_name": "Catalogador (sintético)",
          *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "must_change_password": false,
          *       "permissions": [
          *         "pieces.read",
          *         "pieces.update"
@@ -3314,7 +3878,7 @@ export interface components {
         Me: {
             /**
              * Auth Mode
-             * @description dev-header (provisional, ADR-005) o jwt.
+             * @description session (cookie de sesión, ADR-009) o dev-header (solo pruebas).
              */
             auth_mode: string;
             /** Email */
@@ -3326,6 +3890,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Must Change Password
+             * @description Hay una contraseña temporal vigente: debe cambiarla antes de seguir.
+             * @default false
+             */
+            must_change_password: boolean;
             /** Permissions */
             permissions: string[];
             /** Roles */
@@ -3455,6 +4025,42 @@ export interface components {
             view_type_term_id?: string | null;
         };
         /**
+         * MergedFrom
+         * @description A piece merged into this one; its movements and source records stay on it (D4).
+         */
+        MergedFrom: {
+            /** Denomination */
+            denomination: string;
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * MergedInto
+         * @description Where a merged piece now lives (change deteccion-duplicados-y-cola-revision, D4).
+         */
+        MergedInto: {
+            /** Merged At */
+            merged_at: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description Pieza conservada a la que redirigir.
+             */
+            piece_id: string;
+            /**
+             * Reason
+             * @description Motivo registrado al fusionar.
+             */
+            reason: string | null;
+        };
+        /**
          * MovementCreate
          * @example {
          *       "destination_location_id": "01920000-0000-7000-8000-000000000401",
@@ -3464,17 +4070,27 @@ export interface components {
          */
         MovementCreate: {
             /**
+             * Corrects Movement Id
+             * @description Obligatorio para CORRECTION: movimiento que se corrige (RN-005).
+             */
+            corrects_movement_id?: string | null;
+            /**
              * Destination Location Id
              * @description Alias del contrato de interfaces (MovePieceRequest).
              */
             destination_location_id?: string | null;
+            /**
+             * Expected From Location Id
+             * @description Ubicación que el usuario vio antes de mover la pieza; si ya cambió, la API responde 409 (design D2, control de concurrencia).
+             */
+            expected_from_location_id?: string | null;
             /** @default MOVE */
             movement_type: components["schemas"]["MovementType"];
             /** Reason */
             reason?: string | null;
             /**
              * To Location Id
-             * @description Obligatorio para MOVE.
+             * @description Obligatorio para MOVE y CORRECTION.
              */
             to_location_id?: string | null;
         };
@@ -3496,6 +4112,8 @@ export interface components {
          *     }
          */
         MovementOut: {
+            /** Corrects Movement Id */
+            corrects_movement_id?: string | null;
             from_location: components["schemas"]["LocationRef"] | null;
             /**
              * Id
@@ -4025,6 +4643,13 @@ export interface components {
             materials: components["schemas"]["TermRef"][];
             /** Media Count */
             media_count: number;
+            /**
+             * Merged From
+             * @description Piezas fusionadas en esta, con su fecha y motivo: sus movimientos, datos de origen y evaluaciones siguen en ellas (calidad-datos; RF-030).
+             */
+            merged_from?: components["schemas"]["MergedFrom"][];
+            /** @description Solo en una pieza fusionada (dada de baja): pieza conservada, fecha y motivo (calidad-datos; RF-030). */
+            merged_into?: components["schemas"]["MergedInto"] | null;
             /** Notes */
             notes: string | null;
             object_type: components["schemas"]["TermRef"] | null;
@@ -4657,19 +5282,46 @@ export interface components {
          * @enum {string}
          */
         RowDecision: "PENDING" | "ACCEPTED" | "EXCLUDED" | "REJECTED";
-        /** RowDecisionRequest */
+        /**
+         * RowDecisionRequest
+         * @example {
+         *       "as_new": false,
+         *       "decision": "ACCEPTED",
+         *       "field_decisions": {
+         *         "author": "exclude",
+         *         "provenance": "accept"
+         *       },
+         *       "target_piece_id": "01920000-0000-7000-8000-000000000101"
+         *     }
+         */
         RowDecisionRequest: {
+            /**
+             * As New
+             * @description Conflicto o posible duplicado: la fila crea una pieza nueva.
+             * @default false
+             */
+            as_new: boolean;
             /**
              * Decision
              * @enum {string}
              */
             decision: "ACCEPTED" | "EXCLUDED" | "REJECTED";
             /**
+             * Field Decisions
+             * @description Por campo del diff: aceptar el valor entrante o conservar el actual.
+             */
+            field_decisions?: {
+                [key: string]: "accept" | "exclude";
+            };
+            /**
              * Reason
              * @description Obligatorio para REJECTED (RF-028).
              */
             reason?: string | null;
-            /** Target Piece Id */
+            /**
+             * Target Piece Id
+             * @description Conflicto o posible duplicado: la fila actualiza esta pieza.
+             */
             target_piece_id?: string | null;
         };
         /**
@@ -4872,6 +5524,59 @@ export interface components {
             source_row_number: number | null;
         };
         /**
+         * StorageEstimateResponse
+         * @description Response with current storage volume and projection.
+         * @example {
+         *       "avg_mb_per_photo": 2.1,
+         *       "avg_photos_per_piece": 3.5,
+         *       "current_derivatives_bytes": 246913569,
+         *       "current_originals_bytes": 987654321,
+         *       "current_volume_bytes": 1234567890,
+         *       "projection": {
+         *         "mb_per_photo": 4,
+         *         "photos_per_piece": 5,
+         *         "pieces": 20000,
+         *         "projected_derivatives_bytes": 50000000000,
+         *         "projected_originals_bytes": 400000000000,
+         *         "projected_total_bytes": 450000000000
+         *       }
+         *     }
+         */
+        StorageEstimateResponse: {
+            /**
+             * Avg Mb Per Photo
+             * @description Promedio real de MB por foto (originales).
+             */
+            avg_mb_per_photo?: number | null;
+            /**
+             * Avg Photos Per Piece
+             * @description Promedio real de fotos por pieza.
+             */
+            avg_photos_per_piece?: number | null;
+            /**
+             * Current Derivatives Bytes
+             * @description Tamaño total de derivados (thumb + display).
+             */
+            current_derivatives_bytes: number;
+            /**
+             * Current Originals Bytes
+             * @description Tamaño total de originales activos.
+             */
+            current_originals_bytes: number;
+            /**
+             * Current Volume Bytes
+             * @description Volumen actual almacenado (originales + derivados).
+             */
+            current_volume_bytes: number;
+            /**
+             * Projection
+             * @description Proyección de volumen según parámetros indicados.
+             */
+            projection?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
          * SuggestionStatus
          * @enum {string}
          */
@@ -4975,25 +5680,6 @@ export interface components {
             label?: string | null;
             /** Sort Order */
             sort_order?: number | null;
-        };
-        /**
-         * TokenResponse
-         * @example {
-         *       "access_token": "eyJ...",
-         *       "expires_in": 3600,
-         *       "token_type": "bearer"
-         *     }
-         */
-        TokenResponse: {
-            /** Access Token */
-            access_token: string;
-            /** Expires In */
-            expires_in: number;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
         };
         /**
          * TrashEntryOut
@@ -6003,6 +6689,57 @@ export interface operations {
             };
         };
     };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Contraseña actual incorrecta o nueva que no cumple la política. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -6022,10 +6759,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TokenResponse"];
+                    "application/json": components["schemas"]["LoginResponse"];
                 };
             };
-            /** @description Falta identificar al usuario (RF-042). */
+            /** @description Credenciales incorrectas (genérico). */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6052,13 +6789,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Demasiados intentos desde esta dirección. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6104,15 +6841,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -7170,8 +7898,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7179,13 +7907,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7255,16 +7983,21 @@ export interface operations {
             };
         };
     };
-    getImportLog: {
+    associateImportImage: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 batch_id: string;
+                image_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageAssociateRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -7272,7 +8005,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ImportLog"];
+                    "application/json": components["schemas"]["ImportImageOut"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -7293,6 +8026,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -7302,13 +8044,66 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+        };
+    };
+    getImportLog: {
+        parameters: {
+            query?: {
+                /** @description `json` o `xlsx`. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bitácora en JSON o, con `format=xlsx`, como hoja de cálculo. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ImportLog"];
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7480,8 +8275,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7489,13 +8284,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7871,8 +8666,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El padre indicado no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7880,13 +8675,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description El código ya está en uso (RF-016). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nivel de padre no permitido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7991,8 +8795,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La ubicación o el nuevo padre no existen. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8000,13 +8804,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description La ubicación tiene piezas (desactivación o confirmación de conteo). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Ciclo o nivel de padre no permitido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8049,8 +8862,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description No existe o no es visible. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8058,13 +8871,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8226,6 +9039,77 @@ export interface operations {
                 };
             };
             /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    movePiecesBatch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchMovementResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El destino no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El destino cambió respecto a lo visto, o la clave no coincide. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Lote vacío, destino inválido o límite excedido. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9186,20 +10070,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     retireMedia: {
         parameters: {
             query: {
+                /** @description Motivo obligatorio. */
                 reason: string;
             };
             header?: never;
@@ -9243,15 +10119,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -9308,13 +10175,111 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
+        };
+    };
+    getMediaDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["DownloadUrlResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reorderMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": string[];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -9335,7 +10300,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9368,15 +10333,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `fotografias-multiples-por-pieza`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -9552,6 +10508,57 @@ export interface operations {
             };
         };
     };
+    getMediaStorageEstimate: {
+        parameters: {
+            query?: {
+                mb_per_photo?: number | null;
+                photos_per_piece?: number | null;
+                pieces?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageEstimateResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     validatePiece: {
         parameters: {
             query?: {
@@ -9618,7 +10625,11 @@ export interface operations {
     listDuplicateCandidates: {
         parameters: {
             query?: {
+                /** @description Incluye las subcolecciones. */
+                collection_id?: string | null;
                 min_score?: number | null;
+                /** @description CATALOG: dos piezas del catálogo; IMPORT: fila de importación. */
+                origin?: ("CATALOG" | "IMPORT") | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -9665,15 +10676,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -9727,15 +10729,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `deteccion-duplicados-y-cola-revision`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

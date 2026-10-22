@@ -8,7 +8,6 @@ del contrato en la API; RNF-009, RF-005, RF-013, RF-016).
 """
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.api.enums import (
     LOCATION_LEVEL_LABELS,
@@ -21,10 +20,7 @@ from app.api.enums import (
 from app.core.errors import ValidationFailed
 from app.modules.catalog.enums import TenureRegime
 from app.modules.locations.models import LocationLevel
-from tests.api.conftest import CATALOGUER, MANAGER, SeededApi, as_user
-
-H = as_user(CATALOGUER)
-M = as_user(MANAGER)
+from tests.api.conftest import LoginAs, SeededApi
 
 SPANISH_TENURE = {"Propiedad", "Comodato", "Préstamo Temporal"}
 ENGLISH_TENURE = {"OWNED", "LOAN_FOR_USE", "TEMPORARY_LOAN"}
@@ -96,8 +92,9 @@ def test_labels_are_case_insensitive() -> None:
 # ------------------------------------------------- 3.2 ninguna respuesta en inglés
 
 
-def test_list_pieces_tenure_in_spanish(client: TestClient) -> None:
-    body = client.get("/api/v1/pieces?limit=100", headers=H).json()
+def test_list_pieces_tenure_in_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    body = client.get("/api/v1/pieces?limit=100").json()
     assert body["total"] > 0
     values = _walk_values(body["items"], {"tenure_regime"})
     assert values, "se esperaban piezas listadas"
@@ -106,14 +103,15 @@ def test_list_pieces_tenure_in_spanish(client: TestClient) -> None:
 
 
 def test_piece_detail_tenure_in_spanish(seeded_api: SeededApi) -> None:
-    client = seeded_api.client
-    first = client.get("/api/v1/pieces?limit=1", headers=H).json()["items"][0]
-    detail = client.get(f"/api/v1/pieces/{first['id']}", headers=H).json()
+    client = seeded_api.login_as("CATALOGUER")
+    first = client.get("/api/v1/pieces?limit=1").json()["items"][0]
+    detail = client.get(f"/api/v1/pieces/{first['id']}").json()
     assert detail["tenure_regime"] in SPANISH_TENURE
 
 
-def test_collections_default_tenure_in_spanish(client: TestClient) -> None:
-    body = client.get("/api/v1/collections", headers=H).json()
+def test_collections_default_tenure_in_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    body = client.get("/api/v1/collections").json()
     assert body, "se esperaban colecciones"
     values = _walk_values(body, {"default_tenure_regime"})
     assert values
@@ -121,26 +119,29 @@ def test_collections_default_tenure_in_spanish(client: TestClient) -> None:
     assert not (set(values) & ENGLISH_TENURE)
 
 
-def test_locations_level_in_spanish(client: TestClient) -> None:
-    body = client.get("/api/v1/locations", headers=H).json()
+def test_locations_level_in_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    body = client.get("/api/v1/locations").json()
     values = _walk_values(body, {"level"})
     assert values
     assert set(values) <= SPANISH_LEVELS
     assert not (set(values) & ENGLISH_LEVELS)
 
 
-def test_locations_tree_level_type_in_spanish(client: TestClient) -> None:
-    body = client.get("/api/v1/locations/tree", headers=H).json()
+def test_locations_tree_level_type_in_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    body = client.get("/api/v1/locations/tree").json()
     values = _walk_values(body, {"level_type"})
     assert values
     assert set(values) <= SPANISH_LEVELS
     assert not (set(values) & ENGLISH_LEVELS)
 
 
-def test_search_hits_tenure_in_spanish(client: TestClient) -> None:
-    first = client.get("/api/v1/pieces?limit=1", headers=H).json()["items"][0]
+def test_search_hits_tenure_in_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    first = client.get("/api/v1/pieces?limit=1").json()["items"][0]
     fragment = first["denomination"].split()[0]
-    body = client.get("/api/v1/search", params={"q": fragment}, headers=H).json()
+    body = client.get("/api/v1/search", params={"q": fragment}).json()
     assert body["total"] > 0
     values = _walk_values(body["items"], {"tenure_regime"})
     assert values
@@ -148,11 +149,11 @@ def test_search_hits_tenure_in_spanish(client: TestClient) -> None:
 
 
 def test_media_view_type_in_spanish(seeded_api: SeededApi) -> None:
-    client = seeded_api.client
-    listing = client.get("/api/v1/pieces?limit=100", headers=H).json()["items"]
+    client = seeded_api.login_as("CATALOGUER")
+    listing = client.get("/api/v1/pieces?limit=100").json()["items"]
     checked = 0
     for item in listing:
-        media = client.get(f"/api/v1/pieces/{item['id']}/media", headers=H).json()
+        media = client.get(f"/api/v1/pieces/{item['id']}/media").json()
         for asset in media:
             view = asset["view_type"]
             assert view is None or view["code"] in SPANISH_VIEWS | {"SUPERIOR"}
@@ -167,41 +168,43 @@ def test_media_view_type_in_spanish(seeded_api: SeededApi) -> None:
 
 
 def test_create_collection_accepts_spanish(seeded_api: SeededApi) -> None:
-    response = seeded_api.client.post(
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
+    response = client.post(
         "/api/v1/collections",
         json={"name": "Colección prueba ES (sintética)", "default_tenure_regime": "Comodato"},
-        headers=M,
     )
     assert response.status_code == 201
     assert response.json()["default_tenure_regime"] == "Comodato"
 
 
 def test_create_collection_rejects_english_and_unknown(seeded_api: SeededApi) -> None:
+    client = seeded_api.login_as("COLLECTIONS_MANAGER")
     for value in ("OWNED", "Dueño"):
-        response = seeded_api.client.post(
+        response = client.post(
             "/api/v1/collections",
             json={"name": "Colección prueba ES (sintética)", "default_tenure_regime": value},
-            headers=M,
         )
         assert response.status_code == 422
         assert "Propiedad" in response.text
 
 
-def test_piece_filters_accept_only_spanish(client: TestClient) -> None:
-    ok = client.get("/api/v1/pieces?tenure_regime=Comodato&limit=5", headers=H)
+def test_piece_filters_accept_only_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    ok = client.get("/api/v1/pieces?tenure_regime=Comodato&limit=5")
     assert ok.status_code == 200
     assert {item["tenure_regime"] for item in ok.json()["items"]} == {"Comodato"}
     for value in ("LOAN_FOR_USE", "Dueño"):
-        bad = client.get(f"/api/v1/pieces?tenure_regime={value}", headers=H)
+        bad = client.get(f"/api/v1/pieces?tenure_regime={value}")
         assert bad.status_code == 422
         assert "Propiedad" in bad.text
 
 
-def test_location_level_filter_accepts_only_spanish(client: TestClient) -> None:
-    ok = client.get("/api/v1/locations?level=Sede", headers=H)
+def test_location_level_filter_accepts_only_spanish(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+    ok = client.get("/api/v1/locations?level=Sede")
     assert ok.status_code == 200
     assert {item["level"] for item in ok.json()} == {"Sede"}
-    bad = client.get("/api/v1/locations?level=SITE", headers=H)
+    bad = client.get("/api/v1/locations?level=SITE")
     assert bad.status_code == 422
 
 
