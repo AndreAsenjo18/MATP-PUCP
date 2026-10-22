@@ -505,6 +505,19 @@ entity AUDIT_LOG <<solo inserción>> {
     actor_label : varchar(100)
     reason : text
 }
+entity AUDIT_DIGEST <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * day : date <<UK>>
+  * row_count : integer
+    first_entry_id : uuid
+    last_entry_id : uuid
+  * sha256 : varchar(64)
+    previous_day : date
+    previous_sha256 : varchar(64)
+  * algorithm : varchar(40)
+  * computed_at : timestamptz
+}
 }
 
 package "Búsqueda y Exportación" #E8F4F8 {

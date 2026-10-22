@@ -191,6 +191,29 @@ Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar 
 | M9 | ¿Quién asocia las imágenes incrustadas en el Excel y en qué formato? | Quien tiene el permiso de subir fotos (Catalogador, Conservación, Gestor de colecciones y Administrador), después de aplicar el lote y una por una. Solo se registran JPEG, PNG y TIFF (como en `fotografias-multiples-por-pieza`); una imagen de otro formato queda en la bandeja. En una pieza en comodato la foto hereda la restricción «No publicar» (RN-008) | importacion-datos (RF-029), multimedia (RF-013, RN-008) | B |
 | M10 | ¿Cuándo se puede revertir un lote aplicado? | **Pendiente**: la reversión (tarea 5.2) espera el motor de reversión de `auditoria-y-soft-delete-transversal`. El lote ya guarda el conjunto de cambios de su aplicación (`import_batch.change_set_id`) para revertirlo cuando ese motor exista | importacion-datos (RNF-007) | A |
 
+## N. Excepciones a «nunca se borra información» (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
+
+Preguntas **internas del equipo**: las levanta la verificación transversal de la tarea 1.1 (`app/core/cross_cutting.py`, `apps/api/tests/test_cross_cutting_rules.py`). Las siete tablas sin borrado lógico están justificadas en esa lista; estas dos son deuda con dueño, no excepciones definitivas. Retirar una excepción es trabajo de la célula dueña, no de Plataforma.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| N1 | `quality_setting` se actualiza en sitio y desactivar un parámetro borra su fila. ¿Los parámetros de calidad llevan borrado lógico con motivo, como el resto de los datos configurables (RN-005, RN-010)? | Excepción con deuda: se audita cada cambio, pero la fila se puede borrar | `deteccion-duplicados-y-cola-revision` (parámetros de calidad) | B |
+| N2 | Descartar una sugerencia de IA, ¿es un estado `REJECTED` o un borrado lógico con motivo? Hoy la sugerencia nunca se borra, pero `ai_suggestion` no tiene columnas de borrado lógico. | Excepción con deuda: estado `REJECTED` auditado (RN-009) | `ia-extraccion-texto-libre` | C |
+| N3 | El pipeline de importación borra físicamente `import_row`, `duplicate_candidate` e `import_image` (las imágenes aún sin asociar, que se vuelven a extraer) al volver a mapear o validar un lote (llamadas autorizadas en `PHYSICAL_DELETE_EXCEPTIONS`; `idempotency_key`, de las operaciones por lote de ubicaciones, también figura como excepción técnica). ¿Se acepta, dado que lo que entra al catálogo queda en `piece_source_record` (solo inserción) y cada decisión queda auditada? | Autorizado y documentado, con la lista revisada por el Arquitecto | `importacion-pipeline-reconciliacion` | A |
+
+## Ñ. Supuestos de la reversión, la papelera y la integridad (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
+
+Preguntas **internas del equipo**: las decide el Arquitecto en la revisión del PR, salvo Ñ5, que necesita criterio legal. Las excepciones a «nunca se borra información» están aparte, en la sección N.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Ñ1 | ¿Quién puede revertir según el origen del conjunto de cambios? | [SUPUESTO B7] edición manual → `pieces.update`; importación → `imports.revert`; cualquier otro origen → Administrador | `auditoria-y-soft-delete-transversal` (RNF-007) | A |
+| Ñ2 | Revertir un conjunto que corrigió un código I, ¿exige además rol Administrador, o basta el permiso de corrección? Hoy el Gestor tiene ese permiso en la matriz sintética y el escenario de la spec pide 403. | Exige el permiso de corrección **y** rol Administrador, igual que la corrección directa | `autenticacion-y-matriz-permisos` (RN-002) | A |
+| Ñ3 | La papelera usa `pieces.restore` porque no existe un permiso propio: ¿se crea `trash.read` para que Conservación o Consulta interna puedan mirar sin restaurar? | Administrador y Gestor abren la papelera; restaurar solo Administrador | `autenticacion-y-matriz-permisos` (RF-039) | B |
+| Ñ4 | El CSV de auditoría sale con cabeceras en inglés (los nombres de campo del JSON) y BOM UTF-8. ¿Se quieren cabeceras en español para quien lo abra en Excel? | Cabeceras en inglés, separador coma, BOM UTF-8 | `busqueda-avanzada-y-exportacion` (RF-036) | B |
+| Ñ5 | Ley 29733: si un titular pide la supresión de sus datos personales, ¿cómo se cumple sin romper la auditoría de solo inserción? Queda fuera de este change y necesita definición legal. | Sin mecanismo de anonimización; la auditoría no se altera | Nuevo change por proponer (RNF-014) | A |
+| Ñ6 | El resumen diario de integridad se calcula por día en UTC y solo sella días cerrados. ¿Se acepta, o el museo espera el día en hora de Lima? | Día en UTC, solo días cerrados | `despliegue-vm-y-respaldos` (programación diaria) | B |
+
 ## O. Supuestos de la detección de duplicados y la fusión (change `deteccion-duplicados-y-cola-revision`, 2026-10-20)
 
 Se usa la letra O porque N1–N7 ya nombran las reglas de normalización. El máximo para posponer (180 días) y el rechazo de la fusión con regímenes distintos siguen en G8. Detalle en `openspec/changes/archive/2026-10-20-deteccion-duplicados-y-cola-revision/design.md` (D1, D4, D5, D6 y D7).

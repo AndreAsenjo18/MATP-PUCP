@@ -46,6 +46,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/ai/suggestions/{}/reject"),
     ("get", "/audit/sensitive-access"),
     ("post", "/audit/change-sets/{}/revert"),
+    ("get", "/audit/change-sets/{}"),
+    ("post", "/audit/change-sets/{}/revert-preview"),
     ("post", "/auth/change-password"),
     ("post", "/auth/logout"),
     ("delete", "/collections/{}"),
@@ -93,6 +95,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/reports/{}"),
     ("get", "/roles"),
     ("put", "/roles/{}/permissions"),
+    # Papelera (change auditoria-y-soft-delete-transversal, diseño D2).
+    ("get", "/trash"),
+    ("post", "/trash/{}/{}/restore"),
     ("get", "/users/{}"),
     ("patch", "/users/{}"),
     ("get", "/vocabularies"),

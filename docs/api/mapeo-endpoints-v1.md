@@ -91,6 +91,9 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `PUT /imports/{batch_id}/mapping`, `GET /import-templates` | RF-022: plantillas de mapeo reutilizables |
 | `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
+| `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005, RNF-006: nunca se borra información, así que lo eliminado lógicamente se consulta y se restaura verificando dependencias (`auditoria-y-soft-delete-transversal`, diseño D2) |
+| `GET /audit/change-sets/{id}`, `POST /audit/change-sets/{id}/revert-preview` | RNF-007: resumen del conjunto de cambios y vista previa de la reversión, que el contrato no contempla y sin la cual no se puede confirmar una reversión (change `auditoria-y-soft-delete-transversal`) |
+| `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005 y RNF-006: papelera y restauración con verificación de dependencias (mismo change) |
 | `GET /audit/sensitive-access` | RNF-014, RF-041: registro de los accesos a datos sensibles sin enmascarar (usuario, ruta, entidades y campos, nunca valores), consultable con `audit.read` (`autenticacion-y-matriz-permisos`, tarea 3.3) |
 | `POST /auth/logout` | RNF-012: cierre de sesión que revoca la sesión de servidor (ADR-009); el documento solo trae el inicio de sesión |
 | `POST /auth/change-password` | RNF-012, RNF-013: cambio de contraseña propio, obligatorio con una contraseña temporal; revoca todas las sesiones y abre una nueva (`autenticacion-y-matriz-permisos`, tarea 2.3) |
