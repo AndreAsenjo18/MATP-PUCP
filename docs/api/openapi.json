@@ -460,7 +460,8 @@
           "RESTORE",
           "CORRECTION",
           "MERGE",
-          "REVERT"
+          "REVERT",
+          "EXPORT"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -2043,6 +2044,7 @@
             "download_url": "http://localhost:9000/matp-media/exports/ejemplo.xlsx",
             "expires_at": "2026-09-17T10:30:00Z",
             "format": "xlsx",
+            "id": "00000000-0000-0000-0000-000000000001",
             "masked_fields": [
               "lender_name"
             ],
@@ -2062,6 +2064,17 @@
             ],
             "title": "Download Url"
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "expires_at": {
             "anyOf": [
               {
@@ -2076,6 +2089,18 @@
           },
           "format": {
             "$ref": "#/components/schemas/ExportFormat"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
           },
           "masked_fields": {
             "items": {
@@ -2095,9 +2120,21 @@
             ],
             "title": "Row Count"
           },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
           "status": {
             "enum": [
               "PENDING",
+              "RUNNING",
               "READY",
               "FAILED"
             ],
@@ -2107,10 +2144,7 @@
         },
         "required": [
           "status",
-          "format",
-          "row_count",
-          "download_url",
-          "expires_at"
+          "format"
         ],
         "title": "ExportJob",
         "type": "object"
@@ -2195,6 +2229,19 @@
           "severity"
         ],
         "title": "FieldIssue",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
         "type": "object"
       },
       "HealthResponse": {
@@ -7122,21 +7169,21 @@
         "examples": [
           {
             "columns": [
-              "Colección",
+              "Coleccin",
               "Piezas",
-              "Sin código I"
+              "Sin cdigo I"
             ],
             "filters": {},
             "generated_at": "2026-09-17T10:30:00Z",
             "report_type": "by-collection",
             "rows": [
               [
-                "Colección MMZ (ficticia)",
+                "Coleccin MMZ (ficticia)",
                 54,
                 30
               ]
             ],
-            "title": "Inventario por colección",
+            "title": "Inventario por coleccin",
             "totals": {
               "Piezas": 298
             }
@@ -7494,6 +7541,12 @@
       "SearchHit": {
         "examples": [
           {
+            "match_reason": {
+              "historical": false,
+              "kind": "identifier",
+              "original": "I-0236",
+              "type": "I"
+            },
             "match_type": "IDENTIFIER",
             "matched_identifier": {
               "identifier_type_code": "I",
@@ -7536,8 +7589,21 @@
           }
         ],
         "properties": {
+          "match_reason": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Detalle estructurado de la coincidencia (identificador o campos de texto).",
+            "title": "Match Reason"
+          },
           "match_type": {
-            "description": "IDENTIFIER: coincide un código (vigente o histórico); TITLE: la denominación.",
+            "description": "IDENTIFIER: coincide un cdigo (vigente o histrico); TITLE: la denominacin.",
             "enum": [
               "IDENTIFIER",
               "TITLE"
@@ -7567,11 +7633,18 @@
         "type": "object"
       },
       "SearchResultPage": {
-        "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar\nla paginación compartida que usan otros endpoints (`app/api/pagination.py`).",
+        "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar\nla paginacin compartida que usan otros endpoints (`app/api/pagination.py`).",
         "examples": [
           {
+            "excluded_uninterpreted_period": 0,
             "items": [
               {
+                "match_reason": {
+                  "historical": false,
+                  "kind": "identifier",
+                  "original": "I-0236",
+                  "type": "I"
+                },
                 "match_type": "IDENTIFIER",
                 "matched_identifier": {
                   "identifier_type_code": "I",
@@ -7615,10 +7688,41 @@
             ],
             "limit": 20,
             "page": 1,
+            "suggestions": [
+              "remove_filter:collection_code"
+            ],
             "total": 1
           }
         ],
         "properties": {
+          "active_filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filtros activos descritos en lenguaje claro.",
+            "title": "Active Filters"
+          },
+          "excluded_uninterpreted_period": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Piezas con poca solo en texto excluidas por filtro de rango (RF-032).",
+            "title": "Excluded Uninterpreted Period"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/SearchHit"
@@ -7635,6 +7739,21 @@
             "minimum": 1.0,
             "title": "Page",
             "type": "integer"
+          },
+          "suggestions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sugerencias de accin cuando no hay resultados (RF-031).",
+            "title": "Suggestions"
           },
           "total": {
             "minimum": 0.0,
@@ -8393,6 +8512,46 @@
           }
         },
         "title": "UserUpdate",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       },
       "ValidationSummary": {
@@ -10578,16 +10737,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
           }
         },
         "security": [
@@ -10598,12 +10747,187 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Exportación completa de la base en formato abierto (RF-044)",
+        "summary": "Exportacin completa de la base en formato abierto (RF-044)",
         "tags": [
           "Reportes"
         ],
-        "x-change": "busqueda-avanzada-y-exportacion",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs": {
+      "get": {
+        "description": "List export jobs. Regular users see only their own jobs; admins see all.",
+        "operationId": "listExportJobs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExportJob"
+                  },
+                  "title": "Response Listexportjobs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Listar trabajos de exportación del usuario (o todos si es administrador)",
+        "tags": [
+          "Exportaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs/{job_id}": {
+      "get": {
+        "description": "Get status and details of an export job.",
+        "operationId": "getExportJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Consultar estado de un trabajo de exportación (RF-036)",
+        "tags": [
+          "Exportaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs/{job_id}/download-url": {
+      "get": {
+        "description": "Get presigned download URL for a completed, non-expired export.",
+        "operationId": "getExportDownloadUrl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Getexportdownloadurl",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Obtener URL prefirmada de descarga de un archivo de exportación (RF-036)",
+        "tags": [
+          "Exportaciones"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifier-types": {
@@ -13321,6 +13645,23 @@
           },
           {
             "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "category_term_id",
             "required": false,
             "schema": {
@@ -13338,6 +13679,23 @@
           },
           {
             "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "material_term_id",
             "required": false,
             "schema": {
@@ -13351,6 +13709,23 @@
                 }
               ],
               "title": "Material Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_state_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation State Id"
             }
           },
           {
@@ -13456,6 +13831,42 @@
                 }
               ],
               "title": "Period Text"
+            }
+          },
+          {
+            "description": "Año de inicio de época.",
+            "in": "query",
+            "name": "epoch_start_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de inicio de época.",
+              "title": "Epoch Start Year"
+            }
+          },
+          {
+            "description": "Año de fin de época.",
+            "in": "query",
+            "name": "epoch_end_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de fin de época.",
+              "title": "Epoch End Year"
             }
           },
           {
@@ -15789,7 +16200,7 @@
             }
           },
           {
-            "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+            "description": "CATALOG: dos piezas del catlogo; IMPORT: fila de importacin.",
             "in": "query",
             "name": "origin",
             "required": false,
@@ -15806,7 +16217,7 @@
                   "type": "null"
                 }
               ],
-              "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+              "description": "CATALOG: dos piezas del catlogo; IMPORT: fila de importacin.",
               "title": "Origin"
             }
           },
@@ -15948,7 +16359,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
+        "summary": "Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
         "tags": [
           "Calidad"
         ],
@@ -16174,7 +16585,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Piezas con información incompleta (RF-019, RF-035)",
+        "summary": "Listado de piezas con alertas de incompletitud (RF-019)",
         "tags": [
           "Calidad"
         ],
@@ -16247,7 +16658,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+        "summary": "Estado y avance de una deteccin de duplicados (RF-030, RNF-015)",
         "tags": [
           "Calidad"
         ],
@@ -16317,7 +16728,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "KPI de completitud general y por colección (RF-035)",
+        "summary": "KPI de completitud general y por coleccin (RF-035)",
         "tags": [
           "Calidad"
         ],
@@ -16378,16 +16789,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
           }
         },
         "security": [
@@ -16402,8 +16803,7 @@
         "tags": [
           "Reportes"
         ],
-        "x-change": "busqueda-avanzada-y-exportacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/reports/piece-card/{piece_id}/pdf": {
@@ -16481,7 +16881,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
+        "summary": "Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006)",
         "tags": [
           "Reportes"
         ],
@@ -16612,7 +17012,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Reportes: inventario, por colección, por ubicación, incompletas, valorización",
+        "summary": "Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin",
         "tags": [
           "Reportes"
         ],
@@ -16781,12 +17181,12 @@
         "operationId": "searchPieces",
         "parameters": [
           {
-            "description": "Código o texto.",
+            "description": "Cdigo o texto.",
             "in": "query",
             "name": "q",
             "required": true,
             "schema": {
-              "description": "Código o texto.",
+              "description": "Cdigo o texto.",
               "maxLength": 200,
               "minLength": 1,
               "title": "Q",
@@ -16794,7 +17194,7 @@
             }
           },
           {
-            "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+            "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
             "in": "query",
             "name": "collection_code",
             "required": false,
@@ -16807,12 +17207,12 @@
                   "type": "null"
                 }
               ],
-              "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+              "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
               "title": "Collection Code"
             }
           },
           {
-            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+            "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
             "in": "query",
             "name": "tenure_regime",
             "required": false,
@@ -16830,31 +17230,31 @@
                   "type": "null"
                 }
               ],
-              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+              "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
               "title": "Tenure Regime"
             }
           },
           {
-            "description": "Número de página (desde 1).",
+            "description": "Nmero de pgina (desde 1).",
             "in": "query",
             "name": "page",
             "required": false,
             "schema": {
               "default": 1,
-              "description": "Número de página (desde 1).",
+              "description": "Nmero de pgina (desde 1).",
               "minimum": 1,
               "title": "Page",
               "type": "integer"
             }
           },
           {
-            "description": "Resultados por página (máx. 100).",
+            "description": "Resultados por pgina (mx. 100).",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 20,
-              "description": "Resultados por página (máx. 100).",
+              "description": "Resultados por pgina (mx. 100).",
               "maximum": 100,
               "minimum": 1,
               "title": "Limit",
@@ -16912,9 +17312,9 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
+        "summary": "Bsqueda avanzada con filtros combinados (RF-031, RF-032)",
         "tags": [
-          "Búsqueda"
+          "Bsqueda"
         ],
         "x-status": "implemented"
       }
