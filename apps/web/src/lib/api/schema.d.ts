@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5781708bd4ecf4c0b8b3e085fd4200709ad57a7ddeb784d6da278982b7eaf826
+ * openapi-sha256: 499c8f6ef7b5cbdf88e1432fe98aae812f8d876de201378d86cace8db6dd059a
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -8434,16 +8434,23 @@ export interface operations {
         parameters: {
             query?: {
                 author?: string | null;
+                category_id?: string | null;
                 category_term_id?: string | null;
                 /** @description Incluye subcolecciones. */
                 collection_id?: string | null;
+                conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description Año de fin de época. */
+                epoch_end_year?: number | null;
+                /** @description Año de inicio de época. */
+                epoch_start_year?: number | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
+                material_id?: string | null;
                 material_term_id?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;

@@ -4,6 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
@@ -27,8 +28,8 @@ from app.api.stubs import (
 )
 from app.core.errors import NotFound
 from app.core.jobs import run_in_background
-from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
-from app.modules.collections.service import find_collection_by_code
+from app.modules.catalog.models import Piece
+from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -46,6 +47,7 @@ from app.modules.quality.schemas import (
     IncompletePiece,
     QualityJobOut,
 )
+from app.modules.search.filters import PieceFilter
 from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
@@ -224,22 +226,22 @@ def search_pieces(
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
     ] = DEFAULT_PAGE_SIZE,
 ) -> SearchResultPage:
-    collection_id: uuid.UUID | None = None
-    if collection_code is not None:
-        collection = find_collection_by_code(session, collection_code)
-        if collection is None:
-            return SearchResultPage(items=[], total=0, page=page, limit=limit)
-        collection_id = collection.id
-
     regime = (
         code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
         if tenure_regime is not None
         else None
     )
-    filters = PieceFilters(q=q, collection_id=collection_id, tenure_regime=regime)
+    piece_filter = PieceFilter(
+        q=q,
+        collection_code=collection_code,
+        tenure_regime=regime,
+    )
+    viewer = Viewer(user.permissions)
+    where_clause = piece_filter.to_where(session, viewer)
     params = PageParams(page=page, page_size=limit)
-    pieces, total = paginate(session, build_piece_query(session, filters), params)
-    summaries = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
+    query = select(Piece).where(where_clause).order_by(Piece.denomination)
+    pieces, total = paginate(session, query, params)
+    summaries = CatalogReader(session, viewer).summaries(pieces)
     return SearchResultPage(
         items=describe_matches(session, q, summaries),
         total=total,

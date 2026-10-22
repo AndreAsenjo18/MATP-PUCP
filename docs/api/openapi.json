@@ -13321,6 +13321,23 @@
           },
           {
             "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "category_term_id",
             "required": false,
             "schema": {
@@ -13338,6 +13355,23 @@
           },
           {
             "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "material_term_id",
             "required": false,
             "schema": {
@@ -13351,6 +13385,23 @@
                 }
               ],
               "title": "Material Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_state_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation State Id"
             }
           },
           {
@@ -13456,6 +13507,42 @@
                 }
               ],
               "title": "Period Text"
+            }
+          },
+          {
+            "description": "Año de inicio de época.",
+            "in": "query",
+            "name": "epoch_start_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de inicio de época.",
+              "title": "Epoch Start Year"
+            }
+          },
+          {
+            "description": "Año de fin de época.",
+            "in": "query",
+            "name": "epoch_end_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de fin de época.",
+              "title": "Epoch End Year"
             }
           },
           {
