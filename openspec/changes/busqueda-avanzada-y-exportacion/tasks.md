@@ -9,9 +9,9 @@
 ## 2. Exportaciones
 
 - [x] 2.1 Crear `app/core/xlsx.py` (`write_only`, hoja de filtros) y pruebas de memoria acotada con 50 000 filas generadas (Req: Trabajos de exportación con caducidad y auditoría; RF-036)
-- [ ] 2.2 Migración `export_job`, acción `EXPORT` en `AuditAction` y worker de exportación (latido, recuperación); pruebas del worker (Req: Trabajos de exportación…)
-- [ ] 2.3 Implementar `POST /api/v1/reports/export-excel` (síncrono bajo umbral, 202 sobre umbral) y operaciones nuevas `GET /api/v1/exports/jobs[/{job_id}[/download-url]]`; pruebas: exportación idéntica a la búsqueda, columnas sensibles omitidas, 12 000 filas en segundo plano, descarga por otro usuario 403, caducada, auditoría registrada (Req: Filtro de piezas único…; Req: Trabajos de exportación…; RNF-014)
-- [ ] 2.4 Crear `exports/full.py` e implementar `GET /api/v1/exports/full` (trabajo único, ZIP con CSV, Excel, diccionario y manifiesto); pruebas: huellas y conteos del manifiesto, eliminadas incluidas, sin `password_hash`, trabajo en curso devuelto, Gestor 403 (Req: Paquete de exportación completa verificable; RF-044)
+- [x] 2.2 Migración `export_job`, acción `EXPORT` en `AuditAction` y worker de exportación (latido, recuperación); pruebas del worker (Req: Trabajos de exportación…)
+- [x] 2.3 Implementar `POST /api/v1/reports/export-excel` (síncrono bajo umbral, 202 sobre umbral) y operaciones nuevas `GET /api/v1/exports/jobs[/{job_id}[/download-url]]`; pruebas: exportación idéntica a la búsqueda, columnas sensibles omitidas, 12 000 filas en segundo plano, descarga por otro usuario 403, caducada, auditoría registrada (Req: Filtro de piezas único…; Req: Trabajos de exportación…; RNF-014)
+- [x] 2.4 Crear `exports/full.py` e implementar `GET /api/v1/exports/full` (trabajo único, ZIP con CSV, Excel, diccionario y manifiesto); pruebas: huellas y conteos del manifiesto, eliminadas incluidas, sin `password_hash`, trabajo en curso devuelto, Gestor 403 (Req: Paquete de exportación completa verificable; RF-044)
 
 ## 3. Rendimiento
 

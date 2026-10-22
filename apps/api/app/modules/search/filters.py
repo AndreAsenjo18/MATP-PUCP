@@ -137,16 +137,16 @@ class PieceFilter(BaseModel):
 
             text_match_clauses = []
             term_conditions = []
-            for term in (terms or [clean_needle]):
+            for term in terms or [clean_needle]:
                 pattern = f"%{term}%"
                 field_conds = [
                     func.immutable_unaccent(func.lower(Piece.denomination)).like(pattern),
-                    func.immutable_unaccent(
-                        func.lower(func.coalesce(Piece.author, ""))
-                    ).like(pattern),
-                    func.immutable_unaccent(
-                        func.lower(func.coalesce(Piece.provenance, ""))
-                    ).like(pattern),
+                    func.immutable_unaccent(func.lower(func.coalesce(Piece.author, ""))).like(
+                        pattern
+                    ),
+                    func.immutable_unaccent(func.lower(func.coalesce(Piece.provenance, ""))).like(
+                        pattern
+                    ),
                     func.immutable_unaccent(
                         func.lower(func.coalesce(Piece.epoch_original_text, ""))
                     ).like(pattern),
@@ -297,9 +297,7 @@ class PieceFilter(BaseModel):
 
         return conditions
 
-    def to_where(
-        self, session: Session, viewer: Viewer | None = None
-    ) -> ColumnElement[bool]:
+    def to_where(self, session: Session, viewer: Viewer | None = None) -> ColumnElement[bool]:
         """Validate permissions and return SQLAlchemy ColumnElement for WHERE clause."""
         self.validate_permissions(viewer)
 
@@ -340,9 +338,7 @@ class PieceFilter(BaseModel):
             ]
         )
 
-        count = session.scalar(
-            select(func.count(Piece.id)).where(and_(*conditions))
-        )
+        count = session.scalar(select(func.count(Piece.id)).where(and_(*conditions)))
         return int(count or 0)
 
     def describe(self, session: Session | None = None) -> list[ActiveFilter]:

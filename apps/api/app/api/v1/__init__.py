@@ -12,9 +12,11 @@ from app.api.v1 import (
     pieces,
     quality_reports,
 )
+from app.modules.exports.router import router as exports_router
 
 API_PREFIX = "/api/v1"
 
 api_router = APIRouter(prefix=API_PREFIX)
 for module in (pieces, collections, locations, loans, media, imports, quality_reports, admin):
     api_router.include_router(module.router)
+api_router.include_router(exports_router)

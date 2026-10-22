@@ -1,10 +1,14 @@
 """Quality, search, reports and exports (calidad-datos, busqueda-reportes)."""
 
+import csv
+import tempfile
 import uuid
+from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy import and_, func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
@@ -20,7 +24,6 @@ from app.api.pagination import (
 from app.api.stubs import (
     CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
-    CHANGE_SEARCH_EXPORT,
     implemented,
     not_implemented,
     page_example,
@@ -28,8 +31,15 @@ from app.api.stubs import (
 )
 from app.core.errors import NotFound
 from app.core.jobs import run_in_background
+from app.core.models_base import new_uuid, utcnow
+from app.core.xlsx import write_table
+from app.modules.audit.context import AuditContext, set_audit_context
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import CatalogReader, Viewer
+from app.modules.collections.models import Collection, Term
+from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
+from app.modules.locations.models import Location
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -48,6 +58,7 @@ from app.modules.quality.schemas import (
     QualityJobOut,
 )
 from app.modules.search.filters import PieceFilter
+from app.modules.search.models import ExportJobKind, ExportJobModel, ExportJobStatus
 from app.modules.search.ranking import generate_search_suggestions, rank_and_describe_pieces
 from app.modules.search.schemas import (
     ExportFormat,
@@ -57,6 +68,7 @@ from app.modules.search.schemas import (
     SearchExportRequest,
     SearchResultPage,
 )
+from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
@@ -268,10 +280,204 @@ def search_pieces(
     response_model=ExportJob,
     summary="Exportar a Excel los resultados de la consulta actual (RF-036)",
     tags=["Reportes"],
-    **stub(CHANGE_SEARCH_EXPORT),
+    **implemented(),
 )
-def export_excel_report(body: SearchExportRequest, user: Exporter) -> ExportJob:
-    raise not_implemented(CHANGE_SEARCH_EXPORT, ExportJob)
+def export_excel_report(
+    body: SearchExportRequest,
+    user: Exporter,
+    session: SessionDep,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> Any:
+    # 1. Parse unified filter
+    piece_filter = PieceFilter(**(body.filters or {}))
+    viewer = Viewer(user.permissions)
+    where_clause = piece_filter.to_where(session, viewer)
+
+    # 2. Count matching rows
+    count = session.scalar(select(func.count(Piece.id)).where(where_clause)) or 0
+    fmt = body.format.value if hasattr(body.format, "value") else str(body.format).lower()
+
+    # 3. Synchronous export if count <= EXPORT_SYNC_MAX_ROWS (5 000)
+    if count <= EXPORT_SYNC_MAX_ROWS:
+        user_perms = user.permissions
+        can_view_lender = PERM_DONOR_DATA in user_perms
+        can_view_loan = PERM_LOAN_TERMS in user_perms
+        can_view_valuation = PERM_VALUATION in user_perms
+
+        masked_fields: list[str] = []
+        if not can_view_lender:
+            masked_fields.append("lender_name")
+        if not can_view_loan:
+            masked_fields.append("loan_agreement_ref")
+        if not can_view_valuation:
+            masked_fields.append("valuation")
+
+        columns = [
+            "Cdigo I",
+            "Denominacin",
+            "Coleccin",
+            "Rgimen de tenencia",
+            "Categora",
+            "Estado de conservacin",
+            "Ubicacin",
+            "Autor",
+            "Procedencia",
+            "poca",
+        ]
+        if can_view_lender:
+            columns.append("Comodante")
+        if can_view_loan:
+            columns.append("Convenio de prstamo")
+
+        pieces = session.scalars(
+            select(Piece).where(where_clause).order_by(Piece.denomination)
+        ).all()
+        reader = CatalogReader(session, viewer)
+        summaries = {s.id: s for s in reader.summaries(pieces)}
+
+        rows = []
+        for piece in pieces:
+            summary = summaries.get(piece.id)
+            code_i = summary.code_i if summary else ""
+            coll_name = ""
+            if piece.collection_id:
+                coll = session.get(Collection, piece.collection_id)
+                coll_name = coll.name if coll else ""
+            cat_name = ""
+            if piece.category_id:
+                term = session.get(Term, piece.category_id)
+                cat_name = term.label if term else ""
+            state_name = ""
+            if piece.conservation_state_id:
+                term = session.get(Term, piece.conservation_state_id)
+                state_name = term.label if term else ""
+            loc_name = ""
+            if piece.current_location_id:
+                loc = session.get(Location, piece.current_location_id)
+                loc_name = loc.name if loc else ""
+            regime_label = (
+                TENURE_REGIME_LABELS.get(piece.tenure_regime, piece.tenure_regime.value)
+                if piece.tenure_regime
+                else ""
+            )
+
+            row = [
+                code_i,
+                piece.denomination,
+                coll_name,
+                regime_label,
+                cat_name,
+                state_name,
+                loc_name,
+                piece.author or "",
+                piece.provenance or "",
+                piece.epoch_original_text or "",
+            ]
+            if can_view_lender:
+                row.append(piece.lender_name or "")
+            if can_view_loan:
+                row.append(piece.loan_agreement_ref or "")
+            rows.append(row)
+
+        with tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            if fmt == "xlsx":
+                write_table(
+                    tmp_path,
+                    rows,
+                    columns,
+                    sheet_title="Resultados",
+                    active_filters=piece_filter.describe(session),
+                    user_label=user.email or "usuario",
+                    omitted_columns=masked_fields if masked_fields else None,
+                )
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                with open(tmp_path, "w", encoding="utf-8-sig", newline="") as csv_f:
+                    csv_w = csv.writer(csv_f)
+                    csv_w.writerow(columns)
+                    for r in rows:
+                        csv_w.writerow(r)
+                media_type = "text/csv"
+
+            file_bytes = tmp_path.read_bytes()
+
+            ctx = AuditContext(
+                origin=AuditOrigin.MANUAL,
+                user_id=user.id,
+                actor_label=user.email or "usuario",
+                action=AuditAction.EXPORT,
+            )
+            set_audit_context(session, ctx)
+
+            # Record audit
+            audit_entry = AuditLog(
+                change_set_id=new_uuid(),
+                entity_type="export_job",
+                entity_id=new_uuid(),
+                field=None,
+                old_value=None,
+                new_value={
+                    "kind": "results",
+                    "format": fmt,
+                    "row_count": count,
+                    "filters": body.filters,
+                    "includes_sensitive_fields": can_view_lender or can_view_loan,
+                    "masked_fields": masked_fields,
+                },
+                action=AuditAction.EXPORT,
+                origin=AuditOrigin.MANUAL,
+                user_id=user.id,
+                actor_label=user.email or "usuario",
+                reason=f"Exportacin sncrona de resultados ({fmt}) con {count} filas",
+            )
+            session.add(audit_entry)
+            session.commit()
+
+            resp_headers = {"Content-Disposition": f'attachment; filename="reporte_catalogo.{fmt}"'}
+            if masked_fields:
+                resp_headers["X-Omited-Columns"] = ", ".join(masked_fields)
+
+            return Response(
+                content=file_bytes,
+                media_type=media_type,
+                headers=resp_headers,
+            )
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+
+    # 4. Asynchronous export job if count > EXPORT_SYNC_MAX_ROWS
+    job = ExportJobModel(
+        kind=ExportJobKind.RESULTS,
+        requested_by_id=user.id,
+        format=fmt,
+        params=body.model_dump(),
+        status=ExportJobStatus.PENDING,
+        row_count=count,
+    )
+    session.add(job)
+    session.commit()
+
+    run_in_background(
+        background_tasks,
+        run_export_job,
+        request.app.state.session_factory,
+        job.id,
+        getattr(request.app.state, "storage", None),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=ExportJob(
+            id=job.id,
+            status="PENDING",
+            format=body.format,
+            row_count=count,
+        ).model_dump(mode="json"),
+    )
 
 
 # ------------------------------------------------------------------------ reports
@@ -308,10 +514,73 @@ def export_piece_pdf(piece_id: uuid.UUID, user: ReportViewer) -> ExportJob:
     response_model=ExportJob,
     summary="Exportacin completa de la base en formato abierto (RF-044)",
     tags=["Reportes"],
-    **stub(CHANGE_SEARCH_EXPORT),
+    **implemented(),
 )
 def export_full_database(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("exports.full"))],
     export_format: Annotated[ExportFormat, Query(alias="format")] = ExportFormat.XLSX,
-) -> ExportJob:
-    raise not_implemented(CHANGE_SEARCH_EXPORT, ExportJob)
+) -> Any:
+    # Check if a full export is already in progress (RF-044:
+    # devuelve el trabajo en curso en lugar de iniciar otro)
+    now = utcnow()
+    existing_job = session.scalar(
+        select(ExportJobModel)
+        .where(
+            ExportJobModel.kind == ExportJobKind.FULL,
+            or_(
+                ExportJobModel.status.in_([ExportJobStatus.PENDING, ExportJobStatus.RUNNING]),
+                and_(
+                    ExportJobModel.status == ExportJobStatus.READY,
+                    ExportJobModel.expires_at > now,
+                ),
+            ),
+        )
+        .order_by(ExportJobModel.created_at.desc())
+    )
+    if existing_job:
+        status_code = (
+            status.HTTP_200_OK
+            if existing_job.status == ExportJobStatus.READY
+            else status.HTTP_202_ACCEPTED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content=ExportJob(
+                id=existing_job.id,
+                status=existing_job.status.value,
+                format=ExportFormat.XLSX,
+                row_count=existing_job.row_count,
+                expires_at=existing_job.expires_at,
+            ).model_dump(mode="json"),
+        )
+
+    # Create new full export job
+    job = ExportJobModel(
+        kind=ExportJobKind.FULL,
+        requested_by_id=user.id,
+        format=export_format.value,
+        params={"format": export_format.value},
+        status=ExportJobStatus.PENDING,
+    )
+    session.add(job)
+    session.commit()
+
+    run_in_background(
+        background_tasks,
+        run_export_job,
+        request.app.state.session_factory,
+        job.id,
+        getattr(request.app.state, "storage", None),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=ExportJob(
+            id=job.id,
+            status="PENDING",
+            format=export_format,
+        ).model_dump(mode="json"),
+    )
