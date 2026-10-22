@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: eed244fa9bee3857c49f5c0d6d218711a50243e07ef72e5b5637dea3562b9260
+ * openapi-sha256: 1be4cf8cdbf6e8605b7683322d63c71c4432a7413323bc8f017a87775d897266
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -569,6 +569,26 @@ export interface paths {
          * @description `headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la firma se recalcula. Los lotes ya procesados conservan su mapeo.
          */
         patch: operations["updateImportTemplate"];
+        trace?: never;
+    };
+    "/api/v1/import-templates/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sugerir plantillas para las cabeceras de un archivo (RF-022)
+         * @description Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).
+         */
+        post: operations["suggestImportTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/imports": {
@@ -5839,6 +5859,33 @@ export interface components {
          * @enum {string}
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
+        /** TemplateSuggestion */
+        TemplateSuggestion: {
+            /**
+             * Missing Columns
+             * @description Columnas de la plantilla que el archivo no trae.
+             */
+            missing_columns: string[];
+            /**
+             * New Columns
+             * @description Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen.
+             */
+            new_columns: string[];
+            /**
+             * Score
+             * @description 1 = mismas cabeceras (en cualquier orden y con otras tildes).
+             */
+            score: number;
+            template: components["schemas"]["MappingTemplateOut"];
+        };
+        /** TemplateSuggestRequest */
+        TemplateSuggestRequest: {
+            /**
+             * Headers
+             * @description Cabeceras del archivo, tal como vienen.
+             */
+            headers: string[];
+        };
         /**
          * TermCreate
          * @example {
@@ -8326,6 +8373,57 @@ export interface operations {
             };
             /** @description La plantilla no existe o fue eliminada. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestImportTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateSuggestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSuggestion"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

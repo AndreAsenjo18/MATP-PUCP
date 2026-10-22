@@ -9089,6 +9089,62 @@
         "title": "SuggestionStatus",
         "type": "string"
       },
+      "TemplateSuggestRequest": {
+        "properties": {
+          "headers": {
+            "description": "Cabeceras del archivo, tal como vienen.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Headers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "headers"
+        ],
+        "title": "TemplateSuggestRequest",
+        "type": "object"
+      },
+      "TemplateSuggestion": {
+        "properties": {
+          "missing_columns": {
+            "description": "Columnas de la plantilla que el archivo no trae.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Columns",
+            "type": "array"
+          },
+          "new_columns": {
+            "description": "Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen.",
+            "items": {
+              "type": "string"
+            },
+            "title": "New Columns",
+            "type": "array"
+          },
+          "score": {
+            "description": "1 = mismas cabeceras (en cualquier orden y con otras tildes).",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "template": {
+            "$ref": "#/components/schemas/MappingTemplateOut"
+          }
+        },
+        "required": [
+          "template",
+          "score",
+          "missing_columns",
+          "new_columns"
+        ],
+        "title": "TemplateSuggestion",
+        "type": "object"
+      },
       "TermCreate": {
         "examples": [
           {
@@ -12999,6 +13055,78 @@
           }
         ],
         "summary": "Guardar una plantilla de mapeo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/import-templates/suggest": {
+      "post": {
+        "description": "Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
+        "operationId": "suggestImportTemplates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateSuggestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateSuggestion"
+                  },
+                  "title": "Response Suggestimporttemplates",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Sugerir plantillas para las cabeceras de un archivo (RF-022)",
         "tags": [
           "Importación"
         ],

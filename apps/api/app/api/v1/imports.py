@@ -74,6 +74,8 @@ from app.modules.imports.schemas import (
     MappingTemplateUpdate,
     RevertRequest,
     RowDecisionRequest,
+    TemplateSuggestion,
+    TemplateSuggestRequest,
     ValidationSummary,
 )
 from app.modules.imports.service import (
@@ -620,6 +622,30 @@ def create_import_template(
     )
     session.commit()
     return template_out(template)
+
+
+@router.post(
+    "/import-templates/suggest",
+    response_model=list[TemplateSuggestion],
+    summary="Sugerir plantillas para las cabeceras de un archivo (RF-022)",
+    description="Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de "
+    "mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni "
+    "mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como "
+    "cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
+    **implemented(),
+)
+def suggest_import_templates(
+    body: TemplateSuggestRequest, session: SessionDep, user: Preparer
+) -> list[TemplateSuggestion]:
+    return [
+        TemplateSuggestion(
+            template=template_out(suggestion.template),
+            score=suggestion.score,
+            missing_columns=suggestion.missing_columns,
+            new_columns=suggestion.new_columns,
+        )
+        for suggestion in templates.suggest_templates(session, body.headers)
+    ]
 
 
 @router.get(

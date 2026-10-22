@@ -591,3 +591,20 @@ class MappingTemplateUpdate(BaseModel):
     headers: list[str] | None = Field(None, min_length=1)
     columns: list[ColumnMapping] | None = None
     description: str | None = None
+
+
+class TemplateSuggestRequest(BaseModel):
+    headers: list[str] = Field(min_length=1, description="Cabeceras del archivo, tal como vienen.")
+
+
+class TemplateSuggestion(BaseModel):
+    template: MappingTemplateOut
+    score: float = Field(
+        ge=0, le=1, description="1 = mismas cabeceras (en cualquier orden y con otras tildes)."
+    )
+    missing_columns: list[str] = Field(
+        description="Columnas de la plantilla que el archivo no trae."
+    )
+    new_columns: list[str] = Field(
+        description="Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen."
+    )

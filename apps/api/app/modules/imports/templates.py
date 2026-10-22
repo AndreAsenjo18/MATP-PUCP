@@ -10,6 +10,8 @@ import hashlib
 import unicodedata
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -192,3 +194,69 @@ def delete_template(session: Session, template: ImportMappingTemplate, reason: s
 
     require_audit_context(session)
     soft_delete(session, template, reason)
+
+
+# --- suggestion by headers (design D3) -----------------------------------------------------
+
+SUGGEST_THRESHOLD = 0.6  # [SUPUESTO S1]
+SUGGEST_LIMIT = 3  # [SUPUESTO S2]
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    template: ImportMappingTemplate
+    score: float
+    missing_columns: list[str]  # template columns absent from the file
+    new_columns: list[str]  # file headers the template does not map
+
+
+def _by_key(headers: Sequence[str]) -> dict[str, str]:
+    """Normalized header -> first spelling seen, skipping empty headers."""
+    keyed: dict[str, str] = {}
+    for header in headers:
+        key = header_key(header)
+        if key:
+            keyed.setdefault(key, header)
+    return keyed
+
+
+def similarity(template_keys: set[str], file_keys: set[str]) -> float:
+    """``0,5 × J + 0,5 × S`` (design D3, [SUPUESTO S1]): ``J`` is the Jaccard index of both sets
+    and ``S`` the mean, over the template headers, of the best ``SequenceMatcher`` ratio
+    against the file headers."""
+    if not template_keys or not file_keys:
+        return 0.0
+    jaccard = len(template_keys & file_keys) / len(template_keys | file_keys)
+    best = [
+        max(SequenceMatcher(None, header, other).ratio() for other in file_keys)
+        for header in template_keys
+    ]
+    return 0.5 * jaccard + 0.5 * sum(best) / len(best)
+
+
+def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggestion]:
+    """Up to ``SUGGEST_LIMIT`` active templates scoring at least ``SUGGEST_THRESHOLD``, best
+    first. A template's headers are the source columns of its mapping [SUPUESTO S1]; the same
+    signature as the file is a full match (score 1, nothing missing or new)."""
+    signature = header_signature(headers)
+    file_headers = _by_key(headers)
+    suggestions: list[Suggestion] = []
+    for template in list_templates(session):
+        if template.header_signature == signature:
+            suggestions.append(Suggestion(template, 1.0, [], []))
+            continue
+        template_headers = _by_key(
+            [column.source for column in read_mapping(template.mapping).columns]
+        )
+        score = similarity(set(template_headers), set(file_headers))
+        if score >= SUGGEST_THRESHOLD:
+            suggestions.append(
+                Suggestion(
+                    template,
+                    round(score, 4),
+                    [name for key, name in template_headers.items() if key not in file_headers],
+                    [name for key, name in file_headers.items() if key not in template_headers],
+                )
+            )
+    suggestions.sort(key=lambda item: (-item.score, header_key(item.template.name)))
+    return suggestions[:SUGGEST_LIMIT]
