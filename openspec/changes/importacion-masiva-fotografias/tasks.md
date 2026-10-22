@@ -3,7 +3,7 @@
 ## 1. Modelo y configuración
 
 - [x] 1.1 Añadir RF-045 («Carga masiva de fotografías asociada a la importación», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` y actualizar las preguntas L1–L4 de `docs/preguntas-contraparte.md` con las respuestas que haya dado el museo; verificar con `openspec validate importacion-masiva-fotografias --strict` (Req: todos)
-- [ ] 1.2 Modelo `ImportPhoto` y enums (`ImportPhotoStatus`, `PhotoMatchStatus`, `PhotoMatchSource`) en `app/modules/imports/models.py`, migración Alembic aditiva con índice único `(batch_id, content_sha256)` y término «sin especificar» en `PHOTO_VIEW_TYPE` del seed; `tests/test_migrations.py` y prueba de una sola cabeza en verde (Req: Fotografías del lote con subida reanudable)
+- [x] 1.2 Modelo `ImportPhoto` y enums (`ImportPhotoStatus`, `PhotoMatchStatus`, `PhotoMatchSource`) en `app/modules/imports/models.py`, migración Alembic aditiva con índice único `(batch_id, content_sha256)` y término «sin especificar» en `PHOTO_VIEW_TYPE` del seed; `tests/test_migrations.py` y prueba de una sola cabeza en verde (Req: Fotografías del lote con subida reanudable)
 - [ ] 1.3 Variables `IMPORT_MAX_PHOTOS`, `MEDIA_KEEP_ORIGINALS`, `IMPORT_PHOTO_RETENTION_DAYS` y `MEDIA_QUOTA_BYTES` en `Settings` y `.env.example`; prueba existente de documentación de variables en verde (Req: Conservación configurable del original en cargas masivas; RNF-004)
 
 ## 2. Subida reanudable y verificación

@@ -55,7 +55,7 @@ from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, UserRole
 from app.seed.images import placeholder_photo
-from app.seed.reference import ReferenceData, seed_reference_data
+from app.seed.reference import UNSPECIFIED_VIEW_TYPE, ReferenceData, seed_reference_data
 
 SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
 SEED_ACTOR = "seed"
@@ -507,8 +507,14 @@ class SyntheticCatalogBuilder:
     def _attach_photos(self, piece: Piece, acronym: str | None) -> None:
         if self.rng.random() >= 0.6:
             return
+        # A synthetic photo always has a view: «Sin especificar» is only for imported photos.
         views = self.rng.sample(
-            list(self.reference.terms[VocabularyCode.PHOTO_VIEW_TYPE]), k=self.rng.randint(1, 4)
+            [
+                code
+                for code in self.reference.terms[VocabularyCode.PHOTO_VIEW_TYPE]
+                if code != UNSPECIFIED_VIEW_TYPE
+            ],
+            k=self.rng.randint(1, 4),
         )
         restriction = "NO_PUBLICAR" if acronym == "AJB" else "SIN_RESTRICCION"
         for order, view in enumerate(views):

@@ -35,6 +35,10 @@ IDENTIFIER_TYPES = [
     (TYPE_OTHER, "Otro código histórico", NormalizationRule.GENERIC, False, False, False, True),
 ]  # fmt: skip
 
+#: View of the photos imported with a batch, set later by a person (importacion-masiva-fotografias,
+#: D5). Outside the team's contract, like SUPERIOR; never drawn for the synthetic photos.
+UNSPECIFIED_VIEW_TYPE = "SIN_ESPECIFICAR"
+
 VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
     VocabularyCode.CATEGORY: (
         "Categorías (tipologías)",
@@ -107,6 +111,7 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("DETALLE", "Detalle"),
             ("ABIERTA", "Abierta"),
             ("CERRADA", "Cerrada"),
+            (UNSPECIFIED_VIEW_TYPE, "Sin especificar"),
         ],
     ),
     VocabularyCode.OBJECT_TYPE: (

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models_base import (
@@ -143,3 +143,77 @@ class ImportImage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("media_asset.id"))
 
     __table_args__ = (UniqueConstraint("batch_id", "image_number"),)
+
+
+class ImportPhotoStatus(enum.StrEnum):
+    """Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2)."""
+
+    PENDING_UPLOAD = "PENDING_UPLOAD"
+    UPLOADED = "UPLOADED"
+    VERIFIED = "VERIFIED"
+    REJECTED = "REJECTED"
+    DISCARDED = "DISCARDED"
+    APPLIED = "APPLIED"
+
+
+class PhotoMatchStatus(enum.StrEnum):
+    """Proposed row of a photo (D3): never applied to the catalogue without batch approval."""
+
+    MATCHED = "MATCHED"
+    AMBIGUOUS = "AMBIGUOUS"
+    UNMATCHED = "UNMATCHED"
+    MANUAL = "MANUAL"
+
+
+class PhotoMatchSource(enum.StrEnum):
+    """Path that proposed the row (D3): file name, folder, mapped column, person or workbook."""
+
+    FILENAME = "FILENAME"
+    FOLDER = "FOLDER"
+    COLUMN = "COLUMN"
+    MANUAL = "MANUAL"
+    EMBEDDED = "EMBEDDED"
+
+
+class ImportPhoto(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Photo of an import batch (RF-045; change importacion-masiva-fotografias, D1).
+
+    Intermediate data of the batch, like ``import_row``: it is not catalogue information until the
+    batch is applied, when it becomes a ``media_asset``. The unique ``(batch_id, content_sha256)``
+    lets an interrupted upload resume without registering the same photo twice.
+    """
+
+    __tablename__ = "import_photo"
+
+    batch_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("import_batch.id"))
+    # Folder and file name as the browser sent them (``MMZ 045/DSC_0001.jpg``).
+    relative_path: Mapped[str] = mapped_column(String(1000))
+    original_filename: Mapped[str] = mapped_column(String(300))
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    content_type: Mapped[str] = mapped_column(String(100))
+    # Final object prefix from the start (``media/<photo_id>/``): applying copies no object (D2).
+    storage_prefix: Mapped[str] = mapped_column(String(500))
+    status: Mapped[ImportPhotoStatus] = mapped_column(
+        str_enum(ImportPhotoStatus, "import_photo_status"),
+        default=ImportPhotoStatus.PENDING_UPLOAD,
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    # Proposed (or manually assigned) row of the batch and how it was found (D3, D4).
+    row_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_row.id"))
+    match_status: Mapped[PhotoMatchStatus | None] = mapped_column(
+        str_enum(PhotoMatchStatus, "photo_match_status")
+    )
+    match_source: Mapped[PhotoMatchSource | None] = mapped_column(
+        str_enum(PhotoMatchSource, "photo_match_source")
+    )
+    # Rows a photo matched when it is ambiguous; it is never assigned to any of them by guessing.
+    candidate_row_ids: Mapped[list[Any] | None] = mapped_column(JsonType)
+    # Order of the photos of a row: natural order of their names (D3).
+    sort_key: Mapped[int | None] = mapped_column()
+    # Same fingerprint already registered on the piece that an update row targets (D4).
+    duplicate_of_existing: Mapped[bool] = mapped_column(Boolean, default=False)
+    duplicate_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    media_asset_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("media_asset.id"))
+
+    __table_args__ = (UniqueConstraint("batch_id", "content_sha256"),)
