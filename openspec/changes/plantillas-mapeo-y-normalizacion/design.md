@@ -1,7 +1,8 @@
 ## Context
 
 - `import_mapping_template` ya existe (`name`, `source_name`, `header_signature` indexado, `mapping` JSON, soft-delete).
-- `normalization.py` implementa N1–N7 con constantes en código: marcadores de ausencia (`S/N`, `s/c`, `-`, `0`) [SUPUESTO A5], separadores (`/`, `;`, `|`, `,`, salto de línea) [SUPUESTO A8].
+- `normalization.py` implementa N1–N7 con constantes en código: el conjunto público `ABSENCE_MARKERS` (comparado tras quitar espacios: vacío, `S/N`, `SN`, `S.N.`, `S/C`, `SC`, `S.C.`, `-`, `--`, `---`, `—`, `0`, `N/A`, `NA`, `SINCODIGO`, `SINCÓDIGO`, `SINNUMERO`, `SINNÚMERO`) [SUPUESTO A5], consultado por la función pública `is_absence_marker(raw)`, y los separadores de `_SPLIT_RE` (`/` salvo dentro de `S/N` y `S/C`, `;`, `|`, `,`, salto de línea) [SUPUESTO A8].
+- La ficha (`piece`) usa `denomination`, `epoch_original_text`, `epoch_type`, `epoch_start_year`, `epoch_end_year`, `dimensions_text` y `dimensions` (lista de `{dimension, value, unit}`); el régimen de tenencia se guarda con códigos internos (`OWNED`, …) y la API los traduce a las etiquetas del contrato (`Propiedad`, …) según ADR-002 (`app/api/enums.py`).
 - `importacion-pipeline-reconciliacion` necesita un contrato estable para avanzar en paralelo.
 
 ## Goals / Non-Goals
@@ -25,22 +26,24 @@
   "sheet": "Inventario",
   "header_row": 3,
   "columns": [
-    {"source": "DENOMINACIÓN", "target": {"kind": "field", "name": "title"}, "transforms": ["trim"]},
+    {"source": "DENOMINACIÓN", "target": {"kind": "field", "name": "denomination"}, "transforms": ["trim"]},
     {"source": "CÓDIGOS", "target": {"kind": "identifiers", "default_type": "COLECCION"},
      "transforms": ["trim", "split_concatenated"]},
     {"source": "N° INV", "target": {"kind": "identifier", "type": "I"}, "transforms": ["absence_markers"]},
-    {"source": "ÉPOCA", "target": {"kind": "field", "name": "period_text"}, "transforms": ["propose_period"]},
+    {"source": "ÉPOCA", "target": {"kind": "field", "name": "epoch_original_text"}, "transforms": ["propose_period"]},
     {"source": "MATERIAL", "target": {"kind": "terms", "vocabulary": "MATERIAL"},
-     "transforms": ["split:,", "value_map"], "value_map": {"madera policromada": "WOOD"}},
+     "transforms": ["split:,", "value_map"], "value_map": {"madera policromada": "MADERA"}},
     {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}}
   ],
-  "defaults": {"tenure_regime": "OWNED", "source_name": "Sábana consultoría 2024/25"}
+  "defaults": {"tenure_regime": "OWNED"}
 }
 ```
 
 - Columnas del archivo no listadas → `source_payload` automáticamente (RF-008: nada se pierde).
 - Pydantic `MappingSpec` con `version: Literal[1]`; versiones futuras se migran con una función explícita.
-- Ejemplo con nombres de columna **ilustrativos** [SUPUESTO A1].
+- Los nombres de campo son los del modelo (`piece`). `propose_period` conserva el texto en `epoch_original_text` y escribe su propuesta en `epoch_type`, `epoch_start_year` y `epoch_end_year`.
+- El spec guarda **códigos internos** (`OWNED`, códigos de término como `MADERA`, códigos de tipo de identificador); la API traduce los enumerados a las etiquetas del contrato al recibir y devolver plantillas (ADR-002). El nombre de la fuente no forma parte de `defaults`: es el `source_name` de la plantilla y del lote.
+- Ejemplo con nombres de columna **ilustrativos** [SUPUESTO A1]; el término `MADERA` y la correspondencia `madera policromada` son ilustrativos sobre el vocabulario `MATERIAL` sembrado [SUPUESTO Q6, B5].
 
 ### D2. Motor de transformación
 
@@ -58,18 +61,25 @@ flowchart LR
 
 - Firma: `apply_mapping(raw_row: dict[str, Any], spec: MappingSpec, ctx: MappingContext) -> MappedRow`; `validate_mapping(spec, headers) -> list[MappingError]`. `MappingContext` precarga términos activos, tipos de identificador y parámetros de normalización (una sola consulta por lote).
 - Cada valor transformado lleva `trace: [{"transform": ..., "before": ..., "after": ...}]` para explicar el resultado en la previsualización.
-- Transformaciones v1: `trim`, `upper`, `absence_markers`, `split_concatenated`, `split:<sep>`, `date:<formato>` (por defecto `dd/mm/yyyy`, `yyyy`), `propose_period` (reutiliza la interpretación de época de `catalog`), `propose_dimensions` (patrones `alto 23 cm`, `23 x 15 cm`), `value_map`, `default:<valor>`.
-- Las propuestas (`propose_*`) nunca sobrescriben el texto original: generan campos estructurados marcados como propuesta.
+- Transformaciones v1: `trim`, `upper`, `absence_markers`, `split_concatenated`, `split:<sep>`, `date:<formato>` (por defecto `dd/mm/yyyy`, `yyyy`) [SUPUESTO Q5], `propose_period` (intérprete de época nuevo, ver abajo), `propose_dimensions` (patrones `alto 23 cm`, `23 x 15 cm`; unidad `cm`) [SUPUESTO Q5], `value_map`, `default:<valor>`.
+- `propose_period` requiere **construir el intérprete de época**: hoy `catalog` solo tiene `validate_epoch` (coherencia de años) y no interpreta texto. Se crea como función pura `interpret_epoch(text) -> EpochProposal | None` en `imports/epoch.py`, reutilizable más adelante por la ficha, con las reglas de B9 [SUPUESTO B9]: `s. XX` → `CENTURY` 1901–2000; `década de 1950` / `años 50` → `DECADE` 1950–1959; `1950` → `YEAR`; `1940-1950` → `RANGE`; `ca. 1950` → `APPROXIMATE` con amplitud de ±10 años, configurable; `3000 años` → `RELATIVE_AGE` sin años calculados. Un texto no reconocido no genera propuesta y el texto original queda intacto.
+- `date:<formato>` solo se aplica a celdas de texto: una celda que el lector de Excel entrega como fecha (`datetime`/`date`) queda **exenta** del formato declarado y se toma tal cual, con la traza indicando que provenía de una celda de fecha.
+- Las propuestas (`propose_*`) nunca sobrescriben el texto original: generan campos estructurados marcados como propuesta. `propose_dimensions` conserva el texto en `dimensions_text` y propone `dimensions` como lista de `{"dimension": "alto", "value": 23, "unit": "cm"}` (esquema `Dimension` de `catalog`) [SUPUESTO Q7].
+- Destino `terms`: un valor sin término correspondiente (ni por código, ni por etiqueta, ni por `value_map`) no se descarta ni crea términos: se envía al `source_payload` de la fila con su texto original y se cuenta en la vista previa.
 - `validate_mapping`: denominación mapeada (o `default`), columnas de la plantilla ausentes del archivo, destino duplicado para campos escalares, tipo de identificador o vocabulario inexistente.
 
 ### D3. Sugerencia de plantilla
-`header_signature` = SHA-256 de cabeceras normalizadas (N1 + sin tildes) **ordenadas**. `POST /import-templates/suggest {headers}`: coincidencia exacta por firma → `score=1`; si no, similitud Jaccard sobre el conjunto de cabeceras normalizadas combinada con `difflib.SequenceMatcher` por cabecera; devuelve hasta 3 plantillas con `score ≥ 0.6`, columnas faltantes y columnas nuevas.
+`header_signature` = SHA-256 de cabeceras normalizadas (N1 + sin tildes) **ordenadas**. La sugerencia se pide **solo** por `POST /import-templates/suggest {headers}`: coincidencia exacta por firma → `score=1`; si no, `score = 0,5 × J + 0,5 × S`, donde `J` es el índice de Jaccard entre los conjuntos de cabeceras normalizadas y `S` el promedio, sobre las cabeceras de la plantilla, de la mejor razón `difflib.SequenceMatcher` contra las cabeceras del archivo [SUPUESTO Q1]; devuelve hasta 3 plantillas [SUPUESTO Q2] con `score ≥ 0,6` [SUPUESTO Q1], ordenadas por `score`, con columnas faltantes y columnas nuevas.
+
+`GET /import-templates` solo lista las plantillas activas (filtro opcional por `source_name`); el parámetro `header_signature` del stub actual **se quita**, porque la sugerencia necesita las cabeceras y no solo su firma, y el contrato del equipo no lo define. El nombre de una plantilla es único entre las plantillas activas, sin distinguir mayúsculas ni tildes [SUPUESTO Q9].
+
+Permisos [SUPUESTO Q8] (los tres códigos ya existen en la matriz sembrada, `app/seed/reference.py`; lo supuesto es su asignación a estas operaciones): listar, crear, editar, sugerir y vista previa exigen `imports.prepare` (Catalogador, Gestor de colecciones, Administrador); eliminar una plantilla exige `imports.approve` (Gestor de colecciones, Administrador); los parámetros de normalización y los alias de siglas exigen `vocabularies.manage` (Gestor de colecciones, Administrador).
 
 ### D4. Vista previa de normalización por columna
-`POST /import-templates/{id}/dry-run` (o con `spec` literal) sobre una muestra (hasta 200 filas de un lote `UPLOADED`/`MAPPED`, referenciado por `batch_id`): por columna, conteos de `NORMALIZED`, `UNPARSEABLE` (estados de `NormalizationStatus`) y de las categorías de vista previa `ABSENT` y `SPLIT_PROPOSED`, valores sin término correspondiente (top 20) y ejemplos con `trace`. No escribe nada.
+`POST /import-templates/{id}/dry-run`, solo sobre una plantilla guardada, con una muestra (hasta 200 filas [SUPUESTO Q3] de un lote `UPLOADED`/`MAPPED`, referenciado por `batch_id`): por columna, conteos de `NORMALIZED`, `UNPARSEABLE` (estados de `NormalizationStatus`) y de las categorías de vista previa `ABSENT` y `SPLIT_PROPOSED`, valores sin término correspondiente (los 20 más frecuentes [SUPUESTO Q4]) y ejemplos con `trace`. No escribe nada.
 
 ### D5. Parámetros de normalización como datos
-Tabla nueva `normalization_setting` (clave, valor JSON, auditada, soft-delete) con `absence_markers` y `concatenation_separators`; tabla `collection_acronym_alias` (alias normalizado → `collection_id`, p. ej. una sigla histórica). El normalizador recibe los parámetros por inyección (`NormalizationParams`) con los valores actuales como defaults, de modo que las ~100 pruebas existentes siguen pasando sin cambios. Cambiar un parámetro reutiliza el flujo de vista previa + confirmación de `colecciones-y-vocabularios-admin` (recalcular valores normalizados afectados); si ese change no está aplicado, la edición de parámetros solo se permite mientras no haya identificadores afectados.
+Tabla nueva `normalization_setting` (clave, valor JSON, auditada, soft-delete) con `absence_markers` y `concatenation_separators`; tabla `collection_acronym_alias` (alias normalizado → `collection_id`, p. ej. una sigla histórica). Los valores iniciales **salen de las constantes del código**: `absence_markers` = el contenido exacto de `ABSENCE_MARKERS` y `concatenation_separators` = los separadores de `_SPLIT_RE` (con la excepción de `/` dentro de `S/N` y `S/C`), no de la lista resumida de A5/A8. El normalizador recibe los parámetros por inyección (`NormalizationParams`) con esas constantes como defaults, de modo que las pruebas existentes del normalizador siguen pasando sin cambios. `ABSENCE_MARKERS` sigue siendo un `frozenset` público del módulo (los defaults) e `is_absence_marker(raw)` conserva su firma y su resultado cuando no se le pasan parámetros; los valores vigentes se pasan con un argumento opcional solo de palabra clave. Cambiar un parámetro reutiliza el flujo de vista previa + confirmación de `colecciones-y-vocabularios-admin` (recalcular valores normalizados afectados); si ese change no está aplicado, la edición de parámetros solo se permite mientras no haya identificadores afectados.
 
 ## Risks / Trade-offs
 
