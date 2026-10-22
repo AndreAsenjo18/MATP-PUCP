@@ -23,6 +23,7 @@ from app.modules.quality.models import (
     QualityJobItem,
     QualitySetting,
 )
+from app.modules.search.models import ExportJobModel
 from app.modules.users.models import (
     AppUser,
     AuthEvent,
@@ -43,6 +44,7 @@ __all__ = [
     "Collection",
     "ConservationAssessment",
     "DuplicateCandidate",
+    "ExportJobModel",
     "IdentifierType",
     "ImportBatch",
     "ImportImage",

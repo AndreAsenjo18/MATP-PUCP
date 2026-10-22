@@ -72,3 +72,45 @@ Una mejora que se ve en el sistema de pruebas **no** llega sola al sistema de us
 - **La página muestra `degraded`**: el sistema funciona con problemas (por ejemplo, no llega a la base de datos o al almacenamiento de fotos). Avise al equipo técnico y envíe la página completa, que no contiene datos del museo.
 - **La página no carga**: el sistema está apagado o sin conexión. En el sistema de pruebas es normal fuera de las sesiones de trabajo del equipo técnico. En el sistema de uso diario, avise de inmediato al equipo técnico.
 - **Ve un cambio en el sistema de pruebas que todavía no está en el de uso diario**: es lo esperado. Pida la versión como se explica arriba.
+
+## Exportación completa de la base de datos (Respaldo en formato abierto)
+
+El sistema garantiza que el museo pueda extraer la totalidad de su patrimonio digital en formatos estándar y abiertos (CSV y XLSX) sin depender de software privativo (requisito RF-044).
+
+### Quién puede exportar todo
+Por motivos de seguridad y confidencialidad institucional, la exportación completa está restringida exclusivamente a usuarios con el rol **Administrador** (permiso `exports.full`).
+
+### Cómo solicitar la exportación completa
+1. Inicie sesión con una cuenta de Administrador.
+2. Diríjase a **Administración → Exportación completa de la base de datos** (o mediante la ruta `GET /api/v1/exports/full`).
+3. El sistema programará la exportación en segundo plano y devolverá el identificador del trabajo.
+4. **Idempotencia**: Si ya existe una exportación completa en ejecución o generada recientemente en las últimas 24 horas, el sistema devolverá el trabajo existente para no sobrecargar el servidor con consultas duplicadas.
+
+### Contenido del paquete descargable (`matp_full_export.zip`)
+El archivo comprimido generado contiene:
+1. **`csv/<entidad>.csv`**: Un archivo CSV por cada tabla del modelo de datos (`piece`, `piece_identifier`, `collection`, `vocabulary`, `term`, `location`, `piece_movement`, `loan`, `loan_item`, `media_asset`, `audit_log`, `app_user`).
+   - Se incluyen todos los registros históricos, incluidos aquellos con baja lógica (`deleted_at`), garantizando la preservación del historial (RN-005).
+   - Por estricta seguridad institucional, las credenciales y hashes de contraseñas (`password_hash`) se excluyen en su totalidad.
+2. **`matp_export.xlsx`**: Libro de trabajo en formato Excel con pestañas independientes para cada tabla de datos.
+3. **`diccionario.csv`**: Diccionario de datos explicativo en español que documenta cada tabla, columna, tipo de dato y su propósito.
+4. **`manifest.json`**: Manifiesto estructurado con metadatos de auditoría:
+   - Fecha y hora UTC de generación.
+   - Versión de migraciones de base de datos (`alembic_version`).
+   - Conteo total de entidades y registros.
+   - Lista detallada de archivos incluidos con su conteo de filas, tamaño en bytes y huella criptográfica SHA-256.
+
+### Cómo verificar la integridad del paquete
+Para comprobar que el paquete no fue alterado ni sufrió corrupción tras la descarga:
+1. Descomprima el archivo `matp_full_export.zip`.
+2. Abra el archivo `manifest.json` y localice la huella SHA-256 del archivo que desea comprobar (por ejemplo `csv/piece.csv`).
+3. Calcule la huella localmente:
+   - **En Windows PowerShell**:
+     ```powershell
+     Get-FileHash -Algorithm SHA256 .\csv\piece.csv
+     ```
+   - **En Linux / macOS**:
+     ```bash
+     sha256sum csv/piece.csv
+     ```
+4. Verifique que la cadena de texto hexadecimal coincida exactamente con la registrada en el campo `"sha256"` del manifiesto.
+

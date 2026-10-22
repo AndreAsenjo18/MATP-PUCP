@@ -27,6 +27,8 @@
     "test:api:postgres": "node scripts/py.mjs apps/api -m pytest -m postgres",
     "test:api:pg": "node scripts/test-api-pg.mjs",
     "test:ai": "node scripts/py.mjs services/ai -m pytest",
+    "perf:search": "node scripts/py.mjs apps/api scripts/perf/search_load.py",
+    "perf:generate": "node scripts/py.mjs apps/api scripts/perf/generate_catalog.py",
     "test:web": "npm run test -w apps/web",
     "build:web": "npm run build -w apps/web",
     "migrate": "docker compose exec api alembic upgrade head",
