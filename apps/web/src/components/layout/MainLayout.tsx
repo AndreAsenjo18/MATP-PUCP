@@ -14,6 +14,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/lib/auth/session";
+import { signOut } from "@/lib/auth/api";
 import { getApiMode } from "@/lib/data/mode";
 
 import { mobileMenuReducer, visibleNavItems } from "./navigation";
@@ -89,12 +90,13 @@ export function MainLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="outline"
                 icon={LogOut}
-                onClick={() => {
+                onClick={async () => {
+                  if (getApiMode() === "live") await signOut();
                   logout();
                   router.push("/");
                 }}
               >
-                Cambiar de rol
+                {getApiMode() === "live" ? "Cerrar sesión" : "Cambiar de rol"}
               </Button>
             </div>
           </div>
