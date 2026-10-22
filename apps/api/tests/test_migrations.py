@@ -351,7 +351,7 @@ def test_search_unaccent_and_trigram_indexes_on_postgresql(
     monkeypatch.setenv("DATABASE_URL", url)
     command.upgrade(
         _config(url),
-        "0008_locations_idempotency:0009_search_unaccent_and_trigram_indexes",
+        "0008_locations_idempotency:0009_search_unaccent_trigram",
         sql=True,
     )
     sql = capsys.readouterr().out

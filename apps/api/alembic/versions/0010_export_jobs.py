@@ -1,7 +1,7 @@
 """Export job table and EXPORT action in AuditAction.
 
 Revision ID: 0010_export_jobs
-Revises: 0009_search_unaccent_and_trigram_indexes
+Revises: 0009_search_unaccent_trigram
 Create Date: 2026-10-22
 
 Change de OpenSpec: busqueda-avanzada-y-exportacion (tarea 2.2, RF-036, RF-044).
@@ -17,7 +17,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0010_export_jobs"
-down_revision: str | None = "0009_search_unaccent_and_trigram_indexes"
+down_revision: str | None = "0009_search_unaccent_trigram"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

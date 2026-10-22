@@ -1,6 +1,6 @@
 """Search unaccent extension, immutable_unaccent function and functional GIN trigram indexes.
 
-Revision ID: 0009_search_unaccent_and_trigram_indexes
+Revision ID: 0009_search_unaccent_trigram
 Revises: 0008_locations_idempotency
 Create Date: 2026-10-22
 
@@ -16,7 +16,7 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0009_search_unaccent_and_trigram_indexes"
+revision: str = "0009_search_unaccent_trigram"
 down_revision: str | None = "0008_locations_idempotency"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
