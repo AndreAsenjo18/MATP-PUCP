@@ -9,15 +9,17 @@ logical (RN-005) and the deleted template shows up in the trash (``audit/trash.p
 import hashlib
 import unicodedata
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.enums import TENURE_REGIME_LABELS
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.modules.audit.context import require_audit_context
+from app.modules.catalog.enums import TenureRegime
 from app.modules.identification.normalization import canonical
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
@@ -27,11 +29,13 @@ from app.modules.imports.mapping import (
     IdentifierTarget,
     MappingContext,
     MappingConversionError,
+    MappingSpec,
     MappingSpecV1,
     TermsTarget,
     from_column_mappings,
     read_mapping,
     validate_mapping,
+    with_defaults,
 )
 from app.modules.imports.models import ImportMappingTemplate
 from app.modules.imports.schemas import ColumnMapping
@@ -51,11 +55,15 @@ def header_signature(headers: Sequence[str]) -> str:
 
 
 def build_spec(
-    session: Session, columns: Sequence[ColumnMapping], headers: Sequence[str]
+    session: Session,
+    columns: Sequence[ColumnMapping],
+    headers: Sequence[str],
+    defaults: Mapping[str, str] | None = None,
 ) -> MappingSpecV1:
-    """``ColumnMapping`` -> v1, validated against the headers and the reference data."""
+    """``ColumnMapping`` and ``defaults`` (contract labels, ADR-002) -> v1 with internal codes,
+    validated against the headers and the reference data."""
     try:
-        spec = from_column_mappings(columns)
+        spec = from_column_mappings(columns, defaults)
     except MappingConversionError as exc:
         raise ValidationFailed(
             "El mapeo de la plantilla tiene errores; corríjalos y vuelva a enviarlo.",
@@ -70,6 +78,15 @@ def build_spec(
             details={"errors": [error.as_json() for error in errors]},
         )
     return spec
+
+
+def api_defaults(template: ImportMappingTemplate) -> dict[str, str]:
+    """The stored defaults with the contract labels (``OWNED`` -> ``Propiedad``; ADR-002)."""
+    defaults = dict(read_mapping(template.mapping).defaults)
+    tenure = defaults.get("tenure_regime")
+    if tenure is not None:
+        defaults["tenure_regime"] = TENURE_REGIME_LABELS.get(TenureRegime(tenure), tenure)
+    return defaults
 
 
 def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
@@ -141,10 +158,11 @@ def create_template(
     headers: Sequence[str],
     columns: Sequence[ColumnMapping],
     description: str | None = None,
+    defaults: Mapping[str, str] | None = None,
 ) -> ImportMappingTemplate:
     require_audit_context(session)
     _check_name_free(session, name)
-    spec = build_spec(session, columns, headers)
+    spec = build_spec(session, columns, headers, defaults)
     template = ImportMappingTemplate(
         name=name.strip(),
         source_name=source_name.strip(),
@@ -167,11 +185,13 @@ def update_template(
     columns: Sequence[ColumnMapping] | None = None,
     description: str | None = None,
     description_set: bool = False,
+    defaults: Mapping[str, str] | None = None,
 ) -> ImportMappingTemplate:
     require_audit_context(session)
-    if (headers is None) != (columns is None):
+    if (headers is None) != (columns is None) or (defaults is not None and headers is None):
         raise ValidationFailed(
-            "Envíe juntas las cabeceras y las columnas: el mapeo se valida contra las cabeceras.",
+            "Envíe juntas las cabeceras y las columnas (y los valores por defecto, si los "
+            "cambia): el mapeo se valida contra las cabeceras.",
             code="headers_and_columns_required",
         )
     if name is not None:
@@ -180,12 +200,30 @@ def update_template(
     if source_name is not None:
         template.source_name = source_name.strip()
     if headers is not None and columns is not None:
-        template.mapping = build_spec(session, columns, headers).as_json()
+        kept = read_mapping(template.mapping).defaults if defaults is None else defaults
+        template.mapping = build_spec(session, columns, headers, kept).as_json()
         template.header_signature = header_signature(headers)
     if description_set:
         template.description = description
     session.flush()
     return template
+
+
+def batch_spec(
+    session: Session, template_id: uuid.UUID, defaults: Mapping[str, str] | None = None
+) -> MappingSpec:
+    """Phase 2 of design D1: the active template as the v1 mapping of a batch, with the
+    defaults of the request over its own."""
+    template = get_template(session, template_id)
+    try:
+        spec = with_defaults(read_mapping(template.mapping), defaults or {})
+    except MappingConversionError as exc:
+        raise ValidationFailed(
+            exc.message,
+            code="invalid_mapping",
+            details={"errors": [{"code": exc.code, "message": exc.message, "column": exc.column}]},
+        ) from exc
+    return MappingSpec.from_v1(spec)
 
 
 def delete_template(session: Session, template: ImportMappingTemplate, reason: str | None) -> None:

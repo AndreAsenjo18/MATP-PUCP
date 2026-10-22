@@ -1,4 +1,4 @@
-"""Provisional column mapping of an import batch (spec importacion-datos: RF-022, RF-008; D3).
+"""Column mapping of an import batch (spec importacion-datos: RF-022, RF-008; design D1, D2).
 
 The pipeline depends only on two functions, whose contract belongs to
 ``plantillas-mapeo-y-normalizacion``:
@@ -6,16 +6,19 @@ The pipeline depends only on two functions, whose contract belongs to
 - ``validate_mapping(spec, headers, ctx) -> list[MappingError]``
 - ``apply_mapping(raw_row, spec, ctx) -> MappedRow``
 
-Until that change is applied, this module is the minimal implementation the design allows:
-each column is copied to a record field, to an identifier type (normalized with the existing
-rule of its type, optionally split with N7) or to the source payload. No transformations,
-templates or vocabularies. Columns not listed in the mapping go to the source payload, so
-nothing in the file is lost (RF-008).
+Both accept a v0 or v1 spec: each column goes to a record field, identifiers, vocabulary terms
+or the source payload, through an ordered chain of transformations (``transforms.py``).
+Columns not listed in the mapping go to the source payload, so nothing is lost (RF-008).
 
 ``MappingSpecV1`` is the internal version 1 of the spec (design D1). The public form stays
 ``ColumnMapping``: ``from_column_mappings`` translates it, and ``read_mapping`` converts the
 stored forms explicitly (pipeline v0 and the seed template) so saved batches keep working.
 The sheet and the header row live in ``import_batch``, never in the spec.
+
+Phase 2 of design D1 (task 3.5): a batch mapping may be v1. ``MappingSpec`` then carries the
+v1 spec in ``.v1`` and keeps a v0 projection in ``columns``/``defaults``, so the pipeline code
+that reads ``MappingSpec`` (``field_diff``, ``validate_stage``, ``decisions``) works unchanged;
+``as_json`` stores the v1 form and ``apply_mapping``/``validate_mapping`` follow v1 rules.
 """
 
 import unicodedata
@@ -55,7 +58,7 @@ from app.modules.imports.transforms import (
 SPEC_VERSION = 0  # provisional; ``plantillas-mapeo-y-normalizacion`` defines version 1
 IDENTIFIER_TARGET = "identifier"
 PAYLOAD_TARGET = "payload"
-# ``target_field: "terms:<VOCABULARIO>"`` in ``ColumnMapping`` (design D1, pending confirmation).
+# ``target_field: "terms:<VOCABULARIO>"`` in ``ColumnMapping`` (design D1).
 TERMS_TARGET = "terms"
 
 # Record fields a column can fill, as named in the API contract.
@@ -122,8 +125,12 @@ class MappingSpec:
     columns: list[ColumnSpec]
     defaults: dict[str, str] = field(default_factory=dict)
     version: int = SPEC_VERSION
+    # Phase 2 of design D1: the v1 spec this one projects, when the batch mapping is v1.
+    v1: "MappingSpecV1 | None" = None
 
     def as_json(self) -> dict[str, Any]:
+        if self.v1 is not None:
+            return self.v1.as_json()
         return {
             "version": self.version,
             "columns": [column.as_json() for column in self.columns],
@@ -132,10 +139,23 @@ class MappingSpec:
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> "MappingSpec":
+        if data.get("version") == SPEC_VERSION_V1:
+            return cls.from_v1(MappingSpecV1.model_validate(data))
         return cls(
             columns=[ColumnSpec(**column) for column in data.get("columns", [])],
             defaults=dict(data.get("defaults") or {}),
             version=data.get("version", SPEC_VERSION),
+        )
+
+    @classmethod
+    def from_v1(cls, spec: "MappingSpecV1") -> "MappingSpec":
+        """A v1 spec seen as v0: ``columns[].target`` is text (a field name, ``identifier``,
+        ``terms:<VOCABULARIO>`` or ``payload``) for the readers of v0, ``.v1`` keeps the rest."""
+        return cls(
+            columns=[_v0_projection(column) for column in spec.columns],
+            defaults=dict(spec.defaults),
+            version=SPEC_VERSION_V1,
+            v1=spec,
         )
 
 
@@ -229,6 +249,19 @@ class ColumnMappingLike(Protocol):
     value_map: dict[str, str] | None
 
 
+def _v0_projection(column: ColumnSpecV1) -> ColumnSpec:
+    target = column.target
+    if isinstance(target, FieldTarget):
+        return ColumnSpec(column.source, target.name)
+    if isinstance(target, IdentifierTarget):
+        return ColumnSpec(column.source, IDENTIFIER_TARGET, target.type)
+    if isinstance(target, IdentifiersTarget):
+        return ColumnSpec(column.source, IDENTIFIER_TARGET, target.default_type, True)
+    if isinstance(target, TermsTarget):
+        return ColumnSpec(column.source, f"{TERMS_TARGET}:{target.vocabulary}")
+    return ColumnSpec(column.source, PAYLOAD_TARGET)
+
+
 def _target_from_v0(column: ColumnSpec) -> ColumnTarget:
     if column.target == PAYLOAD_TARGET:
         return SourcePayloadTarget()
@@ -319,6 +352,15 @@ def from_column_mappings(
             )
         )
     return MappingSpecV1(columns=converted, defaults=_defaults_to_codes(defaults or {}))
+
+
+def with_defaults(spec: MappingSpecV1, defaults: Mapping[str, str]) -> MappingSpecV1:
+    """``spec`` with ``defaults`` (contract labels or internal codes) over its own, e.g. the
+    defaults of ``PUT /imports/{batch_id}/mapping`` over those of the template it applies."""
+    if not defaults:
+        return spec
+    merged = {**spec.defaults, **_defaults_to_codes(defaults)}
+    return spec.model_copy(update={"defaults": merged})
 
 
 def _is_seed_form(data: Mapping[str, Any]) -> bool:
@@ -545,6 +587,8 @@ class _Plan:
 
 
 def _plan(spec: "MappingSpec | MappingSpecV1") -> _Plan:
+    if isinstance(spec, MappingSpec) and spec.v1 is not None:
+        spec = spec.v1
     if isinstance(spec, MappingSpecV1):
         return _Plan([(column.source, column) for column in spec.columns], spec.defaults, True)
     columns: list[tuple[str, ColumnSpecV1 | MappingError]] = []

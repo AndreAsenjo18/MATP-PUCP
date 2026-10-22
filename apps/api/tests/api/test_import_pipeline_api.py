@@ -207,13 +207,13 @@ def test_choosing_another_sheet_and_header_row_reads_the_file_again(pipeline: Pi
     assert "CÓDIGOS" in body["headers"] and body["counts"]["rows"] == 4
 
 
-def test_templates_are_not_available_yet(pipeline: Pipeline) -> None:
+def test_an_unknown_template_is_rejected(pipeline: Pipeline) -> None:
     batch_id = upload(pipeline.client, "sabana.xlsx", SABANA)["batch_id"]
 
     response = put_mapping(pipeline.client, batch_id, {"template_id": str(uuid.uuid4())})
 
-    assert response.status_code == 422
-    assert response.json()["code"] == "templates_not_available"
+    assert response.status_code == 404
+    assert response.json()["code"] == "template_not_found"
 
 
 def test_failed_batch_cannot_be_mapped(pipeline: Pipeline) -> None:

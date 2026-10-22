@@ -4811,7 +4811,7 @@
                 "type": "null"
               }
             ],
-            "description": "Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.",
+            "description": "Aún no disponible: cree la plantilla con `POST /import-templates`.",
             "title": "Save As Template Name"
           },
           "sheet_name": {
@@ -4836,7 +4836,7 @@
                 "type": "null"
               }
             ],
-            "description": "Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.",
+            "description": "Plantilla guardada que define el mapeo (sin `columns`); `defaults` se aplican sobre los de la plantilla.",
             "title": "Template Id"
           }
         },
@@ -4851,6 +4851,14 @@
             },
             "title": "Columns",
             "type": "array"
+          },
+          "defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.",
+            "title": "Defaults",
+            "type": "object"
           },
           "description": {
             "anyOf": [
@@ -4922,6 +4930,14 @@
             "title": "Created At",
             "type": "string"
           },
+          "defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.",
+            "title": "Defaults",
+            "type": "object"
+          },
           "description": {
             "anyOf": [
               {
@@ -4979,6 +4995,21 @@
               }
             ],
             "title": "Columns"
+          },
+          "defaults": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Se envían con `headers` y `columns`; sin ellos se conservan.",
+            "title": "Defaults"
           },
           "description": {
             "anyOf": [
@@ -14051,7 +14082,7 @@
     },
     "/api/v1/imports/{batch_id}/mapping": {
       "put": {
-        "description": "Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).",
+        "description": "Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Con `template_id` (sin `columns`) se aplica una plantilla guardada; con una plantilla, transformaciones, `value_map` o destinos `terms:<VOCABULARIO>` el lote guarda el mapeo en versión 1 (design D1, fase 2).",
         "operationId": "setImportMapping",
         "parameters": [
           {

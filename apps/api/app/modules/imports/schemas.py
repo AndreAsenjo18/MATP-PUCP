@@ -237,7 +237,9 @@ class MappingRequest(BaseModel):
     )
 
     template_id: uuid.UUID | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None,
+        description="Plantilla guardada que define el mapeo (sin `columns`); `defaults` se "
+        "aplican sobre los de la plantilla.",
     )
     sheet_name: str | None = Field(None, description="Otra hoja: se vuelve a leer el archivo.")
     header_row: int | None = Field(
@@ -250,7 +252,7 @@ class MappingRequest(BaseModel):
         "Préstamo Temporal) y `collection` (sigla).",
     )
     save_as_template_name: str | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None, description="Aún no disponible: cree la plantilla con `POST /import-templates`."
     )
 
 
@@ -570,6 +572,11 @@ class MappingTemplateOut(BaseModel):
     source_name: str
     header_signature: str
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo "
+        "Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None
     created_at: datetime
 
@@ -579,6 +586,11 @@ class MappingTemplateCreate(BaseModel):
     source_name: str = Field(min_length=1, max_length=200)
     headers: list[str] = Field(min_length=1)
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, "
+        "Préstamo Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None = None
 
 
@@ -590,6 +602,9 @@ class MappingTemplateUpdate(BaseModel):
     source_name: str | None = Field(None, min_length=1, max_length=200)
     headers: list[str] | None = Field(None, min_length=1)
     columns: list[ColumnMapping] | None = None
+    defaults: dict[str, str] | None = Field(
+        None, description="Se envían con `headers` y `columns`; sin ellos se conservan."
+    )
     description: str | None = None
 
 

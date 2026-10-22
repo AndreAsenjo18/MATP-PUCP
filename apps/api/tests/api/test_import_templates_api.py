@@ -1,8 +1,9 @@
 """Spec importacion-datos — Gestión de plantillas de mapeo (RF-022, RN-005; design D1, D3).
 
-Change plantillas-mapeo-y-normalizacion, task 3.1 (phase 1 of design D1): templates are stored
-as ``MappingSpec`` v1 and spoken as ``ColumnMapping``; ``PUT /imports/{batch_id}/mapping``
-keeps building v0 and rejects the v1-only fields with ``transforms_not_yet_supported``.
+Change plantillas-mapeo-y-normalizacion, tasks 3.1 and 3.5: templates are stored as
+``MappingSpec`` v1 and spoken as ``ColumnMapping``. ``PUT /imports/{batch_id}/mapping`` builds
+v0 as before without the new fields, and v1 with a template, transformations, ``value_map`` or
+``terms:`` targets (phase 2 of design D1).
 Synthetic data only (RNF-014); template names and headers are illustrative [SUPUESTO A1].
 
 Own module: the ``pipeline`` fixture gives it its own seeded database.
@@ -332,7 +333,7 @@ def test_logical_delete_keeps_batch_references_and_goes_to_the_trash(
     create(pipeline.client, name)
 
 
-# --- PUT /imports/{batch_id}/mapping (fase 1 de design D1) ----------------------------------
+# --- PUT /imports/{batch_id}/mapping (design D1) -------------------------------------------
 
 
 def test_put_mapping_without_the_new_fields_is_unchanged(pipeline: Pipeline) -> None:
@@ -367,28 +368,106 @@ def test_put_mapping_without_the_new_fields_is_unchanged(pipeline: Pipeline) -> 
     ],
     ids=["transforms", "value_map", "terms"],
 )
-def test_put_mapping_with_v1_fields_is_not_yet_supported(
-    pipeline: Pipeline, column: dict[str, Any]
-) -> None:
+def test_put_mapping_with_v1_fields_stores_v1(pipeline: Pipeline, column: dict[str, Any]) -> None:
+    """Phase 2 of design D1: transformations, ``value_map`` or ``terms:`` make the batch v1."""
     batch_id = upload(pipeline.client)
     columns = [column] if column["source_column"] == "DENOMINACIÓN" else [DENOMINATION, column]
 
     response = pipeline.client.put(f"{IMPORTS}/{batch_id}/mapping", json={"columns": columns})
 
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "MAPPED"
+    stored = stored_mapping(pipeline, batch_id)
+    assert stored["version"] == 1
+    assert [spec.source for spec in read_mapping(stored).columns] == [
+        item["source_column"] for item in columns
+    ]
+
+
+def test_put_mapping_with_a_template_stores_its_v1_mapping(pipeline: Pipeline) -> None:
+    """Phase 2 of design D1: the template defines the mapping; its defaults travel with it
+    (contract labels in the API, internal codes in the JSON; ADR-002)."""
+    columns = [
+        {**DENOMINATION, "transforms": ["trim"]},
+        {"source_column": "CÓDIGOS", "target_field": "identifier", "split_compound": True},
+        {"source_column": "MATERIAL", "target_field": "terms:MATERIAL", "transforms": ["split:,"]},
+    ]
+    created = create(
+        pipeline.client,
+        unique("Aplicable a la sábana"),
+        headers=["DENOMINACIÓN", "CÓDIGOS", "MATERIAL"],
+        columns=columns,
+        defaults={"tenure_regime": "Comodato"},
+    )
+    assert created["defaults"] == {"tenure_regime": "Comodato"}
+    batch_id = upload(pipeline.client)
+
+    with_columns = pipeline.client.put(
+        f"{IMPORTS}/{batch_id}/mapping",
+        json={"template_id": created["id"], "columns": [DENOMINATION]},
+    )
+    response = pipeline.client.put(
+        f"{IMPORTS}/{batch_id}/mapping", json={"template_id": created["id"]}
+    )
+
+    assert with_columns.status_code == 422
+    assert with_columns.json()["code"] == "template_with_columns"
+    assert response.status_code == 200, response.text
+    assert response.json()["template_id"] == created["id"]
+    with pipeline.session() as session:
+        template = session.get(ImportMappingTemplate, uuid.UUID(created["id"]))
+        assert template is not None
+        assert template.mapping["defaults"] == {"tenure_regime": "LOAN_FOR_USE"}
+        assert stored_mapping(pipeline, batch_id) == template.mapping
+
+
+def test_put_mapping_with_a_template_the_file_does_not_fit_is_rejected(
+    pipeline: Pipeline,
+) -> None:
+    """The template is validated against the headers of the batch: «N° INV» is missing."""
+    created = create(pipeline.client, unique("Otra fuente"))
+    batch_id = upload(pipeline.client)
+
+    response = pipeline.client.put(
+        f"{IMPORTS}/{batch_id}/mapping", json={"template_id": created["id"]}
+    )
+
     assert response.status_code == 422, response.text
-    assert response.json()["code"] == "transforms_not_yet_supported"
-    assert response.json()["details"]["columns"] == [column["source_column"]]
+    assert response.json()["code"] == "invalid_mapping"
+    assert "unknown_column" in error_codes(response)
     assert stored_mapping(pipeline, batch_id) is None
 
 
-def test_put_mapping_with_a_template_is_still_not_available(pipeline: Pipeline) -> None:
-    created = create(pipeline.client, unique("Aún no aplicable"))
+def test_saving_a_batch_mapping_as_a_template_is_still_not_available(
+    pipeline: Pipeline,
+) -> None:
     batch_id = upload(pipeline.client)
 
     response = pipeline.client.put(
         f"{IMPORTS}/{batch_id}/mapping",
-        json={"template_id": created["id"], "columns": [DENOMINATION]},
+        json={"columns": [DENOMINATION], "save_as_template_name": unique("No")},
     )
 
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "templates_not_available"
+
+
+def test_template_defaults_use_contract_labels(pipeline: Pipeline) -> None:
+    invalid = pipeline.client.post(
+        TEMPLATES,
+        json=template_body(unique("Régimen raro"), defaults={"tenure_regime": "Alquiler"}),
+    )
+    created = create(
+        pipeline.client, unique("Con régimen"), defaults={"tenure_regime": "Propiedad"}
+    )
+    kept = pipeline.client.patch(
+        f"{TEMPLATES}/{created['id']}", json={"headers": HEADERS, "columns": COLUMNS}
+    )
+    alone = pipeline.client.patch(
+        f"{TEMPLATES}/{created['id']}", json={"defaults": {"tenure_regime": "Comodato"}}
+    )
+
+    assert invalid.status_code == 422 and invalid.json()["code"] == "invalid_mapping"
+    assert created["defaults"] == {"tenure_regime": "Propiedad"}
+    assert kept.status_code == 200 and kept.json()["defaults"] == {"tenure_regime": "Propiedad"}
+    assert alone.status_code == 422 and alone.json()["code"] == "headers_and_columns_required"

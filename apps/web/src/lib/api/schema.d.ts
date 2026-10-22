@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1be4cf8cdbf6e8605b7683322d63c71c4432a7413323bc8f017a87775d897266
+ * openapi-sha256: 1fafacf12ff43ae2e80dac33ea05c57bc8623784f96b2f97c41032a3af5d9f60
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -715,7 +715,7 @@ export interface paths {
         get?: never;
         /**
          * 2. Mapeo: asignar columnas (o aplicar una plantilla)
-         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).
+         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Con `template_id` (sin `columns`) se aplica una plantilla guardada; con una plantilla, transformaciones, `value_map` o destinos `terms:<VOCABULARIO>` el lote guarda el mapeo en versión 1 (design D1, fase 2).
          */
         put: operations["setImportMapping"];
         post?: never;
@@ -3957,7 +3957,7 @@ export interface components {
             header_row?: number | null;
             /**
              * Save As Template Name
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Aún no disponible: cree la plantilla con `POST /import-templates`.
              */
             save_as_template_name?: string | null;
             /**
@@ -3967,7 +3967,7 @@ export interface components {
             sheet_name?: string | null;
             /**
              * Template Id
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Plantilla guardada que define el mapeo (sin `columns`); `defaults` se aplican sobre los de la plantilla.
              */
             template_id?: string | null;
         };
@@ -3975,6 +3975,13 @@ export interface components {
         MappingTemplateCreate: {
             /** Columns */
             columns: components["schemas"]["ColumnMapping"][];
+            /**
+             * Defaults
+             * @description Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description?: string | null;
             /** Headers */
@@ -4008,6 +4015,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Defaults
+             * @description Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description: string | null;
             /** Header Signature */
@@ -4030,6 +4044,13 @@ export interface components {
         MappingTemplateUpdate: {
             /** Columns */
             columns?: components["schemas"]["ColumnMapping"][] | null;
+            /**
+             * Defaults
+             * @description Se envían con `headers` y `columns`; sin ellos se conservan.
+             */
+            defaults?: {
+                [key: string]: string;
+            } | null;
             /** Description */
             description?: string | null;
             /** Headers */

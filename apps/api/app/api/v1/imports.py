@@ -22,6 +22,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
@@ -46,7 +47,9 @@ from app.modules.imports.mapping import (
     PAYLOAD_TARGET,
     TERMS_TARGET,
     ColumnSpec,
+    MappingConversionError,
     MappingSpec,
+    from_column_mappings,
 )
 from app.modules.imports.models import (
     ImportBatch,
@@ -240,28 +243,39 @@ def get_import(batch_id: uuid.UUID, session: SessionDep, user: Preparer) -> Impo
     return batch_out(session, get_batch(session, batch_id))
 
 
-def _mapping_spec(body: MappingRequest) -> MappingSpec:
-    if body.template_id is not None or body.save_as_template_name is not None:
+def _mapping_spec(body: MappingRequest, session: Session | None = None) -> MappingSpec:
+    if body.save_as_template_name is not None:
         raise ValidationFailed(
-            "Las plantillas de mapeo todavía no están disponibles; indique las columnas.",
+            "Guardar el mapeo de un lote como plantilla todavía no está disponible; cree la "
+            "plantilla con `POST /import-templates`.",
             code="templates_not_available",
             details={"change": CHANGE_TEMPLATES},
         )
-    # Phase 1 of design D1: the batch mapping stays v0, which has no transformations or terms.
-    with_v1_fields = [
-        column.source_column
-        for column in body.columns
-        if column.transforms
+    # Phase 2 of design D1: a template or v1-only fields make the batch mapping v1.
+    if body.template_id is not None:
+        if body.columns:
+            raise ValidationFailed(
+                "Indique una plantilla o las columnas, no ambas: la plantilla ya define el mapeo.",
+                code="template_with_columns",
+            )
+        assert session is not None
+        return templates.batch_spec(session, body.template_id, body.defaults)
+    if any(
+        column.transforms
         or column.value_map
         or (column.target_field or "").startswith(f"{TERMS_TARGET}:")
-    ]
-    if with_v1_fields:
-        raise ValidationFailed(
-            "El mapeo de un lote todavía no admite transformaciones, correspondencias de valores "
-            "ni destinos a términos; guárdelos en una plantilla.",
-            code="transforms_not_yet_supported",
-            details={"change": CHANGE_TEMPLATES, "columns": with_v1_fields},
-        )
+        for column in body.columns
+    ):
+        try:
+            return MappingSpec.from_v1(from_column_mappings(body.columns, body.defaults))
+        except MappingConversionError as exc:
+            raise ValidationFailed(
+                "El mapeo de columnas tiene errores; corríjalos y vuelva a enviarlo.",
+                code="invalid_mapping",
+                details={
+                    "errors": [{"code": exc.code, "message": exc.message, "column": exc.column}]
+                },
+            ) from exc
     columns: list[ColumnSpec] = []
     for column in body.columns:
         target = column.target_field or PAYLOAD_TARGET
@@ -286,8 +300,10 @@ def _mapping_spec(body: MappingRequest) -> MappingSpec:
     summary="2. Mapeo: asignar columnas (o aplicar una plantilla)",
     description="Asigna cada columna a un campo de la ficha, a un tipo de identificador o a "
     "los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). "
-    "Volver a mapear un lote en previsualización descarta su validación. Implementación "
-    "mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).",
+    "Volver a mapear un lote en previsualización descarta su validación. Con `template_id` "
+    "(sin `columns`) se aplica una plantilla guardada; con una plantilla, transformaciones, "
+    "`value_map` o destinos `terms:<VOCABULARIO>` el lote guarda el mapeo en versión 1 "
+    "(design D1, fase 2).",
     **implemented(),
 )
 def set_import_mapping(
@@ -297,7 +313,7 @@ def set_import_mapping(
     session: SessionDep,
     user: Preparer,
 ) -> ImportBatchOut:
-    spec = _mapping_spec(body)
+    spec = _mapping_spec(body, session)
     writer(session, user)
     batch = set_mapping(
         session,
@@ -308,6 +324,7 @@ def set_import_mapping(
         header_row=body.header_row,
         max_rows=request.app.state.settings.import_max_rows,
     )
+    batch.template_id = body.template_id  # the template the mapping came from, if any
     session.commit()
     return ImportBatchOut.from_batch(batch)
 
@@ -576,6 +593,7 @@ def template_out(template: ImportMappingTemplate) -> MappingTemplateOut:
         source_name=template.source_name,
         header_signature=template.header_signature,
         columns=templates.column_mappings(template),
+        defaults=templates.api_defaults(template),
         description=template.description,
         created_at=template.created_at,
     )
@@ -619,6 +637,7 @@ def create_import_template(
         headers=body.headers,
         columns=body.columns,
         description=body.description,
+        defaults=body.defaults,
     )
     session.commit()
     return template_out(template)
@@ -682,6 +701,7 @@ def update_import_template(
         columns=body.columns,
         description=body.description,
         description_set="description" in body.model_fields_set,
+        defaults=body.defaults,
     )
     session.commit()
     return template_out(template)
