@@ -23,7 +23,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound, ValidationFailed
+from app.core.errors import NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
@@ -32,9 +32,7 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
-    PieceFilters,
     Viewer,
-    build_piece_query,
     get_piece,
 )
 from app.modules.catalog.schemas import (
@@ -60,8 +58,13 @@ from app.modules.identification.schemas import (
 from app.modules.identification.service import retire_identifier, set_inventory_code
 from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
+from app.modules.locations.service import UNSET as LOCATION_UNSET
+from app.modules.locations.service import (
+    assert_availability_coherent,
+    correct_movement,
+    verify_location,
+)
 from app.modules.locations.service import move_piece as move_piece_service
-from app.modules.locations.service import verify_location
 from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
@@ -81,6 +84,8 @@ from app.modules.media.service import (
     verify_image_stream,
 )
 from app.modules.quality.schemas import PieceAlert
+from app.modules.search.filters import PieceFilter
+from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
 
@@ -107,35 +112,41 @@ def piece_filters(
         TenureRegimeLabel | None,
         Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
     ] = None,
+    category_id: uuid.UUID | None = None,
     category_term_id: uuid.UUID | None = None,
+    material_id: uuid.UUID | None = None,
     material_term_id: uuid.UUID | None = None,
+    conservation_state_id: uuid.UUID | None = None,
     conservation_status_term_id: uuid.UUID | None = None,
     location_id: Annotated[uuid.UUID | None, Query(description="Incluye sub-ubicaciones.")] = None,
     has_inventory_code: Annotated[bool | None, Query(description="false = piezas sin I.")] = None,
     author: Annotated[str | None, Query(max_length=200)] = None,
     provenance: Annotated[str | None, Query(max_length=200)] = None,
     period_text: Annotated[str | None, Query(max_length=200)] = None,
+    epoch_start_year: Annotated[int | None, Query(description="Año de inicio de época.")] = None,
+    epoch_end_year: Annotated[int | None, Query(description="Año de fin de época.")] = None,
     sort: PieceSort = "denomination",
-) -> PieceFilters:
+) -> PieceFilter:
     regime = (
         code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
         if tenure_regime is not None
         else None
     )
-    return PieceFilters(
+    return PieceFilter(
         q=q,
         collection_id=collection_id,
         without_collection=without_collection,
         tenure_regime=regime,
-        category_term_id=category_term_id,
-        material_term_id=material_term_id,
-        conservation_status_term_id=conservation_status_term_id,
+        category_id=category_id or category_term_id,
+        material_id=material_id or material_term_id,
+        conservation_state_id=conservation_state_id or conservation_status_term_id,
         location_id=location_id,
         has_inventory_code=has_inventory_code,
         author=author,
         provenance=provenance,
         period_text=period_text,
-        sort=sort,
+        epoch_start_year=epoch_start_year,
+        epoch_end_year=epoch_end_year,
     )
 
 
@@ -150,11 +161,14 @@ def piece_filters(
 def list_pieces(
     session: SessionDep,
     user: Reader,
-    filters: Annotated[PieceFilters, Depends(piece_filters)],
+    filters: Annotated[PieceFilter, Depends(piece_filters)],
     params: Annotated[LimitPageParams, Depends(limit_page_params)],
 ) -> PieceSearchResponse:
-    pieces, total = paginate(session, build_piece_query(session, filters), params)
-    items = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
+    viewer = Viewer(user.permissions)
+    where_clause = filters.to_where(session, viewer)
+    query = select(Piece).where(where_clause).order_by(Piece.denomination)
+    pieces, total = paginate(session, query, params)
+    items = CatalogReader(session, viewer).summaries(pieces)
     return PieceSearchResponse(total=total, page=params.page, limit=params.limit, items=items)
 
 
@@ -244,7 +258,29 @@ def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
     tags=["Piezas"],
     **implemented(),
 )
-def get_piece_by_id(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> PieceDetail:
+def get_piece_by_id(
+    piece_id: uuid.UUID,
+    request: Request,
+    background: BackgroundTasks,
+    session: SessionDep,
+    user: Reader,
+) -> PieceDetail:
+    detail = _piece_detail(piece_id, session, user)
+    fields = delivered_piece_fields(detail)
+    if fields:  # RNF-014: log what was handed over unmasked, after the response (never values)
+        background.add_task(
+            record_sensitive_access,
+            request.app.state.session_factory,
+            user_id=user.id,
+            route=request.url.path,
+            entity_type="piece",
+            entity_ids=[piece_id],
+            fields=fields,
+        )
+    return detail
+
+
+def _piece_detail(piece_id: uuid.UUID, session: Session, user: CurrentUser) -> PieceDetail:
     reader = CatalogReader(session, Viewer(user.permissions))
     merged_from = _merged_from(session, piece_id)
     try:
@@ -285,11 +321,13 @@ def update_piece(
         changes["epoch_type"] = period.get("type")
         changes["epoch_start_year"] = period.get("year_from")
         changes["epoch_end_year"] = period.get("year_to")
+    if "availability_term_id" in changes and changes["availability_term_id"] is not None:
+        assert_availability_coherent(session, piece, changes["availability_term_id"])
     code_i = body.code_i if "code_i" in body.model_fields_set else None
     if changes or code_i is not None:
         catalog_service.update_piece(session, piece, code_i=code_i, **changes)
-    if code_i is not None:
-        set_inventory_code(session, piece, code_i)
+    if "code_i" in body.model_fields_set:
+        set_inventory_code(session, piece, body.code_i)
     session.commit()
     return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
@@ -1110,6 +1148,7 @@ def _movement_out(reader: CatalogReader, movement: PieceMovement) -> MovementOut
         from_location=visible_ref(movement.from_location_id),
         to_location=visible_ref(movement.to_location_id),
         reason=movement.reason,
+        corrects_movement_id=movement.corrects_movement_id,
         performed_by_label=movement.performed_by_label,
         occurred_at=movement.occurred_at,
     )
@@ -1140,7 +1179,7 @@ def get_piece_location_history(
     "/{piece_id}/move",
     response_model=MovementOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Registrar un movimiento o verificación física",
+    summary="Registrar un movimiento, verificación física o corrección",
     tags=["Ubicaciones"],
     **implemented(),
 )
@@ -1153,6 +1192,11 @@ def move_piece(
     piece = get_piece(session, piece_id)
     writer(session, user, body.reason)
     target_loc_id = body.to_location_id or body.destination_location_id
+    expected_from = (
+        body.expected_from_location_id
+        if "expected_from_location_id" in body.model_fields_set
+        else LOCATION_UNSET
+    )
     if body.movement_type == MovementType.MOVE:
         if target_loc_id is None:
             raise ValidationFailed(
@@ -1163,10 +1207,41 @@ def move_piece(
         if destination is None or destination.deleted_at is not None:
             raise NotFound("La ubicación de destino no existe o fue eliminada.")
         movement = move_piece_service(
-            session, piece, destination, body.reason, performed_by_label=user.full_name
+            session,
+            piece,
+            destination,
+            body.reason,
+            performed_by_label=user.full_name,
+            expected_from_location_id=expected_from,
         )
     elif body.movement_type == MovementType.VERIFICATION:
-        movement = verify_location(session, piece)
+        movement = verify_location(
+            session,
+            piece,
+            expected_location_id=target_loc_id if target_loc_id is not None else LOCATION_UNSET,
+        )
+    elif body.movement_type == MovementType.CORRECTION:
+        if not user.can("locations.manage"):
+            raise PermissionDenied(
+                "Solo un Administrador puede registrar un movimiento correctivo.",
+                details={"permission": "locations.manage"},
+            )
+        if target_loc_id is None or body.corrects_movement_id is None:
+            raise ValidationFailed(
+                "to_location_id y corrects_movement_id son obligatorios para una corrección.",
+                code="correction_requires_reference",
+            )
+        destination = session.get(Location, target_loc_id)
+        if destination is None or destination.deleted_at is not None:
+            raise NotFound("La ubicación de destino no existe o fue eliminada.")
+        movement = correct_movement(
+            session,
+            piece,
+            destination,
+            corrects_movement_id=body.corrects_movement_id,
+            reason=body.reason,
+            performed_by_label=user.full_name,
+        )
     else:
         raise ValidationFailed(
             f"Tipo de movimiento no admitido: {body.movement_type}.",

@@ -31,6 +31,7 @@ BOILERPLATE = {"created_at", "updated_at", "deleted_at", "deleted_by_id", "delet
 # Tablas de solo inserción (ADR-004, triggers en BD).
 APPEND_ONLY = {
     "audit_log",
+    "audit_digest",
     "piece_movement",
     "piece_source_record",
     "conservation_assessment",
@@ -58,7 +59,7 @@ GROUPS = [
     (
         "Ubicación y Control (EP-02)",
         "#FDF6E3",
-        ["location", "piece_movement", "loan", "loan_item"],
+        ["location", "piece_movement", "loan", "loan_item", "idempotency_key"],
     ),
     (
         "Importación y Calidad de Datos (EP-03)",
@@ -88,7 +89,13 @@ GROUPS = [
             "auth_event",
             "sensitive_access_log",
             "audit_log",
+            "audit_digest",
         ],
+    ),
+    (
+        "Búsqueda y Exportación",
+        "#E8F4F8",
+        ["export_job"],
     ),
 ]
 
@@ -122,6 +129,8 @@ LABELS = {
     ("piece_movement", "from_location_id"): "origen",
     ("piece_movement", "to_location_id"): "destino",
     ("piece_movement", "performed_by_user_id"): "ejecuta",
+    ("piece_movement", "corrects_movement_id"): "corrige",
+    ("idempotency_key", "user_id"): "solicita",
     ("import_batch", "template_id"): "plantilla",
     ("import_batch", "uploaded_by_id"): "carga",
     ("import_batch", "approved_by_id"): "aprueba",
@@ -146,6 +155,7 @@ LABELS = {
     ("user_role", "role_id"): "",
     ("user_session", "user_id"): "sesiones abiertas",
     ("auth_event", "user_id"): "eventos de autenticación",
+    ("export_job", "requested_by_id"): "solicita",
     ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",

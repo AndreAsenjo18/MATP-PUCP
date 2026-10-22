@@ -1,6 +1,93 @@
 # Administración
 
-> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora solo está escrita «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+
+## Usuarios y permisos
+
+Solo el rol **Administrador** gestiona cuentas y permisos. Las cuentas son individuales y **nunca se eliminan**: se desactivan, y todo lo que hicieron queda en la auditoría.
+
+### Crear un usuario
+
+1. Vaya a **Administración › Usuarios** y pulse **Nuevo usuario**.
+2. Escriba el **correo** (no puede repetirse, aunque cambien las mayúsculas), el **nombre** y elija uno o más **roles**.
+3. Pulse **Crear**. El sistema muestra una **contraseña temporal** en pantalla.
+4. **Anótela y entréguela en persona o por un canal privado: se muestra una sola vez** y no se puede volver a consultar. Si se pierde, restablezca la contraseña.
+
+La persona deberá cambiar esa contraseña la primera vez que ingrese (ver [Acceso](acceso.md)).
+
+El rol «Consulta externa / investigador» aparece desactivado en esta fase y no se puede asignar.
+
+### Cambiar roles, desactivar o restablecer la contraseña
+
+1. En **Administración › Usuarios**, abra a la persona.
+2. Cambie sus roles, pulse **Desactivar** o pulse **Restablecer contraseña**.
+
+Cualquiera de las tres cosas **cierra de inmediato las sesiones abiertas** de esa persona: en su siguiente acción deberá volver a iniciar sesión (y no podrá, si fue desactivada). Restablecer la contraseña además quita un bloqueo por intentos fallidos y genera una temporal nueva.
+
+Siempre debe quedar **al menos un administrador activo**. Si un cambio dejaría el sistema sin ninguno (desactivarse a sí mismo, quitarse el rol o quitar el permiso de administrar usuarios al rol Administrador), el sistema lo rechaza y no cambia nada.
+
+### Matriz de permisos por rol
+
+1. Vaya a **Administración › Permisos** y elija el rol.
+2. Marque o desmarque los permisos y escriba el **motivo** del cambio.
+3. Pulse **Guardar**.
+
+El cambio vale **desde la siguiente acción** de las personas con ese rol, sin que tengan que volver a entrar. Cada permiso dado o quitado queda en la auditoría con quién, cuándo y el motivo.
+
+> **[SUPUESTO]** La lista de campos sensibles y el permiso que abre cada uno siguen por validar con el museo (pregunta B7).
+
+### Quién consultó datos sensibles
+
+Cada vez que el sistema entrega, sin ocultar, datos del comodante o la ubicación exacta de una pieza, se anota **quién, cuándo y qué campos** (nunca los valores). El Administrador lo consulta en **Auditoría › Accesos a datos sensibles**. Quienes ven esos campos ocultos no generan registro.
+
+### Si algo sale mal
+
+| Qué ve | Qué hacer |
+|---|---|
+| «Ya existe un usuario con ese correo» | Busque a la persona (incluya las desactivadas) y reactívela en vez de crear otra cuenta. |
+| «Los roles … están desactivados» | Ese rol no está disponible en esta fase; elija otro. |
+| «La operación dejaría el sistema sin ningún administrador activo» | Asigne primero el rol Administrador a otra persona activa. |
+| Perdí la contraseña temporal | Pulse **Restablecer contraseña** para generar otra. |
+
+## Ubicaciones
+
+Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito (ver [Vista de depósito](deposito.md)) solo mueve o verifica piezas; no crea lugares nuevos.
+
+### La jerarquía
+
+Cada lugar tiene un nivel, de mayor a menor:
+
+**Sede** → **Depósito** (o sala, taller u otro) → **Mueble** → **Nivel** → **Contenedor**
+
+Un lugar solo puede crearse dentro del nivel inmediatamente superior (por ejemplo, un Mueble solo dentro de un Depósito, nunca directamente en una Sede). El sistema avisa con un mensaje claro cuando el nivel elegido no es válido para el padre seleccionado.
+
+> **[SUPUESTO]** Los nombres exactos de los niveles y la forma de los códigos del museo todavía no están confirmados con la contraparte (pregunta A7 en `docs/preguntas-contraparte.md`); por ahora se usan los que muestra esta pantalla.
+
+### Crear un lugar
+
+1. Vaya a **Administración › Ubicaciones**.
+2. En «Crear ubicación», elija el **nivel**, el **lugar padre** (vacío solo para crear una Sede nueva), un **código** (debe ser único entre los lugares activos; mayúsculas y espacios se ajustan solos) y un **nombre**.
+3. Presione **Crear**. El árbol se actualiza con el lugar nuevo.
+
+Si el código ya existe, el sistema lo indica y no crea un lugar repetido.
+
+### Tipo de espacio
+
+A un **Depósito** se le puede asignar un tipo: depósito, sala de exhibición, taller u otro. Esto permite que, al mover una pieza a una sala, el sistema proponga automáticamente la disponibilidad «En sala»; al moverla a un depósito, «En depósito». Si alguien intenta marcar manualmente una disponibilidad que no corresponde a la ubicación actual de la pieza (por ejemplo, «En sala» mientras la pieza sigue en un depósito), el sistema lo rechaza y explica por qué.
+
+### Desactivar un lugar
+
+Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
+
+### Reubicar un mueble o contenedor completo
+
+Cuando se reorganiza un depósito (por ejemplo, mover un rack entero a otra sala), se cambia el padre del mueble desde la ficha de esa ubicación:
+
+1. El sistema muestra cuántas piezas hay dentro de ese mueble (incluyendo niveles y cajas).
+2. Hay que confirmar ese número exacto para completar el cambio; si alguien más movió piezas mientras tanto, el número ya no coincide y el sistema pide confirmar el número actualizado.
+3. Al confirmar, cada pieza queda con un registro de "reubicación" en su historial de movimientos, aunque su caja o nivel exacto no cambió: solo cambió de qué depósito depende ese mueble.
+
+No se puede colocar un mueble dentro de uno de sus propios niveles o cajas (el sistema lo rechaza).
 
 ## Versión del sistema y actualizaciones
 
@@ -32,3 +119,45 @@ Una mejora que se ve en el sistema de pruebas **no** llega sola al sistema de us
 - **La página muestra `degraded`**: el sistema funciona con problemas (por ejemplo, no llega a la base de datos o al almacenamiento de fotos). Avise al equipo técnico y envíe la página completa, que no contiene datos del museo.
 - **La página no carga**: el sistema está apagado o sin conexión. En el sistema de pruebas es normal fuera de las sesiones de trabajo del equipo técnico. En el sistema de uso diario, avise de inmediato al equipo técnico.
 - **Ve un cambio en el sistema de pruebas que todavía no está en el de uso diario**: es lo esperado. Pida la versión como se explica arriba.
+
+## Exportación completa de la base de datos (Respaldo en formato abierto)
+
+El sistema garantiza que el museo pueda extraer la totalidad de su patrimonio digital en formatos estándar y abiertos (CSV y XLSX) sin depender de software privativo (requisito RF-044).
+
+### Quién puede exportar todo
+Por motivos de seguridad y confidencialidad institucional, la exportación completa está restringida exclusivamente a usuarios con el rol **Administrador** (permiso `exports.full`).
+
+### Cómo solicitar la exportación completa
+1. Inicie sesión con una cuenta de Administrador.
+2. Diríjase a **Administración → Exportación completa de la base de datos** (o mediante la ruta `GET /api/v1/exports/full`).
+3. El sistema programará la exportación en segundo plano y devolverá el identificador del trabajo.
+4. **Idempotencia**: Si ya existe una exportación completa en ejecución o generada recientemente en las últimas 24 horas, el sistema devolverá el trabajo existente para no sobrecargar el servidor con consultas duplicadas.
+
+### Contenido del paquete descargable (`matp_full_export.zip`)
+El archivo comprimido generado contiene:
+1. **`csv/<entidad>.csv`**: Un archivo CSV por cada tabla del modelo de datos (`piece`, `piece_identifier`, `collection`, `vocabulary`, `term`, `location`, `piece_movement`, `loan`, `loan_item`, `media_asset`, `audit_log`, `app_user`).
+   - Se incluyen todos los registros históricos, incluidos aquellos con baja lógica (`deleted_at`), garantizando la preservación del historial (RN-005).
+   - Por estricta seguridad institucional, las credenciales y hashes de contraseñas (`password_hash`) se excluyen en su totalidad.
+2. **`matp_export.xlsx`**: Libro de trabajo en formato Excel con pestañas independientes para cada tabla de datos.
+3. **`diccionario.csv`**: Diccionario de datos explicativo en español que documenta cada tabla, columna, tipo de dato y su propósito.
+4. **`manifest.json`**: Manifiesto estructurado con metadatos de auditoría:
+   - Fecha y hora UTC de generación.
+   - Versión de migraciones de base de datos (`alembic_version`).
+   - Conteo total de entidades y registros.
+   - Lista detallada de archivos incluidos con su conteo de filas, tamaño en bytes y huella criptográfica SHA-256.
+
+### Cómo verificar la integridad del paquete
+Para comprobar que el paquete no fue alterado ni sufrió corrupción tras la descarga:
+1. Descomprima el archivo `matp_full_export.zip`.
+2. Abra el archivo `manifest.json` y localice la huella SHA-256 del archivo que desea comprobar (por ejemplo `csv/piece.csv`).
+3. Calcule la huella localmente:
+   - **En Windows PowerShell**:
+     ```powershell
+     Get-FileHash -Algorithm SHA256 .\csv\piece.csv
+     ```
+   - **En Linux / macOS**:
+     ```bash
+     sha256sum csv/piece.csv
+     ```
+4. Verifique que la cadena de texto hexadecimal coincida exactamente con la registrada en el campo `"sha256"` del manifiesto.
+

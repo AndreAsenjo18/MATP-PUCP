@@ -460,10 +460,159 @@
           "RESTORE",
           "CORRECTION",
           "MERGE",
-          "REVERT"
+          "REVERT",
+          "EXPORT"
         ],
         "title": "AuditAction",
         "type": "string"
+      },
+      "AuditChangeSetSummary": {
+        "description": "Resumen de un conjunto de cambios (una operación: edición, carga, fusión, reversión).",
+        "examples": [
+          {
+            "actions": [
+              "CREATE"
+            ],
+            "change_set_id": "01920000-0000-7000-8000-000000000a00",
+            "entity_count": 54,
+            "entity_counts": {
+              "piece": 54
+            },
+            "field_count": 486,
+            "last_occurred_at": "2026-09-17T10:30:00Z",
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "origin": "IMPORT",
+            "origin_ref": "01920000-0000-7000-8000-000000000601",
+            "reason": "Carga de la sábana 2024",
+            "reverted": false,
+            "user_id": "01920000-0000-7000-8000-000000000501"
+          }
+        ],
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/AuditAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "actor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Label"
+          },
+          "change_set_id": {
+            "format": "uuid",
+            "title": "Change Set Id",
+            "type": "string"
+          },
+          "entity_count": {
+            "description": "Entidades distintas afectadas.",
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "entity_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Entidades distintas por tipo, p. ej. 54 piezas en una carga.",
+            "title": "Entity Counts",
+            "type": "object"
+          },
+          "field_count": {
+            "description": "Campos registrados en el conjunto.",
+            "title": "Field Count",
+            "type": "integer"
+          },
+          "last_occurred_at": {
+            "format": "date-time",
+            "title": "Last Occurred At",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "Primer registro del conjunto.",
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/AuditOrigin"
+          },
+          "origin_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Ref"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reverted": {
+            "title": "Reverted",
+            "type": "boolean"
+          },
+          "reverted_by_change_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverted By Change Set Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "change_set_id",
+          "occurred_at",
+          "last_occurred_at",
+          "user_id",
+          "actor_label",
+          "origin",
+          "origin_ref",
+          "reason",
+          "actions",
+          "entity_count",
+          "entity_counts",
+          "field_count",
+          "reverted",
+          "reverted_by_change_set_id"
+        ],
+        "title": "AuditChangeSetSummary",
+        "type": "object"
       },
       "AuditEntryOut": {
         "examples": [
@@ -605,6 +754,210 @@
         "title": "AuditEntryOut",
         "type": "object"
       },
+      "AuditEntryView": {
+        "description": "Fila de auditoría como la ve un rol concreto: con los valores sensibles ocultos.",
+        "examples": [
+          {
+            "action": "UPDATE",
+            "change_set_id": "01920000-0000-7000-8000-000000000a00",
+            "entity_id": "01920000-0000-7000-8000-000000000101",
+            "entity_type": "piece",
+            "field": "lender_name",
+            "id": "01920000-0000-7000-8000-000000000a01",
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "origin": "MANUAL",
+            "user_id": "01920000-0000-7000-8000-000000000501",
+            "values_masked": true
+          }
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "actor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Label"
+          },
+          "change_set_id": {
+            "format": "uuid",
+            "title": "Change Set Id",
+            "type": "string"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "new_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "old_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Value"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/AuditOrigin"
+          },
+          "origin_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Ref"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "values_masked": {
+            "default": false,
+            "description": "El campo cambió, pero su valor anterior y nuevo están ocultos porque el rol no tiene el permiso correspondiente (RF-041).",
+            "title": "Values Masked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "change_set_id",
+          "entity_type",
+          "entity_id",
+          "field",
+          "old_value",
+          "new_value",
+          "action",
+          "origin",
+          "origin_ref",
+          "user_id",
+          "actor_label",
+          "reason"
+        ],
+        "title": "AuditEntryView",
+        "type": "object"
+      },
+      "AuditExportFormat": {
+        "enum": [
+          "csv"
+        ],
+        "title": "AuditExportFormat",
+        "type": "string"
+      },
+      "AuditGroupBy": {
+        "enum": [
+          "change_set"
+        ],
+        "title": "AuditGroupBy",
+        "type": "string"
+      },
+      "AuditLogPage": {
+        "description": "Página de la consulta de auditoría: filas campo a campo o conjuntos agrupados.",
+        "properties": {
+          "change_sets": {
+            "description": "Solo con `group_by=change_set`.",
+            "items": {
+              "$ref": "#/components/schemas/AuditChangeSetSummary"
+            },
+            "title": "Change Sets",
+            "type": "array"
+          },
+          "items": {
+            "description": "Vacío cuando se agrupa por conjunto de cambios.",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "AuditLogPage",
+        "type": "object"
+      },
       "AuditOrigin": {
         "enum": [
           "MANUAL",
@@ -641,6 +994,128 @@
           "piece_ids"
         ],
         "title": "BatchEnrichRequest",
+        "type": "object"
+      },
+      "BatchMovementFailureOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id",
+          "code",
+          "message"
+        ],
+        "title": "BatchMovementFailureOut",
+        "type": "object"
+      },
+      "BatchMovementItem": {
+        "properties": {
+          "expected_from_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación que el usuario vio para esta pieza (control de concurrencia).",
+            "title": "Expected From Location Id"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "piece_id"
+        ],
+        "title": "BatchMovementItem",
+        "type": "object"
+      },
+      "BatchMovementRequest": {
+        "examples": [
+          {
+            "items": [
+              {
+                "piece_id": "01920000-0000-7000-8000-000000000101"
+              }
+            ],
+            "movement_type": "MOVE",
+            "reason": "Traslado masivo de depósito",
+            "to_location_id": "01920000-0000-7000-8000-000000000401"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchMovementItem"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "movement_type": {
+            "$ref": "#/components/schemas/MovementType",
+            "default": "MOVE"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "to_location_id": {
+            "format": "uuid",
+            "title": "To Location Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_location_id",
+          "items"
+        ],
+        "title": "BatchMovementRequest",
+        "type": "object"
+      },
+      "BatchMovementResponse": {
+        "properties": {
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/BatchMovementFailureOut"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "registered": {
+            "items": {
+              "$ref": "#/components/schemas/MovementOut"
+            },
+            "title": "Registered",
+            "type": "array"
+          }
+        },
+        "title": "BatchMovementResponse",
         "type": "object"
       },
       "Body_uploadImportBatch": {
@@ -868,6 +1343,189 @@
           "new_password"
         ],
         "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "ChangeSetEntityOut": {
+        "properties": {
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "description": "Tabla de la entidad afectada, p. ej. `piece`.",
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "field_count": {
+            "description": "Campos registrados para esta entidad.",
+            "minimum": 0.0,
+            "title": "Field Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "field_count"
+        ],
+        "title": "ChangeSetEntityOut",
+        "type": "object"
+      },
+      "ChangeSetSummaryOut": {
+        "description": "Resumen agrupado de un conjunto de cambios (design D3).",
+        "examples": [
+          {
+            "actions": [
+              "UPDATE"
+            ],
+            "change_set_id": "01920000-0000-7000-8000-000000000a00",
+            "entities": [
+              {
+                "entity_id": "01920000-0000-7000-8000-000000000101",
+                "entity_type": "piece",
+                "field_count": 2
+              }
+            ],
+            "entity_count": 1,
+            "field_count": 2,
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "origin": "MANUAL",
+            "reason": "Corrección de procedencia según el libro de inventario",
+            "reverted": false,
+            "user_id": "01920000-0000-7000-8000-000000000501"
+          }
+        ],
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/AuditAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "actor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Label"
+          },
+          "change_set_id": {
+            "format": "uuid",
+            "title": "Change Set Id",
+            "type": "string"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeSetEntityOut"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "entity_count": {
+            "minimum": 0.0,
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "field_count": {
+            "minimum": 0.0,
+            "title": "Field Count",
+            "type": "integer"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/AuditOrigin"
+          },
+          "origin_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Ref"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reverted": {
+            "description": "Verdadero cuando ya existe un conjunto de reversión.",
+            "title": "Reverted",
+            "type": "boolean"
+          },
+          "reverted_by_change_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverted By Change Set Id"
+          },
+          "reverts_change_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Conjunto original cuando este conjunto es una reversión.",
+            "title": "Reverts Change Set Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "change_set_id",
+          "occurred_at",
+          "origin",
+          "origin_ref",
+          "user_id",
+          "actor_label",
+          "reason",
+          "actions",
+          "entity_count",
+          "field_count",
+          "entities",
+          "reverted",
+          "reverted_by_change_set_id"
+        ],
+        "title": "ChangeSetSummaryOut",
         "type": "object"
       },
       "ClassificationRule": {
@@ -1422,6 +2080,17 @@
         "title": "CompletenessKpis",
         "type": "object"
       },
+      "ConflictReason": {
+        "enum": [
+          "changed_after",
+          "entity_missing",
+          "already_deleted",
+          "not_deleted",
+          "no_soft_delete"
+        ],
+        "title": "ConflictReason",
+        "type": "string"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -1921,6 +2590,7 @@
             "download_url": "http://localhost:9000/matp-media/exports/ejemplo.xlsx",
             "expires_at": "2026-09-17T10:30:00Z",
             "format": "xlsx",
+            "id": "00000000-0000-0000-0000-000000000001",
             "masked_fields": [
               "lender_name"
             ],
@@ -1940,6 +2610,17 @@
             ],
             "title": "Download Url"
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "expires_at": {
             "anyOf": [
               {
@@ -1954,6 +2635,18 @@
           },
           "format": {
             "$ref": "#/components/schemas/ExportFormat"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
           },
           "masked_fields": {
             "items": {
@@ -1973,9 +2666,21 @@
             ],
             "title": "Row Count"
           },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
           "status": {
             "enum": [
               "PENDING",
+              "RUNNING",
               "READY",
               "FAILED"
             ],
@@ -1985,10 +2690,7 @@
         },
         "required": [
           "status",
-          "format",
-          "row_count",
-          "download_url",
-          "expires_at"
+          "format"
         ],
         "title": "ExportJob",
         "type": "object"
@@ -2073,6 +2775,19 @@
           "severity"
         ],
         "title": "FieldIssue",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
         "type": "object"
       },
       "HealthResponse": {
@@ -3580,6 +4295,24 @@
               }
             ],
             "title": "Parent Id"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[SUPUESTO] Tipo de espacio; solo admitido en el nivel Depósito.",
+            "title": "Space Kind"
           }
         },
         "required": [
@@ -3723,6 +4456,24 @@
             },
             "title": "Path",
             "type": "array"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[SUPUESTO] Tipo de espacio; solo aplica al nivel Depósito.",
+            "title": "Space Kind"
           }
         },
         "required": [
@@ -3775,7 +4526,25 @@
         "type": "object"
       },
       "LocationUpdate": {
+        "examples": [
+          {
+            "is_active": true,
+            "name": "Rack B"
+          }
+        ],
         "properties": {
+          "confirm_affected_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatorio al reubicar un nodo con piezas: número de piezas afectadas que la pantalla mostró antes de confirmar.",
+            "title": "Confirm Affected Count"
+          },
           "description": {
             "anyOf": [
               {
@@ -3810,6 +4579,36 @@
               }
             ],
             "title": "Name"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nuevo padre; reubica el nodo y sus piezas (design D4).",
+            "title": "Parent Id"
+          },
+          "space_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Depósito",
+                  "Sala de exhibición",
+                  "Taller",
+                  "Otro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Space Kind"
           }
         },
         "title": "LocationUpdate",
@@ -4672,6 +5471,19 @@
           }
         ],
         "properties": {
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatorio para CORRECTION: movimiento que se corrige (RN-005).",
+            "title": "Corrects Movement Id"
+          },
           "destination_location_id": {
             "anyOf": [
               {
@@ -4684,6 +5496,19 @@
             ],
             "description": "Alias del contrato de interfaces (MovePieceRequest).",
             "title": "Destination Location Id"
+          },
+          "expected_from_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación que el usuario vio antes de mover la pieza; si ya cambió, la API responde 409 (design D2, control de concurrencia).",
+            "title": "Expected From Location Id"
           },
           "movement_type": {
             "$ref": "#/components/schemas/MovementType",
@@ -4710,7 +5535,7 @@
                 "type": "null"
               }
             ],
-            "description": "Obligatorio para MOVE.",
+            "description": "Obligatorio para MOVE y CORRECTION.",
             "title": "To Location Id"
           }
         },
@@ -4735,6 +5560,18 @@
           }
         ],
         "properties": {
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Movement Id"
+          },
           "from_location": {
             "anyOf": [
               {
@@ -5243,6 +6080,78 @@
           "page_size"
         ],
         "title": "Page[IncompletePiece]",
+        "type": "object"
+      },
+      "Page_SensitiveAccessOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SensitiveAccessOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[SensitiveAccessOut]",
+        "type": "object"
+      },
+      "Page_TrashEntryOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrashEntryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[TrashEntryOut]",
         "type": "object"
       },
       "Page_UserOut_": {
@@ -6878,21 +7787,21 @@
         "examples": [
           {
             "columns": [
-              "Colección",
+              "Coleccin",
               "Piezas",
-              "Sin código I"
+              "Sin cdigo I"
             ],
             "filters": {},
             "generated_at": "2026-09-17T10:30:00Z",
             "report_type": "by-collection",
             "rows": [
               [
-                "Colección MMZ (ficticia)",
+                "Coleccin MMZ (ficticia)",
                 54,
                 30
               ]
             ],
-            "title": "Inventario por colección",
+            "title": "Inventario por coleccin",
             "totals": {
               "Piezas": 298
             }
@@ -6971,18 +7880,397 @@
         "title": "ReportType",
         "type": "string"
       },
-      "RevertChangeSetRequest": {
+      "RevertChangeSetOut": {
+        "description": "Resultado de una reversión aplicada.",
+        "examples": [
+          {
+            "conflicts": [],
+            "deleted_entities": 0,
+            "new_change_set_id": "01920000-0000-7000-8000-000000000a10",
+            "notes": [],
+            "restored_entities": 0,
+            "reverted_change_set_id": "01920000-0000-7000-8000-000000000a00",
+            "reverted_fields": 2
+          }
+        ],
         "properties": {
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/RevertConflictOut"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "deleted_entities": {
+            "minimum": 0.0,
+            "title": "Deleted Entities",
+            "type": "integer"
+          },
+          "new_change_set_id": {
+            "description": "Conjunto de cambios de tipo reversión, que a su vez puede revertirse.",
+            "format": "uuid",
+            "title": "New Change Set Id",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "restored_entities": {
+            "minimum": 0.0,
+            "title": "Restored Entities",
+            "type": "integer"
+          },
+          "reverted_change_set_id": {
+            "format": "uuid",
+            "title": "Reverted Change Set Id",
+            "type": "string"
+          },
+          "reverted_fields": {
+            "minimum": 0.0,
+            "title": "Reverted Fields",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reverted_change_set_id",
+          "new_change_set_id",
+          "reverted_fields",
+          "restored_entities",
+          "deleted_entities"
+        ],
+        "title": "RevertChangeSetOut",
+        "type": "object"
+      },
+      "RevertConfirmRequest": {
+        "description": "Confirmación de una reversión, ligada a la vista previa que la generó.",
+        "examples": [
+          {
+            "confirm_conflicts": false,
+            "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+            "reason": "La edición masiva del 20/10 se aplicó al lote equivocado"
+          }
+        ],
+        "properties": {
+          "confirm_conflicts": {
+            "default": false,
+            "description": "Confirma explícitamente que los cambios posteriores en conflicto se descartarán.",
+            "title": "Confirm Conflicts",
+            "type": "boolean"
+          },
+          "preview_token": {
+            "description": "Huella devuelta por la vista previa, obligatoria: la reversión solo se aplica ligada a una vista previa. Si el plan cambió, se rechaza con `revert_plan_changed`.",
+            "minLength": 1,
+            "title": "Preview Token",
+            "type": "string"
+          },
           "reason": {
+            "description": "Motivo de la reversión (queda en auditoría).",
             "minLength": 3,
             "title": "Reason",
             "type": "string"
           }
         },
         "required": [
-          "reason"
+          "reason",
+          "preview_token"
         ],
-        "title": "RevertChangeSetRequest",
+        "title": "RevertConfirmRequest",
+        "type": "object"
+      },
+      "RevertConflictOut": {
+        "properties": {
+          "changed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed At"
+          },
+          "changed_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed By Id"
+          },
+          "current_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor almacenado hoy.",
+            "title": "Current Value"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "expected_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor que dejó el conjunto de cambios.",
+            "title": "Expected Value"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "message": {
+            "description": "Explicación en español para la persona usuaria.",
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ConflictReason"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "field",
+          "reason",
+          "message"
+        ],
+        "title": "RevertConflictOut",
+        "type": "object"
+      },
+      "RevertItemKind": {
+        "enum": [
+          "RESTORE_VALUE",
+          "CORRECT_INVENTORY_CODE",
+          "SOFT_DELETE_ENTITY",
+          "RESTORE_ENTITY",
+          "APPEND_ONLY_NOTE"
+        ],
+        "title": "RevertItemKind",
+        "type": "string"
+      },
+      "RevertItemOut": {
+        "properties": {
+          "applicable": {
+            "description": "Falso en filas informativas (solo inserción) y estados ya resueltos.",
+            "title": "Applicable",
+            "type": "boolean"
+          },
+          "conflict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevertConflictOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor almacenado hoy.",
+            "title": "Current Value"
+          },
+          "description": {
+            "description": "Qué hará la reversión con este registro, en español.",
+            "title": "Description",
+            "type": "string"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RevertItemKind"
+          },
+          "source_action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "target_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor que se restauraría.",
+            "title": "Target Value"
+          }
+        },
+        "required": [
+          "kind",
+          "entity_type",
+          "entity_id",
+          "source_action",
+          "field",
+          "description",
+          "applicable"
+        ],
+        "title": "RevertItemOut",
+        "type": "object"
+      },
+      "RevertPreviewOut": {
+        "description": "Vista previa de una reversión: qué cambia, qué no se toca y qué está en conflicto.",
+        "examples": [
+          {
+            "applicable_count": 1,
+            "change_set": {
+              "actions": [
+                "UPDATE"
+              ],
+              "change_set_id": "01920000-0000-7000-8000-000000000a00",
+              "entities": [
+                {
+                  "entity_id": "01920000-0000-7000-8000-000000000101",
+                  "entity_type": "piece",
+                  "field_count": 2
+                }
+              ],
+              "entity_count": 1,
+              "field_count": 2,
+              "occurred_at": "2026-09-17T10:30:00Z",
+              "origin": "MANUAL",
+              "reason": "Corrección de procedencia según el libro de inventario",
+              "reverted": false,
+              "user_id": "01920000-0000-7000-8000-000000000501"
+            },
+            "conflicts": [],
+            "items": [
+              {
+                "applicable": true,
+                "current_value": "Huancavelica",
+                "description": "Restaurar «provenance» al valor anterior.",
+                "entity_id": "01920000-0000-7000-8000-000000000101",
+                "entity_type": "piece",
+                "field": "provenance",
+                "kind": "RESTORE_VALUE",
+                "source_action": "UPDATE",
+                "target_value": "Ayacucho"
+              }
+            ],
+            "notes": [],
+            "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+            "required_permissions": [
+              "pieces.update"
+            ],
+            "requires_admin": false,
+            "touches_inventory_code": false
+          }
+        ],
+        "properties": {
+          "applicable_count": {
+            "description": "Elementos que la reversión aplicaría.",
+            "minimum": 0.0,
+            "title": "Applicable Count",
+            "type": "integer"
+          },
+          "change_set": {
+            "$ref": "#/components/schemas/ChangeSetSummaryOut"
+          },
+          "conflicts": {
+            "description": "Campos modificados después del conjunto; exigen confirmación explícita.",
+            "items": {
+              "$ref": "#/components/schemas/RevertConflictOut"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RevertItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "notes": {
+            "description": "Avisos en español, p. ej. movimientos que requieren un movimiento correctivo.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "preview_token": {
+            "description": "Huella del plan. Debe enviarse al confirmar la reversión.",
+            "title": "Preview Token",
+            "type": "string"
+          },
+          "required_permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Permissions",
+            "type": "array"
+          },
+          "requires_admin": {
+            "title": "Requires Admin",
+            "type": "boolean"
+          },
+          "touches_inventory_code": {
+            "description": "Verdadero cuando la reversión afecta un código I (RN-002).",
+            "title": "Touches Inventory Code",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "change_set",
+          "preview_token",
+          "items",
+          "required_permissions",
+          "requires_admin",
+          "touches_inventory_code",
+          "applicable_count"
+        ],
+        "title": "RevertPreviewOut",
         "type": "object"
       },
       "RevertRequest": {
@@ -6997,48 +8285,6 @@
           "reason"
         ],
         "title": "RevertRequest",
-        "type": "object"
-      },
-      "RevertResult": {
-        "examples": [
-          {
-            "conflicts": [],
-            "new_change_set_id": "01920000-0000-7000-8000-000000000a10",
-            "reverted_change_set_id": "01920000-0000-7000-8000-000000000a00",
-            "reverted_fields": 3
-          }
-        ],
-        "properties": {
-          "conflicts": {
-            "description": "Campos modificados después; no se revierten.",
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Conflicts",
-            "type": "array"
-          },
-          "new_change_set_id": {
-            "format": "uuid",
-            "title": "New Change Set Id",
-            "type": "string"
-          },
-          "reverted_change_set_id": {
-            "format": "uuid",
-            "title": "Reverted Change Set Id",
-            "type": "string"
-          },
-          "reverted_fields": {
-            "title": "Reverted Fields",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "reverted_change_set_id",
-          "new_change_set_id",
-          "reverted_fields"
-        ],
-        "title": "RevertResult",
         "type": "object"
       },
       "RoleOut": {
@@ -7250,6 +8496,12 @@
       "SearchHit": {
         "examples": [
           {
+            "match_reason": {
+              "historical": false,
+              "kind": "identifier",
+              "original": "I-0236",
+              "type": "I"
+            },
             "match_type": "IDENTIFIER",
             "matched_identifier": {
               "identifier_type_code": "I",
@@ -7292,8 +8544,21 @@
           }
         ],
         "properties": {
+          "match_reason": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Detalle estructurado de la coincidencia (identificador o campos de texto).",
+            "title": "Match Reason"
+          },
           "match_type": {
-            "description": "IDENTIFIER: coincide un código (vigente o histórico); TITLE: la denominación.",
+            "description": "IDENTIFIER: coincide un cdigo (vigente o histrico); TITLE: la denominacin.",
             "enum": [
               "IDENTIFIER",
               "TITLE"
@@ -7323,11 +8588,18 @@
         "type": "object"
       },
       "SearchResultPage": {
-        "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar\nla paginación compartida que usan otros endpoints (`app/api/pagination.py`).",
+        "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar\nla paginacin compartida que usan otros endpoints (`app/api/pagination.py`).",
         "examples": [
           {
+            "excluded_uninterpreted_period": 0,
             "items": [
               {
+                "match_reason": {
+                  "historical": false,
+                  "kind": "identifier",
+                  "original": "I-0236",
+                  "type": "I"
+                },
                 "match_type": "IDENTIFIER",
                 "matched_identifier": {
                   "identifier_type_code": "I",
@@ -7371,10 +8643,41 @@
             ],
             "limit": 20,
             "page": 1,
+            "suggestions": [
+              "remove_filter:collection_code"
+            ],
             "total": 1
           }
         ],
         "properties": {
+          "active_filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filtros activos descritos en lenguaje claro.",
+            "title": "Active Filters"
+          },
+          "excluded_uninterpreted_period": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Piezas con poca solo en texto excluidas por filtro de rango (RF-032).",
+            "title": "Excluded Uninterpreted Period"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/SearchHit"
@@ -7392,6 +8695,21 @@
             "title": "Page",
             "type": "integer"
           },
+          "suggestions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sugerencias de accin cuando no hay resultados (RF-031).",
+            "title": "Suggestions"
+          },
           "total": {
             "minimum": 0.0,
             "title": "Total",
@@ -7405,6 +8723,75 @@
           "limit"
         ],
         "title": "SearchResultPage",
+        "type": "object"
+      },
+      "SensitiveAccessOut": {
+        "description": "One request that delivered unmasked sensitive fields (never their values; RNF-014).",
+        "examples": [
+          {
+            "entity_ids": [
+              "01920000-0000-7000-8000-000000000101"
+            ],
+            "entity_type": "piece",
+            "fields": [
+              "lender_name",
+              "loan_agreement_ref"
+            ],
+            "id": "01920000-0000-7000-8000-000000000501",
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+            "user_id": "01920000-0000-7000-8000-000000000501"
+          }
+        ],
+        "properties": {
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "user_id",
+          "route",
+          "entity_type",
+          "entity_ids",
+          "fields"
+        ],
+        "title": "SensitiveAccessOut",
         "type": "object"
       },
       "SkippedPiece": {
@@ -7863,6 +9250,157 @@
         "title": "TermUpdate",
         "type": "object"
       },
+      "TrashEntryOut": {
+        "description": "Registro eliminado lógicamente, con quién lo eliminó, cuándo y por qué.",
+        "examples": [
+          {
+            "deleted_at": "2026-09-17T10:30:00Z",
+            "deleted_by_id": "01920000-0000-7000-8000-000000000501",
+            "deleted_by_name": "Administradora de prueba (sintética)",
+            "deletion_reason": "Duplicado del término Totora",
+            "entity_id": "01920000-0000-7000-8000-000000000301",
+            "entity_label": "Totora",
+            "entity_type": "term",
+            "type_label": "Término de vocabulario"
+          }
+        ],
+        "properties": {
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "deleted_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted By Id"
+          },
+          "deleted_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted By Name"
+          },
+          "deletion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Reason"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_label": {
+            "description": "Texto con el que se reconoce el registro.",
+            "title": "Entity Label",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "type_label": {
+            "description": "Nombre del tipo de entidad, en español.",
+            "title": "Type Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "entity_label",
+          "type_label",
+          "deleted_at",
+          "deleted_by_id",
+          "deleted_by_name",
+          "deletion_reason"
+        ],
+        "title": "TrashEntryOut",
+        "type": "object"
+      },
+      "TrashRestoreResult": {
+        "description": "Resultado de una restauración desde la papelera.",
+        "examples": [
+          {
+            "entity_id": "01920000-0000-7000-8000-000000000301",
+            "entity_label": "Totora",
+            "entity_type": "term",
+            "previous_deletion_reason": "Duplicado del término Totora",
+            "restored": true,
+            "type_label": "Término de vocabulario"
+          }
+        ],
+        "properties": {
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_label": {
+            "title": "Entity Label",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "previous_deletion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Deletion Reason"
+          },
+          "restored": {
+            "default": true,
+            "title": "Restored",
+            "type": "boolean"
+          },
+          "type_label": {
+            "title": "Type Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "entity_label",
+          "type_label",
+          "previous_deletion_reason"
+        ],
+        "title": "TrashRestoreResult",
+        "type": "object"
+      },
       "UploadUrlRequest": {
         "examples": [
           {
@@ -8060,12 +9598,29 @@
             ],
             "title": "Locked Until"
           },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "roles": {
             "items": {
               "type": "string"
             },
             "title": "Roles",
             "type": "array"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.",
+            "title": "Temporary Password"
           }
         },
         "required": [
@@ -8133,6 +9688,12 @@
             ],
             "title": "Is Active"
           },
+          "reset_password": {
+            "default": false,
+            "description": "Genera una contraseña temporal nueva y revoca las sesiones.",
+            "title": "Reset Password",
+            "type": "boolean"
+          },
           "roles": {
             "anyOf": [
               {
@@ -8149,6 +9710,46 @@
           }
         },
         "title": "UserUpdate",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       },
       "ValidationSummary": {
@@ -8287,14 +9888,8 @@
       }
     },
     "securitySchemes": {
-      "DevUserHeader": {
-        "description": "Identidad de PRUEBAS (ADR-005): correo o UUID de un usuario sintético activo, p. ej. `catalogador@matp.local`. Solo se acepta con APP_ENV=test; en desarrollo, demostración y producción se usa el inicio de sesión (ADR-009).",
-        "in": "header",
-        "name": "X-MATP-User",
-        "type": "apiKey"
-      },
       "cookieAuth": {
-        "description": "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega `POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`.",
+        "description": "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega `POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`, cuyo valor es el de la cookie `matp_csrf` (también viene en la respuesta del inicio de sesión).",
         "in": "cookie",
         "name": "matp_session",
         "type": "apiKey"
@@ -8302,7 +9897,7 @@
     }
   },
   "info": {
-    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie\n  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera\n  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.\n",
+    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie\n  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera\n  `X-CSRF-Token`.\n",
     "title": "MATP API",
     "version": "0.1.0"
   },
@@ -8375,9 +9970,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -8456,9 +10048,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -8597,9 +10186,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -8678,9 +10264,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -8770,9 +10353,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -8864,9 +10444,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -8945,9 +10522,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -8961,6 +10535,7 @@
     },
     "/api/v1/audit-logs": {
       "get": {
+        "description": "Devuelve `items` (una fila por campo, de la más reciente a la más antigua) o, con `group_by=change_set`, `change_sets` con el resumen de cada operación: usuario, fecha, origen, motivo, entidades afectadas por tipo, campos y estado de reversión. Con `format=csv` la misma vista se descarga en streaming. Los valores anteriores y nuevos de los campos sensibles se ocultan según los permisos del rol (RF-041): la fila sigue mostrando qué campo cambió, quién y cuándo, con `values_masked` en verdadero.",
         "operationId": "getAuditLogs",
         "parameters": [
           {
@@ -9000,6 +10575,23 @@
           },
           {
             "in": "query",
+            "name": "change_set_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Change Set Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "user_id",
             "required": false,
             "schema": {
@@ -9029,6 +10621,40 @@
                 }
               ],
               "title": "Origin"
+            }
+          },
+          {
+            "description": "Lote de importación o sugerencia de IA del cambio.",
+            "in": "query",
+            "name": "origin_ref",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Lote de importación o sugerencia de IA del cambio.",
+              "title": "Origin Ref"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditAction"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
             }
           },
           {
@@ -9082,6 +10708,42 @@
             }
           },
           {
+            "description": "Agrupar por conjunto de cambios.",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditGroupBy"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agrupar por conjunto de cambios.",
+              "title": "Group By"
+            }
+          },
+          {
+            "description": "Descargar en CSV.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditExportFormat"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Descargar en CSV.",
+              "title": "Format"
+            }
+          },
+          {
             "description": "Número de página (desde 1).",
             "in": "query",
             "name": "page",
@@ -9114,7 +10776,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_AuditEntryOut_"
+                  "$ref": "#/components/schemas/AuditLogPage"
                 }
               }
             },
@@ -9153,13 +10815,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Consultar la auditoría campo a campo (más reciente primero)",
+        "summary": "Consultar la auditoría campo a campo o agrupada por conjunto de cambios, exportable a CSV (RF-040, RF-041)",
         "tags": [
           "Auditoría"
         ],
@@ -9262,9 +10921,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9276,8 +10932,88 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/audit/change-sets/{change_set_id}": {
+      "get": {
+        "operationId": "getChangeSet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El conjunto de cambios no existe."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Resumen de un conjunto de cambios: quién, cuándo, origen y alcance (RF-040)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/audit/change-sets/{change_set_id}/revert": {
       "post": {
+        "description": "Aplica la reversión en una transacción, como un conjunto de cambios de tipo reversión.\n\nExige el `preview_token` de la vista previa: la reversión solo se aplica ligada a ella. El\npermiso depende del origen del conjunto revertido (design D1), así que lo verifica el\nservicio: aquí basta con una identidad válida.",
         "operationId": "revertChangeSet",
         "parameters": [
           {
@@ -9295,7 +11031,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RevertChangeSetRequest"
+                "$ref": "#/components/schemas/RevertConfirmRequest"
               }
             }
           },
@@ -9306,7 +11042,261 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevertResult"
+                  "$ref": "#/components/schemas/RevertChangeSetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El conjunto de cambios no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`already_reverted` (ya existe un conjunto de reversión), `revert_plan_changed` (los datos cambiaron tras la vista previa), `revert_has_conflicts` (hay cambios posteriores sin confirmar) o `nothing_to_revert`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/audit/change-sets/{change_set_id}/revert-preview": {
+      "post": {
+        "description": "No escribe nada. Devuelve el `preview_token` que exige la confirmación (RNF-007).",
+        "operationId": "previewChangeSetRevert",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevertPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El conjunto de cambios no existe."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Vista previa de una reversión: valores por restaurar, registros y conflictos",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/audit/sensitive-access": {
+      "get": {
+        "description": "Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).",
+        "operationId": "getSensitiveAccess",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred To"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SensitiveAccessOut_"
                 }
               }
             },
@@ -9341,32 +11331,18 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`."
           }
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)",
+        "summary": "Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)",
         "tags": [
           "Auditoría"
         ],
-        "x-change": "auditoria-y-soft-delete-transversal",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/auth/change-password": {
@@ -9426,9 +11402,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9554,9 +11527,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9613,9 +11583,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9689,9 +11656,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9768,9 +11732,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9846,9 +11807,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9913,9 +11871,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10011,9 +11966,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10090,9 +12042,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10191,9 +12140,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10267,9 +12213,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10334,32 +12277,185 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
           }
         },
         "security": [
           {
-            "DevUserHeader": []
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Exportacin completa de la base en formato abierto (RF-044)",
+        "tags": [
+          "Reportes"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs": {
+      "get": {
+        "description": "List export jobs. Regular users see only their own jobs; admins see all.",
+        "operationId": "listExportJobs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExportJob"
+                  },
+                  "title": "Response Listexportjobs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
           },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
           {
             "cookieAuth": []
           }
         ],
-        "summary": "Exportación completa de la base en formato abierto (RF-044)",
+        "summary": "Listar trabajos de exportación del usuario (o todos si es administrador)",
         "tags": [
-          "Reportes"
+          "Exportaciones"
         ],
-        "x-change": "busqueda-avanzada-y-exportacion",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs/{job_id}": {
+      "get": {
+        "description": "Get status and details of an export job.",
+        "operationId": "getExportJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Consultar estado de un trabajo de exportación (RF-036)",
+        "tags": [
+          "Exportaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/exports/jobs/{job_id}/download-url": {
+      "get": {
+        "description": "Get presigned download URL for a completed, non-expired export.",
+        "operationId": "getExportDownloadUrl",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Getexportdownloadurl",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Obtener URL prefirmada de descarga de un archivo de exportación (RF-036)",
+        "tags": [
+          "Exportaciones"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifier-types": {
@@ -10412,9 +12508,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10490,9 +12583,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10583,9 +12673,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10653,9 +12740,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10748,9 +12832,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10826,9 +12907,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10933,9 +13011,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11003,9 +13078,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11085,9 +13157,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11178,9 +13247,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11315,9 +13381,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11418,9 +13481,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11515,9 +13575,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11608,9 +13665,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11699,9 +13753,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11804,9 +13855,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11887,9 +13935,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11961,9 +14006,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12029,9 +14071,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12112,9 +14151,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12224,9 +14260,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12279,6 +14312,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El padre indicado no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El código ya está en uso (RF-016)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12287,23 +14340,10 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
+            "description": "Nivel de padre no permitido."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12312,8 +14352,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/locations/tree": {
@@ -12367,9 +14406,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12450,9 +14486,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12517,6 +14550,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La ubicación o el nuevo padre no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La ubicación tiene piezas (desactivación o confirmación de conteo)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12525,33 +14578,19 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
+            "description": "Ciclo o nivel de padre no permitido."
           }
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Editar o desactivar una ubicación",
+        "summary": "Editar, desactivar o reubicar una ubicación (design D4)",
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/locations/{location_id}/pieces": {
@@ -12604,6 +14643,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o no es visible."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -12613,22 +14662,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ubicacion-jerarquica-y-movimientos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12637,8 +14673,7 @@
         "tags": [
           "Ubicaciones"
         ],
-        "x-change": "ubicacion-jerarquica-y-movimientos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/media/bulk-download": {
@@ -12708,9 +14743,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12790,15 +14822,117 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
         "summary": "Subir una fotografía de una pieza al almacenamiento de objetos (RF-013)",
         "tags": [
           "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/movements/batch": {
+      "post": {
+        "operationId": "movePiecesBatch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchMovementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchMovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El destino no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El destino cambió respecto a lo visto, o la clave no coincide."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Lote vacío, destino inválido o límite excedido."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil)",
+        "tags": [
+          "Ubicaciones"
         ],
         "x-status": "implemented"
       }
@@ -12853,9 +14987,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12952,6 +15083,23 @@
           },
           {
             "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "category_term_id",
             "required": false,
             "schema": {
@@ -12969,6 +15117,23 @@
           },
           {
             "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "material_term_id",
             "required": false,
             "schema": {
@@ -12982,6 +15147,23 @@
                 }
               ],
               "title": "Material Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_state_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation State Id"
             }
           },
           {
@@ -13090,6 +15272,42 @@
             }
           },
           {
+            "description": "Año de inicio de época.",
+            "in": "query",
+            "name": "epoch_start_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de inicio de época.",
+              "title": "Epoch Start Year"
+            }
+          },
+          {
+            "description": "Año de fin de época.",
+            "in": "query",
+            "name": "epoch_end_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de fin de época.",
+              "title": "Epoch End Year"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -13177,9 +15395,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13244,9 +15459,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13358,9 +15570,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13459,9 +15668,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13547,9 +15753,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13626,9 +15829,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13717,9 +15917,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13802,9 +15999,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13889,9 +16083,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13979,9 +16170,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14079,9 +16267,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14168,9 +16353,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14285,9 +16467,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14387,9 +16566,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14474,9 +16650,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14560,9 +16733,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14639,9 +16809,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14731,9 +16898,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14812,9 +16976,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14899,9 +17060,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14989,9 +17147,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15082,9 +17237,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15164,13 +17316,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Registrar un movimiento o verificación física",
+        "summary": "Registrar un movimiento, verificación física o corrección",
         "tags": [
           "Ubicaciones"
         ],
@@ -15262,9 +17411,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15349,9 +17495,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15420,7 +17563,7 @@
             }
           },
           {
-            "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+            "description": "CATALOG: dos piezas del catlogo; IMPORT: fila de importacin.",
             "in": "query",
             "name": "origin",
             "required": false,
@@ -15437,7 +17580,7 @@
                   "type": "null"
                 }
               ],
-              "description": "CATALOG: dos piezas del catálogo; IMPORT: fila de importación.",
+              "description": "CATALOG: dos piezas del catlogo; IMPORT: fila de importacin.",
               "title": "Origin"
             }
           },
@@ -15513,9 +17656,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15573,13 +17713,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
+        "summary": "Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030)",
         "tags": [
           "Calidad"
         ],
@@ -15654,9 +17791,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15799,13 +17933,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Piezas con información incompleta (RF-019, RF-035)",
+        "summary": "Listado de piezas con alertas de incompletitud (RF-019)",
         "tags": [
           "Calidad"
         ],
@@ -15872,13 +18003,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+        "summary": "Estado y avance de una deteccin de duplicados (RF-030, RNF-015)",
         "tags": [
           "Calidad"
         ],
@@ -15942,13 +18070,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "KPI de completitud general y por colección (RF-035)",
+        "summary": "KPI de completitud general y por coleccin (RF-035)",
         "tags": [
           "Calidad"
         ],
@@ -16009,22 +18134,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16033,8 +18145,7 @@
         "tags": [
           "Reportes"
         ],
-        "x-change": "busqueda-avanzada-y-exportacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/reports/piece-card/{piece_id}/pdf": {
@@ -16106,13 +18217,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
+        "summary": "Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006)",
         "tags": [
           "Reportes"
         ],
@@ -16237,13 +18345,10 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
-        "summary": "Reportes: inventario, por colección, por ubicación, incompletas, valorización",
+        "summary": "Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin",
         "tags": [
           "Reportes"
         ],
@@ -16302,9 +18407,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -16317,6 +18419,7 @@
     },
     "/api/v1/roles/{role_code}/permissions": {
       "put": {
+        "description": "Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateRolePermissions",
         "parameters": [
           {
@@ -16370,6 +18473,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Dejaría sin administradores."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16379,22 +18492,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16403,8 +18503,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/search": {
@@ -16412,12 +18511,12 @@
         "operationId": "searchPieces",
         "parameters": [
           {
-            "description": "Código o texto.",
+            "description": "Cdigo o texto.",
             "in": "query",
             "name": "q",
             "required": true,
             "schema": {
-              "description": "Código o texto.",
+              "description": "Cdigo o texto.",
               "maxLength": 200,
               "minLength": 1,
               "title": "Q",
@@ -16425,7 +18524,7 @@
             }
           },
           {
-            "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+            "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
             "in": "query",
             "name": "collection_code",
             "required": false,
@@ -16438,12 +18537,12 @@
                   "type": "null"
                 }
               ],
-              "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
+              "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
               "title": "Collection Code"
             }
           },
           {
-            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+            "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
             "in": "query",
             "name": "tenure_regime",
             "required": false,
@@ -16461,31 +18560,31 @@
                   "type": "null"
                 }
               ],
-              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+              "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
               "title": "Tenure Regime"
             }
           },
           {
-            "description": "Número de página (desde 1).",
+            "description": "Nmero de pgina (desde 1).",
             "in": "query",
             "name": "page",
             "required": false,
             "schema": {
               "default": 1,
-              "description": "Número de página (desde 1).",
+              "description": "Nmero de pgina (desde 1).",
               "minimum": 1,
               "title": "Page",
               "type": "integer"
             }
           },
           {
-            "description": "Resultados por página (máx. 100).",
+            "description": "Resultados por pgina (mx. 100).",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 20,
-              "description": "Resultados por página (máx. 100).",
+              "description": "Resultados por pgina (mx. 100).",
               "maximum": 100,
               "minimum": 1,
               "title": "Limit",
@@ -16537,15 +18636,287 @@
         },
         "security": [
           {
-            "DevUserHeader": []
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Bsqueda avanzada con filtros combinados (RF-031, RF-032)",
+        "tags": [
+          "Bsqueda"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/trash": {
+      "get": {
+        "operationId": "listTrashEntries",
+        "parameters": [
+          {
+            "description": "Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary.",
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary.",
+              "title": "Entity Type"
+            }
           },
+          {
+            "description": "Quién eliminó.",
+            "in": "query",
+            "name": "deleted_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Quién eliminó.",
+              "title": "Deleted By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TrashEntryOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
           {
             "cookieAuth": []
           }
         ],
-        "summary": "Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
+        "summary": "Listar los registros eliminados lógicamente, con motivo y responsable (RN-005)",
         "tags": [
-          "Búsqueda"
+          "Auditoría"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/trash/{entity_type}/{entity_id}/restore": {
+      "post": {
+        "operationId": "restoreTrashEntry",
+        "parameters": [
+          {
+            "description": "Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary.",
+            "in": "path",
+            "name": "entity_type",
+            "required": true,
+            "schema": {
+              "description": "Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary.",
+              "title": "Entity Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo de la restauración.",
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Motivo de la restauración.",
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrashRestoreResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El registro no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`restore_dependency`: alguna dependencia sigue eliminada (hay que restaurarla primero) o `not_deleted`: el registro no está en la papelera."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Restaurar un registro eliminado verificando sus dependencias (Administrador)",
+        "tags": [
+          "Auditoría"
         ],
         "x-status": "implemented"
       }
@@ -16632,22 +19003,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16656,10 +19014,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "post": {
+        "description": "Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.",
         "operationId": "createUser",
         "requestBody": {
           "content": {
@@ -16702,6 +19060,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Correo repetido o rol desactivado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16711,22 +19079,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16735,8 +19090,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}": {
@@ -16794,22 +19148,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16818,10 +19159,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "patch": {
+        "description": "Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateUser",
         "parameters": [
           {
@@ -16876,6 +19217,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16885,22 +19236,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16909,8 +19247,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}/role": {
@@ -16969,6 +19306,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16978,22 +19325,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17002,8 +19336,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/vocabularies": {
@@ -17056,9 +19389,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17134,9 +19464,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17216,9 +19543,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17312,9 +19636,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -17400,9 +19721,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17507,9 +19825,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -17605,9 +19920,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }

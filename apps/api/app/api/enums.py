@@ -10,7 +10,7 @@ from typing import Literal
 
 from app.core.errors import ValidationFailed
 from app.modules.catalog.enums import TenureRegime
-from app.modules.locations.models import LocationLevel
+from app.modules.locations.models import LocationLevel, SpaceKind
 
 #: Valores del contrato para el régimen de tenencia (endpoints-api-v1.yaml).
 TenureRegimeLabel = Literal["Propiedad", "Comodato", "Préstamo Temporal"]
@@ -32,6 +32,16 @@ LOCATION_LEVEL_LABELS: dict[LocationLevel, str] = {
     LocationLevel.FURNITURE: "Mueble",
     LocationLevel.SHELF_LEVEL: "Nivel",
     LocationLevel.CONTAINER: "Contenedor",
+}
+
+#: [SUPUESTO] Tipo de espacio (design D5, RF-020), solo aplicable al nivel Depósito/Espacio.
+SpaceKindLabel = Literal["Depósito", "Sala de exhibición", "Taller", "Otro"]
+
+SPACE_KIND_LABELS: dict[SpaceKind, str] = {
+    SpaceKind.DEPOSIT: "Depósito",
+    SpaceKind.EXHIBITION_ROOM: "Sala de exhibición",
+    SpaceKind.WORKSHOP: "Taller",
+    SpaceKind.OTHER: "Otro",
 }
 
 #: Tipo de vista de una fotografía (contrato: `view_type`; RF-013). Los códigos son los términos

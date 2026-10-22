@@ -192,6 +192,7 @@ entity LOCATION {
   * name : varchar(200)
     description : text
   * is_active : boolean
+    space_kind : varchar(40)
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -206,6 +207,8 @@ entity PIECE_MOVEMENT <<solo inserción>> {
     performed_by_user_id : uuid <<FK>>
     performed_by_label : varchar(200)
   * occurred_at : timestamptz
+    corrects_movement_id : uuid <<FK>>
+    origin_ref : varchar(80)
 }
 entity LOAN {
   * id : uuid <<PK>>
@@ -231,6 +234,19 @@ entity LOAN_ITEM {
   * piece_id : uuid <<FK>>
   ..
   <i>+ timestamps + soft-delete</i>
+}
+entity IDEMPOTENCY_KEY {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(200) <<UK>>
+  * scope : varchar(80)
+    user_id : uuid <<FK>>
+  * request_hash : varchar(64)
+  * response_status : integer
+  * response_body : jsonb
+  * expires_at : timestamptz
+  ..
+  <i>+ timestamps</i>
 }
 }
 
@@ -489,10 +505,46 @@ entity AUDIT_LOG <<solo inserción>> {
     actor_label : varchar(100)
     reason : text
 }
+entity AUDIT_DIGEST <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * day : date <<UK>>
+  * row_count : integer
+    first_entry_id : uuid
+    last_entry_id : uuid
+  * sha256 : varchar(64)
+    previous_day : date
+    previous_sha256 : varchar(64)
+  * algorithm : varchar(40)
+  * computed_at : timestamptz
+}
+}
+
+package "Búsqueda y Exportación" #E8F4F8 {
+entity EXPORT_JOB {
+  * id : uuid <<PK>>
+  --
+  * kind : varchar(40)
+  * requested_by_id : uuid <<FK>>
+  * format : varchar(20)
+  * params : jsonb
+  * status : varchar(40)
+    row_count : integer
+    storage_key : varchar(500)
+    sha256 : varchar(64)
+    expires_at : timestamptz
+    error : text
+    heartbeat_at : timestamptz
+  * masked_fields : jsonb
+  ..
+  <i>+ timestamps</i>
+}
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
 APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
+APP_USER ||--o{ EXPORT_JOB : "solicita"
+APP_USER |o--o{ IDEMPOTENCY_KEY : "solicita"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
 APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
@@ -544,6 +596,7 @@ PIECE ||--o{ PIECE_MOVEMENT : "movimientos"
 LOCATION |o--o{ PIECE_MOVEMENT : "origen"
 LOCATION |o--o{ PIECE_MOVEMENT : "destino"
 APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
+PIECE_MOVEMENT |o--o{ PIECE_MOVEMENT : "corrige"
 PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
 IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
 PIECE ||--o{ QUALITY_JOB_ITEM : "detección incremental"

@@ -24,7 +24,7 @@
 
 - **RN-001**: toda entidad usa un UUID interno como clave primaria; los códigos del museo viven en `piece_identifier` (1:N) con valor original, valor normalizado, vigencia y fuente.
 - **RN-002/RN-003/RN-004**: código I único entre identificadores vigentes no eliminados (índice parcial), bloqueado al asignarse y solo para piezas en propiedad; préstamo temporal sin I ni código de colección.
-- **RN-005**: soft-delete (`deleted_at`, `deleted_by_id`, `deletion_reason`) y auditoría campo a campo automática; `audit_log`, `piece_movement`, `piece_source_record` y `conservation_assessment` son de solo inserción (guardas ORM + triggers).
+- **RN-005**: soft-delete (`deleted_at`, `deleted_by_id`, `deletion_reason`) y auditoría campo a campo automática; `audit_log`, `piece_movement`, `piece_source_record`, `conservation_assessment` y `audit_digest` son de solo inserción (guardas ORM + triggers). La lista vigente y sus excepciones están en `apps/api/app/core/cross_cutting.py`, verificadas por `apps/api/tests/test_cross_cutting_rules.py`.
 - **RN-009**: `ai_suggestion` no admite aprobación o rechazo sin revisor (CHECK en la base).
 - **RN-010**: vocabularios (`vocabulary`/`term`) y tipos de identificador (`identifier_type`) son datos, no código.
 - Nada de binarios en la base: `media_asset.storage_key` apunta al almacenamiento S3.
@@ -612,7 +612,7 @@ Unmapped source columns of each load, kept separately and read-only (RF-008).
 ## Extras de PostgreSQL en la migración
 
 - Extensión `pg_trgm` e índices GIN `ix_piece_title_trgm`, `ix_piece_identifier_normalized_trgm`, `ix_piece_identifier_original_trgm` (búsqueda RF-031 y duplicados RF-030).
-- Función `matp_reject_append_only_change()` y triggers `trg_<tabla>_append_only` (BEFORE UPDATE OR DELETE) y `trg_<tabla>_no_truncate` en las cuatro tablas de solo inserción.
+- Función `matp_reject_append_only_change()` y triggers `trg_<tabla>_append_only` (BEFORE UPDATE OR DELETE) y `trg_<tabla>_no_truncate` en las cinco tablas de solo inserción.
 
 ## Datos semilla
 

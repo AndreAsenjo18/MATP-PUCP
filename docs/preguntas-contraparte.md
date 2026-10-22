@@ -191,6 +191,29 @@ Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar 
 | M9 | ¿Quién asocia las imágenes incrustadas en el Excel y en qué formato? | Quien tiene el permiso de subir fotos (Catalogador, Conservación, Gestor de colecciones y Administrador), después de aplicar el lote y una por una. Solo se registran JPEG, PNG y TIFF (como en `fotografias-multiples-por-pieza`); una imagen de otro formato queda en la bandeja. En una pieza en comodato la foto hereda la restricción «No publicar» (RN-008) | importacion-datos (RF-029), multimedia (RF-013, RN-008) | B |
 | M10 | ¿Cuándo se puede revertir un lote aplicado? | **Pendiente**: la reversión (tarea 5.2) espera el motor de reversión de `auditoria-y-soft-delete-transversal`. El lote ya guarda el conjunto de cambios de su aplicación (`import_batch.change_set_id`) para revertirlo cuando ese motor exista | importacion-datos (RNF-007) | A |
 
+## N. Excepciones a «nunca se borra información» (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
+
+Preguntas **internas del equipo**: las levanta la verificación transversal de la tarea 1.1 (`app/core/cross_cutting.py`, `apps/api/tests/test_cross_cutting_rules.py`). Las siete tablas sin borrado lógico están justificadas en esa lista; estas dos son deuda con dueño, no excepciones definitivas. Retirar una excepción es trabajo de la célula dueña, no de Plataforma.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| N1 | `quality_setting` se actualiza en sitio y desactivar un parámetro borra su fila. ¿Los parámetros de calidad llevan borrado lógico con motivo, como el resto de los datos configurables (RN-005, RN-010)? | Excepción con deuda: se audita cada cambio, pero la fila se puede borrar | `deteccion-duplicados-y-cola-revision` (parámetros de calidad) | B |
+| N2 | Descartar una sugerencia de IA, ¿es un estado `REJECTED` o un borrado lógico con motivo? Hoy la sugerencia nunca se borra, pero `ai_suggestion` no tiene columnas de borrado lógico. | Excepción con deuda: estado `REJECTED` auditado (RN-009) | `ia-extraccion-texto-libre` | C |
+| N3 | El pipeline de importación borra físicamente `import_row`, `duplicate_candidate` e `import_image` (las imágenes aún sin asociar, que se vuelven a extraer) al volver a mapear o validar un lote (llamadas autorizadas en `PHYSICAL_DELETE_EXCEPTIONS`; `idempotency_key`, de las operaciones por lote de ubicaciones, también figura como excepción técnica). ¿Se acepta, dado que lo que entra al catálogo queda en `piece_source_record` (solo inserción) y cada decisión queda auditada? | Autorizado y documentado, con la lista revisada por el Arquitecto | `importacion-pipeline-reconciliacion` | A |
+
+## Ñ. Supuestos de la reversión, la papelera y la integridad (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
+
+Preguntas **internas del equipo**: las decide el Arquitecto en la revisión del PR, salvo Ñ5, que necesita criterio legal. Las excepciones a «nunca se borra información» están aparte, en la sección N.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Ñ1 | ¿Quién puede revertir según el origen del conjunto de cambios? | [SUPUESTO B7] edición manual → `pieces.update`; importación → `imports.revert`; cualquier otro origen → Administrador | `auditoria-y-soft-delete-transversal` (RNF-007) | A |
+| Ñ2 | Revertir un conjunto que corrigió un código I, ¿exige además rol Administrador, o basta el permiso de corrección? Hoy el Gestor tiene ese permiso en la matriz sintética y el escenario de la spec pide 403. | Exige el permiso de corrección **y** rol Administrador, igual que la corrección directa | `autenticacion-y-matriz-permisos` (RN-002) | A |
+| Ñ3 | La papelera usa `pieces.restore` porque no existe un permiso propio: ¿se crea `trash.read` para que Conservación o Consulta interna puedan mirar sin restaurar? | Administrador y Gestor abren la papelera; restaurar solo Administrador | `autenticacion-y-matriz-permisos` (RF-039) | B |
+| Ñ4 | El CSV de auditoría sale con cabeceras en inglés (los nombres de campo del JSON) y BOM UTF-8. ¿Se quieren cabeceras en español para quien lo abra en Excel? | Cabeceras en inglés, separador coma, BOM UTF-8 | `busqueda-avanzada-y-exportacion` (RF-036) | B |
+| Ñ5 | Ley 29733: si un titular pide la supresión de sus datos personales, ¿cómo se cumple sin romper la auditoría de solo inserción? Queda fuera de este change y necesita definición legal. | Sin mecanismo de anonimización; la auditoría no se altera | Nuevo change por proponer (RNF-014) | A |
+| Ñ6 | El resumen diario de integridad se calcula por día en UTC y solo sella días cerrados. ¿Se acepta, o el museo espera el día en hora de Lima? | Día en UTC, solo días cerrados | `despliegue-vm-y-respaldos` (programación diaria) | B |
+
 ## O. Supuestos de la detección de duplicados y la fusión (change `deteccion-duplicados-y-cola-revision`, 2026-10-20)
 
 Se usa la letra O porque N1–N7 ya nombran las reglas de normalización. El máximo para posponer (180 días) y el rechazo de la fusión con regímenes distintos siguen en G8. Detalle en `openspec/changes/archive/2026-10-20-deteccion-duplicados-y-cola-revision/design.md` (D1, D4, D5, D6 y D7).
@@ -202,3 +225,36 @@ Se usa la letra O porque N1–N7 ya nombran las reglas de normalización. El má
 | O3 | ¿Cómo se escribe hoy «autor desconocido» en las bases? ¿Dos piezas de «Anónimo» cuentan como del mismo autor? | No: «Anónimo», «Anónima», «Autor anónimo», «Desconocido», «Desconocida», «Autor desconocido», «No presenta» (L7), «Sin autor» y los marcadores de «sin código» de A5 son **autor ausente**: no suman en la señal de autor y procedencia, no forman el bloque autor + procedencia ni entran en la huella de comparación | calidad-datos (RF-030) | B |
 | O4 | Si se elimina (sin fusionar) una pieza de un par pendiente, ¿el par debe salir solo de la cola? | **Pendiente**: hoy el par sigue en la cola, y cuenta como pendiente, hasta que alguien intenta resolverlo; entonces se responde que fue reemplazado, queda «Reemplazado» y no cambia ninguna pieza. Propuesta: retirarlo al eliminar la pieza (detección incremental o `auditoria-y-soft-delete-transversal`) y reabrirlo si la pieza se restaura | calidad-datos (RF-030), conteo de pendientes de `alertas-y-reporte-incompletas` | C |
 | O5 | Si solo una de las dos piezas tiene código I vigente, ¿se puede conservar la otra y pasarle el código? | No: se conserva la pieza con código I, porque un código I nunca cambia de pieza (RN-002); si ambas tienen códigos I vigentes distintos, la fusión se rechaza hasta corregir uno con el procedimiento auditado. Movimientos, datos de origen y evaluaciones de conservación se quedan en la pieza absorbida y se consultan desde la conservada | calidad-datos (RF-030, RN-002, RN-005) | B |
+
+## P. Supuestos de la jerarquía de ubicaciones y los movimientos en lote (change `ubicacion-jerarquica-y-movimientos`, 2026-10-21)
+
+Detalle en `openspec/changes/ubicacion-jerarquica-y-movimientos/design.md` (D1, D3, D4, D5).
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| P1 | ¿Hay cajas o piezas apoyadas directamente en el piso de un depósito, sin pasar por un mueble o rack? | No: un Contenedor solo puede colgar de un Nivel o directamente de un Mueble; nunca de un Espacio/Depósito. Si la contraparte confirma cajas en el piso, se agrega el nivel Depósito a los padres permitidos de Contenedor en `app/modules/locations/hierarchy.py` (tabla `ALLOWED_PARENT`), sin tocar el resto de la lógica | ubicacion-movimientos (RF-016), relacionado con A7 | B |
+| P2 | ¿Qué tipos de espacio existen además de depósito y sala de exhibición (por ejemplo, taller de restauración, archivo documental, área de recepción)? | Depósito, Sala de exhibición, Taller u Otro; "Otro" no propone ni exige ninguna disponibilidad en particular | ubicacion-movimientos (RF-020) | B |
+| P3 | Al reubicar un mueble o contenedor completo (cambiar de qué depósito depende), ¿debe quedar algún aviso especial en el historial de cada pieza, más allá del motivo de texto "Reubicación de <código>"? | No: por ahora basta un movimiento con ese motivo y una referencia común a la reubicación (para poder agruparlos si se pide un reporte); ninguna pantalla de reportes los distingue todavía de un movimiento manual | ubicacion-movimientos (RF-017), reportes-inventario (pendiente) | C |
+## Q. Supuestos de la búsqueda avanzada y exportaciones (change `busqueda-avanzada-y-exportacion`, 2026-10-22)
+
+Detalle en `openspec/changes/busqueda-avanzada-y-exportacion/design.md` (D3, D4, D5).
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Q1 | ¿A partir de cuántos registros una exportación a Excel debe pasar a segundo plano en vez de descargarse inmediatamente? | Se fijó el umbral síncrono en 5 000 filas (`EXPORT_SYNC_MAX_ROWS = 5000`). Búsquedas con hasta 5 000 piezas devuelven el archivo Excel en la misma petición HTTP en streaming con memoria acotada. Consultas con más de 5 000 piezas encolan un trabajo asíncrono (`export_job`, HTTP 202) que el usuario puede monitorear y descargar desde "Mis exportaciones" para no bloquear la conexión ni agotar tiempos de espera del navegador o proxy | busqueda-exportacion (RF-036, RNF-014) | B |
+| Q2 | ¿Cuánto tiempo deben permanecer disponibles los archivos generados de exportación antes de caducar? | Los archivos generados expiran a las 24 horas (`EXPORT_TTL_HOURS = 24`, configurable hasta 72 h). Pasado este plazo, el enlace de descarga devuelve HTTP 410 Gone y el archivo físico o del almacenamiento de objetos se purga. El registro histórico del trabajo en la base de datos se conserva indefinidamente con fines de auditoría y trazabilidad | busqueda-exportacion (RF-036, RNF-014) | B |
+| Q3 | ¿Quiénes tienen permiso para descargar la exportación completa de la base de datos (paquete ZIP con CSVs, Excel, diccionario y manifiesto)? | Únicamente los usuarios con rol Administrador (permiso `exports.full`). Los usuarios con rol Gestor o Catalogador solo pueden exportar resultados de búsqueda o reportes con el permiso estándar `exports.run`, garantizando el resguardo de la base de datos completa y previniendo extracciones masivas no autorizadas | busqueda-exportacion (RF-044, RF-041) | A |
+
+## R. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
+
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| R1 | ¿Cuánto debe durar una sesión sin actividad y cuánto como máximo? | 30 minutos de inactividad y 12 horas de duración absoluta (`SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`) | usuarios-roles (RNF-012) | Media |
+| R2 | ¿Cuántos intentos fallidos bloquean una cuenta y por cuánto tiempo? | 5 intentos seguidos y 15 minutos (`LOGIN_MAX_FAILED_ATTEMPTS`, `LOGIN_LOCK_MINUTES`); además 20 intentos en 5 minutos por dirección | usuarios-roles (RNF-012, RNF-013) | Media |
+| R3 | ¿Qué política de contraseñas exige el museo o la PUCP? | Mínimo 12 caracteres, sin exigir composición, rechazo de contraseñas comunes y de la igual al correo; el Administrador entrega una contraseña temporal de cambio obligatorio | usuarios-roles (RNF-013) | Media |
+| R4 | ¿Cuánto tiempo se conservan los registros de inicio de sesión y de acceso a datos sensibles? | Sin vencimiento en la fase 1 (nunca se borran, RN-005); la retención y la anonimización bajo la Ley 29733 se deciden con la PUCP | usuarios-roles (RNF-014) | Alta |
+| R5 | ¿Quién puede consultar el registro de accesos a datos sensibles? | Quien tenga el permiso `audit.read` (hoy el Administrador) | usuarios-roles (RF-041) | Media |
+| R6 | ¿Hay un servicio de correo institucional para recuperar contraseñas olvidadas? | No: la recuperación es que un Administrador restablezca la contraseña temporal. Sin correo, sin doble factor en la fase 1 | usuarios-roles (RNF-012) | Media |
+| R7 | ¿Cuándo se podrá iniciar sesión con la cuenta PUCP y con qué protocolo (OIDC)? | Solo se prepara la interfaz de proveedor y el campo `external_subject`; los roles siguen siendo locales | usuarios-roles (RNF-012) | Baja |

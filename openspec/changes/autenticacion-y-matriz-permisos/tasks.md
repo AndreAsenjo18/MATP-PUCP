@@ -15,19 +15,19 @@
 
 ## 3. Usuarios, roles y datos sensibles
 
-- [ ] 3.1 Implementar `GET`/`POST /api/v1/users` y `GET`/`PATCH /api/v1/users/{user_id}` (correo normalizado único, contraseña temporal mostrada una vez, roles, desactivación con revocación, restablecimiento); pruebas: correo repetido 409, rol desactivado 409, desactivación revoca sesiones (Req: Administración de usuarios con contraseña temporal; RF-039)
-- [ ] 3.2 Implementar `PUT /api/v1/roles/{role_code}/permissions` con auditoría y la invariante del último administrador (también en 3.1); pruebas: retiro de exportar efectivo en la siguiente petición, último administrador 409 (Req: Edición auditada de la matriz de permisos con administrador garantizado)
-- [ ] 3.3 Registrar accesos sensibles sin enmascarar en `BackgroundTask` desde el enmascarado existente (`masked_fields`) y operación nueva `GET /api/v1/audit/sensitive-access`; pruebas de ambos escenarios (Req: Registro de accesos a datos sensibles; RNF-014)
+- [x] 3.1 Implementar `GET`/`POST /api/v1/users` y `GET`/`PATCH /api/v1/users/{user_id}` (correo normalizado único, contraseña temporal mostrada una vez, roles, desactivación con revocación, restablecimiento); pruebas: correo repetido 409, rol desactivado 409, desactivación revoca sesiones (Req: Administración de usuarios con contraseña temporal; RF-039)
+- [x] 3.2 Implementar `PUT /api/v1/roles/{role_code}/permissions` con auditoría y la invariante del último administrador (también en 3.1); pruebas: retiro de exportar efectivo en la siguiente petición, último administrador 409 (Req: Edición auditada de la matriz de permisos con administrador garantizado)
+- [x] 3.3 Registrar accesos sensibles sin enmascarar en `BackgroundTask` desde el enmascarado existente (`masked_fields`) y operación nueva `GET /api/v1/audit/sensitive-access`; pruebas de ambos escenarios (Req: Registro de accesos a datos sensibles; RNF-014)
 
 ## 4. Frontend
 
-- [ ] 4.1 Pantalla `/login` real (modo `live`), cambio de contraseña obligatorio, cierre de sesión y envío de `X-CSRF-Token` en `lib/api/client.ts`; el selector de rol simulado queda solo en modo mock; pruebas Vitest del cliente (Req: Sesiones de servidor revocables; Req: Protección contra falsificación de peticiones)
-- [ ] 4.2 Middleware de Next.js y manejo de 401 `session_expired` con guardado del formulario en `sessionStorage` y `returnTo`; prueba de componente (Req: Sesiones de servidor revocables — escenario "Sesión expirada por inactividad"; RNF-010)
-- [ ] 4.3 Administración de usuarios y editor de matriz de permisos en `app/administracion` con avisos de rol desactivado y último administrador; pruebas de componente (Req: Administración de usuarios…; Req: Edición auditada de la matriz…)
+- [x] 4.1 Pantalla `/login` real (modo `live`), cambio de contraseña obligatorio, cierre de sesión y envío de `X-CSRF-Token` en `lib/api/client.ts`; el selector de rol simulado queda solo en modo mock; pruebas Vitest del cliente (Req: Sesiones de servidor revocables; Req: Protección contra falsificación de peticiones)
+- [x] 4.2 Middleware de Next.js y manejo de 401 `session_expired` con guardado del formulario en `sessionStorage` y `returnTo`; prueba de componente (Req: Sesiones de servidor revocables — escenario "Sesión expirada por inactividad"; RNF-010)
+- [x] 4.3 Administración de usuarios y editor de matriz de permisos en `app/administracion` con avisos de rol desactivado y último administrador; pruebas de componente (Req: Administración de usuarios…; Req: Edición auditada de la matriz…)
 
 ## 5. Cierre del change
 
 - [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de extremo a extremo en compose detrás del proxy HTTPS de `despliegue-vm-y-respaldos` (cookie `Secure`, CSRF, expiración) cuando Docker esté disponible. **Pendiente declarada (sprint 3, sin Docker):** la parte de compose y proxy HTTPS no se ha ejecutado; la cookie `Secure`, el CSRF y la expiración sí están cubiertos por pruebas de API en SQLite con un cliente HTTPS
-- [ ] 5.2 Actualizar OpenAPI: implementar los 7 stubs, añadir `change-password` y `audit/sensitive-access`, esquema de seguridad `cookieAuth` y retirar `DevUserHeader` salvo documentación de pruebas; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/acceso.md` (iniciar sesión, contraseña, bloqueo, sesión expirada) y `docs/manual-usuario/administracion.md` (usuarios y permisos)
+- [x] 5.2 Actualizar OpenAPI: implementar los 7 stubs, añadir `change-password` y `audit/sensitive-access`, esquema de seguridad `cookieAuth` y retirar `DevUserHeader` salvo documentación de pruebas; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
+- [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/acceso.md` (iniciar sesión, contraseña, bloqueo, sesión expirada) y `docs/manual-usuario/administracion.md` (usuarios y permisos)
 - [ ] 5.4 Actualizar `docs/adr/ADR-009-autenticacion-sesiones.md` (ya Propuesto) con lo implementado y ADR-005 a "Reemplazado parcialmente"; registrar supuestos (tiempos de sesión, bloqueo, política de contraseñas, retención de eventos) en `docs/preguntas-contraparte.md`; `openspec validate autenticacion-y-matriz-permisos --strict` y, tras aprobar el PR, `openspec archive autenticacion-y-matriz-permisos -y`
