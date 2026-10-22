@@ -11,14 +11,21 @@ each column is copied to a record field, to an identifier type (normalized with 
 rule of its type, optionally split with N7) or to the source payload. No transformations,
 templates or vocabularies. Columns not listed in the mapping go to the source payload, so
 nothing in the file is lost (RF-008).
+
+``MappingSpecV1`` is the internal version 1 of the spec (design D1). The public form stays
+``ColumnMapping``: ``from_column_mappings`` translates it, and ``read_mapping`` converts the
+stored forms explicitly (pipeline v0 and the seed template) so saved batches keep working.
+The sheet and the header row live in ``import_batch``, never in the spec.
 """
 
 import unicodedata
 import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any
+from typing import Annotated, Any, Literal, Protocol
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,6 +44,7 @@ from app.modules.identification.normalization import (
 from app.modules.imports.classify import RowError, RowInput
 from app.modules.imports.ingest import MERGED_KEY
 from app.modules.imports.matching import RowIdentifier
+from app.modules.imports.transforms import TransformSpecError, parse_transforms
 
 SPEC_VERSION = 0  # provisional; ``plantillas-mapeo-y-normalizacion`` defines version 1
 IDENTIFIER_TARGET = "identifier"
@@ -119,6 +127,206 @@ class MappingSpec:
             defaults=dict(data.get("defaults") or {}),
             version=data.get("version", SPEC_VERSION),
         )
+
+
+# --- MappingSpec v1 (internal, design D1) ---------------------------------------------------
+
+SPEC_VERSION_V1 = 1
+SEED_IDENTIFIERS_AUTO = "identifiers:auto"
+
+
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class FieldTarget(_Strict):
+    kind: Literal["field"] = "field"
+    name: str
+
+
+class IdentifierTarget(_Strict):
+    kind: Literal["identifier"] = "identifier"
+    type: str
+
+
+class IdentifiersTarget(_Strict):
+    """A cell with several codes (N7); each part keeps the type it is recognized as."""
+
+    kind: Literal["identifiers"] = "identifiers"
+    default_type: str | None = None
+
+
+class TermsTarget(_Strict):
+    kind: Literal["terms"] = "terms"
+    vocabulary: str
+
+
+class SourcePayloadTarget(_Strict):
+    kind: Literal["source_payload"] = "source_payload"
+
+
+ColumnTarget = Annotated[
+    FieldTarget | IdentifierTarget | IdentifiersTarget | TermsTarget | SourcePayloadTarget,
+    Field(discriminator="kind"),
+]
+
+
+class ColumnSpecV1(_Strict):
+    source: str
+    target: ColumnTarget
+    transforms: list[str] = Field(default_factory=list)
+    value_map: dict[str, str] | None = None
+
+    @model_validator(mode="after")
+    def _known_transforms(self) -> "ColumnSpecV1":
+        try:
+            parse_transforms(self.transforms, self.value_map)
+        except TransformSpecError as exc:
+            raise ValueError(exc.message) from exc
+        return self
+
+
+class MappingSpecV1(_Strict):
+    """Internal spec: built from ``ColumnMapping`` and never exposed by the API. Stores internal
+    codes (``OWNED``, term and identifier type codes; ADR-002)."""
+
+    version: Literal[1] = SPEC_VERSION_V1
+    columns: list[ColumnSpecV1] = Field(default_factory=list)
+    defaults: dict[str, str] = Field(default_factory=dict)
+
+    def as_json(self) -> dict[str, Any]:
+        return self.model_dump(mode="json", exclude_none=True)
+
+
+class MappingConversionError(ValueError):
+    """A stored or received mapping cannot be read as version 1."""
+
+    def __init__(self, code: str, message: str, column: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message  # user-facing, Spanish (ADR-002)
+        self.column = column
+
+
+class ColumnMappingLike(Protocol):
+    """Public ``ColumnMapping`` of the API (``schemas.ColumnMapping``)."""
+
+    source_column: str
+    target_field: str | None
+    identifier_type_code: str | None
+    split_compound: bool
+
+
+def _target_from_v0(column: ColumnSpec) -> ColumnTarget:
+    if column.target == PAYLOAD_TARGET:
+        return SourcePayloadTarget()
+    if column.target != IDENTIFIER_TARGET:
+        return FieldTarget(name=column.target)
+    if column.split_compound:
+        return IdentifiersTarget(default_type=column.identifier_type)
+    if column.identifier_type is None:
+        raise MappingConversionError(
+            "identifier_type_required",
+            f"La columna «{column.source}» es de identificadores sin tipo ni separación de "
+            "códigos.",
+            column.source,
+        )
+    return IdentifierTarget(type=column.identifier_type)
+
+
+def _defaults_to_codes(defaults: Mapping[str, str]) -> dict[str, str]:
+    """Contract labels (``Propiedad``…) become internal codes (``OWNED``…)."""
+    converted = dict(defaults)
+    tenure = converted.get("tenure_regime")
+    if tenure is not None:
+        regime = TENURE_ALIASES.get(_fold(tenure))
+        if regime is None:
+            raise MappingConversionError(
+                "invalid_default",
+                f"«{tenure}» no es un régimen de tenencia (Propiedad, Comodato o "
+                "Préstamo Temporal).",
+            )
+        converted["tenure_regime"] = regime.value
+    return converted
+
+
+def _from_v0_columns(columns: Sequence[ColumnSpec], defaults: Mapping[str, str]) -> MappingSpecV1:
+    return MappingSpecV1(
+        columns=[
+            ColumnSpecV1(source=column.source, target=_target_from_v0(column)) for column in columns
+        ],
+        defaults=_defaults_to_codes(defaults),
+    )
+
+
+def from_column_mappings(
+    columns: Sequence[ColumnMappingLike], defaults: Mapping[str, str] | None = None
+) -> MappingSpecV1:
+    """Translate the public ``ColumnMapping`` list (and ``MappingRequest.defaults``) into v1,
+    with the same reading of ``target_field`` as ``PUT /imports/{batch_id}/mapping``."""
+    specs: list[ColumnSpec] = []
+    for column in columns:
+        target = column.target_field or PAYLOAD_TARGET
+        identifier_type = column.identifier_type_code
+        if target.startswith(f"{IDENTIFIER_TARGET}:"):
+            target, identifier_type = IDENTIFIER_TARGET, target.split(":", 1)[1] or None
+        specs.append(
+            ColumnSpec(
+                source=column.source_column,
+                target=target,
+                identifier_type=identifier_type if target == IDENTIFIER_TARGET else None,
+                split_compound=column.split_compound,
+            )
+        )
+    return _from_v0_columns(specs, defaults or {})
+
+
+def _is_seed_form(data: Mapping[str, Any]) -> bool:
+    return bool(data) and all(
+        isinstance(value, Mapping) and "target" in value for value in data.values()
+    )
+
+
+def _from_seed(data: Mapping[str, Any]) -> MappingSpecV1:
+    columns: list[ColumnSpecV1] = []
+    for source, column in data.items():
+        target = column["target"]
+        if target == SEED_IDENTIFIERS_AUTO:
+            column_target: ColumnTarget = IdentifiersTarget(default_type=None)
+        elif target == PAYLOAD_TARGET:
+            column_target = SourcePayloadTarget()
+        else:
+            column_target = FieldTarget(name=target)
+        columns.append(ColumnSpecV1(source=source, target=column_target))
+    return MappingSpecV1(columns=columns)
+
+
+def read_mapping(data: Mapping[str, Any]) -> MappingSpecV1:
+    """Read a stored mapping as v1, converting older forms explicitly (design D1):
+
+    - ``{"version": 1, ...}``: validated as is.
+    - ``{"version": 0, "columns": [...], "defaults": {...}}``: what the pipeline stores.
+    - ``{column: {"target": ...}}`` without ``version``: the seed template.
+
+    Anything else, including an unknown version, is an error: the form is never guessed.
+    """
+    version = data.get("version")
+    try:
+        if version == SPEC_VERSION_V1:
+            return MappingSpecV1.model_validate(data)
+        if version == SPEC_VERSION:
+            v0 = MappingSpec.from_json(dict(data))
+            return _from_v0_columns(v0.columns, v0.defaults)
+        if version is None and "columns" not in data and _is_seed_form(data):
+            return _from_seed(data)
+    except (ValidationError, TypeError, KeyError) as exc:
+        raise MappingConversionError(
+            "invalid_mapping", f"El mapeo guardado (versión {version}) no es válido: {exc}"
+        ) from exc
+    raise MappingConversionError(
+        "unknown_mapping_version",
+        f"No se reconoce la versión del mapeo guardado ({version!r}); no se adivina su forma.",
+    )
 
 
 @dataclass(frozen=True)
