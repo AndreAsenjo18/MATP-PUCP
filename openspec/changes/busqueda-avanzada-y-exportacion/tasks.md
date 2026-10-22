@@ -15,7 +15,7 @@
 
 ## 3. Rendimiento
 
-- [ ] 3.1 Crear `scripts/perf/generate_catalog.py` y `scripts/perf/search_load.py` (decidir `locust` o `asyncio`+`httpx` con ADR Propuesto) y script `npm run perf:search`; smoke de 30 s con 1 000 piezas en SQLite en pruebas (Req: Prueba de rendimiento reproducible de la búsqueda; RF-038)
+- [x] 3.1 Crear `scripts/perf/generate_catalog.py` y `scripts/perf/search_load.py` (decidir `locust` o `asyncio`+`httpx` con ADR Propuesto) y script `npm run perf:search`; smoke de 30 s con 1 000 piezas en SQLite en pruebas (Req: Prueba de rendimiento reproducible de la búsqueda; RF-038)
 
 ## 4. Frontend
 
