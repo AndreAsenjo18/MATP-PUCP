@@ -5245,6 +5245,42 @@
         "title": "Page[IncompletePiece]",
         "type": "object"
       },
+      "Page_SensitiveAccessOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SensitiveAccessOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[SensitiveAccessOut]",
+        "type": "object"
+      },
       "Page_UserOut_": {
         "properties": {
           "items": {
@@ -7407,6 +7443,75 @@
         "title": "SearchResultPage",
         "type": "object"
       },
+      "SensitiveAccessOut": {
+        "description": "One request that delivered unmasked sensitive fields (never their values; RNF-014).",
+        "examples": [
+          {
+            "entity_ids": [
+              "01920000-0000-7000-8000-000000000101"
+            ],
+            "entity_type": "piece",
+            "fields": [
+              "lender_name",
+              "loan_agreement_ref"
+            ],
+            "id": "01920000-0000-7000-8000-000000000501",
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+            "user_id": "01920000-0000-7000-8000-000000000501"
+          }
+        ],
+        "properties": {
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "user_id",
+          "route",
+          "entity_type",
+          "entity_ids",
+          "fields"
+        ],
+        "title": "SensitiveAccessOut",
+        "type": "object"
+      },
       "SkippedPiece": {
         "properties": {
           "piece_id": {
@@ -9390,6 +9495,163 @@
         ],
         "x-change": "auditoria-y-soft-delete-transversal",
         "x-status": "stub"
+      }
+    },
+    "/api/v1/audit/sensitive-access": {
+      "get": {
+        "description": "Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).",
+        "operationId": "getSensitiveAccess",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred To"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SensitiveAccessOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/auth/change-password": {

@@ -81,6 +81,7 @@ from app.modules.media.service import (
     verify_image_stream,
 )
 from app.modules.quality.schemas import PieceAlert
+from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
 
@@ -243,7 +244,29 @@ def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
     tags=["Piezas"],
     **implemented(),
 )
-def get_piece_by_id(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> PieceDetail:
+def get_piece_by_id(
+    piece_id: uuid.UUID,
+    request: Request,
+    background: BackgroundTasks,
+    session: SessionDep,
+    user: Reader,
+) -> PieceDetail:
+    detail = _piece_detail(piece_id, session, user)
+    fields = delivered_piece_fields(detail)
+    if fields:  # RNF-014: log what was handed over unmasked, after the response (never values)
+        background.add_task(
+            record_sensitive_access,
+            request.app.state.session_factory,
+            user_id=user.id,
+            route=request.url.path,
+            entity_type="piece",
+            entity_ids=[piece_id],
+            fields=fields,
+        )
+    return detail
+
+
+def _piece_detail(piece_id: uuid.UUID, session: Session, user: CurrentUser) -> PieceDetail:
     reader = CatalogReader(session, Viewer(user.permissions))
     merged_from = _merged_from(session, piece_id)
     try:

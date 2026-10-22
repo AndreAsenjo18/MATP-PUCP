@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 8e7dca8a03b4b7948071c6dbbdc00d49e711c88924b8116d3e63ef5a76863520
+ * openapi-sha256: cee632fb9dbc94d62c68e19c3562381def8e7d7d90f8e0c0224a020481dfe78b
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -171,6 +171,26 @@ export interface paths {
         put?: never;
         /** Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007) */
         post: operations["revertChangeSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sensitive-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)
+         * @description Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).
+         */
+        get: operations["getSensitiveAccess"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3906,6 +3926,20 @@ export interface components {
              */
             total: number;
         };
+        /** Page[SensitiveAccessOut] */
+        Page_SensitiveAccessOut_: {
+            /** Items */
+            items: components["schemas"]["SensitiveAccessOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
         /** Page[UserOut] */
         Page_UserOut_: {
             /** Items */
@@ -4826,6 +4860,49 @@ export interface components {
             page: number;
             /** Total */
             total: number;
+        };
+        /**
+         * SensitiveAccessOut
+         * @description One request that delivered unmasked sensitive fields (never their values; RNF-014).
+         * @example {
+         *       "entity_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ],
+         *       "entity_type": "piece",
+         *       "fields": [
+         *         "lender_name",
+         *         "loan_agreement_ref"
+         *       ],
+         *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        SensitiveAccessOut: {
+            /** Entity Ids */
+            entity_ids: string[];
+            /** Entity Type */
+            entity_type: string;
+            /** Fields */
+            fields: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Route */
+            route: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
         };
         /** SkippedPiece */
         SkippedPiece: {
@@ -5858,6 +5935,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getSensitiveAccess: {
+        parameters: {
+            query?: {
+                entity_type?: string | null;
+                occurred_from?: string | null;
+                occurred_to?: string | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                user_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SensitiveAccessOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

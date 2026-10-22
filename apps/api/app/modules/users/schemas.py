@@ -195,3 +195,32 @@ class PermissionOut(BaseModel):
 class RolePermissionsUpdate(BaseModel):
     permissions: list[str]
     reason: str = Field(min_length=3)
+
+
+class SensitiveAccessOut(BaseModel):
+    """One request that delivered unmasked sensitive fields (never their values; RNF-014)."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": EX_USER_ID,
+                    "occurred_at": EX_DATETIME,
+                    "user_id": EX_USER_ID,
+                    "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+                    "entity_type": "piece",
+                    "entity_ids": ["01920000-0000-7000-8000-000000000101"],
+                    "fields": ["lender_name", "loan_agreement_ref"],
+                }
+            ]
+        },
+    )
+
+    id: uuid.UUID
+    occurred_at: datetime
+    user_id: uuid.UUID
+    route: str
+    entity_type: str
+    entity_ids: list[str]
+    fields: list[str]

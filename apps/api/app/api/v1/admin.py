@@ -46,7 +46,14 @@ from app.modules.users import admin as users_admin
 from app.modules.users import auth
 from app.modules.users.admin import user_roles
 from app.modules.users.auth import LoginResult
-from app.modules.users.models import AppUser, Permission, Role, RolePermission, UserSession
+from app.modules.users.models import (
+    AppUser,
+    Permission,
+    Role,
+    RolePermission,
+    SensitiveAccessLog,
+    UserSession,
+)
 from app.modules.users.schemas import (
     ChangePasswordRequest,
     LoginRequest,
@@ -55,6 +62,7 @@ from app.modules.users.schemas import (
     PermissionOut,
     RoleOut,
     RolePermissionsUpdate,
+    SensitiveAccessOut,
     UserCreate,
     UserOut,
     UserRoleUpdate,
@@ -544,6 +552,46 @@ def get_audit_logs(
     rows, total = paginate(session, statement, params)
     return Page(
         items=[AuditEntryOut.model_validate(row) for row in rows],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
+
+
+@router.get(
+    "/audit/sensitive-access",
+    response_model=Page[SensitiveAccessOut],
+    summary="Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)",
+    description=(
+        "Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, "
+        "ruta, entidades y nombres de campo, nunca sus valores (RNF-014)."
+    ),
+    tags=["Auditoría"],
+    **implemented(),
+)
+def get_sensitive_access(
+    session: SessionDep,
+    user: AuditReader,
+    params: Annotated[PageParams, Depends(page_params)],
+    user_id: uuid.UUID | None = None,
+    entity_type: str | None = None,
+    occurred_from: datetime | None = None,
+    occurred_to: datetime | None = None,
+) -> Page[SensitiveAccessOut]:
+    statement = select(SensitiveAccessLog).order_by(
+        SensitiveAccessLog.occurred_at.desc(), SensitiveAccessLog.id.desc()
+    )
+    if user_id:
+        statement = statement.where(SensitiveAccessLog.user_id == user_id)
+    if entity_type:
+        statement = statement.where(SensitiveAccessLog.entity_type == entity_type)
+    if occurred_from:
+        statement = statement.where(SensitiveAccessLog.occurred_at >= occurred_from)
+    if occurred_to:
+        statement = statement.where(SensitiveAccessLog.occurred_at <= occurred_to)
+    rows, total = paginate(session, statement, params)
+    return Page[SensitiveAccessOut](
+        items=[SensitiveAccessOut.model_validate(row) for row in rows],
         total=total,
         page=params.page,
         page_size=params.page_size,
