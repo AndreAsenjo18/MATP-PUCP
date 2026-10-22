@@ -932,7 +932,7 @@ def _map_value(
 
 def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:
     """An active term whose code or label equals the value, ignoring case and accents
-    [SUPUESTO S6]."""
+    [SUPUESTO T6]."""
     matches = TermMatches(vocabulary)
     terms = ctx.vocabulary_terms(vocabulary) or {}
     by_key: dict[str, str] = {}

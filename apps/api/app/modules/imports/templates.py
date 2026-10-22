@@ -123,7 +123,7 @@ def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
 
 
 def _check_name_free(session: Session, name: str, exclude: uuid.UUID | None = None) -> None:
-    """Unique among the active templates, ignoring case and accents [SUPUESTO S9]."""
+    """Unique among the active templates, ignoring case and accents [SUPUESTO T9]."""
     key = header_key(name)
     for template_id, other in session.execute(
         select(ImportMappingTemplate.id, ImportMappingTemplate.name)
@@ -236,8 +236,8 @@ def delete_template(session: Session, template: ImportMappingTemplate, reason: s
 
 # --- suggestion by headers (design D3) -----------------------------------------------------
 
-SUGGEST_THRESHOLD = 0.6  # [SUPUESTO S1]
-SUGGEST_LIMIT = 3  # [SUPUESTO S2]
+SUGGEST_THRESHOLD = 0.6  # [SUPUESTO T1]
+SUGGEST_LIMIT = 3  # [SUPUESTO T2]
 
 
 @dataclass(frozen=True)
@@ -259,7 +259,7 @@ def _by_key(headers: Sequence[str]) -> dict[str, str]:
 
 
 def similarity(template_keys: set[str], file_keys: set[str]) -> float:
-    """``0,5 × J + 0,5 × S`` (design D3, [SUPUESTO S1]): ``J`` is the Jaccard index of both sets
+    """``0,5 × J + 0,5 × S`` (design D3, [SUPUESTO T1]): ``J`` is the Jaccard index of both sets
     and ``S`` the mean, over the template headers, of the best ``SequenceMatcher`` ratio
     against the file headers."""
     if not template_keys or not file_keys:
@@ -274,7 +274,7 @@ def similarity(template_keys: set[str], file_keys: set[str]) -> float:
 
 def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggestion]:
     """Up to ``SUGGEST_LIMIT`` active templates scoring at least ``SUGGEST_THRESHOLD``, best
-    first. A template's headers are the source columns of its mapping [SUPUESTO S1]; the same
+    first. A template's headers are the source columns of its mapping [SUPUESTO T1]; the same
     signature as the file is a full match (score 1, nothing missing or new)."""
     signature = header_signature(headers)
     file_headers = _by_key(headers)

@@ -1,8 +1,8 @@
 """Spec importacion-datos — Sugerencia de plantillas por cabeceras (RF-022; design D3).
 
 Change plantillas-mapeo-y-normalizacion, task 3.2. A template's headers are the source columns
-of its mapping [SUPUESTO S1]; up to 3 suggestions [SUPUESTO S2] scoring at least 0,6
-[SUPUESTO S1]. Synthetic data only (RNF-014); headers are illustrative [SUPUESTO A1].
+of its mapping [SUPUESTO T1]; up to 3 suggestions [SUPUESTO T2] scoring at least 0,6
+[SUPUESTO T1]. Synthetic data only (RNF-014); headers are illustrative [SUPUESTO A1].
 
 Every test uses its own header words: with no header in common the Jaccard index is 0 and the
 score stays below 0,5, so templates of other tests (and the seed one) are never suggested.
@@ -80,7 +80,7 @@ def test_no_similar_template_gives_no_suggestions(pipeline: Pipeline) -> None:
 
 def test_suggestions_are_ordered_by_score_and_limited_to_three(pipeline: Pipeline) -> None:
     """Template sources against the file P1..P4: J = 1, 3/4, 2/4, 1/4 with S = 1, so scores
-    1, 0,875, 0,75 and 0,625; the fourth is above 0,6 but only 3 are returned [SUPUESTO S2]."""
+    1, 0,875, 0,75 and 0,625; the fourth is above 0,6 but only 3 are returned [SUPUESTO T2]."""
     file = ["P1 RETABLO", "P2 RETABLO", "P3 RETABLO", "P4 RETABLO"]
     # Created with an extra header, so its signature differs and the score comes from the formula.
     full = create(pipeline.client, file, headers=[*file, "EXTRA RETABLO"])
@@ -124,7 +124,7 @@ def test_a_deleted_template_is_not_suggested(pipeline: Pipeline) -> None:
 
 
 def test_suggesting_needs_the_prepare_permission(pipeline: Pipeline) -> None:
-    """[SUPUESTO S8] ``imports.prepare``."""
+    """[SUPUESTO T8] ``imports.prepare``."""
     response = pipeline.login("INTERNAL_VIEWER").post(SUGGEST, json={"headers": ["A"]})
     assert response.status_code == 403
 

@@ -186,7 +186,7 @@ def test_the_seed_template_is_listed_through_read_mapping(pipeline: Pipeline) ->
 
 
 def test_duplicate_name_among_active_templates_is_rejected(pipeline: Pipeline) -> None:
-    """[SUPUESTO S9] unique ignoring case and accents."""
+    """[SUPUESTO T9] unique ignoring case and accents."""
     name = unique("Plantilla Ánfora")
     create(pipeline.client, name)
 
@@ -272,7 +272,7 @@ def test_invalid_spec_is_rejected(
 
 
 def test_cataloguer_cannot_delete_and_viewer_cannot_list(pipeline: Pipeline) -> None:
-    """[SUPUESTO S8] deleting needs ``imports.approve``; listing needs ``imports.prepare``."""
+    """[SUPUESTO T8] deleting needs ``imports.approve``; listing needs ``imports.prepare``."""
     created = create(pipeline.client, unique("Protegida"))
 
     deleted = pipeline.client.delete(f"{TEMPLATES}/{created['id']}", params={"reason": "Prueba"})
@@ -329,7 +329,7 @@ def test_logical_delete_keeps_batch_references_and_goes_to_the_trash(
     assert entry["type_label"] == "Plantilla de mapeo"
     assert entry["deletion_reason"] == "Fuente retirada"
 
-    # The name is unique among the active templates only [SUPUESTO S9].
+    # The name is unique among the active templates only [SUPUESTO T9].
     create(pipeline.client, name)
 
 

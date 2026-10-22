@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Parámetros de normalización administrables
-El sistema MUST administrar como datos auditados, sin cambios de código, los marcadores de ausencia de código, los separadores de códigos concatenados y los alias históricos de siglas de colección usados por la normalización, SHALL aplicar los valores vigentes tanto al ingreso manual como a la importación y a la búsqueda, y MUST impedir que un alias apunte a dos colecciones. Los valores iniciales son los que hoy aplica el normalizador, de modo que su comportamiento no cambia hasta que se editen [SUPUESTO] (A3, A5, A8). Solo el Gestor de colecciones y el Administrador administran estos parámetros [SUPUESTO S8]. (RF-023, RF-004, RN-010)
+El sistema MUST administrar como datos auditados, sin cambios de código, los marcadores de ausencia de código, los separadores de códigos concatenados y los alias históricos de siglas de colección usados por la normalización, SHALL aplicar los valores vigentes tanto al ingreso manual como a la importación y a la búsqueda, y MUST impedir que un alias apunte a dos colecciones. Los valores iniciales son los que hoy aplica el normalizador, de modo que su comportamiento no cambia hasta que se editen [SUPUESTO] (A3, A5, A8). Solo el Gestor de colecciones y el Administrador administran estos parámetros [SUPUESTO T8]. (RF-023, RF-004, RN-010)
 
 #### Scenario: Nuevo marcador de ausencia
 - **WHEN** un Administrador agrega `NO REGISTRA` a los marcadores de ausencia, que no figura entre los valores iniciales [SUPUESTO A5: marcador ilustrativo]

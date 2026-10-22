@@ -64,7 +64,7 @@ SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
 # Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of
 # plantillas-mapeo-y-normalizacion). Column names are illustrative [SUPUESTO A1]; materials are
 # matched by code or label against the seeded ``MATERIAL`` vocabulary, with no correspondence
-# table, so nothing about the museum is assumed beyond that vocabulary [SUPUESTO S6].
+# table, so nothing about the museum is assumed beyond that vocabulary [SUPUESTO T6].
 SABANA_TEMPLATE_MAPPING: dict[str, object] = {
     "version": 1,
     "columns": [
