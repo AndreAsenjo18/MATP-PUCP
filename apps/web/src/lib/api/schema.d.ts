@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: fb313bf12356ee1d8cb957e6b3d93f8291ac3d88b11dd7983dd4fa2601ea028b
+ * openapi-sha256: a7ab4398e6b0f66985d662bf1196ad4423448c59fcc7a073348050c4336a72e8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1256,6 +1256,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/dashboard-stats/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evolución diaria de los indicadores de completitud (RF-035) */
+        get: operations["getDashboardStatsHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/export-excel": {
         parameters: {
             query?: never;
@@ -2312,6 +2329,26 @@ export interface components {
         CompletenessRulesUpdate: {
             /** Rules */
             rules: components["schemas"]["CompletenessRuleIn"][];
+        };
+        /**
+         * DashboardHistory
+         * @example {
+         *       "points": [
+         *         {
+         *           "alert": "MISSING_PHOTO",
+         *           "completeness_ratio": 0.86,
+         *           "denominator": 298,
+         *           "numerator": 41,
+         *           "taken_on": "2026-10-01"
+         *         }
+         *       ]
+         *     }
+         */
+        DashboardHistory: {
+            /** Collection Id */
+            collection_id: string | null;
+            /** Points */
+            points: components["schemas"]["SnapshotPointOut"][];
         };
         /** DependencyStatus */
         DependencyStatus: {
@@ -5068,6 +5105,31 @@ export interface components {
              * @description Por ejemplo «ya tiene descripción» o «metadatos insuficientes».
              */
             reason: string;
+        };
+        /**
+         * SnapshotPointOut
+         * @description Un punto de la evolución diaria (design D5): la instantánea de una alerta en un día.
+         * @example {
+         *       "alert": "MISSING_PHOTO",
+         *       "completeness_ratio": 0.86,
+         *       "denominator": 298,
+         *       "numerator": 41,
+         *       "taken_on": "2026-10-01"
+         *     }
+         */
+        SnapshotPointOut: {
+            alert: components["schemas"]["AlertCode"];
+            /** Completeness Ratio */
+            completeness_ratio?: number | null;
+            /** Denominator */
+            denominator: number;
+            /** Numerator */
+            numerator: number;
+            /**
+             * Taken On
+             * Format: date
+             */
+            taken_on: string;
         };
         /**
          * SourceRecordOut
@@ -10261,6 +10323,9 @@ export interface operations {
                 /** @description Tipos de alerta (AND). */
                 alert?: components["schemas"]["AlertCode"][] | null;
                 collection_id?: string | null;
+                format?: components["schemas"]["ExportFormat"] | null;
+                /** @description Con `collection_id`, incluye sus subcolecciones. */
+                include_subcollections?: boolean;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -10272,13 +10337,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Lista en JSON o, con `format=xlsx|csv`, como archivo descargable (sin paginar: incluye todas las piezas que cumplen los filtros). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Page_IncompletePiece_"];
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                    "text/csv": unknown;
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -10306,15 +10373,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -10449,6 +10507,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompletenessKpis"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDashboardStatsHistory: {
+        parameters: {
+            query: {
+                /** @description Omitido: indicadores globales. */
+                collection_id?: string | null;
+                /** @description Fecha inicial, incluida. */
+                from: string;
+                /** @description Fecha final, incluida. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardHistory"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

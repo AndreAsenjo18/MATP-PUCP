@@ -1705,6 +1705,48 @@
         "title": "CompletenessRulesUpdate",
         "type": "object"
       },
+      "DashboardHistory": {
+        "examples": [
+          {
+            "points": [
+              {
+                "alert": "MISSING_PHOTO",
+                "completeness_ratio": 0.86,
+                "denominator": 298,
+                "numerator": 41,
+                "taken_on": "2026-10-01"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "collection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Id"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "collection_id",
+          "points"
+        ],
+        "title": "DashboardHistory",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -7822,6 +7864,59 @@
           "reason"
         ],
         "title": "SkippedPiece",
+        "type": "object"
+      },
+      "SnapshotPointOut": {
+        "description": "Un punto de la evolución diaria (design D5): la instantánea de una alerta en un día.",
+        "examples": [
+          {
+            "alert": "MISSING_PHOTO",
+            "completeness_ratio": 0.86,
+            "denominator": 298,
+            "numerator": 41,
+            "taken_on": "2026-10-01"
+          }
+        ],
+        "properties": {
+          "alert": {
+            "$ref": "#/components/schemas/AlertCode"
+          },
+          "completeness_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completeness Ratio"
+          },
+          "denominator": {
+            "minimum": 0.0,
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "numerator": {
+            "minimum": 0.0,
+            "title": "Numerator",
+            "type": "integer"
+          },
+          "taken_on": {
+            "format": "date",
+            "title": "Taken On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taken_on",
+          "alert",
+          "numerator",
+          "denominator"
+        ],
+        "title": "SnapshotPointOut",
         "type": "object"
       },
       "SourceRecordOut": {
@@ -16358,6 +16453,34 @@
             }
           },
           {
+            "description": "Con `collection_id`, incluye sus subcolecciones.",
+            "in": "query",
+            "name": "include_subcollections",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Con `collection_id`, incluye sus subcolecciones.",
+              "title": "Include Subcollections",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExportFormat"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Format"
+            }
+          },
+          {
             "description": "Número de página (desde 1).",
             "in": "query",
             "name": "page",
@@ -16392,9 +16515,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/Page_IncompletePiece_"
                 }
-              }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {},
+              "text/csv": {}
             },
-            "description": "Successful Response"
+            "description": "Lista en JSON o, con `format=xlsx|csv`, como archivo descargable (sin paginar: incluye todas las piezas que cumplen los filtros)."
           },
           "401": {
             "content": {
@@ -16425,16 +16550,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`."
           }
         },
         "security": [
@@ -16449,8 +16564,7 @@
         "tags": [
           "Calidad"
         ],
-        "x-change": "alertas-y-reporte-incompletas",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/quality/jobs/{job_id}": {
@@ -16593,6 +16707,111 @@
           }
         ],
         "summary": "KPI de completitud general y por colección (RF-035)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/reports/dashboard-stats/history": {
+      "get": {
+        "operationId": "getDashboardStatsHistory",
+        "parameters": [
+          {
+            "description": "Fecha inicial, incluida.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Fecha inicial, incluida.",
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fecha final, incluida.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "Fecha final, incluida.",
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Omitido: indicadores globales.",
+            "in": "query",
+            "name": "collection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Omitido: indicadores globales.",
+              "title": "Collection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Evolución diaria de los indicadores de completitud (RF-035)",
         "tags": [
           "Calidad"
         ],

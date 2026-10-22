@@ -88,6 +88,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/quality/duplicates/scan"),
     ("get", "/quality/incomplete"),
     ("get", "/quality/jobs/{}"),
+    ("get", "/reports/dashboard-stats/history"),
     ("get", "/reports/{}"),
     ("get", "/roles"),
     ("put", "/roles/{}/permissions"),

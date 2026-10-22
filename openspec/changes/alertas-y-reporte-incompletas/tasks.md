@@ -8,13 +8,13 @@
 
 - [x] 2.1 Implementar `GET /api/v1/pieces/{piece_id}/alerts`; pruebas de los tres escenarios (Req: Alertas de la pieza con explicación y acción sugerida)
 - [x] 2.2 Crear `quality/kpis.py` e implementar `GET /api/v1/reports/dashboard-stats` (global y `by_collection` con subcolecciones); pruebas: KPI de I sobre propiedad (250/100 → 60 %), colección solo comodato → `null`, catálogo vacío sin división por cero (Req: Indicadores con numerador y denominador explícitos; RF-035)
-- [ ] 2.3 Implementar `GET /api/v1/quality/incomplete` paginado con filtros, enmascarado y `format=xlsx|csv`; prueba de coherencia: conteo del reporte = numerador del KPI para cada alerta con el seed (Req: Reglas de completitud únicas… — escenario "Misma cifra en todos los lugares")
-- [ ] 2.4 Comando `python -m app.quality.snapshot` (script `npm run kpis:snapshot`) y operación nueva `GET /api/v1/reports/dashboard-stats/history`; pruebas: idempotencia diaria, rango inválido 422 (Req: Serie histórica de completitud)
+- [x] 2.3 Implementar `GET /api/v1/quality/incomplete` paginado con filtros, enmascarado y `format=xlsx|csv`; prueba de coherencia: conteo del reporte = numerador del KPI para cada alerta con el seed (Req: Reglas de completitud únicas… — escenario "Misma cifra en todos los lugares")
+- [x] 2.4 Comando `python -m app.quality.snapshot` (script `npm run kpis:snapshot`) y operación nueva `GET /api/v1/reports/dashboard-stats/history`; pruebas: idempotencia diaria, rango inválido 422 (Req: Serie histórica de completitud)
 
 ## 3. Frontend
 
-- [ ] 3.1 `lib/data/quality.ts` (mock/live); panel de alertas en la ficha con acción sugerida que lleva a la sección del editor; pruebas de componente (Req: Alertas de la pieza con explicación y acción sugerida; RNF-010)
-- [ ] 3.2 Tablero `app/inicio` con KPI globales y por colección ("no aplica" cuando corresponde) y gráfico simple de evolución; pruebas de componente (Req: Indicadores…; Req: Serie histórica…)
+- [x] 3.1 `lib/data/quality.ts` (mock/live); panel de alertas en la ficha con acción sugerida que lleva a la sección del editor; pruebas de componente (Req: Alertas de la pieza con explicación y acción sugerida; RNF-010)
+- [x] 3.2 Tablero `app/inicio` con KPI globales y por colección ("no aplica" cuando corresponde) y gráfico simple de evolución; pruebas de componente (Req: Indicadores…; Req: Serie histórica…)
 - [ ] 3.3 Reporte de incompletas en `app/reportes` con filtros por alerta y colección y descarga; pruebas de componente (RF-035)
 
 ## 4. Cierre del change

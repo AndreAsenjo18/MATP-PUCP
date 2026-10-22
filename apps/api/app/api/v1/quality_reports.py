@@ -1,9 +1,10 @@
 """Quality, search, reports and exports (calidad-datos, busqueda-reportes)."""
 
 import uuid
+from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
@@ -17,19 +18,28 @@ from app.api.pagination import (
     paginate,
 )
 from app.api.stubs import (
-    CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
     CHANGE_SEARCH_EXPORT,
     implemented,
     not_implemented,
-    page_example,
     stub,
 )
 from app.core.errors import NotFound
 from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
-from app.modules.quality.completeness import list_completeness_rules, replace_completeness_rules
+from app.modules.quality.completeness import (
+    list_completeness_rules,
+    load_active_rules,
+    replace_completeness_rules,
+)
+from app.modules.quality.incomplete_report import (
+    XLSX_CONTENT_TYPE,
+    build_incomplete_query,
+    incomplete_report_csv,
+    incomplete_report_workbook,
+    rows_for_pieces,
+)
 from app.modules.quality.kpis import compute_dashboard_kpis
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
@@ -46,12 +56,15 @@ from app.modules.quality.schemas import (
     CompletenessKpis,
     CompletenessRuleOut,
     CompletenessRulesUpdate,
+    DashboardHistory,
     DuplicateCandidateOut,
     DuplicateOrigin,
     DuplicateResolution,
     IncompletePiece,
     QualityJobOut,
+    SnapshotPointOut,
 )
+from app.modules.quality.snapshot import dashboard_history
 from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
@@ -78,15 +91,69 @@ CompletenessRulesManager = Annotated[
     response_model=Page[IncompletePiece],
     summary="Piezas con información incompleta (RF-019, RF-035)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    responses={
+        200: {
+            "content": {"text/csv": {}, XLSX_CONTENT_TYPE: {}},
+            "description": "Lista en JSON o, con `format=xlsx|csv`, como archivo descargable "
+            "(sin paginar: incluye todas las piezas que cumplen los filtros).",
+        }
+    },
+    **implemented(),
 )
 def list_incomplete_pieces(
+    session: SessionDep,
     user: ReportViewer,
     params: Annotated[PageParams, Depends(page_params)],
     alert: Annotated[list[AlertType] | None, Query(description="Tipos de alerta (AND).")] = None,
     collection_id: uuid.UUID | None = None,
-) -> Page[IncompletePiece]:
-    raise not_implemented(CHANGE_INCOMPLETE, page_example(IncompletePiece))
+    include_subcollections: Annotated[
+        bool, Query(description="Con `collection_id`, incluye sus subcolecciones.")
+    ] = True,
+    export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
+) -> Page[IncompletePiece] | Response:
+    rules = load_active_rules(session)
+    statement = build_incomplete_query(
+        session,
+        rules,
+        alert_codes=alert,
+        collection_id=collection_id,
+        include_subcollections=include_subcollections,
+    )
+    filters = {
+        "alert": ", ".join(alert) if alert else None,
+        "collection_id": str(collection_id) if collection_id else None,
+        "include_subcollections": include_subcollections if collection_id else None,
+    }
+    if export_format is not None:
+        pieces = list(session.scalars(statement))
+        rows = rows_for_pieces(session, pieces, rules)
+        if export_format == ExportFormat.CSV:
+            return Response(
+                content=incomplete_report_csv(rows, filters),
+                media_type="text/csv",
+                headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.csv"'},
+            )
+        return Response(
+            content=incomplete_report_workbook(rows, filters),
+            media_type=XLSX_CONTENT_TYPE,
+            headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.xlsx"'},
+        )
+    pieces, total = paginate(session, statement, params)
+    rows = rows_for_pieces(session, pieces, rules)
+    return Page[IncompletePiece](
+        items=[
+            IncompletePiece(
+                piece_id=row.piece_id,
+                title=row.title,
+                collection_name=row.collection_name,
+                alerts=row.alerts,
+            )
+            for row in rows
+        ],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.get(
@@ -118,6 +185,29 @@ def get_dashboard_stats(
             for group in kpis.by_collection
         ],
         computed_at=kpis.computed_at,
+    )
+
+
+@router.get(
+    "/reports/dashboard-stats/history",
+    response_model=DashboardHistory,
+    summary="Evolución diaria de los indicadores de completitud (RF-035)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_dashboard_stats_history(
+    session: SessionDep,
+    user: ReportViewer,
+    date_from: Annotated[date, Query(alias="from", description="Fecha inicial, incluida.")],
+    date_to: Annotated[date, Query(alias="to", description="Fecha final, incluida.")],
+    collection_id: Annotated[
+        uuid.UUID | None, Query(description="Omitido: indicadores globales.")
+    ] = None,
+) -> DashboardHistory:
+    points = dashboard_history(session, date_from, date_to, collection_id)
+    return DashboardHistory(
+        collection_id=collection_id,
+        points=[SnapshotPointOut.model_validate(point, from_attributes=True) for point in points],
     )
 
 

@@ -7,28 +7,24 @@
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
+import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
-import {
-  computeByCollectionReport,
-  computeByLocationReport,
-  computeIncompleteReport,
-  computeInventoryReport,
-} from "@/lib/fixtures";
+import { computeByCollectionReport, computeByLocationReport, computeInventoryReport } from "@/lib/fixtures";
 
 const REPORTS = [
   { key: "inventory", label: "Inventario general", compute: computeInventoryReport },
   { key: "by-collection", label: "Por colección", compute: computeByCollectionReport },
   { key: "by-location", label: "Por ubicación", compute: computeByLocationReport },
-  { key: "incomplete", label: "Información incompleta", compute: computeIncompleteReport },
+  { key: "incomplete", label: "Información incompleta", compute: null },
 ] as const;
 
 function ReportesContent() {
-  const { hasPermission } = useSession();
+  const { hasPermission, currentUser } = useSession();
   const [selected, setSelected] = useState<(typeof REPORTS)[number]["key"]>("inventory");
   const [exported, setExported] = useState(false);
 
@@ -36,7 +32,7 @@ function ReportesContent() {
     return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
-  const report = REPORTS.find((r) => r.key === selected)!.compute();
+  const report = selected === "incomplete" ? null : REPORTS.find((r) => r.key === selected)!.compute!();
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,49 +58,58 @@ function ReportesContent() {
         ))}
       </div>
 
-      <Card as="section" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-          {hasPermission("exports.run") && (
-            <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-              Exportar a Excel
-            </Button>
-          )}
-        </div>
-        {exported && (
-          <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
-            Descarga simulada de <code>{report.report_type}.xlsx</code> (RF-036). En modo conectado se generaría un
-            archivo real.
-          </p>
-        )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-base">
-            <thead className="text-sm text-gris-texto">
-              <tr>
-                {report.columns.map((col) => (
-                  <th key={col} className="py-2 pr-4 font-medium">
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.map((row, index) => (
-                <tr key={index} className="border-t border-borde">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="py-2 pr-4 text-tinta">
-                      {String(cell)}
-                    </td>
+      {selected === "incomplete" ? (
+        <Card as="section" className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-tinta">Piezas con información incompleta (RF-035)</h2>
+          <IncompleteReportPanel devUser={currentUser?.email} canDownload={hasPermission("exports.run")} />
+        </Card>
+      ) : (
+        report && (
+          <Card as="section" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
+              {hasPermission("exports.run") && (
+                <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+                  Exportar a Excel
+                </Button>
+              )}
+            </div>
+            {exported && (
+              <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
+                Descarga simulada de <code>{report.report_type}.xlsx</code> (RF-036). En modo conectado se generaría un
+                archivo real.
+              </p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-base">
+                <thead className="text-sm text-gris-texto">
+                  <tr>
+                    {report.columns.map((col) => (
+                      <th key={col} className="py-2 pr-4 font-medium">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.rows.map((row, index) => (
+                    <tr key={index} className="border-t border-borde">
+                      {row.map((cell, cellIndex) => (
+                        <td key={cellIndex} className="py-2 pr-4 text-tinta">
+                          {String(cell)}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-sm text-gris-texto">
-          Totales: {Object.entries(report.totals).map(([k, v]) => `${k}: ${v}`).join(" · ")}
-        </p>
-      </Card>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-gris-texto">
+              Totales: {Object.entries(report.totals).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+            </p>
+          </Card>
+        )
+      )}
 
       {hasPermission("exports.full") && (
         <Card as="section">

@@ -3,17 +3,41 @@
 /**
  * Pantalla 2 — Inicio / tablero: KPIs de completitud, últimas cargas, pendientes de revisión
  * (duplicados, sugerencias de IA) (RF-035, RF-030, RIA-01..05).
+ *
+ * Tarea 3.2 de `alertas-y-reporte-incompletas`: el tablero de completitud (global, por colección
+ * y la evolución) se lee de `lib/data/quality.ts`, consciente del modo (`mock`: fixtures; `live`:
+ * `GET /reports/dashboard-stats[?by_collection]` y `GET /reports/dashboard-stats/history`).
  */
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
+import { CompletenessChart } from "@/components/domain/CompletenessChart";
 import { importBatchStatus } from "@/components/domain/status-intents";
 import { AlertBadge, StatusBadge } from "@/components/domain/StatusBadges";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Card, cardClassName } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
+import {
+  fetchDashboardHistory,
+  fetchDashboardKpis,
+  recentDateRange,
+  type AlertType,
+  type CompletenessKpis,
+  type SnapshotPoint,
+} from "@/lib/data/quality";
 import { useMockStore } from "@/lib/data/mock-store";
-import { alertsForPiece, computeCompletenessKpis, computeIncompletePieces, PIECES } from "@/lib/fixtures";
+import { alertsForPiece, computeIncompletePieces, PIECES } from "@/lib/fixtures";
+
+const ALERT_LABELS: Record<AlertType, string> = {
+  MISSING_INVENTORY_CODE: "Sin código I",
+  MISSING_PHOTO: "Sin fotografía",
+  MISSING_LOCATION: "Sin ubicación",
+  MISSING_REQUIRED_FIELDS: "Campos obligatorios vacíos",
+  MISSING_RECOMMENDED_FIELDS: "Campos recomendados vacíos",
+  UNNORMALIZABLE_IDENTIFIER: "Identificador no normalizable",
+};
 
 function KpiCard({ label, value, href, tone = "neutral" }: { label: string; value: number | string; href?: string; tone?: "neutral" | "warning" }) {
   const className = cardClassName({
@@ -35,19 +59,109 @@ function KpiCard({ label, value, href, tone = "neutral" }: { label: string; valu
   );
 }
 
-function alertKpi(kpis: ReturnType<typeof computeCompletenessKpis>, alert: string) {
+function alertKpi(kpis: CompletenessKpis, alert: AlertType) {
   return kpis.alerts.find((a) => a.alert === alert);
+}
+
+function ratioLabel(ratio: number | null | undefined): string {
+  return ratio === null || ratio === undefined ? "No aplica" : `${Math.round(ratio * 100)} %`;
+}
+
+/** Tablero de completitud: KPI globales y por colección, y su evolución (design D3, D5). */
+function CompletenessDashboard() {
+  const { currentUser } = useSession();
+  const devUser = currentUser?.email;
+  const [kpis, setKpis] = useState<CompletenessKpis | null>(null);
+  const [history, setHistory] = useState<SnapshotPoint[]>([]);
+  const [chartAlert, setChartAlert] = useState<AlertType>("MISSING_PHOTO");
+
+  useEffect(() => {
+    let active = true;
+    fetchDashboardKpis(true, devUser).then((result) => {
+      if (active && result.status === "ok") setKpis(result.kpis);
+    });
+    const { from, to } = recentDateRange(new Date(), 14);
+    fetchDashboardHistory(from, to, undefined, devUser).then((result) => {
+      if (active && result.status === "ok") setHistory(result.points);
+    });
+    return () => {
+      active = false;
+    };
+  }, [devUser]);
+
+  if (!kpis) {
+    return (
+      <p role="status" className="text-base text-gris-texto">
+        Calculando los indicadores de completitud…
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Piezas registradas" value={kpis.total_pieces} href="/busqueda" />
+        <KpiCard label="Sin código I" value={alertKpi(kpis, "MISSING_INVENTORY_CODE")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
+        <KpiCard label="Sin fotografía" value={alertKpi(kpis, "MISSING_PHOTO")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
+        <KpiCard label="Sin ubicación" value={alertKpi(kpis, "MISSING_LOCATION")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
+      </div>
+      <p className="text-sm text-gris-texto">calculado {new Date(kpis.computed_at).toLocaleString("es-PE")}</p>
+
+      {kpis.by_collection.length > 0 && (
+        <Card padded={false} className="overflow-x-auto">
+          <table className="w-full text-left text-base">
+            <thead className="bg-crema-light text-sm text-gris-texto">
+              <tr>
+                <th className="px-4 py-2 font-medium">Colección</th>
+                {kpis.alerts.map((a) => (
+                  <th key={a.alert} className="px-4 py-2 font-medium">
+                    {ALERT_LABELS[a.alert]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {kpis.by_collection.map((group) => (
+                <tr key={group.collection_id} className="border-t border-borde">
+                  <td className="px-4 py-2 font-medium text-tinta">{group.collection_name}</td>
+                  {group.alerts.map((a) => (
+                    <td key={a.alert} className="px-4 py-2 text-gris-texto">
+                      {ratioLabel(a.completeness_ratio)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      <Card className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-tinta">Evolución (últimos 14 días)</h3>
+          <Select
+            label="Indicador"
+            value={chartAlert}
+            onChange={(event) => setChartAlert(event.target.value as AlertType)}
+            fieldClassName="w-auto"
+          >
+            {kpis.alerts.map((a) => (
+              <option key={a.alert} value={a.alert}>
+                {ALERT_LABELS[a.alert]}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <CompletenessChart points={history} alert={chartAlert} />
+      </Card>
+    </>
+  );
 }
 
 function InicioContent() {
   const { currentRole, hasPermission } = useSession();
   const store = useMockStore();
-  const kpis = computeCompletenessKpis();
   const incomplete = computeIncompletePieces();
-  const applicableRatios = kpis.alerts
-    .map((a) => a.completeness_ratio)
-    .filter((ratio): ratio is number => ratio !== null && ratio !== undefined);
-  const overallRatio = applicableRatios.length > 0 ? applicableRatios.reduce((sum, r) => sum + r, 0) / applicableRatios.length : null;
   const pendingSuggestions = store.aiSuggestions.filter((s) => s.status === "PENDING");
   const pendingDuplicates = store.duplicateCandidates.filter((d) => d.status === "PENDING");
   const recentBatches = [...store.importBatches].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -66,34 +180,7 @@ function InicioContent() {
         <h2 id="kpis" className="text-lg font-semibold text-tinta">
           Completitud del catálogo (RF-035)
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <KpiCard label="Piezas registradas" value={kpis.total_pieces} href="/busqueda" />
-          <KpiCard
-            label="Sin código I"
-            value={alertKpi(kpis, "MISSING_INVENTORY_CODE")?.numerator ?? 0}
-            href="/busqueda?incompleteOnly=1"
-            tone="warning"
-          />
-          <KpiCard
-            label="Sin fotografía"
-            value={alertKpi(kpis, "MISSING_PHOTO")?.numerator ?? 0}
-            href="/busqueda?incompleteOnly=1"
-            tone="warning"
-          />
-          <KpiCard
-            label="Sin ubicación"
-            value={alertKpi(kpis, "MISSING_LOCATION")?.numerator ?? 0}
-            href="/busqueda?incompleteOnly=1"
-            tone="warning"
-          />
-        </div>
-        <p className="text-sm text-gris-texto">
-          Índice de completitud:{" "}
-          <strong className="text-tinta">
-            {overallRatio === null ? "No aplica" : `${Math.round(overallRatio * 100)} %`}
-          </strong>{" "}
-          · calculado {new Date(kpis.computed_at).toLocaleString("es-PE")}
-        </p>
+        <CompletenessDashboard />
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">

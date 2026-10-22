@@ -1,7 +1,7 @@
 """API schemas for data quality (spec calidad-datos; RF-019, RF-030, RF-035, RIA-02)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -185,6 +185,54 @@ class CompletenessKpis(BaseModel):
     alerts: list[AlertKpi]
     by_collection: list[CollectionKpis]
     computed_at: datetime
+
+
+class SnapshotPointOut(BaseModel):
+    """Un punto de la evolución diaria (design D5): la instantánea de una alerta en un día."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "taken_on": "2026-10-01",
+                    "alert": "MISSING_PHOTO",
+                    "numerator": 41,
+                    "denominator": 298,
+                    "completeness_ratio": 0.86,
+                }
+            ]
+        }
+    )
+
+    taken_on: date
+    alert: AlertType
+    numerator: int = Field(ge=0)
+    denominator: int = Field(ge=0)
+    completeness_ratio: float | None = Field(default=None, ge=0, le=1)
+
+
+class DashboardHistory(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "collection_id": None,
+                    "points": [
+                        {
+                            "taken_on": "2026-10-01",
+                            "alert": "MISSING_PHOTO",
+                            "numerator": 41,
+                            "denominator": 298,
+                            "completeness_ratio": 0.86,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    collection_id: uuid.UUID | None
+    points: list[SnapshotPointOut]
 
 
 DuplicateOrigin = Literal["CATALOG", "IMPORT"]

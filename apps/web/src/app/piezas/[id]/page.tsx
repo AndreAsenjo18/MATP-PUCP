@@ -34,6 +34,7 @@ import {
   type DialogOutcome,
 } from "@/components/domain/PieceActionDialogs";
 import { MergeLinks } from "@/components/domain/MergedPieceLinks";
+import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import {
   PieceCurrentLocation,
@@ -58,6 +59,7 @@ import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
 import { getApiMode } from "@/lib/data/mode";
 import { correctInventoryCode, deletePiece, restorePiece } from "@/lib/data/pieces";
+import { fetchPieceAlerts, type PieceAlert } from "@/lib/data/quality";
 import {
   alertsForPiece,
   getPieceMedia,
@@ -166,6 +168,8 @@ function FichaContent({ pieceId }: { pieceId: string }) {
       <PieceDeleteDialog pieceName={piece.denomination} open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
       <PieceRestoreDialog pieceName={piece.denomination} open={restoreOpen} onClose={() => setRestoreOpen(false)} onRestore={handleRestore} />
 
+      {!deleted && <PieceAlertsPanel pieceId={pieceId} alerts={alerts} onNavigateToTab={(t) => setTab(t as Tab)} />}
+
       {deleted ? (
         <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
       ) : (
@@ -240,11 +244,15 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
   const devUser = currentUser?.email;
   const key = `${pieceId}|${devUser ?? ""}`;
   const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult } | null>(null);
+  const [alerts, setAlerts] = useState<PieceAlert[]>([]);
 
   useEffect(() => {
     let active = true;
     fetchPieceSheet(pieceId, devUser).then((result) => {
       if (active) setLoaded({ key, result });
+    });
+    fetchPieceAlerts(pieceId, devUser).then((result) => {
+      if (active && result.status === "ok") setAlerts(result.alerts);
     });
     return () => {
       active = false;
@@ -266,7 +274,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
     <div className="flex flex-col gap-6">
       <PieceSheetHeader
         piece={piece}
-        alerts={[]}
+        alerts={alerts}
         notices={
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
@@ -276,6 +284,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
           </>
         }
       />
+      <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
       <PieceGeneralData piece={piece} />
       <PieceIdentifiersTable piece={piece} />
       <p className="text-sm text-gris-texto">Fotografías, ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
