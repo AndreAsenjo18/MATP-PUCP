@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Formato de mapeo versionado con transformaciones trazables
-El sistema MUST representar cada mapeo como una especificación versionada que asigna cada columna de origen a un campo de la ficha, a uno o varios identificadores, a términos de vocabulario o a los datos de origen, con una cadena ordenada de transformaciones predefinidas; SHALL enviar a los datos de origen toda columna no mapeada y MUST mostrar en la vista previa la traza de transformaciones de cada valor. Las interpretaciones propuestas de época y medidas MUST NOT reemplazar el texto original. El formato de fecha declarado para una columna (por defecto día/mes/año o año [SUPUESTO Q5]) SHALL aplicarse solo a celdas de texto: las celdas que el archivo Excel ya guarda como fecha quedan exentas y se toman tal cual. (RF-022, RF-008, RF-023, RF-007, RF-006)
+El sistema MUST representar cada mapeo como una especificación versionada que asigna cada columna de origen a un campo de la ficha, a uno o varios identificadores, a términos de vocabulario o a los datos de origen, con una cadena ordenada de transformaciones predefinidas; SHALL enviar a los datos de origen toda columna no mapeada y MUST mostrar en la vista previa la traza de transformaciones de cada valor. Las interpretaciones propuestas de época y medidas MUST NOT reemplazar el texto original. El formato de fecha declarado para una columna (por defecto día/mes/año o año [SUPUESTO S5]) SHALL aplicarse solo a celdas de texto: las celdas que el archivo Excel ya guarda como fecha quedan exentas y se toman tal cual. (RF-022, RF-008, RF-023, RF-007, RF-006)
 
 #### Scenario: Traza de un código concatenado
 - **WHEN** se aplica un mapeo con separación de códigos concatenados a la celda `M.M.Z. 015 / I-0236`
@@ -28,7 +28,7 @@ El sistema MUST representar cada mapeo como una especificación versionada que a
 - **THEN** el texto `ca. 1950` se conserva como época original y la interpretación estructurada (tipo y años de inicio y fin) queda marcada como propuesta
 
 ### Requirement: Gestión y sugerencia de plantillas por cabeceras
-La API MUST permitir crear, consultar, editar y eliminar lógicamente plantillas de mapeo por fuente, con nombre único entre las plantillas activas [SUPUESTO Q9], y SHALL sugerir, solo a pedido explícito con las cabeceras del archivo, hasta tres plantillas [SUPUESTO Q2] cuya similitud de cabeceras alcance el umbral configurado (inicialmente 0,6 [SUPUESTO Q1]), indicando para cada sugerencia las columnas faltantes y las columnas nuevas. Preparar plantillas exige el permiso de preparar cargas y eliminarlas el de aprobar cargas [SUPUESTO Q8]. (RF-022, RN-005)
+La API MUST permitir crear, consultar, editar y eliminar lógicamente plantillas de mapeo por fuente, con nombre único entre las plantillas activas [SUPUESTO S9], y SHALL sugerir, solo a pedido explícito con las cabeceras del archivo, hasta tres plantillas [SUPUESTO S2] cuya similitud de cabeceras alcance el umbral configurado (inicialmente 0,6 [SUPUESTO S1]), indicando para cada sugerencia las columnas faltantes y las columnas nuevas. Preparar plantillas exige el permiso de preparar cargas y eliminarlas el de aprobar cargas [SUPUESTO S8]. (RF-022, RN-005)
 
 #### Scenario: Cabeceras idénticas en otro orden
 - **WHEN** se sube un archivo con las mismas cabeceras que una plantilla guardada pero en otro orden y con tildes distintas
@@ -47,7 +47,7 @@ La API MUST permitir crear, consultar, editar y eliminar lógicamente plantillas
 - **THEN** la plantilla deja de sugerirse y los lotes anteriores conservan la referencia y el mapeo con que se procesaron
 
 ### Requirement: Vista previa de normalización por columna
-El sistema MUST ofrecer, sin escribir datos, una vista previa del resultado de un mapeo sobre una muestra del archivo (hasta 200 filas [SUPUESTO Q3]) con, por cada columna, cuántos valores se normalizan, cuántos no son normalizables, cuántos son marcadores de ausencia, cuántos se propone separar, los valores sin término de vocabulario correspondiente (los 20 más frecuentes [SUPUESTO Q4]) y ejemplos con su traza. (RF-023, RF-022, RNF-010)
+El sistema MUST ofrecer, sin escribir datos, una vista previa del resultado de un mapeo sobre una muestra del archivo (hasta 200 filas [SUPUESTO S3]) con, por cada columna, cuántos valores se normalizan, cuántos no son normalizables, cuántos son marcadores de ausencia, cuántos se propone separar, los valores sin término de vocabulario correspondiente (los 20 más frecuentes [SUPUESTO S4]) y ejemplos con su traza. (RF-023, RF-022, RNF-010)
 
 #### Scenario: Columna de códigos con problemas
 - **WHEN** un Catalogador pide la vista previa de una columna de códigos I con valores `I-0236`, `S/N`, `???` e `I 12 / RA 3`
@@ -58,7 +58,7 @@ El sistema MUST ofrecer, sin escribir datos, una vista previa del resultado de u
 - **THEN** el lote, el catálogo y la auditoría no cambian
 
 ### Requirement: Correspondencia de valores con vocabularios controlados
-El sistema MUST permitir asociar en el mapeo valores textuales de origen a términos activos de un vocabulario, SHALL reportar los valores sin correspondencia con su frecuencia, SHALL enviar cada valor sin término correspondiente a los datos de origen de la fila con su texto original y MUST NOT crear términos nuevos durante la importación. Los términos y correspondencias iniciales del vocabulario de materiales son [SUPUESTO Q6]. (RF-011, RN-010, RF-008)
+El sistema MUST permitir asociar en el mapeo valores textuales de origen a términos activos de un vocabulario, SHALL reportar los valores sin correspondencia con su frecuencia, SHALL enviar cada valor sin término correspondiente a los datos de origen de la fila con su texto original y MUST NOT crear términos nuevos durante la importación. Los términos y correspondencias iniciales del vocabulario de materiales son [SUPUESTO S6]. (RF-011, RN-010, RF-008)
 
 #### Scenario: Valor sin correspondencia
 - **WHEN** la columna de material contiene "maguey" y el vocabulario de materiales no tiene ese término ni correspondencia

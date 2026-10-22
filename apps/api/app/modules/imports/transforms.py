@@ -12,7 +12,7 @@ Transformations v1 (``AVAILABLE_TRANSFORMS``):
 - ``absence_markers``      a "no code" marker (``S/N``, ``s/c``, ``-``… N2) becomes empty.
 - ``split_concatenated``   several codes in one cell (N7), ``S/N`` and ``S/C`` are not split.
 - ``split:<sep>``          split on a literal separator.
-- ``date:<formato>``       ``dd/mm/yyyy`` or ``yyyy`` [SUPUESTO Q5]; without a format, both are
+- ``date:<formato>``       ``dd/mm/yyyy`` or ``yyyy`` [SUPUESTO S5]; without a format, both are
                            tried in that order. Never guesses: any other shape is an error.
                            A cell the Excel reader already returns as a date is exempt.
 - ``propose_period``       proposes ``epoch_type``/``epoch_start_year``/``epoch_end_year``.
@@ -48,15 +48,15 @@ AVAILABLE_TRANSFORMS = (
     "value_map",
     "default:<valor>",
 )
-DATE_FORMATS = ("dd/mm/yyyy", "yyyy")  # [SUPUESTO Q5] formats known so far
-DIMENSION_UNIT = "cm"  # [SUPUESTO Q5] the only unit recognized
+DATE_FORMATS = ("dd/mm/yyyy", "yyyy")  # [SUPUESTO S5] formats known so far
+DIMENSION_UNIT = "cm"  # [SUPUESTO S5] the only unit recognized
 
 NOTE_EXCEL_DATE = "excel_date_cell"
 NOTE_NOT_RECOGNIZED = "not_recognized"
 
 _DAY_MONTH_YEAR_RE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})$")
 _YEAR_RE = re.compile(r"^\d{4}$")
-_NUMBER = r"\d+(?:[.,]\d+)?"  # [SUPUESTO Q5] decimal point or comma
+_NUMBER = r"\d+(?:[.,]\d+)?"  # [SUPUESTO S5] decimal point or comma
 _LABELED_DIMENSION_RE = re.compile(rf"([^\W\d_]+)\s*:?\s*({_NUMBER})\s*{DIMENSION_UNIT}\b")
 _DIMENSION_JOINER_RE = re.compile(r"^\s*(?:[x×,;]\s*)?$")
 _UNLABELED_DIMENSIONS_RE = re.compile(rf"^({_NUMBER}(?:\s*[x×]\s*{_NUMBER})*)\s*{DIMENSION_UNIT}$")
@@ -254,7 +254,7 @@ def _split_on(value: Any, separator: str) -> Any:
 def _parse_date(text: str, date_format: str) -> date | int | None:
     """The value in ``date_format``, or None when the text does not have that shape."""
     if date_format == "yyyy":
-        # [SUPUESTO Q5] a bare year is kept as a number, not as a date
+        # [SUPUESTO S5] a bare year is kept as a number, not as a date
         return int(text) if _YEAR_RE.match(text) else None
     match = _DAY_MONTH_YEAR_RE.match(text)
     if match is None:
@@ -293,14 +293,14 @@ def _value_map(value: Any, mapping: Mapping[str, str]) -> Any:
 
 
 def _dimensions(text: str) -> list[dict[str, Any]] | None:
-    """``dimensions`` entries as in ``catalog.schemas.Dimension`` [SUPUESTO Q7]."""
+    """``dimensions`` entries as in ``catalog.schemas.Dimension`` [SUPUESTO S7]."""
 
     def number(raw: str) -> float:
         return float(raw.replace(",", "."))
 
     value = " ".join(text.casefold().split())
     if match := _UNLABELED_DIMENSIONS_RE.match(value):
-        # [SUPUESTO Q7] the order of unlabeled measures (alto x ancho…) is not assumed:
+        # [SUPUESTO S7] the order of unlabeled measures (alto x ancho…) is not assumed:
         # ``dimension`` stays empty for a person to name it when approving the proposal.
         numbers = re.split(r"\s*[x×]\s*", match.group(1))
         return [{"dimension": None, "value": number(n), "unit": DIMENSION_UNIT} for n in numbers]
