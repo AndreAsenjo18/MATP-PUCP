@@ -18,13 +18,20 @@
 
 ## Decisions
 
-### D1. `MappingSpec` v1 (contrato)
+### D1. `MappingSpec` v1 (contrato interno)
+
+Decisiones aprobadas el 2026-10-21 con el dueño de `importacion-pipeline-reconciliacion`:
+
+- **Forma pública = `ColumnMapping`.** `PUT /imports/{batch_id}/mapping` (`MappingRequest`: `template_id`, `sheet_name`, `header_row`, `columns`, `defaults`) y las plantillas (`MappingTemplateCreate.columns`, `MappingTemplateOut.columns`) siguen usando `ColumnMapping`. `MappingSpec` v1 es **interno**: se construye traduciendo `ColumnMapping` y `defaults`, y la API nunca lo expone. Si `ColumnMapping` necesita campos para transformaciones, `value_map` o vocabulario, se añaden como opcionales con valor por defecto, para que los cuerpos actuales sigan siendo válidos. Su forma exacta se acuerda con el dueño del pipeline antes de la tarea 3.1.
+- **La hoja y la fila de cabeceras viven en `import_batch`** (`sheet_name`, `header_row`, columnas que ya existen), no en el spec. `MappingRequest` las sigue recibiendo como hoy.
+- **Conversión explícita v0 → v1 al leer.** Las escrituras nuevas guardan v1. Al leer `import_batch.mapping` o `import_mapping_template.mapping`, una versión anterior se convierte con una función explícita, de modo que los lotes guardados y la plantilla del seed siguen funcionando. Se reconocen dos formas anteriores:
+  - v0 del pipeline (`{"version": 0, "columns": [{source, target, identifier_type, split_compound}], "defaults"}`): un `target` de campo pasa a `{"kind": "field"}`; `identifier` sin `split_compound` pasa a `{"kind": "identifier", "type"}`; `identifier` con `split_compound` pasa a `{"kind": "identifiers", "default_type"}`; `payload` pasa a `{"kind": "source_payload"}`. Las transformaciones quedan vacías.
+  - Forma de la plantilla del seed (`{columna: {"target": ...}}`, sin `version`): `identifiers:auto` pasa a `{"kind": "identifiers", "default_type": null}`, `payload` pasa a `source_payload` y el resto se trata como campo.
+  - Una versión desconocida es un error explícito; nunca se adivina.
 
 ```json
 {
   "version": 1,
-  "sheet": "Inventario",
-  "header_row": 3,
   "columns": [
     {"source": "DENOMINACIÓN", "target": {"kind": "field", "name": "denomination"}, "transforms": ["trim"]},
     {"source": "CÓDIGOS", "target": {"kind": "identifiers", "default_type": "COLECCION"},
@@ -40,7 +47,7 @@
 ```
 
 - Columnas del archivo no listadas → `source_payload` automáticamente (RF-008: nada se pierde).
-- Pydantic `MappingSpec` con `version: Literal[1]`; versiones futuras se migran con una función explícita.
+- Modelo Pydantic v1 con `version: Literal[1]`; versiones futuras se migran con una función explícita. Los nombres que hoy importan el pipeline y sus pruebas (`ColumnSpec`, `MappingSpec`, `MappingContext`, `MappedRow`, `apply_mapping`, `validate_mapping`) conservan su uso actual; el modelo v1 interno puede tener un nombre propio.
 - Los nombres de campo son los del modelo (`piece`). `propose_period` conserva el texto en `epoch_original_text` y escribe su propuesta en `epoch_type`, `epoch_start_year` y `epoch_end_year`.
 - El spec guarda **códigos internos** (`OWNED`, códigos de término como `MADERA`, códigos de tipo de identificador); la API traduce los enumerados a las etiquetas del contrato al recibir y devolver plantillas (ADR-002). El nombre de la fuente no forma parte de `defaults`: es el `source_name` de la plantilla y del lote.
 - Ejemplo con nombres de columna **ilustrativos** [SUPUESTO A1]; el término `MADERA` y la correspondencia `madera policromada` son ilustrativos sobre el vocabulario `MATERIAL` sembrado [SUPUESTO Q6, B5].
@@ -61,11 +68,16 @@ flowchart LR
 
 - Firma: `apply_mapping(raw_row: dict[str, Any], spec: MappingSpec, ctx: MappingContext) -> MappedRow`; `validate_mapping(spec, headers) -> list[MappingError]`. `MappingContext` precarga términos activos, tipos de identificador y parámetros de normalización (una sola consulta por lote).
 - Cada valor transformado lleva `trace: [{"transform": ..., "before": ..., "after": ...}]` para explicar el resultado en la previsualización.
+- **Alcance en este change** (decisión del 2026-10-21 con el dueño de `importacion-pipeline-reconciliacion`): las correspondencias con términos, las propuestas de época y medidas y la traza **solo se calculan para la previsualización** (D4). `apply.py` y `MappedRow.as_json` no cambian, así que lo que se guarda en `import_row.mapped_data` y lo que se aplica a la ficha sigue igual que hoy:
+  - `MappedRow` puede llevar en memoria la traza, las propuestas y las correspondencias para la vista previa, pero no las serializa.
+  - El texto original de una columna con destino `terms` se conserva en `source_payload` (RF-008).
+  - `propose_*` no llena `epoch_type`, `epoch_start_year`, `epoch_end_year` ni `dimensions` en la ficha.
+  - Una propuesta de medida con `"dimension": null` (medidas sin etiqueta) es válida en la previsualización.
 - Transformaciones v1: `trim`, `upper`, `absence_markers`, `split_concatenated`, `split:<sep>`, `date:<formato>` (por defecto `dd/mm/yyyy`, `yyyy`) [SUPUESTO Q5], `propose_period` (intérprete de época nuevo, ver abajo), `propose_dimensions` (patrones `alto 23 cm`, `23 x 15 cm`; unidad `cm`) [SUPUESTO Q5], `value_map`, `default:<valor>`.
 - `propose_period` requiere **construir el intérprete de época**: hoy `catalog` solo tiene `validate_epoch` (coherencia de años) y no interpreta texto. Se crea como función pura `interpret_epoch(text) -> EpochProposal | None` en `imports/epoch.py`, reutilizable más adelante por la ficha, con las reglas de B9 [SUPUESTO B9]: `s. XX` → `CENTURY` 1901–2000; `década de 1950` / `años 50` → `DECADE` 1950–1959; `1950` → `YEAR`; `1940-1950` → `RANGE`; `ca. 1950` → `APPROXIMATE` con amplitud de ±10 años, configurable; `3000 años` → `RELATIVE_AGE` sin años calculados. Un texto no reconocido no genera propuesta y el texto original queda intacto.
 - `date:<formato>` solo se aplica a celdas de texto: una celda que el lector de Excel entrega como fecha (`datetime`/`date`) queda **exenta** del formato declarado y se toma tal cual, con la traza indicando que provenía de una celda de fecha.
-- Las propuestas (`propose_*`) nunca sobrescriben el texto original: generan campos estructurados marcados como propuesta. `propose_dimensions` conserva el texto en `dimensions_text` y propone `dimensions` como lista de `{"dimension": "alto", "value": 23, "unit": "cm"}` (esquema `Dimension` de `catalog`) [SUPUESTO Q7].
-- Destino `terms`: un valor sin término correspondiente (ni por código, ni por etiqueta, ni por `value_map`) no se descarta ni crea términos: se envía al `source_payload` de la fila con su texto original y se cuenta en la vista previa.
+- Las propuestas (`propose_*`) nunca sobrescriben el texto original: generan campos estructurados marcados como propuesta. `propose_dimensions` conserva el texto en `dimensions_text` y propone `dimensions` como lista de `{"dimension": "alto", "value": 23, "unit": "cm"}` (esquema `Dimension` de `catalog`) [SUPUESTO Q7]. En medidas sin etiqueta (`23 x 15 cm`) no se supone el orden alto × ancho: `dimension` queda `null`.
+- Destino `terms`: un valor sin término correspondiente (ni por código, ni por etiqueta, ni por `value_map`) no se descarta ni crea términos: se envía al `source_payload` de la fila con su texto original y se cuenta en la vista previa. En este change, además, los valores con correspondencia solo se muestran en la vista previa; el texto de la columna completa queda en `source_payload`.
 - `validate_mapping`: denominación mapeada (o `default`), columnas de la plantilla ausentes del archivo, destino duplicado para campos escalares, tipo de identificador o vocabulario inexistente.
 
 ### D3. Sugerencia de plantilla
