@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 539f43030b66d6fd89f08970c4c6d073bedc31d9f7dcde40f18242d19d85890e
+ * openapi-sha256: b46c0c3f9a7b56f18a97cdb535a5c30417ebb52c566d838c4e4cddd317e50bd2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {

@@ -1,6 +1,7 @@
 """Spec plataforma — Contrato OpenAPI versionado, exportable y con cliente tipado (RNF-009)."""
 
 import inspect
+import json
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -128,10 +129,21 @@ def test_routes_are_versioned_and_health_stays_at_root(spec: dict) -> None:
         assert path.startswith("/api/v1/") or path.startswith("/health")
 
 
-def test_business_operations_declare_the_dev_identity_scheme(spec: dict) -> None:
-    assert spec["components"]["securitySchemes"]["DevUserHeader"]["name"] == "X-MATP-User"
-    listed = spec["paths"]["/api/v1/pieces"]["get"]
-    assert {"DevUserHeader": []} in listed["security"]
+def test_business_operations_declare_the_session_cookie_scheme(spec: dict) -> None:
+    schemes = spec["components"]["securitySchemes"]
+    assert schemes["cookieAuth"] == {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "matp_session",
+        "description": schemes["cookieAuth"]["description"],
+    }
+    assert {"cookieAuth": []} in spec["paths"]["/api/v1/pieces"]["get"]["security"]
+
+
+def test_the_test_identity_header_is_not_part_of_the_published_contract(spec: dict) -> None:
+    """ADR-009 D7: X-MATP-User only exists under APP_ENV=test, so it is not documented."""
+    assert "DevUserHeader" not in spec["components"]["securitySchemes"]
+    assert "X-MATP-User" not in json.dumps(spec)
 
 
 def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
