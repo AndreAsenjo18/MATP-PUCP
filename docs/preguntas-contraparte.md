@@ -258,3 +258,13 @@ Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/aute
 | R5 | ¿Quién puede consultar el registro de accesos a datos sensibles? | Quien tenga el permiso `audit.read` (hoy el Administrador) | usuarios-roles (RF-041) | Media |
 | R6 | ¿Hay un servicio de correo institucional para recuperar contraseñas olvidadas? | No: la recuperación es que un Administrador restablezca la contraseña temporal. Sin correo, sin doble factor en la fase 1 | usuarios-roles (RNF-012) | Media |
 | R7 | ¿Cuándo se podrá iniciar sesión con la cuenta PUCP y con qué protocolo (OIDC)? | Solo se prepara la interfaz de proveedor y el campo `external_subject`; los roles siguen siendo locales | usuarios-roles (RNF-012) | Baja |
+
+## S. Supuestos del emparejamiento de fotografías del lote (change `importacion-masiva-fotografias`, 2026-10-22)
+
+Detalle en `openspec/changes/importacion-masiva-fotografias/design.md` (D3) y en `apps/api/app/modules/imports/photo_matching.py`. Mientras el museo no responda L1, las reglas se ajustan con sus primeras carpetas reales.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| S1 | Una foto nombrada solo con un número (`245.jpg`), ¿a qué código corresponde? | Se compara con los códigos I, INC/RN, PUCP, del propietario y otros, y también con el correlativo de los códigos de colección del lote (`MMZ 245` → `245`). Si coincide con más de una fila, la foto queda ambigua y nunca se asigna por adivinanza; la decide una persona en la bandeja | importacion-datos (RF-045, RF-023) | A |
+| S2 | ¿Hay fotos con el nombre que pone la cámara (`IMG_20190312.jpg`, `DSC_0001.jpg`)? | Un nombre de cámara no aporta código: la foto se empareja por su carpeta o por la columna del Excel, y si no, va a la bandeja de sin emparejar | importacion-datos (RF-045) | B |
+| S3 | ¿Cómo se distinguen varias fotos de una misma pieza en el nombre? | `(2)`, `_2`, `-a`, `copia` y las palabras de vista (`_frontal`, `_posterior`…) son sufijos: ordenan las fotos de la pieza y no forman parte del código. Un número que la hoja de cálculo escribió como `1234.0` se lee como `1234`. Un `-a` o `_2` corto también puede ser parte del código (componente `MBB 40-a`), así que primero se prueba el nombre completo | importacion-datos (RF-045, RF-023) | B |
