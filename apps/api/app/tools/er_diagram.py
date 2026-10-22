@@ -58,7 +58,7 @@ GROUPS = [
     (
         "Ubicación y Control (EP-02)",
         "#FDF6E3",
-        ["location", "piece_movement", "loan", "loan_item"],
+        ["location", "piece_movement", "loan", "loan_item", "idempotency_key"],
     ),
     (
         "Importación y Calidad de Datos (EP-03)",
@@ -122,6 +122,8 @@ LABELS = {
     ("piece_movement", "from_location_id"): "origen",
     ("piece_movement", "to_location_id"): "destino",
     ("piece_movement", "performed_by_user_id"): "ejecuta",
+    ("piece_movement", "corrects_movement_id"): "corrige",
+    ("idempotency_key", "user_id"): "solicita",
     ("import_batch", "template_id"): "plantilla",
     ("import_batch", "uploaded_by_id"): "carga",
     ("import_batch", "approved_by_id"): "aprueba",

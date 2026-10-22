@@ -136,7 +136,10 @@ def test_business_operations_declare_the_dev_identity_scheme(spec: dict) -> None
 
 def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     stubs = [r for r in _api_routes() if r.openapi_extra.get(X_STATUS) == STATUS_STUB]
-    assert len(stubs) >= 25  # shrinks as changes replace stubs; only guards against losing them all
+    # Baja cada vez que un change implementa un stub (p. ej. ubicacion-jerarquica-y-movimientos
+    # implementó POST/PUT /locations y autenticacion-y-matriz-permisos los usuarios y la
+    # matriz); el umbral solo detecta un vaciado accidental de la lista, no fija cuántos quedan.
+    assert len(stubs) >= 20
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:
