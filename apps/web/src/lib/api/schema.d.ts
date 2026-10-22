@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a7169ee1568cb717a4b658c1ab6e63003cbb8151c357bc81c6b501a9cc6ea381
+ * openapi-sha256: fb313bf12356ee1d8cb957e6b3d93f8291ac3d88b11dd7983dd4fa2601ea028b
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1685,6 +1685,29 @@ export interface components {
          */
         AlertCode: "MISSING_INVENTORY_CODE" | "MISSING_PHOTO" | "MISSING_LOCATION" | "MISSING_REQUIRED_FIELDS" | "MISSING_RECOMMENDED_FIELDS" | "UNNORMALIZABLE_IDENTIFIER";
         /**
+         * AlertKpi
+         * @description Numerador y denominador explícitos de una alerta (design D3): nunca solo un porcentaje,
+         *     para que se pueda auditar y nunca se divida entre cero.
+         * @example {
+         *       "alert": "MISSING_INVENTORY_CODE",
+         *       "completeness_ratio": 0.6,
+         *       "denominator": 250,
+         *       "numerator": 100
+         *     }
+         */
+        AlertKpi: {
+            alert: components["schemas"]["AlertCode"];
+            /**
+             * Completeness Ratio
+             * @description `null` cuando el denominador es 0 (no aplica; spec «Colección solo comodato»).
+             */
+            completeness_ratio?: number | null;
+            /** Denominator */
+            denominator: number;
+            /** Numerator */
+            numerator: number;
+        };
+        /**
          * ApprovalRequest
          * @example {
          *       "comment": "Revisado",
@@ -2048,6 +2071,18 @@ export interface components {
             /** Parent Id */
             parent_id?: string | null;
         };
+        /** CollectionKpis */
+        CollectionKpis: {
+            /** Alerts */
+            alerts: components["schemas"]["AlertKpi"][];
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+            /** Collection Name */
+            collection_name: string;
+        };
         /**
          * CollectionOut
          * @example {
@@ -2182,43 +2217,43 @@ export interface components {
         /**
          * CompletenessKpis
          * @example {
-         *       "by_collection": [
+         *       "alerts": [
          *         {
-         *           "collection_name": "Colección MMZ (ficticia)",
-         *           "completeness_ratio": 0.7
+         *           "alert": "MISSING_INVENTORY_CODE",
+         *           "completeness_ratio": 0.6,
+         *           "denominator": 250,
+         *           "numerator": 100
          *         }
          *       ],
-         *       "completeness_ratio": 0.62,
+         *       "by_collection": [
+         *         {
+         *           "alerts": [
+         *             {
+         *               "alert": "MISSING_INVENTORY_CODE",
+         *               "denominator": 0,
+         *               "numerator": 0
+         *             }
+         *           ],
+         *           "collection_id": "01920000-0000-7000-8000-000000000101",
+         *           "collection_name": "Colección AJB (ficticia, en comodato)"
+         *         }
+         *       ],
          *       "computed_at": "2026-09-17T10:30:00Z",
-         *       "missing_required_fields": 12,
-         *       "total_pieces": 298,
-         *       "without_inventory_code": 160,
-         *       "without_location": 96,
-         *       "without_photo": 41
+         *       "total_pieces": 300
          *     }
          */
         CompletenessKpis: {
+            /** Alerts */
+            alerts: components["schemas"]["AlertKpi"][];
             /** By Collection */
-            by_collection: {
-                [key: string]: string | number | null;
-            }[];
-            /** Completeness Ratio */
-            completeness_ratio: number;
+            by_collection: components["schemas"]["CollectionKpis"][];
             /**
              * Computed At
              * Format: date-time
              */
             computed_at: string;
-            /** Missing Required Fields */
-            missing_required_fields: number;
             /** Total Pieces */
             total_pieces: number;
-            /** Without Inventory Code */
-            without_inventory_code: number;
-            /** Without Location */
-            without_location: number;
-            /** Without Photo */
-            without_photo: number;
         };
         /**
          * CompletenessRuleIn
@@ -10397,7 +10432,10 @@ export interface operations {
     };
     getDashboardStats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Incluye el desglose por colección raíz con subcolecciones. */
+                by_collection?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10438,15 +10476,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

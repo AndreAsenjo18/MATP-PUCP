@@ -380,6 +380,53 @@
         "title": "AlertCode",
         "type": "string"
       },
+      "AlertKpi": {
+        "description": "Numerador y denominador explícitos de una alerta (design D3): nunca solo un porcentaje,\npara que se pueda auditar y nunca se divida entre cero.",
+        "examples": [
+          {
+            "alert": "MISSING_INVENTORY_CODE",
+            "completeness_ratio": 0.6,
+            "denominator": 250,
+            "numerator": 100
+          }
+        ],
+        "properties": {
+          "alert": {
+            "$ref": "#/components/schemas/AlertCode"
+          },
+          "completeness_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`null` cuando el denominador es 0 (no aplica; spec «Colección solo comodato»).",
+            "title": "Completeness Ratio"
+          },
+          "denominator": {
+            "minimum": 0.0,
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "numerator": {
+            "minimum": 0.0,
+            "title": "Numerator",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "alert",
+          "numerator",
+          "denominator"
+        ],
+        "title": "AlertKpi",
+        "type": "object"
+      },
       "ApprovalRequest": {
         "examples": [
           {
@@ -1161,6 +1208,33 @@
         "title": "CollectionCreate",
         "type": "object"
       },
+      "CollectionKpis": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertKpi"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "collection_id": {
+            "format": "uuid",
+            "title": "Collection Id",
+            "type": "string"
+          },
+          "collection_name": {
+            "title": "Collection Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection_id",
+          "collection_name",
+          "alerts"
+        ],
+        "title": "CollectionKpis",
+        "type": "object"
+      },
       "CollectionOut": {
         "examples": [
           {
@@ -1480,84 +1554,59 @@
       "CompletenessKpis": {
         "examples": [
           {
-            "by_collection": [
+            "alerts": [
               {
-                "collection_name": "Colección MMZ (ficticia)",
-                "completeness_ratio": 0.7
+                "alert": "MISSING_INVENTORY_CODE",
+                "completeness_ratio": 0.6,
+                "denominator": 250,
+                "numerator": 100
               }
             ],
-            "completeness_ratio": 0.62,
+            "by_collection": [
+              {
+                "alerts": [
+                  {
+                    "alert": "MISSING_INVENTORY_CODE",
+                    "denominator": 0,
+                    "numerator": 0
+                  }
+                ],
+                "collection_id": "01920000-0000-7000-8000-000000000101",
+                "collection_name": "Colección AJB (ficticia, en comodato)"
+              }
+            ],
             "computed_at": "2026-09-17T10:30:00Z",
-            "missing_required_fields": 12,
-            "total_pieces": 298,
-            "without_inventory_code": 160,
-            "without_location": 96,
-            "without_photo": 41
+            "total_pieces": 300
           }
         ],
         "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertKpi"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
           "by_collection": {
             "items": {
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "type": "object"
+              "$ref": "#/components/schemas/CollectionKpis"
             },
             "title": "By Collection",
             "type": "array"
-          },
-          "completeness_ratio": {
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Completeness Ratio",
-            "type": "number"
           },
           "computed_at": {
             "format": "date-time",
             "title": "Computed At",
             "type": "string"
           },
-          "missing_required_fields": {
-            "title": "Missing Required Fields",
-            "type": "integer"
-          },
           "total_pieces": {
             "title": "Total Pieces",
-            "type": "integer"
-          },
-          "without_inventory_code": {
-            "title": "Without Inventory Code",
-            "type": "integer"
-          },
-          "without_location": {
-            "title": "Without Location",
-            "type": "integer"
-          },
-          "without_photo": {
-            "title": "Without Photo",
             "type": "integer"
           }
         },
         "required": [
           "total_pieces",
-          "without_inventory_code",
-          "without_photo",
-          "without_location",
-          "missing_required_fields",
-          "completeness_ratio",
+          "alerts",
           "by_collection",
           "computed_at"
         ],
@@ -16479,6 +16528,20 @@
     "/api/v1/reports/dashboard-stats": {
       "get": {
         "operationId": "getDashboardStats",
+        "parameters": [
+          {
+            "description": "Incluye el desglose por colección raíz con subcolecciones.",
+            "in": "query",
+            "name": "by_collection",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Incluye el desglose por colección raíz con subcolecciones.",
+              "title": "By Collection",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -16519,16 +16582,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`."
           }
         },
         "security": [
@@ -16543,8 +16596,7 @@
         "tags": [
           "Calidad"
         ],
-        "x-change": "alertas-y-reporte-incompletas",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/reports/export-excel": {

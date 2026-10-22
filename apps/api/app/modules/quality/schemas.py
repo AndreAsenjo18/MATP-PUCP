@@ -112,19 +112,68 @@ class CompletenessRulesUpdate(BaseModel):
     rules: list[CompletenessRuleIn]
 
 
+class AlertKpi(BaseModel):
+    """Numerador y denominador explícitos de una alerta (design D3): nunca solo un porcentaje,
+    para que se pueda auditar y nunca se divida entre cero."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "alert": "MISSING_INVENTORY_CODE",
+                    "numerator": 100,
+                    "denominator": 250,
+                    "completeness_ratio": 0.6,
+                }
+            ]
+        }
+    )
+
+    alert: AlertType
+    numerator: int = Field(ge=0)
+    denominator: int = Field(ge=0)
+    completeness_ratio: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="`null` cuando el denominador es 0 (no aplica; spec «Colección solo "
+        "comodato»).",
+    )
+
+
+class CollectionKpis(BaseModel):
+    collection_id: uuid.UUID
+    collection_name: str
+    alerts: list[AlertKpi]
+
+
 class CompletenessKpis(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "total_pieces": 298,
-                    "without_inventory_code": 160,
-                    "without_photo": 41,
-                    "without_location": 96,
-                    "missing_required_fields": 12,
-                    "completeness_ratio": 0.62,
+                    "total_pieces": 300,
+                    "alerts": [
+                        {
+                            "alert": "MISSING_INVENTORY_CODE",
+                            "numerator": 100,
+                            "denominator": 250,
+                            "completeness_ratio": 0.6,
+                        }
+                    ],
                     "by_collection": [
-                        {"collection_name": "Colección MMZ (ficticia)", "completeness_ratio": 0.7}
+                        {
+                            "collection_id": EX_PIECE_ID,
+                            "collection_name": "Colección AJB (ficticia, en comodato)",
+                            "alerts": [
+                                {
+                                    "alert": "MISSING_INVENTORY_CODE",
+                                    "numerator": 0,
+                                    "denominator": 0,
+                                    "completeness_ratio": None,
+                                }
+                            ],
+                        }
                     ],
                     "computed_at": EX_DATETIME,
                 }
@@ -133,12 +182,8 @@ class CompletenessKpis(BaseModel):
     )
 
     total_pieces: int
-    without_inventory_code: int
-    without_photo: int
-    without_location: int
-    missing_required_fields: int
-    completeness_ratio: float = Field(ge=0, le=1)
-    by_collection: list[dict[str, str | float | int | None]]
+    alerts: list[AlertKpi]
+    by_collection: list[CollectionKpis]
     computed_at: datetime
 
 

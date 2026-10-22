@@ -56,9 +56,7 @@ def test_put_unknown_field_is_422_with_allowed_fields(login_as: LoginAs) -> None
 def test_internal_viewer_cannot_read_or_write_completeness_rules(login_as: LoginAs) -> None:
     client = login_as("INTERNAL_VIEWER")
     assert client.get("/api/v1/quality/completeness-rules").status_code == 403
-    assert (
-        client.put("/api/v1/quality/completeness-rules", json={"rules": []}).status_code == 403
-    )
+    assert client.put("/api/v1/quality/completeness-rules", json={"rules": []}).status_code == 403
 
 
 def test_collections_manager_cannot_write_completeness_rules(login_as: LoginAs) -> None:

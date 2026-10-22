@@ -87,6 +87,14 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - **Nota para quien retome `GET /pieces`**: ese listado sigue pendiente de alinear su paginación a `page`/`limit` (tarea 4.1, fila 2 del mapeo) — `/search` no lo resuelve, son endpoints distintos.
 - PR: #55 (rama `Sergio`), mergeado tras corregir un import sin usar (`ruff`) y resincronizar el cliente tipado (`npm run openapi:client`), que habían quedado desactualizados tras un merge de `main` a mitad del PR.
 
+### 2026-10-22 — `alertas-y-reporte-incompletas`: reglas de completitud, alertas de la pieza y KPI del tablero (tareas 1.1–1.3, 2.1, 2.2)
+
+- **Qué cambió**: `quality/completeness.py` (design D1) define una sola vez las 6 alertas (`AlertCode`) como predicado + denominador SQLAlchemy, reutilizadas por la ficha, el KPI y (más adelante) el reporte y la búsqueda. `completeness_rule`/`completeness_snapshot` (migración `0009`) y `GET`/`PUT /quality/completeness-rules` (design D2) hacen configurables los campos obligatorios/recomendados, con lista blanca y auditoría. `GET /pieces/{id}/alerts` expone las alertas activas de una pieza con mensaje y acción sugerida. `quality/kpis.py` (design D3) calcula, en una sola consulta por grupo (`SUM(CASE…)`, portable a PostgreSQL y SQLite), el numerador/denominador/porcentaje de cada alerta; `GET /reports/dashboard-stats?by_collection=` los expone global y por colección raíz con subcolecciones (reutiliza `_descendants`, de `catalog/queries.py`), con `completeness_ratio: null` cuando el denominador es 0 (nunca división por cero).
+- **Esquema de la API**: `CompletenessKpis` cambió de forma (ya no son 4 campos fijos `without_*` + un único `completeness_ratio`) a `{total_pieces, alerts: AlertKpi[], by_collection: CollectionKpis[], computed_at}`, para que cualquier alerta — no solo 3 — tenga numerador, denominador y porcentaje explícitos (RF-035). Se actualizó el único consumidor del frontend que ya tipaba contra el contrato (`app/inicio`, mock) para no romper el build; el tablero real es la tarea 3.2, todavía pendiente.
+- **Pruebas**: `tests/test_quality_completeness.py` (alertas, D1), `tests/api/test_api_completeness_rules.py` (D2), `tests/api/test_api_quality_alerts.py` (ficha, tarea 2.1), `tests/test_quality_kpis.py` y `tests/api/test_api_quality_kpis.py` (tarea 2.2: código I solo sobre propiedad 250/100 → 60 %, colección solo en comodato → `null`, catálogo vacío sin dividir por cero).
+- **Documentación**: `openspec/changes/alertas-y-reporte-incompletas/tasks.md` (1.1–1.3 y 2.1–2.2 marcadas `[x]`), `docs/api/openapi.json` y cliente tipado regenerados.
+- **Pendiente**: 2.3 (reporte de incompletas paginado), 2.4 (instantáneas históricas), sección 3 (frontend: panel de alertas en la ficha, tablero real, reporte), sección 4 (cierre: medición en PostgreSQL con Docker, manual de usuario, `openspec archive`).
+
 ## Registro por fase
 
 ### Fase 0 — Preparación y verificación (2026-09-17) — COMPLETADA con observaciones

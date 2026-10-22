@@ -31,9 +31,7 @@ DEFAULT_RULES = ActiveRules(required_fields=(), recommended_fields=())
 
 def _matches(session: Session, piece: Piece, code: AlertCode, rules: ActiveRules) -> bool:
     return (
-        session.scalar(
-            select(Piece.id).where(Piece.id == piece.id, alert_condition(code, rules))
-        )
+        session.scalar(select(Piece.id).where(Piece.id == piece.id, alert_condition(code, rules)))
         is not None
     )
 
@@ -64,9 +62,7 @@ def test_missing_inventory_code_applies_only_to_owned_without_current_code(
         session.commit()
 
     assert _matches(session, owned_without_code, AlertCode.MISSING_INVENTORY_CODE, DEFAULT_RULES)
-    assert not _matches(
-        session, owned_with_code, AlertCode.MISSING_INVENTORY_CODE, DEFAULT_RULES
-    )
+    assert not _matches(session, owned_with_code, AlertCode.MISSING_INVENTORY_CODE, DEFAULT_RULES)
     # RN-003/RN-004: comodato y préstamo temporal nunca generan esta alerta, tengan o no código.
     assert not _matches(session, comodato, AlertCode.MISSING_INVENTORY_CODE, DEFAULT_RULES)
     assert not _matches(session, temporary, AlertCode.MISSING_INVENTORY_CODE, DEFAULT_RULES)

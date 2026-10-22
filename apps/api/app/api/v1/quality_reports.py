@@ -30,6 +30,7 @@ from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
 from app.modules.quality.completeness import list_completeness_rules, replace_completeness_rules
+from app.modules.quality.kpis import compute_dashboard_kpis
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -39,7 +40,9 @@ from app.modules.quality.queue import (
 )
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
+    AlertKpi,
     AlertType,
+    CollectionKpis,
     CompletenessKpis,
     CompletenessRuleOut,
     CompletenessRulesUpdate,
@@ -91,10 +94,31 @@ def list_incomplete_pieces(
     response_model=CompletenessKpis,
     summary="KPI de completitud general y por colección (RF-035)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    **implemented(),
 )
-def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
-    raise not_implemented(CHANGE_INCOMPLETE, CompletenessKpis)
+def get_dashboard_stats(
+    session: SessionDep,
+    user: ReportViewer,
+    by_collection: Annotated[
+        bool, Query(description="Incluye el desglose por colección raíz con subcolecciones.")
+    ] = False,
+) -> CompletenessKpis:
+    kpis = compute_dashboard_kpis(session, by_collection=by_collection)
+    return CompletenessKpis(
+        total_pieces=kpis.total_pieces,
+        alerts=[AlertKpi.model_validate(alert, from_attributes=True) for alert in kpis.alerts],
+        by_collection=[
+            CollectionKpis(
+                collection_id=group.collection_id,
+                collection_name=group.collection_name,
+                alerts=[
+                    AlertKpi.model_validate(alert, from_attributes=True) for alert in group.alerts
+                ],
+            )
+            for group in kpis.by_collection
+        ],
+        computed_at=kpis.computed_at,
+    )
 
 
 @router.get(

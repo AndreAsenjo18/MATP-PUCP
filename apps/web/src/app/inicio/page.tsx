@@ -35,11 +35,19 @@ function KpiCard({ label, value, href, tone = "neutral" }: { label: string; valu
   );
 }
 
+function alertKpi(kpis: ReturnType<typeof computeCompletenessKpis>, alert: string) {
+  return kpis.alerts.find((a) => a.alert === alert);
+}
+
 function InicioContent() {
   const { currentRole, hasPermission } = useSession();
   const store = useMockStore();
   const kpis = computeCompletenessKpis();
   const incomplete = computeIncompletePieces();
+  const applicableRatios = kpis.alerts
+    .map((a) => a.completeness_ratio)
+    .filter((ratio): ratio is number => ratio !== null && ratio !== undefined);
+  const overallRatio = applicableRatios.length > 0 ? applicableRatios.reduce((sum, r) => sum + r, 0) / applicableRatios.length : null;
   const pendingSuggestions = store.aiSuggestions.filter((s) => s.status === "PENDING");
   const pendingDuplicates = store.duplicateCandidates.filter((d) => d.status === "PENDING");
   const recentBatches = [...store.importBatches].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -60,13 +68,31 @@ function InicioContent() {
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <KpiCard label="Piezas registradas" value={kpis.total_pieces} href="/busqueda" />
-          <KpiCard label="Sin código I" value={kpis.without_inventory_code} href="/busqueda?incompleteOnly=1" tone="warning" />
-          <KpiCard label="Sin fotografía" value={kpis.without_photo} href="/busqueda?incompleteOnly=1" tone="warning" />
-          <KpiCard label="Sin ubicación" value={kpis.without_location} href="/busqueda?incompleteOnly=1" tone="warning" />
+          <KpiCard
+            label="Sin código I"
+            value={alertKpi(kpis, "MISSING_INVENTORY_CODE")?.numerator ?? 0}
+            href="/busqueda?incompleteOnly=1"
+            tone="warning"
+          />
+          <KpiCard
+            label="Sin fotografía"
+            value={alertKpi(kpis, "MISSING_PHOTO")?.numerator ?? 0}
+            href="/busqueda?incompleteOnly=1"
+            tone="warning"
+          />
+          <KpiCard
+            label="Sin ubicación"
+            value={alertKpi(kpis, "MISSING_LOCATION")?.numerator ?? 0}
+            href="/busqueda?incompleteOnly=1"
+            tone="warning"
+          />
         </div>
         <p className="text-sm text-gris-texto">
-          Índice de completitud: <strong className="text-tinta">{Math.round(kpis.completeness_ratio * 100)} %</strong> · calculado{" "}
-          {new Date(kpis.computed_at).toLocaleString("es-PE")}
+          Índice de completitud:{" "}
+          <strong className="text-tinta">
+            {overallRatio === null ? "No aplica" : `${Math.round(overallRatio * 100)} %`}
+          </strong>{" "}
+          · calculado {new Date(kpis.computed_at).toLocaleString("es-PE")}
         </p>
       </section>
 

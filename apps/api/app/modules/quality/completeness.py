@@ -135,9 +135,7 @@ def _has_current_inventory_code() -> ColumnElement[bool]:
 
 def _has_active_photo() -> ColumnElement[bool]:
     ma = aliased(MediaAsset)
-    return exists(
-        select(1).select_from(ma).where(ma.piece_id == Piece.id, ma.deleted_at.is_(None))
-    )
+    return exists(select(1).select_from(ma).where(ma.piece_id == Piece.id, ma.deleted_at.is_(None)))
 
 
 def _has_unparseable_current_identifier() -> ColumnElement[bool]:
@@ -225,8 +223,9 @@ ALERTS: dict[AlertCode, AlertDefinition] = {
         suggested_action="Registrar sede y espacio",
         field="location",
         applies_to=lambda _rules: literal(True),
-        predicate=lambda _rules: Piece.current_location_id.is_(None)
-        | not_(_location_has_site_and_space()),
+        predicate=lambda _rules: (
+            Piece.current_location_id.is_(None) | not_(_location_has_site_and_space())
+        ),
     ),
     AlertCode.MISSING_REQUIRED_FIELDS: AlertDefinition(
         code=AlertCode.MISSING_REQUIRED_FIELDS,
