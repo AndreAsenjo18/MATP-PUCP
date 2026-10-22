@@ -63,3 +63,42 @@ La contrapartida: GitHub solo ejecuta `workflow_run` desde la versión del archi
 ### Permisos
 
 El workflow usa solo `GITHUB_TOKEN`, con permiso `packages: write`. No hay credenciales de nube ni llaves de servidores en el repositorio.
+
+## Evidencia CD2: despliegue tras reiniciar EC2
+
+**Fecha:** 22 de octubre de 2026.
+
+**Escenario:** OpenSpec `pipeline-despliegue-ambientes`, tarea 3.3: servidor de pruebas apagado durante un merge a `main`.
+
+### Procedimiento y resultados
+
+1. La instancia EC2 estaba apagada cuando se fusionó el Pull Request de CD2 a `main`.
+2. GitHub Actions publicó las imágenes `matp-api` y `matp-web` del commit `2646ac149493e33287b48301acb1291789abde81`.
+3. Se inició una nueva sesión de AWS Academy y se encendió EC2.
+4. El temporizador systemd detectó automáticamente la nueva versión y ejecutó el despliegue, sin intervención manual.
+5. Se verificó el estado de los contenedores y el endpoint HTTPS `/health`.
+
+| Verificación | Resultado |
+|---|---|
+| Versión anterior | `7c36c36c37ad5ae66cd704178c37f653133eecd7` |
+| Versión nueva | `2646ac149493e33287b48301acb1291789abde81` |
+| Despliegue automático | Exitoso |
+| Registro systemd | `Despliegue confirmado` a las 19:54 UTC |
+| API y Web | Healthy |
+| Caddy | Activo |
+| HTTPS `/health` | `status: ok` |
+| PostgreSQL RDS | `status: ok` |
+| Almacenamiento S3 | `status: ok` |
+| Temporizador | Active |
+
+### Comandos de verificación
+
+- `sudo journalctl -u matp-pull-deploy.service -b -n 100 --no-pager`
+- `systemctl is-active matp-pull-deploy.timer`
+- `cat /opt/matp/state/current-version`
+- `docker ps`
+- `curl -fsS https://54-237-95-196.sslip.io/health`
+
+**Resultado:** escenario de servidor apagado durante el merge validado satisfactoriamente.
+
+La tarea 3.3 continúa pendiente porque también exige comprobar un despliegue en menos de diez minutos después de un merge y el comportamiento ante una migración fallida.
