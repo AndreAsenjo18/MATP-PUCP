@@ -2,7 +2,7 @@
 
 Todo el sistema es de uso interno: sin iniciar sesión no se ve ningún dato del catálogo. Cada persona tiene su **cuenta individual**; no comparta su correo ni su contraseña, porque todo cambio queda registrado a nombre de quien lo hizo.
 
-> **[SUPUESTO]** Los tiempos (30 minutos de inactividad, 12 horas como máximo, bloqueo de 15 minutos tras 5 intentos fallidos) están por confirmar con el museo (pregunta Q1 en `docs/preguntas-contraparte.md`). El Administrador puede cambiarlos sin tocar el sistema.
+> **[SUPUESTO]** Los tiempos (30 minutos de inactividad, 12 horas como máximo, bloqueo de 15 minutos tras 5 intentos fallidos) están por confirmar con el museo (pregunta R1 en `docs/preguntas-contraparte.md`). El Administrador puede cambiarlos sin tocar el sistema.
 
 ## Iniciar sesión
 

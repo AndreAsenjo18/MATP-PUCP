@@ -32,9 +32,7 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.queries import (
     CatalogReader,
-    PieceFilters,
     Viewer,
-    build_piece_query,
     get_piece,
 )
 from app.modules.catalog.schemas import (
@@ -86,6 +84,7 @@ from app.modules.media.service import (
     verify_image_stream,
 )
 from app.modules.quality.schemas import PieceAlert
+from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -113,35 +112,41 @@ def piece_filters(
         TenureRegimeLabel | None,
         Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
     ] = None,
+    category_id: uuid.UUID | None = None,
     category_term_id: uuid.UUID | None = None,
+    material_id: uuid.UUID | None = None,
     material_term_id: uuid.UUID | None = None,
+    conservation_state_id: uuid.UUID | None = None,
     conservation_status_term_id: uuid.UUID | None = None,
     location_id: Annotated[uuid.UUID | None, Query(description="Incluye sub-ubicaciones.")] = None,
     has_inventory_code: Annotated[bool | None, Query(description="false = piezas sin I.")] = None,
     author: Annotated[str | None, Query(max_length=200)] = None,
     provenance: Annotated[str | None, Query(max_length=200)] = None,
     period_text: Annotated[str | None, Query(max_length=200)] = None,
+    epoch_start_year: Annotated[int | None, Query(description="Año de inicio de época.")] = None,
+    epoch_end_year: Annotated[int | None, Query(description="Año de fin de época.")] = None,
     sort: PieceSort = "denomination",
-) -> PieceFilters:
+) -> PieceFilter:
     regime = (
         code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
         if tenure_regime is not None
         else None
     )
-    return PieceFilters(
+    return PieceFilter(
         q=q,
         collection_id=collection_id,
         without_collection=without_collection,
         tenure_regime=regime,
-        category_term_id=category_term_id,
-        material_term_id=material_term_id,
-        conservation_status_term_id=conservation_status_term_id,
+        category_id=category_id or category_term_id,
+        material_id=material_id or material_term_id,
+        conservation_state_id=conservation_state_id or conservation_status_term_id,
         location_id=location_id,
         has_inventory_code=has_inventory_code,
         author=author,
         provenance=provenance,
         period_text=period_text,
-        sort=sort,
+        epoch_start_year=epoch_start_year,
+        epoch_end_year=epoch_end_year,
     )
 
 
@@ -156,11 +161,14 @@ def piece_filters(
 def list_pieces(
     session: SessionDep,
     user: Reader,
-    filters: Annotated[PieceFilters, Depends(piece_filters)],
+    filters: Annotated[PieceFilter, Depends(piece_filters)],
     params: Annotated[LimitPageParams, Depends(limit_page_params)],
 ) -> PieceSearchResponse:
-    pieces, total = paginate(session, build_piece_query(session, filters), params)
-    items = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
+    viewer = Viewer(user.permissions)
+    where_clause = filters.to_where(session, viewer)
+    query = select(Piece).where(where_clause).order_by(Piece.denomination)
+    pieces, total = paginate(session, query, params)
+    items = CatalogReader(session, viewer).summaries(pieces)
     return PieceSearchResponse(total=total, page=params.page, limit=params.limit, items=items)
 
 
