@@ -79,6 +79,14 @@ flowchart LR
 - Las propuestas (`propose_*`) nunca sobrescriben el texto original: generan campos estructurados marcados como propuesta. `propose_dimensions` conserva el texto en `dimensions_text` y propone `dimensions` como lista de `{"dimension": "alto", "value": 23, "unit": "cm"}` (esquema `Dimension` de `catalog`) [SUPUESTO Q7]. En medidas sin etiqueta (`23 x 15 cm`) no se supone el orden alto × ancho: `dimension` queda `null`.
 - Destino `terms`: un valor sin término correspondiente (ni por código, ni por etiqueta, ni por `value_map`) no se descarta ni crea términos: se envía al `source_payload` de la fila con su texto original y se cuenta en la vista previa. En este change, además, los valores con correspondencia solo se muestran en la vista previa; el texto de la columna completa queda en `source_payload`.
 - `validate_mapping`: denominación mapeada (o `default`), columnas de la plantilla ausentes del archivo, destino duplicado para campos escalares, tipo de identificador o vocabulario inexistente.
+- **`multiple_values`**: un campo escalar de la ficha cuya columna lleva una separación (`split_concatenated` o `split:<sep>`) es un error de validación, porque el campo admite un solo valor. Si aun así llega una lista al aplicar, la fila recibe el mismo error y el campo queda vacío.
+- **Reglas solo para v1.** Un mapeo v0 (el que construye `PUT /imports/{batch_id}/mapping` desde `ColumnMapping`) acepta y rechaza exactamente lo mismo que antes de este change. No le aplican:
+  - el error por tipo de identificador desactivado;
+  - `denomination` como valor por defecto (en v0 sigue siendo `unknown_default`);
+  - `multiple_values`;
+  - las comprobaciones de vocabularios y términos.
+  
+  En v0, el régimen de tenencia por defecto sigue aceptando las etiquetas del contrato (`Propiedad`); en v1 exige el código interno (`OWNED`).
 
 ### D3. Sugerencia de plantilla
 `header_signature` = SHA-256 de cabeceras normalizadas (N1 + sin tildes) **ordenadas**. La sugerencia se pide **solo** por `POST /import-templates/suggest {headers}`: coincidencia exacta por firma → `score=1`; si no, `score = 0,5 × J + 0,5 × S`, donde `J` es el índice de Jaccard entre los conjuntos de cabeceras normalizadas y `S` el promedio, sobre las cabeceras de la plantilla, de la mejor razón `difflib.SequenceMatcher` contra las cabeceras del archivo [SUPUESTO Q1]; devuelve hasta 3 plantillas [SUPUESTO Q2] con `score ≥ 0,6` [SUPUESTO Q1], ordenadas por `score`, con columnas faltantes y columnas nuevas.

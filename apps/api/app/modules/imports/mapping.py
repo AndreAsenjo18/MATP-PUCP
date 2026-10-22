@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.catalog.enums import TenureRegime
+from app.modules.collections.models import Term, Vocabulary
 from app.modules.collections.service import find_collection_by_code
 from app.modules.identification.models import (
     IdentifierType,
@@ -44,7 +45,12 @@ from app.modules.identification.normalization import (
 from app.modules.imports.classify import RowError, RowInput
 from app.modules.imports.ingest import MERGED_KEY
 from app.modules.imports.matching import RowIdentifier
-from app.modules.imports.transforms import TransformSpecError, parse_transforms
+from app.modules.imports.transforms import (
+    TransformedValue,
+    TransformSpecError,
+    parse_transforms,
+    run_transforms,
+)
 
 SPEC_VERSION = 0  # provisional; ``plantillas-mapeo-y-normalizacion`` defines version 1
 IDENTIFIER_TARGET = "identifier"
@@ -67,6 +73,8 @@ FIELD_TARGETS: dict[str, str] = {
     "temporary_inventory_number": "Número de inventario temporal",
 }
 DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
+# In v1 ``denomination`` may come from a default too (design D2); v0 keeps DEFAULT_TARGETS.
+DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
 PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"})
 
@@ -340,18 +348,22 @@ class MappingError:
 
 
 class MappingContext:
-    """Identifier types and collections, loaded once per batch."""
+    """Identifier types, collections and vocabularies, loaded once per batch."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
-        self.identifier_rules: dict[str, NormalizationRule] = dict(
-            session.execute(
-                select(IdentifierType.code, IdentifierType.normalization_rule).where(
-                    IdentifierType.deleted_at.is_(None)
-                )
-            ).all()
+        rows = session.execute(
+            select(
+                IdentifierType.code, IdentifierType.normalization_rule, IdentifierType.is_active
+            ).where(IdentifierType.deleted_at.is_(None))
+        ).all()
+        self.identifier_rules: dict[str, NormalizationRule] = {code: rule for code, rule, _ in rows}
+        self.inactive_identifier_types: frozenset[str] = frozenset(
+            code for code, _rule, active in rows if not active
         )
         self._collections: dict[str, uuid.UUID | None] = {}
+        self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
+        self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
     def collection_id(self, code: str) -> uuid.UUID | None:
         key = _fold(code)
@@ -359,6 +371,53 @@ class MappingContext:
             found = find_collection_by_code(self._session, code)
             self._collections[key] = found.id if found is not None else None
         return self._collections[key]
+
+    def vocabulary_terms(self, code: str) -> "dict[str, VocabularyTerm] | None":
+        """Terms of a vocabulary by code (active and inactive); None if it does not exist."""
+        if code not in self._vocabularies:
+            vocabulary_id = self._session.scalar(
+                select(Vocabulary.id).where(
+                    Vocabulary.code == code, Vocabulary.deleted_at.is_(None)
+                )
+            )
+            if vocabulary_id is None:
+                self._vocabularies[code] = None
+            else:
+                terms = self._session.execute(
+                    select(Term.code, Term.label, Term.is_active).where(
+                        Term.vocabulary_id == vocabulary_id, Term.deleted_at.is_(None)
+                    )
+                ).all()
+                self._vocabularies[code] = {
+                    term_code: VocabularyTerm(term_code, label, active)
+                    for term_code, label, active in terms
+                }
+        return self._vocabularies[code]
+
+    def plan(self, spec: "MappingSpec | MappingSpecV1") -> "_Plan":
+        """The v1 plan of ``spec``, built once per spec (``apply_mapping`` runs once per row)."""
+        cached = self._plans.get(id(spec))
+        if cached is not None and cached[0] is spec:
+            return cached[1]
+        plan = _plan(spec)
+        self._plans[id(spec)] = (spec, plan)
+        return plan
+
+
+@dataclass(frozen=True)
+class VocabularyTerm:
+    code: str
+    label: str
+    is_active: bool
+
+
+@dataclass
+class TermMatches:
+    """Values of a ``terms`` column and the active term each corresponds to (preview only)."""
+
+    vocabulary: str
+    matched: list[tuple[str, str]] = field(default_factory=list)  # (value, term code)
+    unmatched: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -369,6 +428,18 @@ class MappedRow:
     errors: list[RowError] = field(default_factory=list)
     collection_id: uuid.UUID | None = None
     tenure_regime: TenureRegime | None = None
+    # Preview only (design D2): kept in memory, never serialized by ``as_json``.
+    transformed: dict[str, TransformedValue] = field(
+        default_factory=dict, compare=False, repr=False
+    )
+    term_matches: dict[str, TermMatches] = field(default_factory=dict, compare=False, repr=False)
+
+    @property
+    def proposals(self) -> dict[str, dict[str, Any]]:
+        """Proposed fields (``epoch_*``, ``dimensions``) by source column; preview only."""
+        return {
+            source: value.proposals for source, value in self.transformed.items() if value.proposals
+        }
 
     def as_json(self) -> dict[str, Any]:
         """Value stored in ``import_row.mapped_data``."""
@@ -422,96 +493,125 @@ class MappedRow:
         )
 
 
-def validate_mapping(
-    spec: MappingSpec, headers: list[str], ctx: MappingContext
-) -> list[MappingError]:
-    errors: list[MappingError] = []
-    known = set(headers)
-    seen_sources: set[str] = set()
-    scalar_targets: dict[str, str] = {}
+# --- v0 or v1 -> one plan ------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Plan:
+    """What ``validate_mapping`` and ``apply_mapping`` work on, whatever the spec version.
+
+    ``columns`` keeps, in order, each column as v1 or the error that prevented converting it.
+    A v0 spec, as ``PUT /imports/{batch_id}/mapping`` stores it, behaves exactly as before this
+    change: its defaults may carry contract labels (``Propiedad``) and the rules added for v1
+    (inactive identifier type, ``denomination`` default, ``multiple_values``, vocabularies)
+    do not apply to it. ``is_v1`` tells them apart.
+    """
+
+    columns: list[tuple[str, ColumnSpecV1 | MappingError]]
+    defaults: dict[str, str]
+    is_v1: bool
+
+
+def _plan(spec: "MappingSpec | MappingSpecV1") -> _Plan:
+    if isinstance(spec, MappingSpecV1):
+        return _Plan([(column.source, column) for column in spec.columns], spec.defaults, True)
+    columns: list[tuple[str, ColumnSpecV1 | MappingError]] = []
     for column in spec.columns:
-        if column.source not in known:
-            errors.append(
-                MappingError(
-                    "unknown_column",
-                    f"La columna «{column.source}» no está en el archivo.",
-                    column.source,
-                )
+        try:
+            columns.append(
+                (column.source, ColumnSpecV1(source=column.source, target=_target_from_v0(column)))
             )
-        if column.source in seen_sources:
-            errors.append(
-                MappingError(
-                    "duplicate_column",
-                    f"La columna «{column.source}» está mapeada más de una vez.",
+        except MappingConversionError:
+            columns.append(
+                (
                     column.source,
-                )
-            )
-        seen_sources.add(column.source)
-        if column.target == IDENTIFIER_TARGET:
-            if column.identifier_type is None and not column.split_compound:
-                errors.append(
                     MappingError(
                         "identifier_type_required",
                         f"Indique el tipo de identificador de la columna «{column.source}» o "
                         "marque que la celda puede tener varios códigos.",
                         column.source,
-                    )
+                    ),
                 )
-            elif (
-                column.identifier_type is not None
-                and column.identifier_type not in ctx.identifier_rules
-            ):
+            )
+    return _Plan(columns, dict(spec.defaults), False)
+
+
+def _splits(column: ColumnSpecV1) -> bool:
+    return any(
+        name == "split_concatenated" or name.startswith("split:") for name in column.transforms
+    )
+
+
+# --- validation ----------------------------------------------------------------------------
+
+
+def validate_mapping(
+    spec: "MappingSpec | MappingSpecV1", headers: list[str], ctx: MappingContext
+) -> list[MappingError]:
+    """Errors of a mapping (v0 or v1) against the file headers and the reference data."""
+    plan = ctx.plan(spec)
+    errors: list[MappingError] = []
+    known = set(headers)
+    seen_sources: set[str] = set()
+    scalar_targets: dict[str, str] = {}
+    for source, column in plan.columns:
+        if source not in known:
+            errors.append(
+                MappingError(
+                    "unknown_column", f"La columna «{source}» no está en el archivo.", source
+                )
+            )
+        if source in seen_sources:
+            errors.append(
+                MappingError(
+                    "duplicate_column",
+                    f"La columna «{source}» está mapeada más de una vez.",
+                    source,
+                )
+            )
+        seen_sources.add(source)
+        if isinstance(column, MappingError):
+            errors.append(column)
+            continue
+        target = column.target
+        if isinstance(target, IdentifierTarget):
+            errors += _identifier_type_errors(target.type, source, ctx, plan.is_v1)
+        elif isinstance(target, IdentifiersTarget):
+            if target.default_type is not None:
+                errors += _identifier_type_errors(target.default_type, source, ctx, plan.is_v1)
+        elif isinstance(target, FieldTarget):
+            if target.name not in FIELD_TARGETS:
                 errors.append(
                     MappingError(
-                        "unknown_identifier_type",
-                        f"El tipo de identificador «{column.identifier_type}» no existe.",
-                        column.source,
+                        "unknown_target",
+                        f"El destino «{target.name}» no es un campo de la ficha.",
+                        source,
                     )
                 )
-        elif column.target in FIELD_TARGETS:
-            if column.target in scalar_targets:
+                continue
+            if target.name in scalar_targets:
                 errors.append(
                     MappingError(
                         "duplicate_target",
-                        f"«{FIELD_TARGETS[column.target]}» ya se toma de la columna "
-                        f"«{scalar_targets[column.target]}».",
-                        column.source,
+                        f"«{FIELD_TARGETS[target.name]}» ya se toma de la columna "
+                        f"«{scalar_targets[target.name]}».",
+                        source,
                     )
                 )
-            scalar_targets[column.target] = column.source
-        elif column.target != PAYLOAD_TARGET:
-            errors.append(
-                MappingError(
-                    "unknown_target",
-                    f"El destino «{column.target}» no es un campo de la ficha.",
-                    column.source,
+            scalar_targets[target.name] = source
+            if plan.is_v1 and _splits(column):
+                errors.append(
+                    MappingError(
+                        "multiple_values",
+                        f"«{FIELD_TARGETS[target.name]}» admite un solo valor: quite la "
+                        f"separación de la columna «{source}».",
+                        source,
+                    )
                 )
-            )
-    for name in spec.defaults:
-        if name not in DEFAULT_TARGETS:
-            errors.append(
-                MappingError(
-                    "unknown_default",
-                    f"No se admite un valor por defecto para «{name}».",
-                )
-            )
-    tenure_default = spec.defaults.get("tenure_regime")
-    if tenure_default is not None and _fold(tenure_default) not in TENURE_ALIASES:
-        errors.append(
-            MappingError(
-                "invalid_default",
-                f"«{tenure_default}» no es un régimen de tenencia (Propiedad, Comodato o "
-                "Préstamo Temporal).",
-            )
-        )
-    collection_default = spec.defaults.get("collection")
-    if collection_default is not None and ctx.collection_id(collection_default) is None:
-        errors.append(
-            MappingError(
-                "invalid_default", f"No existe una colección con la sigla «{collection_default}»."
-            )
-        )
-    if "denomination" not in scalar_targets:
+        elif isinstance(target, TermsTarget):  # only v1 has ``terms`` columns
+            errors += _terms_errors(target.vocabulary, column.value_map or {}, source, ctx)
+    errors += _defaults_errors(plan, ctx)
+    if "denomination" not in scalar_targets and not _denomination_default(plan):
         errors.append(
             MappingError(
                 "denomination_required",
@@ -519,6 +619,104 @@ def validate_mapping(
             )
         )
     return errors
+
+
+def _denomination_default(plan: _Plan) -> str | None:
+    """The ``denomination`` default; v1 only (v0 rejects it as ``unknown_default``)."""
+    value = (plan.defaults.get("denomination") or "").strip() if plan.is_v1 else ""
+    return value or None
+
+
+def _identifier_type_errors(
+    type_code: str, source: str, ctx: MappingContext, is_v1: bool
+) -> list[MappingError]:
+    if type_code not in ctx.identifier_rules:
+        return [
+            MappingError(
+                "unknown_identifier_type",
+                f"El tipo de identificador «{type_code}» no existe.",
+                source,
+            )
+        ]
+    if is_v1 and type_code in ctx.inactive_identifier_types:
+        return [
+            MappingError(
+                "inactive_identifier_type",
+                f"El tipo de identificador «{type_code}» está desactivado.",
+                source,
+            )
+        ]
+    return []
+
+
+def _terms_errors(
+    vocabulary: str, value_map: Mapping[str, str], source: str, ctx: MappingContext
+) -> list[MappingError]:
+    terms = ctx.vocabulary_terms(vocabulary)
+    if terms is None:
+        return [
+            MappingError("unknown_vocabulary", f"El vocabulario «{vocabulary}» no existe.", source)
+        ]
+    errors: list[MappingError] = []
+    for value, code in value_map.items():
+        term = terms.get(code)
+        if term is None:
+            errors.append(
+                MappingError(
+                    "unknown_term",
+                    f"«{value}» se asocia al término «{code}», que no existe en el vocabulario "
+                    f"«{vocabulary}».",
+                    source,
+                )
+            )
+        elif not term.is_active:
+            errors.append(
+                MappingError(
+                    "inactive_term",
+                    f"«{value}» se asocia al término «{term.label}» ({code}), que está "
+                    "desactivado.",
+                    source,
+                )
+            )
+    return errors
+
+
+def _defaults_errors(plan: _Plan, ctx: MappingContext) -> list[MappingError]:
+    allowed = DEFAULT_TARGETS_V1 if plan.is_v1 else DEFAULT_TARGETS
+    errors = [
+        MappingError("unknown_default", f"No se admite un valor por defecto para «{name}».")
+        for name in plan.defaults
+        if name not in allowed
+    ]
+    tenure_default = plan.defaults.get("tenure_regime")
+    if tenure_default is not None:
+        if plan.is_v1 and tenure_default not in {regime.value for regime in TenureRegime}:
+            errors.append(
+                MappingError(
+                    "invalid_default",
+                    f"«{tenure_default}» no es un código de régimen de tenencia "
+                    f"({', '.join(regime.value for regime in TenureRegime)}).",
+                )
+            )
+        elif not plan.is_v1 and _fold(tenure_default) not in TENURE_ALIASES:
+            errors.append(
+                MappingError(
+                    "invalid_default",
+                    f"«{tenure_default}» no es un régimen de tenencia (Propiedad, Comodato o "
+                    "Préstamo Temporal).",
+                )
+            )
+    collection_default = plan.defaults.get("collection")
+    if collection_default is not None and ctx.collection_id(collection_default) is None:
+        errors.append(
+            MappingError(
+                "invalid_default", f"No existe una colección con la sigla «{collection_default}»."
+            )
+        )
+    return errors
+
+
+# --- application ---------------------------------------------------------------------------
 
 
 def _text(value: Any) -> str | None:
@@ -532,22 +730,52 @@ def _text(value: Any) -> str | None:
     return text or None
 
 
-def apply_mapping(raw_row: dict[str, Any], spec: MappingSpec, ctx: MappingContext) -> MappedRow:
+def _parts(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else [value]
+
+
+MAPPED_KINDS = frozenset({"field", "identifier", "identifiers"})
+
+
+def apply_mapping(
+    raw_row: dict[str, Any], spec: "MappingSpec | MappingSpecV1", ctx: MappingContext
+) -> MappedRow:
+    """Map one raw row (v0 or v1 spec). Values stored in ``mapped_data`` are always text:
+    a transformed year (``1998``) or date (``1998-04-03``) is written as text, as Excel date
+    cells already were. Term matches, proposals and traces stay in memory for the preview."""
+    plan = ctx.plan(spec)
+    columns = [column for _source, column in plan.columns if isinstance(column, ColumnSpecV1)]
     mapped = MappedRow()
-    mapped_sources = {column.source for column in spec.columns if column.target != PAYLOAD_TARGET}
-    for column in spec.columns:
-        value = _text(raw_row.get(column.source))
-        if column.target == IDENTIFIER_TARGET:
-            mapped.identifiers += _identifiers(value, column, ctx)
-        elif column.target in FIELD_TARGETS and value is not None:
-            mapped.fields[column.target] = value
+    mapped_sources = {column.source for column in columns if column.target.kind in MAPPED_KINDS}
+    for column in columns:
+        raw = raw_row.get(column.source)
+        value, is_absent = raw, False
+        if column.transforms:
+            transformed = run_transforms(
+                raw, parse_transforms(column.transforms, column.value_map), column.value_map
+            )
+            mapped.transformed[column.source] = transformed
+            if transformed.error is not None:
+                mapped.errors.append(
+                    RowError(
+                        transformed.error.code,
+                        f"Columna «{column.source}»: {transformed.error.message}",
+                        column.target.name if isinstance(column.target, FieldTarget) else None,
+                    )
+                )
+                continue
+            value, is_absent = transformed.value, transformed.is_absent
+        _map_value(mapped, column, raw, value, is_absent, ctx)
     mapped.source_payload = {
         key: value
         for key, value in raw_row.items()
         if key not in mapped_sources and key != MERGED_KEY and value not in (None, "")
     }
 
-    tenure = mapped.fields.get("tenure_regime") or spec.defaults.get("tenure_regime")
+    denomination_default = _denomination_default(plan)
+    if mapped.fields.get("denomination") is None and denomination_default:
+        mapped.fields["denomination"] = denomination_default
+    tenure = mapped.fields.get("tenure_regime") or plan.defaults.get("tenure_regime")
     if tenure is not None:
         mapped.tenure_regime = TENURE_ALIASES.get(_fold(tenure))
         if mapped.tenure_regime is None:
@@ -559,7 +787,7 @@ def apply_mapping(raw_row: dict[str, Any], spec: MappingSpec, ctx: MappingContex
                     "tenure_regime",
                 )
             )
-    collection = mapped.fields.get("collection") or spec.defaults.get("collection")
+    collection = mapped.fields.get("collection") or plan.defaults.get("collection")
     if collection is not None:
         mapped.collection_id = ctx.collection_id(collection)
         if mapped.collection_id is None:
@@ -571,6 +799,67 @@ def apply_mapping(raw_row: dict[str, Any], spec: MappingSpec, ctx: MappingContex
                 )
             )
     return mapped
+
+
+def _map_value(
+    mapped: MappedRow,
+    column: ColumnSpecV1,
+    raw: Any,
+    value: Any,
+    is_absent: bool,
+    ctx: MappingContext,
+) -> None:
+    target = column.target
+    if isinstance(target, FieldTarget):
+        if target.name not in FIELD_TARGETS:
+            return
+        if isinstance(value, list) and len(value) > 1:
+            mapped.errors.append(
+                RowError(
+                    "multiple_values",
+                    f"Columna «{column.source}»: «{FIELD_TARGETS[target.name]}» admite un solo "
+                    "valor.",
+                    target.name,
+                )
+            )
+            return
+        text = _text(value[0] if isinstance(value, list) else value)
+        if text is not None:
+            mapped.fields[target.name] = text
+    elif isinstance(target, IdentifierTarget | IdentifiersTarget):
+        split = isinstance(target, IdentifiersTarget)
+        type_code = target.default_type if isinstance(target, IdentifiersTarget) else target.type
+        legacy = ColumnSpec(column.source, IDENTIFIER_TARGET, type_code, split)
+        if is_absent:
+            # The absence marker is kept as an identifier "without code", as without transforms.
+            mapped.identifiers += _identifiers(_text(raw), legacy, ctx)
+        else:
+            for part in _parts(value):
+                mapped.identifiers += _identifiers(_text(part), legacy, ctx)
+    elif isinstance(target, TermsTarget):
+        mapped.term_matches[column.source] = _match_terms(target.vocabulary, value, ctx)
+
+
+def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:
+    """An active term whose code or label equals the value, ignoring case and accents
+    [SUPUESTO Q6]."""
+    matches = TermMatches(vocabulary)
+    terms = ctx.vocabulary_terms(vocabulary) or {}
+    by_key: dict[str, str] = {}
+    for term in terms.values():
+        if term.is_active:
+            by_key.setdefault(_fold(term.code), term.code)
+            by_key.setdefault(_fold(term.label), term.code)
+    for part in _parts(value):
+        text = _text(part)
+        if text is None:
+            continue
+        code = by_key.get(_fold(text))
+        if code is None:
+            matches.unmatched.append(text)
+        else:
+            matches.matched.append((text, code))
+    return matches
 
 
 def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> list[RowIdentifier]:
