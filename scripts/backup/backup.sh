@@ -64,6 +64,7 @@ echo "Destino: $BACKUP_PATH"
 
 if ! docker run --rm \
     --network bridge \
+    --user "$(id -u):$(id -g)" \
     --env-file "$ENV_FILE" \
     --mount "type=bind,src=$BACKUP_DIR,dst=/backup" \
     "$POSTGRES_IMAGE" \
