@@ -10,6 +10,7 @@
 
 - [ ] 2.1 `POST /imports/{batch_id}/photos/upload-urls` (tandas de hasta 100, `already_registered` por huella, límite de fotos, 409 si el lote no admite fotos); pruebas: tanda nueva, reanudación sin duplicar, lote aprobado 409, Consulta interna 403 (Req: Fotografías del lote con subida reanudable)
 - [ ] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
+  - Al pasar fotos a `VERIFIED`, la tarea debe llamar a `imports.photos.match_batch_photos` en la misma transacción (es la mitad «al llegar fotos nuevas» de la 3.3).
 - [ ] 2.3 Comando `python -m app.imports.purge_photos` para fotos de lotes abandonados o descartadas tras `IMPORT_PHOTO_RETENTION_DAYS`; prueba de que no toca fotos aplicadas ni de lotes vigentes (Req: Fotografías del lote con subida reanudable; RN-005)
 
 ## 3. Emparejamiento
@@ -17,6 +18,7 @@
 - [x] 3.1 `app/modules/imports/photo_matching.py`: limpieza de sufijos, extracción de candidatos y normalización con `identification.normalization.normalize`; pruebas unitarias con nombres sintéticos (`I 1234 (2).JPG`, `MMZ045_frontal.jpg`, `1234.0.jpg`, `IMG_20190312.jpg`) (Req: Emparejamiento automático propuesto entre fotos y filas; RF-023)
 - [x] 3.2 Índice del lote y resolución en tres vías (archivo → carpeta → columna `photo_filename` del mapeo), orden natural y `ambiguous`/`unmatched`; pruebas de los cinco escenarios del requirement (Req: Emparejamiento automático propuesto…)
 - [ ] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
+  - Hecho (2026-10-22): `imports/photos.py` (`match_batch_photos`) y su llamada al final de la etapa de validación, con sus pruebas. Pendiente: la llamada desde la verificación, que se hace en la 2.2.
 - [ ] 3.4 Campo `photo_filename` en `MappingSpec` (coordinar con la célula dueña de `plantillas-mapeo-y-normalizacion`); prueba de mapeo con la columna «Foto» (Req: Emparejamiento automático propuesto… — escenario «Columna de archivo definida en el mapeo»)
 
 ## 4. Bandeja y previsualización

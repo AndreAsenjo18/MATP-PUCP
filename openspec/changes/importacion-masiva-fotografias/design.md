@@ -115,11 +115,12 @@ El emparejamiento se ejecuta al terminar la validación del lote, cuando ya exis
 - `GET /imports/{batch_id}/photos?status=&match_status=&row_id=&page=&limit=` y `GET /imports/{batch_id}/photos/summary` (conteos por estado). Las miniaturas se sirven con URL firmadas de corta duración.
 - `PATCH /imports/{batch_id}/photos` acepta operaciones en lote:
   - `assign {photo_ids, row_id}` → `match_status=manual`;
-  - `unassign {photo_ids}`;
-  - `discard {photo_ids, reason}`;
+  - `unassign {photo_ids}` → `match_status=manual` sin fila (`row_id`, candidatos y `sort_key` vacíos);
+  - `discard {photo_ids, reason}` → `status=discarded`, con el motivo en `rejection_reason`;
   - `confirm_duplicate {photo_ids}`;
   - `reorder {row_id, photo_ids}`.
   Cada operación registra una entrada en la bitácora del lote. Asignar a una fila de otro lote responde `422`.
+- **Decisiones que el emparejamiento respeta** (2026-10-22, tarea 3.3). Una foto `manual`, con fila o sin ella, y una foto `discarded` nunca se vuelven a emparejar solas. Así se distinguen de una foto nunca emparejada, que no tiene `match_status` o tiene uno automático (`matched`, `ambiguous`, `unmatched`). Las fotos automáticas de una fila se numeran a continuación del mayor `sort_key` manual. Al remapear (`reset_validation`) solo se borran las propuestas automáticas. Al volver a leer el archivo (`clear_rows`), las filas se reemplazan y se desvinculan también las asignaciones manuales a una fila; las fotos sin fila y las descartadas se mantienen.
 - **Duplicados**: si la huella ya está en otra foto del lote, la segunda se rechaza como repetida en el lote. Si la fila es de actualización y la huella ya existe en `media_asset` de la pieza destino, se marca `duplicate_of_existing` y no se aplica salvo `confirm_duplicate`.
 - Permiso `imports.prepare` para subir y decidir. La aprobación sigue siendo `imports.approve`.
 
