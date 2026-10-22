@@ -341,3 +341,34 @@ def test_duplicate_detection_on_postgresql(
     ):
         assert statement in sql
     assert "DROP TABLE" not in sql
+
+def test_search_unaccent_and_trigram_indexes_on_postgresql(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """0009 enables unaccent, creates immutable_unaccent and adds GIN indexes on PostgreSQL."""
+    url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
+    monkeypatch.setenv("DATABASE_URL", url)
+    command.upgrade(
+        _config(url),
+        "0008_locations_idempotency:0009_search_unaccent_and_trigram_indexes",
+        sql=True,
+    )
+    sql = capsys.readouterr().out
+    for statement in (
+        "CREATE EXTENSION IF NOT EXISTS unaccent",
+        "CREATE OR REPLACE FUNCTION immutable_unaccent",
+        "CREATE INDEX IF NOT EXISTS ix_piece_denomination_unaccent_trgm",
+        "CREATE INDEX IF NOT EXISTS ix_piece_author_unaccent_trgm",
+        "CREATE INDEX IF NOT EXISTS ix_piece_provenance_unaccent_trgm",
+    ):
+        assert statement in sql
+
+
+def test_sqlite_unaccent_function_registered(migrated) -> None:  # type: ignore[no-untyped-def]
+    """SQLite engines register unaccent and immutable_unaccent for unit tests."""
+    with migrated.connect() as connection:
+        result = connection.execute(
+            text("SELECT immutable_unaccent('Cerámica Huánuco'), unaccent('Árbol Niño')")
+        ).fetchone()
+        assert result == ("Ceramica Huanuco", "Arbol Nino")
+

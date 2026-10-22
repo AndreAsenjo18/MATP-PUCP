@@ -2,7 +2,7 @@
 
 - [x] 1.1 Crear `search/filters.py` con `PieceFilter` (`to_where`, `describe`), épocas con conteo de excluidas, colección y ubicación con descendientes, y rechazo de filtros sensibles; pruebas unitarias por filtro (Req: Filtro de piezas único para búsqueda, exportación y reportes; RF-032, RF-041)
 - [x] 1.2 Migrar `GET /api/v1/pieces` y `GET /api/v1/search` a `PieceFilter` sin romper las pruebas existentes de `tests/api/test_api_pieces_search.py` (Req: Filtro de piezas único…)
-- [ ] 1.3 Migración: extensión `unaccent`, función `immutable_unaccent` e índices funcionales GIN trigram en `title`, `author`, `provenance` (con detección de permisos y mensaje claro); función equivalente registrada en SQLite; `tests/test_migrations.py` en verde (Req: Búsqueda sin tildes con explicación de la coincidencia)
+- [x] 1.3 Migración: extensión `unaccent`, función `immutable_unaccent` e índices funcionales GIN trigram en `title`, `author`, `provenance` (con detección de permisos y mensaje claro); función equivalente registrada en SQLite; `tests/test_migrations.py` en verde (Req: Búsqueda sin tildes con explicación de la coincidencia)
 - [ ] 1.4 Crear `search/ranking.py` (código vigente > histórico > texto; `match_reason`; sugerencias sin resultados); pruebas de los tres escenarios (Req: Búsqueda sin tildes con explicación de la coincidencia; RF-031)
 - [ ] 1.5 Integrar el filtro por alertas con los predicados de `alertas-y-reporte-incompletas` (501 explícito si no está aplicado); prueba de ambas ramas (RF-032)
 
