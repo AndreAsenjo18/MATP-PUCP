@@ -14,6 +14,7 @@ from app.api.v1 import (
     quality_reports,
     trash,
 )
+from app.modules.exports.router import router as exports_router
 
 API_PREFIX = "/api/v1"
 
@@ -31,3 +32,4 @@ for module in (
     trash,
 ):
     api_router.include_router(module.router)
+api_router.include_router(exports_router)

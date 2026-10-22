@@ -125,6 +125,17 @@ TABLE_EXCEPTIONS: dict[str, TableException] = {
             owner="Ubicaciones",
         ),
         _exception(
+            "export_job",
+            scopes=[SCOPE_SOFT_DELETE, SCOPE_AUDIT],
+            reason=(
+                "Estado técnico de una exportación en segundo plano (progreso, latido, "
+                "vencimiento): auditar cada latido inundaría audit_log. La petición de "
+                "exportar sí queda auditada con origen EXPORT y el archivo generado vive "
+                "en el almacenamiento de objetos, que lo retira por vencimiento."
+            ),
+            owner="Búsqueda y exportación",
+        ),
+        _exception(
             "import_image",
             scopes=[SCOPE_SOFT_DELETE],
             reason=(

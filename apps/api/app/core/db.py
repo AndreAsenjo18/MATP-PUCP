@@ -1,9 +1,25 @@
 """Database engine and session factory (SQLAlchemy 2)."""
 
+import unicodedata
 from collections.abc import Iterator
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
+
+
+def sqlite_unaccent(val: str | None) -> str | None:
+    """Strip accents and diacritics for SQLite unit tests (unicodedata NFKD)."""
+    if val is None:
+        return None
+    nfkd = unicodedata.normalize("NFKD", str(val))
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
+@event.listens_for(Engine, "connect")
+def _register_sqlite_functions(dbapi_connection, _connection_record) -> None:  # type: ignore[no-untyped-def]
+    if hasattr(dbapi_connection, "create_function"):
+        dbapi_connection.create_function("unaccent", 1, sqlite_unaccent)
+        dbapi_connection.create_function("immutable_unaccent", 1, sqlite_unaccent)
 
 
 def make_engine(database_url: str, *, connect_timeout: float = 2.0, echo: bool = False) -> Engine:

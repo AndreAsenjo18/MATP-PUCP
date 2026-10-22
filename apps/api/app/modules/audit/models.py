@@ -19,6 +19,7 @@ class AuditAction(enum.StrEnum):
     CORRECTION = "CORRECTION"
     MERGE = "MERGE"
     REVERT = "REVERT"
+    EXPORT = "EXPORT"
 
 
 class AuditOrigin(enum.StrEnum):

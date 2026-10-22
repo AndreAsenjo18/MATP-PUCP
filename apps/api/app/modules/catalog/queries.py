@@ -118,8 +118,12 @@ def identifier_match_condition(text: str) -> Any:
     )
 
 
-def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[Piece]]:
+def build_piece_query(session: Session, filters: PieceFilters | Any) -> Select[tuple[Piece]]:
     """All filters are combined with AND (RF-032)."""
+    from app.modules.search.filters import PieceFilter
+
+    if isinstance(filters, PieceFilter):
+        return select(Piece).where(filters.to_where(session)).order_by(Piece.denomination)
     statement = select(Piece)
     conditions: list[Any] = []
     if filters.q and filters.q.strip():
