@@ -23,7 +23,7 @@ from sqlalchemy import select
 
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditLog, AuditOrigin
-from app.modules.catalog.enums import TenureRegime
+from app.modules.catalog.enums import LEGAL_OWNER_PUCP, TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.service import change_tenure, create_piece
 from app.modules.identification.models import PieceIdentifier
@@ -407,6 +407,53 @@ def test_a_rule_violated_at_apply_rolls_back_every_row(pipeline: Pipeline) -> No
     assert get_batch(pipeline.client, batch_id)["status"] == "APPLIED"
     with pipeline.session() as session:
         assert session.scalar(select(Piece).where(Piece.denomination == f"Otra nueva {tag}"))
+
+
+def test_a_batch_upgrades_a_loan_for_use_with_the_batch_as_document(pipeline: Pipeline) -> None:
+    """Comodato -> propiedad: the application supplies the batch as supporting document (D4)."""
+    tag = _tag()
+    code = int(tag, 16) % 9000 + 1000
+    with pipeline.session() as session:
+        context = AuditContext(origin=AuditOrigin.MANUAL, user_id=_user_id(session, ADMIN))
+        with audit_context(session, context):
+            target = create_piece(
+                session,
+                denomination=f"Vuelve a propiedad {tag}",
+                tenure_regime=TenureRegime.LOAN_FOR_USE,
+            )
+            add_identifier(session, target, TYPE_COLLECTION, f"MMZ {code}")
+        session.commit()
+        target_id = target.id
+    content = (
+        f"DENOMINACIÓN;CÓDIGOS;RÉGIMEN\nVuelve a propiedad {tag};MMZ {code};Propiedad\n"
+    ).encode()
+    batch_id = upload(pipeline.client, f"comodato-{tag}.csv", content)["batch_id"]
+    put_mapping(pipeline.client, batch_id, {"columns": SHEET_MAPPING["columns"][:3]})
+    validate(pipeline.client, batch_id)
+    rows = _rows(pipeline, batch_id)
+    assert rows[2]["classification"] == "UPDATE"
+    assert "tenure_regime" in {change["field"] for change in rows[2]["diff"]}
+
+    response = confirm(pipeline, batch_id, summary(pipeline, batch_id)["summary_token"])
+
+    assert response.status_code == 200
+    applied = get_batch(pipeline.client, batch_id)
+    assert applied["status"] == "APPLIED"
+    assert applied["counts"]["APPLIED_UPDATED"] == 1
+    with pipeline.session() as session:
+        piece = session.get(Piece, target_id)
+        assert piece is not None
+        assert piece.tenure_regime == TenureRegime.OWNED
+        assert piece.legal_owner == LEGAL_OWNER_PUCP
+        entry = session.scalar(
+            select(AuditLog).where(
+                AuditLog.origin_ref == batch_id,
+                AuditLog.entity_id == target_id,
+                AuditLog.field == "tenure_regime",
+            )
+        )
+        assert entry is not None
+        assert f"lote de importación {batch_id}" in (entry.reason or "")
 
 
 # --- 4.3 Bitácora -------------------------------------------------------------------------------

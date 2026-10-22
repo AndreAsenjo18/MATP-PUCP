@@ -172,6 +172,7 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
         writer(session, user),
         denomination=body.denomination,
         tenure_regime=tenure,
+        code_i=body.code_i,
         description=body.description,
         collection_id=body.collection_id,
         lender_name=body.lender_name,
@@ -284,10 +285,11 @@ def update_piece(
         changes["epoch_type"] = period.get("type")
         changes["epoch_start_year"] = period.get("year_from")
         changes["epoch_end_year"] = period.get("year_to")
-    if changes:
-        catalog_service.update_piece(session, piece, **changes)
-    if "code_i" in body.model_fields_set:
-        set_inventory_code(session, piece, body.code_i)
+    code_i = body.code_i if "code_i" in body.model_fields_set else None
+    if changes or code_i is not None:
+        catalog_service.update_piece(session, piece, code_i=code_i, **changes)
+    if code_i is not None:
+        set_inventory_code(session, piece, code_i)
     session.commit()
     return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
