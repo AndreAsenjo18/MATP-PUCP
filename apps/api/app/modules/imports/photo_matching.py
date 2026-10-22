@@ -1,11 +1,20 @@
 """Proposed matching between the photos of an import batch and its rows (RF-045, RF-023).
 
-Change importacion-masiva-fotografias, design D3. This part (task 3.1) reads the name of a photo,
-or of a folder: it removes the extension and the sequence, view and copy suffixes, and extracts the
-code candidates, normalized with the same rules as the row identifiers (``normalize`` of
-``identification.normalization``, one rule per identifier type). Nothing here reads or writes the
-database: a proposal reaches the catalogue only when a person approves the batch (RN-009 by
-analogy).
+Change importacion-masiva-fotografias, design D3:
+
+- ``read_name`` (task 3.1) reads the name of a photo, or of a folder: it removes the extension and
+  the sequence, view and copy suffixes, and extracts the code candidates, normalized with the same
+  rules as the row identifiers (``normalize`` of ``identification.normalization``, one rule per
+  identifier type).
+- ``match_photos`` (task 3.2) proposes a row for each photo with the batch index, trying in order
+  the file name, each folder of its path (closest first) and the photo file column of the mapping.
+  It stops at the first path, and within a path at the first candidate level, that matches at
+  least one row: one row is ``MATCHED``; more than one is ``AMBIGUOUS`` with its candidates and is
+  never settled by trying the next level or path; none is ``UNMATCHED``. The photos of a row are
+  ordered by their names.
+
+Nothing here reads or writes the database, and manual assignments are not handled here (task 3.3):
+a proposal reaches the catalogue only when a person approves the batch (RN-009 by analogy).
 
 Reading rules [SUPUESTO L1, S2 and S3 of ``docs/preguntas-contraparte.md``: the museum does not
 know yet how it names its photo files]:
@@ -24,11 +33,18 @@ know yet how it names its photo files]:
 import enum
 import re
 import unicodedata
-from collections.abc import Mapping
-from dataclasses import dataclass
+import uuid
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, replace
 
 from app.modules.identification.models import NormalizationRule, NormalizationStatus
-from app.modules.identification.normalization import DEFAULT_RULES, normalize
+from app.modules.identification.normalization import (
+    DEFAULT_RULES,
+    TYPE_COLLECTION,
+    normalize,
+)
+from app.modules.imports.models import PhotoMatchSource, PhotoMatchStatus
 
 #: Key of the correlative number of a collection code, compared with a number alone [SUPUESTO S1].
 COLLECTION_NUMBER = "COLECCION_NUMERO"
@@ -169,3 +185,149 @@ def read_name(
         if keys := code_keys(text, rules):
             candidates.append(CodeCandidate(text, strength, keys))
     return NameReading(name, stem, base, sequence, view, camera, tuple(candidates))
+
+
+# ---------------------------------------------------------------- batch index and resolution (3.2)
+
+_COLLECTION_CORRELATIVE_RE = re.compile(r"^\S+ (\d+)")
+_PATH_SEPARATOR_RE = re.compile(r"[\/]")
+
+
+@dataclass(frozen=True)
+class BatchRow:
+    """What the matching needs of a batch row: a stand-in of ``import_row``.
+
+    ``identifiers`` are the ``(type, normalized value)`` pairs of ``mapped_data``; a value that
+    could not be normalized is ``None`` and is ignored. ``photo_filenames`` are the values of the
+    photo file column of the mapping, whose ``MappingSpec`` field is task 3.4.
+    """
+
+    row_id: uuid.UUID
+    identifiers: tuple[tuple[str, str | None], ...] = ()
+    photo_filenames: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class BatchPhoto:
+    photo_id: uuid.UUID
+    relative_path: str  # «MMZ 045/DSC_0001.jpg», as the browser sent it
+
+
+@dataclass(frozen=True)
+class PhotoProposal:
+    """Proposed row of a photo, with the fields ``import_photo`` stores (design D1)."""
+
+    photo_id: uuid.UUID
+    status: PhotoMatchStatus
+    source: PhotoMatchSource | None = None
+    row_id: uuid.UUID | None = None
+    candidate_row_ids: tuple[uuid.UUID, ...] = ()
+    sort_key: int | None = None  # 1 for the first photo of its row
+
+
+def split_path(relative_path: str) -> tuple[list[str], str]:
+    """Folders (outermost first) and file name of a relative path."""
+    parts = [part for part in _PATH_SEPARATOR_RE.split(relative_path) if part.strip()]
+    return parts[:-1], parts[-1] if parts else ""
+
+
+def file_key(name: str) -> str:
+    """A photo file name compared without case, extension or folder (column path, D3)."""
+    base = _PATH_SEPARATOR_RE.split(unicodedata.normalize("NFKC", name).strip())[-1]
+    return _EXTENSION_RE.sub("", base).casefold()
+
+
+class BatchIndex:
+    """Codes and photo file names of the batch rows, pointing to their rows (D3, step 1)."""
+
+    def __init__(self, rows: Iterable[BatchRow]) -> None:
+        self._by_key: dict[tuple[str, str], set[uuid.UUID]] = defaultdict(set)
+        self._by_file: dict[str, set[uuid.UUID]] = defaultdict(set)
+        for row in rows:
+            for type_code, value in row.identifiers:
+                if not value:
+                    continue
+                self._by_key[(type_code, value)].add(row.row_id)
+                if type_code == TYPE_COLLECTION and (
+                    match := _COLLECTION_CORRELATIVE_RE.match(value)
+                ):
+                    number = str(int(match.group(1)))
+                    self._by_key[(COLLECTION_NUMBER, number)].add(row.row_id)  # [SUPUESTO S1]
+            for name in row.photo_filenames:
+                if key := file_key(name):
+                    self._by_file[key].add(row.row_id)
+
+    def rows_for_keys(self, keys: Iterable[tuple[str, str]]) -> set[uuid.UUID]:
+        found: set[uuid.UUID] = set()
+        for key in keys:
+            found |= self._by_key.get(key, set())
+        return found
+
+    def rows_for_file(self, name: str) -> set[uuid.UUID]:
+        return set(self._by_file.get(file_key(name), set()))
+
+
+def rows_by_level(reading: NameReading, index: BatchIndex) -> set[uuid.UUID]:
+    """Rows of the most specific candidate level that matches at least one row.
+
+    A level that matches several rows is returned as it is: it is never settled by looking at a
+    less specific level.
+    """
+    for strength in CandidateStrength:
+        keys = (key for c in reading.candidates if c.strength is strength for key in c.keys)
+        if rows := index.rows_for_keys(keys):
+            return rows
+    return set()
+
+
+def _resolve(
+    reading: NameReading,
+    folders: Sequence[str],
+    index: BatchIndex,
+    rules: Mapping[str, NormalizationRule],
+) -> tuple[PhotoMatchSource, set[uuid.UUID]] | None:
+    if rows := rows_by_level(reading, index):
+        return PhotoMatchSource.FILENAME, rows
+    for folder in reversed(folders):  # closest folder first
+        if rows := rows_by_level(read_name(folder, is_file=False, rules=rules), index):
+            return PhotoMatchSource.FOLDER, rows
+    if rows := index.rows_for_file(reading.name):
+        return PhotoMatchSource.COLUMN, rows
+    return None
+
+
+def match_photos(
+    photos: Sequence[BatchPhoto],
+    rows: Iterable[BatchRow],
+    rules: Mapping[str, NormalizationRule] = DEFAULT_RULES,
+) -> list[PhotoProposal]:
+    """Proposed row of every photo of a batch, in the order of ``photos`` (D3)."""
+    index = BatchIndex(rows)
+    proposals: dict[uuid.UUID, PhotoProposal] = {}
+    per_row: dict[uuid.UUID, list[tuple[tuple[object, ...], uuid.UUID]]] = defaultdict(list)
+    for photo in photos:
+        folders, file_name = split_path(photo.relative_path)
+        reading = read_name(file_name, rules=rules)
+        found = _resolve(reading, folders, index, rules)
+        if found is None:
+            proposals[photo.photo_id] = PhotoProposal(photo.photo_id, PhotoMatchStatus.UNMATCHED)
+            continue
+        source, row_ids = found
+        if len(row_ids) > 1:
+            proposals[photo.photo_id] = PhotoProposal(
+                photo.photo_id,
+                PhotoMatchStatus.AMBIGUOUS,
+                source,
+                candidate_row_ids=tuple(sorted(row_ids, key=str)),
+            )
+            continue
+        (row_id,) = row_ids
+        proposals[photo.photo_id] = PhotoProposal(
+            photo.photo_id, PhotoMatchStatus.MATCHED, source, row_id
+        )
+        order = (*order_key(reading), natural_key(photo.relative_path))
+        per_row[row_id].append((order, photo.photo_id))
+    for items in per_row.values():
+        for position, (_, photo_id) in enumerate(sorted(items), start=1):
+            proposals[photo_id] = replace(proposals[photo_id], sort_key=position)
+    return [proposals[photo.photo_id] for photo in photos]
