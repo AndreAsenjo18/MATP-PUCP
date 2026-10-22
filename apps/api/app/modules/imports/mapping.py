@@ -502,6 +502,9 @@ class MappedRow:
     errors: list[RowError] = field(default_factory=list)
     collection_id: uuid.UUID | None = None
     tenure_regime: TenureRegime | None = None
+    # Fields filled from a default of the mapping because the file had no value. They only fill
+    # new pieces: ``field_diff`` leaves them out, so they never overwrite an existing piece.
+    defaulted: list[str] = field(default_factory=list)
     # Preview only (design D2): kept in memory, never serialized by ``as_json``.
     transformed: dict[str, TransformedValue] = field(
         default_factory=dict, compare=False, repr=False
@@ -516,8 +519,8 @@ class MappedRow:
         }
 
     def as_json(self) -> dict[str, Any]:
-        """Value stored in ``import_row.mapped_data``."""
-        return {
+        """Value stored in ``import_row.mapped_data``; ``defaulted`` only when there is any."""
+        data: dict[str, Any] = {
             "fields": self.fields,
             "collection_id": str(self.collection_id) if self.collection_id else None,
             "tenure_regime": self.tenure_regime.value if self.tenure_regime else None,
@@ -533,6 +536,9 @@ class MappedRow:
             ],
             "source_payload": self.source_payload,
         }
+        if self.defaulted:
+            data["defaulted"] = list(self.defaulted)
+        return data
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> "MappedRow":
@@ -554,6 +560,7 @@ class MappedRow:
             source_payload=dict(data.get("source_payload") or {}),
             collection_id=uuid.UUID(collection_id) if collection_id else None,
             tenure_regime=TenureRegime(tenure) if tenure else None,
+            defaulted=list(data.get("defaulted") or []),  # absent in rows stored before
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -851,7 +858,11 @@ def apply_mapping(
     denomination_default = _denomination_default(plan)
     if mapped.fields.get("denomination") is None and denomination_default:
         mapped.fields["denomination"] = denomination_default
-    tenure = mapped.fields.get("tenure_regime") or plan.defaults.get("tenure_regime")
+        mapped.defaulted.append("denomination")
+    tenure = mapped.fields.get("tenure_regime")
+    if not tenure and plan.defaults.get("tenure_regime"):
+        tenure = plan.defaults["tenure_regime"]
+        mapped.defaulted.append("tenure_regime")
     if tenure is not None:
         mapped.tenure_regime = TENURE_ALIASES.get(_fold(tenure))
         if mapped.tenure_regime is None:
@@ -863,7 +874,10 @@ def apply_mapping(
                     "tenure_regime",
                 )
             )
-    collection = mapped.fields.get("collection") or plan.defaults.get("collection")
+    collection = mapped.fields.get("collection")
+    if not collection and plan.defaults.get("collection"):
+        collection = plan.defaults["collection"]
+        mapped.defaulted.append("collection")
     if collection is not None:
         mapped.collection_id = ctx.collection_id(collection)
         if mapped.collection_id is None:

@@ -322,7 +322,10 @@ def field_diff(
     ``identifiers`` are ``(type, normalized, original)`` of the piece, current and historical;
     only codes the piece does not have yet appear, as ``identifier:<TYPE>``.
     """
-    targets = {column.target for column in spec.columns} | set(spec.defaults)
+    # A default of the mapping only fills new pieces, never an existing one.
+    targets = ({column.target for column in spec.columns} | set(spec.defaults)) - set(
+        mapped.defaulted
+    )
     incoming_values: dict[str, Any] = {
         name: mapped.fields.get(name) for name in PIECE_FIELDS if name in targets
     }

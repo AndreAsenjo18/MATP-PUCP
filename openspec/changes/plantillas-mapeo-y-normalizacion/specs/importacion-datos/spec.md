@@ -27,6 +27,10 @@ El sistema MUST representar cada mapeo como una especificación versionada que a
 - **WHEN** se aplica la interpretación propuesta de época a la celda `ca. 1950`
 - **THEN** el texto `ca. 1950` se conserva como época original y la interpretación estructurada (tipo y años de inicio y fin) queda marcada como propuesta
 
+#### Scenario: Valor por defecto en una fila que actualiza una pieza existente
+- **WHEN** una fila actualiza una pieza existente y el mapeo tiene un valor por defecto para un campo que el archivo no trae (o trae vacío)
+- **THEN** ese valor no entra en la comparación ni reemplaza el dato de la pieza; los valores por defecto solo rellenan piezas nuevas
+
 ### Requirement: Gestión y sugerencia de plantillas por cabeceras
 La API MUST permitir crear, consultar, editar y eliminar lógicamente plantillas de mapeo por fuente, con nombre único entre las plantillas activas [SUPUESTO S9], y SHALL sugerir, solo a pedido explícito con las cabeceras del archivo, hasta tres plantillas [SUPUESTO S2] cuya similitud de cabeceras alcance el umbral configurado (inicialmente 0,6 [SUPUESTO S1]), indicando para cada sugerencia las columnas faltantes y las columnas nuevas. Preparar plantillas exige el permiso de preparar cargas y eliminarlas el de aprobar cargas [SUPUESTO S8]. (RF-022, RN-005)
 

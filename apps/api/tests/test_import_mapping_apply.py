@@ -322,7 +322,9 @@ def test_period_and_dimension_proposals_stay_in_memory(
         "tenure_regime",
         "identifiers",
         "source_payload",
+        "defaulted",  # additive: fields filled from a default (only new pieces take them)
     }
+    assert stored["defaulted"] == ["tenure_regime"]
 
 
 def test_unlabeled_dimensions_are_a_valid_preview_proposal(ctx: MappingContext) -> None:
