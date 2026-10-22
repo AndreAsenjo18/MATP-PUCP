@@ -4,6 +4,8 @@ Rules are enforced twice: here, with clear messages for users, and in flush guar
 below, so that no code path (API, import, seed, scripts) can bypass them.
 """
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +27,7 @@ from app.modules.audit.tracking import (
 )
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
+from app.modules.catalog.tenure import ensure_no_forbidden_identifiers, find_transition
 from app.modules.identification.models import (
     IdentifierType,
     NormalizationStatus,
@@ -33,6 +36,7 @@ from app.modules.identification.models import (
 from app.modules.identification.normalization import (
     TYPE_INVENTORY,
     NormalizationResult,
+    is_absence_marker,
     normalize,
 )
 from app.modules.users.service import ADMIN_ROLE, user_has_role
@@ -103,13 +107,19 @@ def _check_tenure_allows(identifier_type: IdentifierType, piece: Piece) -> None:
         )
 
 
-def _ensure_unique(
+def find_code_owner(
     session: Session,
     identifier_type: IdentifierType,
     normalized_value: str,
     *,
+    exclude_piece_id: uuid.UUID | None = None,
     exclude_identifier_id: object | None = None,
-) -> None:
+) -> tuple[PieceIdentifier, Piece] | None:
+    """The current identifier with that value and the piece that owns it.
+
+    A logically deleted piece still owns its inventory code (it is never reused silently), so the
+    owner may be a deleted piece; ``None`` means that nobody holds that value.
+    """
     statement = (
         select(PieceIdentifier, Piece)
         .join(Piece, Piece.id == PieceIdentifier.piece_id)
@@ -125,18 +135,40 @@ def _ensure_unique(
     for identifier, owner in session.execute(statement).tuples():
         if identifier.id == exclude_identifier_id:
             continue
-        if owner.deleted_at is not None:
-            raise BusinessRuleViolation(
-                f"El código {normalized_value} pertenece a una pieza eliminada; solo un "
-                "Administrador puede reasignarlo mediante el procedimiento de corrección.",
-                code="identifier_of_deleted_piece",
-                details={"piece_id": str(owner.id)},
-            )
+        if owner.id == exclude_piece_id:
+            continue
+        return identifier, owner
+    return None
+
+
+def _ensure_unique(
+    session: Session,
+    identifier_type: IdentifierType,
+    normalized_value: str,
+    *,
+    exclude_identifier_id: object | None = None,
+) -> None:
+    found = find_code_owner(
+        session,
+        identifier_type,
+        normalized_value,
+        exclude_identifier_id=exclude_identifier_id,
+    )
+    if found is None:
+        return
+    _identifier, owner = found
+    if owner.deleted_at is not None:
         raise BusinessRuleViolation(
-            f"El código {normalized_value} ya está asignado a otra pieza activa.",
-            code="duplicate_identifier",
+            f"El código {normalized_value} pertenece a una pieza eliminada; solo un "
+            "Administrador puede reasignarlo mediante el procedimiento de corrección.",
+            code="identifier_of_deleted_piece",
             details={"piece_id": str(owner.id)},
         )
+    raise BusinessRuleViolation(
+        f"El código {normalized_value} ya está asignado a otra pieza activa.",
+        code="duplicate_identifier",
+        details={"piece_id": str(owner.id)},
+    )
 
 
 def _normalize_value(identifier_type: IdentifierType, raw_value: str | None) -> NormalizationResult:
@@ -169,15 +201,20 @@ def add_identifier(
     source: str | None = None,
     replaces: PieceIdentifier | None = None,
     notes: str | None = None,
+    is_current: bool = True,
 ) -> PieceIdentifier:
-    """Register an external identifier. The original value is always kept as written."""
+    """Register an external identifier. The original value is always kept as written.
+
+    ``is_current=False`` registers an identifier that is already historical (the temporary number
+    of a piece that leaves the temporary loan, design D4).
+    """
     require_audit_context(session)
     identifier_type = get_identifier_type(session, type_code)
     _check_tenure_allows(identifier_type, piece)
     result = _normalize_value(identifier_type, raw_value)
     assert raw_value is not None
 
-    if identifier_type.is_unique_when_current:
+    if identifier_type.is_unique_when_current and is_current:
         if current_identifiers(session, piece, type_code):
             raise ImmutableInventoryCode(
                 f"La pieza ya tiene {identifier_type.label}; no se puede cambiar. Solo un "
@@ -205,7 +242,7 @@ def add_identifier(
         normalized_value=result.normalized,
         normalization_status=result.status,
         detected_format=result.detected_format,
-        is_current=True,
+        is_current=is_current,
         is_locked=identifier_type.locks_on_assignment,
         source=source,
         notes=notes,
@@ -229,6 +266,8 @@ def set_inventory_code(
     """Create or verify the piece's code I from the record sheet (design D4).
 
     - `raw_value` empty/None: no-op (the sheet is not touching the code I).
+    - `raw_value` is an absence marker (`S/N`, `s/c`, `-`, `0`): the piece is registered without
+      a code I (A5); the marker is never stored as a code.
     - No vigente code I yet: creates it with `add_identifier` (which already enforces
       RN-003/RN-004 via `_check_tenure_allows` and uniqueness via `_ensure_unique`).
     - A vigente code I exists and the normalized value matches: no-op, idempotent PUT.
@@ -236,6 +275,8 @@ def set_inventory_code(
       (RN-002); correcting it is only possible through the audited correction procedure.
     """
     if raw_value is None or not raw_value.strip():
+        return None
+    if is_absence_marker(raw_value):
         return None
     identifier_type = get_identifier_type(session, TYPE_INVENTORY)
     _check_tenure_allows(identifier_type, piece)
@@ -350,8 +391,9 @@ def _guard_identifier_rules(session: Session, context: AuditContext | None) -> N
                     )
             elif isinstance(obj, Piece):
                 changes = column_changes(obj)
-                if "tenure_regime" in changes and obj.tenure_regime is not TenureRegime.OWNED:
-                    _guard_tenure_change(session, obj)
+                if "tenure_regime" in changes:
+                    previous, _current = changes["tenure_regime"]
+                    _guard_tenure_change(session, obj, TenureRegime(previous))
 
         for obj in session.new:
             if isinstance(obj, PieceIdentifier):
@@ -365,19 +407,9 @@ def _guard_identifier_rules(session: Session, context: AuditContext | None) -> N
                     _check_tenure_allows(identifier_type, piece)
 
 
-def _guard_tenure_change(session: Session, piece: Piece) -> None:
-    restricted = session.scalars(
-        select(PieceIdentifier.identifier_type_code)
-        .join(IdentifierType, IdentifierType.code == PieceIdentifier.identifier_type_code)
-        .where(
-            PieceIdentifier.piece_id == piece.id,
-            PieceIdentifier.is_current,
-            IdentifierType.owned_pieces_only,
-        )
-    ).first()
-    if restricted:
-        raise BusinessRuleViolation(
-            "La pieza tiene código I vigente y no puede pasar a comodato ni a préstamo "
-            "temporal (RN-003, RN-004).",
-            code="tenure_change_with_inventory_code",
-        )
+def _guard_tenure_change(session: Session, piece: Piece, previous_regime: TenureRegime) -> None:
+    """Second enforcement of the transition table, for the paths that skip the service."""
+    transition = find_transition(previous_regime, piece.tenure_regime)
+    if transition is None:
+        return
+    ensure_no_forbidden_identifiers(session, piece, transition)
