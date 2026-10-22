@@ -79,6 +79,14 @@ El detalle completo está en `docs/preguntas-contraparte.md`.
 - El PDF entregado por el equipo quedó versionado en `docs/fuentes/diagrama-entidad-relacion.pdf` (13 entidades: COLLECTIONS, PIECES, CATEGORIES, CONSERVATION_STATES, IDENTIFIERS, MEDIA_ASSETS, LOCATIONS, PIECE_LOCATION_HISTORY, USERS, IMPORT_BATCHES, IMPORT_ROW_DIFFS, LOANS, AUDIT_LOGS).
 - Alinear el modelo implementado (23 tablas) con ese diagrama **está pendiente de decisión**: ver la sección «Diagrama ER frente al modelo implementado» más abajo.
 
+### 2026-10-16 — Cierre de `GET /search` (tareas 4.5 y 6.2 de `alinear-api-endpoints-v1`)
+
+- **Qué cambió**: `GET /search` ahora acepta `collection_code` (resuelto contra `Collection.acronym_normalized`, acepta siglas con o sin puntos) y `tenure_regime` (etiqueta en español del contrato, traducida con `code_of`/`TENURE_REGIME_LABELS`), además de `q`. Responde con un modelo propio `SearchResultPage` (`{items, total, page, limit}`) en vez de la paginación compartida `Page[T]` (que usa `page_size`), porque el contrato pide `limit` específicamente para este endpoint.
+- **Pruebas**: `apps/api/tests/api/test_api_pieces_search.py` — filtros combinados (colección + régimen a la vez, incluyendo código con puntos), código de colección inexistente (devuelve vacío, no error) y paginación con `limit`/`page`.
+- **Documentación**: `docs/api/mapeo-endpoints-v1.md` (fila 17, de «Parcial» a «Hecho»), `docs/api/README.md` (convenio de paginación y «Implementado hoy»). `docs/modelo-datos.md` revisado, sin cambios — el endpoint no toca el modelo de datos.
+- **Nota para quien retome `GET /pieces`**: ese listado sigue pendiente de alinear su paginación a `page`/`limit` (tarea 4.1, fila 2 del mapeo) — `/search` no lo resuelve, son endpoints distintos.
+- PR: #55 (rama `Sergio`), mergeado tras corregir un import sin usar (`ruff`) y resincronizar el cliente tipado (`npm run openapi:client`), que habían quedado desactualizados tras un merge de `main` a mitad del PR.
+
 ## Registro por fase
 
 ### Fase 0 — Preparación y verificación (2026-09-17) — COMPLETADA con observaciones
