@@ -342,6 +342,7 @@ def test_duplicate_detection_on_postgresql(
         assert statement in sql
     assert "DROP TABLE" not in sql
 
+
 def test_search_unaccent_and_trigram_indexes_on_postgresql(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -371,4 +372,3 @@ def test_sqlite_unaccent_function_registered(migrated) -> None:  # type: ignore[
             text("SELECT immutable_unaccent('Cerámica Huánuco'), unaccent('Árbol Niño')")
         ).fetchone()
         assert result == ("Ceramica Huanuco", "Arbol Nino")
-

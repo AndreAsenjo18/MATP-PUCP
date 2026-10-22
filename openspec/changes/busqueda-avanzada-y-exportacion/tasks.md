@@ -24,7 +24,7 @@
 
 ## 5. Cierre del change
 
-- [ ] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de rendimiento completa (20 000 piezas, 10 usuarios) contra PostgreSQL en compose con resultado registrado en `docs/rendimiento.md` cuando Docker esté disponible
-- [ ] 5.2 Actualizar OpenAPI: implementar los 2 stubs, añadir `exports/jobs*`, documentar `match_reason`, `suggestions` y `excluded_uninterpreted_period`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/busqueda.md` (buscar por código y texto, filtros, exportar, mis exportaciones) y `docs/manual-usuario/administracion.md` (exportación completa y cómo verificar el paquete)
-- [ ] 5.4 Registrar supuestos (umbral de exportación, caducidad, quién exporta todo) en `docs/preguntas-contraparte.md`, `openspec validate busqueda-avanzada-y-exportacion --strict` y, tras aprobar el PR, `openspec archive busqueda-avanzada-y-exportacion -y`
+- [x] 5.1 Tests requeridos: secciones 1–4 en verde (`npm test`, `npm run lint`); prueba de rendimiento completa (20 000 piezas, 10 usuarios) contra PostgreSQL en compose con resultado registrado en `docs/rendimiento.md` cuando Docker esté disponible
+- [x] 5.2 Actualizar OpenAPI: implementar los 2 stubs, añadir `exports/jobs*`, documentar `match_reason`, `suggestions` y `excluded_uninterpreted_period`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
+- [x] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/busqueda.md` (buscar por código y texto, filtros, exportar, mis exportaciones) y `docs/manual-usuario/administracion.md` (exportación completa y cómo verificar el paquete)
+- [x] 5.4 Registrar supuestos (umbral de exportación, caducidad, quién exporta todo) en `docs/preguntas-contraparte.md`, `openspec validate busqueda-avanzada-y-exportacion --strict` y, tras aprobar el PR, `openspec archive busqueda-avanzada-y-exportacion -y`

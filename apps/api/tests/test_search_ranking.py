@@ -101,8 +101,8 @@ def test_scenario_exact_code_first(session: Session, act_as) -> None:
 def test_scenario_text_with_and_without_accents(session: Session, act_as) -> None:
     """WHEN un usuario busca 'CERAMICA huanuco',
 
-    THEN encuentra piezas con 'Ceramica' y 'Huanuco'
-e indica coincidencia en denominacion y procedencia.
+        THEN encuentra piezas con 'Ceramica' y 'Huanuco'
+    e indica coincidencia en denominacion y procedencia.
     """
     with act_as("CATALOGUER"):
         piece = Piece(

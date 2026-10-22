@@ -63,9 +63,7 @@ def write_table(
         ws_meta.append(["Usuario solicitante", user_label])
 
     if omitted_columns:
-        ws_meta.append(
-            ["Columnas omitidas por permisos (RF-041)", ", ".join(omitted_columns)]
-        )
+        ws_meta.append(["Columnas omitidas por permisos (RF-041)", ", ".join(omitted_columns)])
 
     ws_meta.append([])
     ws_meta.append(["Filtro", "Valor aplicado"])

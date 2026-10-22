@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 499c8f6ef7b5cbdf88e1432fe98aae812f8d876de201378d86cace8db6dd059a
+ * openapi-sha256: df53df6bf716d84b88104760663ee97ab2daa3d3c97188da230d42df4f69b262
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -333,8 +333,68 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Exportación completa de la base en formato abierto (RF-044) */
+        /** Exportacin completa de la base en formato abierto (RF-044) */
         get: operations["exportFullDatabase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar trabajos de exportación del usuario (o todos si es administrador)
+         * @description List export jobs. Regular users see only their own jobs; admins see all.
+         */
+        get: operations["listExportJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar estado de un trabajo de exportación (RF-036)
+         * @description Get status and details of an export job.
+         */
+        get: operations["getExportJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs/{job_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener URL prefirmada de descarga de un archivo de exportación (RF-036)
+         * @description Get presigned download URL for a completed, non-expired export.
+         */
+        get: operations["getExportDownloadUrl"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1162,7 +1222,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
+        /** Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
         post: operations["scanDuplicates"];
         delete?: never;
         options?: never;
@@ -1177,7 +1237,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Piezas con información incompleta (RF-019, RF-035) */
+        /** Listado de piezas con alertas de incompletitud (RF-019) */
         get: operations["listIncompletePieces"];
         put?: never;
         post?: never;
@@ -1194,7 +1254,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Estado y avance de una detección de duplicados (RF-030, RNF-015) */
+        /** Estado y avance de una deteccin de duplicados (RF-030, RNF-015) */
         get: operations["getQualityJob"];
         put?: never;
         post?: never;
@@ -1211,7 +1271,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reportes: inventario, por colección, por ubicación, incompletas, valorización */
+        /** Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin */
         get: operations["getReport"];
         put?: never;
         post?: never;
@@ -1228,7 +1288,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** KPI de completitud general y por colección (RF-035) */
+        /** KPI de completitud general y por coleccin (RF-035) */
         get: operations["getDashboardStats"];
         put?: never;
         post?: never;
@@ -1262,7 +1322,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-006) */
+        /** Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006) */
         get: operations["exportPiecePdf"];
         put?: never;
         post?: never;
@@ -1313,7 +1373,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Búsqueda avanzada con filtros combinados (RF-031, RF-032) */
+        /** Bsqueda avanzada con filtros combinados (RF-031, RF-032) */
         get: operations["searchPieces"];
         put?: never;
         post?: never;
@@ -1719,7 +1779,7 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "CREATE" | "UPDATE" | "SOFT_DELETE" | "RESTORE" | "CORRECTION" | "MERGE" | "REVERT";
+        AuditAction: "CREATE" | "UPDATE" | "SOFT_DELETE" | "RESTORE" | "CORRECTION" | "MERGE" | "REVERT" | "EXPORT";
         /**
          * AuditEntryOut
          * @example {
@@ -2465,6 +2525,7 @@ export interface components {
          *       "download_url": "http://localhost:9000/matp-media/exports/ejemplo.xlsx",
          *       "expires_at": "2026-09-17T10:30:00Z",
          *       "format": "xlsx",
+         *       "id": "00000000-0000-0000-0000-000000000001",
          *       "masked_fields": [
          *         "lender_name"
          *       ],
@@ -2474,19 +2535,25 @@ export interface components {
          */
         ExportJob: {
             /** Download Url */
-            download_url: string | null;
+            download_url?: string | null;
+            /** Error */
+            error?: string | null;
             /** Expires At */
-            expires_at: string | null;
+            expires_at?: string | null;
             format: components["schemas"]["ExportFormat"];
+            /** Id */
+            id?: string | null;
             /** Masked Fields */
             masked_fields?: string[];
             /** Row Count */
-            row_count: number | null;
+            row_count?: number | null;
+            /** Sha256 */
+            sha256?: string | null;
             /**
              * Status
              * @enum {string}
              */
-            status: "PENDING" | "READY" | "FAILED";
+            status: "PENDING" | "RUNNING" | "READY" | "FAILED";
         };
         /** FieldDiff */
         FieldDiff: {
@@ -2538,6 +2605,11 @@ export interface components {
             status: "ok" | "degraded";
             /** Version */
             version: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
         };
         /**
          * IdentifierCreate
@@ -4621,21 +4693,21 @@ export interface components {
          * ReportOut
          * @example {
          *       "columns": [
-         *         "Colección",
+         *         "Coleccin",
          *         "Piezas",
-         *         "Sin código I"
+         *         "Sin cdigo I"
          *       ],
          *       "filters": {},
          *       "generated_at": "2026-09-17T10:30:00Z",
          *       "report_type": "by-collection",
          *       "rows": [
          *         [
-         *           "Colección MMZ (ficticia)",
+         *           "Coleccin MMZ (ficticia)",
          *           54,
          *           30
          *         ]
          *       ],
-         *       "title": "Inventario por colección",
+         *       "title": "Inventario por coleccin",
          *       "totals": {
          *         "Piezas": 298
          *       }
@@ -4816,6 +4888,12 @@ export interface components {
         /**
          * SearchHit
          * @example {
+         *       "match_reason": {
+         *         "historical": false,
+         *         "kind": "identifier",
+         *         "original": "I-0236",
+         *         "type": "I"
+         *       },
          *       "match_type": "IDENTIFIER",
          *       "matched_identifier": {
          *         "identifier_type_code": "I",
@@ -4859,8 +4937,15 @@ export interface components {
          */
         SearchHit: {
             /**
+             * Match Reason
+             * @description Detalle estructurado de la coincidencia (identificador o campos de texto).
+             */
+            match_reason?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Match Type
-             * @description IDENTIFIER: coincide un código (vigente o histórico); TITLE: la denominación.
+             * @description IDENTIFIER: coincide un cdigo (vigente o histrico); TITLE: la denominacin.
              * @enum {string}
              */
             match_type: "IDENTIFIER" | "TITLE";
@@ -4871,12 +4956,19 @@ export interface components {
          * SearchResultPage
          * @description Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
          *
-         *     A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
-         *     `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
-         *     la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+         *     A diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de
+         *     `/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar
+         *     la paginacin compartida que usan otros endpoints (`app/api/pagination.py`).
          * @example {
+         *       "excluded_uninterpreted_period": 0,
          *       "items": [
          *         {
+         *           "match_reason": {
+         *             "historical": false,
+         *             "kind": "identifier",
+         *             "original": "I-0236",
+         *             "type": "I"
+         *           },
          *           "match_type": "IDENTIFIER",
          *           "matched_identifier": {
          *             "identifier_type_code": "I",
@@ -4920,16 +5012,36 @@ export interface components {
          *       ],
          *       "limit": 20,
          *       "page": 1,
+         *       "suggestions": [
+         *         "remove_filter:collection_code"
+         *       ],
          *       "total": 1
          *     }
          */
         SearchResultPage: {
+            /**
+             * Active Filters
+             * @description Filtros activos descritos en lenguaje claro.
+             */
+            active_filters?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Excluded Uninterpreted Period
+             * @description Piezas con poca solo en texto excluidas por filtro de rango (RF-032).
+             */
+            excluded_uninterpreted_period?: number | null;
             /** Items */
             items: components["schemas"]["SearchHit"][];
             /** Limit */
             limit: number;
             /** Page */
             page: number;
+            /**
+             * Suggestions
+             * @description Sugerencias de accin cuando no hay resultados (RF-031).
+             */
+            suggestions?: string[] | null;
             /** Total */
             total: number;
         };
@@ -5272,6 +5384,19 @@ export interface components {
             is_active?: boolean | null;
             /** Roles */
             roles?: string[] | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
         /**
          * ValidationSummary
@@ -6658,13 +6783,99 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
-            501: {
+        };
+    };
+    listExportJobs: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ExportJob"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getExportJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getExportDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -9898,7 +10109,7 @@ export interface operations {
                 /** @description Incluye las subcolecciones. */
                 collection_id?: string | null;
                 min_score?: number | null;
-                /** @description CATALOG: dos piezas del catálogo; IMPORT: fila de importación. */
+                /** @description CATALOG: dos piezas del catlogo; IMPORT: fila de importacin. */
                 origin?: ("CATALOG" | "IMPORT") | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
@@ -10330,15 +10541,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     exportPiecePdf: {
@@ -10511,15 +10713,15 @@ export interface operations {
     searchPieces: {
         parameters: {
             query: {
-                /** @description Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.). */
+                /** @description Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.). */
                 collection_code?: string | null;
-                /** @description Resultados por página (máx. 100). */
+                /** @description Resultados por pgina (mx. 100). */
                 limit?: number;
-                /** @description Número de página (desde 1). */
+                /** @description Nmero de pgina (desde 1). */
                 page?: number;
-                /** @description Código o texto. */
+                /** @description Cdigo o texto. */
                 q: string;
-                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                /** @description Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal. */
                 tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             };
             header?: never;

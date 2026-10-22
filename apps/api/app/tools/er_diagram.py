@@ -90,6 +90,11 @@ GROUPS = [
             "audit_log",
         ],
     ),
+    (
+        "Búsqueda y Exportación",
+        "#E8F4F8",
+        ["export_job"],
+    ),
 ]
 
 # Etiquetas de relaciones (tabla_hija, columna) -> verbo.
@@ -148,6 +153,7 @@ LABELS = {
     ("user_role", "role_id"): "",
     ("user_session", "user_id"): "sesiones abiertas",
     ("auth_event", "user_id"): "eventos de autenticación",
+    ("export_job", "requested_by_id"): "solicita",
     ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
