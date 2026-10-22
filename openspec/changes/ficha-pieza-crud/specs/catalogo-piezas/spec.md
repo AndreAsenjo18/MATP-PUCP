@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Operaciones de escritura de la ficha con auditoría
-La API MUST permitir crear, editar, eliminar lógicamente y restaurar piezas aplicando en el servidor todas las reglas de la ficha y del régimen de tenencia, y SHALL registrar cada cambio en la auditoría campo a campo en la misma transacción; la eliminación MUST exigir motivo y nunca borrar físicamente la pieza. (RF-006, RF-040, RNF-006, RN-005, RN-006)
+La API MUST permitir crear, editar, eliminar lógicamente y restaurar piezas aplicando en el servidor todas las reglas de la ficha y del régimen de tenencia, y SHALL registrar cada cambio en la auditoría campo a campo en la misma transacción; la eliminación MUST exigir motivo y nunca borrar físicamente la pieza; la restauración MUST estar reservada al Administrador. (RF-006, RF-040, RNF-006, RN-005, RN-006)
 
 #### Scenario: Alta de pieza válida
 - **WHEN** un Catalogador envía una ficha con denominación "Retablo ayacuchano de tres pisos" y régimen "propiedad"
@@ -16,20 +16,24 @@ La API MUST permitir crear, editar, eliminar lógicamente y restaurar piezas apl
 - **WHEN** un Administrador intenta restaurar la pieza eliminada
 - **THEN** la API responde 409 indicando la pieza activa que tiene ese código I y no restaura
 
+#### Scenario: Restauración por un usuario que no es Administrador
+- **WHEN** un Catalogador intenta restaurar una pieza eliminada lógicamente
+- **THEN** la API responde 403 y la pieza sigue eliminada
+
 #### Scenario: Usuario sin permiso de edición
 - **WHEN** un usuario de Consulta interna envía una edición de una pieza
 - **THEN** la API responde 403 y no se crea ningún registro de auditoría
 
 ### Requirement: Validación previa sin persistencia
-La API MUST ofrecer una operación de validación de la ficha que aplique exactamente las mismas reglas que el guardado, devolviendo errores que bloquean y advertencias que no bloquean, y SHALL NOT escribir ningún dato ni auditoría al validar. (RF-043, RNF-010)
+La API MUST ofrecer una operación de validación de la ficha que aplique exactamente las mismas reglas que el guardado, devolviendo `is_valid` e `issues[]`, donde cada issue identifica el `field`, el `code`, el `message` y su `severity` (`error` bloquea el guardado, `warning` no lo bloquea), y SHALL NOT escribir ningún dato ni auditoría al validar. (RF-043, RNF-010)
 
 #### Scenario: Código I ya asignado a otra pieza
 - **WHEN** el editor valida una ficha cuyo código I normalizado ya pertenece a otra pieza activa
-- **THEN** la respuesta incluye un error junto al campo del código I con el identificador interno de la pieza existente
+- **THEN** la respuesta tiene `is_valid` en `false` e incluye un issue de severidad `error` en el campo del código I con el identificador interno de la pieza existente
 
 #### Scenario: Formato de código no reconocido
 - **WHEN** se valida un código de colección `???-15` que el normalizador no puede interpretar [SUPUESTO: reglas N1–N7]
-- **THEN** la respuesta incluye una advertencia de formato no reconocido y ningún error que impida guardar
+- **THEN** la respuesta incluye un issue de severidad `warning` de formato no reconocido y ningún issue de severidad `error` que impida guardar
 
 #### Scenario: La validación no persiste
 - **WHEN** se valida una ficha completa y correcta
@@ -48,7 +52,7 @@ La API MUST rechazar la edición de una ficha cuando fue modificada por otro usu
 - **THEN** la API responde 428 indicando que debe enviar la versión
 
 ### Requirement: Transiciones controladas del régimen de tenencia
-La API MUST aplicar una tabla explícita de transiciones del régimen de tenencia: SHALL rechazar pasar a comodato o a préstamo temporal una pieza con código I vigente, y MUST exigir motivo y referencia documental para pasar de comodato a propiedad. Las transiciones permitidas son [SUPUESTO] pendientes de validar (B3). (RF-005, RN-003, RN-004)
+La API MUST aplicar una tabla explícita de transiciones del régimen de tenencia: SHALL rechazar pasar a comodato o a préstamo temporal una pieza con código I vigente, y MUST exigir motivo y referencia documental para pasar de comodato a propiedad, registrando el motivo y el documento de respaldo en la auditoría sin añadirlos como columnas de la ficha. Las transiciones permitidas son [SUPUESTO] pendientes de validar (B3). (RF-005, RN-003, RN-004)
 
 #### Scenario: Pieza con I pasa a comodato
 - **WHEN** un Gestor de colecciones cambia a "comodato" el régimen de una pieza con código I vigente
@@ -60,4 +64,19 @@ La API MUST aplicar una tabla explícita de transiciones del régimen de tenenci
 
 #### Scenario: Comodato a propiedad con respaldo
 - **WHEN** un Gestor de colecciones cambia una pieza de "comodato" a "propiedad" con motivo y referencia documental
-- **THEN** el régimen cambia, la PUCP figura como propietaria legal y la auditoría registra motivo y documento
+- **THEN** el régimen cambia, la PUCP figura como propietaria legal y la auditoría registra el motivo y el documento de respaldo sin modificar las columnas de la ficha
+
+### Requirement: Asociación de piezas componentes a un conjunto
+La API MUST permitir asociar una pieza existente como componente de un conjunto (pieza padre) mediante una operación de escritura auditada, y SHALL rechazar la asociación cuando la pieza ya sea componente de otro conjunto o cuando la operación crearía un ciclo en la jerarquía de conjuntos. (RF-009, RN-007)
+
+#### Scenario: Componente asociado al conjunto
+- **WHEN** un Catalogador asocia una pieza existente como componente de un conjunto
+- **THEN** la API responde 200 con la pieza componente y la auditoría registra el vínculo con el conjunto
+
+#### Scenario: Ciclo en la jerarquía de conjuntos
+- **WHEN** se intenta asociar a un conjunto una pieza que ya es ancestro suyo en la jerarquía
+- **THEN** la API responde 409 y la jerarquía de conjuntos no cambia
+
+#### Scenario: Componente ya ligado a otro conjunto
+- **WHEN** se intenta asociar una pieza que ya es componente de otro conjunto
+- **THEN** la API responde 409 y la pieza sigue vinculada a su conjunto original

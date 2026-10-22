@@ -103,7 +103,13 @@ def _update(session: Session, batch: ImportBatch, row: ImportRow, mapped: Mapped
         else:
             changes[name] = incoming
     if tenure is not None:
-        change_tenure(session, piece, tenure, _source_label(batch))
+        change_tenure(
+            session,
+            piece,
+            tenure,
+            _source_label(batch),
+            supporting_document_ref=f"lote de importación {batch.id}",
+        )
     if changes:
         update_piece(session, piece, **changes)
     _add_identifiers(session, piece, identifiers, _source_label(batch))

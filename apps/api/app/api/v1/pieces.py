@@ -186,6 +186,7 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
         writer(session, user),
         denomination=body.denomination,
         tenure_regime=tenure,
+        code_i=body.code_i,
         description=body.description,
         collection_id=body.collection_id,
         lender_name=body.lender_name,
@@ -322,8 +323,9 @@ def update_piece(
         changes["epoch_end_year"] = period.get("year_to")
     if "availability_term_id" in changes and changes["availability_term_id"] is not None:
         assert_availability_coherent(session, piece, changes["availability_term_id"])
-    if changes:
-        catalog_service.update_piece(session, piece, **changes)
+    code_i = body.code_i if "code_i" in body.model_fields_set else None
+    if changes or code_i is not None:
+        catalog_service.update_piece(session, piece, code_i=code_i, **changes)
     if "code_i" in body.model_fields_set:
         set_inventory_code(session, piece, body.code_i)
     session.commit()
