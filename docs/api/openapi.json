@@ -1457,6 +1457,14 @@
         "title": "ColumnMapping",
         "type": "object"
       },
+      "CompletenessFieldKind": {
+        "enum": [
+          "REQUIRED",
+          "RECOMMENDED"
+        ],
+        "title": "CompletenessFieldKind",
+        "type": "string"
+      },
       "CompletenessKpis": {
         "examples": [
           {
@@ -1542,6 +1550,98 @@
           "computed_at"
         ],
         "title": "CompletenessKpis",
+        "type": "object"
+      },
+      "CompletenessRuleIn": {
+        "examples": [
+          {
+            "field": "description",
+            "is_active": true,
+            "kind": "RECOMMENDED"
+          }
+        ],
+        "properties": {
+          "field": {
+            "description": "Campo de `piece` a administrar (lista blanca; 422 si no existe).",
+            "title": "Field",
+            "type": "string"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CompletenessFieldKind"
+          }
+        },
+        "required": [
+          "field",
+          "kind"
+        ],
+        "title": "CompletenessRuleIn",
+        "type": "object"
+      },
+      "CompletenessRuleOut": {
+        "examples": [
+          {
+            "field": "description",
+            "is_active": true,
+            "kind": "RECOMMENDED"
+          }
+        ],
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CompletenessFieldKind"
+          }
+        },
+        "required": [
+          "field",
+          "kind",
+          "is_active"
+        ],
+        "title": "CompletenessRuleOut",
+        "type": "object"
+      },
+      "CompletenessRulesUpdate": {
+        "description": "Reemplaza el conjunto completo de reglas activas e inactivas (PUT, no PATCH parcial).",
+        "examples": [
+          {
+            "rules": [
+              {
+                "field": "denomination",
+                "is_active": true,
+                "kind": "REQUIRED"
+              },
+              {
+                "field": "description",
+                "is_active": true,
+                "kind": "RECOMMENDED"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/CompletenessRuleIn"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rules"
+        ],
+        "title": "CompletenessRulesUpdate",
         "type": "object"
       },
       "DependencyStatus": {
@@ -15727,6 +15827,142 @@
         "summary": "Datos de origen sin mapeo (payload, solo lectura)",
         "tags": [
           "Piezas"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/completeness-rules": {
+      "get": {
+        "operationId": "getCompletenessRules",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CompletenessRuleOut"
+                  },
+                  "title": "Response Getcompletenessrules",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Campos obligatorios y recomendados vigentes para las alertas de completitud",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      },
+      "put": {
+        "operationId": "putCompletenessRules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletenessRulesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CompletenessRuleOut"
+                  },
+                  "title": "Response Putcompletenessrules",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "DevUserHeader": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Reemplazar los campos obligatorios y recomendados (RF-019, RN-010)",
+        "tags": [
+          "Calidad"
         ],
         "x-status": "implemented"
       }

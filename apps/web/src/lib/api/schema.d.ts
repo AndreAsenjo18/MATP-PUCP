@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5781708bd4ecf4c0b8b3e085fd4200709ad57a7ddeb784d6da278982b7eaf826
+ * openapi-sha256: b491165fe09cb3b2c5516afcfdf08de5aafa9e979e2ad518e2798779a199a31f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1119,6 +1119,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/completeness-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Campos obligatorios y recomendados vigentes para las alertas de completitud */
+        get: operations["getCompletenessRules"];
+        /** Reemplazar los campos obligatorios y recomendados (RF-019, RN-010) */
+        put: operations["putCompletenessRules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/duplicates": {
         parameters: {
             query?: never;
@@ -2152,6 +2170,11 @@ export interface components {
             target_field: string | null;
         };
         /**
+         * CompletenessFieldKind
+         * @enum {string}
+         */
+        CompletenessFieldKind: "REQUIRED" | "RECOMMENDED";
+        /**
          * CompletenessKpis
          * @example {
          *       "by_collection": [
@@ -2191,6 +2214,64 @@ export interface components {
             without_location: number;
             /** Without Photo */
             without_photo: number;
+        };
+        /**
+         * CompletenessRuleIn
+         * @example {
+         *       "field": "description",
+         *       "is_active": true,
+         *       "kind": "RECOMMENDED"
+         *     }
+         */
+        CompletenessRuleIn: {
+            /**
+             * Field
+             * @description Campo de `piece` a administrar (lista blanca; 422 si no existe).
+             */
+            field: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            kind: components["schemas"]["CompletenessFieldKind"];
+        };
+        /**
+         * CompletenessRuleOut
+         * @example {
+         *       "field": "description",
+         *       "is_active": true,
+         *       "kind": "RECOMMENDED"
+         *     }
+         */
+        CompletenessRuleOut: {
+            /** Field */
+            field: string;
+            /** Is Active */
+            is_active: boolean;
+            kind: components["schemas"]["CompletenessFieldKind"];
+        };
+        /**
+         * CompletenessRulesUpdate
+         * @description Reemplaza el conjunto completo de reglas activas e inactivas (PUT, no PATCH parcial).
+         * @example {
+         *       "rules": [
+         *         {
+         *           "field": "denomination",
+         *           "is_active": true,
+         *           "kind": "REQUIRED"
+         *         },
+         *         {
+         *           "field": "description",
+         *           "is_active": true,
+         *           "kind": "RECOMMENDED"
+         *         }
+         *       ]
+         *     }
+         */
+        CompletenessRulesUpdate: {
+            /** Rules */
+            rules: components["schemas"]["CompletenessRuleIn"][];
         };
         /** DependencyStatus */
         DependencyStatus: {
@@ -9881,6 +9962,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getCompletenessRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessRuleOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putCompletenessRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompletenessRulesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessRuleOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

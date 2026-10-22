@@ -29,6 +29,7 @@ from app.core.errors import NotFound
 from app.core.jobs import run_in_background
 from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
 from app.modules.collections.service import find_collection_by_code
+from app.modules.quality.completeness import list_completeness_rules, replace_completeness_rules
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -40,6 +41,8 @@ from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
     AlertType,
     CompletenessKpis,
+    CompletenessRuleOut,
+    CompletenessRulesUpdate,
     DuplicateCandidateOut,
     DuplicateOrigin,
     DuplicateResolution,
@@ -61,6 +64,9 @@ router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 ReportViewer = Annotated[CurrentUser, Depends(require_permission("reports.view"))]
 Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
+CompletenessRulesManager = Annotated[
+    CurrentUser, Depends(require_permission("quality.completeness_rules.manage"))
+]
 
 
 # ------------------------------------------------------------------------ quality
@@ -89,6 +95,38 @@ def list_incomplete_pieces(
 )
 def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
     raise not_implemented(CHANGE_INCOMPLETE, CompletenessKpis)
+
+
+@router.get(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Campos obligatorios y recomendados vigentes para las alertas de completitud",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_completeness_rules(
+    session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    rules = list_completeness_rules(session)
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
+
+
+@router.put(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Reemplazar los campos obligatorios y recomendados (RF-019, RN-010)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def put_completeness_rules(
+    body: CompletenessRulesUpdate, session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    writer(session, user)
+    rules = replace_completeness_rules(
+        session, [(rule.field, rule.kind, rule.is_active) for rule in body.rules]
+    )
+    session.commit()
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
 
 
 @router.get(

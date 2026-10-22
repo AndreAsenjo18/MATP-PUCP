@@ -81,6 +81,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/pieces/media/storage-estimate"),
     ("post", "/pieces/{}/restore"),
     ("get", "/pieces/{}/source-records"),
+    ("get", "/quality/completeness-rules"),
+    ("put", "/quality/completeness-rules"),
     ("get", "/quality/duplicates"),
     ("post", "/quality/duplicates/{}/resolve"),
     ("post", "/quality/duplicates/scan"),

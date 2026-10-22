@@ -73,6 +73,8 @@ GROUPS = [
             "quality_job",
             "quality_job_item",
             "ai_suggestion",
+            "completeness_rule",
+            "completeness_snapshot",
         ],
     ),
     (
@@ -140,6 +142,7 @@ LABELS = {
     ("quality_job_item", "piece_id"): "detección incremental",
     ("ai_suggestion", "piece_id"): "sugerencias",
     ("ai_suggestion", "import_batch_id"): "sobre lote",
+    ("completeness_snapshot", "collection_id"): "indicador por colección",
     ("ai_suggestion", "reviewed_by_id"): "revisa",
     ("ai_suggestion", "requested_by_id"): "solicita",
     ("role_permission", "role_id"): "",

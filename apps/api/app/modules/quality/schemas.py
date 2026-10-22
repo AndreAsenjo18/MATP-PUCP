@@ -7,8 +7,18 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.refs import EX_DATETIME, EX_PIECE_ID, EX_USER_ID
-from app.modules.quality.models import DuplicateStatus, QualityJobStatus, QualityJobType
+from app.modules.quality.models import (
+    CompletenessFieldKind,
+    DuplicateStatus,
+    QualityJobStatus,
+    QualityJobType,
+)
 
+# NOTA (tarea 1.2 de alertas-y-reporte-incompletas): la definición canónica de las 6 alertas de
+# completitud ya vive en `quality.completeness.AlertCode` (design D1). Este `AlertType` sigue
+# siendo el que expone hoy la API (consumido por fixtures y componentes del frontend de
+# `ficha-pieza-crud`, en curso); unificarlo es tarea de 2.1 (el endpoint real de alertas) y 3.1
+# (el panel de alertas), que deben actualizar frontend y backend juntos para no romper al otro.
 AlertType = Literal[
     "WITHOUT_INVENTORY_CODE",
     "WITHOUT_PHOTO",
@@ -58,6 +68,51 @@ class IncompletePiece(BaseModel):
     title: str
     collection_name: str | None
     alerts: list[AlertType]
+
+
+class CompletenessRuleOut(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"field": "description", "kind": "RECOMMENDED", "is_active": True}]
+        }
+    )
+
+    field: str
+    kind: CompletenessFieldKind
+    is_active: bool
+
+
+class CompletenessRuleIn(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"field": "description", "kind": "RECOMMENDED", "is_active": True}]
+        }
+    )
+
+    field: str = Field(
+        description="Campo de `piece` a administrar (lista blanca; 422 si no existe)."
+    )
+    kind: CompletenessFieldKind
+    is_active: bool = True
+
+
+class CompletenessRulesUpdate(BaseModel):
+    """Reemplaza el conjunto completo de reglas activas e inactivas (PUT, no PATCH parcial)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "rules": [
+                        {"field": "denomination", "kind": "REQUIRED", "is_active": True},
+                        {"field": "description", "kind": "RECOMMENDED", "is_active": True},
+                    ]
+                }
+            ]
+        }
+    )
+
+    rules: list[CompletenessRuleIn]
 
 
 class CompletenessKpis(BaseModel):
