@@ -10,6 +10,7 @@ import {
   CSRF_HEADER,
   DEV_USER_HEADER,
   isNotImplemented,
+  setSessionLostHandler,
   type PieceSummary,
 } from "./client";
 
@@ -146,5 +147,38 @@ describe("session cookie and CSRF (ADR-009)", () => {
     await client.POST("/api/v1/auth/logout");
     expect(seen[0].headers.get(CSRF_HEADER)).toBe("desde-la-cookie");
     vi.unstubAllGlobals();
+  });
+});
+
+describe("lost session (ADR-009)", () => {
+  function clientAnswering(status: number, body: unknown) {
+    return createApiClient({
+      baseUrl: "http://api.test",
+      fetch: async () => jsonResponse(status, body),
+    });
+  }
+
+  it("tells the handler when the API says the session expired", async () => {
+    const lost: string[] = [];
+    setSessionLostHandler((code) => lost.push(code));
+    const { error } = await clientAnswering(401, {
+      code: "session_expired",
+      message: "Su sesión expiró por inactividad.",
+      details: {},
+    }).GET("/api/v1/pieces");
+    setSessionLostHandler(null);
+
+    expect(lost).toEqual(["session_expired"]);
+    expect(apiErrorMessage(error)).toBe("Su sesión expiró por inactividad.");
+  });
+
+  it("ignores wrong credentials and other statuses", async () => {
+    const lost: string[] = [];
+    setSessionLostHandler((code) => lost.push(code));
+    await clientAnswering(401, { code: "invalid_credentials", message: "x", details: {} }).GET("/api/v1/pieces");
+    await clientAnswering(403, { code: "permission_denied", message: "x", details: {} }).GET("/api/v1/pieces");
+    setSessionLostHandler(null);
+
+    expect(lost).toEqual([]);
   });
 });

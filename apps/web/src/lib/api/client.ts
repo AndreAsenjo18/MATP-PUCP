@@ -26,6 +26,16 @@ export const CSRF_COOKIE = "matp_csrf";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+/** 401 codes meaning "you are no longer signed in" (ADR-009), as opposed to wrong credentials. */
+const SESSION_LOST_CODES = new Set(["session_expired", "session_revoked", "authentication_required"]);
+
+let sessionLostHandler: ((code: string) => void) | null = null;
+
+/** Register what to do when the API says the session is gone (the session provider does it). */
+export function setSessionLostHandler(handler: ((code: string) => void) | null): void {
+  sessionLostHandler = handler;
+}
+
 export interface ApiClientOptions {
   /** API origin, e.g. http://localhost:8000 (without /api/v1). */
   baseUrl: string;
@@ -67,6 +77,19 @@ export function createApiClient({
     },
   };
   client.use(csrf);
+  const lostSession: Middleware = {
+    async onResponse({ response }) {
+      if (response.status !== 401 || !sessionLostHandler) return undefined;
+      try {
+        const body = (await response.clone().json()) as { code?: string };
+        if (body.code && SESSION_LOST_CODES.has(body.code)) sessionLostHandler(body.code);
+      } catch {
+        // Cuerpo no JSON: no es una respuesta de la API, se deja pasar.
+      }
+      return undefined;
+    },
+  };
+  client.use(lostSession);
   if (devUser) {
     const identity: Middleware = {
       onRequest({ request }) {

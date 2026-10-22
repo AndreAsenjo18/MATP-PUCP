@@ -14,7 +14,11 @@
  * Se lee con `useSyncExternalStore` (fuente externa mutable) en vez de `useEffect` + `setState`,
  * siguiendo la regla `react-hooks/set-state-in-effect` del linter del proyecto.
  */
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+
+import { setSessionLostHandler } from "@/lib/api/client";
+import { loginUrl } from "@/lib/auth/guard";
+import { getApiMode } from "@/lib/data/mode";
 
 import { ROLES, USERS } from "@/lib/fixtures";
 
@@ -123,6 +127,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // `getServerSnapshot` siempre da null; React re-sincroniza con el valor real de localStorage
   // justo después de hidratar (antes de pintar), sin necesidad de un `useEffect` propio.
   const session = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Live mode: when the API reports that the session expired or was revoked, forget the local
+  // profile and go to the login screen, remembering where the person was. Drafts of forms live
+  // in the browser (piece-draft.ts), so what they typed is still there when they come back.
+  useEffect(() => {
+    if (getApiMode() !== "live") return undefined;
+    setSessionLostHandler((code) => {
+      writeSession(null);
+      const here = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(loginUrl(here, code === "session_expired"));
+    });
+    return () => setSessionLostHandler(null);
+  }, []);
 
   const login = useCallback(
     (userId: string, roleCode: string, live?: LiveProfile) => writeSession({ userId, roleCode, ...(live ? { live } : {}) }),
