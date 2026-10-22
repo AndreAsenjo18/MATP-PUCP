@@ -5536,6 +5536,42 @@
         "title": "Page[IncompletePiece]",
         "type": "object"
       },
+      "Page_SensitiveAccessOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SensitiveAccessOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[SensitiveAccessOut]",
+        "type": "object"
+      },
       "Page_UserOut_": {
         "properties": {
           "items": {
@@ -7770,6 +7806,75 @@
         "title": "SearchResultPage",
         "type": "object"
       },
+      "SensitiveAccessOut": {
+        "description": "One request that delivered unmasked sensitive fields (never their values; RNF-014).",
+        "examples": [
+          {
+            "entity_ids": [
+              "01920000-0000-7000-8000-000000000101"
+            ],
+            "entity_type": "piece",
+            "fields": [
+              "lender_name",
+              "loan_agreement_ref"
+            ],
+            "id": "01920000-0000-7000-8000-000000000501",
+            "occurred_at": "2026-09-17T10:30:00Z",
+            "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+            "user_id": "01920000-0000-7000-8000-000000000501"
+          }
+        ],
+        "properties": {
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "user_id",
+          "route",
+          "entity_type",
+          "entity_ids",
+          "fields"
+        ],
+        "title": "SensitiveAccessOut",
+        "type": "object"
+      },
       "SkippedPiece": {
         "properties": {
           "piece_id": {
@@ -8423,12 +8528,29 @@
             ],
             "title": "Locked Until"
           },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "roles": {
             "items": {
               "type": "string"
             },
             "title": "Roles",
             "type": "array"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.",
+            "title": "Temporary Password"
           }
         },
         "required": [
@@ -8495,6 +8617,12 @@
               }
             ],
             "title": "Is Active"
+          },
+          "reset_password": {
+            "default": false,
+            "description": "Genera una contraseña temporal nueva y revoca las sesiones.",
+            "title": "Reset Password",
+            "type": "boolean"
           },
           "roles": {
             "anyOf": [
@@ -8690,14 +8818,8 @@
       }
     },
     "securitySchemes": {
-      "DevUserHeader": {
-        "description": "Identidad de PRUEBAS (ADR-005): correo o UUID de un usuario sintético activo, p. ej. `catalogador@matp.local`. Solo se acepta con APP_ENV=test; en desarrollo, demostración y producción se usa el inicio de sesión (ADR-009).",
-        "in": "header",
-        "name": "X-MATP-User",
-        "type": "apiKey"
-      },
       "cookieAuth": {
-        "description": "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega `POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`.",
+        "description": "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega `POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`, cuyo valor es el de la cookie `matp_csrf` (también viene en la respuesta del inicio de sesión).",
         "in": "cookie",
         "name": "matp_session",
         "type": "apiKey"
@@ -8705,7 +8827,7 @@
     }
   },
   "info": {
-    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie\n  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera\n  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.\n",
+    "description": "API del Sistema de Gestión y Digitalización de Colecciones del MATP\n(uso interno).\n\n- Rutas de negocio bajo `/api/v1`; `/health` y `/health/live` no exponen datos del catálogo.\n- Operaciones con `x-status: stub` responden **501** con el change de OpenSpec que las implementará\n  (`x-change`) y un ejemplo de respuesta. Las demás tienen `x-status: implemented`.\n- Errores con formato uniforme `{code, message, details}` y mensajes en español.\n- Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie\n  `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera\n  `X-CSRF-Token`.\n",
     "title": "MATP API",
     "version": "0.1.0"
   },
@@ -8778,9 +8900,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -8859,9 +8978,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9000,9 +9116,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9081,9 +9194,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9173,9 +9283,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9267,9 +9374,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9347,9 +9451,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9556,9 +9657,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9665,9 +9763,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9758,9 +9853,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -9770,6 +9862,160 @@
         ],
         "x-change": "auditoria-y-soft-delete-transversal",
         "x-status": "stub"
+      }
+    },
+    "/api/v1/audit/sensitive-access": {
+      "get": {
+        "description": "Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).",
+        "operationId": "getSensitiveAccess",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "occurred_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred To"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SensitiveAccessOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)",
+        "tags": [
+          "Auditoría"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/auth/change-password": {
@@ -9829,9 +10075,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -9957,9 +10200,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10016,9 +10256,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10092,9 +10329,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10171,9 +10405,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10249,9 +10480,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10316,9 +10544,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10414,9 +10639,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10493,9 +10715,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10594,9 +10813,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10670,9 +10886,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10741,9 +10954,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10800,9 +11010,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10852,9 +11059,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -10917,9 +11121,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -10980,9 +11181,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11058,9 +11256,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11151,9 +11346,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11221,9 +11413,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11316,9 +11505,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11394,9 +11580,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11501,9 +11684,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11571,9 +11751,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11653,9 +11830,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11746,9 +11920,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -11883,9 +12054,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -11986,9 +12154,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12083,9 +12248,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12176,9 +12338,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12267,9 +12426,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12372,9 +12528,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12455,9 +12608,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12529,9 +12679,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12597,9 +12744,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12680,9 +12824,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -12792,9 +12933,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12880,9 +13018,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -12944,9 +13079,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13026,9 +13158,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13127,9 +13256,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13213,9 +13339,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13294,9 +13417,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13374,9 +13494,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13483,9 +13600,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -13546,9 +13660,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -13957,9 +14068,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14024,9 +14132,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14138,9 +14243,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14239,9 +14341,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14327,9 +14426,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14406,9 +14502,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14497,9 +14590,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14582,9 +14672,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14669,9 +14756,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14759,9 +14843,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -14859,9 +14940,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -14948,9 +15026,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15065,9 +15140,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15167,9 +15239,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15254,9 +15323,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15340,9 +15406,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15419,9 +15482,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15511,9 +15571,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15592,9 +15649,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15679,9 +15733,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15769,9 +15820,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -15862,9 +15910,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -15943,9 +15988,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16042,9 +16084,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -16128,9 +16167,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16293,9 +16329,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -16352,9 +16385,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16434,9 +16464,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16579,9 +16606,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -16652,9 +16676,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -16721,9 +16742,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16792,9 +16810,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -16874,9 +16889,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17006,9 +17018,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -17071,9 +17080,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -17086,6 +17092,7 @@
     },
     "/api/v1/roles/{role_code}/permissions": {
       "put": {
+        "description": "Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateRolePermissions",
         "parameters": [
           {
@@ -17139,6 +17146,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Dejaría sin administradores."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -17148,22 +17165,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17172,8 +17176,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/search": {
@@ -17306,9 +17309,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -17401,22 +17401,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17425,10 +17412,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "post": {
+        "description": "Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.",
         "operationId": "createUser",
         "requestBody": {
           "content": {
@@ -17471,6 +17458,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Correo repetido o rol desactivado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -17480,22 +17477,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17504,8 +17488,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}": {
@@ -17563,22 +17546,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17587,10 +17557,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "patch": {
+        "description": "Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateUser",
         "parameters": [
           {
@@ -17645,6 +17615,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -17654,22 +17634,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17678,8 +17645,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}/role": {
@@ -17738,6 +17704,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -17747,22 +17723,9 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17771,8 +17734,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/vocabularies": {
@@ -17825,9 +17787,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17903,9 +17862,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -17985,9 +17941,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -18081,9 +18034,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -18169,9 +18119,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }
@@ -18276,9 +18223,6 @@
         },
         "security": [
           {
-            "DevUserHeader": []
-          },
-          {
             "cookieAuth": []
           }
         ],
@@ -18374,9 +18318,6 @@
           }
         },
         "security": [
-          {
-            "DevUserHeader": []
-          },
           {
             "cookieAuth": []
           }

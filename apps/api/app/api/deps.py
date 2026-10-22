@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Annotated
 
 from fastapi import Depends, Request, Security
-from fastapi.security import APIKeyCookie, APIKeyHeader
+from fastapi.security import APIKeyCookie
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -28,23 +28,13 @@ from app.modules.users.sessions import SESSION_COOKIE, SessionRevoked, resolve_s
 
 DEV_USER_HEADER = "X-MATP-User"
 
-dev_user_header = APIKeyHeader(
-    name=DEV_USER_HEADER,
-    scheme_name="DevUserHeader",
-    description=(
-        "Identidad de PRUEBAS (ADR-005): correo o UUID de un usuario sintético activo, p. ej. "
-        "`catalogador@matp.local`. Solo se acepta con APP_ENV=test; en desarrollo, demostración "
-        "y producción se usa el inicio de sesión (ADR-009)."
-    ),
-    auto_error=False,
-)
-
 session_cookie = APIKeyCookie(
     name=SESSION_COOKIE,
     scheme_name="cookieAuth",
     description=(
         "Sesión de servidor (ADR-009): token opaco en cookie `HttpOnly` que entrega "
-        "`POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`."
+        "`POST /auth/login`. Las escrituras exigen además la cabecera `X-CSRF-Token`, cuyo valor "
+        "es el de la cookie `matp_csrf` (también viene en la respuesta del inicio de sesión)."
     ),
     auto_error=False,
 )
@@ -163,7 +153,6 @@ def authenticate(
 def get_session_user(
     request: Request,
     session: SessionDep,
-    header_value: Annotated[str | None, Security(dev_user_header)] = None,
     session_token: Annotated[str | None, Security(session_cookie)] = None,
 ) -> CurrentUser:
     """Authenticated user *without* the forced password change.
@@ -171,7 +160,9 @@ def get_session_user(
     Only ``GET /auth/me``, ``POST /auth/logout`` and ``POST /auth/change-password`` use this
     one, so a person holding a temporary password can see who they are, leave, or replace it.
     """
-    return authenticate(request, session, header_value, session_token)
+    # The test identity header is read here without declaring it as a security scheme: it only
+    # exists under APP_ENV=test (ADR-009 D7) and must not appear in the published contract.
+    return authenticate(request, session, request.headers.get(DEV_USER_HEADER), session_token)
 
 
 def get_current_user(

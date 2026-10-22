@@ -6,7 +6,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 
 | Sección | Archivo | Change que la escribe | Estado |
 |---|---|---|---|
-| Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | pendiente |
+| Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | escrita |
 | Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | pendiente |
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
 | Depósito: vista móvil, movimientos y verificaciones | `deposito.md` | `ubicacion-jerarquica-y-movimientos` | escrita |
@@ -16,7 +16,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | pendiente |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | pendiente |
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
-| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) |
+| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Usuarios y permisos» (`autenticacion-y-matriz-permisos`), «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) |
 
 ## Cómo moverse por el sistema
 
