@@ -1,7 +1,7 @@
 """Quality, search, reports and exports (calidad-datos, busqueda-reportes)."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy import select
@@ -48,6 +48,7 @@ from app.modules.quality.schemas import (
     QualityJobOut,
 )
 from app.modules.search.filters import PieceFilter
+from app.modules.search.ranking import generate_search_suggestions, rank_and_describe_pieces
 from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
@@ -56,7 +57,6 @@ from app.modules.search.schemas import (
     SearchExportRequest,
     SearchResultPage,
 )
-from app.modules.search.service import describe_matches
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
@@ -65,11 +65,11 @@ ReportViewer = Annotated[CurrentUser, Depends(require_permission("reports.view")
 Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
 
 
-# ------------------------------------------------------------------------ quality
+# ------------------------------------------------------------------------- quality
 @router.get(
     "/quality/incomplete",
     response_model=Page[IncompletePiece],
-    summary="Piezas con información incompleta (RF-019, RF-035)",
+    summary="Listado de piezas con alertas de incompletitud (RF-019)",
     tags=["Calidad"],
     **stub(CHANGE_INCOMPLETE),
 )
@@ -85,7 +85,7 @@ def list_incomplete_pieces(
 @router.get(
     "/reports/dashboard-stats",
     response_model=CompletenessKpis,
-    summary="KPI de completitud general y por colección (RF-035)",
+    summary="KPI de completitud general y por coleccin (RF-035)",
     tags=["Calidad"],
     **stub(CHANGE_INCOMPLETE),
 )
@@ -111,7 +111,7 @@ def list_duplicate_candidates(
     min_score: Annotated[float | None, Query(ge=0, le=1)] = None,
     origin: Annotated[
         DuplicateOrigin | None,
-        Query(description="CATALOG: dos piezas del catálogo; IMPORT: fila de importación."),
+        Query(description="CATALOG: dos piezas del catlogo; IMPORT: fila de importacin."),
     ] = None,
 ) -> Page[DuplicateCandidateOut]:
     if reopen_expired_postponements(session):  # design D5: no cron, reopened on read
@@ -158,7 +158,7 @@ def resolve_duplicate_candidate(
             field_choices=body.field_choices,
         )
     except StaleCandidate:
-        session.commit()  # the pair stays SUPERSEDED (spec: «Candidato obsoleto»)
+        session.commit()  # the pair stays SUPERSEDED (spec: Candidato obsoleto)
         raise
     session.commit()
     return DuplicateCandidateOut.model_validate(candidate)
@@ -169,7 +169,7 @@ def resolve_duplicate_candidate(
     response_model=QualityJobOut,
     status_code=status.HTTP_202_ACCEPTED,
     summary=(
-        "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso "
+        "Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso "
         "(RF-030)"
     ),
     tags=["Calidad"],
@@ -191,14 +191,14 @@ def scan_duplicates(
 @router.get(
     "/quality/jobs/{job_id}",
     response_model=QualityJobOut,
-    summary="Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+    summary="Estado y avance de una deteccin de duplicados (RF-030, RNF-015)",
     tags=["Calidad"],
     **implemented(),
 )
 def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> QualityJobOut:
     job = session.get(QualityJob, job_id)
     if job is None:
-        raise NotFound("No existe esa detección de duplicados.")
+        raise NotFound("No existe esa deteccin de duplicados.")
     return QualityJobOut.model_validate(job)
 
 
@@ -206,24 +206,25 @@ def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> Qua
 @router.get(
     "/search",
     response_model=SearchResultPage,
-    summary="Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
-    tags=["Búsqueda"],
+    response_model_exclude_unset=True,
+    summary="Bsqueda avanzada con filtros combinados (RF-031, RF-032)",
+    tags=["Bsqueda"],
     **implemented(),
 )
 def search_pieces(
-    q: Annotated[str, Query(min_length=1, max_length=200, description="Código o texto.")],
+    q: Annotated[str, Query(min_length=1, max_length=200, description="Cdigo o texto.")],
     session: SessionDep,
     user: Reader,
     collection_code: Annotated[
-        str | None, Query(description="Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).")
+        str | None, Query(description="Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).")
     ] = None,
     tenure_regime: Annotated[
         TenureRegimeLabel | None,
-        Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
+        Query(description="Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal."),
     ] = None,
-    page: Annotated[int, Query(ge=1, description="Número de página (desde 1).")] = 1,
+    page: Annotated[int, Query(ge=1, description="Nmero de pgina (desde 1).")] = 1,
     limit: Annotated[
-        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por pgina (mx. 100).")
     ] = DEFAULT_PAGE_SIZE,
 ) -> SearchResultPage:
     regime = (
@@ -242,11 +243,23 @@ def search_pieces(
     query = select(Piece).where(where_clause).order_by(Piece.denomination)
     pieces, total = paginate(session, query, params)
     summaries = CatalogReader(session, viewer).summaries(pieces)
+    hits = rank_and_describe_pieces(session, pieces, summaries, q)
+
+    extra_kwargs: dict[str, Any] = {}
+    active_other_filters = [f for f in piece_filter.describe() if f.key != "q"]
+    if total == 0 and len(active_other_filters) >= 2:
+        suggestions, active_f = generate_search_suggestions(piece_filter, q, total)
+        if suggestions:
+            extra_kwargs["suggestions"] = suggestions
+        if active_f:
+            extra_kwargs["active_filters"] = [a.model_dump() for a in active_f]
+
     return SearchResultPage(
-        items=describe_matches(session, q, summaries),
+        items=hits,
         total=total,
         page=page,
         limit=limit,
+        **extra_kwargs,
     )
 
 
@@ -265,7 +278,7 @@ def export_excel_report(body: SearchExportRequest, user: Exporter) -> ExportJob:
 @router.get(
     "/reports/{report_type}",
     response_model=ReportOut,
-    summary="Reportes: inventario, por colección, por ubicación, incompletas, valorización",
+    summary="Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin",
     tags=["Reportes"],
     **stub(CHANGE_REPORTS),
 )
@@ -282,7 +295,7 @@ def get_report(
 @router.get(
     "/reports/piece-card/{piece_id}/pdf",
     response_model=ExportJob,
-    summary="Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
+    summary="Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006)",
     tags=["Reportes"],
     **stub(CHANGE_REPORTS),
 )
@@ -293,7 +306,7 @@ def export_piece_pdf(piece_id: uuid.UUID, user: ReportViewer) -> ExportJob:
 @router.get(
     "/exports/full",
     response_model=ExportJob,
-    summary="Exportación completa de la base en formato abierto (RF-044)",
+    summary="Exportacin completa de la base en formato abierto (RF-044)",
     tags=["Reportes"],
     **stub(CHANGE_SEARCH_EXPORT),
 )
