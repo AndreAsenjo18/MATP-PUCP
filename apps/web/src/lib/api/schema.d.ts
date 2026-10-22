@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 31da3a01278c8c2c08b02cabf0b87666f5303e8c14653b436fde4be68b59b015
+ * openapi-sha256: 92217c0ca7390fc19757612336de2d2935320d60acc1a99411ac8a3cc661107e
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -218,6 +218,26 @@ export interface paths {
          * @description No escribe nada. Devuelve el `preview_token` que exige la confirmación (RNF-007).
          */
         post: operations["previewChangeSetRevert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sensitive-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)
+         * @description Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).
+         */
+        get: operations["getSensitiveAccess"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1404,7 +1424,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Actualizar los permisos de un rol */
+        /**
+         * Actualizar los permisos de un rol
+         * @description Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         put: operations["updateRolePermissions"];
         post?: never;
         delete?: never;
@@ -1474,7 +1497,10 @@ export interface paths {
         /** Listar usuarios */
         get: operations["listUsers"];
         put?: never;
-        /** Crear un usuario individual con roles */
+        /**
+         * Crear un usuario individual con roles
+         * @description Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.
+         */
         post: operations["createUser"];
         delete?: never;
         options?: never;
@@ -1496,7 +1522,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar, desactivar o cambiar roles de un usuario */
+        /**
+         * Editar, desactivar o cambiar roles de un usuario
+         * @description Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -4419,6 +4448,20 @@ export interface components {
              */
             total: number;
         };
+        /** Page[SensitiveAccessOut] */
+        Page_SensitiveAccessOut_: {
+            /** Items */
+            items: components["schemas"]["SensitiveAccessOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
         /** Page[TrashEntryOut] */
         Page_TrashEntryOut_: {
             /** Items */
@@ -5576,6 +5619,49 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * SensitiveAccessOut
+         * @description One request that delivered unmasked sensitive fields (never their values; RNF-014).
+         * @example {
+         *       "entity_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ],
+         *       "entity_type": "piece",
+         *       "fields": [
+         *         "lender_name",
+         *         "loan_agreement_ref"
+         *       ],
+         *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        SensitiveAccessOut: {
+            /** Entity Ids */
+            entity_ids: string[];
+            /** Entity Type */
+            entity_type: string;
+            /** Fields */
+            fields: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Route */
+            route: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
         /** SkippedPiece */
         SkippedPiece: {
             /**
@@ -5961,8 +6047,18 @@ export interface components {
             last_login_at: string | null;
             /** Locked Until */
             locked_until: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
             /** Roles */
             roles: string[];
+            /**
+             * Temporary Password
+             * @description Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.
+             */
+            temporary_password?: string | null;
         };
         /**
          * UserRoleUpdate
@@ -5986,6 +6082,12 @@ export interface components {
             full_name?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /**
+             * Reset Password
+             * @description Genera una contraseña temporal nueva y revoca las sesiones.
+             * @default false
+             */
+            reset_password: boolean;
             /** Roles */
             roles?: string[] | null;
         };
@@ -6796,6 +6898,62 @@ export interface operations {
             };
             /** @description El conjunto de cambios no existe. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSensitiveAccess: {
+        parameters: {
+            query?: {
+                entity_type?: string | null;
+                occurred_from?: string | null;
+                occurred_to?: string | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                user_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SensitiveAccessOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11427,8 +11585,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Dejaría sin administradores. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11436,13 +11594,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11686,15 +11844,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     createUser: {
@@ -11737,8 +11886,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Correo repetido o rol desactivado. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11746,13 +11895,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11804,15 +11953,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     updateUser: {
@@ -11857,8 +11997,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11866,13 +12006,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11919,8 +12059,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11928,13 +12068,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

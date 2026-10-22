@@ -39,7 +39,7 @@ API_DESCRIPTION = """API del Sistema de Gestión y Digitalización de Coleccione
 - Errores con formato uniforme `{code, message, details}` y mensajes en español.
 - Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie
   `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera
-  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.
+  `X-CSRF-Token`.
 """
 
 OPENAPI_TAGS = [

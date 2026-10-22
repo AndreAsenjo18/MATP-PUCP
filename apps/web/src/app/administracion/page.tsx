@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { TrashPanel } from "@/components/domain/TrashPanel";
+import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Badge } from "@/components/ui/Badge";
@@ -236,6 +237,12 @@ function AdministracionContent() {
 
       {tab === "Usuarios y roles" &&
         (hasPermission("users.manage") ? (
+          getApiMode() === "live" ? (
+            <div className="flex flex-col gap-4">
+              <UsersLive />
+              <PermissionMatrixLive />
+            </div>
+          ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="overflow-x-auto">
               <h2 className="text-lg font-semibold text-tinta">Usuarios</h2>
@@ -276,6 +283,7 @@ function AdministracionContent() {
               </ul>
             </Card>
           </div>
+          )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar usuarios y roles.</PermissionNotice>
         ))}
