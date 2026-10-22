@@ -36,11 +36,12 @@ export function tenureStatus(regime: TenureRegimeLabel | string | null | undefin
 }
 
 const ALERTS: Record<AlertType, StatusStyle> = {
-  WITHOUT_INVENTORY_CODE: { label: "Sin código I", intent: "warning" },
-  WITHOUT_PHOTO: { label: "Sin foto", intent: "warning" },
-  WITHOUT_LOCATION: { label: "Sin ubicación", intent: "warning" },
+  MISSING_INVENTORY_CODE: { label: "Sin código I", intent: "warning" },
+  MISSING_PHOTO: { label: "Sin foto", intent: "warning" },
+  MISSING_LOCATION: { label: "Sin ubicación", intent: "warning" },
   MISSING_REQUIRED_FIELDS: { label: "Campos obligatorios incompletos", intent: "warning" },
-  UNPARSEABLE_CODE: { label: "Código no normalizable", intent: "danger" },
+  MISSING_RECOMMENDED_FIELDS: { label: "Campos recomendados incompletos", intent: "default" },
+  UNNORMALIZABLE_IDENTIFIER: { label: "Código no normalizable", intent: "danger" },
 };
 
 /** Alertas de completitud: información incompleta `warning`; código no normalizable `danger`. */

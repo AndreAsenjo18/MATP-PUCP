@@ -368,6 +368,18 @@
         "title": "AiSuggestionRejection",
         "type": "object"
       },
+      "AlertCode": {
+        "enum": [
+          "MISSING_INVENTORY_CODE",
+          "MISSING_PHOTO",
+          "MISSING_LOCATION",
+          "MISSING_REQUIRED_FIELDS",
+          "MISSING_RECOMMENDED_FIELDS",
+          "UNNORMALIZABLE_IDENTIFIER"
+        ],
+        "title": "AlertCode",
+        "type": "string"
+      },
       "ApprovalRequest": {
         "examples": [
           {
@@ -3628,8 +3640,8 @@
         "examples": [
           {
             "alerts": [
-              "WITHOUT_INVENTORY_CODE",
-              "WITHOUT_PHOTO"
+              "MISSING_INVENTORY_CODE",
+              "MISSING_PHOTO"
             ],
             "collection_name": "Colección MMZ (ficticia)",
             "piece_id": "01920000-0000-7000-8000-000000000101",
@@ -3639,14 +3651,7 @@
         "properties": {
           "alerts": {
             "items": {
-              "enum": [
-                "WITHOUT_INVENTORY_CODE",
-                "WITHOUT_PHOTO",
-                "WITHOUT_LOCATION",
-                "MISSING_REQUIRED_FIELDS",
-                "UNPARSEABLE_CODE"
-              ],
-              "type": "string"
+              "$ref": "#/components/schemas/AlertCode"
             },
             "title": "Alerts",
             "type": "array"
@@ -5720,7 +5725,8 @@
             "applies": true,
             "fields": [],
             "message": "La pieza no tiene fotografías.",
-            "type": "WITHOUT_PHOTO"
+            "suggested_action": "Subir al menos una fotografía",
+            "type": "MISSING_PHOTO"
           }
         ],
         "properties": {
@@ -5741,21 +5747,19 @@
             "title": "Message",
             "type": "string"
           },
-          "type": {
-            "enum": [
-              "WITHOUT_INVENTORY_CODE",
-              "WITHOUT_PHOTO",
-              "WITHOUT_LOCATION",
-              "MISSING_REQUIRED_FIELDS",
-              "UNPARSEABLE_CODE"
-            ],
-            "title": "Type",
+          "suggested_action": {
+            "description": "Acción sugerida para resolver la alerta (RNF-010, lenguaje claro).",
+            "title": "Suggested Action",
             "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/AlertCode"
           }
         },
         "required": [
           "type",
-          "message"
+          "message",
+          "suggested_action"
         ],
         "title": "PieceAlert",
         "type": "object"
@@ -14258,16 +14262,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`."
           }
         },
         "security": [
@@ -14278,12 +14272,11 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Alertas de información incompleta de la pieza (RF-019)",
+        "summary": "Alertas de información incompleta de la pieza, con acción sugerida (RF-019)",
         "tags": [
           "Calidad"
         ],
-        "x-change": "alertas-y-reporte-incompletas",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/children": {
@@ -16286,14 +16279,7 @@
               "anyOf": [
                 {
                   "items": {
-                    "enum": [
-                      "WITHOUT_INVENTORY_CODE",
-                      "WITHOUT_PHOTO",
-                      "WITHOUT_LOCATION",
-                      "MISSING_REQUIRED_FIELDS",
-                      "UNPARSEABLE_CODE"
-                    ],
-                    "type": "string"
+                    "$ref": "#/components/schemas/AlertCode"
                   },
                   "type": "array"
                 },

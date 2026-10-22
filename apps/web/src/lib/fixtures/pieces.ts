@@ -544,8 +544,9 @@ export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
   const alerts: PieceAlert[] = [];
   const withoutCode = piece.tenure_regime === "Propiedad" && !piece.code_i;
   alerts.push({
-    type: "WITHOUT_INVENTORY_CODE",
+    type: "MISSING_INVENTORY_CODE",
     applies: withoutCode,
+    suggested_action: "Asignar código de inventario general",
     message: withoutCode
       ? "Pieza propia sin código I asignado."
       : piece.tenure_regime === "Comodato"
@@ -555,26 +556,36 @@ export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
           : "Tiene código I vigente.",
   });
   alerts.push({
-    type: "WITHOUT_PHOTO",
+    type: "MISSING_PHOTO",
     applies: piece.media_count === 0,
+    suggested_action: "Subir al menos una fotografía",
     message: piece.media_count === 0 ? "Sin fotografías registradas." : "Tiene al menos una fotografía.",
   });
   alerts.push({
-    type: "WITHOUT_LOCATION",
+    type: "MISSING_LOCATION",
     applies: piece.location.path.length === 0,
+    suggested_action: "Registrar sede y espacio",
     message: piece.location.path.length === 0 ? "Sin ubicación registrada." : "Tiene ubicación registrada.",
   });
   const missing = MISSING_FIELDS[piece.id] ?? [];
   alerts.push({
     type: "MISSING_REQUIRED_FIELDS",
     applies: missing.length > 0,
+    suggested_action: "Completar los campos obligatorios marcados en el editor",
     fields: missing,
     message: missing.length > 0 ? `Faltan campos: ${missing.join(", ")}.` : "Campos obligatorios completos.",
   });
+  alerts.push({
+    type: "MISSING_RECOMMENDED_FIELDS",
+    applies: false,
+    suggested_action: "Completar los campos recomendados marcados en el editor",
+    message: "Campos recomendados completos.",
+  });
   const unparseable = piece.identifiers.some((i) => i.normalization_status === "UNPARSEABLE");
   alerts.push({
-    type: "UNPARSEABLE_CODE",
+    type: "UNNORMALIZABLE_IDENTIFIER",
     applies: unparseable,
+    suggested_action: "Revisar y corregir el identificador en la sección de códigos",
     message: unparseable ? "Al menos un código de origen no se pudo normalizar." : "Todos los códigos se normalizaron.",
   });
   return alerts;

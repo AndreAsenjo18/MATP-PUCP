@@ -35,22 +35,22 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     }
   });
 
-  it("marca la alerta WITHOUT_INVENTORY_CODE solo para piezas propias sin código I", () => {
+  it("marca la alerta MISSING_INVENTORY_CODE solo para piezas propias sin código I", () => {
     const cajonSanMarcos = getPieceDetail(
       PIECES.find((p) => p.denomination === "Cajón San Marcos")!.id,
     )!;
     const alerts = alertsForPiece(cajonSanMarcos);
-    expect(alerts.find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).toBe(true);
+    expect(alerts.find((a) => a.type === "MISSING_INVENTORY_CODE")?.applies).toBe(true);
 
     const comodatoPiece = PIECES.find((p) => p.tenure_regime === "Comodato")!;
     const comodatoAlerts = alertsForPiece(comodatoPiece);
-    expect(comodatoAlerts.find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).toBe(false);
+    expect(comodatoAlerts.find((a) => a.type === "MISSING_INVENTORY_CODE")?.applies).toBe(false);
   });
 
   it("marca un código como no normalizable cuando el original es ilegible", () => {
     const tabla = PIECES.find((p) => p.denomination === "Tabla pintada de Sarhua")!;
     const alerts = alertsForPiece(tabla);
-    expect(alerts.find((a) => a.type === "UNPARSEABLE_CODE")?.applies).toBe(true);
+    expect(alerts.find((a) => a.type === "UNNORMALIZABLE_IDENTIFIER")?.applies).toBe(true);
   });
 
   it("combina filtros con AND (RF-032) y respeta el filtro de solo incompletas", () => {

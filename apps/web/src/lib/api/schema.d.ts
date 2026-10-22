@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: b491165fe09cb3b2c5516afcfdf08de5aafa9e979e2ad518e2798779a199a31f
+ * openapi-sha256: a7169ee1568cb717a4b658c1ab6e63003cbb8151c357bc81c6b501a9cc6ea381
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -847,7 +847,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Alertas de información incompleta de la pieza (RF-019) */
+        /** Alertas de información incompleta de la pieza, con acción sugerida (RF-019) */
         get: operations["listPieceAlerts"];
         put?: never;
         post?: never;
@@ -1679,6 +1679,11 @@ export interface components {
              */
             reason: string;
         };
+        /**
+         * AlertCode
+         * @enum {string}
+         */
+        AlertCode: "MISSING_INVENTORY_CODE" | "MISSING_PHOTO" | "MISSING_LOCATION" | "MISSING_REQUIRED_FIELDS" | "MISSING_RECOMMENDED_FIELDS" | "UNNORMALIZABLE_IDENTIFIER";
         /**
          * ApprovalRequest
          * @example {
@@ -3200,8 +3205,8 @@ export interface components {
          * IncompletePiece
          * @example {
          *       "alerts": [
-         *         "WITHOUT_INVENTORY_CODE",
-         *         "WITHOUT_PHOTO"
+         *         "MISSING_INVENTORY_CODE",
+         *         "MISSING_PHOTO"
          *       ],
          *       "collection_name": "Colección MMZ (ficticia)",
          *       "piece_id": "01920000-0000-7000-8000-000000000101",
@@ -3210,7 +3215,7 @@ export interface components {
          */
         IncompletePiece: {
             /** Alerts */
-            alerts: ("WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE")[];
+            alerts: components["schemas"]["AlertCode"][];
             /** Collection Name */
             collection_name: string | null;
             /**
@@ -4148,7 +4153,8 @@ export interface components {
          *       "applies": true,
          *       "fields": [],
          *       "message": "La pieza no tiene fotografías.",
-         *       "type": "WITHOUT_PHOTO"
+         *       "suggested_action": "Subir al menos una fotografía",
+         *       "type": "MISSING_PHOTO"
          *     }
          */
         PieceAlert: {
@@ -4163,10 +4169,11 @@ export interface components {
             /** Message */
             message: string;
             /**
-             * Type
-             * @enum {string}
+             * Suggested Action
+             * @description Acción sugerida para resolver la alerta (RNF-010, lenguaje claro).
              */
-            type: "WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE";
+            suggested_action: string;
+            type: components["schemas"]["AlertCode"];
         };
         /**
          * PieceChildLink
@@ -8859,15 +8866,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     getPieceChildren: {
@@ -10226,7 +10224,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tipos de alerta (AND). */
-                alert?: ("WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE")[] | null;
+                alert?: components["schemas"]["AlertCode"][] | null;
                 collection_id?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;

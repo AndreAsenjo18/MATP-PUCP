@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.refs import EX_DATETIME, EX_PIECE_ID, EX_USER_ID
+from app.modules.quality.completeness import AlertCode
 from app.modules.quality.models import (
     CompletenessFieldKind,
     DuplicateStatus,
@@ -14,18 +15,10 @@ from app.modules.quality.models import (
     QualityJobType,
 )
 
-# NOTA (tarea 1.2 de alertas-y-reporte-incompletas): la definición canónica de las 6 alertas de
-# completitud ya vive en `quality.completeness.AlertCode` (design D1). Este `AlertType` sigue
-# siendo el que expone hoy la API (consumido por fixtures y componentes del frontend de
-# `ficha-pieza-crud`, en curso); unificarlo es tarea de 2.1 (el endpoint real de alertas) y 3.1
-# (el panel de alertas), que deben actualizar frontend y backend juntos para no romper al otro.
-AlertType = Literal[
-    "WITHOUT_INVENTORY_CODE",
-    "WITHOUT_PHOTO",
-    "WITHOUT_LOCATION",
-    "MISSING_REQUIRED_FIELDS",
-    "UNPARSEABLE_CODE",
-]
+#: La única definición de los códigos de alerta vive en `quality.completeness.AlertCode`
+#: (design D1); se expone aquí tal cual para que ficha, reporte, KPI y filtro de búsqueda nunca
+#: se desincronicen (tarea 2.1 — unificado junto con el frontend de `ficha-pieza-crud`).
+AlertType = AlertCode
 
 
 class PieceAlert(BaseModel):
@@ -33,8 +26,9 @@ class PieceAlert(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "type": "WITHOUT_PHOTO",
+                    "type": "MISSING_PHOTO",
                     "message": "La pieza no tiene fotografías.",
+                    "suggested_action": "Subir al menos una fotografía",
                     "fields": [],
                     "applies": True,
                 }
@@ -44,6 +38,9 @@ class PieceAlert(BaseModel):
 
     type: AlertType
     message: str
+    suggested_action: str = Field(
+        description="Acción sugerida para resolver la alerta (RNF-010, lenguaje claro)."
+    )
     fields: list[str] = Field(default_factory=list)
     applies: bool = Field(
         True, description="False cuando no aplica (p. ej. sin I en comodato no es alerta)."
@@ -58,7 +55,7 @@ class IncompletePiece(BaseModel):
                     "piece_id": EX_PIECE_ID,
                     "title": "Vasija ceremonial (sintética)",
                     "collection_name": "Colección MMZ (ficticia)",
-                    "alerts": ["WITHOUT_INVENTORY_CODE", "WITHOUT_PHOTO"],
+                    "alerts": ["MISSING_INVENTORY_CODE", "MISSING_PHOTO"],
                 }
             ]
         }

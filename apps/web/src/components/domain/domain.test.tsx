@@ -32,9 +32,9 @@ describe("status-intents", () => {
   });
 
   it("información incompleta es warning y código no normalizable es danger", () => {
-    expect(alertStatus("WITHOUT_PHOTO")).toEqual({ label: "Sin foto", intent: "warning" });
+    expect(alertStatus("MISSING_PHOTO")).toEqual({ label: "Sin foto", intent: "warning" });
     expect(alertStatus("MISSING_REQUIRED_FIELDS").intent).toBe("warning");
-    expect(alertStatus("UNPARSEABLE_CODE").intent).toBe("danger");
+    expect(alertStatus("UNNORMALIZABLE_IDENTIFIER").intent).toBe("danger");
   });
 
   it("conflicto de importación es danger y posible duplicado warning", () => {
@@ -67,12 +67,32 @@ describe("badges de dominio", () => {
   });
 
   it("AlertBadge muestra texto, icono y mensaje; no se muestra si no aplica", () => {
-    const html = render(<AlertBadge alert={{ type: "WITHOUT_PHOTO", applies: true, message: "Sin fotografías registradas." }} />);
+    const html = render(
+      <AlertBadge
+        alert={{
+          type: "MISSING_PHOTO",
+          applies: true,
+          message: "Sin fotografías registradas.",
+          suggested_action: "Subir al menos una fotografía",
+        }}
+      />,
+    );
     expect(visibleText(html)).toBe("Sin foto");
     expect(html).toContain(BADGE_INTENTS.warning);
     expect(html).toContain('title="Sin fotografías registradas."');
     expect(html).toContain("<svg");
-    expect(render(<AlertBadge alert={{ type: "WITHOUT_PHOTO", applies: false, message: "" }} />)).toBe("");
+    expect(
+      render(
+        <AlertBadge
+          alert={{
+            type: "MISSING_PHOTO",
+            applies: false,
+            message: "",
+            suggested_action: "Subir al menos una fotografía",
+          }}
+        />,
+      ),
+    ).toBe("");
   });
 
   it("LockBadge usa un icono de candado y no un emoji", () => {

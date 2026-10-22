@@ -139,7 +139,7 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     # Baja cada vez que un change implementa un stub (p. ej. ubicacion-jerarquica-y-movimientos
     # implementó POST/PUT /locations y GET /locations/{id}/pieces); el umbral solo detecta un
     # vaciado accidental de la lista, no fija cuántos quedan.
-    assert len(stubs) >= 34
+    assert len(stubs) >= 33
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:

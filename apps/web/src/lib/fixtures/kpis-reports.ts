@@ -13,7 +13,7 @@ type ReportOut = ApiSchemas["ReportOut"];
 
 export function computeCompletenessKpis(): CompletenessKpis {
   const total = PIECES.length;
-  const withoutInventory = PIECES.filter((p) => alertsForPiece(p).find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).length;
+  const withoutInventory = PIECES.filter((p) => alertsForPiece(p).find((a) => a.type === "MISSING_INVENTORY_CODE")?.applies).length;
   const withoutPhoto = PIECES.filter((p) => (MEDIA_BY_PIECE[p.id]?.length ?? 0) === 0).length;
   const withoutLocation = PIECES.filter((p) => p.location.path.length === 0).length;
   const missingRequired = PIECES.filter((p) => alertsForPiece(p).find((a) => a.type === "MISSING_REQUIRED_FIELDS")?.applies).length;
