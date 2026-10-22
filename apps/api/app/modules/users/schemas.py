@@ -124,6 +124,14 @@ class UserOut(BaseModel):
     last_login_at: datetime | None
     locked_until: datetime | None
     created_at: datetime
+    must_change_password: bool = False
+    temporary_password: str | None = Field(
+        None,
+        description=(
+            "Contraseña temporal generada: solo se devuelve al crear el usuario o al "
+            "restablecerla, una única vez, y no se puede volver a consultar."
+        ),
+    )
 
 
 class UserCreate(BaseModel):
@@ -137,6 +145,9 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(None, min_length=1, max_length=200)
     is_active: bool | None = None
     roles: list[str] | None = None
+    reset_password: bool = Field(
+        False, description="Genera una contraseña temporal nueva y revoca las sesiones."
+    )
 
 
 class UserRoleUpdate(BaseModel):

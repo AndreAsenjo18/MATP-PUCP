@@ -15,13 +15,13 @@ from app.api.deps import (
     SessionUserDep,
     load_permissions,
     require_permission,
+    writer,
 )
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
     CHANGE_AI_EXTRACTION,
     CHANGE_AUDIT,
-    CHANGE_AUTH,
     CHANGE_BULK,
     implemented,
     not_implemented,
@@ -42,9 +42,11 @@ from app.modules.ai_suggestions.schemas import (
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditLog, AuditOrigin
 from app.modules.audit.schemas import AuditEntryOut, RevertChangeSetRequest, RevertResult
+from app.modules.users import admin as users_admin
 from app.modules.users import auth
+from app.modules.users.admin import user_roles
 from app.modules.users.auth import LoginResult
-from app.modules.users.models import Permission, Role, RolePermission, UserSession
+from app.modules.users.models import AppUser, Permission, Role, RolePermission, UserSession
 from app.modules.users.schemas import (
     ChangePasswordRequest,
     LoginRequest,
@@ -212,19 +214,44 @@ def get_me(user: SessionUserDep) -> Me:
 
 
 # -------------------------------------------------------------------------- users
+def _user_out(db: Session, user: AppUser, temporary_password: str | None = None) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        is_active=user.is_active,
+        roles=user_roles(db, user.id),
+        last_login_at=user.last_login_at,
+        locked_until=user.locked_until,
+        created_at=user.created_at,
+        must_change_password=user.must_change_password,
+        temporary_password=temporary_password,
+    )
+
+
 @router.get(
     "/users",
     response_model=Page[UserOut],
     summary="Listar usuarios",
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    **implemented(),
 )
 def list_users(
+    session: SessionDep,
     user: UserManager,
     params: Annotated[PageParams, Depends(page_params)],
     include_inactive: bool = False,
 ) -> Page[UserOut]:
-    raise not_implemented(CHANGE_AUTH, page_example(UserOut))
+    statement = select(AppUser).order_by(AppUser.full_name, AppUser.email)
+    if not include_inactive:
+        statement = statement.where(AppUser.is_active.is_(True))
+    rows, total = paginate(session, statement, params)
+    return Page[UserOut](
+        items=[_user_out(session, row) for row in rows],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.post(
@@ -232,11 +259,26 @@ def list_users(
     response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un usuario individual con roles",
+    description=(
+        "Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio "
+        "obligatorio. La contraseña temporal aparece solo en esta respuesta."
+    ),
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    responses={409: {"model": ErrorResponse, "description": "Correo repetido o rol desactivado."}},
+    **implemented(),
 )
-def create_user(body: UserCreate, user: UserManager) -> UserOut:
-    raise not_implemented(CHANGE_AUTH, UserOut)
+def create_user(body: UserCreate, session: SessionDep, user: UserManager) -> UserOut:
+    writer(session, user, "Alta de usuario")
+    created, password = users_admin.create_user(
+        session,
+        email=body.email,
+        full_name=body.full_name,
+        role_codes=body.roles,
+        initial_password=body.initial_password,
+    )
+    out = _user_out(session, created, password)
+    session.commit()
+    return out
 
 
 @router.get(
@@ -244,21 +286,41 @@ def create_user(body: UserCreate, user: UserManager) -> UserOut:
     response_model=UserOut,
     summary="Detalle de un usuario",
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    **implemented(),
 )
-def get_user(user_id: uuid.UUID, user: UserManager) -> UserOut:
-    raise not_implemented(CHANGE_AUTH, UserOut)
+def get_user(user_id: uuid.UUID, session: SessionDep, user: UserManager) -> UserOut:
+    return _user_out(session, users_admin.get_user(session, user_id))
 
 
 @router.patch(
     "/users/{user_id}",
     response_model=UserOut,
     summary="Editar, desactivar o cambiar roles de un usuario",
+    description=(
+        "Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario "
+        "de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si "
+        "dejaría el sistema sin administrador activo."
+    ),
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    responses={409: {"model": ErrorResponse, "description": "Rol desactivado o último admin."}},
+    **implemented(),
 )
-def update_user(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> UserOut:
-    raise not_implemented(CHANGE_AUTH, UserOut)
+def update_user(
+    user_id: uuid.UUID, body: UserUpdate, session: SessionDep, user: UserManager
+) -> UserOut:
+    writer(session, user, "Edición de usuario")
+    target = users_admin.get_user(session, user_id)
+    temporary = users_admin.update_user(
+        session,
+        target,
+        full_name=body.full_name,
+        is_active=body.is_active,
+        role_codes=body.roles,
+        reset_password=body.reset_password,
+    )
+    out = _user_out(session, target, temporary)
+    session.commit()
+    return out
 
 
 @router.put(
@@ -266,10 +328,18 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, user: UserManager) -> User
     response_model=UserOut,
     summary="Reemplazar los roles asignados a un usuario (RF-039)",
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    responses={409: {"model": ErrorResponse, "description": "Rol desactivado o último admin."}},
+    **implemented(),
 )
-def update_user_role(user_id: uuid.UUID, body: UserRoleUpdate, user: UserManager) -> UserOut:
-    raise not_implemented(CHANGE_AUTH, UserOut)
+def update_user_role(
+    user_id: uuid.UUID, body: UserRoleUpdate, session: SessionDep, user: UserManager
+) -> UserOut:
+    writer(session, user, "Cambio de roles de usuario")
+    target = users_admin.get_user(session, user_id)
+    users_admin.update_user(session, target, role_codes=body.roles)
+    out = _user_out(session, target)
+    session.commit()
+    return out
 
 
 @router.get(
@@ -315,13 +385,36 @@ def list_permissions(session: SessionDep, user: Reader) -> list[PermissionOut]:
     "/roles/{role_code}/permissions",
     response_model=RoleOut,
     summary="Actualizar los permisos de un rol",
+    description=(
+        "Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde "
+        "la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría "
+        "el sistema sin administrador activo."
+    ),
     tags=["Usuarios y roles"],
-    **stub(CHANGE_AUTH),
+    responses={409: {"model": ErrorResponse, "description": "Dejaría sin administradores."}},
+    **implemented(),
 )
 def update_role_permissions(
-    role_code: str, body: RolePermissionsUpdate, user: UserManager
+    role_code: str, body: RolePermissionsUpdate, session: SessionDep, user: UserManager
 ) -> RoleOut:
-    raise not_implemented(CHANGE_AUTH, RoleOut)
+    writer(session, user, body.reason)
+    role = session.scalar(select(Role).where(Role.code == role_code))
+    if role is None:
+        raise NotFound("El rol no existe.")
+    users_admin.replace_role_permissions(session, role, body.permissions, body.reason)
+    session.commit()
+    granted = session.scalars(
+        select(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .where(RolePermission.role_id == role.id)
+    )
+    return RoleOut(
+        code=role.code,
+        name=role.name,
+        description=role.description,
+        is_enabled=role.is_enabled,
+        permissions=sorted(granted),
+    )
 
 
 # ---------------------------------------------------------------- AI suggestions

@@ -8060,12 +8060,29 @@
             ],
             "title": "Locked Until"
           },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
           "roles": {
             "items": {
               "type": "string"
             },
             "title": "Roles",
             "type": "array"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.",
+            "title": "Temporary Password"
           }
         },
         "required": [
@@ -8132,6 +8149,12 @@
               }
             ],
             "title": "Is Active"
+          },
+          "reset_password": {
+            "default": false,
+            "description": "Genera una contraseña temporal nueva y revoca las sesiones.",
+            "title": "Reset Password",
+            "type": "boolean"
           },
           "roles": {
             "anyOf": [
@@ -16317,6 +16340,7 @@
     },
     "/api/v1/roles/{role_code}/permissions": {
       "put": {
+        "description": "Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateRolePermissions",
         "parameters": [
           {
@@ -16370,6 +16394,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Dejaría sin administradores."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16379,16 +16413,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -16403,8 +16427,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/search": {
@@ -16632,16 +16655,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -16656,10 +16669,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "post": {
+        "description": "Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.",
         "operationId": "createUser",
         "requestBody": {
           "content": {
@@ -16702,6 +16715,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Correo repetido o rol desactivado."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16711,16 +16734,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -16735,8 +16748,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}": {
@@ -16794,16 +16806,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -16818,10 +16820,10 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       },
       "patch": {
+        "description": "Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.",
         "operationId": "updateUser",
         "parameters": [
           {
@@ -16876,6 +16878,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16885,16 +16897,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -16909,8 +16911,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/users/{user_id}/role": {
@@ -16969,6 +16970,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rol desactivado o último admin."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16978,16 +16989,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`."
           }
         },
         "security": [
@@ -17002,8 +17003,7 @@
         "tags": [
           "Usuarios y roles"
         ],
-        "x-change": "autenticacion-y-matriz-permisos",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/vocabularies": {

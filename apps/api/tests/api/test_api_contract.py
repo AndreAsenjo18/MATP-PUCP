@@ -136,7 +136,7 @@ def test_business_operations_declare_the_dev_identity_scheme(spec: dict) -> None
 
 def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     stubs = [r for r in _api_routes() if r.openapi_extra.get(X_STATUS) == STATUS_STUB]
-    assert len(stubs) >= 35
+    assert len(stubs) >= 25  # shrinks as changes replace stubs; only guards against losing them all
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:

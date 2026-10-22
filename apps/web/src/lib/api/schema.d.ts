@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a033ceff9185f0de4c828c8e5c79c1b1d30f1a2aa26beeb092433ac830844673
+ * openapi-sha256: 8e7dca8a03b4b7948071c6dbbdc00d49e711c88924b8116d3e63ef5a76863520
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1280,7 +1280,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Actualizar los permisos de un rol */
+        /**
+         * Actualizar los permisos de un rol
+         * @description Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         put: operations["updateRolePermissions"];
         post?: never;
         delete?: never;
@@ -1316,7 +1319,10 @@ export interface paths {
         /** Listar usuarios */
         get: operations["listUsers"];
         put?: never;
-        /** Crear un usuario individual con roles */
+        /**
+         * Crear un usuario individual con roles
+         * @description Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.
+         */
         post: operations["createUser"];
         delete?: never;
         options?: never;
@@ -1338,7 +1344,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar, desactivar o cambiar roles de un usuario */
+        /**
+         * Editar, desactivar o cambiar roles de un usuario
+         * @description Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -5130,8 +5139,18 @@ export interface components {
             last_login_at: string | null;
             /** Locked Until */
             locked_until: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
             /** Roles */
             roles: string[];
+            /**
+             * Temporary Password
+             * @description Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.
+             */
+            temporary_password?: string | null;
         };
         /**
          * UserRoleUpdate
@@ -5155,6 +5174,12 @@ export interface components {
             full_name?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /**
+             * Reset Password
+             * @description Genera una contraseña temporal nueva y revoca las sesiones.
+             * @default false
+             */
+            reset_password: boolean;
             /** Roles */
             roles?: string[] | null;
         };
@@ -10277,8 +10302,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Dejaría sin administradores. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10286,13 +10311,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -10406,15 +10431,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     createUser: {
@@ -10457,8 +10473,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Correo repetido o rol desactivado. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10466,13 +10482,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -10524,15 +10540,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     updateUser: {
@@ -10577,8 +10584,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10586,13 +10593,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -10639,8 +10646,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10648,13 +10655,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

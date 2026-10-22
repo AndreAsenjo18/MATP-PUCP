@@ -15,8 +15,8 @@
 
 ## 3. Usuarios, roles y datos sensibles
 
-- [ ] 3.1 Implementar `GET`/`POST /api/v1/users` y `GET`/`PATCH /api/v1/users/{user_id}` (correo normalizado único, contraseña temporal mostrada una vez, roles, desactivación con revocación, restablecimiento); pruebas: correo repetido 409, rol desactivado 409, desactivación revoca sesiones (Req: Administración de usuarios con contraseña temporal; RF-039)
-- [ ] 3.2 Implementar `PUT /api/v1/roles/{role_code}/permissions` con auditoría y la invariante del último administrador (también en 3.1); pruebas: retiro de exportar efectivo en la siguiente petición, último administrador 409 (Req: Edición auditada de la matriz de permisos con administrador garantizado)
+- [x] 3.1 Implementar `GET`/`POST /api/v1/users` y `GET`/`PATCH /api/v1/users/{user_id}` (correo normalizado único, contraseña temporal mostrada una vez, roles, desactivación con revocación, restablecimiento); pruebas: correo repetido 409, rol desactivado 409, desactivación revoca sesiones (Req: Administración de usuarios con contraseña temporal; RF-039)
+- [x] 3.2 Implementar `PUT /api/v1/roles/{role_code}/permissions` con auditoría y la invariante del último administrador (también en 3.1); pruebas: retiro de exportar efectivo en la siguiente petición, último administrador 409 (Req: Edición auditada de la matriz de permisos con administrador garantizado)
 - [ ] 3.3 Registrar accesos sensibles sin enmascarar en `BackgroundTask` desde el enmascarado existente (`masked_fields`) y operación nueva `GET /api/v1/audit/sensitive-access`; pruebas de ambos escenarios (Req: Registro de accesos a datos sensibles; RNF-014)
 
 ## 4. Frontend
