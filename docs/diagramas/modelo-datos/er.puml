@@ -321,6 +321,29 @@ entity IMPORT_IMAGE {
   ..
   <i>+ timestamps</i>
 }
+entity IMPORT_PHOTO {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * relative_path : varchar(1000)
+  * original_filename : varchar(300)
+  * content_sha256 : varchar(64)
+  * size_bytes : bigint
+  * content_type : varchar(100)
+  * storage_prefix : varchar(500)
+  * status : varchar(40)
+    rejection_reason : text
+    row_id : uuid <<FK>>
+    match_status : varchar(40)
+    match_source : varchar(40)
+    candidate_row_ids : jsonb
+    sort_key : integer
+  * duplicate_of_existing : boolean
+  * duplicate_confirmed : boolean
+    media_asset_id : uuid <<FK>>
+  ..
+  <i>+ timestamps</i>
+}
 entity DUPLICATE_CANDIDATE {
   * id : uuid <<PK>>
   --
@@ -607,6 +630,9 @@ APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
 IMPORT_BATCH ||--o{ IMPORT_IMAGE : "imágenes del lote"
 IMPORT_ROW |o--o{ IMPORT_IMAGE : "anclada en"
 MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
+IMPORT_BATCH ||--o{ IMPORT_PHOTO : "fotos del lote"
+IMPORT_ROW |o--o{ IMPORT_PHOTO : "propuesta para"
+MEDIA_ASSET |o--o{ IMPORT_PHOTO : "aplicada como"
 
 note as N1
   <b>Convenciones</b>

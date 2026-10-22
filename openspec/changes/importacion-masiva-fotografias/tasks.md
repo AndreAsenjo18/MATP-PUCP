@@ -2,9 +2,9 @@
 
 ## 1. Modelo y configuración
 
-- [ ] 1.1 Añadir RF-045 («Carga masiva de fotografías asociada a la importación», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` y actualizar las preguntas L1–L4 de `docs/preguntas-contraparte.md` con las respuestas que haya dado el museo; verificar con `openspec validate importacion-masiva-fotografias --strict` (Req: todos)
-- [ ] 1.2 Modelo `ImportPhoto` y enums (`ImportPhotoStatus`, `PhotoMatchStatus`, `PhotoMatchSource`) en `app/modules/imports/models.py`, migración Alembic aditiva con índice único `(batch_id, content_sha256)` y término «sin especificar» en `PHOTO_VIEW_TYPE` del seed; `tests/test_migrations.py` y prueba de una sola cabeza en verde (Req: Fotografías del lote con subida reanudable)
-- [ ] 1.3 Variables `IMPORT_MAX_PHOTOS`, `MEDIA_KEEP_ORIGINALS`, `IMPORT_PHOTO_RETENTION_DAYS` y `MEDIA_QUOTA_BYTES` en `Settings` y `.env.example`; prueba existente de documentación de variables en verde (Req: Conservación configurable del original en cargas masivas; RNF-004)
+- [x] 1.1 Añadir RF-045 («Carga masiva de fotografías asociada a la importación», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` y actualizar las preguntas L1–L4 de `docs/preguntas-contraparte.md` con las respuestas que haya dado el museo; verificar con `openspec validate importacion-masiva-fotografias --strict` (Req: todos)
+- [x] 1.2 Modelo `ImportPhoto` y enums (`ImportPhotoStatus`, `PhotoMatchStatus`, `PhotoMatchSource`) en `app/modules/imports/models.py`, migración Alembic aditiva con índice único `(batch_id, content_sha256)` y término «sin especificar» en `PHOTO_VIEW_TYPE` del seed; `tests/test_migrations.py` y prueba de una sola cabeza en verde (Req: Fotografías del lote con subida reanudable)
+- [x] 1.3 Variables `IMPORT_MAX_PHOTOS`, `MEDIA_KEEP_ORIGINALS`, `IMPORT_PHOTO_RETENTION_DAYS` y `MEDIA_QUOTA_BYTES` en `Settings` y `.env.example`; prueba existente de documentación de variables en verde (Req: Conservación configurable del original en cargas masivas; RNF-004)
 
 ## 2. Subida reanudable y verificación
 
@@ -14,8 +14,8 @@
 
 ## 3. Emparejamiento
 
-- [ ] 3.1 `app/modules/imports/photo_matching.py`: limpieza de sufijos, extracción de candidatos y normalización con `identification.normalization.normalize`; pruebas unitarias con nombres sintéticos (`I 1234 (2).JPG`, `MMZ045_frontal.jpg`, `1234.0.jpg`, `IMG_20190312.jpg`) (Req: Emparejamiento automático propuesto entre fotos y filas; RF-023)
-- [ ] 3.2 Índice del lote y resolución en tres vías (archivo → carpeta → columna `photo_filename` del mapeo), orden natural y `ambiguous`/`unmatched`; pruebas de los cinco escenarios del requirement (Req: Emparejamiento automático propuesto…)
+- [x] 3.1 `app/modules/imports/photo_matching.py`: limpieza de sufijos, extracción de candidatos y normalización con `identification.normalization.normalize`; pruebas unitarias con nombres sintéticos (`I 1234 (2).JPG`, `MMZ045_frontal.jpg`, `1234.0.jpg`, `IMG_20190312.jpg`) (Req: Emparejamiento automático propuesto entre fotos y filas; RF-023)
+- [x] 3.2 Índice del lote y resolución en tres vías (archivo → carpeta → columna `photo_filename` del mapeo), orden natural y `ambiguous`/`unmatched`; pruebas de los cinco escenarios del requirement (Req: Emparejamiento automático propuesto…)
 - [ ] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
 - [ ] 3.4 Campo `photo_filename` en `MappingSpec` (coordinar con la célula dueña de `plantillas-mapeo-y-normalizacion`); prueba de mapeo con la columna «Foto» (Req: Emparejamiento automático propuesto… — escenario «Columna de archivo definida en el mapeo»)
 
@@ -28,6 +28,7 @@
 ## 5. Aplicación, reversión y originales
 
 - [ ] 5.1 `media.service.register_from_import()` reutilizando restricción efectiva y auditoría, sin volver a verificar ni copiar; principal por menor `sort_key` en piezas nuevas; pruebas: pieza nueva con 3 fotos, comodato con restricción heredada (Req: Aplicación y reversión conjunta de piezas y fotografías; RN-008)
+  - Pendiente (2026-10-22, desde la 1.2): el seed de referencia no corre sobre un catálogo con datos, así que los entornos ya sembrados (calidad y producción) no tendrán el término `SIN_ESPECIFICAR` de `PHOTO_VIEW_TYPE`. En esta tarea hay que decidir cómo se garantiza: crear el término si falta al aplicar el lote, o una migración de datos.
 - [ ] 5.2 Integrar el registro en la transacción de aplicación del lote con verificación `HEAD` previa; prueba: objeto faltante deja el lote en `FAILED_APPLY` y el catálogo sin cambios (Req: Aplicación y reversión conjunta… — escenario «Fallo al registrar una foto durante la aplicación»)
 - [ ] 5.3 Incluir las fotos en el `change_set` del lote para la reversión; prueba: revertir un lote retira lógicamente sus fotos y conserva archivos (Req: Aplicación y reversión conjunta…; RN-005)
 - [ ] 5.4 `MEDIA_KEEP_ORIGINALS=false`: `storage_key` en `display.webp`, datos del original en `extra_metadata.original`, borrado de `upload.<ext>` tras aplicar y rechazo si falta el derivado; pruebas de los escenarios del requirement de multimedia (Req: Conservación configurable del original en cargas masivas)

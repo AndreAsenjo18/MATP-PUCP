@@ -67,6 +67,46 @@ def test_valid_environment_loads(clean_env: pytest.MonkeyPatch) -> None:
     assert settings.cors_origin_list == ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
+PHOTO_IMPORT_VARIABLES = [
+    "IMPORT_MAX_PHOTOS",
+    "MEDIA_KEEP_ORIGINALS",
+    "IMPORT_PHOTO_RETENTION_DAYS",
+    "MEDIA_QUOTA_BYTES",
+]
+
+
+def test_photo_import_settings_defaults_and_overrides(clean_env: pytest.MonkeyPatch) -> None:
+    """importacion-masiva-fotografias (D2, D6, D7): tope por lote, originales y cuota."""
+    for name in REQUIRED:
+        clean_env.setenv(name, "a-sufficiently-long-value")
+    for name in PHOTO_IMPORT_VARIABLES:
+        clean_env.delenv(name, raising=False)
+    defaults = load_settings()
+    assert defaults.import_max_photos == 5_000
+    assert defaults.media_keep_originals is True
+    assert defaults.import_photo_retention_days == 30
+    assert defaults.media_quota_bytes is None
+
+    clean_env.setenv("MEDIA_QUOTA_BYTES", "")  # as written in .env.example: no quota warning
+    assert load_settings().media_quota_bytes is None
+    clean_env.setenv("MEDIA_KEEP_ORIGINALS", "false")
+    clean_env.setenv("MEDIA_QUOTA_BYTES", "8000000000")
+    clean_env.setenv("IMPORT_MAX_PHOTOS", "2000")
+    overridden = load_settings()
+    assert overridden.media_keep_originals is False
+    assert overridden.media_quota_bytes == 8_000_000_000
+    assert overridden.import_max_photos == 2_000
+
+
+def test_photo_quota_must_be_positive(clean_env: pytest.MonkeyPatch) -> None:
+    for name in REQUIRED:
+        clean_env.setenv(name, "a-sufficiently-long-value")
+    clean_env.setenv("MEDIA_QUOTA_BYTES", "0")
+    with pytest.raises(ConfigurationError) as excinfo:
+        load_settings()
+    assert "MEDIA_QUOTA_BYTES" in str(excinfo.value)
+
+
 def test_s3_credentials_both_empty_is_valid(clean_env: pytest.MonkeyPatch) -> None:
     for name in REQUIRED:
         clean_env.setenv(name, "a-sufficiently-long-value")

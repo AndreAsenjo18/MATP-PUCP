@@ -53,6 +53,9 @@
 | RF-028 | Bitácora de carga con motivo de rechazo | Must | importacion-datos |
 | RF-029 | Extracción de fotos incrustadas en Excel con revisión manual | Should | importacion-datos |
 | RF-030 | Detección de duplicados por similitud con cola de revisión humana | Must | calidad-datos |
+| RF-045 | Carga masiva de fotografías asociada a la importación | Must | importacion-datos |
+
+> RF-045 no está en el Expediente original: lo pidió el museo en la validación del prototipo v3 (2026-10) y lo cubre el change `importacion-masiva-fotografias`. Debe incorporarse al Expediente.
 
 ## 4. Consulta y reportes
 

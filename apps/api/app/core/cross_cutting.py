@@ -147,6 +147,17 @@ TABLE_EXCEPTIONS: dict[str, TableException] = {
             owner="Importación",
         ),
         _exception(
+            "import_photo",
+            scopes=[SCOPE_SOFT_DELETE],
+            reason=(
+                "Foto de trabajo de un lote de importación, igual que import_row e import_image: "
+                "su fila nunca se borra (descartarla es un estado y la purga de lotes abandonados "
+                "solo elimina sus archivos). Al aplicar el lote la foto pasa a media_asset, que sí "
+                "tiene borrado lógico (importacion-masiva-fotografias, D1 y D7)."
+            ),
+            owner="Importación",
+        ),
+        _exception(
             "quality_setting",
             scopes=[SCOPE_SOFT_DELETE],
             reason=(
