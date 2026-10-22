@@ -28,6 +28,7 @@
 ## 5. Aplicación, reversión y originales
 
 - [ ] 5.1 `media.service.register_from_import()` reutilizando restricción efectiva y auditoría, sin volver a verificar ni copiar; principal por menor `sort_key` en piezas nuevas; pruebas: pieza nueva con 3 fotos, comodato con restricción heredada (Req: Aplicación y reversión conjunta de piezas y fotografías; RN-008)
+  - Pendiente (2026-10-22, desde la 1.2): el seed de referencia no corre sobre un catálogo con datos, así que los entornos ya sembrados (calidad y producción) no tendrán el término `SIN_ESPECIFICAR` de `PHOTO_VIEW_TYPE`. En esta tarea hay que decidir cómo se garantiza: crear el término si falta al aplicar el lote, o una migración de datos.
 - [ ] 5.2 Integrar el registro en la transacción de aplicación del lote con verificación `HEAD` previa; prueba: objeto faltante deja el lote en `FAILED_APPLY` y el catálogo sin cambios (Req: Aplicación y reversión conjunta… — escenario «Fallo al registrar una foto durante la aplicación»)
 - [ ] 5.3 Incluir las fotos en el `change_set` del lote para la reversión; prueba: revertir un lote retira lógicamente sus fotos y conserva archivos (Req: Aplicación y reversión conjunta…; RN-005)
 - [ ] 5.4 `MEDIA_KEEP_ORIGINALS=false`: `storage_key` en `display.webp`, datos del original en `extra_metadata.original`, borrado de `upload.<ext>` tras aplicar y rechazo si falta el derivado; pruebas de los escenarios del requirement de multimedia (Req: Conservación configurable del original en cargas masivas)
