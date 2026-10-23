@@ -7,6 +7,7 @@ import { render, visibleText } from "@/test/render";
 import { canConfirm, ConfirmButton, confirmVariant } from "./ConfirmButton";
 import { CompletenessChart } from "./CompletenessChart";
 import { DEFAULT_EXCLUSION_REASON, ImportConflictModal, resolveConflictDecision } from "./ImportConflictModal";
+import { IncompleteReportPanel } from "./IncompleteReportPanel";
 import { PieceAlertsPanel } from "./PieceAlertsPanel";
 import { PieceCard, pieceCardProps } from "./PieceCard";
 import { PieceCurrentLocation, PieceGeneralData, PieceIdentifiersTable, PieceMediaGallery, PieceSheetHeader } from "./PieceSheet";
@@ -308,5 +309,27 @@ describe("CompletenessChart", () => {
   it("avisa cuando no hay instantáneas para esa alerta en el rango", () => {
     const html = render(<CompletenessChart points={[]} alert="MISSING_PHOTO" />);
     expect(visibleText(html)).toContain("Sin instantáneas");
+  });
+});
+
+describe("IncompleteReportPanel", () => {
+  // Renderizado estático (ADR-012: sin jsdom): el useEffect de carga no corre aquí, así que solo
+  // se verifica el estado inicial (filtros y mensaje de carga). El filtrado, la paginación y la
+  // descarga ya están probados en lib/data/quality.test.ts y verificados a mano en el navegador.
+  it("muestra los 6 filtros de alerta y el estado de carga inicial", () => {
+    const html = render(<IncompleteReportPanel canDownload={false} />);
+    const text = visibleText(html);
+    expect(text).toContain("Sin código I");
+    expect(text).toContain("Sin foto");
+    expect(text).toContain("Sin ubicación");
+    expect(text).toContain("Campos obligatorios incompletos");
+    expect(text).toContain("Campos recomendados incompletos");
+    expect(text).toContain("Código no normalizable");
+    expect(text).toContain("Cargando");
+  });
+
+  it("solo muestra los botones de descarga cuando el rol tiene permiso de exportar", () => {
+    expect(visibleText(render(<IncompleteReportPanel canDownload={false} />))).not.toContain("Excel");
+    expect(visibleText(render(<IncompleteReportPanel canDownload />))).toContain("Excel");
   });
 });

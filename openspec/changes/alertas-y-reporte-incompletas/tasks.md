@@ -15,11 +15,11 @@
 
 - [x] 3.1 `lib/data/quality.ts` (mock/live); panel de alertas en la ficha con acción sugerida que lleva a la sección del editor; pruebas de componente (Req: Alertas de la pieza con explicación y acción sugerida; RNF-010)
 - [x] 3.2 Tablero `app/inicio` con KPI globales y por colección ("no aplica" cuando corresponde) y gráfico simple de evolución; pruebas de componente (Req: Indicadores…; Req: Serie histórica…)
-- [ ] 3.3 Reporte de incompletas en `app/reportes` con filtros por alerta y colección y descarga; pruebas de componente (RF-035)
+- [x] 3.3 Reporte de incompletas en `app/reportes` con filtros por alerta y colección y descarga; pruebas de componente (RF-035)
 
 ## 4. Cierre del change
 
 - [ ] 4.1 Tests requeridos: secciones 1–3 en verde (`npm test`, `npm run lint`); medición con 20 000 piezas sintéticas contra PostgreSQL en compose (`EXPLAIN ANALYZE` de KPI y reporte, índices parciales si hacen falta, tiempos en el PR) cuando Docker esté disponible
-- [ ] 4.2 Actualizar OpenAPI: implementar los 3 stubs y añadir `completeness-rules` y `kpis/history`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (alertas, tablero, reporte de incompletas, evolución)
+- [x] 4.2 Actualizar OpenAPI: implementar los 3 stubs y añadir `completeness-rules` y `kpis/history`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
+- [x] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/calidad-datos.md` (alertas, tablero, reporte de incompletas, evolución)
 - [ ] 4.4 Registrar supuestos (campos obligatorios/recomendados) en `docs/preguntas-contraparte.md`, `openspec validate alertas-y-reporte-incompletas --strict` y, tras aprobar el PR, `openspec archive alertas-y-reporte-incompletas -y`

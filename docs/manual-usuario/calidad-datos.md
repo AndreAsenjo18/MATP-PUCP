@@ -1,7 +1,5 @@
 # Calidad de datos
 
-> Sección en construcción. Por ahora solo está escrita «Posibles duplicados» (change `deteccion-duplicados-y-cola-revision`). Las alertas de completitud de cada pieza y el tablero los añade el change `alertas-y-reporte-incompletas`.
-
 ## Posibles duplicados
 
 Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de inventario y en una sábana de Excel, con la denominación escrita de otra forma («Retablo ayacuchano» y «Retablo Ayacuchano (3 pisos)») o con el código en otro formato («M.M.Z. 015» y «mmz 15»). El sistema busca esos casos y los propone como **pares** para que una persona decida qué hacer con cada uno.
@@ -117,3 +115,44 @@ Mientras tanto, el par sigue en la cola: puede marcarlo como distinto o posponer
 - **«Ya hay una detección completa en curso: se muestra su avance.»**: espere a que termine la búsqueda que ya está en marcha.
 - **«No se pudieron leer las dos fichas: recargue la cola para poder fusionar.»**: recargue la página. Si sigue igual, avise al equipo técnico.
 - **«Su rol no tiene permiso para resolver duplicados.»**: solo la Gestora de colecciones y el Administrador pueden resolver pares.
+
+## Alertas de completitud, tablero e incompletas
+
+El sistema avisa cuando a una pieza le falta algo, para que no quede pendiente sin que nadie lo note. Hay **6 alertas**, siempre con la misma definición en la ficha, el tablero y el reporte: si una se corrige, desaparece de los tres sitios a la vez.
+
+| Alerta | Cuándo se dispara | A qué piezas aplica |
+|---|---|---|
+| **Sin código I** | No tiene un código de inventario general vigente | Solo piezas **en propiedad** (RN-003, RN-004: comodato y préstamo temporal nunca reciben código I, así que nunca disparan esta alerta) |
+| **Sin foto** | No tiene ninguna fotografía registrada | Todas |
+| **Sin ubicación** | No tiene sede y espacio registrados | Todas |
+| **Campos obligatorios incompletos** | Le falta algún campo marcado como obligatorio | Todas |
+| **Campos recomendados incompletos** | Le falta algún campo marcado como recomendado | Todas |
+| **Código no normalizable** | Tiene un identificador vigente que no se pudo interpretar automáticamente | Todas |
+
+Qué campos son obligatorios o recomendados lo decide el Administrador (hoy solo por la API; esta pantalla llegará en otro change). Un campo que deja de ser obligatorio o recomendado deja de generar esa alerta sin tocar ninguna pieza.
+
+### Alertas en la ficha de la pieza
+
+Al abrir la ficha de una pieza con alguna alerta activa, aparece un recuadro ámbar debajo del título, **Alertas de completitud**, con cada alerta, su explicación en lenguaje claro y una acción para resolverla:
+
+- **Sin código I**, **Sin foto**, **Sin ubicación** y **Código no normalizable** llevan a la pestaña de la misma ficha donde se resuelven (Identificadores, Fotografías o Ubicación e historial).
+- **Campos obligatorios incompletos** y **Campos recomendados incompletos** llevan al editor de la pieza, porque esos campos se completan ahí.
+
+En cuanto se corrige el dato (por ejemplo, se sube una foto), la alerta desaparece de la ficha sin recargar la página a mano.
+
+### Tablero de completitud (Inicio)
+
+En **Inicio**, la sección **Completitud del catálogo** muestra:
+
+- **Piezas registradas**, **Sin código I**, **Sin fotografía** y **Sin ubicación**: el número de piezas afectadas por cada alerta hoy. Pulse una tarjeta para ir a la búsqueda.
+- Una **tabla por colección**, con el porcentaje de completitud de cada alerta en cada colección (incluidas sus subcolecciones). Cuando una colección no tiene ninguna pieza a la que la alerta aplique —por ejemplo, el porcentaje de «Sin código I» en una colección que está entera en comodato—, la celda dice **No aplica** en vez de un número o un error.
+- Un **gráfico de evolución** de los últimos 14 días para el indicador que elija en **Indicador**. Si ningún día del rango tiene piezas a las que la alerta aplique, el gráfico se reemplaza por el mismo aviso «No aplica».
+
+### Reporte de piezas incompletas (Reportes)
+
+En **Reportes**, la pestaña **Información incompleta** lista las piezas que tienen alguna alerta activa, ordenadas de la que tiene más alertas a la que tiene menos:
+
+1. **Filtrar por alerta**: marque una o varias. Varias marcadas se combinan con **«y»** (la pieza debe tener todas las marcadas, no solo una).
+2. **Colección**: limita el reporte a una colección y sus subcolecciones.
+3. La tabla pagina de 20 en 20; use **Anterior**/**Siguiente**.
+4. **Excel**/**CSV** descargan el reporte completo con los filtros aplicados (no solo la página que se ve en pantalla), con la fecha y los filtros en la cabecera del archivo. Solo puede descargar quien tiene permiso de exportar; conectado al servidor real (no en la maqueta de demostración).
