@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# MATP - Funciones comunes de los respaldos (change despliegue-vm-y-respaldos, tareas 3.1 y 3.2).
+#
+# Se carga con `source`; no se ejecuta. Todo lo que habla con el exterior (restic, compose, curl)
+# se invoca por variables (RESTIC_BIN, MATP_COMPOSE, CURL_BIN) para poder sustituirlo en pruebas
+# y para usar la imagen de contenedor cuando restic no está instalado en la VM.
+
+: "${MATP_ENV_FILE:=/opt/matp/.env.production}"
+: "${MATP_STATE_DIR:=/opt/matp/state}"
+# Ruta EN LA VM del marcador. La API lo ve montado en /var/lib/matp (BACKUP_STATUS_FILE de
+# .env.production apunta a esa ruta de contenedor, por eso aquí se usa otro nombre).
+: "${BACKUP_MARKER_FILE:=${MATP_STATE_DIR}/backup-status.json}"
+: "${BACKUP_LOG_FILE:=${MATP_STATE_DIR}/backup.log}"
+: "${CURL_BIN:=curl}"
+# shellcheck disable=SC2034  # lo usan los scripts que cargan esta biblioteca
+MATP_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# El compose de producción exige MATP_VERSION: si no viene, se toma la versión desplegada.
+if [[ -z "${MATP_VERSION:-}" && -r "${MATP_STATE_DIR}/current-version" ]]; then
+    MATP_VERSION="$(cat "${MATP_STATE_DIR}/current-version")"
+    export MATP_VERSION
+fi
+: "${MATP_COMPOSE:=docker compose --project-directory ${MATP_REPO_ROOT} --env-file ${MATP_ENV_FILE} -f ${MATP_REPO_ROOT}/docker-compose.yml -f ${MATP_REPO_ROOT}/deploy/vm/docker-compose.prod.yml}"
+
+now_utc() {
+    date -u +'%Y-%m-%dT%H:%M:%SZ'
+}
+
+# Registro estructurado (una línea JSON) a la salida de error y al archivo de registro.
+log_json() {
+    local level="$1" event="$2" detail="${3:-}"
+    local line
+    detail="${detail//\\/\\\\}"
+    detail="${detail//\"/\\\"}"
+    line="$(printf '{"ts":"%s","level":"%s","event":"%s","detail":"%s"}' \
+        "$(now_utc)" "$level" "$event" "$detail")"
+    printf '%s\n' "$line" >&2
+    if [[ -d "$(dirname "$BACKUP_LOG_FILE")" ]]; then
+        printf '%s\n' "$line" >> "$BACKUP_LOG_FILE" 2>/dev/null || true
+    fi
+}
+
+# Avisa al Administrador por webhook (ALERT_WEBHOOK_URL). Sin canal configurado solo registra.
+notify() {
+    local message="$1"
+    if [[ -z "${ALERT_WEBHOOK_URL:-}" ]]; then
+        log_json warn notify_skipped "sin ALERT_WEBHOOK_URL: $message"
+        return 0
+    fi
+    local body="${message//\\/\\\\}"
+    body="${body//\"/\\\"}"
+    if ! "$CURL_BIN" --silent --show-error --fail --max-time 20 \
+        -H 'Content-Type: application/json' \
+        -d "{\"text\":\"MATP: ${body}\"}" "$ALERT_WEBHOOK_URL" > /dev/null; then
+        log_json error notify_failed "no se pudo avisar por el webhook"
+    fi
+}
+
+# Valor de last_success_at del marcador actual (vacío si no existe).
+previous_success() {
+    [[ -f "$BACKUP_MARKER_FILE" ]] || return 0
+    sed -n 's/.*"last_success_at": *"\([^"]*\)".*/\1/p' "$BACKUP_MARKER_FILE" | head -n 1
+}
+
+# Escribe el marcador que lee /health (backup_status). Escritura atómica.
+# Uso: write_marker ok|failed <last_success_at>
+write_marker() {
+    local result="$1" last_success="$2"
+    local tmp
+    mkdir -p "$(dirname "$BACKUP_MARKER_FILE")"
+    tmp="$(mktemp "$(dirname "$BACKUP_MARKER_FILE")/.status.XXXXXX")"
+    printf '{"last_attempt_at": "%s", "last_success_at": "%s", "last_result": "%s"}\n' \
+        "$(now_utc)" "$last_success" "$result" > "$tmp"
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$BACKUP_MARKER_FILE"
+}
+
+# restic instalado en la VM o, si no, su imagen (RESTIC_IMAGE, versión fijada en .env.production).
+restic_cmd() {
+    if [[ -n "${RESTIC_BIN:-}" ]]; then
+        "$RESTIC_BIN" "$@"
+    elif command -v restic > /dev/null 2>&1; then
+        restic "$@"
+    else
+        : "${RESTIC_IMAGE:?Defina RESTIC_IMAGE o instale restic en la VM}"
+        docker run --rm -i \
+            -e RESTIC_REPOSITORY -e RESTIC_PASSWORD_FILE \
+            -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+            -v "${RESTIC_PASSWORD_FILE}:${RESTIC_PASSWORD_FILE}:ro" \
+            -v "${BACKUP_WORK_DIR:-/opt/matp/backup-work}:${BACKUP_WORK_DIR:-/opt/matp/backup-work}" \
+            "$RESTIC_IMAGE" "$@"
+    fi
+}
+
+require_backup_env() {
+    local name
+    for name in RESTIC_REPOSITORY RESTIC_PASSWORD_FILE; do
+        if [[ -z "${!name:-}" ]]; then
+            log_json error missing_variable "$name"
+            echo "ERROR: falta la variable $name (ver /opt/matp/.env.production)" >&2
+            return 1
+        fi
+    done
+    if [[ ! -r "$RESTIC_PASSWORD_FILE" ]]; then
+        log_json error missing_key "no se puede leer RESTIC_PASSWORD_FILE"
+        echo "ERROR: no se puede leer la clave de respaldos en RESTIC_PASSWORD_FILE" >&2
+        return 1
+    fi
+}
+
+# Compara cada foto restaurada con la huella que la base registró (spec: «Foto corrupta»).
+# Entrada: líneas "clave<TAB>sha256" por la entrada estándar; $1 = directorio con los objetos.
+# Devuelve 0 si todas coinciden; si no, imprime las afectadas y devuelve 1.
+verify_photos() {
+    local objects_dir="$1" bad=0 key expected actual
+    while IFS=$'\t' read -r key expected; do
+        expected="${expected//$'\r'/}"  # tolera finales de línea CRLF
+        [[ -n "$key" ]] || continue
+        if [[ ! -f "$objects_dir/$key" ]]; then
+            echo "FALTA: $key"
+            bad=1
+            continue
+        fi
+        actual="$(sha256sum "$objects_dir/$key" | cut -d' ' -f1)"
+        if [[ "$actual" != "$expected" ]]; then
+            echo "HUELLA DISTINTA: $key"
+            bad=1
+        fi
+    done
+    return "$bad"
+}

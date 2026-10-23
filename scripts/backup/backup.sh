@@ -1,130 +1,81 @@
 #!/usr/bin/env bash
+# MATP - Respaldo cifrado de la base de datos y del almacenamiento de objetos.
+# OpenSpec: despliegue-vm-y-respaldos, tarea 3.1 (ADR-011, design D4; RNF-011, RNF-014).
+#
+# Qué hace, en orden:
+#   1. pg_dump (formato custom) en streaming directo a restic: nunca toca el disco sin cifrar.
+#   2. Espejo local del bucket (rclone) y respaldo del espejo con restic.
+#   3. Retención: restic forget --prune (30 diarios, 8 semanales, 6 mensuales) [SUPUESTO C6].
+#   4. Marcador JSON que lee /health (backup_status) y aviso por webhook si algo falla.
+#
+# Se programa con deploy/vm/systemd/matp-backup.timer. Variables: .env.production
+# (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE, ALERT_WEBHOOK_URL, ver .env.example).
 set -Eeuo pipefail
 
-# MATP - Respaldo PostgreSQL previo al despliegue.
-# Genera, valida, sube a S3 y verifica la integridad.
-# Un fallo impide que deploy.sh ejecute migraciones.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/backup/lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 
-ENV_FILE="${MATP_ENV_FILE:-/opt/matp/.env.pruebas}"
-BACKUP_DIR="${MATP_BACKUP_DIR:-/opt/matp/backups}"
-POSTGRES_IMAGE="${MATP_POSTGRES_IMAGE:-postgres:18}"
+KEEP_DAILY="${BACKUP_KEEP_DAILY:-30}"
+KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-8}"
+KEEP_MONTHLY="${BACKUP_KEEP_MONTHLY:-6}"
+MIRROR_DIR="${BACKUP_MIRROR_DIR:-/opt/matp/backup-mirror}"
+SKIP_OBJECTS="${BACKUP_SKIP_OBJECTS:-0}"
 
-S3_BUCKET="${MATP_BACKUP_S3_BUCKET:-matp-staging-db-backups-761312607064}"
-S3_PREFIX="${MATP_BACKUP_S3_PREFIX:-staging/postgresql}"
+if [[ -f "$MATP_ENV_FILE" ]]; then
+    # shellcheck disable=SC1090
+    set -a && source "$MATP_ENV_FILE" && set +a
+fi
 
-error() {
-    echo "ERROR [backup]: $*" >&2
+previous="$(previous_success)"
+
+fail() {
+    local reason="$1"
+    log_json error backup_failed "$reason"
+    write_marker failed "$previous"
+    notify "el respaldo falló: ${reason}. El último exitoso fue ${previous:-nunca}."
     exit 1
 }
 
-for tool in docker aws cmp; do
-    command -v "$tool" >/dev/null 2>&1 ||
-        error "Herramienta requerida no disponible: $tool"
-done
-
-[[ -f "$ENV_FILE" && -r "$ENV_FILE" ]] ||
-    error "No se puede leer $ENV_FILE."
-
-[[ -n "$S3_BUCKET" && -n "$S3_PREFIX" ]] ||
-    error "El bucket y prefijo S3 son obligatorios."
-
-umask 077
-
-mkdir -p "$BACKUP_DIR" ||
-    error "No se pudo crear el directorio de respaldos."
-
-chmod 700 "$BACKUP_DIR"
-BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
-
-TIMESTAMP="$(date -u +'%Y%m%dT%H%M%SZ')"
-BACKUP_ID="${TIMESTAMP}-$$"
-
-BACKUP_NAME="matp-${BACKUP_ID}.dump"
-TEMP_NAME=".matp-${BACKUP_ID}.partial"
-
-BACKUP_PATH="$BACKUP_DIR/$BACKUP_NAME"
-TEMP_PATH="$BACKUP_DIR/$TEMP_NAME"
-VERIFY_PATH="$BACKUP_DIR/.matp-${BACKUP_ID}.s3-check"
-
-S3_KEY="${S3_PREFIX%/}/$BACKUP_NAME"
-S3_URI="s3://$S3_BUCKET/$S3_KEY"
-
-cleanup() {
-    rm -f -- "$TEMP_PATH" "$VERIFY_PATH"
-}
-
-trap cleanup EXIT
-
-echo "Iniciando respaldo PostgreSQL..."
-echo "Destino local: $BACKUP_PATH"
-
-# PostgreSQL 18 se ejecuta con el UID/GID del usuario EC2.
-# La conexión se lee del archivo de entorno privado.
-
-if ! docker run --rm \
-    --network bridge \
-    --user "$(id -u):$(id -g)" \
-    --env-file "$ENV_FILE" \
-    --mount "type=bind,src=$BACKUP_DIR,dst=/backup" \
-    "$POSTGRES_IMAGE" \
-    sh -ec '
-        if [ -z "${DATABASE_URL:-}" ]; then
-            echo "ERROR: DATABASE_URL no está definido." >&2
-            exit 1
-        fi
-
-        DB_URL=$(printf "%s" "$DATABASE_URL" |
-            sed "s#^postgresql+psycopg://#postgresql://#")
-
-        pg_dump \
-            --format=custom \
-            --no-owner \
-            --no-acl \
-            --file="/backup/$1" \
-            --dbname="$DB_URL"
-
-        test -s "/backup/$1"
-
-        pg_restore \
-            --list \
-            "/backup/$1" >/dev/null
-
-        chmod 600 "/backup/$1"
-    ' sh "$TEMP_NAME"; then
-    error "Falló pg_dump o la validación local."
+# Candado: dos respaldos a la vez dañarían el espejo.
+mkdir -p "$MATP_STATE_DIR"
+exec 9> "${MATP_STATE_DIR}/backup.lock"
+if command -v flock > /dev/null 2>&1 && ! flock -n 9; then
+    log_json warn backup_skipped "otro respaldo está en curso"
+    exit 0
 fi
 
-[[ -s "$TEMP_PATH" ]] ||
-    error "El archivo temporal no existe o está vacío."
+require_backup_env || fail "variables o clave de respaldos incompletas"
+log_json info backup_started "destino: ${RESTIC_REPOSITORY}"
 
-mv -- "$TEMP_PATH" "$BACKUP_PATH" ||
-    error "No se pudo finalizar el respaldo local."
+# 1. Base de datos --------------------------------------------------------------------------
+# shellcheck disable=SC2086  # MATP_COMPOSE es un comando con argumentos
+if ! $MATP_COMPOSE exec -T db pg_dump -U "${POSTGRES_USER:?}" -d "${POSTGRES_DB:?}" --format=custom \
+    | restic_cmd backup --stdin --stdin-filename matp.pgdump --tag db --tag "$(date -u +%Y-%m-%d)"; then
+    fail "no se pudo respaldar la base de datos en el destino externo"
+fi
+log_json info database_backed_up ""
 
-chmod 600 "$BACKUP_PATH"
-
-echo "Respaldo local generado y validado."
-echo "Subiendo copia cifrada a S3..."
-
-if ! aws s3 cp \
-    "$BACKUP_PATH" "$S3_URI" \
-    --sse AES256 \
-    --only-show-errors; then
-    error "Falló la subida a S3. Se conserva el respaldo local."
+# 2. Almacenamiento de objetos ---------------------------------------------------------------
+if [[ "$SKIP_OBJECTS" != "1" ]]; then
+    mkdir -p "$MIRROR_DIR"
+    : "${RCLONE_BIN:=rclone}"
+    if ! "$RCLONE_BIN" sync ":s3:${S3_BUCKET:?}" "$MIRROR_DIR" \
+        --s3-provider Other --s3-endpoint "${S3_ENDPOINT_URL:?}" \
+        --s3-access-key-id "${S3_ACCESS_KEY_ID:?}" --s3-secret-access-key "${S3_SECRET_ACCESS_KEY:?}"; then
+        fail "no se pudo copiar el bucket al espejo local"
+    fi
+    if ! restic_cmd backup "$MIRROR_DIR" --tag objects --tag "$(date -u +%Y-%m-%d)"; then
+        fail "no se pudieron respaldar los objetos en el destino externo"
+    fi
+    log_json info objects_backed_up ""
 fi
 
-echo "Descargando copia para comprobar integridad..."
-
-if ! aws s3 cp \
-    "$S3_URI" "$VERIFY_PATH" \
-    --only-show-errors; then
-    error "No se pudo descargar la copia de S3."
+# 3. Retención -------------------------------------------------------------------------------
+if ! restic_cmd forget --prune --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" \
+    --keep-monthly "$KEEP_MONTHLY"; then
+    fail "el respaldo se guardó pero no se pudo aplicar la retención"
 fi
 
-if ! cmp -s "$BACKUP_PATH" "$VERIFY_PATH"; then
-    error "La copia de S3 no coincide con el respaldo local."
-fi
-
-echo "Integridad S3: OK"
-echo "Respaldo previo completado correctamente."
-echo "Archivo local: $BACKUP_PATH"
-echo "Destino S3: $S3_URI"
+write_marker ok "$(now_utc)"
+log_json info backup_finished ""

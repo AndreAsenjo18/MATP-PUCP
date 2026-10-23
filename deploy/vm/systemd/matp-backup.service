@@ -1,0 +1,13 @@
+[Unit]
+Description=Respaldo cifrado de MATP (base de datos y objetos)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/matp/app
+EnvironmentFile=/opt/matp/.env.production
+ExecStart=/opt/matp/app/scripts/backup/backup.sh
+# Sin privilegios extra: solo habla con Docker (grupo docker) y escribe en /opt/matp/state.
+NoNewPrivileges=true
+PrivateTmp=true
