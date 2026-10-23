@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     # Never set in production: synthetic users cannot sign in there (ADR-009, point 7).
     seed_dev_password: str | None = None
 
+    # Backup freshness shown by /health (change despliegue-vm-y-respaldos, design D4). The backup
+    # job writes a JSON marker there; empty = not configured (local development).
+    backup_status_file: str | None = None
+    # Hours without a successful backup before /health reports `stale` [SUPUESTO C6: 24 h + margin].
+    backup_max_age_hours: int = Field(26, ge=1)
+
     # IA asistiva: se ejecuta dentro de este mismo proceso, montada en AI_MOUNT_PATH (ADR-008).
     ai_mount_path: str = "/ai"
     cors_origins: str = "http://localhost:3000"
@@ -131,6 +137,7 @@ class Settings(BaseSettings):
         "app_release",
         "seed_dev_password",
         "media_quota_bytes",
+        "backup_status_file",
         mode="before",
     )
     @classmethod
