@@ -18,6 +18,19 @@ La evaluación y el uso real requieren la VM Linux institucional PUCP con HTTPS 
 6. **systemd timers** en la VM para respaldos, verificación, instantáneas de KPI, resumen de integridad de auditoría y alerta de disco.
 7. **Estado del respaldo visible** en `/health` (`backup_status`) sin datos del catálogo.
 
+## Versiones consultadas (2026-10-22)
+
+Consultadas al implementar el change (guardrail 4); se vuelven a consultar al actualizar.
+
+| Pieza | Versión estable | Dónde se fija |
+|---|---|---|
+| Caddy | 2.11.4 | `deploy/vm/docker-compose.prod.yml` (`caddy:2.11.4-alpine`) |
+| restic | 0.19.1 (5 de julio de 2026) | `RESTIC_IMAGE` en `.env.production`; el script usa el binario si está instalado |
+| Docker Compose | >= 2.24 | Requisito del overlay (`!reset`, `!override`) |
+| rclone | por consultar al instalar en la VM | Espejo del bucket; la DTI puede preferir `mc` |
+
+Notas de restic 0.19: `forget` devuelve 3 si no puede borrar instantáneas y `backup` devuelve 3 si falta una ruta, así que los scripts tratan cualquier código distinto de 0 como fallo.
+
 ## Alternativas consideradas
 
 - **nginx + certbot**: más configuración; contingencia si la DTI lo exige.
