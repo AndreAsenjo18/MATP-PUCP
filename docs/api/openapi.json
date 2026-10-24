@@ -11898,6 +11898,7 @@
     },
     "/api/v1/audit-logs/pieces/{piece_id}": {
       "get": {
+        "description": "Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos sensibles se enmascaran según el rol).",
         "operationId": "getPieceAuditTimeline",
         "parameters": [
           {
@@ -11978,16 +11979,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`."
           }
         },
         "security": [
@@ -11999,8 +11990,7 @@
         "tags": [
           "Auditoría"
         ],
-        "x-change": "auditoria-y-soft-delete-transversal",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/audit/change-sets/{change_set_id}": {
