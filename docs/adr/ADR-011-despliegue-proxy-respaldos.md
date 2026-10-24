@@ -27,7 +27,7 @@ Consultadas al implementar el change (guardrail 4); se vuelven a consultar al ac
 | Caddy | 2.11.4 | `deploy/vm/docker-compose.prod.yml` (`caddy:2.11.4-alpine`) |
 | restic | 0.19.1 (5 de julio de 2026) | `RESTIC_IMAGE` en `.env.production`; el script usa el binario si está instalado |
 | Docker Compose | >= 2.24 | Requisito del overlay (`!reset`, `!override`) |
-| rclone | por consultar al instalar en la VM | Espejo del bucket; la DTI puede preferir `mc` |
+| rclone | 1.75.2 (publicada el 2026-10-09; consultada el 2026-10-24) | `RCLONE_IMAGE` en `.env.production`; corre en un contenedor dentro de la red de Compose. La DTI puede preferir `mc` |
 
 Notas de restic 0.19: `forget` devuelve 3 si no puede borrar instantáneas y `backup` devuelve 3 si falta una ruta, así que los scripts tratan cualquier código distinto de 0 como fallo.
 

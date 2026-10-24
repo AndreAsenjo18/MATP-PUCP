@@ -73,8 +73,35 @@ PostgreSQL 18.6, 14 migraciones aplicadas, 300 piezas sintéticas (20 201 filas 
 
 El CD2 desplegó solo la imagen de `main` (`5887375`, que incluye este change) y `GET /health` devuelve `"backup": {"status": "disabled", ...}` (staging no configura el marcador, como se espera). El comportamiento con marcador (`ok`/`stale`) sigue cubierto por las pruebas de la API.
 
+### `scripts/deploy.sh` en modo producción (tarea 2.2)
+
+Proyecto Compose aislado (`COMPOSE_PROJECT_NAME`), dos versiones **reales** publicadas en GHCR (`sha-ed64b2a…` y `sha-5887375…`), PostgreSQL y MinIO reales, respaldo con restic 0.19.1 y `rclone` 1.75.2 en contenedor, `MATP_ENV=production`.
+
+| Escenario | Resultado |
+|---|---|
+| Falta una variable obligatoria (`S3_BUCKET`) | `Falta la variable obligatoria…`; no cambia el estado y no queda ningún contenedor |
+| Primera instalación | Con la base, el almacenamiento y el bucket listos, la versión anterior se despliega: respaldo previo de base **y objetos**, migraciones de toda la cadena, servicios `healthy`, versión anotada |
+| Versión nueva | Respaldo previo (cuatro instantáneas: base y objetos de cada despliegue), migraciones, arranque; `/health` → `ok … backup=ok`, es decir, **la API lee el marcador que escribió el respaldo** |
+| Espejo del bucket | `pieces/x/foto.jpg`, un objeto subido a MinIO real, aparece en el espejo del host y en la instantánea `objects` |
+| Misma versión otra vez | «La versión solicitada ya figura como desplegada», sin tocar nada |
+| **Migración fallida** (contraseña de la base incorrecta) | `Fallaron las migraciones`; el estado y la imagen en ejecución **no cambian**, la API sigue `ok`, queda `migration_failed` en `deployments.log` |
+| Si el respaldo falla (probado sin querer con el repositorio sin inicializar) | `El respaldo falló. No se ejecutarán migraciones.` |
+| Vuelta atrás sin autorización | Se niega (`MATP_ALLOW_APP_ROLLBACK=1` es obligatoria) |
+| Vuelta atrás autorizada | Vuelve a la versión anterior, intercambia `current`/`previous`, avisa «La base de datos NO fue restaurada», queda `rollback_success` |
+
+### Defectos que encontró ese ensayo (corregidos)
+
+1. **Los parámetros de `.env.production` se ignoraban**: `backup-restic.sh` leía retención, espejo y `BACKUP_SKIP_OBJECTS` antes de cargar el archivo. Ahora `lib.sh` carga las variables **antes** de cualquier valor por defecto, como datos (nada de `source`: un valor con `&` o `$(…)` no ejecuta nada) y con la precedencia de Compose (el entorno manda sobre el archivo). Cubierto por pruebas.
+2. **`rclone` no podía alcanzar el almacenamiento**: `storage:9000` solo resuelve dentro de la red de Compose. Ahora corre en un contenedor (`RCLONE_IMAGE`) en la red del servicio `storage`, con el usuario de quien invoca. `rclone` ya no es un requisito de la VM.
+3. **La primera instalación fallaba**: el respaldo previo al primer despliegue corre antes de que la API cree el bucket. Se añadieron `scripts/backup/init-bucket.sh` y `init-repo.sh`.
+4. **La guía `vm.md` tenía huecos**: no decía que `deploy.sh` solo gestiona `api` y `web` (la primera vez hay que levantar `db`, `storage` y el proxy), ni que la vuelta atrás exige `MATP_ALLOW_APP_ROLLBACK=1`. Corregido.
+
+### Tarea 1.1 (imágenes)
+
+Las imágenes publicadas corren como usuario `matp` (API uid 999, web uid 100) y llevan las etiquetas OCI `source` y `revision` que ponen los workflows al construir.
+
 ## Lo que sigue sin verificar
 
 - **Despliegue real en la VM de la PUCP** y primer respaldo contra el destino externo definitivo (hay que pedir los datos de la DTI, ver [`checklist-vm.md`](checklist-vm.md)).
-- **Workflow `release.yml`** en un tag de prueba, y una ejecución con `rclone` real contra un bucket (el ensayo usó un doble que copia un directorio).
-- **Rollback de `deploy.sh --rollback`** y el escaneo de puertos desde otra máquina.
+- **Workflow `release.yml`** en un tag de prueba.
+- **Escaneo de puertos desde otra máquina** (en la VM real).

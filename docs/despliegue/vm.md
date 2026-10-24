@@ -49,7 +49,8 @@ Internet/red PUCP ──443──▶ proxy (Caddy) ──/api/*, /health*──�
    - Contraseñas propias, largas y distintas en `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` y `S3_SECRET_ACCESS_KEY`.
    - `S3_PUBLIC_ENDPOINT_URL=https://media.<dominio>` y `WEB_ORIGIN=https://<dominio>`.
    - `SEED_DEV_PASSWORD` **vacío**: los usuarios sintéticos no pueden entrar en producción.
-   - `MATP_DOMAIN`, `BACKUP_STATUS_FILE=/var/lib/matp/backup-status.json`, `RESTIC_*` y `ALERT_WEBHOOK_URL`.
+   - `MATP_DOMAIN`, `BACKUP_STATUS_FILE=/var/lib/matp/backup-status.json`, `RESTIC_*`, `RCLONE_IMAGE` y `ALERT_WEBHOOK_URL`. restic y rclone corren en contenedores (`RESTIC_IMAGE` y `RCLONE_IMAGE`, versiones en el ADR-011): **no hace falta instalarlos en la VM**.
+   - El archivo se lee como datos (`CLAVE=valor`, sin ejecutar nada), con la misma precedencia que Docker Compose: lo que ya esté en el entorno de quien ejecuta manda sobre el archivo.
 
    ```bash
    sudo chmod 600 /opt/matp/.env.production && sudo chown matp: /opt/matp/.env.production
@@ -60,11 +61,21 @@ Internet/red PUCP ──443──▶ proxy (Caddy) ──/api/*, /health*──�
 5. Inicialice el repositorio de respaldos, **una sola vez**:
 
    ```bash
-   set -a; source /opt/matp/.env.production; set +a
-   restic init        # o: docker run --rm -e RESTIC_REPOSITORY -e RESTIC_PASSWORD_FILE ... $RESTIC_IMAGE init
+   cd /opt/matp/app && ./scripts/backup/init-repo.sh
    ```
 
-6. Instale las tareas programadas:
+   Después guarde la copia de la clave **fuera de la VM** (ver «Custodia de la clave de respaldos»).
+
+6. **Primera instalación: base, almacenamiento y bucket.** `scripts/deploy.sh` solo gestiona `api` y `web`, y su respaldo previo copia el bucket, que la API todavía no ha podido crear. Por eso, la primera vez:
+
+   ```bash
+   cd /opt/matp/app
+   export MATP_VERSION=vX.Y.Z      # la versión que va a desplegar; solo para interpolar el compose
+   docker compose --env-file /opt/matp/.env.production      -f docker-compose.yml -f deploy/vm/docker-compose.prod.yml up -d --wait db storage
+   ./scripts/backup/init-bucket.sh
+   ```
+
+7. Instale las tareas programadas:
 
    ```bash
    sudo cp /opt/matp/app/deploy/vm/systemd/*.service /opt/matp/app/deploy/vm/systemd/*.timer /etc/systemd/system/
@@ -76,7 +87,7 @@ Internet/red PUCP ──443──▶ proxy (Caddy) ──/api/*, /health*──�
 
    `matp-kpis-snapshot` y `matp-audit-digest` ya están programadas, pero su orden está **comentada** hasta que existan los comandos de `alertas-y-reporte-incompletas` y `auditoria-y-soft-delete-transversal`.
 
-7. Si la DTI entrega un certificado institucional, siga la nota de `deploy/vm/Caddyfile` (crear `deploy/vm/certs/tls.caddy` y copiar los dos archivos). Sin certificado se usa el automático (Let's Encrypt) si el dominio es público.
+8. Si la DTI entrega un certificado institucional, siga la nota de `deploy/vm/Caddyfile` (crear `deploy/vm/certs/tls.caddy` y copiar los dos archivos). Sin certificado se usa el automático (Let's Encrypt) si el dominio es público.
 
 ## Desplegar una versión
 
@@ -97,6 +108,14 @@ curl -fsS https://<dominio>/health | jq '{status, release, backup}'
 
 `backup.status` debe ser `ok` (o `stale` si aún no corrió el primer respaldo).
 
+**Solo la primera vez**, levante el proxy: `deploy.sh` no lo toca (ni `db` ni `storage`), de modo que las actualizaciones no cortan el acceso.
+
+```bash
+cd /opt/matp/app && MATP_VERSION=$(cat /opt/matp/state/current-version)   docker compose --env-file /opt/matp/.env.production   -f docker-compose.yml -f deploy/vm/docker-compose.prod.yml up -d --wait proxy
+```
+
+El mismo comando aplica un cambio en `deploy/vm/Caddyfile` (por ejemplo, al instalar el certificado institucional).
+
 ## Si la migración falla
 
 La versión anterior **sigue atendiendo** y el script lo informa. El respaldo previo queda identificado en el registro de respaldos (`/opt/matp/state/backup.log`) por si hay que restaurarlo.
@@ -104,10 +123,10 @@ La versión anterior **sigue atendiendo** y el script lo informa. El respaldo pr
 ## Vuelta atrás
 
 ```bash
-MATP_ENV=production ./scripts/deploy.sh --rollback
+MATP_ENV=production MATP_ALLOW_APP_ROLLBACK=1 ./scripts/deploy.sh --rollback
 ```
 
-Vuelve los contenedores a la versión anterior registrada. **No revierte la base de datos**: si la migración ya se aplicó y no es reversible, restaure el respaldo previo (siguiente sección). Por convención las migraciones son aditivas (ADR-004).
+Sin `MATP_ALLOW_APP_ROLLBACK=1` el script **se niega**: es una confirmación explícita de que se revisó que la versión anterior es compatible con la base de datos actual. Vuelve los contenedores a la versión anterior registrada. **No revierte la base de datos**: si la migración ya se aplicó y no es reversible, restaure el respaldo previo (siguiente sección). Por convención las migraciones son aditivas (ADR-004).
 
 ## Respaldos
 

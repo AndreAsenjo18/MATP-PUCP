@@ -17,10 +17,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=scripts/backup/lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
-if [[ -f "$MATP_ENV_FILE" ]]; then
-    # shellcheck disable=SC1090
-    set -a && source "$MATP_ENV_FILE" && set +a
-fi
+# lib.sh ya cargó $MATP_ENV_FILE (sin ejecutarlo) antes de leer cualquier valor por defecto.
 
 PROJECT="matp-restore-test"
 NETWORK="${PROJECT}"

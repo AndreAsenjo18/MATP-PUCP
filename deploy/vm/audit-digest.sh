@@ -11,10 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/backup/lib.sh
 source "${SCRIPT_DIR}/../../scripts/backup/lib.sh"
 
-if [[ -f "$MATP_ENV_FILE" ]]; then
-    # shellcheck disable=SC1090
-    set -a && source "$MATP_ENV_FILE" && set +a
-fi
+# lib.sh ya cargó $MATP_ENV_FILE (sin ejecutarlo) antes de leer cualquier valor por defecto.
 
 # shellcheck disable=SC2086  # MATP_COMPOSE es un comando con argumentos
 if ! $MATP_COMPOSE exec -T api python -m app.modules.audit.digest; then

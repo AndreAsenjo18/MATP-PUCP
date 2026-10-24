@@ -5,7 +5,32 @@
 # se invoca por variables (RESTIC_BIN, MATP_COMPOSE, CURL_BIN) para poder sustituirlo en pruebas
 # y para usar la imagen de contenedor cuando restic no está instalado en la VM.
 
+# Carga un archivo de variables SIN ejecutarlo (nada de `source`: un valor con `&`, `$(` o `;`
+# no debe poder ejecutar nada) y con la misma precedencia que Docker Compose: lo que ya está en
+# el entorno gana sobre el archivo. Acepta `CLAVE=valor`, comillas simples o dobles alrededor
+# del valor y comentarios con `#` al inicio de línea.
+load_env_file() {
+    local file="$1" line key value
+    [[ -r "$file" ]] || return 0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%$'\r'}"
+        [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+        [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+        key="${BASH_REMATCH[2]}"
+        value="${BASH_REMATCH[3]}"
+        if [[ "$value" =~ ^\"(.*)\"[[:space:]]*$ || "$value" =~ ^\'(.*)\'[[:space:]]*$ ]]; then
+            value="${BASH_REMATCH[1]}"
+        fi
+        if [[ -z "${!key+x}" ]]; then
+            export "$key=$value"
+        fi
+    done < "$file"
+}
+
 : "${MATP_ENV_FILE:=/opt/matp/.env.production}"
+# Antes de leer cualquier valor por defecto: así MATP_STATE_DIR, BACKUP_*, RESTIC_* y demás de
+# .env.production mandan en todos los scripts (antes se leían antes de cargar el archivo).
+load_env_file "$MATP_ENV_FILE"
 : "${MATP_STATE_DIR:=/opt/matp/state}"
 # Ruta EN LA VM del marcador. La API lo ve montado en /var/lib/matp (BACKUP_STATUS_FILE de
 # .env.production apunta a esa ruta de contenedor, por eso aquí se usa otro nombre).
@@ -99,6 +124,58 @@ restic_cmd() {
             ${RESTIC_DOCKER_ARGS:-} \
             "$RESTIC_IMAGE" "$@"
     fi
+}
+
+# Red de Compose del servicio de almacenamiento: `storage:9000` solo resuelve dentro de ella.
+storage_network() {
+    local container
+    # shellcheck disable=SC2086  # MATP_COMPOSE es un comando con argumentos
+    container="$($MATP_COMPOSE ps -q storage 2> /dev/null | head -n 1)"
+    [[ -n "$container" ]] || return 1
+    docker inspect "$container" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{"\n"}}{{end}}' \
+        | head -n 1
+}
+
+# rclone instalado en la VM (o RCLONE_BIN) o, si no, su imagen RCLONE_IMAGE dentro de la red de
+# Compose, con el usuario de quien invoca. Uso: _rclone <carpeta-a-montar|""> <argumentos...>
+_rclone() {
+    local mount="$1"
+    shift
+    if [[ -n "${RCLONE_BIN:-}" ]]; then
+        "$RCLONE_BIN" "$@"
+    elif command -v rclone > /dev/null 2>&1; then
+        rclone "$@"
+    else
+        : "${RCLONE_IMAGE:?Defina RCLONE_IMAGE o instale rclone en la VM}"
+        local network volume=()
+        network="$(storage_network)" || {
+            log_json error storage_network_missing "el servicio storage no está en ejecución"
+            return 1
+        }
+        [[ -n "$mount" ]] && volume=(-v "${mount}:${mount}")
+        docker run --rm --network "$network" --user "$(id -u):$(id -g)" \
+            -e RCLONE_CONFIG=/dev/null "${volume[@]}" "$RCLONE_IMAGE" "$@"
+    fi
+}
+
+rclone_s3_options() {
+    printf '%s\n' --s3-provider Other --s3-endpoint "${S3_ENDPOINT_URL:?}" \
+        --s3-access-key-id "${S3_ACCESS_KEY_ID:?}" --s3-secret-access-key "${S3_SECRET_ACCESS_KEY:?}"
+}
+
+# Uso: rclone_sync_bucket <bucket> <directorio-espejo>
+rclone_sync_bucket() {
+    local bucket="$1" mirror="$2" opts=()
+    mapfile -t opts < <(rclone_s3_options)
+    _rclone "$mirror" sync ":s3:${bucket}" "$mirror" "${opts[@]}"
+}
+
+# Crea el bucket si no existe (primera instalación: el respaldo previo al primer despliegue corre
+# antes de que la API pueda crearlo). Uso: rclone_make_bucket <bucket>
+rclone_make_bucket() {
+    local bucket="$1" opts=()
+    mapfile -t opts < <(rclone_s3_options)
+    _rclone "" mkdir ":s3:${bucket}" "${opts[@]}"
 }
 
 require_backup_env() {
