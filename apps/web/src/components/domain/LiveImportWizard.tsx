@@ -71,16 +71,22 @@ import {
 } from "@/lib/data/imports";
 import {
   applySource,
+  associateTerm,
   columnErrors,
   draftFromScratch,
   draftFromTemplate,
   fetchVocabularies,
+  fetchVocabularyTerms,
+  pendingTerm,
+  previewBlocker,
   saveErrors,
   templateCreateBody,
   templateUpdateBody,
+  termsVocabulary,
   type EditorDraft,
   type SaveKind,
   type TemplateFormValues,
+  type TermOption,
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
 
@@ -114,9 +120,32 @@ export function LiveImportWizard() {
   const [editorErrors, setEditorErrors] = useState<Record<string, string>>({});
   const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Términos activos por vocabulario de las columnas `terms:` del borrador (4.1C).
+  const [termsByVocabulary, setTermsByVocabulary] = useState<Record<string, TermOption[]>>({});
 
   const step = wizardStep(batch);
   const processing = isProcessing(batch);
+
+  const vocabulariesKey = [...new Set((editorDraft?.columns ?? []).map(termsVocabulary).filter((code): code is string => code !== null))].sort().join(",");
+  useEffect(() => {
+    let active = true;
+    const missing = vocabulariesKey.split(",").filter((code) => code && !(code in termsByVocabulary));
+    if (missing.length === 0) return;
+    Promise.all(missing.map((code) => fetchVocabularyTerms(code, devUser))).then((results) => {
+      if (!active) return;
+      setTermsByVocabulary((current) => {
+        const next = { ...current };
+        missing.forEach((code, i) => {
+          const result = results[i];
+          next[code] = result.status === "ok" ? result.value : [];
+        });
+        return next;
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [vocabulariesKey, termsByVocabulary, devUser]);
 
   const loadBatch = useCallback(async () => {
     if (!batchId) return;
@@ -249,9 +278,14 @@ export function LiveImportWizard() {
     setMappingMode("edit");
   }
 
+  // La vista previa ya calculada se conserva marcada como desactualizada (`stale`), para poder
+  // asociar varios valores sin término seguidos (4.1C); se vuelve a pedir al guardar.
   function handleEditorChange(next: EditorDraft) {
     setEditorDraft(next);
-    setDryRun(null);
+  }
+
+  function handleAssociateTerm(source: string, text: string, code: string) {
+    if (editorDraft) handleEditorChange(associateTerm(editorDraft, source, text, code));
   }
 
   async function handleSaveTemplate(kind: SaveKind, values: TemplateFormValues) {
@@ -274,6 +308,7 @@ export function LiveImportWizard() {
     setSuggestions((current) => current?.map((item) => (item.template.id === saved.id ? { ...item, template: saved } : item)) ?? current);
     // El régimen es del lote: guardar la plantilla no lo cambia.
     setEditorDraft({ ...draftFromTemplate(saved, batch), tenureDefault: editorDraft.tenureDefault, sheetName: editorDraft.sheetName, headerRow: editorDraft.headerRow });
+    setDryRun(null); // era de la versión anterior de la plantilla
     setEditorErrors({});
     setNameError(null);
     setError(null);
@@ -384,6 +419,7 @@ export function LiveImportWizard() {
             batch={batch}
             draft={editorDraft}
             vocabularies={vocabularies}
+            terms={termsByVocabulary}
             errors={editorErrors}
             nameError={nameError}
             busy={busy}
@@ -399,7 +435,17 @@ export function LiveImportWizard() {
               closeEditor();
             }}
           />
-          {dryRun && <DryRunPanel result={dryRun} />}
+          {dryRun && (
+            <DryRunPanel
+              result={dryRun}
+              stale={previewBlocker(editorDraft, batch) !== null}
+              association={{
+                terms: termsByVocabulary,
+                pending: (source, text) => pendingTerm(editorDraft, source, text),
+                onAssociate: handleAssociateTerm,
+              }}
+            />
+          )}
         </>
       )}
       {batch && !processing && step === 2 && (

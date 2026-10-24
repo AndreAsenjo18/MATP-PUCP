@@ -135,10 +135,12 @@ export function targetValue(column: ColumnMapping): string {
   return canonicalColumn(column).target_field ?? "";
 }
 
+/** Un destino que no es de términos no lleva correspondencias: se quitan con su transformación. */
 export function setColumnTarget(draft: EditorDraft, index: number, value: string): EditorDraft {
-  return updateColumn(draft, index, (column) =>
-    canonicalColumn({ ...column, target_field: value || null, identifier_type_code: null, split_compound: value === "identifier" }),
-  );
+  return updateColumn(draft, index, (column) => {
+    const retargeted = canonicalColumn({ ...column, target_field: value || null, identifier_type_code: null, split_compound: value === "identifier" });
+    return value.startsWith("terms:") ? retargeted : withValueMap(retargeted, {});
+  });
 }
 
 export function setColumnTransforms(draft: EditorDraft, index: number, transforms: readonly string[]): EditorDraft {
@@ -231,6 +233,106 @@ export function moveTransform(chain: readonly string[], index: number, direction
   const next = [...chain];
   [next[index], next[target]] = [next[target], next[index]];
   return next;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Correspondencias de valores con términos (4.1C; Req: Correspondencia de valores con vocabularios)
+// ---------------------------------------------------------------------------------------------
+
+/** Un término activo que se puede elegir como destino de una correspondencia. */
+export interface TermOption {
+  code: string;
+  label: string;
+}
+
+export type ValueMap = Record<string, string>;
+
+const VALUE_MAP = "value_map";
+
+/** Vocabulario de una columna con destino `terms:<VOCABULARIO>`, o `null`. */
+export function termsVocabulary(column: Pick<ColumnMapping, "target_field">): string | null {
+  const target = column.target_field ?? "";
+  return target.startsWith("terms:") ? target.slice("terms:".length) || null : null;
+}
+
+/**
+ * Como compara la API las claves de `value_map`: sin distinguir mayúsculas, tildes ni espacios
+ * repetidos [SUPUESTO] (`transforms.py`). «Madera  Policromada» y «madera policromada» son la misma.
+ */
+export function foldText(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function findKey(map: ValueMap, text: string): string | undefined {
+  const key = foldText(text);
+  return Object.keys(map).find((existing) => foldText(existing) === key);
+}
+
+/** La cadena con `value_map` si hay correspondencias (al final, si faltaba) y sin él si no hay. */
+export function syncValueMapTransform(transforms: readonly string[], hasMap: boolean): string[] {
+  const present = transforms.includes(VALUE_MAP);
+  if (hasMap && !present) return [...transforms, VALUE_MAP];
+  if (!hasMap && present) return transforms.filter((spec) => spec !== VALUE_MAP);
+  return [...transforms];
+}
+
+/** La columna con estas correspondencias (`null` si quedan vacías) y la cadena al día. */
+export function withValueMap(column: ColumnMapping, map: ValueMap): ColumnMapping {
+  const hasMap = Object.keys(map).length > 0;
+  return { ...column, value_map: hasMap ? { ...map } : null, transforms: syncValueMapTransform(column.transforms ?? [], hasMap) };
+}
+
+export function setColumnValueMap(draft: EditorDraft, index: number, map: ValueMap): EditorDraft {
+  return updateColumn(draft, index, (column) => withValueMap(column, map));
+}
+
+/** Por qué no se puede añadir la correspondencia, o `null`. */
+export function valueMapError(map: ValueMap, text: string, code: string): string | null {
+  if (!text.trim()) return "Escriba el texto de origen.";
+  const existing = findKey(map, text);
+  if (existing !== undefined) return `Ya hay una correspondencia para «${existing}».`;
+  if (!code) return "Elija el término.";
+  return null;
+}
+
+/** Añade `text → code`; si ya había una para el mismo texto (sin tildes ni mayúsculas), la reemplaza. */
+export function putMapping(map: ValueMap, text: string, code: string): ValueMap {
+  const next = { ...map };
+  const existing = findKey(next, text);
+  if (existing !== undefined) delete next[existing];
+  next[text.trim()] = code;
+  return next;
+}
+
+export function dropMapping(map: ValueMap, text: string): ValueMap {
+  const next = { ...map };
+  delete next[text];
+  return next;
+}
+
+/** «Asociar a término» desde la vista previa: la correspondencia va a la columna de ese origen. */
+export function associateTerm(draft: EditorDraft, source: string, text: string, code: string): EditorDraft {
+  const index = draft.columns.findIndex((column) => column.source_column === source);
+  if (index < 0 || !code) return draft;
+  return setColumnValueMap(draft, index, putMapping(draft.columns[index].value_map ?? {}, text, code));
+}
+
+/** El término al que el borrador ya asocia ese texto en esa columna, o `null`. */
+export function pendingTerm(draft: Pick<EditorDraft, "columns">, source: string, text: string): string | null {
+  const map = draft.columns.find((column) => column.source_column === source)?.value_map ?? {};
+  const key = findKey(map, text);
+  return key === undefined ? null : map[key];
+}
+
+/** Nombre de un término para mostrar; un código que no está entre los activos se señala. */
+export function termLabel(terms: readonly TermOption[], code: string): string {
+  return terms.find((term) => term.code === code)?.label ?? `${code} (no es un término activo)`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -341,4 +443,13 @@ export function applyRequest(draft: EditorDraft, batch: Pick<ImportBatch, "sheet
 /** `GET /vocabularies`: los destinos `terms:<VOCABULARIO>` posibles. */
 export async function fetchVocabularies(devUser?: string): Promise<ImportResult<Vocabulary[]>> {
   return call(() => createApiClient({ baseUrl: apiBaseUrl(), devUser }).GET("/api/v1/vocabularies"));
+}
+
+/** `GET /vocabularies/{code}/terms`: los términos activos, destino de las correspondencias. */
+export async function fetchVocabularyTerms(vocabularyCode: string, devUser?: string): Promise<ImportResult<TermOption[]>> {
+  const result = await call(() =>
+    createApiClient({ baseUrl: apiBaseUrl(), devUser }).GET("/api/v1/vocabularies/{vocabulary_code}/terms", { params: { path: { vocabulary_code: vocabularyCode } } }),
+  );
+  if (result.status !== "ok") return result;
+  return { status: "ok", value: result.value.filter((term) => term.is_active).map((term) => ({ code: term.code, label: term.label })) };
 }

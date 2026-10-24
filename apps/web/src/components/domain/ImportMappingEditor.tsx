@@ -14,6 +14,9 @@
  * - `TransformChain`: añadir, quitar, subir y bajar pasos; argumento obligatorio en `split:`,
  *   `date:` y `default:`.
  * - `SaveTemplateForm`: en línea, sin modal; «Guardar como nueva» es la opción principal.
+ * - `ValueMapEditor` (4.1C): en las columnas `terms:<VOCABULARIO>`, la tabla «texto de origen →
+ *   término activo». Con correspondencias la cadena lleva `value_map`, que no se quita a mano:
+ *   sale sola al vaciar la tabla.
  */
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, Plus, Save, X } from "lucide-react";
 import { useState } from "react";
@@ -33,23 +36,31 @@ import {
   applyNotice,
   draftStatus,
   droppedColumns,
+  dropMapping,
   moveTransform,
   parseTransform,
   previewBlocker,
+  putMapping,
   removeTransform,
   saveFormError,
   setColumnTarget,
   setColumnTransforms,
+  setColumnValueMap,
   targetOptions,
   targetValue,
   templateDefaultsText,
+  termLabel,
+  termsVocabulary,
   transformArgError,
   transformInfo,
   transformLabel,
+  valueMapError,
   type DraftStatus,
   type EditorDraft,
   type SaveKind,
   type TemplateFormValues,
+  type TermOption,
+  type ValueMap,
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
 
@@ -67,10 +78,13 @@ export function MappingEditor({
   onPreview,
   onApply,
   onBack,
+  terms = {},
 }: {
   batch: ImportBatch;
   draft: EditorDraft;
   vocabularies: Pick<Vocabulary, "code" | "name">[];
+  /** Términos activos por código de vocabulario, para las correspondencias (4.1C). */
+  terms?: Record<string, TermOption[]>;
   /** Errores por columna de origen; `""` = errores generales del mapeo. */
   errors: Record<string, string>;
   nameError: string | null;
@@ -136,16 +150,21 @@ export function MappingEditor({
         </Select>
       </div>
       <ul className="flex flex-col gap-3" aria-label="Columnas del archivo">
-        {draft.columns.map((column, index) => (
-          <ColumnMappingRow
-            key={column.source_column}
-            column={column}
-            options={options}
-            error={errors[column.source_column] ?? null}
-            onTarget={(value) => onChange(setColumnTarget(draft, index, value))}
-            onTransforms={(chain) => onChange(setColumnTransforms(draft, index, chain))}
-          />
-        ))}
+        {draft.columns.map((column, index) => {
+          const vocabulary = termsVocabulary(column);
+          return (
+            <ColumnMappingRow
+              key={column.source_column}
+              column={column}
+              options={options}
+              error={errors[column.source_column] ?? null}
+              terms={vocabulary ? (terms[vocabulary] ?? []) : undefined}
+              onTarget={(value) => onChange(setColumnTarget(draft, index, value))}
+              onTransforms={(chain) => onChange(setColumnTransforms(draft, index, chain))}
+              onValueMap={(map) => onChange(setColumnValueMap(draft, index, map))}
+            />
+          );
+        })}
       </ul>
       <ErrorNotice message={errors[""] ?? null} />
       {status !== "unchanged" && (
@@ -185,15 +204,22 @@ export function ColumnMappingRow({
   error,
   onTarget,
   onTransforms,
+  terms,
+  onValueMap,
 }: {
   column: ColumnMapping;
   options: TargetOption[];
   error: string | null;
   onTarget: (value: string) => void;
   onTransforms: (chain: string[]) => void;
+  /** Términos activos del vocabulario de destino; solo en columnas `terms:<VOCABULARIO>`. */
+  terms?: TermOption[];
+  onValueMap?: (map: ValueMap) => void;
 }) {
   const value = targetValue(column);
   const known = options.some((option) => option.value === value);
+  const vocabulary = termsVocabulary(column);
+  const map = column.value_map ?? {};
   return (
     <li className="flex flex-col gap-3 rounded-md border border-borde p-3 sm:flex-row sm:items-start">
       <div className="flex flex-col gap-2 sm:w-72 sm:shrink-0">
@@ -207,12 +233,110 @@ export function ColumnMappingRow({
           ))}
         </Select>
       </div>
-      <TransformChain source={column.source_column} chain={column.transforms ?? []} onChange={onTransforms} />
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <TransformChain source={column.source_column} chain={column.transforms ?? []} locked={Object.keys(map).length > 0 ? ["value_map"] : []} onChange={onTransforms} />
+        {vocabulary && onValueMap && (
+          <ValueMapEditor source={column.source_column} vocabulary={vocabulary} map={map} terms={terms ?? []} onChange={onValueMap} />
+        )}
+      </div>
     </li>
   );
 }
 
-export function TransformChain({ source, chain, onChange }: { source: string; chain: readonly string[]; onChange: (chain: string[]) => void }) {
+export function ValueMapEditor({
+  source,
+  vocabulary,
+  map,
+  terms,
+  onChange,
+}: {
+  source: string;
+  vocabulary: string;
+  map: ValueMap;
+  terms: TermOption[];
+  onChange: (map: ValueMap) => void;
+}) {
+  const [text, setText] = useState("");
+  const [code, setCode] = useState("");
+  const entries = Object.entries(map);
+  const addError = text || code ? valueMapError(map, text, code) : null;
+  const termSelect = (value: string, label: string, onSelect: (code: string) => void) => (
+    <Select label={<span className="sr-only">{label}</span>} value={value} onChange={(event) => onSelect(event.target.value)} fieldClassName="min-w-48">
+      <option value="">Elija un término…</option>
+      {value && !terms.some((term) => term.code === value) && <option value={value}>{termLabel(terms, value)}</option>}
+      {terms.map((term) => (
+        <option key={term.code} value={term.code}>
+          {term.label}
+        </option>
+      ))}
+    </Select>
+  );
+  return (
+    <section className="flex flex-col gap-2" aria-label={`Correspondencias de ${source}`}>
+      <p className="text-sm font-medium text-gris-texto">Correspondencias con el vocabulario {vocabulary}</p>
+      <p className="text-sm text-gris-texto">
+        Asocie textos del archivo a un término activo. Un valor sin correspondencia ni término igual se conserva en los datos de origen; nunca se crean
+        términos.
+      </p>
+      {terms.length === 0 && <p className="text-sm text-ambar-texto">No hay términos activos en el vocabulario {vocabulary} para asociar.</p>}
+      {entries.length > 0 && (
+        <table className="w-full text-left text-sm">
+          <thead className="text-gris-texto">
+            <tr>
+              <th className="py-1 pr-3 font-medium">Texto de origen</th>
+              <th className="py-1 pr-3 font-medium">Término</th>
+              <th className="py-1 font-medium">
+                <span className="sr-only">Acciones</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map(([original, term]) => (
+              <tr key={original} className="border-t border-borde align-top">
+                <td className="py-1 pr-3 text-tinta">{original}</td>
+                <td className="py-1 pr-3">
+                  {termSelect(term, `Término para «${original}»`, (next) => next && onChange(putMapping(map, original, next)))}
+                </td>
+                <td className="py-1">
+                  <Button variant="secondary" icon={X} aria-label={`Quitar la correspondencia de «${original}»`} onClick={() => onChange(dropMapping(map, original))} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <Input label="Texto de origen" value={text} error={addError ?? undefined} onChange={(event) => setText(event.target.value)} fieldClassName="min-w-48" />
+        {termSelect(code, `Término para el texto nuevo de ${source}`, setCode)}
+        <Button
+          variant="outline"
+          icon={Plus}
+          disabled={valueMapError(map, text, code) !== null}
+          onClick={() => {
+            onChange(putMapping(map, text, code));
+            setText("");
+            setCode("");
+          }}
+        >
+          Añadir correspondencia
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+export function TransformChain({
+  source,
+  chain,
+  onChange,
+  locked = [],
+}: {
+  source: string;
+  chain: readonly string[];
+  onChange: (chain: string[]) => void;
+  /** Pasos que no se quitan a mano (`value_map` mientras la columna tenga correspondencias). */
+  locked?: readonly string[];
+}) {
   const [code, setCode] = useState("");
   const [arg, setArg] = useState("");
   const info = transformInfo(code);
@@ -241,7 +365,14 @@ export function TransformChain({ source, chain, onChange }: { source: string; ch
                     disabled={index === chain.length - 1}
                     onClick={() => onChange(moveTransform(chain, index, 1))}
                   />
-                  <Button variant="secondary" icon={X} aria-label={`Quitar «${label}»`} onClick={() => onChange(removeTransform(chain, index))} />
+                  <Button
+                    variant="secondary"
+                    icon={X}
+                    aria-label={`Quitar «${label}»`}
+                    disabled={locked.includes(spec)}
+                    title={locked.includes(spec) ? "Se quita al dejar vacía la tabla de correspondencias." : undefined}
+                    onClick={() => onChange(removeTransform(chain, index))}
+                  />
                 </span>
               </li>
             );

@@ -10,8 +10,10 @@
  * - `TemplatePicker`: plantillas sugeridas por las cabeceras del archivo, lista completa y
  *   «Empezar desde cero».
  * - `DryRunPanel`: vista previa de normalización por columna (design D4), plegable por columna.
+ *   Con `association` (4.1C), cada valor sin término ofrece «Asociar a término», que añade la
+ *   correspondencia al borrador; con `stale`, avisa que el borrador cambió desde el cálculo.
  */
-import { FilePlus2, Layers } from "lucide-react";
+import { FilePlus2, Layers, Link2 } from "lucide-react";
 import { useState } from "react";
 
 import { ErrorNotice } from "@/components/domain/ImportWizard";
@@ -34,6 +36,7 @@ import {
   type TemplateDryRun,
   type TemplateSuggestion,
 } from "@/lib/data/import-templates";
+import { termLabel, termsVocabulary, type TermOption } from "@/lib/data/mapping-editor";
 
 export function TemplatePicker({
   suggestions,
@@ -109,27 +112,44 @@ export function TemplatePicker({
   );
 }
 
-export function DryRunPanel({ result }: { result: TemplateDryRun }) {
+/** Lo que necesita «Asociar a término»: términos por vocabulario y el borrador (4.1C). */
+export interface TermAssociation {
+  terms: Record<string, TermOption[]>;
+  /** Término al que el borrador ya asocia ese texto en esa columna, o `null`. */
+  pending: (source: string, text: string) => string | null;
+  onAssociate: (source: string, text: string, code: string) => void;
+}
+
+export function DryRunPanel({ result, stale = false, association }: { result: TemplateDryRun; stale?: boolean; association?: TermAssociation }) {
   return (
     <Card as="section" className="flex flex-col gap-3" aria-label="Vista previa de normalización por columna">
       <h2 className="text-lg font-semibold text-tinta">Vista previa por columna</h2>
       <p className="text-sm text-gris-texto">
         Calculada sobre {result.sampled_rows} de {result.total_rows} filas (máximo 200). No guarda nada: ni el lote ni el catálogo cambian.
       </p>
+      {stale && (
+        <p className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
+          Esta vista previa es de la plantilla guardada y el mapeo cambió desde entonces: guarde la plantilla y vuelva a pedir la vista previa para ver el
+          resultado de los cambios.
+        </p>
+      )}
       {result.missing_columns.length > 0 && (
         <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">Columnas de la plantilla que el lote no trae: {result.missing_columns.join(", ")}.</p>
       )}
       <div className="flex flex-col gap-2">
         {result.columns.map((column) => (
-          <DryRunColumnDetails key={column.mapping.source_column} column={column} />
+          <DryRunColumnDetails key={column.mapping.source_column} column={column} association={association} />
         ))}
       </div>
     </Card>
   );
 }
 
-function DryRunColumnDetails({ column }: { column: DryRunColumn }) {
+function DryRunColumnDetails({ column, association }: { column: DryRunColumn; association?: TermAssociation }) {
   const counts = statusCounts(column).filter(([, count]) => count > 0);
+  const source = column.mapping.source_column;
+  const vocabulary = termsVocabulary(column.mapping);
+  const terms = vocabulary ? (association?.terms[vocabulary] ?? []) : [];
   return (
     <details className="rounded-md border border-borde p-3" open={columnNeedsAttention(column)}>
       <summary className="flex cursor-pointer flex-wrap items-center gap-2">
@@ -146,11 +166,20 @@ function DryRunColumnDetails({ column }: { column: DryRunColumn }) {
           <div>
             <h4 className="text-sm font-semibold text-tinta">Valores sin término en el vocabulario (los más frecuentes)</h4>
             <ul className="mt-1 flex flex-wrap gap-2">
-              {column.unmatched_values.map((item) => (
-                <li key={item.value} className="rounded-md bg-ambar-bg px-2 py-1 text-sm text-ambar-texto">
-                  {item.value} ({item.count})
-                </li>
-              ))}
+              {column.unmatched_values.map((item) => {
+                const pending = association?.pending(source, item.value) ?? null;
+                return (
+                  <li key={item.value} className="flex flex-wrap items-center gap-2 rounded-md bg-ambar-bg px-2 py-1 text-sm text-ambar-texto">
+                    <span>
+                      {item.value} ({item.count})
+                    </span>
+                    {pending && <span className="text-tinta">→ {termLabel(terms, pending)}, pendiente de guardar</span>}
+                    {!pending && association && vocabulary && terms.length > 0 && (
+                      <AssociateTermControl source={source} text={item.value} terms={terms} onAssociate={association.onAssociate} />
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <p className="mt-1 text-sm text-gris-texto">Se conservan como texto en los datos de origen de cada fila; no se crean términos.</p>
           </div>
@@ -167,6 +196,35 @@ function DryRunColumnDetails({ column }: { column: DryRunColumn }) {
         )}
       </div>
     </details>
+  );
+}
+
+function AssociateTermControl({
+  source,
+  text,
+  terms,
+  onAssociate,
+}: {
+  source: string;
+  text: string;
+  terms: TermOption[];
+  onAssociate: (source: string, text: string, code: string) => void;
+}) {
+  const [code, setCode] = useState("");
+  return (
+    <span className="flex flex-wrap items-end gap-2">
+      <Select label={<span className="sr-only">Término para «{text}»</span>} value={code} onChange={(event) => setCode(event.target.value)}>
+        <option value="">Elija un término…</option>
+        {terms.map((term) => (
+          <option key={term.code} value={term.code}>
+            {term.label}
+          </option>
+        ))}
+      </Select>
+      <Button variant="outline" icon={Link2} disabled={!code} onClick={() => onAssociate(source, text, code)}>
+        Asociar a término
+      </Button>
+    </span>
   );
 }
 
