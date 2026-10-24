@@ -10,8 +10,8 @@
  *
  * En el paso «Mapeo» se ofrecen primero las plantillas guardadas (change
  * `plantillas-mapeo-y-normalizacion`, tarea 4.1A): las sugeridas por las cabeceras del archivo,
- * la lista completa y «Empezar desde cero», que por ahora abre el panel de mapeo por columnas.
- * Una plantilla elegida se abre en el editor (4.1B): destino y transformaciones por columna,
+ * la lista completa y «Empezar desde cero». Una plantilla elegida, o el mapeo sugerido por las
+ * cabeceras al empezar desde cero, se abre en el editor (4.1B): destino y transformaciones por columna,
  * guardar como plantilla nueva o guardar cambios, vista previa por columna con la plantilla
  * guardada y validar con `template_id` (sin cambios) o con las columnas del borrador.
  */
@@ -26,11 +26,9 @@ import {
   ImportLogPanel,
   ImportRowCard,
   ImportSteps,
-  MappingPanel,
   ProgressPanel,
   RowFilters,
   UploadPanel,
-  type MappingDraft,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
@@ -62,10 +60,7 @@ import {
   fetchImportDiffs,
   fetchImportLog,
   isProcessing,
-  mappingRequest,
-  saveImportMapping,
   startImportValidation,
-  suggestMapping,
   uploadImportFile,
   wizardStep,
   type ImportBatch,
@@ -77,6 +72,7 @@ import {
 import {
   applySource,
   columnErrors,
+  draftFromScratch,
   draftFromTemplate,
   fetchVocabularies,
   saveErrors,
@@ -88,23 +84,6 @@ import {
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
 
-function draftFor(batch: ImportBatch): MappingDraft {
-  return { columns: suggestMapping(batch.headers ?? []), sheetName: batch.sheet_name ?? null, headerRow: batch.header_row ?? null, tenureDefault: "" };
-}
-
-function mappingErrors(details: Record<string, unknown> | undefined): Record<string, string> {
-  const errors: Record<string, string> = {};
-  const list = Array.isArray(details?.errors) ? details.errors : [];
-  for (const item of list) {
-    if (typeof item === "object" && item !== null) {
-      const { column, message } = item as { column?: string | null; message?: string };
-      const key = column ?? "";
-      errors[key] = errors[key] ? `${errors[key]} ${message ?? ""}` : (message ?? "");
-    }
-  }
-  return errors;
-}
-
 export function LiveImportWizard() {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
@@ -115,8 +94,6 @@ export function LiveImportWizard() {
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState<MappingDraft | null>(null);
-  const [mapErrors, setMapErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean }>({ classification: null, onlyErrors: false });
   const [page, setPage] = useState(1);
   const [diffs, setDiffs] = useState<ImportDiffs | null>(null);
@@ -124,8 +101,8 @@ export function LiveImportWizard() {
   const [log, setLog] = useState<ImportLog | null>(null);
   const [reload, setReload] = useState(0);
   const [busyImage, setBusyImage] = useState<string | null>(null);
-  // Paso «Mapeo» con plantillas (4.1A): elegir, usar una plantilla o mapear desde cero.
-  const [mappingMode, setMappingMode] = useState<"pick" | "template" | "scratch">("pick");
+  // Paso «Mapeo» (4.1A, 4.1B): elegir punto de partida o editar el mapeo.
+  const [mappingMode, setMappingMode] = useState<"pick" | "edit">("pick");
   const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
   const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -169,9 +146,6 @@ export function LiveImportWizard() {
     const timer = setInterval(loadBatch, IMPORT_POLL_MS);
     return () => clearInterval(timer);
   }, [processing, loadBatch]);
-
-  // Until the person edits it, the mapping is the one suggested from the headers.
-  const mappingDraft = draft ?? (batch && batch.status === "UPLOADED" && !processing ? draftFor(batch) : null);
 
   // Plantillas para las cabeceras del archivo, en cuanto el lote está leído (design D3).
   const headersKey = batch && batch.status === "UPLOADED" && !processing && batch.headers?.length ? JSON.stringify(batch.headers) : "";
@@ -253,26 +227,8 @@ export function LiveImportWizard() {
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
-    setDraft(null);
     resetTemplates();
     router.replace(`/importacion?lote=${result.value.batch_id}`);
-  }
-
-  async function handleMapping() {
-    if (!batch || !mappingDraft) return;
-    setBusy(true);
-    const saved = await saveImportMapping(batch.id, mappingRequest(mappingDraft.columns, mappingDraft), devUser);
-    if (saved.status !== "ok") {
-      setBusy(false);
-      setMapErrors(saved.status === "rejected" ? mappingErrors(saved.details) : {});
-      return setError(saved.message);
-    }
-    setMapErrors({});
-    const started = await startImportValidation(batch.id, devUser);
-    setBusy(false);
-    if (started.status !== "ok") return setError(started.message);
-    setError(null);
-    await loadBatch();
   }
 
   function handleUseTemplate(template: MappingTemplate) {
@@ -281,7 +237,16 @@ export function LiveImportWizard() {
     setEditorDraft(draftFromTemplate(template, batch));
     setDryRun(null);
     setError(null);
-    setMappingMode("template");
+    setMappingMode("edit");
+  }
+
+  function handleStartFromScratch() {
+    if (!batch) return;
+    closeEditor();
+    setEditorDraft(draftFromScratch(batch));
+    setDryRun(null);
+    setError(null);
+    setMappingMode("edit");
   }
 
   function handleEditorChange(next: EditorDraft) {
@@ -410,10 +375,10 @@ export function LiveImportWizard() {
           loading={suggestions === null}
           error={templatesError}
           onUse={handleUseTemplate}
-          onStartFromScratch={() => setMappingMode("scratch")}
+          onStartFromScratch={handleStartFromScratch}
         />
       )}
-      {batch && !processing && step === 1 && mappingMode === "template" && editorDraft && (
+      {batch && !processing && step === 1 && mappingMode === "edit" && editorDraft && (
         <>
           <MappingEditor
             batch={batch}
@@ -435,14 +400,6 @@ export function LiveImportWizard() {
             }}
           />
           {dryRun && <DryRunPanel result={dryRun} />}
-        </>
-      )}
-      {batch && !processing && step === 1 && mappingMode === "scratch" && mappingDraft && (
-        <>
-          <MappingPanel batch={batch} draft={mappingDraft} busy={busy} errors={mapErrors} onChange={setDraft} onSubmit={handleMapping} />
-          <Button variant="secondary" className="self-start" disabled={busy} onClick={() => setMappingMode("pick")}>
-            Volver a las plantillas
-          </Button>
         </>
       )}
       {batch && !processing && step === 2 && (
@@ -526,7 +483,6 @@ export function LiveImportWizard() {
           className="self-start"
           onClick={() => {
             setBatch(null);
-            setDraft(null);
             setDiffs(null);
             setLog(null);
             setAllImages([]);

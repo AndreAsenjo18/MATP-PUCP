@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  applyBlocker,
   batchMappingRequest,
   columnNeedsAttention,
   dryRunTemplate,
@@ -107,11 +106,10 @@ describe("cuerpo de PUT /mapping: plantilla o columnas, nunca ambas (design D1)"
 });
 
 describe("elegir plantilla (design D3)", () => {
-  it("avisa de las columnas que el archivo no trae: aplicarla respondería 422", () => {
+  it("encuentra las columnas de la plantilla que el archivo no trae", () => {
     const item = template();
     expect(missingColumns(item, ["DENOMINACIÓN"])).toEqual(["MATERIAL"]);
-    expect(applyBlocker(item, { headers: ["DENOMINACIÓN"] })).toContain("(MATERIAL)");
-    expect(applyBlocker(item, { headers: ["DENOMINACIÓN", "MATERIAL", "FOTO"] })).toBeNull();
+    expect(missingColumns(item, ["DENOMINACIÓN", "MATERIAL", "FOTO"])).toEqual([]);
   });
 
   it("la lista completa no repite las sugeridas", () => {

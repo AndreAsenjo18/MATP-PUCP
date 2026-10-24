@@ -82,13 +82,6 @@ export function missingColumns(template: Pick<MappingTemplate, "columns">, heade
   return template.columns.map((column) => column.source_column).filter((source) => !known.has(source));
 }
 
-/** Por qué no se puede usar la plantilla en este lote, o `null` si se puede. */
-export function applyBlocker(template: Pick<MappingTemplate, "columns">, batch: Pick<ImportBatch, "headers">): string | null {
-  const missing = missingColumns(template, batch.headers ?? []);
-  if (missing.length === 0) return null;
-  return `La plantilla usa columnas que este archivo no trae (${missing.join(", ")}): elija otra plantilla o empiece desde cero.`;
-}
-
 /** Plantillas activas que no están entre las sugeridas, para la lista completa. */
 export function otherTemplates(templates: readonly MappingTemplate[], suggestions: readonly TemplateSuggestion[]): MappingTemplate[] {
   const suggested = new Set(suggestions.map((suggestion) => suggestion.template.id));

@@ -137,6 +137,34 @@ describe("editor de mapeo: estado del borrador", () => {
   });
 });
 
+describe("hoja, fila de cabeceras y destino (antes en MappingPanel)", () => {
+  it("permite elegir hoja, fila de cabeceras y el destino de cada columna", () => {
+    const batch = { ...BATCH, sheet_names: ["Resumen", "Inventario"], sheet_name: "Resumen", headers: ["DENOMINACIÓN"] } as ImportBatch;
+    const html = render(
+      <MappingEditor
+        batch={batch}
+        draft={draftFromScratch(batch)}
+        vocabularies={VOCABULARIES}
+        errors={{ "": "Debe indicar la columna de la denominación." }}
+        nameError={null}
+        busy={false}
+        saving={false}
+        previewBusy={false}
+        onChange={noop}
+        onSave={noop}
+        onPreview={noop}
+        onApply={noop}
+        onBack={noop}
+      />,
+    );
+    const text = visibleText(html);
+    expect(text).toContain("Inventario");
+    expect(text).toContain("Fila de cabeceras");
+    expect(html).toMatch(/<option value="denomination" selected="">Denominación<\/option>/);
+    expect(text).toContain("Debe indicar la columna de la denominación.");
+  });
+});
+
 describe("fila de columna", () => {
   it("elige el destino con un Select que incluye los vocabularios", () => {
     const html = render(<ColumnMappingRow column={UNCHANGED.columns[1]} options={targetOptions(VOCABULARIES)} error={null} onTarget={noop} onTransforms={noop} />);

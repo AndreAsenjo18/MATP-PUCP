@@ -9,11 +9,9 @@
  *
  * - `TemplatePicker`: plantillas sugeridas por las cabeceras del archivo, lista completa y
  *   «Empezar desde cero».
- * - `AppliedTemplatePanel`: la plantilla elegida, de solo lectura, con el régimen por defecto, la
- *   vista previa y «Usar este mapeo y validar».
  * - `DryRunPanel`: vista previa de normalización por columna (design D4), plegable por columna.
  */
-import { ArrowRight, Eye, FilePlus2, Layers } from "lucide-react";
+import { FilePlus2, Layers } from "lucide-react";
 import { useState } from "react";
 
 import { ErrorNotice } from "@/components/domain/ImportWizard";
@@ -24,7 +22,6 @@ import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import {
   columnNeedsAttention,
-  missingColumns,
   otherTemplates,
   previewValue,
   scoreLabel,
@@ -37,7 +34,6 @@ import {
   type TemplateDryRun,
   type TemplateSuggestion,
 } from "@/lib/data/import-templates";
-import type { ImportBatch } from "@/lib/data/imports";
 
 export function TemplatePicker({
   suggestions,
@@ -109,85 +105,6 @@ export function TemplatePicker({
       <Button variant="secondary" icon={FilePlus2} className="self-start" onClick={onStartFromScratch}>
         Empezar desde cero
       </Button>
-    </Card>
-  );
-}
-
-export function AppliedTemplatePanel({
-  template,
-  batch,
-  tenureDefault,
-  blocker,
-  busy,
-  previewBusy,
-  onTenureChange,
-  onPreview,
-  onApply,
-  onChooseAnother,
-}: {
-  template: MappingTemplate;
-  batch: ImportBatch;
-  tenureDefault: string;
-  blocker: string | null;
-  busy: boolean;
-  previewBusy: boolean;
-  onTenureChange: (value: string) => void;
-  onPreview: () => void;
-  onApply: () => void;
-  onChooseAnother: () => void;
-}) {
-  const missing = new Set(missingColumns(template, batch.headers ?? []));
-  return (
-    <Card as="section" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-tinta">Mapeo con la plantilla «{template.name}»</h2>
-        {template.description && <p className="text-sm text-gris-texto">{template.description}</p>}
-        <p className="text-sm text-gris-texto">
-          Las columnas del archivo que la plantilla no menciona se guardan como datos de origen (RF-008).
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-base">
-          <thead className="text-sm text-gris-texto">
-            <tr>
-              <th className="py-1 pr-4 font-medium">Columna del archivo</th>
-              <th className="py-1 pr-4 font-medium">Destino</th>
-              <th className="py-1 pr-4 font-medium">Transformaciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {template.columns.map((column) => (
-              <tr key={column.source_column} className="border-t border-borde align-top">
-                <td className="py-2 pr-4 text-tinta">
-                  {column.source_column}
-                  {missing.has(column.source_column) && <span className="block text-sm text-carmin-texto">No está en el archivo</span>}
-                </td>
-                <td className="py-2 pr-4 text-gris-texto">{column.target_field ? targetLabel(column) : "Dato de origen (se conserva sin mapear)"}</td>
-                <td className="py-2 pr-4 font-mono text-sm text-gris-texto">{column.transforms?.length ? column.transforms.join(" → ") : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Select label="Régimen para filas sin dato" value={tenureDefault} onChange={(event) => onTenureChange(event.target.value)} fieldClassName="max-w-sm">
-        <option value="">Sin valor por defecto</option>
-        <option value="Propiedad">Propiedad</option>
-        <option value="Comodato">Comodato</option>
-        <option value="Préstamo Temporal">Préstamo temporal</option>
-      </Select>
-      <ErrorNotice message={blocker} />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" icon={Eye} disabled={previewBusy || busy} onClick={onPreview}>
-          {previewBusy ? "Calculando vista previa…" : "Ver vista previa"}
-        </Button>
-        <Button disabled={busy || blocker !== null} onClick={onApply}>
-          {busy ? "Guardando…" : "Usar este mapeo y validar"}
-          <ArrowRight size={18} aria-hidden="true" />
-        </Button>
-        <Button variant="secondary" disabled={busy} onClick={onChooseAnother}>
-          Elegir otra plantilla
-        </Button>
-      </div>
     </Card>
   );
 }

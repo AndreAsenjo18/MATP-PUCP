@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { MappingTemplate, TemplateDryRun, TemplateSuggestion } from "@/lib/data/import-templates";
-import type { ImportBatch } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { AppliedTemplatePanel, DryRunPanel, TemplatePicker } from "./ImportTemplatePanels";
+import { DryRunPanel, TemplatePicker } from "./ImportTemplatePanels";
 import { dryRunValueStatus } from "./status-intents";
 
 // Datos sintéticos (RNF-014); cabeceras ilustrativas de la sábana sintética [SUPUESTO A1].
@@ -28,8 +27,6 @@ function template(overrides: Partial<MappingTemplate> = {}): MappingTemplate {
     ...overrides,
   };
 }
-
-const BATCH = { id: "batch-1", status: "UPLOADED", headers: ["CÓDIGOS", "MATERIAL"] } as ImportBatch;
 
 const DRY_RUN: TemplateDryRun = {
   template_id: "tpl-1",
@@ -132,40 +129,6 @@ describe("selector de plantillas (design D3)", () => {
   it("mientras busca lo indica", () => {
     const text = visibleText(render(<TemplatePicker suggestions={null} templates={null} loading error={null} onUse={noop} onStartFromScratch={noop} />));
     expect(text).toContain("Buscando plantillas…");
-  });
-});
-
-describe("plantilla elegida", () => {
-  it("muestra destinos y transformaciones, marca las columnas que faltan y bloquea validar", () => {
-    const html = render(
-      <AppliedTemplatePanel
-        template={template()}
-        batch={BATCH}
-        tenureDefault="Propiedad"
-        blocker="La plantilla usa columnas que este archivo no trae (OBS.)"
-        busy={false}
-        previewBusy={false}
-        onTenureChange={noop}
-        onPreview={noop}
-        onApply={noop}
-        onChooseAnother={noop}
-      />,
-    );
-    const text = visibleText(html);
-    expect(text).toContain("Mapeo con la plantilla «Plantilla sábana sintética v1»");
-    expect(text).toContain("Términos del vocabulario MATERIAL");
-    expect(text).toContain("trim → absence_markers → split_concatenated");
-    expect(text).toContain("No está en el archivo");
-    expect(html).toMatch(/<option value="Propiedad" selected="">Propiedad<\/option>/);
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Usar este mapeo y validar/);
-    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Ver vista previa/);
-  });
-
-  it("sin bloqueos permite validar", () => {
-    const html = render(
-      <AppliedTemplatePanel template={template()} batch={BATCH} tenureDefault="" blocker={null} busy={false} previewBusy={false} onTenureChange={noop} onPreview={noop} onApply={noop} onChooseAnother={noop} />,
-    );
-    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Usar este mapeo y validar/);
   });
 });
 
