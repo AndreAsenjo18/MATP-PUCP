@@ -69,6 +69,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("delete", "/import-templates/{}"),
     # Sugerencia por cabeceras (change plantillas-mapeo-y-normalizacion, tarea 3.2).
     ("post", "/import-templates/suggest"),
+    # Vista previa de normalización por columna (change plantillas-mapeo-y-normalizacion, 3.3).
+    ("post", "/import-templates/{}/dry-run"),
     ("get", "/imports/{}"),
     ("post", "/imports/{}/images/{}/associate"),
     ("get", "/imports/{}/log"),
