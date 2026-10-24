@@ -47,7 +47,15 @@ function client(devUser: string | undefined) {
 /** Lo que se envía en `PUT /mapping`: una plantilla guardada o las columnas del panel actual. */
 export type BatchMappingSource =
   | { kind: "template"; templateId: string; tenureDefault?: string | null }
-  | { kind: "columns"; columns: readonly ColumnMapping[]; sheetName?: string | null; headerRow?: number | null; tenureDefault?: string | null };
+  | {
+      kind: "columns";
+      columns: readonly ColumnMapping[];
+      sheetName?: string | null;
+      headerRow?: number | null;
+      tenureDefault?: string | null;
+      /** Otros valores por defecto (`collection`, `denomination`); el régimen va en `tenureDefault`. */
+      defaults?: Record<string, string>;
+    };
 
 /**
  * Cuerpo de `PUT /imports/{batch_id}/mapping`. Con plantilla no lleva columnas (la API responde
@@ -64,7 +72,8 @@ export function batchMappingRequest(source: BatchMappingSource): MappingRequest 
       defaults: source.tenureDefault ? { tenure_regime: source.tenureDefault } : {},
     };
   }
-  return { ...mappingRequest(source.columns, source), template_id: null };
+  const request = mappingRequest(source.columns, source);
+  return { ...request, defaults: { ...source.defaults, ...request.defaults }, template_id: null };
 }
 
 /** Columnas de la plantilla que el archivo no trae: aplicarla tal cual respondería 422 (design D1). */
@@ -164,6 +173,19 @@ export async function dryRunTemplate(templateId: string, batchId: string, devUse
 export async function saveBatchMapping(batchId: string, source: BatchMappingSource, devUser?: string): Promise<ImportResult<ImportBatch>> {
   return call(
     () => client(devUser).PUT("/api/v1/imports/{batch_id}/mapping", { params: { path: { batch_id: batchId } }, body: batchMappingRequest(source) }),
+    TEMPLATE_ERROR_MESSAGES,
+  );
+}
+
+/** `POST /import-templates`: el 409 `template_name_taken` trae el nombre de la plantilla que ya existe. */
+export async function createTemplate(body: ApiSchemas["MappingTemplateCreate"], devUser?: string): Promise<ImportResult<MappingTemplate>> {
+  return call(() => client(devUser).POST("/api/v1/import-templates", { body }), TEMPLATE_ERROR_MESSAGES);
+}
+
+/** `PATCH /import-templates/{id}`: cabeceras, columnas y valores por defecto se envían juntos (design D3). */
+export async function updateTemplate(templateId: string, body: ApiSchemas["MappingTemplateUpdate"], devUser?: string): Promise<ImportResult<MappingTemplate>> {
+  return call(
+    () => client(devUser).PATCH("/api/v1/import-templates/{template_id}", { params: { path: { template_id: templateId } }, body }),
     TEMPLATE_ERROR_MESSAGES,
   );
 }

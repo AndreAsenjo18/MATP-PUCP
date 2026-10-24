@@ -11,7 +11,9 @@
  * En el paso «Mapeo» se ofrecen primero las plantillas guardadas (change
  * `plantillas-mapeo-y-normalizacion`, tarea 4.1A): las sugeridas por las cabeceras del archivo,
  * la lista completa y «Empezar desde cero», que por ahora abre el panel de mapeo por columnas.
- * Con una plantilla se puede ver la vista previa por columna y validar con `template_id`.
+ * Una plantilla elegida se abre en el editor (4.1B): destino y transformaciones por columna,
+ * guardar como plantilla nueva o guardar cambios, vista previa por columna con la plantilla
+ * guardada y validar con `template_id` (sin cambios) o con las columnas del borrador.
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,17 +33,19 @@ import {
   type MappingDraft,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
-import { AppliedTemplatePanel, DryRunPanel, TemplatePicker } from "@/components/domain/ImportTemplatePanels";
+import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { DryRunPanel, TemplatePicker } from "@/components/domain/ImportTemplatePanels";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
 import {
-  applyBlocker,
+  createTemplate,
   dryRunTemplate,
   fetchTemplates,
   mappingFailureMessage,
   saveBatchMapping,
   suggestTemplates,
+  updateTemplate,
   type MappingTemplate,
   type TemplateDryRun,
   type TemplateSuggestion,
@@ -70,6 +74,19 @@ import {
   type RowClassification,
   type RowDecisionInput,
 } from "@/lib/data/imports";
+import {
+  applySource,
+  columnErrors,
+  draftFromTemplate,
+  fetchVocabularies,
+  saveErrors,
+  templateCreateBody,
+  templateUpdateBody,
+  type EditorDraft,
+  type SaveKind,
+  type TemplateFormValues,
+  type Vocabulary,
+} from "@/lib/data/mapping-editor";
 
 function draftFor(batch: ImportBatch): MappingDraft {
   return { columns: suggestMapping(batch.headers ?? []), sheetName: batch.sheet_name ?? null, headerRow: batch.header_row ?? null, tenureDefault: "" };
@@ -112,10 +129,14 @@ export function LiveImportWizard() {
   const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
   const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
-  const [chosenTemplate, setChosenTemplate] = useState<MappingTemplate | null>(null);
-  const [templateTenure, setTemplateTenure] = useState("");
   const [dryRun, setDryRun] = useState<TemplateDryRun | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  // Editor de mapeo (4.1B): borrador, vocabularios para `terms:` y errores del último guardado.
+  const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
+  const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
+  const [editorErrors, setEditorErrors] = useState<Record<string, string>>({});
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const step = wizardStep(batch);
   const processing = isProcessing(batch);
@@ -157,10 +178,11 @@ export function LiveImportWizard() {
   useEffect(() => {
     let active = true;
     if (!headersKey) return;
-    Promise.all([suggestTemplates(JSON.parse(headersKey) as string[], devUser), fetchTemplates(devUser)]).then(([suggested, all]) => {
+    Promise.all([suggestTemplates(JSON.parse(headersKey) as string[], devUser), fetchTemplates(devUser), fetchVocabularies(devUser)]).then(([suggested, all, vocabularyList]) => {
       if (!active) return;
       setSuggestions(suggested.status === "ok" ? suggested.value : []);
       setTemplates(all.status === "ok" ? all.value : []);
+      setVocabularies(vocabularyList.status === "ok" ? vocabularyList.value : []);
       const failure = suggested.status !== "ok" ? suggested : all.status !== "ok" ? all : null;
       setTemplatesError(failure ? failure.message : null);
     });
@@ -174,8 +196,14 @@ export function LiveImportWizard() {
     setSuggestions(null);
     setTemplates(null);
     setTemplatesError(null);
-    setChosenTemplate(null);
     setDryRun(null);
+    closeEditor();
+  }
+
+  function closeEditor() {
+    setEditorDraft(null);
+    setEditorErrors({});
+    setNameError(null);
   }
 
   const showRows = batch != null && !processing && step >= 3;
@@ -248,17 +276,49 @@ export function LiveImportWizard() {
   }
 
   function handleUseTemplate(template: MappingTemplate) {
-    setChosenTemplate(template);
-    setTemplateTenure(template.defaults?.tenure_regime ?? "");
+    if (!batch) return;
+    closeEditor();
+    setEditorDraft(draftFromTemplate(template, batch));
     setDryRun(null);
     setError(null);
     setMappingMode("template");
   }
 
+  function handleEditorChange(next: EditorDraft) {
+    setEditorDraft(next);
+    setDryRun(null);
+  }
+
+  async function handleSaveTemplate(kind: SaveKind, values: TemplateFormValues) {
+    if (!batch || !editorDraft) return;
+    const headers = batch.headers ?? [];
+    setSaving(true);
+    const result =
+      kind === "update" && editorDraft.base
+        ? await updateTemplate(editorDraft.base.id, templateUpdateBody(editorDraft, values, headers), devUser)
+        : await createTemplate(templateCreateBody(editorDraft, values, headers), devUser);
+    setSaving(false);
+    if (result.status !== "ok") {
+      const failed = saveErrors(result);
+      setNameError(failed.name);
+      setEditorErrors(failed.columns);
+      return setError(failed.name ?? mappingFailureMessage(result));
+    }
+    const saved = result.value;
+    setTemplates((current) => [...(current ?? []).filter((item) => item.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name)));
+    setSuggestions((current) => current?.map((item) => (item.template.id === saved.id ? { ...item, template: saved } : item)) ?? current);
+    // El régimen es del lote: guardar la plantilla no lo cambia.
+    setEditorDraft({ ...draftFromTemplate(saved, batch), tenureDefault: editorDraft.tenureDefault, sheetName: editorDraft.sheetName, headerRow: editorDraft.headerRow });
+    setEditorErrors({});
+    setNameError(null);
+    setError(null);
+  }
+
   async function handlePreview() {
-    if (!batch || !chosenTemplate) return;
+    const templateId = editorDraft?.base?.id;
+    if (!batch || !templateId) return;
     setPreviewBusy(true);
-    const result = await dryRunTemplate(chosenTemplate.id, batch.id, devUser);
+    const result = await dryRunTemplate(templateId, batch.id, devUser);
     setPreviewBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
@@ -266,13 +326,15 @@ export function LiveImportWizard() {
   }
 
   async function handleApplyTemplate() {
-    if (!batch || !chosenTemplate) return;
+    if (!batch || !editorDraft) return;
     setBusy(true);
-    const saved = await saveBatchMapping(batch.id, { kind: "template", templateId: chosenTemplate.id, tenureDefault: templateTenure }, devUser);
+    const saved = await saveBatchMapping(batch.id, applySource(editorDraft, batch), devUser);
     if (saved.status !== "ok") {
       setBusy(false);
+      setEditorErrors(columnErrors(saved));
       return setError(mappingFailureMessage(saved));
     }
+    setEditorErrors({});
     const started = await startImportValidation(batch.id, devUser);
     setBusy(false);
     if (started.status !== "ok") return setError(started.message);
@@ -351,22 +413,25 @@ export function LiveImportWizard() {
           onStartFromScratch={() => setMappingMode("scratch")}
         />
       )}
-      {batch && !processing && step === 1 && mappingMode === "template" && chosenTemplate && (
+      {batch && !processing && step === 1 && mappingMode === "template" && editorDraft && (
         <>
-          <AppliedTemplatePanel
-            template={chosenTemplate}
+          <MappingEditor
             batch={batch}
-            tenureDefault={templateTenure}
-            blocker={applyBlocker(chosenTemplate, batch)}
+            draft={editorDraft}
+            vocabularies={vocabularies}
+            errors={editorErrors}
+            nameError={nameError}
             busy={busy}
+            saving={saving}
             previewBusy={previewBusy}
-            onTenureChange={setTemplateTenure}
+            onChange={handleEditorChange}
+            onSave={handleSaveTemplate}
             onPreview={handlePreview}
             onApply={handleApplyTemplate}
-            onChooseAnother={() => {
+            onBack={() => {
               setMappingMode("pick");
-              setChosenTemplate(null);
               setDryRun(null);
+              closeEditor();
             }}
           />
           {dryRun && <DryRunPanel result={dryRun} />}
