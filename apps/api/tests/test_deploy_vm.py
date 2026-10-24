@@ -167,6 +167,13 @@ UNITS = [
 ]
 
 
+def test_the_audit_digest_unit_runs_the_real_command() -> None:
+    service = (VM / "systemd" / "matp-audit-digest.service").read_text(encoding="utf-8")
+    assert "ExecStart=/opt/matp/app/deploy/vm/audit-digest.sh" in service
+    script = (VM / "audit-digest.sh").read_text(encoding="utf-8")
+    assert "python -m app.modules.audit.digest" in script and "--verify" in script
+
+
 @pytest.mark.parametrize("name", UNITS)
 def test_every_unit_has_a_service_and_a_timer(name: str) -> None:
     service = (VM / "systemd" / f"{name}.service").read_text(encoding="utf-8")
@@ -185,7 +192,7 @@ def test_schedule_follows_the_design() -> None:
     assert "OnCalendar=*-*-* 00:30:00" in timer("matp-audit-digest")
 
 
-@pytest.mark.parametrize("name", ["matp-kpis-snapshot", "matp-audit-digest"])
+@pytest.mark.parametrize("name", ["matp-kpis-snapshot"])
 def test_commands_that_do_not_exist_yet_stay_commented(name: str) -> None:
     service = (VM / "systemd" / f"{name}.service").read_text(encoding="utf-8")
     assert "ExecStart=/bin/true" in service
@@ -259,7 +266,9 @@ def _calls(env: dict[str, str]) -> str:
 
 
 @needs_bash
-@pytest.mark.parametrize("script", [*sorted(BACKUP.glob("*.sh")), VM / "disk-check.sh"])
+@pytest.mark.parametrize(
+    "script", [*sorted(BACKUP.glob("*.sh")), VM / "disk-check.sh", VM / "audit-digest.sh"]
+)
 def test_scripts_have_valid_bash_syntax(script: Path) -> None:
     result = subprocess.run([BASH or "bash", "-n", _posix(script)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
