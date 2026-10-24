@@ -247,7 +247,7 @@ Detalle en `openspec/changes/busqueda-avanzada-y-exportacion/design.md` (D3, D4,
 
 ## R. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
 
-Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/archive/2026-10-23-autenticacion-y-matriz-permisos/design.md`. Amplía C7.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
