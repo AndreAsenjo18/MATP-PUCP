@@ -7,6 +7,11 @@
  * (`wizardStep`); mientras una etapa corre en el servidor se consulta su avance.
  *
  * El lote en curso se recuerda en la URL (`?lote=`) para poder volver a él.
+ *
+ * En el paso «Mapeo» se ofrecen primero las plantillas guardadas (change
+ * `plantillas-mapeo-y-normalizacion`, tarea 4.1A): las sugeridas por las cabeceras del archivo,
+ * la lista completa y «Empezar desde cero», que por ahora abre el panel de mapeo por columnas.
+ * Con una plantilla se puede ver la vista previa por columna y validar con `template_id`.
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,9 +31,21 @@ import {
   type MappingDraft,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
+import { AppliedTemplatePanel, DryRunPanel, TemplatePicker } from "@/components/domain/ImportTemplatePanels";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
+import {
+  applyBlocker,
+  dryRunTemplate,
+  fetchTemplates,
+  mappingFailureMessage,
+  saveBatchMapping,
+  suggestTemplates,
+  type MappingTemplate,
+  type TemplateDryRun,
+  type TemplateSuggestion,
+} from "@/lib/data/import-templates";
 import {
   IMPORT_PAGE_SIZE,
   IMPORT_POLL_MS,
@@ -90,6 +107,15 @@ export function LiveImportWizard() {
   const [log, setLog] = useState<ImportLog | null>(null);
   const [reload, setReload] = useState(0);
   const [busyImage, setBusyImage] = useState<string | null>(null);
+  // Paso «Mapeo» con plantillas (4.1A): elegir, usar una plantilla o mapear desde cero.
+  const [mappingMode, setMappingMode] = useState<"pick" | "template" | "scratch">("pick");
+  const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
+  const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [chosenTemplate, setChosenTemplate] = useState<MappingTemplate | null>(null);
+  const [templateTenure, setTemplateTenure] = useState("");
+  const [dryRun, setDryRun] = useState<TemplateDryRun | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   const step = wizardStep(batch);
   const processing = isProcessing(batch);
@@ -125,6 +151,32 @@ export function LiveImportWizard() {
 
   // Until the person edits it, the mapping is the one suggested from the headers.
   const mappingDraft = draft ?? (batch && batch.status === "UPLOADED" && !processing ? draftFor(batch) : null);
+
+  // Plantillas para las cabeceras del archivo, en cuanto el lote está leído (design D3).
+  const headersKey = batch && batch.status === "UPLOADED" && !processing && batch.headers?.length ? JSON.stringify(batch.headers) : "";
+  useEffect(() => {
+    let active = true;
+    if (!headersKey) return;
+    Promise.all([suggestTemplates(JSON.parse(headersKey) as string[], devUser), fetchTemplates(devUser)]).then(([suggested, all]) => {
+      if (!active) return;
+      setSuggestions(suggested.status === "ok" ? suggested.value : []);
+      setTemplates(all.status === "ok" ? all.value : []);
+      const failure = suggested.status !== "ok" ? suggested : all.status !== "ok" ? all : null;
+      setTemplatesError(failure ? failure.message : null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [headersKey, devUser]);
+
+  function resetTemplates() {
+    setMappingMode("pick");
+    setSuggestions(null);
+    setTemplates(null);
+    setTemplatesError(null);
+    setChosenTemplate(null);
+    setDryRun(null);
+  }
 
   const showRows = batch != null && !processing && step >= 3;
   useEffect(() => {
@@ -174,6 +226,7 @@ export function LiveImportWizard() {
     if (result.status !== "ok") return setError(result.message);
     setError(null);
     setDraft(null);
+    resetTemplates();
     router.replace(`/importacion?lote=${result.value.batch_id}`);
   }
 
@@ -187,6 +240,39 @@ export function LiveImportWizard() {
       return setError(saved.message);
     }
     setMapErrors({});
+    const started = await startImportValidation(batch.id, devUser);
+    setBusy(false);
+    if (started.status !== "ok") return setError(started.message);
+    setError(null);
+    await loadBatch();
+  }
+
+  function handleUseTemplate(template: MappingTemplate) {
+    setChosenTemplate(template);
+    setTemplateTenure(template.defaults?.tenure_regime ?? "");
+    setDryRun(null);
+    setError(null);
+    setMappingMode("template");
+  }
+
+  async function handlePreview() {
+    if (!batch || !chosenTemplate) return;
+    setPreviewBusy(true);
+    const result = await dryRunTemplate(chosenTemplate.id, batch.id, devUser);
+    setPreviewBusy(false);
+    if (result.status !== "ok") return setError(result.message);
+    setError(null);
+    setDryRun(result.value);
+  }
+
+  async function handleApplyTemplate() {
+    if (!batch || !chosenTemplate) return;
+    setBusy(true);
+    const saved = await saveBatchMapping(batch.id, { kind: "template", templateId: chosenTemplate.id, tenureDefault: templateTenure }, devUser);
+    if (saved.status !== "ok") {
+      setBusy(false);
+      return setError(mappingFailureMessage(saved));
+    }
     const started = await startImportValidation(batch.id, devUser);
     setBusy(false);
     if (started.status !== "ok") return setError(started.message);
@@ -255,8 +341,44 @@ export function LiveImportWizard() {
 
       {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
       {batch && processing && <ProgressPanel batch={batch} />}
-      {batch && !processing && step === 1 && mappingDraft && (
-        <MappingPanel batch={batch} draft={mappingDraft} busy={busy} errors={mapErrors} onChange={setDraft} onSubmit={handleMapping} />
+      {batch && !processing && step === 1 && mappingMode === "pick" && (
+        <TemplatePicker
+          suggestions={suggestions}
+          templates={templates}
+          loading={suggestions === null}
+          error={templatesError}
+          onUse={handleUseTemplate}
+          onStartFromScratch={() => setMappingMode("scratch")}
+        />
+      )}
+      {batch && !processing && step === 1 && mappingMode === "template" && chosenTemplate && (
+        <>
+          <AppliedTemplatePanel
+            template={chosenTemplate}
+            batch={batch}
+            tenureDefault={templateTenure}
+            blocker={applyBlocker(chosenTemplate, batch)}
+            busy={busy}
+            previewBusy={previewBusy}
+            onTenureChange={setTemplateTenure}
+            onPreview={handlePreview}
+            onApply={handleApplyTemplate}
+            onChooseAnother={() => {
+              setMappingMode("pick");
+              setChosenTemplate(null);
+              setDryRun(null);
+            }}
+          />
+          {dryRun && <DryRunPanel result={dryRun} />}
+        </>
+      )}
+      {batch && !processing && step === 1 && mappingMode === "scratch" && mappingDraft && (
+        <>
+          <MappingPanel batch={batch} draft={mappingDraft} busy={busy} errors={mapErrors} onChange={setDraft} onSubmit={handleMapping} />
+          <Button variant="secondary" className="self-start" disabled={busy} onClick={() => setMappingMode("pick")}>
+            Volver a las plantillas
+          </Button>
+        </>
       )}
       {batch && !processing && step === 2 && (
         <Card as="section" className="flex flex-col gap-3">
@@ -344,6 +466,7 @@ export function LiveImportWizard() {
             setLog(null);
             setAllImages([]);
             setError(null);
+            resetTemplates();
             router.replace("/importacion");
           }}
         >
