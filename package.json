@@ -40,6 +40,8 @@
     "openapi:check": "node scripts/py.mjs apps/api -m app.openapi_export --check && node scripts/py.mjs services/ai -m matp_ai.openapi_export --check",
     "openapi:client": "npm run openapi:client -w apps/web",
     "diagrams:er": "node scripts/py.mjs apps/api -m app.tools.er_diagram --output ../../docs/diagramas/modelo-datos/er.puml",
+    "backup:local": "bash scripts/backup/backup-restic.sh",
+    "restore:test": "bash scripts/backup/restore-test.sh",
     "diagrams:check": "node scripts/py.mjs apps/api -m app.tools.er_diagram --check ../../docs/diagramas/modelo-datos/er.puml"
   }
 }

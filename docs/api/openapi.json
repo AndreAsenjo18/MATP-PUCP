@@ -968,6 +968,47 @@
         "title": "AuditOrigin",
         "type": "string"
       },
+      "BackupStatus": {
+        "properties": {
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "max_age_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Age Hours"
+          },
+          "status": {
+            "enum": [
+              "disabled",
+              "ok",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "BackupStatus",
+        "type": "object"
+      },
       "BatchEnrichRequest": {
         "description": "Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).",
         "examples": [
@@ -2815,6 +2856,9 @@
       },
       "HealthResponse": {
         "properties": {
+          "backup": {
+            "$ref": "#/components/schemas/BackupStatus"
+          },
           "checks": {
             "additionalProperties": {
               "$ref": "#/components/schemas/DependencyStatus"
@@ -2860,7 +2904,8 @@
           "version",
           "commit",
           "release",
-          "checks"
+          "checks",
+          "backup"
         ],
         "title": "HealthResponse",
         "type": "object"

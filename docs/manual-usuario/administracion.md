@@ -1,6 +1,6 @@
 # Administración
 
-> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Copias de seguridad del sistema» (change `despliegue-vm-y-respaldos`), «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
 
 ## Usuarios y permisos
 
@@ -119,6 +119,34 @@ Una mejora que se ve en el sistema de pruebas **no** llega sola al sistema de us
 - **La página muestra `degraded`**: el sistema funciona con problemas (por ejemplo, no llega a la base de datos o al almacenamiento de fotos). Avise al equipo técnico y envíe la página completa, que no contiene datos del museo.
 - **La página no carga**: el sistema está apagado o sin conexión. En el sistema de pruebas es normal fuera de las sesiones de trabajo del equipo técnico. En el sistema de uso diario, avise de inmediato al equipo técnico.
 - **Ve un cambio en el sistema de pruebas que todavía no está en el de uso diario**: es lo esperado. Pida la versión como se explica arriba.
+
+## Copias de seguridad del sistema
+
+El sistema hace **cada noche una copia cifrada** de toda la información (base de datos y fotos) y la guarda **fuera del servidor**, para poder recuperar el trabajo si el servidor falla. No tiene que hacer nada para que ocurra.
+
+### Saber si la copia está al día
+
+1. Abra `https://<dirección-del-sistema>/health` (ver «Versión del sistema y actualizaciones»).
+2. Busque el bloque `backup`:
+
+| Qué dice `backup.status` | Qué significa | Qué hacer |
+|---|---|---|
+| `ok` | Hay una copia correcta de las últimas 26 horas | Nada |
+| `stale` | La última copia correcta es **más antigua de 26 horas**, la última copia falló o no se puede leer el registro de copias | Avise **al equipo técnico el mismo día** y envíe la página completa (no contiene datos del museo) |
+| `disabled` | Las copias no están configuradas en este sistema | Es normal en el sistema de pruebas; en el de uso diario, avise al equipo técnico |
+
+`backup.last_success_at` muestra cuándo se hizo la última copia correcta (hora universal, UTC).
+
+### Si recibe un aviso de copia desactualizada
+
+El equipo técnico recibe también un aviso automático cuando una copia falla o el disco del servidor se llena. Si usted ve `stale` y nadie ha reaccionado:
+
+1. Escriba al equipo técnico con la fecha y hora en que lo vio.
+2. **Siga trabajando con normalidad**, pero evite cargas masivas de Excel o fotos hasta que le confirmen que la copia volvió a funcionar: esos cambios quedarían sin respaldo.
+
+### Una vez al mes: comprobar que la copia sirve
+
+El equipo técnico hace un **simulacro de restauración**: recupera la última copia en un entorno aparte y comprueba que el número de piezas coincide y que una muestra de fotos está intacta. El resultado queda en un registro fechado. No afecta al sistema que usted usa.
 
 ## Exportación completa de la base de datos (Respaldo en formato abierto)
 

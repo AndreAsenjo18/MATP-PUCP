@@ -288,3 +288,19 @@ Detalle en `openspec/changes/plantillas-mapeo-y-normalizacion/design.md` (D1–D
 **Pendiente interno (no es pregunta al museo):** restaurar una plantilla desde la papelera no comprueba que su nombre siga libre entre las activas (T9), así que puede quedar un nombre repetido. La comprobación corresponde a `apps/api/app/modules/audit/trash.py` (change `auditoria-y-soft-delete-transversal`), no a `plantillas-mapeo-y-normalizacion`.
 
 **Pendiente interno (no es pregunta al museo):** la clasificación de filas (`apps/api/app/modules/imports/classify.py`) valida la fila con el régimen de tenencia que viene del valor por defecto del mapeo, aunque la fila actualice una pieza existente cuyo régimen no cambia. Así, un default `Comodato` en una fila con código I que actualiza una pieza propia da un falso error RN-003, y un default `Propiedad` en una fila que añade un código I a una pieza en comodato pasa la validación y hace fallar la aplicación de todo el lote por RN-003. Corresponde a `importacion-pipeline-reconciliacion`, no a `plantillas-mapeo-y-normalizacion` (que ya evita que el default entre en la comparación y sobrescriba la pieza).
+
+## U. Supuestos del despliegue en la VM y los respaldos (change `despliegue-vm-y-respaldos`, 2026-10-22)
+
+Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm.md` y `docs/despliegue/checklist-vm.md`. Amplía C6.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| U1 | ¿Cuánta pérdida de datos y cuánto tiempo de recuperación tolera el museo? (RPO / RTO) | RPO ≤ 24 h (respaldo diario) y RTO ≤ 4 h, a demostrar con un simulacro real | plataforma (RNF-011) | Alta |
+| U2 | ¿Con qué frecuencia y por cuánto tiempo se guardan los respaldos? | Diario a las 02:00; se conservan 30 diarios, 8 semanales y 6 mensuales | plataforma (RNF-011) | Media |
+| U3 | ¿Qué canal usa la DTI/el museo para las alertas (respaldo fallido, disco lleno)? | Un webhook (Teams o Slack); si no hay, correo SMTP institucional | plataforma (RNF-015) | Alta |
+| U4 | ¿Cuál es el destino externo de los respaldos y quién lo administra? | Un bucket S3 compatible (institucional o Cloudflare R2) fuera de la VM, con credenciales de solo ese bucket | plataforma (RNF-011) | Alta |
+| U5 | ¿Qué dominio tendrá el sistema y qué certificado se usa? | `matp.<dominio PUCP>` con `media.` como subdominio; certificado institucional si el dominio es interno, automático si es público | plataforma (RNF-013) | Alta |
+| U6 | ¿Quién custodia la clave de los respaldos y dónde se guarda la copia fuera de la VM? | El Líder de Proyecto y el Implantador, en dos gestores de contraseñas distintos; sin ella los respaldos no se pueden leer | plataforma (RNF-011, RNF-014) | Alta |
+| U7 | ¿Con qué frecuencia se hace el simulacro de restauración? | Mensual y antes de cada entrega del curso | plataforma (RNF-011) | Media |
+| U8 | ¿La VM tiene un respaldo propio a nivel de infraestructura y a quién avisar de los reinicios por parches? | Se desconoce; se pide a la DTI (checklist de la VM, puntos 10 y 12) | plataforma (RNF-011) | Media |
+| U9 | Si el servidor está cerca de llenarse, ¿se avisa al 80 % de uso? | Sí, cada hora, con los directorios que más ocupan | plataforma (RNF-015) | Baja |

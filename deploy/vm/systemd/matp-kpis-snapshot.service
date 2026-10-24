@@ -1,0 +1,15 @@
+[Unit]
+Description=Instantánea diaria de indicadores de MATP
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/matp/app
+EnvironmentFile=/opt/matp/.env.production
+# El comando lo entrega el change `alertas-y-reporte-incompletas`; hasta que exista esta orden queda
+# comentada y la unidad no hace nada (design D6). Descomente al integrarlo:
+# ExecStart=/usr/bin/env bash -c 'docker compose exec -T api python -m app.tools.kpis_snapshot'
+ExecStart=/bin/true
+NoNewPrivileges=true
+PrivateTmp=true

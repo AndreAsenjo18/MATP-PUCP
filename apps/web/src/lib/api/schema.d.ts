@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1fafacf12ff43ae2e80dac33ea05c57bc8623784f96b2f97c41032a3af5d9f60
+ * openapi-sha256: d0a42baa5c4f5e94a05682fa4eb5c63c2e93f024884433895af9d3236d6729ce
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2167,6 +2167,18 @@ export interface components {
          * @enum {string}
          */
         AuditOrigin: "MANUAL" | "IMPORT" | "AI" | "SYSTEM";
+        /** BackupStatus */
+        BackupStatus: {
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Max Age Hours */
+            max_age_hours?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "disabled" | "ok" | "stale";
+        };
         /**
          * BatchEnrichRequest
          * @description Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).
@@ -3015,6 +3027,7 @@ export interface components {
         };
         /** HealthResponse */
         HealthResponse: {
+            backup: components["schemas"]["BackupStatus"];
             /** Checks */
             checks: {
                 [key: string]: components["schemas"]["DependencyStatus"];
