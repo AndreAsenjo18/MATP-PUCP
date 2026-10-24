@@ -34,6 +34,7 @@ API_IMAGE="${RESTORE_API_IMAGE:?Defina RESTORE_API_IMAGE (imagen matp-api de la 
 started_epoch="$(date -u +%s)"
 started_at="$(now_utc)"
 result="FALLIDO"
+step="preparación"
 details=()
 
 cleanup() {
@@ -67,6 +68,9 @@ write_record() {
 
 on_exit() {
     local status=$?
+    if [[ $status -ne 0 ]]; then
+        details+=("Se interrumpió en el paso: ${step} (revise el registro del script)")
+    fi
     write_record
     cleanup
     if [[ $status -ne 0 ]]; then
@@ -79,12 +83,14 @@ require_backup_env
 mkdir -p "$WORK_DIR/db" "$WORK_DIR/objects"
 docker network create "$NETWORK" > /dev/null
 
+step="restaurar el último respaldo"
 # 1. Restaurar el último respaldo ------------------------------------------------------------
 log_json info restore_started "$started_at"
 restic_cmd restore latest --tag db --target "$WORK_DIR/db"
 restic_cmd restore latest --tag objects --target "$WORK_DIR/objects"
 details+=("Respaldo restaurado en un directorio temporal")
 
+step="levantar la base aislada y restaurar el volcado"
 # 2. Base de datos aislada ---------------------------------------------------------------------
 docker run -d --name "$DB_CONTAINER" --network "$NETWORK" \
     -e POSTGRES_PASSWORD=restore-test -e POSTGRES_DB=matp -e POSTGRES_USER=matp \
@@ -96,6 +102,7 @@ done
 docker exec -i "$DB_CONTAINER" pg_restore -U matp -d matp --no-owner < "$WORK_DIR/db/matp.pgdump"
 details+=("Base restaurada con pg_restore")
 
+step="comprobar la versión del esquema"
 # 3. Versión del esquema -----------------------------------------------------------------------
 current="$(docker run --rm --network "$NETWORK" \
     -e DATABASE_URL="postgresql+psycopg://matp:restore-test@${DB_CONTAINER}:5432/matp" \
@@ -109,12 +116,14 @@ case "$current" in
         ;;
 esac
 
+step="contar las tablas clave"
 # 4. Conteos de tablas clave ---------------------------------------------------------------------
 for table in piece collection piece_identifier media_asset audit_log app_user; do
     count="$(docker exec "$DB_CONTAINER" psql -U matp -d matp -At -c "SELECT count(*) FROM ${table}")"
     details+=("Filas en ${table}: ${count}")
 done
 
+step="comparar la muestra de fotos con su huella"
 # 5. Muestra de fotos contra la huella registrada ----------------------------------------------
 if docker exec "$DB_CONTAINER" psql -U matp -d matp -At -F $'\t' \
     -c "SELECT storage_key, content_sha256 FROM media_asset WHERE deleted_at IS NULL ORDER BY random() LIMIT ${PHOTO_SAMPLE}" \

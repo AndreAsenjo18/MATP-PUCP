@@ -82,11 +82,21 @@ restic_cmd() {
         restic "$@"
     else
         : "${RESTIC_IMAGE:?Defina RESTIC_IMAGE o instale restic en la VM}"
-        docker run --rm -i \
-            -e RESTIC_REPOSITORY -e RESTIC_PASSWORD_FILE \
+        # Corre con el usuario de quien invoca (no root): los archivos que restic restaura en el
+        # simulacro deben poder leerse desde la VM. RESTIC_DOCKER_ARGS permite montar un
+        # repositorio local (ensayos) o añadir redes; con un destino S3 no hace falta.
+        local work="${BACKUP_WORK_DIR:-/opt/matp/backup-work}"
+        # El espejo del bucket es lo que restic respalda: debe verse dentro del contenedor.
+        local mirror="${BACKUP_MIRROR_DIR:-/opt/matp/backup-mirror}"
+        mkdir -p "$work" "$mirror"
+        # shellcheck disable=SC2086  # RESTIC_DOCKER_ARGS son opciones separadas por espacios
+        docker run --rm -i --user "$(id -u):$(id -g)" \
+            -e RESTIC_REPOSITORY -e RESTIC_PASSWORD_FILE -e RESTIC_CACHE_DIR=/tmp/restic-cache \
             -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
             -v "${RESTIC_PASSWORD_FILE}:${RESTIC_PASSWORD_FILE}:ro" \
-            -v "${BACKUP_WORK_DIR:-/opt/matp/backup-work}:${BACKUP_WORK_DIR:-/opt/matp/backup-work}" \
+            -v "${work}:${work}" \
+            -v "${mirror}:${mirror}:ro" \
+            ${RESTIC_DOCKER_ARGS:-} \
             "$RESTIC_IMAGE" "$@"
     fi
 }

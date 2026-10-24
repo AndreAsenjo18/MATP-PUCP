@@ -36,6 +36,12 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    # Sin root dentro del contenedor (spec: «contenedores sin privilegios de superusuario»).
+    # Probado con Docker real: Caddy atiende 80/443 como uid 1000 si el kernel del contenedor
+    # permite puertos bajos a usuarios sin privilegios.
+    user: "1000:1000"
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
     cap_add:
       - NET_BIND_SERVICE
     environment:

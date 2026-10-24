@@ -79,6 +79,9 @@ def test_proxy_api_and_web_run_without_extra_privileges(prod: dict) -> None:
         assert "no-new-privileges:true" in service["security_opt"]
         assert service["cap_drop"] == ["ALL"]
     assert prod["services"]["proxy"]["cap_add"] == ["NET_BIND_SERVICE"]
+    # Sin root dentro de ningún contenedor propio: el proxy fija usuario y deja bajar a 80/443.
+    assert prod["services"]["proxy"]["user"] == "1000:1000"
+    assert prod["services"]["proxy"]["sysctls"]["net.ipv4.ip_unprivileged_port_start"] == "0"
     assert prod["services"]["api"]["read_only"] is True
 
 
@@ -372,3 +375,42 @@ def test_photo_verification_passes_when_every_hash_matches(tmp_path: Path) -> No
         env={**os.environ, "MATP_STATE_DIR": _posix(tmp_path / "s")},
     )
     assert result.returncode == 0 and result.stdout == ""
+
+
+@needs_bash
+@pytest.mark.skipif(shutil.which("restic") is not None, reason="restic está instalado aquí")
+def test_the_restic_container_sees_the_mirror_and_runs_as_the_caller(
+    tmp_path: Path, shim: dict[str, str]
+) -> None:
+    """Regresión del ensayo en Docker real: sin montar el espejo, restic no veía qué respaldar.
+
+    Sin binario `restic` el script usa su imagen: debe montar el espejo (solo lectura), el
+    directorio de trabajo y la clave, y correr con el usuario de quien invoca para que los
+    archivos restaurados en el simulacro se puedan leer desde la VM.
+    """
+    import os
+
+    bin_dir = tmp_path / "dockerbin"
+    bin_dir.mkdir()
+    log = tmp_path / "docker.log"
+    docker = bin_dir / "docker"
+    docker.write_text(f'#!/usr/bin/env bash\necho "$*" >> {_posix(log)}\n', newline="\n")
+    docker.chmod(0o755)
+    mirror, work = tmp_path / "mirror", tmp_path / "work"
+    script = f'source "{_posix(BACKUP / "lib.sh")}"; restic_cmd backup "{_posix(mirror)}"'
+    env = {
+        **os.environ,
+        "PATH": f"{_posix(bin_dir)}:{os.environ['PATH']}",
+        "MATP_STATE_DIR": _posix(tmp_path / "s"),
+        "RESTIC_IMAGE": "restic/restic:0.19.1",
+        "RESTIC_PASSWORD_FILE": shim["RESTIC_PASSWORD_FILE"],
+        "BACKUP_MIRROR_DIR": _posix(mirror),
+        "BACKUP_WORK_DIR": _posix(work),
+    }
+    subprocess.run([BASH or "bash", "-c", script], env=env, check=True)
+
+    call = log.read_text(encoding="utf-8")
+    assert f"-v {_posix(mirror)}:{_posix(mirror)}:ro" in call
+    assert f"-v {_posix(work)}:{_posix(work)}" in call
+    assert f"-v {shim['RESTIC_PASSWORD_FILE']}:{shim['RESTIC_PASSWORD_FILE']}:ro" in call
+    assert "--user " in call and "restic/restic:0.19.1 backup" in call
