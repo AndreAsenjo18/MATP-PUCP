@@ -7,9 +7,8 @@ After=docker.service
 Type=oneshot
 WorkingDirectory=/opt/matp/app
 EnvironmentFile=/opt/matp/.env.production
-# El comando lo entrega el change `auditoria-y-soft-delete-transversal`; hasta que exista esta orden queda
-# comentada y la unidad no hace nada (design D6). Descomente al integrarlo:
-# ExecStart=/usr/bin/env bash -c 'docker compose exec -T api python -m app.tools.audit_digest'
-ExecStart=/bin/true
+# Sella los días cerrados y verifica la cadena (python -m app.modules.audit.digest, change
+# auditoria-y-soft-delete-transversal); avisa por webhook si algo no cuadra.
+ExecStart=/opt/matp/app/deploy/vm/audit-digest.sh
 NoNewPrivileges=true
 PrivateTmp=true
