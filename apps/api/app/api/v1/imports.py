@@ -40,6 +40,7 @@ from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
+from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
@@ -77,6 +78,8 @@ from app.modules.imports.schemas import (
     MappingTemplateUpdate,
     RevertRequest,
     RowDecisionRequest,
+    TemplateDryRunOut,
+    TemplateDryRunRequest,
     TemplateSuggestion,
     TemplateSuggestRequest,
     ValidationSummary,
@@ -726,3 +729,28 @@ def delete_import_template(
     templates.delete_template(writer(session, user, reason), template, reason)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/import-templates/{template_id}/dry-run",
+    response_model=TemplateDryRunOut,
+    responses={
+        404: {"model": ErrorResponse, "description": "La plantilla o el lote no existen."},
+        409: {
+            "model": ErrorResponse,
+            "description": "El lote no está subido ni mapeado, o aún no se ha leído.",
+        },
+    },
+    summary="Vista previa de normalización por columna de una plantilla (RF-023)",
+    description="Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote "
+    "subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` "
+    "y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y "
+    "ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.",
+    **implemented(),
+)
+def dry_run_import_template(
+    template_id: uuid.UUID, body: TemplateDryRunRequest, session: SessionDep, user: Preparer
+) -> TemplateDryRunOut:
+    template = templates.get_template(session, template_id)
+    result = run_dry_run(session, template, get_batch(session, body.batch_id))
+    return dry_run_out(result, templates.column_mappings(template))

@@ -2250,6 +2250,246 @@
         "title": "DownloadUrlResponse",
         "type": "object"
       },
+      "DryRunColumn": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` (estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y `SPLIT_PROPOSED` (se propone separar la celda en varios valores).",
+            "propertyNames": {
+              "enum": [
+                "NORMALIZED",
+                "UNPARSEABLE",
+                "ABSENT",
+                "SPLIT_PROPOSED"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "empty": {
+            "description": "Celdas vacías de la muestra.",
+            "title": "Empty",
+            "type": "integer"
+          },
+          "examples": {
+            "description": "Hasta 5 celdas: primero una de cada estado, luego en orden de fila.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunExample"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "in_file": {
+            "description": "false si el lote no trae esta columna de la plantilla.",
+            "title": "In File",
+            "type": "boolean"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/ColumnMapping"
+          },
+          "unmatched_values": {
+            "description": "Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4].",
+            "items": {
+              "$ref": "#/components/schemas/DryRunUnmatchedValue"
+            },
+            "title": "Unmatched Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mapping",
+          "in_file",
+          "counts",
+          "empty",
+          "unmatched_values",
+          "examples"
+        ],
+        "title": "DryRunColumn",
+        "type": "object"
+      },
+      "DryRunExample": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "identifiers": {
+            "description": "Solo en columnas de identificadores.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunIdentifier"
+            },
+            "title": "Identifiers",
+            "type": "array"
+          },
+          "matched_terms": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Valor → código de término; solo en columnas `terms:<VOCABULARIO>`.",
+            "title": "Matched Terms",
+            "type": "object"
+          },
+          "original": {
+            "description": "La celda tal como viene en el archivo.",
+            "title": "Original"
+          },
+          "proposals": {
+            "additionalProperties": true,
+            "description": "Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto.",
+            "title": "Proposals",
+            "type": "object"
+          },
+          "source_row_number": {
+            "title": "Source Row Number",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "NORMALIZED",
+              "UNPARSEABLE",
+              "ABSENT",
+              "SPLIT_PROPOSED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace": {
+            "description": "Cada transformación con su antes y después.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunTraceStep"
+            },
+            "title": "Trace",
+            "type": "array"
+          },
+          "unmatched_terms": {
+            "description": "Valores sin término; irían a los datos de origen de la fila.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unmatched Terms",
+            "type": "array"
+          },
+          "value": {
+            "description": "El valor después de las transformaciones.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "source_row_number",
+          "status",
+          "original",
+          "value",
+          "trace",
+          "proposals",
+          "identifiers",
+          "matched_terms",
+          "unmatched_terms",
+          "errors"
+        ],
+        "title": "DryRunExample",
+        "type": "object"
+      },
+      "DryRunIdentifier": {
+        "properties": {
+          "is_absent": {
+            "title": "Is Absent",
+            "type": "boolean"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "NORMALIZED",
+              "UNPARSEABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type_code": {
+            "title": "Type Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_code",
+          "original_value",
+          "normalized_value",
+          "status",
+          "is_absent"
+        ],
+        "title": "DryRunIdentifier",
+        "type": "object"
+      },
+      "DryRunTraceStep": {
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`excel_date_cell` (celda de fecha de Excel, exenta del formato) o `not_recognized` (la propuesta no reconoció el texto).",
+            "title": "Note"
+          },
+          "transform": {
+            "title": "Transform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transform",
+          "before",
+          "after"
+        ],
+        "title": "DryRunTraceStep",
+        "type": "object"
+      },
+      "DryRunUnmatchedValue": {
+        "properties": {
+          "count": {
+            "description": "Apariciones en la muestra.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "DryRunUnmatchedValue",
+        "type": "object"
+      },
       "DuplicateCandidateOut": {
         "examples": [
           {
@@ -9120,6 +9360,70 @@
         "title": "SuggestionStatus",
         "type": "string"
       },
+      "TemplateDryRunOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/DryRunColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "missing_columns": {
+            "description": "Columnas de la plantilla ausentes del lote.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Columns",
+            "type": "array"
+          },
+          "sampled_rows": {
+            "description": "Filas de la muestra: hasta 200 [SUPUESTO T3].",
+            "title": "Sampled Rows",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "total_rows": {
+            "description": "Filas leídas del lote.",
+            "title": "Total Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_id",
+          "batch_id",
+          "total_rows",
+          "sampled_rows",
+          "missing_columns",
+          "columns"
+        ],
+        "title": "TemplateDryRunOut",
+        "type": "object"
+      },
+      "TemplateDryRunRequest": {
+        "properties": {
+          "batch_id": {
+            "description": "Lote subido o mapeado del que se toma la muestra.",
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "title": "TemplateDryRunRequest",
+        "type": "object"
+      },
       "TemplateSuggestRequest": {
         "properties": {
           "headers": {
@@ -13408,6 +13712,106 @@
           }
         ],
         "summary": "Editar una plantilla de mapeo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/import-templates/{template_id}/dry-run": {
+      "post": {
+        "description": "Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.",
+        "operationId": "dryRunImportTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateDryRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDryRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La plantilla o el lote no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no está subido ni mapeado, o aún no se ha leído."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Vista previa de normalización por columna de una plantilla (RF-023)",
         "tags": [
           "Importación"
         ],

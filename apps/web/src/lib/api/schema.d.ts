@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1fafacf12ff43ae2e80dac33ea05c57bc8623784f96b2f97c41032a3af5d9f60
+ * openapi-sha256: 5557f141ab158aa3ef512569fc79fe6322768c20dde96edf031b58eac4df3e8f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -569,6 +569,26 @@ export interface paths {
          * @description `headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la firma se recalcula. Los lotes ya procesados conservan su mapeo.
          */
         patch: operations["updateImportTemplate"];
+        trace?: never;
+    };
+    "/api/v1/import-templates/{template_id}/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa de normalización por columna de una plantilla (RF-023)
+         * @description Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.
+         */
+        post: operations["dryRunImportTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/import-templates/suggest": {
@@ -2758,6 +2778,128 @@ export interface components {
              * @enum {string}
              */
             restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
+        };
+        /** DryRunColumn */
+        DryRunColumn: {
+            /**
+             * Counts
+             * @description Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` (estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y `SPLIT_PROPOSED` (se propone separar la celda en varios valores).
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Empty
+             * @description Celdas vacías de la muestra.
+             */
+            empty: number;
+            /**
+             * Examples
+             * @description Hasta 5 celdas: primero una de cada estado, luego en orden de fila.
+             */
+            examples: components["schemas"]["DryRunExample"][];
+            /**
+             * In File
+             * @description false si el lote no trae esta columna de la plantilla.
+             */
+            in_file: boolean;
+            mapping: components["schemas"]["ColumnMapping"];
+            /**
+             * Unmatched Values
+             * @description Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4].
+             */
+            unmatched_values: components["schemas"]["DryRunUnmatchedValue"][];
+        };
+        /** DryRunExample */
+        DryRunExample: {
+            /** Errors */
+            errors: string[];
+            /**
+             * Identifiers
+             * @description Solo en columnas de identificadores.
+             */
+            identifiers: components["schemas"]["DryRunIdentifier"][];
+            /**
+             * Matched Terms
+             * @description Valor → código de término; solo en columnas `terms:<VOCABULARIO>`.
+             */
+            matched_terms: {
+                [key: string]: string;
+            };
+            /**
+             * Original
+             * @description La celda tal como viene en el archivo.
+             */
+            original: unknown;
+            /**
+             * Proposals
+             * @description Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto.
+             */
+            proposals: {
+                [key: string]: unknown;
+            };
+            /** Source Row Number */
+            source_row_number: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NORMALIZED" | "UNPARSEABLE" | "ABSENT" | "SPLIT_PROPOSED";
+            /**
+             * Trace
+             * @description Cada transformación con su antes y después.
+             */
+            trace: components["schemas"]["DryRunTraceStep"][];
+            /**
+             * Unmatched Terms
+             * @description Valores sin término; irían a los datos de origen de la fila.
+             */
+            unmatched_terms: string[];
+            /**
+             * Value
+             * @description El valor después de las transformaciones.
+             */
+            value: unknown;
+        };
+        /** DryRunIdentifier */
+        DryRunIdentifier: {
+            /** Is Absent */
+            is_absent: boolean;
+            /** Normalized Value */
+            normalized_value: string | null;
+            /** Original Value */
+            original_value: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NORMALIZED" | "UNPARSEABLE";
+            /** Type Code */
+            type_code: string;
+        };
+        /** DryRunTraceStep */
+        DryRunTraceStep: {
+            /** After */
+            after: unknown;
+            /** Before */
+            before: unknown;
+            /**
+             * Note
+             * @description `excel_date_cell` (celda de fecha de Excel, exenta del formato) o `not_recognized` (la propuesta no reconoció el texto).
+             */
+            note?: string | null;
+            /** Transform */
+            transform: string;
+        };
+        /** DryRunUnmatchedValue */
+        DryRunUnmatchedValue: {
+            /**
+             * Count
+             * @description Apariciones en la muestra.
+             */
+            count: number;
+            /** Value */
+            value: string;
         };
         /**
          * DuplicateCandidateOut
@@ -5880,6 +6022,45 @@ export interface components {
          * @enum {string}
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
+        /** TemplateDryRunOut */
+        TemplateDryRunOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Columns */
+            columns: components["schemas"]["DryRunColumn"][];
+            /**
+             * Missing Columns
+             * @description Columnas de la plantilla ausentes del lote.
+             */
+            missing_columns: string[];
+            /**
+             * Sampled Rows
+             * @description Filas de la muestra: hasta 200 [SUPUESTO T3].
+             */
+            sampled_rows: number;
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /**
+             * Total Rows
+             * @description Filas leídas del lote.
+             */
+            total_rows: number;
+        };
+        /** TemplateDryRunRequest */
+        TemplateDryRunRequest: {
+            /**
+             * Batch Id
+             * Format: uuid
+             * @description Lote subido o mapeado del que se toma la muestra.
+             */
+            batch_id: string;
+        };
         /** TemplateSuggestion */
         TemplateSuggestion: {
             /**
@@ -8394,6 +8575,77 @@ export interface operations {
             };
             /** @description La plantilla no existe o fue eliminada. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dryRunImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateDryRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDryRunOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla o el lote no existen. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no está subido ni mapeado, o aún no se ha leído. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
