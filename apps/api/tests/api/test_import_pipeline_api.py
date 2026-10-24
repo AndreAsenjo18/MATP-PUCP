@@ -256,6 +256,18 @@ def _catalog(session: Session) -> Catalog:
     target, target_code = with_author[0]
     third_code = next(code for piece, code in inventory_codes() if piece.id != target.id)
     third_id = next(piece.id for piece, code in inventory_codes() if code == third_code)
+    # A collection code whose normalized value belongs to a single piece: the seed has codes
+    # shared by several pieces, and picking one of those by random UUID order made row 4 match
+    # three pieces instead of two.
+    unique_collection_values = (
+        select(PieceIdentifier.normalized_value)
+        .where(
+            PieceIdentifier.identifier_type_code == TYPE_COLLECTION,
+            PieceIdentifier.deleted_at.is_(None),
+        )
+        .group_by(PieceIdentifier.normalized_value)
+        .having(func.count(func.distinct(PieceIdentifier.piece_id)) == 1)
+    )
     other_collection_code = session.scalar(
         select(PieceIdentifier.original_value)
         .where(
@@ -263,6 +275,7 @@ def _catalog(session: Session) -> Catalog:
             PieceIdentifier.is_current,
             PieceIdentifier.deleted_at.is_(None),
             PieceIdentifier.piece_id.not_in([target.id, third_id]),
+            PieceIdentifier.normalized_value.in_(unique_collection_values),
         )
         .order_by(PieceIdentifier.id)
         .limit(1)

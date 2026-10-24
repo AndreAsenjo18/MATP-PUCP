@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: d0a42baa5c4f5e94a05682fa4eb5c63c2e93f024884433895af9d3236d6729ce
+ * openapi-sha256: 43d11fb64cbfc9e111147ba5ac8cddb7f1d5c134c3b1c81f99c0e341897465ec
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1025,7 +1025,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Alertas de información incompleta de la pieza (RF-019) */
+        /** Alertas de información incompleta de la pieza, con acción sugerida (RF-019) */
         get: operations["listPieceAlerts"];
         put?: never;
         post?: never;
@@ -1297,6 +1297,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/completeness-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Campos obligatorios y recomendados vigentes para las alertas de completitud */
+        get: operations["getCompletenessRules"];
+        /** Reemplazar los campos obligatorios y recomendados (RF-019, RN-010) */
+        put: operations["putCompletenessRules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/duplicates": {
         parameters: {
             query?: never;
@@ -1408,6 +1426,23 @@ export interface paths {
         };
         /** KPI de completitud general y por coleccin (RF-035) */
         get: operations["getDashboardStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/dashboard-stats/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evolución diaria de los indicadores de completitud (RF-035) */
+        get: operations["getDashboardStatsHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1881,6 +1916,34 @@ export interface components {
              * @description Motivo obligatorio (RN-009).
              */
             reason: string;
+        };
+        /**
+         * AlertCode
+         * @enum {string}
+         */
+        AlertCode: "MISSING_INVENTORY_CODE" | "MISSING_PHOTO" | "MISSING_LOCATION" | "MISSING_REQUIRED_FIELDS" | "MISSING_RECOMMENDED_FIELDS" | "UNNORMALIZABLE_IDENTIFIER";
+        /**
+         * AlertKpi
+         * @description Numerador y denominador explícitos de una alerta (design D3): nunca solo un porcentaje,
+         *     para que se pueda auditar y nunca se divida entre cero.
+         * @example {
+         *       "alert": "MISSING_INVENTORY_CODE",
+         *       "completeness_ratio": 0.6,
+         *       "denominator": 250,
+         *       "numerator": 100
+         *     }
+         */
+        AlertKpi: {
+            alert: components["schemas"]["AlertCode"];
+            /**
+             * Completeness Ratio
+             * @description `null` cuando el denominador es 0 (no aplica; spec «Colección solo comodato»).
+             */
+            completeness_ratio?: number | null;
+            /** Denominator */
+            denominator: number;
+            /** Numerator */
+            numerator: number;
         };
         /**
          * ApprovalRequest
@@ -2507,6 +2570,18 @@ export interface components {
             /** Parent Id */
             parent_id?: string | null;
         };
+        /** CollectionKpis */
+        CollectionKpis: {
+            /** Alerts */
+            alerts: components["schemas"]["AlertKpi"][];
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+            /** Collection Name */
+            collection_name: string;
+        };
         /**
          * CollectionOut
          * @example {
@@ -2646,51 +2721,134 @@ export interface components {
             } | null;
         };
         /**
+         * CompletenessFieldKind
+         * @enum {string}
+         */
+        CompletenessFieldKind: "REQUIRED" | "RECOMMENDED";
+        /**
          * CompletenessKpis
          * @example {
-         *       "by_collection": [
+         *       "alerts": [
          *         {
-         *           "collection_name": "Colección MMZ (ficticia)",
-         *           "completeness_ratio": 0.7
+         *           "alert": "MISSING_INVENTORY_CODE",
+         *           "completeness_ratio": 0.6,
+         *           "denominator": 250,
+         *           "numerator": 100
          *         }
          *       ],
-         *       "completeness_ratio": 0.62,
+         *       "by_collection": [
+         *         {
+         *           "alerts": [
+         *             {
+         *               "alert": "MISSING_INVENTORY_CODE",
+         *               "denominator": 0,
+         *               "numerator": 0
+         *             }
+         *           ],
+         *           "collection_id": "01920000-0000-7000-8000-000000000101",
+         *           "collection_name": "Colección AJB (ficticia, en comodato)"
+         *         }
+         *       ],
          *       "computed_at": "2026-09-17T10:30:00Z",
-         *       "missing_required_fields": 12,
-         *       "total_pieces": 298,
-         *       "without_inventory_code": 160,
-         *       "without_location": 96,
-         *       "without_photo": 41
+         *       "total_pieces": 300
          *     }
          */
         CompletenessKpis: {
+            /** Alerts */
+            alerts: components["schemas"]["AlertKpi"][];
             /** By Collection */
-            by_collection: {
-                [key: string]: string | number | null;
-            }[];
-            /** Completeness Ratio */
-            completeness_ratio: number;
+            by_collection: components["schemas"]["CollectionKpis"][];
             /**
              * Computed At
              * Format: date-time
              */
             computed_at: string;
-            /** Missing Required Fields */
-            missing_required_fields: number;
             /** Total Pieces */
             total_pieces: number;
-            /** Without Inventory Code */
-            without_inventory_code: number;
-            /** Without Location */
-            without_location: number;
-            /** Without Photo */
-            without_photo: number;
+        };
+        /**
+         * CompletenessRuleIn
+         * @example {
+         *       "field": "description",
+         *       "is_active": true,
+         *       "kind": "RECOMMENDED"
+         *     }
+         */
+        CompletenessRuleIn: {
+            /**
+             * Field
+             * @description Campo de `piece` a administrar (lista blanca; 422 si no existe).
+             */
+            field: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            kind: components["schemas"]["CompletenessFieldKind"];
+        };
+        /**
+         * CompletenessRuleOut
+         * @example {
+         *       "field": "description",
+         *       "is_active": true,
+         *       "kind": "RECOMMENDED"
+         *     }
+         */
+        CompletenessRuleOut: {
+            /** Field */
+            field: string;
+            /** Is Active */
+            is_active: boolean;
+            kind: components["schemas"]["CompletenessFieldKind"];
+        };
+        /**
+         * CompletenessRulesUpdate
+         * @description Reemplaza el conjunto completo de reglas activas e inactivas (PUT, no PATCH parcial).
+         * @example {
+         *       "rules": [
+         *         {
+         *           "field": "denomination",
+         *           "is_active": true,
+         *           "kind": "REQUIRED"
+         *         },
+         *         {
+         *           "field": "description",
+         *           "is_active": true,
+         *           "kind": "RECOMMENDED"
+         *         }
+         *       ]
+         *     }
+         */
+        CompletenessRulesUpdate: {
+            /** Rules */
+            rules: components["schemas"]["CompletenessRuleIn"][];
         };
         /**
          * ConflictReason
          * @enum {string}
          */
         ConflictReason: "changed_after" | "entity_missing" | "already_deleted" | "not_deleted" | "no_soft_delete";
+        /**
+         * DashboardHistory
+         * @example {
+         *       "points": [
+         *         {
+         *           "alert": "MISSING_PHOTO",
+         *           "completeness_ratio": 0.86,
+         *           "denominator": 298,
+         *           "numerator": 41,
+         *           "taken_on": "2026-10-01"
+         *         }
+         *       ]
+         *     }
+         */
+        DashboardHistory: {
+            /** Collection Id */
+            collection_id: string | null;
+            /** Points */
+            points: components["schemas"]["SnapshotPointOut"][];
+        };
         /** DependencyStatus */
         DependencyStatus: {
             /** Detail */
@@ -3631,8 +3789,8 @@ export interface components {
          * IncompletePiece
          * @example {
          *       "alerts": [
-         *         "WITHOUT_INVENTORY_CODE",
-         *         "WITHOUT_PHOTO"
+         *         "MISSING_INVENTORY_CODE",
+         *         "MISSING_PHOTO"
          *       ],
          *       "collection_name": "Colección MMZ (ficticia)",
          *       "piece_id": "01920000-0000-7000-8000-000000000101",
@@ -3641,7 +3799,7 @@ export interface components {
          */
         IncompletePiece: {
             /** Alerts */
-            alerts: ("WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE")[];
+            alerts: components["schemas"]["AlertCode"][];
             /** Collection Name */
             collection_name: string | null;
             /**
@@ -4645,7 +4803,8 @@ export interface components {
          *       "applies": true,
          *       "fields": [],
          *       "message": "La pieza no tiene fotografías.",
-         *       "type": "WITHOUT_PHOTO"
+         *       "suggested_action": "Subir al menos una fotografía",
+         *       "type": "MISSING_PHOTO"
          *     }
          */
         PieceAlert: {
@@ -4660,10 +4819,11 @@ export interface components {
             /** Message */
             message: string;
             /**
-             * Type
-             * @enum {string}
+             * Suggested Action
+             * @description Acción sugerida para resolver la alerta (RNF-010, lenguaje claro).
              */
-            type: "WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE";
+            suggested_action: string;
+            type: components["schemas"]["AlertCode"];
         };
         /**
          * PieceChildLink
@@ -5788,6 +5948,31 @@ export interface components {
              * @description Por ejemplo «ya tiene descripción» o «metadatos insuficientes».
              */
             reason: string;
+        };
+        /**
+         * SnapshotPointOut
+         * @description Un punto de la evolución diaria (design D5): la instantánea de una alerta en un día.
+         * @example {
+         *       "alert": "MISSING_PHOTO",
+         *       "completeness_ratio": 0.86,
+         *       "denominator": 298,
+         *       "numerator": 41,
+         *       "taken_on": "2026-10-01"
+         *     }
+         */
+        SnapshotPointOut: {
+            alert: components["schemas"]["AlertCode"];
+            /** Completeness Ratio */
+            completeness_ratio?: number | null;
+            /** Denominator */
+            denominator: number;
+            /** Numerator */
+            numerator: number;
+            /**
+             * Taken On
+             * Format: date
+             */
+            taken_on: string;
         };
         /**
          * SourceRecordOut
@@ -10253,15 +10438,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     getPieceChildren: {
@@ -11360,6 +11536,104 @@ export interface operations {
             };
         };
     };
+    getCompletenessRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessRuleOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putCompletenessRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompletenessRulesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessRuleOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listDuplicateCandidates: {
         parameters: {
             query?: {
@@ -11522,8 +11796,11 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tipos de alerta (AND). */
-                alert?: ("WITHOUT_INVENTORY_CODE" | "WITHOUT_PHOTO" | "WITHOUT_LOCATION" | "MISSING_REQUIRED_FIELDS" | "UNPARSEABLE_CODE")[] | null;
+                alert?: components["schemas"]["AlertCode"][] | null;
                 collection_id?: string | null;
+                format?: components["schemas"]["ExportFormat"] | null;
+                /** @description Con `collection_id`, incluye sus subcolecciones. */
+                include_subcollections?: boolean;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -11535,13 +11812,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Lista en JSON o, con `format=xlsx|csv`, como archivo descargable (sin paginar: incluye todas las piezas que cumplen los filtros). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Page_IncompletePiece_"];
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                    "text/csv": unknown;
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -11569,15 +11848,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -11695,7 +11965,10 @@ export interface operations {
     };
     getDashboardStats: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Incluye el desglose por colección raíz con subcolecciones. */
+                by_collection?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -11738,13 +12011,58 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `alertas-y-reporte-incompletas`. */
-            501: {
+        };
+    };
+    getDashboardStatsHistory: {
+        parameters: {
+            query: {
+                /** @description Omitido: indicadores globales. */
+                collection_id?: string | null;
+                /** @description Fecha inicial, incluida. */
+                from: string;
+                /** @description Fecha final, incluida. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["DashboardHistory"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

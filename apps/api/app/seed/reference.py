@@ -19,6 +19,8 @@ from app.modules.identification.normalization import (
     TYPE_OWNER,
     TYPE_PUCP,
 )
+from app.modules.quality.completeness import DEFAULT_RECOMMENDED_FIELDS, DEFAULT_REQUIRED_FIELDS
+from app.modules.quality.models import CompletenessFieldKind, CompletenessRule
 from app.modules.users.models import Permission, Role, RolePermission
 
 IDENTIFIER_TYPES = [
@@ -203,6 +205,7 @@ PERMISSIONS = {
     "exports.full": "Exportación completa de la base",
     "audit.read": "Consultar auditoría",
     "users.manage": "Administrar usuarios y roles",
+    "quality.completeness_rules.manage": "Administrar campos obligatorios y recomendados",
     "sensitive.valuation": "Ver valorización",
     "sensitive.exact_location": "Ver ubicación exacta",
     "sensitive.loan_terms": "Ver condiciones de comodato",
@@ -213,7 +216,8 @@ _ALL = set(PERMISSIONS)
 _READ = {"pieces.read", "reports.view"}
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "ADMIN": _ALL,
-    "COLLECTIONS_MANAGER": _ALL - {"users.manage", "exports.full", "imports.revert"},
+    "COLLECTIONS_MANAGER": _ALL
+    - {"users.manage", "exports.full", "imports.revert", "quality.completeness_rules.manage"},
     "CATALOGUER": _READ
     | {
         "pieces.create",
@@ -298,5 +302,21 @@ def seed_reference_data(session: Session) -> ReferenceData:
                     id=new_uuid(), role_id=role.id, permission_id=permissions[permission_code].id
                 )
             )
+    for field in DEFAULT_REQUIRED_FIELDS:
+        session.add(
+            CompletenessRule(
+                id=new_uuid(), field=field, kind=CompletenessFieldKind.REQUIRED, is_active=True
+            )
+        )
+    for field in DEFAULT_RECOMMENDED_FIELDS:
+        session.add(
+            CompletenessRule(
+                id=new_uuid(),
+                field=field,
+                kind=CompletenessFieldKind.RECOMMENDED,
+                is_active=True,
+            )
+        )
+
     session.flush()
     return ReferenceData(identifier_types=identifier_types, terms=terms, roles=roles)

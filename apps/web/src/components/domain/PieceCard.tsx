@@ -40,7 +40,7 @@ export function pieceCardProps(piece: ApiSchemas["PieceSummary"], alerts: PieceA
 
 export function PieceCard({ href, title, inventoryCode, collectionName, locationLabel, tenureRegime, alerts = [], hasPhoto }: PieceCardProps) {
   // «Sin foto» se muestra en el pie de la tarjeta; no se repite como badge.
-  const badges = alerts.filter((alert) => alert.applies && alert.type !== "WITHOUT_PHOTO");
+  const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
   return (
     <Link href={href} className={cardClassName({ interactive: true, className: "flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota" })}>
       <div className="flex items-start justify-between gap-2">

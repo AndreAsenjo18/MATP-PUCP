@@ -16,9 +16,7 @@ from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
 from app.api.stubs import (
-    CHANGE_INCOMPLETE,
     CHANGE_PIECE_CRUD,
-    example_of,
     implemented,
     not_implemented,
     stub,
@@ -83,6 +81,7 @@ from app.modules.media.service import (
     comodato_restriction_term_id,
     verify_image_stream,
 )
+from app.modules.quality.completeness import ALERTS, active_alerts_for_piece, load_active_rules
 from app.modules.quality.schemas import PieceAlert
 from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
@@ -389,12 +388,29 @@ def list_source_records(
 @router.get(
     "/{piece_id}/alerts",
     response_model=list[PieceAlert],
-    summary="Alertas de información incompleta de la pieza (RF-019)",
+    summary="Alertas de información incompleta de la pieza, con acción sugerida (RF-019)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    **implemented(),
 )
-def list_piece_alerts(piece_id: uuid.UUID, user: Reader) -> list[PieceAlert]:
-    raise not_implemented(CHANGE_INCOMPLETE, [example_of(PieceAlert)])
+def list_piece_alerts(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> list[PieceAlert]:
+    # Una pieza que no existe (ni siquiera eliminada) es 404; una eliminada o fusionada en otra
+    # existe pero nunca tiene alertas activas (spec, escenario "Pieza fusionada") — lo filtra
+    # `active_alerts_for_piece` sin necesidad de distinguir los dos casos aquí.
+    exists = session.get(Piece, piece_id, execution_options={INCLUDE_DELETED: True})
+    if exists is None:
+        raise NotFound("La pieza no existe.", details={"piece_id": str(piece_id)})
+    rules = load_active_rules(session)
+    codes = active_alerts_for_piece(session, piece_id, rules)
+    return [
+        PieceAlert(
+            type=code,
+            message=ALERTS[code].message,
+            suggested_action=ALERTS[code].suggested_action,
+            fields=[ALERTS[code].field] if ALERTS[code].field else [],
+            applies=True,
+        )
+        for code in codes
+    ]
 
 
 # -------------------------------------------------------------------- identifiers

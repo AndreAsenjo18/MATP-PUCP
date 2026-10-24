@@ -3,6 +3,7 @@
 import csv
 import tempfile
 import uuid
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -22,11 +23,9 @@ from app.api.pagination import (
     paginate,
 )
 from app.api.stubs import (
-    CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
     implemented,
     not_implemented,
-    page_example,
     stub,
 )
 from app.core.errors import NotFound
@@ -40,6 +39,19 @@ from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.collections.models import Collection, Term
 from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
 from app.modules.locations.models import Location
+from app.modules.quality.completeness import (
+    list_completeness_rules,
+    load_active_rules,
+    replace_completeness_rules,
+)
+from app.modules.quality.incomplete_report import (
+    XLSX_CONTENT_TYPE,
+    build_incomplete_query,
+    incomplete_report_csv,
+    incomplete_report_workbook,
+    rows_for_pieces,
+)
+from app.modules.quality.kpis import compute_dashboard_kpis
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -49,14 +61,21 @@ from app.modules.quality.queue import (
 )
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
+    AlertKpi,
     AlertType,
+    CollectionKpis,
     CompletenessKpis,
+    CompletenessRuleOut,
+    CompletenessRulesUpdate,
+    DashboardHistory,
     DuplicateCandidateOut,
     DuplicateOrigin,
     DuplicateResolution,
     IncompletePiece,
     QualityJobOut,
+    SnapshotPointOut,
 )
+from app.modules.quality.snapshot import dashboard_history
 from app.modules.search.filters import PieceFilter
 from app.modules.search.models import ExportJobKind, ExportJobModel, ExportJobStatus
 from app.modules.search.ranking import generate_search_suggestions, rank_and_describe_pieces
@@ -75,6 +94,9 @@ router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 ReportViewer = Annotated[CurrentUser, Depends(require_permission("reports.view"))]
 Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
+CompletenessRulesManager = Annotated[
+    CurrentUser, Depends(require_permission("quality.completeness_rules.manage"))
+]
 
 
 # ------------------------------------------------------------------------- quality
@@ -83,15 +105,69 @@ Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
     response_model=Page[IncompletePiece],
     summary="Listado de piezas con alertas de incompletitud (RF-019)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    responses={
+        200: {
+            "content": {"text/csv": {}, XLSX_CONTENT_TYPE: {}},
+            "description": "Lista en JSON o, con `format=xlsx|csv`, como archivo descargable "
+            "(sin paginar: incluye todas las piezas que cumplen los filtros).",
+        }
+    },
+    **implemented(),
 )
 def list_incomplete_pieces(
+    session: SessionDep,
     user: ReportViewer,
     params: Annotated[PageParams, Depends(page_params)],
     alert: Annotated[list[AlertType] | None, Query(description="Tipos de alerta (AND).")] = None,
     collection_id: uuid.UUID | None = None,
-) -> Page[IncompletePiece]:
-    raise not_implemented(CHANGE_INCOMPLETE, page_example(IncompletePiece))
+    include_subcollections: Annotated[
+        bool, Query(description="Con `collection_id`, incluye sus subcolecciones.")
+    ] = True,
+    export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
+) -> Page[IncompletePiece] | Response:
+    rules = load_active_rules(session)
+    statement = build_incomplete_query(
+        session,
+        rules,
+        alert_codes=alert,
+        collection_id=collection_id,
+        include_subcollections=include_subcollections,
+    )
+    filters = {
+        "alert": ", ".join(alert) if alert else None,
+        "collection_id": str(collection_id) if collection_id else None,
+        "include_subcollections": include_subcollections if collection_id else None,
+    }
+    if export_format is not None:
+        pieces = list(session.scalars(statement))
+        rows = rows_for_pieces(session, pieces, rules)
+        if export_format == ExportFormat.CSV:
+            return Response(
+                content=incomplete_report_csv(rows, filters),
+                media_type="text/csv",
+                headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.csv"'},
+            )
+        return Response(
+            content=incomplete_report_workbook(rows, filters),
+            media_type=XLSX_CONTENT_TYPE,
+            headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.xlsx"'},
+        )
+    pieces, total = paginate(session, statement, params)
+    rows = rows_for_pieces(session, pieces, rules)
+    return Page[IncompletePiece](
+        items=[
+            IncompletePiece(
+                piece_id=row.piece_id,
+                title=row.title,
+                collection_name=row.collection_name,
+                alerts=row.alerts,
+            )
+            for row in rows
+        ],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.get(
@@ -99,10 +175,86 @@ def list_incomplete_pieces(
     response_model=CompletenessKpis,
     summary="KPI de completitud general y por coleccin (RF-035)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    **implemented(),
 )
-def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
-    raise not_implemented(CHANGE_INCOMPLETE, CompletenessKpis)
+def get_dashboard_stats(
+    session: SessionDep,
+    user: ReportViewer,
+    by_collection: Annotated[
+        bool, Query(description="Incluye el desglose por colección raíz con subcolecciones.")
+    ] = False,
+) -> CompletenessKpis:
+    kpis = compute_dashboard_kpis(session, by_collection=by_collection)
+    return CompletenessKpis(
+        total_pieces=kpis.total_pieces,
+        alerts=[AlertKpi.model_validate(alert, from_attributes=True) for alert in kpis.alerts],
+        by_collection=[
+            CollectionKpis(
+                collection_id=group.collection_id,
+                collection_name=group.collection_name,
+                alerts=[
+                    AlertKpi.model_validate(alert, from_attributes=True) for alert in group.alerts
+                ],
+            )
+            for group in kpis.by_collection
+        ],
+        computed_at=kpis.computed_at,
+    )
+
+
+@router.get(
+    "/reports/dashboard-stats/history",
+    response_model=DashboardHistory,
+    summary="Evolución diaria de los indicadores de completitud (RF-035)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_dashboard_stats_history(
+    session: SessionDep,
+    user: ReportViewer,
+    date_from: Annotated[date, Query(alias="from", description="Fecha inicial, incluida.")],
+    date_to: Annotated[date, Query(alias="to", description="Fecha final, incluida.")],
+    collection_id: Annotated[
+        uuid.UUID | None, Query(description="Omitido: indicadores globales.")
+    ] = None,
+) -> DashboardHistory:
+    points = dashboard_history(session, date_from, date_to, collection_id)
+    return DashboardHistory(
+        collection_id=collection_id,
+        points=[SnapshotPointOut.model_validate(point, from_attributes=True) for point in points],
+    )
+
+
+@router.get(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Campos obligatorios y recomendados vigentes para las alertas de completitud",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_completeness_rules(
+    session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    rules = list_completeness_rules(session)
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
+
+
+@router.put(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Reemplazar los campos obligatorios y recomendados (RF-019, RN-010)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def put_completeness_rules(
+    body: CompletenessRulesUpdate, session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    writer(session, user)
+    rules = replace_completeness_rules(
+        session, [(rule.field, rule.kind, rule.is_active) for rule in body.rules]
+    )
+    session.commit()
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
 
 
 @router.get(

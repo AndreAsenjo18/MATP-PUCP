@@ -5,7 +5,10 @@ import { alertsForPiece, getPieceDetail, PIECES, toSummary } from "@/lib/fixture
 import { render, visibleText } from "@/test/render";
 
 import { canConfirm, ConfirmButton, confirmVariant } from "./ConfirmButton";
+import { CompletenessChart } from "./CompletenessChart";
 import { DEFAULT_EXCLUSION_REASON, ImportConflictModal, resolveConflictDecision } from "./ImportConflictModal";
+import { IncompleteReportPanel } from "./IncompleteReportPanel";
+import { PieceAlertsPanel } from "./PieceAlertsPanel";
 import { PieceCard, pieceCardProps } from "./PieceCard";
 import { PieceCurrentLocation, PieceGeneralData, PieceIdentifiersTable, PieceMediaGallery, PieceSheetHeader } from "./PieceSheet";
 import {
@@ -32,9 +35,9 @@ describe("status-intents", () => {
   });
 
   it("información incompleta es warning y código no normalizable es danger", () => {
-    expect(alertStatus("WITHOUT_PHOTO")).toEqual({ label: "Sin foto", intent: "warning" });
+    expect(alertStatus("MISSING_PHOTO")).toEqual({ label: "Sin foto", intent: "warning" });
     expect(alertStatus("MISSING_REQUIRED_FIELDS").intent).toBe("warning");
-    expect(alertStatus("UNPARSEABLE_CODE").intent).toBe("danger");
+    expect(alertStatus("UNNORMALIZABLE_IDENTIFIER").intent).toBe("danger");
   });
 
   it("conflicto de importación es danger y posible duplicado warning", () => {
@@ -67,12 +70,32 @@ describe("badges de dominio", () => {
   });
 
   it("AlertBadge muestra texto, icono y mensaje; no se muestra si no aplica", () => {
-    const html = render(<AlertBadge alert={{ type: "WITHOUT_PHOTO", applies: true, message: "Sin fotografías registradas." }} />);
+    const html = render(
+      <AlertBadge
+        alert={{
+          type: "MISSING_PHOTO",
+          applies: true,
+          message: "Sin fotografías registradas.",
+          suggested_action: "Subir al menos una fotografía",
+        }}
+      />,
+    );
     expect(visibleText(html)).toBe("Sin foto");
     expect(html).toContain(BADGE_INTENTS.warning);
     expect(html).toContain('title="Sin fotografías registradas."');
     expect(html).toContain("<svg");
-    expect(render(<AlertBadge alert={{ type: "WITHOUT_PHOTO", applies: false, message: "" }} />)).toBe("");
+    expect(
+      render(
+        <AlertBadge
+          alert={{
+            type: "MISSING_PHOTO",
+            applies: false,
+            message: "",
+            suggested_action: "Subir al menos una fotografía",
+          }}
+        />,
+      ),
+    ).toBe("");
   });
 
   it("LockBadge usa un icono de candado y no un emoji", () => {
@@ -176,6 +199,57 @@ describe("PieceSheet", () => {
   });
 });
 
+describe("PieceAlertsPanel", () => {
+  const missingPhoto = {
+    type: "MISSING_PHOTO" as const,
+    applies: true,
+    message: "Sin fotografías registradas.",
+    suggested_action: "Subir al menos una fotografía",
+  };
+  const missingRequired = {
+    type: "MISSING_REQUIRED_FIELDS" as const,
+    applies: true,
+    message: "Faltan campos obligatorios.",
+    suggested_action: "Completar los campos obligatorios",
+  };
+  const notApplicable = {
+    type: "MISSING_LOCATION" as const,
+    applies: false,
+    message: "Tiene ubicación registrada.",
+    suggested_action: "Registrar sede y espacio",
+  };
+
+  it("no muestra nada cuando ninguna alerta aplica", () => {
+    expect(render(<PieceAlertsPanel pieceId="p1" alerts={[notApplicable]} />)).toBe("");
+  });
+
+  it("agrupa solo las alertas que aplican y muestra su mensaje", () => {
+    const html = render(<PieceAlertsPanel pieceId="p1" alerts={[missingPhoto, notApplicable]} />);
+    const text = visibleText(html);
+    expect(text).toContain("1 alerta de completitud");
+    expect(text).toContain("Sin fotografías registradas.");
+    expect(text).not.toContain("Tiene ubicación registrada.");
+  });
+
+  it("una alerta de pestaña (sin código I, sin foto, sin ubicación) usa un botón cuando hay navegación", () => {
+    const html = render(<PieceAlertsPanel pieceId="p1" alerts={[missingPhoto]} onNavigateToTab={() => {}} />);
+    expect(html).toContain("<button");
+    expect(visibleText(html)).toContain("Subir al menos una fotografía");
+  });
+
+  it("sin navegación a pestañas, la acción sugerida se muestra como texto, no como enlace muerto", () => {
+    const html = render(<PieceAlertsPanel pieceId="p1" alerts={[missingPhoto]} />);
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain("<a ");
+  });
+
+  it("campos obligatorios/recomendados llevan al editor de la pieza", () => {
+    const html = render(<PieceAlertsPanel pieceId="p1" alerts={[missingRequired]} />);
+    expect(html).toContain('href="/piezas/p1/editar"');
+    expect(visibleText(html)).toContain("Completar los campos obligatorios");
+  });
+});
+
 describe("ImportConflictModal", () => {
   it("rechazar exige motivo; excluir usa un motivo por defecto; aceptar no lo exige", () => {
     expect(resolveConflictDecision("REJECTED", " ")).toEqual({ ok: false, error: expect.stringMatching(/motivo del rechazo/) });
@@ -209,5 +283,53 @@ describe("ImportConflictModal", () => {
     expect(html).toContain('aria-label="Cerrar"');
     expect(text).toContain("Aceptar fila");
     expect(text).toContain("Rechazar");
+  });
+});
+
+describe("CompletenessChart", () => {
+  it("dibuja una línea con un punto por día aplicable", () => {
+    const points = [
+      { taken_on: "2026-10-01", alert: "MISSING_PHOTO" as const, numerator: 10, denominator: 100, completeness_ratio: 0.9 },
+      { taken_on: "2026-10-02", alert: "MISSING_PHOTO" as const, numerator: 20, denominator: 100, completeness_ratio: 0.8 },
+    ];
+    const html = render(<CompletenessChart points={points} alert="MISSING_PHOTO" />);
+    expect(html).toContain("<svg");
+    expect(html).toContain("<polyline");
+    expect(visibleText(html)).toContain("90 %");
+    expect(visibleText(html)).toContain("80 %");
+  });
+
+  it("muestra «no aplica» cuando ningún día tiene completeness_ratio", () => {
+    const points = [{ taken_on: "2026-10-01", alert: "MISSING_INVENTORY_CODE" as const, numerator: 0, denominator: 0, completeness_ratio: null }];
+    const html = render(<CompletenessChart points={points} alert="MISSING_INVENTORY_CODE" />);
+    expect(visibleText(html)).toContain("No aplica");
+    expect(html).not.toContain("<svg");
+  });
+
+  it("avisa cuando no hay instantáneas para esa alerta en el rango", () => {
+    const html = render(<CompletenessChart points={[]} alert="MISSING_PHOTO" />);
+    expect(visibleText(html)).toContain("Sin instantáneas");
+  });
+});
+
+describe("IncompleteReportPanel", () => {
+  // Renderizado estático (ADR-012: sin jsdom): el useEffect de carga no corre aquí, así que solo
+  // se verifica el estado inicial (filtros y mensaje de carga). El filtrado, la paginación y la
+  // descarga ya están probados en lib/data/quality.test.ts y verificados a mano en el navegador.
+  it("muestra los 6 filtros de alerta y el estado de carga inicial", () => {
+    const html = render(<IncompleteReportPanel canDownload={false} />);
+    const text = visibleText(html);
+    expect(text).toContain("Sin código I");
+    expect(text).toContain("Sin foto");
+    expect(text).toContain("Sin ubicación");
+    expect(text).toContain("Campos obligatorios incompletos");
+    expect(text).toContain("Campos recomendados incompletos");
+    expect(text).toContain("Código no normalizable");
+    expect(text).toContain("Cargando");
+  });
+
+  it("solo muestra los botones de descarga cuando el rol tiene permiso de exportar", () => {
+    expect(visibleText(render(<IncompleteReportPanel canDownload={false} />))).not.toContain("Excel");
+    expect(visibleText(render(<IncompleteReportPanel canDownload />))).toContain("Excel");
   });
 });

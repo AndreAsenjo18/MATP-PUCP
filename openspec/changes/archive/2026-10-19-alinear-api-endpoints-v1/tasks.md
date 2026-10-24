@@ -37,7 +37,7 @@
 ## 6. Cliente tipado, maqueta y documentación
 
 - [x] 6.1 Regenerar `docs/api/openapi.json` y el cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar `apps/web/src/lib/{data,fixtures}` a los nombres nuevos; `npm run test:web` en verde (Req: Conformidad con el contrato de interfaces del equipo)
-- [ ] 6.2 Actualizar `docs/modelo-datos.md`, `docs/api/README.md`, `docs/api/mapeo-endpoints-v1.md` (columna «Acción» a «hecho») y `docs/estado-arranque.md` (Req: Conformidad con el contrato de interfaces del equipo)
+- [x] 6.2 Actualizar `docs/modelo-datos.md`, `docs/api/README.md`, `docs/api/mapeo-endpoints-v1.md` (columna «Acción» a «hecho») y `docs/estado-arranque.md` (Req: Conformidad con el contrato de interfaces del equipo) — `docs/modelo-datos.md` revisado sin cambios necesarios (el endpoint no toca el modelo de datos)
 - [x] 6.3 Actualizar los 15 changes del backlog cuyas tareas citan rutas renombradas, para que apunten a las del contrato (Req: Conformidad con el contrato de interfaces del equipo)
 
 ## 7. Cierre

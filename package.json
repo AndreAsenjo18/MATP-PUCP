@@ -33,6 +33,7 @@
     "build:web": "npm run build -w apps/web",
     "migrate": "docker compose exec api alembic upgrade head",
     "seed": "docker compose exec api python -m app.seed",
+    "kpis:snapshot": "docker compose exec api python -m app.quality.snapshot",
     "audit:digest": "node scripts/py.mjs apps/api -m app.modules.audit.digest",
     "audit:verify": "node scripts/py.mjs apps/api -m app.modules.audit.digest --verify",
     "validate:specs": "openspec validate --all --strict",

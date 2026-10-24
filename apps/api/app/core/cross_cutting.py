@@ -183,6 +183,26 @@ TABLE_EXCEPTIONS: dict[str, TableException] = {
                 "lógico con motivo en lugar de un estado REJECTED (pregunta N2)."
             ),
         ),
+        _exception(
+            "completeness_rule",
+            scopes=[SCOPE_SOFT_DELETE],
+            reason=(
+                "Parámetro de qué campos cuentan para las alertas de completitud: una regla "
+                "retirada se desactiva con is_active y su fila nunca se borra; cada cambio queda "
+                "auditado (alertas-y-reporte-incompletas, D2)."
+            ),
+            owner="Consulta y control",
+        ),
+        _exception(
+            "completeness_snapshot",
+            scopes=[SCOPE_SOFT_DELETE, SCOPE_AUDIT],
+            reason=(
+                "Instantánea diaria derivada de los KPI de completitud: se recalcula desde el "
+                "catálogo y la de un mismo día reemplaza a la anterior (idempotente). No contiene "
+                "datos del museo que no estén en piece (alertas-y-reporte-incompletas, D5)."
+            ),
+            owner="Consulta y control",
+        ),
     )
 }
 
@@ -194,6 +214,7 @@ PHYSICAL_DELETE_EXCEPTIONS: dict[str, frozenset[str]] = {
     ),
     "app/modules/imports/images.py": frozenset({"import_image"}),
     "app/modules/imports/classify.py": frozenset({"duplicate_candidate"}),
+    "app/modules/quality/snapshot.py": frozenset({"completeness_snapshot"}),
 }
 
 #: Nombres que no son borrado de datos aunque la llamada se llame `delete`.

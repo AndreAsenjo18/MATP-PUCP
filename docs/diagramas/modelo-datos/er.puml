@@ -423,6 +423,26 @@ entity AI_SUGGESTION {
   ..
   <i>+ timestamps</i>
 }
+entity COMPLETENESS_RULE {
+  * id : uuid <<PK>>
+  --
+  * field : varchar(80) <<UK>>
+  * kind : varchar(40)
+  * is_active : boolean
+  ..
+  <i>+ timestamps</i>
+}
+entity COMPLETENESS_SNAPSHOT {
+  * id : uuid <<PK>>
+  --
+  * taken_on : date
+    collection_id : uuid <<FK>>
+  * alert_code : varchar(40)
+  * numerator : integer
+  * denominator : integer
+  ..
+  <i>+ timestamps</i>
+}
 }
 
 package "Usuarios, Seguridad y Auditoría (EP-05)" #EDF0F7 {
@@ -587,6 +607,7 @@ TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"
 TERM |o--o{ LOAN : "active_availability_term_id"
+COLLECTION |o--o{ COMPLETENESS_SNAPSHOT : "indicador por colección"
 COLLECTION |o--o{ PIECE : "contiene"
 TERM |o--o{ PIECE : "forma de adquisición"
 TERM |o--o{ PIECE : "tipo de bien"
