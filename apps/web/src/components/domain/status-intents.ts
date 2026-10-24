@@ -90,6 +90,20 @@ export function importBatchStatus(status: ImportBatchStatus | string | null | un
   return lookup(BATCH, status, "Estado");
 }
 
+type DryRunStatus = ApiSchemas["DryRunExample"]["status"];
+
+const DRY_RUN: Record<DryRunStatus, StatusStyle> = {
+  NORMALIZED: { label: "Normalizado", intent: "success" },
+  UNPARSEABLE: { label: "No normalizable", intent: "danger" },
+  ABSENT: { label: "Marcador de ausencia", intent: "default" },
+  SPLIT_PROPOSED: { label: "Separación propuesta", intent: "warning" },
+};
+
+/** Estado de una celda en la vista previa de normalización (design D4 de plantillas-mapeo). */
+export function dryRunValueStatus(status: DryRunStatus | string | null | undefined): StatusStyle {
+  return lookup(DRY_RUN, status, "Estado");
+}
+
 const SUGGESTION: Record<SuggestionStatus, StatusStyle> = {
   PENDING: { label: "Pendiente de revisión", intent: "warning" },
   APPROVED: { label: "Aprobada", intent: "success" },
