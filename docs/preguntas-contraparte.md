@@ -289,6 +289,8 @@ Detalle en `openspec/changes/plantillas-mapeo-y-normalizacion/design.md` (D1–D
 
 **Pendiente interno (no es pregunta al museo):** la clasificación de filas (`apps/api/app/modules/imports/classify.py`) valida la fila con el régimen de tenencia que viene del valor por defecto del mapeo, aunque la fila actualice una pieza existente cuyo régimen no cambia. Así, un default `Comodato` en una fila con código I que actualiza una pieza propia da un falso error RN-003, y un default `Propiedad` en una fila que añade un código I a una pieza en comodato pasa la validación y hace fallar la aplicación de todo el lote por RN-003. Corresponde a `importacion-pipeline-reconciliacion`, no a `plantillas-mapeo-y-normalizacion` (que ya evita que el default entre en la comparación y sobrescriba la pieza).
 
+**Pendiente interno (no es pregunta al museo):** el emparejamiento de fotos por nombre de archivo (`apps/api/app/modules/imports/photo_matching.py`) sigue normalizando con los valores de código y no con los parámetros vigentes (tarea 2.2, design D5): una foto llamada con una sigla histórica (p. ej. `REP 12.jpg`, con el alias sintético `REP` → `LRM`) no se reconoce como código de la colección `LRM`, aunque la búsqueda y el matching de importación sí lo hagan. Es una mejora posible que corresponde a `importacion-masiva-fotografias`, no a `plantillas-mapeo-y-normalizacion`; basta con pasar los parámetros de la sesión (`session_params`) a `normalize`.
+
 ## U. Supuestos del despliegue en la VM y los respaldos (change `despliegue-vm-y-respaldos`, 2026-10-22)
 
 Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm.md` y `docs/despliegue/checklist-vm.md`. Amplía C6.
