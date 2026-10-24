@@ -13,7 +13,12 @@ from app.modules.catalog.models import (
     PieceSourceRecord,
 )
 from app.modules.collections.models import Collection, Term, Vocabulary
-from app.modules.identification.models import IdentifierType, PieceIdentifier
+from app.modules.identification.models import (
+    CollectionAcronymAlias,
+    IdentifierType,
+    NormalizationSetting,
+    PieceIdentifier,
+)
 from app.modules.imports.models import ImportBatch, ImportImage, ImportMappingTemplate, ImportRow
 from app.modules.locations.models import Loan, LoanItem, Location, PieceMovement
 from app.modules.media.models import MediaAsset
@@ -43,6 +48,7 @@ __all__ = [
     "AuthEvent",
     "Base",
     "Collection",
+    "CollectionAcronymAlias",
     "ConservationAssessment",
     "DuplicateCandidate",
     "ExportJobModel",
@@ -55,6 +61,7 @@ __all__ = [
     "LoanItem",
     "Location",
     "MediaAsset",
+    "NormalizationSetting",
     "Permission",
     "Piece",
     "PieceIdentifier",

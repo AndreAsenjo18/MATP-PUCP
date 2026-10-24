@@ -6,7 +6,7 @@
 
 ## 2. Parámetros de normalización
 
-- [ ] 2.1 Migración de `normalization_setting` y `collection_acronym_alias` con valores iniciales tomados de las constantes del código (`ABSENCE_MARKERS` completo y separadores de `_SPLIT_RE`); `tests/test_migrations.py` en verde (Req: Parámetros de normalización administrables)
+- [x] 2.1 Migración de `normalization_setting` y `collection_acronym_alias` con valores iniciales tomados de las constantes del código (`ABSENCE_MARKERS` completo y separadores de `_SPLIT_RE`); `tests/test_migrations.py` en verde (Req: Parámetros de normalización administrables)
 - [ ] 2.2 Inyectar `NormalizationParams` en `normalization.py` sin romper las pruebas existentes, conservando la interfaz pública de `ABSENCE_MARKERS` e `is_absence_marker(raw)`, y aplicar alias de siglas en normalización, búsqueda y matching; pruebas nuevas de marcador `NO REGISTRA` (ausente de los valores iniciales) y alias `REP` → `LRM` (dato sintético de prueba, no una sigla real del museo) [SUPUESTO A3, A5] (Req: Parámetros de normalización administrables; RF-004, RF-023)
 - [ ] 2.3 Operaciones nuevas `GET`/`PUT /api/v1/normalization-settings/{key}` y `GET`/`POST /api/v1/collection-acronym-aliases` y `DELETE /api/v1/collection-acronym-aliases/{alias_id}` con permiso `vocabularies.manage` [SUPUESTO T8], auditoría, alias único y vista previa de impacto cuando hay identificadores afectados; pruebas de los cuatro escenarios (Req: Parámetros de normalización administrables)
 
