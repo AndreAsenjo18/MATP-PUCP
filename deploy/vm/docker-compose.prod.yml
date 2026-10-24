@@ -74,7 +74,7 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      # Marcador que escribe scripts/backup/backup.sh y que /health lee (backup_status).
+      # Marcador que escribe scripts/backup/backup-restic.sh y que /health lee (backup_status).
       - ${MATP_STATE_DIR:-/opt/matp/state}:/var/lib/matp:ro
     deploy:
       resources:

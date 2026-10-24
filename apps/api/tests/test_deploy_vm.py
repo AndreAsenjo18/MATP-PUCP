@@ -265,7 +265,7 @@ def test_scripts_have_valid_bash_syntax(script: Path) -> None:
 @needs_bash
 def test_a_successful_backup_saves_db_and_objects_and_marks_ok(shim: dict[str, str]) -> None:
     """Spec: «Respaldo nocturno exitoso»."""
-    result = _run(BACKUP / "backup.sh", shim)
+    result = _run(BACKUP / "backup-restic.sh", shim)
 
     assert result.returncode == 0, result.stderr
     calls = _calls(shim)
@@ -290,7 +290,7 @@ def test_an_unreachable_destination_marks_the_backup_failed_and_alerts(
         json.dumps({"last_success_at": old, "last_result": "ok"}), encoding="utf-8"
     )
 
-    result = _run(BACKUP / "backup.sh", shim, FAKE_RESTIC_FAIL="backup")
+    result = _run(BACKUP / "backup-restic.sh", shim, FAKE_RESTIC_FAIL="backup")
 
     assert result.returncode == 1
     marker = json.loads((state / "backup-status.json").read_text())
@@ -303,7 +303,7 @@ def test_an_unreachable_destination_marks_the_backup_failed_and_alerts(
 @needs_bash
 def test_a_backup_without_the_key_refuses_to_run_and_says_why(shim: dict[str, str]) -> None:
     """Spec: «Respaldo sin la clave» (sin clave no hay respaldo cifrado, y se avisa)."""
-    result = _run(BACKUP / "backup.sh", shim, RESTIC_PASSWORD_FILE="/no/existe.key")
+    result = _run(BACKUP / "backup-restic.sh", shim, RESTIC_PASSWORD_FILE="/no/existe.key")
     assert result.returncode == 1
     assert "restic backup" not in _calls(shim)
     assert "curl" in _calls(shim)

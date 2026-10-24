@@ -1,6 +1,6 @@
 """Backup freshness for ``GET /health`` (change despliegue-vm-y-respaldos, design D4; RNF-011).
 
-``scripts/backup/backup.sh`` writes a small JSON marker after every run::
+``scripts/backup/backup-restic.sh`` writes a small JSON marker after every run::
 
     {"last_attempt_at": "2026-10-22T02:00:11Z", "last_success_at": "2026-10-22T02:03:40Z",
      "last_result": "ok"}

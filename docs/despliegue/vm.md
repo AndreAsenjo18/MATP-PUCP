@@ -113,9 +113,9 @@ Vuelve los contenedores a la versión anterior registrada. **No revierte la base
 
 | Qué | Cómo |
 |---|---|
-| Respaldo nocturno (02:00) | `matp-backup.timer` → `scripts/backup/backup.sh`: `pg_dump` en streaming a restic (cifrado antes de salir de la VM) + espejo del bucket + retención (30 diarios, 8 semanales, 6 mensuales) [SUPUESTO C6] |
+| Respaldo nocturno (02:00) | `matp-backup.timer` → `scripts/backup/backup-restic.sh`: `pg_dump` en streaming a restic (cifrado antes de salir de la VM) + espejo del bucket + retención (30 diarios, 8 semanales, 6 mensuales) [SUPUESTO C6] |
 | Verificación semanal (domingo) | `matp-backup-check.timer` → `scripts/backup/check.sh`: `restic check --read-data-subset=5%` |
-| Respaldo manual | `npm run backup:local` (o `bash scripts/backup/backup.sh`) |
+| Respaldo manual | `npm run backup:local` (o `bash scripts/backup/backup-restic.sh`) |
 | Si falla | Se registra, se avisa por `ALERT_WEBHOOK_URL` y `/health` informa `backup.status: stale` |
 | Disco | `matp-disk-check.timer` avisa si el uso supera `DISK_ALERT_THRESHOLD` (80 %) |
 

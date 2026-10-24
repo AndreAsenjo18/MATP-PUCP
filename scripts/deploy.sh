@@ -250,7 +250,13 @@ fi
 # 6. Respaldo obligatorio
 # ------------------------------------------------------------
 
-BACKUP_SCRIPT="$PROJECT_ROOT/scripts/backup/backup.sh"
+# Staging conserva su respaldo previo (pg_dump + copia verificada en S3, backup.sh). La VM de
+# producción usa el respaldo cifrado con restic (backup-restic.sh, ADR-011): destino externo,
+# retención y marcador de estado para /health.
+case "$MATP_ENV" in
+    production) BACKUP_SCRIPT="$PROJECT_ROOT/scripts/backup/backup-restic.sh" ;;
+    *) BACKUP_SCRIPT="$PROJECT_ROOT/scripts/backup/backup.sh" ;;
+esac
 
 [[ -f "$BACKUP_SCRIPT" ]] ||
     error "No existe el script de respaldo: $BACKUP_SCRIPT"
