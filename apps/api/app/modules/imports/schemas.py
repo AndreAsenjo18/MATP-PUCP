@@ -192,13 +192,24 @@ class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
         description="Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), "
-        "`identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen."
+        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, "
+        "`terms:<VOCABULARIO>`; null = datos de origen."
     )
     identifier_type_code: str | None = None
     split_compound: bool = Field(
         False,
         description="La celda puede tener varios códigos (N7); cada parte toma el tipo que se "
         "reconoce en ella.",
+    )
+    transforms: list[str] = Field(
+        default_factory=list,
+        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en "
+        "plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+    )
+    value_map: dict[str, str] | None = Field(
+        None,
+        description="Texto de origen → código de término, para la transformación `value_map`. "
+        "Solo en plantillas por ahora.",
     )
 
 
@@ -226,7 +237,9 @@ class MappingRequest(BaseModel):
     )
 
     template_id: uuid.UUID | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None,
+        description="Plantilla guardada que define el mapeo (sin `columns`); `defaults` se "
+        "aplican sobre los de la plantilla.",
     )
     sheet_name: str | None = Field(None, description="Otra hoja: se vuelve a leer el archivo.")
     header_row: int | None = Field(
@@ -239,7 +252,7 @@ class MappingRequest(BaseModel):
         "Préstamo Temporal) y `collection` (sigla).",
     )
     save_as_template_name: str | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None, description="Aún no disponible: cree la plantilla con `POST /import-templates`."
     )
 
 
@@ -546,7 +559,7 @@ class MappingTemplateOut(BaseModel):
                     "name": "Sábana consultoría (sintética)",
                     "source_name": "Consultoría 2024/25",
                     "header_signature": "a" * 64,
-                    "columns": [{"source_column": "DENOMINACION", "target_field": "title"}],
+                    "columns": [{"source_column": "DENOMINACION", "target_field": "denomination"}],
                     "description": None,
                     "created_at": EX_DATETIME,
                 }
@@ -559,6 +572,11 @@ class MappingTemplateOut(BaseModel):
     source_name: str
     header_signature: str
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo "
+        "Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None
     created_at: datetime
 
@@ -568,4 +586,40 @@ class MappingTemplateCreate(BaseModel):
     source_name: str = Field(min_length=1, max_length=200)
     headers: list[str] = Field(min_length=1)
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, "
+        "Préstamo Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None = None
+
+
+class MappingTemplateUpdate(BaseModel):
+    """Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated
+    against the headers and the signature is computed from them (design D3)."""
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    source_name: str | None = Field(None, min_length=1, max_length=200)
+    headers: list[str] | None = Field(None, min_length=1)
+    columns: list[ColumnMapping] | None = None
+    defaults: dict[str, str] | None = Field(
+        None, description="Se envían con `headers` y `columns`; sin ellos se conservan."
+    )
+    description: str | None = None
+
+
+class TemplateSuggestRequest(BaseModel):
+    headers: list[str] = Field(min_length=1, description="Cabeceras del archivo, tal como vienen.")
+
+
+class TemplateSuggestion(BaseModel):
+    template: MappingTemplateOut
+    score: float = Field(
+        ge=0, le=1, description="1 = mismas cabeceras (en cualquier orden y con otras tildes)."
+    )
+    missing_columns: list[str] = Field(
+        description="Columnas de la plantilla que el archivo no trae."
+    )
+    new_columns: list[str] = Field(
+        description="Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen."
+    )

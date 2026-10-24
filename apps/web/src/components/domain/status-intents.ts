@@ -136,6 +136,7 @@ const AUDIT: Record<AuditAction, StatusStyle> = {
   CORRECTION: { label: "Corrección", intent: "danger" },
   MERGE: { label: "Fusión", intent: "info" },
   REVERT: { label: "Reversión", intent: "info" },
+  EXPORT: { label: "Exportación", intent: "default" },
 };
 
 export function auditActionStatus(action: AuditAction | string | null | undefined): StatusStyle {

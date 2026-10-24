@@ -64,6 +64,19 @@ class Settings(BaseSettings):
         default="presigned",
         description="Modo de subida: presigned (directo a S3) o proxy (a través de la API).",
     )
+    # --- Photos imported with a batch (importacion-masiva-fotografias, D6) -----
+    # Keep each original besides its thumbnail and display copy [SUPUESTO L2: quota unknown].
+    media_keep_originals: bool = Field(
+        default=True,
+        description="Conservar el original de las fotos importadas además de sus derivados.",
+    )
+    # Photo storage quota warning before approving a batch; None = no warning until the PUCP
+    # quota is known [SUPUESTO L2].
+    media_quota_bytes: int | None = Field(
+        default=None,
+        gt=0,
+        description="Umbral de la cuota de fotos (bytes); vacío = sin aviso.",
+    )
 
     # Authentication: opaque server-side sessions, not JWT (ADR-009). There is no shared secret
     # to configure: the session token is random and only its SHA-256 digest is stored.
@@ -85,6 +98,12 @@ class Settings(BaseSettings):
     # Never set in production: synthetic users cannot sign in there (ADR-009, point 7).
     seed_dev_password: str | None = None
 
+    # Backup freshness shown by /health (change despliegue-vm-y-respaldos, design D4). The backup
+    # job writes a JSON marker there; empty = not configured (local development).
+    backup_status_file: str | None = None
+    # Hours without a successful backup before /health reports `stale` [SUPUESTO C6: 24 h + margin].
+    backup_max_age_hours: int = Field(26, ge=1)
+
     # IA asistiva: se ejecuta dentro de este mismo proceso, montada en AI_MOUNT_PATH (ADR-008).
     ai_mount_path: str = "/ai"
     cors_origins: str = "http://localhost:3000"
@@ -93,6 +112,11 @@ class Settings(BaseSettings):
     # Import pipeline limits (design D2 of importacion-pipeline-reconciliacion) [SUPUESTO].
     import_max_bytes: int = Field(50 * 1024 * 1024, ge=1)
     import_max_rows: int = Field(20_000, ge=1)
+    # Photos of an import batch (importacion-masiva-fotografias, D2, D7) [SUPUESTO]: a limit per
+    # batch, not a global one (≈ 25 000 photos are loaded in several batches), and the days the
+    # photos of abandoned batches, or discarded ones, keep their files.
+    import_max_photos: int = Field(5_000, ge=1)
+    import_photo_retention_days: int = Field(30, ge=1)
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -112,6 +136,8 @@ class Settings(BaseSettings):
         "s3_secret_access_key",
         "app_release",
         "seed_dev_password",
+        "media_quota_bytes",
+        "backup_status_file",
         mode="before",
     )
     @classmethod

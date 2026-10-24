@@ -94,13 +94,13 @@ export const ROLES: ApiSchemas["RoleOut"][] = [
 ];
 
 export const USERS: ApiSchemas["UserOut"][] = [
-  { id: ids.user(1), full_name: "Administrador MATP (sintético)", email: "admin@matp.local", roles: ["ADMIN"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T14:05:00Z", locked_until: null },
-  { id: ids.user(2), full_name: "Gabriela Curadora (sintética)", email: "curadora@matp.local", roles: ["COLLECTIONS_MANAGER"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T11:40:00Z", locked_until: null },
-  { id: ids.user(3), full_name: "Practicante Catalogador (sintético)", email: "catalogador@matp.local", roles: ["CATALOGUER"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-15T16:20:00Z", locked_until: null },
-  { id: ids.user(4), full_name: "Especialista de Conservación (sintético)", email: "conservacion@matp.local", roles: ["CONSERVATION"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-10T10:00:00Z", locked_until: null },
-  { id: ids.user(5), full_name: "Auxiliar de Depósito (sintético)", email: "deposito@matp.local", roles: ["STORAGE_STAFF"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-09-16T08:15:00Z", locked_until: null },
-  { id: ids.user(6), full_name: "Consulta Interna (sintético)", email: "consulta@matp.local", roles: ["INTERNAL_VIEWER"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-08-20T09:00:00Z", locked_until: null },
-  { id: ids.user(7), full_name: "Ex practicante (sintético, desactivado)", email: "exbecario@matp.local", roles: ["CATALOGUER"], is_active: false, created_at: "2026-01-20T09:00:00Z", last_login_at: "2026-04-01T09:00:00Z", locked_until: null },
+  { id: ids.user(1), full_name: "Administrador MATP (sintético)", email: "admin@matp.local", roles: ["ADMIN"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T14:05:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(2), full_name: "Gabriela Curadora (sintética)", email: "curadora@matp.local", roles: ["COLLECTIONS_MANAGER"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T11:40:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(3), full_name: "Practicante Catalogador (sintético)", email: "catalogador@matp.local", roles: ["CATALOGUER"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-15T16:20:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(4), full_name: "Especialista de Conservación (sintético)", email: "conservacion@matp.local", roles: ["CONSERVATION"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-10T10:00:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(5), full_name: "Auxiliar de Depósito (sintético)", email: "deposito@matp.local", roles: ["STORAGE_STAFF"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-09-16T08:15:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(6), full_name: "Consulta Interna (sintético)", email: "consulta@matp.local", roles: ["INTERNAL_VIEWER"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-08-20T09:00:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(7), full_name: "Ex practicante (sintético, desactivado)", email: "exbecario@matp.local", roles: ["CATALOGUER"], is_active: false, created_at: "2026-01-20T09:00:00Z", last_login_at: "2026-04-01T09:00:00Z", locked_until: null, must_change_password: false },
 ];
 
 export const IDENTIFIER_TYPES: ApiSchemas["IdentifierTypeOut"][] = [

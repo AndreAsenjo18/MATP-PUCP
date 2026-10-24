@@ -1,7 +1,7 @@
 """Completeness rules and daily snapshots.
 
-Revision ID: 0009_completeness_rules_and_snapshots
-Revises: 0008_locations_idempotency
+Revision ID: 0012_completeness_rules
+Revises: 0011_import_photos
 Create Date: 2026-10-21
 
 Change de OpenSpec: alertas-y-reporte-incompletas (tarea 1.1). Additive only:
@@ -18,8 +18,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0009_completeness_rules_and_snapshots"
-down_revision: str | None = "0008_locations_idempotency"
+revision: str = "0012_completeness_rules"
+down_revision: str | None = "0011_import_photos"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
