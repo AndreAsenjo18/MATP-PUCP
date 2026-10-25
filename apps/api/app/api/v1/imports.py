@@ -60,6 +60,7 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.photo_upload import DeclaredPhoto, PhotoLimits, request_upload_urls
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
@@ -75,6 +76,9 @@ from app.modules.imports.schemas import (
     MappingTemplateCreate,
     MappingTemplateOut,
     MappingTemplateUpdate,
+    PhotoUploadItemOut,
+    PhotoUploadUrlsOut,
+    PhotoUploadUrlsRequest,
     RevertRequest,
     RowDecisionRequest,
     TemplateSuggestion,
@@ -567,6 +571,45 @@ def associate_import_image(
     image = session.get(ImportImage, image_id)
     assert image is not None
     return ImportImageOut.from_image(image, _preview_url(storage, image))
+
+
+PHOTOS_CONFLICT = {
+    409: {"model": ErrorResponse, "description": "El lote ya no admite fotos (está aprobado)."}
+}
+
+
+@router.post(
+    "/imports/{batch_id}/photos/upload-urls",
+    response_model=PhotoUploadUrlsOut,
+    responses={**NOT_FOUND, **PHOTOS_CONFLICT},
+    summary="Fotografías del lote: pedir las URL de subida de una tanda",
+    description="Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL "
+    "prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el "
+    "lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar "
+    "la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como "
+    "`rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).",
+    **implemented(),
+)
+def request_import_photo_upload_urls(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: PhotoUploadUrlsRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoUploadUrlsOut:
+    writer(session, user)
+    files = [DeclaredPhoto(**file.model_dump()) for file in body.files]
+    items = request_upload_urls(
+        session,
+        request.app.state.storage,
+        batch_id,
+        files,
+        PhotoLimits.from_settings(request.app.state.settings),
+    )
+    session.commit()
+    return PhotoUploadUrlsOut(
+        batch_id=batch_id, items=[PhotoUploadItemOut.from_item(item) for item in items]
+    )
 
 
 @router.post(
