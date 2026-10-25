@@ -6,7 +6,7 @@
 
 ## 2. Publicación y despliegue
 
-- [ ] 2.1 Crear `.github/workflows/release.yml` (build y push a GHCR por tag, sin secretos de la VM); verificar con `actionlint` o validación YAML y una ejecución en un tag de prueba (Req: Despliegue reproducible…) *Estado: `release.yml` escrito (tag `vX.Y.Z` → GHCR, sin secretos de la VM, exige que el tag esté en main). Pendiente: ejecución en un tag de prueba.*
+- [ ] 2.1 Crear `.github/workflows/release.yml` (build y push a GHCR por tag, sin secretos de la VM); verificar con `actionlint` o validación YAML y una ejecución en un tag de prueba (Req: Despliegue reproducible…) *Estado: `release.yml` escrito (tag `vX.Y.Z` → GHCR, sin secretos de la VM, exige que el tag esté en main). Desde el 2026-10-25 lo reemplaza la versión de `pipeline-despliegue-ambientes` (tarea 4.1, D4): reetiqueta `sha-<commit>` sin reconstruir. Pendiente: ejecución en un tag de prueba.*
 - [x] 2.2 Crear `scripts/deploy.sh` (validación de variables, pull, respaldo previo, migración en contenedor efímero, `up -d`, espera de salud, registro de versión, `--rollback`); verificar con `shellcheck` y ensayo en una VM local o contenedor Linux con Docker (Req: Migraciones protegidas por respaldo y vuelta atrás) *Verificado el 2026-10-24 en Docker real con dos versiones publicadas: despliegue, versión nueva con respaldo previo, migración fallida sin cambiar la versión en ejecución, vuelta atrás (exige `MATP_ALLOW_APP_ROLLBACK=1`) y `shellcheck` sin observaciones. Se corrigió el shebang de `deploy.sh`.*
 
 ## 3. Respaldos y restauración
