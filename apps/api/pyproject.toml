@@ -67,3 +67,4 @@ known-third-party = ["alembic"]
 # Synthetic data tables are kept one record per line (# fmt: skip) for readability.
 "app/seed/fixtures.py" = ["E501"]
 "app/seed/synthetic.py" = ["E501"]
+"app/seed/demo_batch.py" = ["E501"]

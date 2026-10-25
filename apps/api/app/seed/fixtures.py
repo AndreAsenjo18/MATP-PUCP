@@ -14,6 +14,7 @@ from xml.sax.saxutils import escape
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XlImage
 
+from app.seed.demo_batch import write_demo_batch
 from app.seed.images import placeholder_photo
 
 HEADERS = [
@@ -191,4 +192,6 @@ def write_all_fixtures(directory: Path, *, random_seed: int = 20260917) -> list[
         write_synthetic_workbook(directory, random_seed=random_seed),
         write_multi_sheet_workbook(directory),
         write_latin1_csv(directory),
+        # Demo batch with its photo folder (importacion-masiva-fotografias 7.1).
+        *write_demo_batch(directory / "lote_demo"),
     ]
