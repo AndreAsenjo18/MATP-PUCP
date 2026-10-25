@@ -136,6 +136,7 @@ def test_the_sheet_exposes_its_version(seeded_api: SeededApi) -> None:
 
     assert detail.status_code == 200, detail.text
     assert detail.json()["version"] == 1
+    _delete(seeded_api, piece_id)
 
 
 def test_two_concurrent_edits_the_second_gets_the_conflict(seeded_api: SeededApi) -> None:
@@ -159,6 +160,7 @@ def test_two_concurrent_edits_the_second_gets_the_conflict(seeded_api: SeededApi
     assert conflict["details"]["current_version"] == opened + 1
     assert conflict["details"]["current"]["notes"] == "Primera"
     assert first.get(f"/api/v1/pieces/{piece_id}").json()["notes"] == "Primera"
+    _delete(seeded_api, piece_id)
 
 
 def test_an_edit_without_the_version_is_428(seeded_api: SeededApi) -> None:
@@ -170,6 +172,7 @@ def test_an_edit_without_the_version_is_428(seeded_api: SeededApi) -> None:
     assert response.status_code == 428, response.text
     assert response.json()["code"] == "precondition_required"
     assert client.get(f"/api/v1/pieces/{piece_id}").json()["notes"] is None
+    _delete(seeded_api, piece_id)
 
 
 def test_saving_without_changes_is_not_audited_and_keeps_the_version(
@@ -195,6 +198,7 @@ def test_saving_without_changes_is_not_audited_and_keeps_the_version(
             .where(AuditLog.entity_id == uuid.UUID(piece_id))
         )
     assert after == before
+    _delete(seeded_api, piece_id)
 
 
 def test_delete_requires_reason_then_soft_deletes(seeded_api: SeededApi) -> None:
