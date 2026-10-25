@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
+from fastapi import Path as FastAPIPath
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select
 
@@ -76,6 +77,8 @@ from app.modules.quality.schemas import (
     SnapshotPointOut,
 )
 from app.modules.quality.snapshot import dashboard_history
+from app.modules.reports import registry as reports
+from app.modules.reports.files import report_file
 from app.modules.search.filters import PieceFilter
 from app.modules.search.models import ExportJobKind, ExportJobModel, ExportJobStatus
 from app.modules.search.ranking import generate_search_suggestions, rank_and_describe_pieces
@@ -83,6 +86,7 @@ from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
     ReportOut,
+    ReportSubtotal,
     ReportType,
     SearchExportRequest,
     SearchResultPage,
@@ -636,18 +640,108 @@ def export_excel_report(
 @router.get(
     "/reports/{report_type}",
     response_model=ReportOut,
-    summary="Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin",
+    responses={
+        200: {
+            "content": {XLSX_CONTENT_TYPE: {}, "text/csv": {}},
+            "description": "El reporte en JSON (una página) o, con `format`, el archivo.",
+        },
+        202: {"model": ExportJob, "description": "Reporte grande: se genera en segundo plano."},
+        403: {"description": "`exact_location_required`: detalle por debajo del espacio."},
+        404: {"description": "`report_not_found`, con los reportes disponibles para su rol."},
+    },
+    summary="Reportes: inventario general, por colección, por ubicación e incompletas (RF-033)",
+    description="Catálogo cerrado de reportes generados sobre una instantánea consistente: el "
+    "total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, "
+    "piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo "
+    "`include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el "
+    "permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en "
+    "segundo plano (202) si supera el límite de la exportación síncrona.",
     tags=["Reportes"],
-    **stub(CHANGE_REPORTS),
+    **implemented(),
 )
 def get_report(
-    report_type: ReportType,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    report_type: Annotated[
+        str,
+        FastAPIPath(
+            description="Tipo de reporte.",
+            json_schema_extra={"enum": [item.value for item in ReportType]},
+        ),
+    ],
+    session: SessionDep,
     user: ReportViewer,
     collection_id: uuid.UUID | None = None,
     location_id: uuid.UUID | None = None,
+    include_loans_for_use: bool = True,
+    not_verified_since_days: Annotated[int | None, Query(ge=0)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
     export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
-) -> ReportOut:
-    raise not_implemented(CHANGE_REPORTS, ReportOut)
+) -> ReportOut | Response:
+    params = reports.ReportParams(
+        collection_id=collection_id,
+        location_id=location_id,
+        include_loans_for_use=include_loans_for_use,
+        not_verified_since_days=not_verified_since_days,
+    )
+    permissions = frozenset(user.permissions)
+    data = reports.build(report_type, session, permissions, params)
+    generated_at = utcnow()
+    generated_by = user.email or "usuario"
+    if export_format is not None:
+        fmt = export_format.value
+        if len(data.rows) > EXPORT_SYNC_MAX_ROWS:
+            job = ExportJobModel(
+                kind=ExportJobKind.REPORT,
+                requested_by_id=user.id,
+                format=fmt,
+                params={"report_type": report_type, **reports.serialize_params(params)},
+                status=ExportJobStatus.PENDING,
+                row_count=len(data.rows),
+            )
+            session.add(job)
+            session.commit()
+            run_in_background(
+                background_tasks,
+                run_export_job,
+                request.app.state.session_factory,
+                job.id,
+                getattr(request.app.state, "storage", None),
+            )
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content=ExportJob(
+                    id=job.id, status="PENDING", format=export_format, row_count=len(data.rows)
+                ).model_dump(mode="json"),
+            )
+        content, media_type = report_file(
+            data, fmt, generated_at=generated_at, generated_by=generated_by
+        )
+        reports.record_report_export(session, user.id, generated_by, report_type, fmt, data)
+        session.commit()
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="reporte-{report_type}.{fmt}"'},
+        )
+    start = (page - 1) * page_size
+    return ReportOut(
+        report_type=ReportType(report_type),
+        title=data.title,
+        generated_at=generated_at,
+        generated_by=generated_by,
+        filters=data.filters,
+        columns=data.columns,
+        rows=data.rows[start : start + page_size],
+        totals=data.totals,
+        subtotals=[ReportSubtotal(**vars(subtotal)) for subtotal in data.subtotals],
+        masked_columns=data.masked_columns,
+        message=data.message,
+        total_rows=len(data.rows),
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
