@@ -2,16 +2,19 @@
 
 Spec importacion-datos, «Emparejamiento automático propuesto entre fotos y filas» and «Bandeja de
 revisión de fotografías del lote»; design D3 and D4. The pipeline stages are the real ones on
-SQLite. Upload and verification (tasks 2.1 and 2.2) do not exist yet: photos are inserted already
-``VERIFIED`` as their stand-in. Synthetic data only (RNF-014).
+SQLite. Most tests insert the photos already ``VERIFIED``, as the verification (task 2.2) leaves
+them; the last one goes through the verification. Synthetic data only (RNF-014).
 """
 
 import hashlib
+import io
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from typing import Any
 
 import pytest
-from sqlalchemy import Engine, func, select
+from PIL import Image
+from sqlalchemy import Engine, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.db import make_session_factory
@@ -30,6 +33,7 @@ from app.modules.imports.models import (
     PhotoMatchStatus,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.photo_verification import verify_uploaded_photos
 from app.modules.imports.photos import match_batch_photos
 from app.modules.imports.service import (
     clear_rows,
@@ -70,6 +74,14 @@ class MemoryStorage:
 
     def get_bytes(self, key: str) -> bytes:
         return self.data[key]
+
+    def head(self, key: str) -> dict[str, Any]:
+        if key not in self.data:
+            raise FileNotFoundError(key)
+        return {"content_length": len(self.data[key])}
+
+    def stream(self, key: str, chunk_size: int = 8192) -> Iterator[bytes]:
+        yield self.data[key]
 
 
 class Batch:
@@ -355,3 +367,35 @@ def test_remapping_only_clears_the_automatic_proposals(new_batch: Callable[[], B
     kept = lot.photo(assigned)
     assert (kept.match_status, kept.row_id, kept.sort_key) == (PhotoMatchStatus.MANUAL, toro, 1)
     assert lot.photo(removed).match_status is PhotoMatchStatus.MANUAL
+
+
+def test_a_photo_verified_after_the_validation_gets_its_row_right_away(
+    new_batch: Callable[[], Batch],
+) -> None:
+    """The «al llegar fotos nuevas» half of 3.3: the verification (2.2) runs the matching."""
+    lot = new_batch()
+    assert lot.validate().status == S.IN_PREVIEW, lot.batch.status_reason
+    output = io.BytesIO()
+    Image.new("RGB", (64, 48), (200, 150, 100)).save(output, format="JPEG")
+    data = output.getvalue()
+    photo_id = lot.add_photo("llegada tarde/I 1234.jpg", status=ImportPhotoStatus.UPLOADED)
+    lot.session.execute(
+        update(ImportPhoto)
+        .where(ImportPhoto.id == photo_id)
+        .values(content_sha256=hashlib.sha256(data).hexdigest(), size_bytes=len(data))
+    )
+    lot.session.commit()
+    lot.storage.data[f"media/{photo_id}/upload.jpeg"] = data
+
+    verified = verify_uploaded_photos(
+        make_session_factory(lot.engine), lot.storage, max_bytes=10 * 1024 * 1024
+    )
+
+    assert verified == 1
+    photo = lot.photo(photo_id)
+    assert photo.status is ImportPhotoStatus.VERIFIED
+    assert (photo.match_status, photo.match_source) == (
+        PhotoMatchStatus.MATCHED,
+        PhotoMatchSource.FILENAME,
+    )
+    assert (photo.row_id, photo.sort_key) == (lot.row(2), 1)

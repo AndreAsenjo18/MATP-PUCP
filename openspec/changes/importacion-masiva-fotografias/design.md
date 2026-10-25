@@ -92,6 +92,10 @@ sequenceDiagram
 - El SHA-256 se calcula en el navegador dentro de un Web Worker. Así la interfaz no se congela con miles de archivos.
 - Límites configurables: `IMPORT_MAX_PHOTOS` por lote (5 000 [SUPUESTO]) y `MEDIA_MAX_BYTES` (el de `fotografias-multiples-por-pieza`). Se aceptan JPEG, PNG y TIFF (`MEDIA_ALLOWED_TYPES`). Se ignoran en silencio `Thumbs.db`, `.DS_Store` y los archivos ocultos.
 - La verificación y los derivados se ejecutan en el worker en proceso del lote (patrón de `app/core/jobs.py`, ADR-010) con su latido. Las fotos que quedan en `uploaded` se vuelven a encolar al reiniciar.
+- **Decisiones de la 2.1 y la 2.2** (2026-10-25).
+  - Un archivo de tipo o tamaño no admitido vuelve como `rejected` con su motivo y no se registra; el resto de la tanda sigue. Una foto rechazada recibe una URL nueva si se vuelve a soltar; una descartada no.
+  - La verificación rechaza la foto si su tipo real no es el declarado (un PNG con extensión `.jpg`): el tipo declarado fija la clave `upload.<ext>` y la aplicación no vuelve a verificar.
+  - La cola es el propio estado `uploaded`, así que no hace falta un latido por foto: al reiniciar, el worker `import-photos` la drena de inmediato. El latido que cuenta es el de la etapa del lote: mientras una etapa corre con latido vigente, sus fotos esperan al siguiente drenado, y con el latido vencido se verifican. El worker bloquea la fila del lote antes de escribir, como `start_stage`, para que no empiece una etapa a la vez.
 - *Alternativa*: subir un ZIP a la API. Se descartó porque duplica el ancho de banda, obliga a la API a tener el ZIP entero en disco y no permite reanudar. Queda como contingencia `MEDIA_UPLOAD_MODE=proxy`, igual que en `fotografias-multiples-por-pieza`.
 
 ### D3. Emparejamiento propuesto en tres vías

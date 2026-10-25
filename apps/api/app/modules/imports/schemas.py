@@ -7,7 +7,7 @@ preview, decisions, approval, log and embedded images. Rollback waits for the re
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -18,10 +18,15 @@ from app.modules.imports.models import (
     ImportBatchStatus,
     ImportImage,
     ImportImageStatus,
+    ImportPhoto,
+    ImportPhotoStatus,
     ImportRow,
     RowClassification,
     RowDecision,
 )
+
+if TYPE_CHECKING:
+    from app.modules.imports.photo_upload import UploadItem
 
 _COUNTS = {"rows": 120, "NEW": 70, "UPDATE": 35, "POSSIBLE_DUPLICATE": 10, "CONFLICT": 5}
 _SUMMARY = {"create": 70, "update": 35, "skip": 15, "summary_token": "0" * 32}
@@ -623,3 +628,127 @@ class TemplateSuggestion(BaseModel):
     new_columns: list[str] = Field(
         description="Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen."
     )
+
+
+# --- Photos of the batch (change importacion-masiva-fotografias, design D2) -----------------
+_SHA = "9f2c" + "0" * 60
+_PHOTO_ID = "01920000-0000-7000-8000-000000000701"
+
+
+class PhotoFileIn(BaseModel):
+    relative_path: str = Field(
+        min_length=1,
+        max_length=1000,
+        description="Carpeta y nombre del archivo tal como los lista el navegador.",
+    )
+    size_bytes: int = Field(gt=0)
+    content_type: str = Field(min_length=1, max_length=100, description="Tipo MIME declarado.")
+    content_sha256: str = Field(
+        pattern="^[0-9a-f]{64}$", description="Huella SHA-256 calculada en el navegador."
+    )
+
+
+class PhotoUploadUrlsRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "files": [
+                        {
+                            "relative_path": "MMZ 045/DSC_0001.jpg",
+                            "size_bytes": 4_200_000,
+                            "content_type": "image/jpeg",
+                            "content_sha256": _SHA,
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+
+    files: list[PhotoFileIn] = Field(min_length=1, max_length=100, description="Hasta 100.")
+
+
+class PhotoUploadItemOut(BaseModel):
+    relative_path: str
+    content_sha256: str
+    result: Literal["upload", "already_registered", "rejected"] = Field(
+        description="`upload`: subir con `upload_url`; `already_registered`: la huella ya está "
+        "en el lote y no se sube otra vez; `rejected`: tipo o tamaño no admitido (`reason`)."
+    )
+    photo_id: uuid.UUID | None = None
+    photo_status: ImportPhotoStatus | None = None
+    upload_url: str | None = None
+    method: str | None = None
+    headers: dict[str, str] | None = None
+    expires_at: datetime | None = None
+    reason: str | None = None
+
+    @classmethod
+    def from_item(cls, item: "UploadItem") -> "PhotoUploadItemOut":
+        photo: ImportPhoto | None = item.photo
+        upload = item.upload or {}
+        return cls(
+            relative_path=item.relative_path,
+            content_sha256=item.content_sha256,
+            result=item.result,
+            photo_id=photo.id if photo else None,
+            photo_status=photo.status if photo else None,
+            upload_url=upload.get("url"),
+            method=upload.get("method"),
+            headers=upload.get("headers"),
+            expires_at=item.expires_at,
+            reason=item.reason,
+        )
+
+
+class PhotoUploadUrlsOut(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "batch_id": EX_BATCH_ID,
+                    "items": [
+                        {
+                            "relative_path": "MMZ 045/DSC_0001.jpg",
+                            "content_sha256": _SHA,
+                            "result": "upload",
+                            "photo_id": _PHOTO_ID,
+                            "photo_status": "PENDING_UPLOAD",
+                            "upload_url": "https://almacenamiento.example/media/...",
+                            "method": "PUT",
+                            "headers": {"Content-Type": "image/jpeg"},
+                            "expires_at": EX_DATETIME,
+                            "reason": None,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    batch_id: uuid.UUID
+    items: list[PhotoUploadItemOut]
+
+
+class PhotoCompleteRequest(BaseModel):
+    photo_ids: list[uuid.UUID] = Field(
+        min_length=1, max_length=100, description="Fotos cuyo archivo ya se subió (hasta 100)."
+    )
+
+
+class PhotoStateOut(BaseModel):
+    photo_id: uuid.UUID
+    status: ImportPhotoStatus = Field(
+        description="`UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina."
+    )
+    rejection_reason: str | None = None
+
+    @classmethod
+    def from_photo(cls, photo: ImportPhoto) -> "PhotoStateOut":
+        return cls(photo_id=photo.id, status=photo.status, rejection_reason=photo.rejection_reason)
+
+
+class PhotoCompleteOut(BaseModel):
+    batch_id: uuid.UUID
+    photos: list[PhotoStateOut]

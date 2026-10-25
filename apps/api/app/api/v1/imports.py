@@ -34,6 +34,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
+from app.core import jobs
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
 from app.modules.imports import templates
@@ -60,6 +61,13 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.photo_upload import (
+    DeclaredPhoto,
+    PhotoLimits,
+    complete_uploads,
+    request_upload_urls,
+)
+from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
@@ -75,6 +83,12 @@ from app.modules.imports.schemas import (
     MappingTemplateCreate,
     MappingTemplateOut,
     MappingTemplateUpdate,
+    PhotoCompleteOut,
+    PhotoCompleteRequest,
+    PhotoStateOut,
+    PhotoUploadItemOut,
+    PhotoUploadUrlsOut,
+    PhotoUploadUrlsRequest,
     RevertRequest,
     RowDecisionRequest,
     TemplateSuggestion,
@@ -567,6 +581,73 @@ def associate_import_image(
     image = session.get(ImportImage, image_id)
     assert image is not None
     return ImportImageOut.from_image(image, _preview_url(storage, image))
+
+
+PHOTOS_CONFLICT = {
+    409: {"model": ErrorResponse, "description": "El lote ya no admite fotos (está aprobado)."}
+}
+
+
+@router.post(
+    "/imports/{batch_id}/photos/upload-urls",
+    response_model=PhotoUploadUrlsOut,
+    responses={**NOT_FOUND, **PHOTOS_CONFLICT},
+    summary="Fotografías del lote: pedir las URL de subida de una tanda",
+    description="Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL "
+    "prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el "
+    "lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar "
+    "la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como "
+    "`rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).",
+    **implemented(),
+)
+def request_import_photo_upload_urls(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: PhotoUploadUrlsRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoUploadUrlsOut:
+    writer(session, user)
+    files = [DeclaredPhoto(**file.model_dump()) for file in body.files]
+    items = request_upload_urls(
+        session,
+        request.app.state.storage,
+        batch_id,
+        files,
+        PhotoLimits.from_settings(request.app.state.settings),
+    )
+    session.commit()
+    return PhotoUploadUrlsOut(
+        batch_id=batch_id, items=[PhotoUploadItemOut.from_item(item) for item in items]
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/photos/complete",
+    response_model=PhotoCompleteOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={**NOT_FOUND, **PHOTOS_CONFLICT},
+    summary="Fotografías del lote: avisar qué archivos terminaron de subirse",
+    description="Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el "
+    "tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su "
+    "copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone "
+    "una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, "
+    "diseño D2).",
+    **implemented(),
+)
+def complete_import_photo_uploads(
+    batch_id: uuid.UUID,
+    body: PhotoCompleteRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoCompleteOut:
+    writer(session, user)
+    photos = complete_uploads(session, batch_id, body.photo_ids)
+    session.commit()
+    jobs.notify(PHOTO_QUEUE)
+    return PhotoCompleteOut(
+        batch_id=batch_id, photos=[PhotoStateOut.from_photo(photo) for photo in photos]
+    )
 
 
 @router.post(
