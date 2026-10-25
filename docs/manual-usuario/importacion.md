@@ -1,6 +1,6 @@
 # Importación de sábanas Excel y CSV
 
-> Sección escrita por el change `importacion-pipeline-reconciliacion`. El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado llegará con `auditoria-y-soft-delete-transversal`.
+> Sección escrita por el change `importacion-pipeline-reconciliacion`. El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`.
 
 El asistente de importación carga en el catálogo las piezas de una hoja de cálculo (por ejemplo, una sábana de la consultoría o un inventario de depósito) **sin duplicar ni pisar** lo que ya existe.
 
@@ -200,7 +200,14 @@ La imagen queda como foto de la pieza, con referencia al lote. En una pieza en c
 
 ## Revertir un lote aplicado
 
-Todavía no está disponible: llegará con la auditoría y reversión del sistema. Cada lote aplicado ya guarda todo lo necesario para revertirlo.
+Solo el **Administrador** puede revertir un lote aplicado. En el asistente, abra el lote aplicado, pulse **Revertir lote** al final de la pantalla y escriba el motivo. Al revertirlo:
+
+- las piezas e identificadores que creó el lote quedan **eliminados lógicamente** con ese motivo (se pueden consultar y restaurar; nada se borra);
+- los campos que el lote actualizó **recuperan su valor anterior**;
+- los datos de origen de cada fila se conservan como historial;
+- el lote queda en estado **revertido** y ya no se puede volver a aplicar ni revertir.
+
+Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no revierte nada** y muestra la lista de campos editados. Revise la lista: si pulsa **Revertir también estas ediciones** y confirma, esas ediciones se pierden y vuelven al valor de antes del lote.
 
 ## Si algo sale mal
 

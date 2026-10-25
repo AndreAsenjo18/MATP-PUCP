@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: f20798e44fa2574416656af4371e561d3dd0ba59ce49e000bbeb0c9b049c926b
+ * openapi-sha256: e5f3ae7704654fa44a3163d251a755eae56381874f55bd593e045b261d981752
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -795,7 +795,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revertir un lote aplicado (RNF-007) */
+        /**
+         * Revertir un lote aplicado (RNF-007)
+         * @description Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos actualizados recuperan su valor anterior y los datos de origen se conservan como historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].
+         */
         post: operations["rollbackImportBatch"];
         delete?: never;
         options?: never;
@@ -5998,6 +6001,12 @@ export interface components {
         };
         /** RevertRequest */
         RevertRequest: {
+            /**
+             * Confirm Conflicts
+             * @description Revertir también los campos editados después de aplicar el lote. Sin esta confirmación, una edición posterior responde 409 `revert_has_conflicts` con la lista de conflictos (design D7).
+             * @default false
+             */
+            confirm_conflicts: boolean;
             /** Reason */
             reason: string;
         };
@@ -9784,8 +9793,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9793,13 +9802,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description `invalid_batch_transition` (el lote no está aplicado), `already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir con `confirm_conflicts=true` tras revisar la lista). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

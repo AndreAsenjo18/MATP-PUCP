@@ -9173,6 +9173,12 @@
       },
       "RevertRequest": {
         "properties": {
+          "confirm_conflicts": {
+            "default": false,
+            "description": "Revertir también los campos editados después de aplicar el lote. Sin esta confirmación, una edición posterior responde 409 `revert_has_conflicts` con la lista de conflictos (design D7).",
+            "title": "Confirm Conflicts",
+            "type": "boolean"
+          },
           "reason": {
             "minLength": 3,
             "title": "Reason",
@@ -15391,6 +15397,7 @@
     },
     "/api/v1/imports/{batch_id}/rollback": {
       "post": {
+        "description": "Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos actualizados recuperan su valor anterior y los datos de origen se conservan como historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].",
         "operationId": "rollbackImportBatch",
         "parameters": [
           {
@@ -15445,6 +15452,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`invalid_batch_transition` (el lote no está aplicado), `already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir con `confirm_conflicts=true` tras revisar la lista)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -15454,16 +15481,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -15475,8 +15492,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/rows/{row_id}": {

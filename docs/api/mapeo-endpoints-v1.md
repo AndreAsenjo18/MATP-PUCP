@@ -150,7 +150,7 @@ Decisiones registradas en `openspec/changes/alinear-api-endpoints-v1/design.md`,
 
 ## Desviaciones declaradas de la importación (tarea 4.4, 2026-10-18)
 
-La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4) y desde el 2026-10-21 `confirm` (tarea 4.2); `rollback` sigue respondiendo `501` hasta su tarea 5.2. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
+La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4) y desde el 2026-10-21 `confirm` (tarea 4.2) y desde el 2026-10-25 `rollback` (tarea 5.2). La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
 
 | Operación | Contrato | API tras la tarea 4.4 | Motivo / pregunta |
 |---|---|---|---|
