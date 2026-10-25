@@ -28,7 +28,8 @@ _MEDIA_EXAMPLE = {
     "taken_on": "2025-03-10",
     "usage_restriction": None,
     "restriction_note": None,
-    "download_url": None,
+    "download_url": "http://localhost:9000/matp-media/pieces/.../display.webp?X-Amz-Signature=...",
+    "thumbnail_url": "http://localhost:9000/matp-media/pieces/.../thumb.webp?X-Amz-Signature=...",
     "created_at": EX_DATETIME,
 }
 
@@ -55,7 +56,14 @@ class MediaAssetOut(ORMModel):
     restriction_note: str | None
     download_url: str | None = Field(
         None,
-        description="URL prefirmada temporal; null hasta fotografias-multiples-por-pieza.",
+        description="En el listado de la galería, URL prefirmada temporal de la copia de "
+        "visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa "
+        "va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.",
+    )
+    thumbnail_url: str | None = Field(
+        None,
+        description="En el listado de la galería, URL prefirmada temporal de la miniatura "
+        "(`thumb.webp`, 320 px).",
     )
     created_at: datetime
 
