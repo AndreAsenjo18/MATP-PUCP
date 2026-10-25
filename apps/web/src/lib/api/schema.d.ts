@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: fdcac4171cb11825591e737be992969a126129d08f8498ee040f906556efb9d2
+ * openapi-sha256: 5687a4161083674b018a04228f83ef7a58da4cefc67fa981267622eb110acd27
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1467,7 +1467,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validar en tiempo real un formulario de ficha (RF-043) */
+        /**
+         * Validar en tiempo real un formulario de ficha (RF-043)
+         * @description Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.
+         */
         post: operations["validatePiece"];
         delete?: never;
         options?: never;
@@ -13091,15 +13094,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

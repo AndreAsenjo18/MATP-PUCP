@@ -18561,6 +18561,7 @@
     },
     "/api/v1/pieces/validate": {
       "post": {
+        "description": "Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.",
         "operationId": "validatePiece",
         "parameters": [
           {
@@ -18633,16 +18634,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -18654,8 +18645,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}": {

@@ -244,15 +244,37 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
     "/validate",
     response_model=PieceValidationResult,
     summary="Validar en tiempo real un formulario de ficha (RF-043)",
+    description="Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y "
+    "responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad "
+    "`error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño "
+    "D1). Con `piece_id` se valida la edición de esa pieza.",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def validate_piece(
     body: PieceCreate,
+    session: SessionDep,
     user: Creator,
     piece_id: Annotated[uuid.UUID | None, Query(description="Pieza en edición.")] = None,
 ) -> PieceValidationResult:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceValidationResult)
+    try:
+        piece = get_piece(session, piece_id) if piece_id else None
+        issues = catalog_service.validate_piece_payload(
+            session,
+            denomination=body.denomination,
+            tenure_regime=code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime"),
+            code_i=body.code_i,
+            epoch_start_year=body.period.year_from if body.period else None,
+            epoch_end_year=body.period.year_to if body.period else None,
+            dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
+            parent_piece_id=body.parent_piece_id,
+            piece=piece,
+        )
+    finally:
+        session.rollback()  # a validation never persists anything (D1)
+    return PieceValidationResult(
+        is_valid=all(issue.severity != "error" for issue in issues), issues=issues
+    )
 
 
 def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
