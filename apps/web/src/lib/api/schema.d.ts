@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 2361a95e49a4eb1265e83224fcc4fc5aa57b87072e0895540fdecc3e22dada56
+ * openapi-sha256: 76a9c0e6478bbb7fa11d78537894114bce84cc80c707d16326cd73b0e9436ad3
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -640,7 +640,7 @@ export interface paths {
         put?: never;
         /**
          * Sugerir plantillas para las cabeceras de un archivo (RF-022)
-         * @description Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).
+         * @description Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).
          */
         post: operations["suggestImportTemplates"];
         delete?: never;
@@ -2834,17 +2834,17 @@ export interface components {
             split_compound: boolean;
             /**
              * Target Field
-             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, `terms:<VOCABULARIO>`; null = datos de origen.
+             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o `terms:<VOCABULARIO>`; null = datos de origen.
              */
             target_field: string | null;
             /**
              * Transforms
-             * @description Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.
+             * @description Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en la versión 1 (design D1).
              */
             transforms?: string[];
             /**
              * Value Map
-             * @description Texto de origen → código de término, para la transformación `value_map`. Solo en plantillas por ahora.
+             * @description Texto de origen → código de término, para la transformación `value_map`.
              */
             value_map?: {
                 [key: string]: string;

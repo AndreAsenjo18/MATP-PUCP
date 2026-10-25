@@ -650,7 +650,7 @@ def create_import_template(
     "/import-templates/suggest",
     response_model=list[TemplateSuggestion],
     summary="Sugerir plantillas para las cabeceras de un archivo (RF-022)",
-    description="Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de "
+    description="Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de "
     "mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni "
     "mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como "
     "cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",

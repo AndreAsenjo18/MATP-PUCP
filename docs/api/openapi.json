@@ -2191,11 +2191,11 @@
                 "type": "null"
               }
             ],
-            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, `terms:<VOCABULARIO>`; null = datos de origen.",
+            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o `terms:<VOCABULARIO>`; null = datos de origen.",
             "title": "Target Field"
           },
           "transforms": {
-            "description": "Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+            "description": "Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en la versión 1 (design D1).",
             "items": {
               "type": "string"
             },
@@ -2214,7 +2214,7 @@
                 "type": "null"
               }
             ],
-            "description": "Texto de origen → código de término, para la transformación `value_map`. Solo en plantillas por ahora.",
+            "description": "Texto de origen → código de término, para la transformación `value_map`.",
             "title": "Value Map"
           }
         },
@@ -14139,7 +14139,7 @@
     },
     "/api/v1/import-templates/suggest": {
       "post": {
-        "description": "Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
+        "description": "Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
         "operationId": "suggestImportTemplates",
         "requestBody": {
           "content": {

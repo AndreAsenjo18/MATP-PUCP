@@ -192,7 +192,7 @@ class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
         description="Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), "
-        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, "
+        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o "
         "`terms:<VOCABULARIO>`; null = datos de origen."
     )
     identifier_type_code: str | None = None
@@ -203,13 +203,13 @@ class ColumnMapping(BaseModel):
     )
     transforms: list[str] = Field(
         default_factory=list,
-        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en "
-        "plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con "
+        "transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en "
+        "la versión 1 (design D1).",
     )
     value_map: dict[str, str] | None = Field(
         None,
-        description="Texto de origen → código de término, para la transformación `value_map`. "
-        "Solo en plantillas por ahora.",
+        description="Texto de origen → código de término, para la transformación `value_map`.",
     )
 
 
