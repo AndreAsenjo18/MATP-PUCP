@@ -1,4 +1,4 @@
-"""Rule change and conservation history against a real PostgreSQL (colecciones-y-vocabularios-admin).
+"""Rule change and conservation history on a real PostgreSQL (colecciones-y-vocabularios-admin).
 
 Task 6.1 repeats 2.4 and 3.1 on PostgreSQL: the recalculation of a locked type goes through the
 flush guard of RN-002 and the partial unique index of current inventory codes, and the current
