@@ -9,7 +9,9 @@ from typing import Any
 from fastapi.testclient import TestClient
 from sqlalchemy import event, func, select
 
-from app.modules.audit.models import AuditLog
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
+from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.catalog.models import Piece
 from tests.api.conftest import SeededApi
 
 
@@ -210,6 +212,26 @@ def test_delete_requires_reason_then_soft_deletes(seeded_api: SeededApi) -> None
 
     after = client.get(f"/api/v1/pieces/{piece_id}")
     assert after.status_code == 404
+
+    # ficha-pieza-crud 2.4 (RN-005, RNF-006): the row stays, deleted logically, and the audit
+    # records who deleted it and why.
+    with seeded_api.session() as session:
+        kept = session.scalar(
+            select(Piece)
+            .where(Piece.id == uuid.UUID(piece_id))
+            .execution_options(**{INCLUDE_DELETED: True})
+        )
+        assert kept is not None and kept.deleted_at is not None
+        assert kept.deletion_reason == "Registrada por error"
+        deletion = session.scalars(
+            select(AuditLog).where(
+                AuditLog.entity_id == uuid.UUID(piece_id),
+                AuditLog.action == AuditAction.SOFT_DELETE,
+            )
+        ).all()
+    assert "deleted_at" in {entry.field for entry in deletion}
+    assert {entry.reason for entry in deletion} == {"Registrada por error"}
+    assert all(entry.user_id and entry.origin is AuditOrigin.MANUAL for entry in deletion)
 
 
 def test_get_pieces_query_count_is_constant_for_any_limit(seeded_api: SeededApi) -> None:
