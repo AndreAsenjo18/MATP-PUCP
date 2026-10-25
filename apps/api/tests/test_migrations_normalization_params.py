@@ -83,15 +83,18 @@ def test_migration_matches_the_new_models(migrated: Engine) -> None:  # noqa: F8
 def test_downgrade_drops_only_the_new_tables_and_upgrade_restores_them(
     migrated: Engine,  # noqa: F811
 ) -> None:
+    # Later revisions are not under test: start from this one.
+    _migrate(migrated, "0013_normalization_params", down=True)
     before = set(inspect(migrated).get_table_names())
 
     _migrate(migrated, "0012_completeness_rules", down=True)
 
     after_down = set(inspect(migrated).get_table_names())
     assert before - after_down == set(TABLES)
-    _migrate(migrated, "head")
+    _migrate(migrated, "0013_normalization_params")
     assert set(inspect(migrated).get_table_names()) == before
     assert set(_settings(migrated)) == {ABSENCE_MARKERS_KEY, CONCATENATION_SEPARATORS_KEY}
+    _migrate(migrated, "head")
 
 
 def test_the_new_models_have_logical_deletion_and_audit() -> None:

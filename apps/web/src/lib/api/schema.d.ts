@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: db952d74862936bd563f896e826b7a4ac730d93b6186b3b211940b1e3272ea22
+ * openapi-sha256: 384c01c09e021521e303043e7624f36a6061b1cc8395d3139a76a15cff23afd0
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1583,8 +1583,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Reportes: inventario general, por colección, por ubicación e incompletas (RF-033)
-         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona.
+         * Reportes: inventario general, por colección, por ubicación, incompletas y valorización (RF-033, RF-037)
+         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).
          */
         get: operations["getReport"];
         put?: never;
@@ -13495,14 +13495,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description `exact_location_required`: detalle por debajo del espacio. */
+            /** @description `exact_location_required`: detalle por debajo del espacio; `permission_denied`: reporte sin su permiso (valorización). */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description `report_not_found`, con los reportes disponibles para su rol. */
+            /** @description `report_not_found`, con los reportes disponibles para su rol; también la valorización mientras `FEATURE_VALUATION_REPORT` está desactivada. */
             404: {
                 headers: {
                     [name: string]: unknown;
