@@ -74,6 +74,13 @@ class Piece(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
         back_populates="piece", order_by="PieceIdentifier.recorded_at"
     )
 
+    # Optimistic concurrency of the sheet (ficha-pieza-crud, D2): every ORM update increments it
+    # and the PUT of the sheet requires it in If-Match. A technical column, kept out of the audit.
+    version: Mapped[int] = mapped_column(default=1, server_default="1")
+
+    __mapper_args__: ClassVar[dict[str, Any]] = {"version_id_col": version}
+    __audit_exclude__: ClassVar[frozenset[str]] = frozenset({"created_at", "updated_at", "version"})
+
     __table_args__ = (
         CheckConstraint(
             "epoch_start_year IS NULL OR epoch_end_year IS NULL "

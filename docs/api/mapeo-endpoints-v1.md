@@ -12,7 +12,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 |---|---|---|---|---|
 | 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1) |
 | 2 | `GET /pieces` · `listPieces` (`page`, `limit`) | `RF-014` → Pendiente¹ | `GET /pieces` (implementado, cursor + filtros) | Pendiente: paginación `page`/`limit` (tarea 4.1) |
-| 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById` |
+| 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById`. Campo añadido `version` (concurrencia optimista, `ficha-pieza-crud` D2) |
 | 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`) |
 | 5 | `DELETE /pieces/{id}` · `softDeletePiece` | `RF-005` → RN-005, RNF-006 | `DELETE /pieces/{piece_id}` (stub) | Hecho: `softDeletePiece` |
 | 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Hecho: `CollectionOut` contiene `CollectionItem` (`code` = sigla normalizada); `TermOut` añade `name` en `/categories` y `/conservation-states` (tarea 4.2) |

@@ -213,6 +213,7 @@ class PieceDetail(BaseModel):
                     "media_count": 0,
                     "created_at": EX_DATETIME,
                     "updated_at": EX_DATETIME,
+                    "version": 3,
                     "masked_fields": ["lender_name", "loan_agreement_ref", "location.path"],
                 }
             ]
@@ -258,6 +259,10 @@ class PieceDetail(BaseModel):
     media_count: int
     created_at: datetime
     updated_at: datetime
+    version: int = Field(
+        description="Versión de la ficha: se envía en `If-Match` al editarla (control de "
+        "concurrencia, ficha-pieza-crud D2)."
+    )
     masked_fields: list[str] = Field(default_factory=list)
     merged_into: MergedInto | None = Field(
         None,

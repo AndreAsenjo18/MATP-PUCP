@@ -65,6 +65,7 @@ entity PIECE {
     merged_into_id : uuid <<FK>>
     availability_term_id : uuid <<FK>>
     current_location_id : uuid <<FK>>
+  * version : integer
   ..
   <i>+ timestamps + soft-delete</i>
 }

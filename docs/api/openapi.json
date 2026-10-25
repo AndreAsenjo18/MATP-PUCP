@@ -8192,7 +8192,8 @@
             "provenance": "Ayacucho (sintético)",
             "recorded_by": "Registrador sintético",
             "tenure_regime": "Comodato",
-            "updated_at": "2026-09-17T10:30:00Z"
+            "updated_at": "2026-09-17T10:30:00Z",
+            "version": 3
           }
         ],
         "properties": {
@@ -8497,6 +8498,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "version": {
+            "description": "Versión de la ficha: se envía en `If-Match` al editarla (control de concurrencia, ficha-pieza-crud D2).",
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -8529,7 +8535,8 @@
           "code_i",
           "media_count",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "version"
         ],
         "title": "PieceDetail",
         "type": "object"

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: bfcbfc8f64ef59a16aea5fbb365103e031d60487b25aeff64518380b7bb3a403
+ * openapi-sha256: cee8d53c36a5205f27b2c8f3219cc8274b19900a83f9a063b9341a2400cb6a35
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -5685,7 +5685,8 @@ export interface components {
          *       "provenance": "Ayacucho (sintético)",
          *       "recorded_by": "Registrador sintético",
          *       "tenure_regime": "Comodato",
-         *       "updated_at": "2026-09-17T10:30:00Z"
+         *       "updated_at": "2026-09-17T10:30:00Z",
+         *       "version": 3
          *     }
          */
         PieceDetail: {
@@ -5775,6 +5776,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Version
+             * @description Versión de la ficha: se envía en `If-Match` al editarla (control de concurrencia, ficha-pieza-crud D2).
+             */
+            version: number;
         };
         /**
          * PieceLocation

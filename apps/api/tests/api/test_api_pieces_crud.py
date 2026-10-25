@@ -112,6 +112,17 @@ def test_put_resending_the_same_code_i_is_idempotent(seeded_api: SeededApi) -> N
     _delete(seeded_api, piece_id)
 
 
+
+def test_the_sheet_exposes_its_version(seeded_api: SeededApi) -> None:
+    """ficha-pieza-crud 1.1 (D2): the version the editor sends back in If-Match."""
+    client = seeded_api.login_as("CATALOGUER")
+    piece_id = _create_throwaway_piece(seeded_api, "Pieza con versión (sintética)")
+
+    detail = client.get(f"/api/v1/pieces/{piece_id}")
+
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["version"] == 1
+
 def test_delete_requires_reason_then_soft_deletes(seeded_api: SeededApi) -> None:
     client = seeded_api.login_as("CATALOGUER")
     admin = seeded_api.login_as("ADMIN")
