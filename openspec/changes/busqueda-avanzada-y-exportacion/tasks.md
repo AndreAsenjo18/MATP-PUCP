@@ -19,8 +19,8 @@
 
 ## 4. Frontend
 
-- [ ] 4.1 `app/busqueda` en modo `live`: todos los filtros, chips de filtros activos con quitar, `match_reason` visible, sugerencias sin resultados, foto principal en miniatura; pruebas de componente (Req: Búsqueda sin tildes…; RNF-010)
-- [ ] 4.2 Exportar resultados (selección de columnas) y panel "Mis exportaciones" con estado y descarga; exportación completa en Administración; pruebas de componente (Req: Trabajos de exportación…; Req: Paquete de exportación completa verificable)
+- [x] 4.1 `app/busqueda` en modo `live`: todos los filtros, chips de filtros activos con quitar, `match_reason` visible, sugerencias sin resultados, foto principal en miniatura; pruebas de componente (Req: Búsqueda sin tildes…; RNF-010) — `components/domain/SearchLive.tsx` y `lib/data/search.ts`; para cumplirla, `GET /search` acepta todo el filtro único de `GET /pieces` con `q` opcional (antes solo `q`, `collection_code` y `tenure_regime`), devuelve `thumbnail_url` y `excluded_uninterpreted_period`, y el filtro por alertas usa los predicados de `quality/completeness.py` (2026-10-25)
+- [x] 4.2 Exportar resultados (selección de columnas) y panel "Mis exportaciones" con estado y descarga; exportación completa en Administración; pruebas de componente (Req: Trabajos de exportación…; Req: Paquete de exportación completa verificable) — la exportación respeta `columns` (catálogo compartido en `exports/results.py`, 422 `unknown_export_column`), `ExportJob` informa `kind` y `created_at`, y el 410 de un archivo caducado responde `gone`; pestaña «Exportación completa» en Administración (2026-10-25)
 
 ## 5. Cierre del change
 

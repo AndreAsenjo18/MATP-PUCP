@@ -3353,6 +3353,18 @@
           }
         ],
         "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
           "download_url": {
             "anyOf": [
               {
@@ -3401,6 +3413,23 @@
               }
             ],
             "title": "Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "results",
+                  "full",
+                  "report"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resultados de búsqueda, base completa o reporte.",
+            "title": "Kind"
           },
           "masked_fields": {
             "items": {
@@ -10083,6 +10112,7 @@
                 "type": "null"
               }
             ],
+            "description": "Columnas y su orden, por clave: code_i, denomination, collection, tenure_regime, category, conservation_state, location, author, provenance, period, lender_name, loan_agreement_ref. Sin selección, todas las que el rol puede ver; las sensibles sin permiso se omiten (RF-041).",
             "title": "Columns"
           },
           "filters": {
@@ -10183,6 +10213,18 @@
           },
           "piece": {
             "$ref": "#/components/schemas/PieceSummary"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL prefirmada de la miniatura de la foto principal; null si no tiene fotos.",
+            "title": "Thumbnail Url"
           }
         },
         "required": [
@@ -18202,6 +18244,42 @@
             }
           },
           {
+            "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+            "in": "query",
+            "name": "has_alerts",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+              "title": "Has Alerts"
+            }
+          },
+          {
+            "description": "Solo piezas con esa alerta de completitud.",
+            "in": "query",
+            "name": "alert_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AlertCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo piezas con esa alerta de completitud.",
+              "title": "Alert Code"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -21871,23 +21949,11 @@
     },
     "/api/v1/search": {
       "get": {
+        "description": "Sin `q`, lista las piezas que cumplen los filtros en orden alfabético, sin `match_reason`.",
         "operationId": "searchPieces",
         "parameters": [
           {
-            "description": "Cdigo o texto.",
-            "in": "query",
-            "name": "q",
-            "required": true,
-            "schema": {
-              "description": "Cdigo o texto.",
-              "maxLength": 200,
-              "minLength": 1,
-              "title": "Q",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
+            "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
             "in": "query",
             "name": "collection_code",
             "required": false,
@@ -21900,12 +21966,95 @@
                   "type": "null"
                 }
               ],
-              "description": "Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).",
+              "description": "Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).",
               "title": "Collection Code"
             }
           },
           {
-            "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Incluye subcolecciones.",
+            "in": "query",
+            "name": "collection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Incluye subcolecciones.",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "description": "true = piezas sueltas.",
+            "in": "query",
+            "name": "without_collection",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true = piezas sueltas.",
+              "title": "Without Collection"
+            }
+          },
+          {
+            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
             "in": "query",
             "name": "tenure_regime",
             "required": false,
@@ -21923,35 +22072,286 @@
                   "type": "null"
                 }
               ],
-              "description": "Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal.",
+              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
               "title": "Tenure Regime"
             }
           },
           {
-            "description": "Nmero de pgina (desde 1).",
             "in": "query",
-            "name": "page",
+            "name": "category_id",
             "required": false,
             "schema": {
-              "default": 1,
-              "description": "Nmero de pgina (desde 1).",
-              "minimum": 1,
-              "title": "Page",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
             }
           },
           {
-            "description": "Resultados por pgina (mx. 100).",
             "in": "query",
-            "name": "limit",
+            "name": "category_term_id",
             "required": false,
             "schema": {
-              "default": 20,
-              "description": "Resultados por pgina (mx. 100).",
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_state_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation State Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_status_term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation Status Term Id"
+            }
+          },
+          {
+            "description": "Incluye sub-ubicaciones.",
+            "in": "query",
+            "name": "location_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Incluye sub-ubicaciones.",
+              "title": "Location Id"
+            }
+          },
+          {
+            "description": "false = piezas sin I.",
+            "in": "query",
+            "name": "has_inventory_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "false = piezas sin I.",
+              "title": "Has Inventory Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provenance",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provenance"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_text",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Text"
+            }
+          },
+          {
+            "description": "Año de inicio de época.",
+            "in": "query",
+            "name": "epoch_start_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de inicio de época.",
+              "title": "Epoch Start Year"
+            }
+          },
+          {
+            "description": "Año de fin de época.",
+            "in": "query",
+            "name": "epoch_end_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de fin de época.",
+              "title": "Epoch End Year"
+            }
+          },
+          {
+            "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+            "in": "query",
+            "name": "has_alerts",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+              "title": "Has Alerts"
+            }
+          },
+          {
+            "description": "Solo piezas con esa alerta de completitud.",
+            "in": "query",
+            "name": "alert_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AlertCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo piezas con esa alerta de completitud.",
+              "title": "Alert Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "denomination",
+              "enum": [
+                "denomination",
+                "-denomination",
+                "created_at",
+                "-created_at"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           }
         ],

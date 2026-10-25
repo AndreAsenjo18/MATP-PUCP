@@ -500,7 +500,7 @@ def confirm_import_batch(
         request.app.state.session_factory,
         batch_id,
         Stage.APPLY,
-        apply_stage(),
+        apply_stage(request.app.state.storage),
         user.id,
     )
     return ImportBatchOut.from_batch(batch)

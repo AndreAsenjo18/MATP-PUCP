@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 534829be19c88de314d13bab576237cb345d78fa1904cc27a6ca4dde3468b63c
+ * openapi-sha256: bfcbfc8f64ef59a16aea5fbb365103e031d60487b25aeff64518380b7bb3a403
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1707,7 +1707,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Bsqueda avanzada con filtros combinados (RF-031, RF-032) */
+        /**
+         * Bsqueda avanzada con filtros combinados (RF-031, RF-032)
+         * @description Sin `q`, lista las piezas que cumplen los filtros en orden alfabético, sin `match_reason`.
+         */
         get: operations["searchPieces"];
         put?: never;
         post?: never;
@@ -3561,6 +3564,8 @@ export interface components {
          *     }
          */
         ExportJob: {
+            /** Created At */
+            created_at?: string | null;
             /** Download Url */
             download_url?: string | null;
             /** Error */
@@ -3570,6 +3575,11 @@ export interface components {
             format: components["schemas"]["ExportFormat"];
             /** Id */
             id?: string | null;
+            /**
+             * Kind
+             * @description Resultados de búsqueda, base completa o reporte.
+             */
+            kind?: ("results" | "full" | "report") | null;
             /** Masked Fields */
             masked_fields?: string[];
             /** Row Count */
@@ -6502,7 +6512,10 @@ export interface components {
          *     }
          */
         SearchExportRequest: {
-            /** Columns */
+            /**
+             * Columns
+             * @description Columnas y su orden, por clave: code_i, denomination, collection, tenure_regime, category, conservation_state, location, author, provenance, period, lender_name, loan_agreement_ref. Sin selección, todas las que el rol puede ver; las sensibles sin permiso se omiten (RF-041).
+             */
             columns?: string[] | null;
             /** Filters */
             filters?: {
@@ -6577,6 +6590,11 @@ export interface components {
             match_type: "IDENTIFIER" | "TITLE";
             matched_identifier?: components["schemas"]["CodeBrief"] | null;
             piece: components["schemas"]["PieceSummary"];
+            /**
+             * Thumbnail Url
+             * @description URL prefirmada de la miniatura de la foto principal; null si no tiene fotos.
+             */
+            thumbnail_url?: string | null;
         };
         /**
          * SearchResultPage
@@ -11482,6 +11500,8 @@ export interface operations {
     listPieces: {
         parameters: {
             query?: {
+                /** @description Solo piezas con esa alerta de completitud. */
+                alert_code?: components["schemas"]["AlertCode"] | null;
                 author?: string | null;
                 category_id?: string | null;
                 category_term_id?: string | null;
@@ -11493,6 +11513,8 @@ export interface operations {
                 epoch_end_year?: number | null;
                 /** @description Año de inicio de época. */
                 epoch_start_year?: number | null;
+                /** @description true = piezas con alguna alerta de completitud; false = sin alertas. */
+                has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
                 /** @description Resultados por página (máx. 100). */
@@ -13815,17 +13837,43 @@ export interface operations {
     };
     searchPieces: {
         parameters: {
-            query: {
-                /** @description Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.). */
+            query?: {
+                /** @description Solo piezas con esa alerta de completitud. */
+                alert_code?: components["schemas"]["AlertCode"] | null;
+                author?: string | null;
+                category_id?: string | null;
+                category_term_id?: string | null;
+                /** @description Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.). */
                 collection_code?: string | null;
-                /** @description Resultados por pgina (mx. 100). */
+                /** @description Incluye subcolecciones. */
+                collection_id?: string | null;
+                conservation_state_id?: string | null;
+                conservation_status_term_id?: string | null;
+                /** @description Año de fin de época. */
+                epoch_end_year?: number | null;
+                /** @description Año de inicio de época. */
+                epoch_start_year?: number | null;
+                /** @description true = piezas con alguna alerta de completitud; false = sin alertas. */
+                has_alerts?: boolean | null;
+                /** @description false = piezas sin I. */
+                has_inventory_code?: boolean | null;
+                /** @description Resultados por página (máx. 100). */
                 limit?: number;
-                /** @description Nmero de pgina (desde 1). */
+                /** @description Incluye sub-ubicaciones. */
+                location_id?: string | null;
+                material_id?: string | null;
+                material_term_id?: string | null;
+                /** @description Número de página (desde 1). */
                 page?: number;
-                /** @description Cdigo o texto. */
-                q: string;
-                /** @description Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal. */
+                period_text?: string | null;
+                provenance?: string | null;
+                /** @description Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031). */
+                q?: string | null;
+                sort?: "denomination" | "-denomination" | "created_at" | "-created_at";
+                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
                 tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
+                /** @description true = piezas sueltas. */
+                without_collection?: boolean | null;
             };
             header?: never;
             path?: never;
