@@ -53,6 +53,11 @@ from app.modules.imports.models import (
     RowDecision,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.photos import (
+    detach_photos_from_rows,
+    match_batch_photos,
+    reset_automatic_proposals,
+)
 from app.modules.imports.state import STATUS_LABELS, lock_batch, transition
 from app.modules.imports.worker import Progress, StageWork
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
@@ -128,6 +133,7 @@ def create_batch(
 def clear_rows(session: Session, batch: ImportBatch) -> None:
     """Remove the staging rows of a batch, its extracted images and the pending review links."""
     row_ids = select(ImportRow.id).where(ImportRow.batch_id == batch.id)
+    detach_photos_from_rows(session, batch.id)  # importacion-masiva-fotografias, 3.3
     session.execute(delete(ImportImage).where(ImportImage.batch_id == batch.id))
     session.execute(delete(DuplicateCandidate).where(DuplicateCandidate.import_row_id.in_(row_ids)))
     session.execute(delete(ImportRow).where(ImportRow.batch_id == batch.id))
@@ -228,6 +234,7 @@ def reset_validation(session: Session, batch: ImportBatch, *, reset_counts: bool
             resolution=None,
         )
     )
+    reset_automatic_proposals(session, batch.id)  # importacion-masiva-fotografias, 3.3
     if reset_counts:
         batch.counts = {
             key: value
@@ -457,6 +464,7 @@ def validate_stage() -> StageWork:
             if result.classification == RowClassification.POSSIBLE_DUPLICATE:
                 record_duplicate_candidates(session, row_id, result.similar)
 
+        match_batch_photos(session, batch, ctx.identifier_rules)  # importacion-masiva-fotografias
         batch.counts = {**(batch.counts or {}), **counts}
         session.flush()
         transition(session, batch.id, S.VALIDATED)
