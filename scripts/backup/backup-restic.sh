@@ -22,10 +22,7 @@ KEEP_MONTHLY="${BACKUP_KEEP_MONTHLY:-6}"
 MIRROR_DIR="${BACKUP_MIRROR_DIR:-/opt/matp/backup-mirror}"
 SKIP_OBJECTS="${BACKUP_SKIP_OBJECTS:-0}"
 
-if [[ -f "$MATP_ENV_FILE" ]]; then
-    # shellcheck disable=SC1090
-    set -a && source "$MATP_ENV_FILE" && set +a
-fi
+# lib.sh ya cargó $MATP_ENV_FILE (sin ejecutarlo) antes de leer cualquier valor por defecto.
 
 previous="$(previous_success)"
 
@@ -59,10 +56,7 @@ log_json info database_backed_up ""
 # 2. Almacenamiento de objetos ---------------------------------------------------------------
 if [[ "$SKIP_OBJECTS" != "1" ]]; then
     mkdir -p "$MIRROR_DIR"
-    : "${RCLONE_BIN:=rclone}"
-    if ! "$RCLONE_BIN" sync ":s3:${S3_BUCKET:?}" "$MIRROR_DIR" \
-        --s3-provider Other --s3-endpoint "${S3_ENDPOINT_URL:?}" \
-        --s3-access-key-id "${S3_ACCESS_KEY_ID:?}" --s3-secret-access-key "${S3_SECRET_ACCESS_KEY:?}"; then
+    if ! rclone_sync_bucket "${S3_BUCKET:?}" "$MIRROR_DIR"; then
         fail "no se pudo copiar el bucket al espejo local"
     fi
     if ! restic_cmd backup "$MIRROR_DIR" --tag objects --tag "$(date -u +%Y-%m-%d)"; then

@@ -6,7 +6,8 @@
  * decisiones, resumen y aprobación, bitácora e imágenes. El paso visible sale del estado del lote
  * (`wizardStep`); mientras una etapa corre en el servidor se consulta su avance.
  *
- * El lote en curso se recuerda en la URL (`?lote=`) para poder volver a él.
+ * El lote en curso se recuerda en la URL (`?lote=`) para poder volver a él. Un lote aplicado se
+ * puede revertir desde aquí (tarea 5.2; solo el Administrador).
  *
  * En el paso «Mapeo» se ofrecen primero las plantillas guardadas (change
  * `plantillas-mapeo-y-normalizacion`, tarea 4.1A): las sugeridas por las cabeceras del archivo,
@@ -27,6 +28,7 @@ import {
   ImportRowCard,
   ImportSteps,
   ProgressPanel,
+  RollbackPanel,
   RowFilters,
   UploadPanel,
   type ReviewImage,
@@ -60,12 +62,15 @@ import {
   fetchImportDiffs,
   fetchImportLog,
   isProcessing,
+  revertConflicts,
+  rollbackImportBatch,
   startImportValidation,
   uploadImportFile,
   wizardStep,
   type ImportBatch,
   type ImportDiffs,
   type ImportLog,
+  type RevertConflict,
   type RowClassification,
   type RowDecisionInput,
 } from "@/lib/data/imports";
@@ -107,6 +112,9 @@ export function LiveImportWizard() {
   const [log, setLog] = useState<ImportLog | null>(null);
   const [reload, setReload] = useState(0);
   const [busyImage, setBusyImage] = useState<string | null>(null);
+  // Reversión (RNF-007): conflictos del último intento y su motivo, para la segunda confirmación.
+  const [rollbackConflicts, setRollbackConflicts] = useState<RevertConflict[] | null>(null);
+  const [rollbackReason, setRollbackReason] = useState<string | null>(null);
   // Paso «Mapeo» (4.1A, 4.1B): elegir punto de partida o editar el mapeo.
   const [mappingMode, setMappingMode] = useState<"pick" | "edit">("pick");
   const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
@@ -381,6 +389,28 @@ export function LiveImportWizard() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleRollback(reason: string | null, confirmConflicts: boolean) {
+    // La segunda confirmación (ediciones posteriores) reutiliza el motivo de la primera.
+    const motive = reason ?? rollbackReason;
+    if (!batch || !motive) return;
+    setBusy(true);
+    const result = await rollbackImportBatch(batch.id, motive, confirmConflicts, devUser);
+    setBusy(false);
+    if (result.status !== "ok") {
+      const conflicts = revertConflicts(result);
+      if (conflicts) {
+        setRollbackReason(motive);
+        setRollbackConflicts(conflicts);
+      }
+      return setError(result.message);
+    }
+    setError(null);
+    setRollbackConflicts(null);
+    setRollbackReason(null);
+    setBatch(result.value);
+    setReload((n) => n + 1);
+  }
+
   async function handleAssociate(imageId: string, pieceId: string | null) {
     if (!batch) return;
     setBusyImage(imageId);
@@ -514,6 +544,9 @@ export function LiveImportWizard() {
       )}
 
       {batch && step === 5 && !processing && log && <ImportLogPanel log={log} downloading={busy} onDownload={handleDownload} />}
+      {batch && batch.status === "APPLIED" && !processing && (
+        <RollbackPanel canRevert={hasPermission("imports.revert")} busy={busy} conflicts={rollbackConflicts} onRevert={handleRollback} />
+      )}
       {showRows && (
         <ImageReviewPanel
           images={allImages}
@@ -533,6 +566,8 @@ export function LiveImportWizard() {
             setLog(null);
             setAllImages([]);
             setError(null);
+            setRollbackConflicts(null);
+            setRollbackReason(null);
             resetTemplates();
             router.replace("/importacion");
           }}

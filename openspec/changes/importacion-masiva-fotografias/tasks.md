@@ -8,15 +8,17 @@
 
 ## 2. Subida reanudable y verificación
 
-- [ ] 2.1 `POST /imports/{batch_id}/photos/upload-urls` (tandas de hasta 100, `already_registered` por huella, límite de fotos, 409 si el lote no admite fotos); pruebas: tanda nueva, reanudación sin duplicar, lote aprobado 409, Consulta interna 403 (Req: Fotografías del lote con subida reanudable)
-- [ ] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
+- [x] 2.1 `POST /imports/{batch_id}/photos/upload-urls` (tandas de hasta 100, `already_registered` por huella, límite de fotos, 409 si el lote no admite fotos); pruebas: tanda nueva, reanudación sin duplicar, lote aprobado 409, Consulta interna 403 (Req: Fotografías del lote con subida reanudable)
+- [x] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
+  - Al pasar fotos a `VERIFIED`, la tarea debe llamar a `imports.photos.match_batch_photos` en la misma transacción (es la mitad «al llegar fotos nuevas» de la 3.3).
 - [ ] 2.3 Comando `python -m app.imports.purge_photos` para fotos de lotes abandonados o descartadas tras `IMPORT_PHOTO_RETENTION_DAYS`; prueba de que no toca fotos aplicadas ni de lotes vigentes (Req: Fotografías del lote con subida reanudable; RN-005)
 
 ## 3. Emparejamiento
 
 - [x] 3.1 `app/modules/imports/photo_matching.py`: limpieza de sufijos, extracción de candidatos y normalización con `identification.normalization.normalize`; pruebas unitarias con nombres sintéticos (`I 1234 (2).JPG`, `MMZ045_frontal.jpg`, `1234.0.jpg`, `IMG_20190312.jpg`) (Req: Emparejamiento automático propuesto entre fotos y filas; RF-023)
 - [x] 3.2 Índice del lote y resolución en tres vías (archivo → carpeta → columna `photo_filename` del mapeo), orden natural y `ambiguous`/`unmatched`; pruebas de los cinco escenarios del requirement (Req: Emparejamiento automático propuesto…)
-- [ ] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
+- [x] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
+  - Hecho (2026-10-22): `imports/photos.py` (`match_batch_photos`) y su llamada al final de la etapa de validación, con sus pruebas. La llamada desde la verificación entró con la 2.2 (2026-10-25): `imports/photo_verification.py`, prueba `test_a_photo_verified_after_the_validation_gets_its_row_right_away`.
 - [ ] 3.4 Campo `photo_filename` en `MappingSpec` (coordinar con la célula dueña de `plantillas-mapeo-y-normalizacion`); prueba de mapeo con la columna «Foto» (Req: Emparejamiento automático propuesto… — escenario «Columna de archivo definida en el mapeo»)
 
 ## 4. Bandeja y previsualización
@@ -46,5 +48,6 @@
 - [ ] 7.2 Verificación en contenedores contra PostgreSQL y MinIO (`npm run dev`, `migrate`, `seed`): subida real con CORS y URL prefirmada, aplicación y reversión de un lote con fotos; medir el tiempo de derivados para 1 000 fotos y registrarlo en el PR (requiere Docker)
 - [ ] 7.3 OpenAPI: añadir las operaciones `/imports/{batch_id}/photos…` y registrarlas como operaciones añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` y la prueba de conformidad en verde
 - [ ] 7.4 Manual de usuario: sección «Importar fotografías con el Excel» en `docs/manual-usuario/` (cómo nombrar archivos o carpetas, reanudar, bandeja) y nota de cuota en `docs/despliegue/almacenamiento.md`
+  - Explicar en el manual (2026-10-22, desde la 3.3): si se vuelve a cargar el Excel del lote (reingesta), las asignaciones manuales de fotos a filas se pierden, porque esas filas dejan de existir, y las fotos vuelven a proponerse al validar. Las fotos desasignadas o descartadas a mano se mantienen.
 - [ ] 7.5 Con la célula Importación, `/opsx:update importacion-pipeline-reconciliacion` para marcar la D8 como caso secundario que alimenta `import_photo` con `match_source=embedded`; `openspec validate --all --strict` en verde
 - [ ] 7.6 `npm test`, `npm run lint` y `openspec validate importacion-masiva-fotografias --strict` en verde y, tras aprobar el PR, `openspec archive importacion-masiva-fotografias -y`

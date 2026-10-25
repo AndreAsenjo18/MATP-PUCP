@@ -22,11 +22,9 @@ from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
     CHANGE_AI_EXTRACTION,
-    CHANGE_AUDIT,
     CHANGE_BULK,
     implemented,
     not_implemented,
-    page_example,
     stub,
 )
 from app.core.errors import NotFound
@@ -660,15 +658,30 @@ def get_sensitive_access(
     "/audit-logs/pieces/{piece_id}",
     response_model=Page[AuditEntryOut],
     summary="Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)",
+    description=(
+        "Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos "
+        "datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos "
+        "sensibles se enmascaran según el rol)."
+    ),
     tags=["Auditoría"],
-    **stub(CHANGE_AUDIT),
+    **implemented(),
 )
 def get_piece_audit_timeline(
     piece_id: uuid.UUID,
+    session: SessionDep,
     user: AuditReader,
     params: Annotated[PageParams, Depends(page_params)],
 ) -> Page[AuditEntryOut]:
-    raise not_implemented(CHANGE_AUDIT, page_example(AuditEntryOut))
+    items, total = list_entries(
+        session,
+        AuditFilters(entity_type="piece", entity_id=piece_id),
+        permissions=user.permissions,
+        limit=params.page_size,
+        offset=params.offset,
+    )
+    return Page[AuditEntryOut](
+        items=items, total=total, page=params.page, page_size=params.page_size
+    )
 
 
 @router.post(

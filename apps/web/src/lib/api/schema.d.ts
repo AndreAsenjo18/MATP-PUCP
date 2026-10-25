@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 06d9286388400c89a3edf147d1c69743c0bf0df655172439b3980779a530c785
+ * openapi-sha256: f441c753c3b14f27fa4d54cdb8a43cce4a030784c938f150036cd8c21d8d372b
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -153,7 +153,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040) */
+        /**
+         * Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)
+         * @description Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos sensibles se enmascaran según el rol).
+         */
         get: operations["getPieceAuditTimeline"];
         put?: never;
         post?: never;
@@ -809,6 +812,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/imports/{batch_id}/photos/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fotografías del lote: avisar qué archivos terminaron de subirse
+         * @description Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).
+         */
+        post: operations["completeImportPhotoUploads"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/upload-urls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fotografías del lote: pedir las URL de subida de una tanda
+         * @description Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como `rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).
+         */
+        post: operations["requestImportPhotoUploadUrls"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports/{batch_id}/rollback": {
         parameters: {
             query?: never;
@@ -818,7 +861,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revertir un lote aplicado (RNF-007) */
+        /**
+         * Revertir un lote aplicado (RNF-007)
+         * @description Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos actualizados recuperan su valor anterior y los datos de origen se conservan como historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].
+         */
         post: operations["rollbackImportBatch"];
         delete?: never;
         options?: never;
@@ -4089,6 +4135,12 @@ export interface components {
             target_piece_id: string | null;
         };
         /**
+         * ImportPhotoStatus
+         * @description Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2).
+         * @enum {string}
+         */
+        ImportPhotoStatus: "PENDING_UPLOAD" | "UPLOADED" | "VERIFIED" | "REJECTED" | "DISCARDED" | "APPLIED";
+        /**
          * ImportRowOut
          * @example {
          *       "action": "UPDATE",
@@ -5320,6 +5372,134 @@ export interface components {
             /** Description */
             description: string;
         };
+        /** PhotoCompleteOut */
+        PhotoCompleteOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Photos */
+            photos: components["schemas"]["PhotoStateOut"][];
+        };
+        /** PhotoCompleteRequest */
+        PhotoCompleteRequest: {
+            /**
+             * Photo Ids
+             * @description Fotos cuyo archivo ya se subió (hasta 100).
+             */
+            photo_ids: string[];
+        };
+        /** PhotoFileIn */
+        PhotoFileIn: {
+            /**
+             * Content Sha256
+             * @description Huella SHA-256 calculada en el navegador.
+             */
+            content_sha256: string;
+            /**
+             * Content Type
+             * @description Tipo MIME declarado.
+             */
+            content_type: string;
+            /**
+             * Relative Path
+             * @description Carpeta y nombre del archivo tal como los lista el navegador.
+             */
+            relative_path: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** PhotoStateOut */
+        PhotoStateOut: {
+            /**
+             * Photo Id
+             * Format: uuid
+             */
+            photo_id: string;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** @description `UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina. */
+            status: components["schemas"]["ImportPhotoStatus"];
+        };
+        /** PhotoUploadItemOut */
+        PhotoUploadItemOut: {
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Headers */
+            headers?: {
+                [key: string]: string;
+            } | null;
+            /** Method */
+            method?: string | null;
+            /** Photo Id */
+            photo_id?: string | null;
+            photo_status?: components["schemas"]["ImportPhotoStatus"] | null;
+            /** Reason */
+            reason?: string | null;
+            /** Relative Path */
+            relative_path: string;
+            /**
+             * Result
+             * @description `upload`: subir con `upload_url`; `already_registered`: la huella ya está en el lote y no se sube otra vez; `rejected`: tipo o tamaño no admitido (`reason`).
+             * @enum {string}
+             */
+            result: "upload" | "already_registered" | "rejected";
+            /** Upload Url */
+            upload_url?: string | null;
+        };
+        /**
+         * PhotoUploadUrlsOut
+         * @example {
+         *       "batch_id": "01920000-0000-7000-8000-000000000601",
+         *       "items": [
+         *         {
+         *           "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+         *           "expires_at": "2026-09-17T10:30:00Z",
+         *           "headers": {
+         *             "Content-Type": "image/jpeg"
+         *           },
+         *           "method": "PUT",
+         *           "photo_id": "01920000-0000-7000-8000-000000000701",
+         *           "photo_status": "PENDING_UPLOAD",
+         *           "relative_path": "MMZ 045/DSC_0001.jpg",
+         *           "result": "upload",
+         *           "upload_url": "https://almacenamiento.example/media/..."
+         *         }
+         *       ]
+         *     }
+         */
+        PhotoUploadUrlsOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Items */
+            items: components["schemas"]["PhotoUploadItemOut"][];
+        };
+        /**
+         * PhotoUploadUrlsRequest
+         * @example {
+         *       "files": [
+         *         {
+         *           "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+         *           "content_type": "image/jpeg",
+         *           "relative_path": "MMZ 045/DSC_0001.jpg",
+         *           "size_bytes": 4200000
+         *         }
+         *       ]
+         *     }
+         */
+        PhotoUploadUrlsRequest: {
+            /**
+             * Files
+             * @description Hasta 100.
+             */
+            files: components["schemas"]["PhotoFileIn"][];
+        };
         /**
          * PieceAlert
          * @example {
@@ -6219,6 +6399,12 @@ export interface components {
         };
         /** RevertRequest */
         RevertRequest: {
+            /**
+             * Confirm Conflicts
+             * @description Revertir también los campos editados después de aplicar el lote. Sin esta confirmación, una edición posterior responde 409 `revert_has_conflicts` con la lista de conflictos (design D7).
+             * @default false
+             */
+            confirm_conflicts: boolean;
             /** Reason */
             reason: string;
         };
@@ -7673,15 +7859,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -10043,6 +10220,148 @@ export interface operations {
             };
         };
     };
+    completeImportPhotoUploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoCompleteOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote ya no admite fotos (está aprobado). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    requestImportPhotoUploadUrls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoUploadUrlsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoUploadUrlsOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote ya no admite fotos (está aprobado). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     rollbackImportBatch: {
         parameters: {
             query?: never;
@@ -10085,8 +10404,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10094,13 +10413,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`. */
-            501: {
+            /** @description `invalid_batch_transition` (el lote no está aplicado), `already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir con `confirm_conflicts=true` tras revisar la lista). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

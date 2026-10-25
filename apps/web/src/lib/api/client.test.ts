@@ -79,18 +79,18 @@ describe("createApiClient", () => {
           code: "not_implemented",
           message: "Operación del contrato aún no implementada.",
           details: {},
-          change: "importacion-pipeline-reconciliacion",
+          change: "ia-extraccion-texto-libre",
           example: null,
         }),
     });
 
-    const { error } = await client.POST("/api/v1/imports/{batch_id}/rollback", {
-      params: { path: { batch_id: "01920000-0000-7000-8000-000000000601" } },
-      body: { reason: "Lote sintético" },
+    const { error } = await client.POST("/api/v1/ai/suggestions/{suggestion_id}/reject", {
+      params: { path: { suggestion_id: "01920000-0000-7000-8000-000000000601" } },
+      body: { reason: "Sugerencia sintética" },
     });
 
     expect(isNotImplemented(error)).toBe(true);
-    expect(apiErrorMessage(error)).toContain("importacion-pipeline-reconciliacion");
+    expect(apiErrorMessage(error)).toContain("ia-extraccion-texto-libre");
   });
 
   it("falls back to a generic message for unknown errors", () => {

@@ -13,10 +13,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 SUBSET="${BACKUP_CHECK_SUBSET:-5%}"
 
-if [[ -f "$MATP_ENV_FILE" ]]; then
-    # shellcheck disable=SC1090
-    set -a && source "$MATP_ENV_FILE" && set +a
-fi
+# lib.sh ya cargó $MATP_ENV_FILE (sin ejecutarlo) antes de leer cualquier valor por defecto.
 
 require_backup_env || { notify "no se pudo verificar los respaldos: faltan variables o la clave."; exit 1; }
 

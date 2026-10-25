@@ -1,8 +1,8 @@
 """Import reconciliation pipeline (importacion-datos; RF-021..RF-029).
 
 Implemented by ``importacion-pipeline-reconciliacion``: ingestion, mapping, validation and
-preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3) and embedded images (5.1).
-Rollback stays a stub until the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
+preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3), embedded images (5.1) and
+rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 """
 
 import logging
@@ -28,14 +28,13 @@ from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
-    CHANGE_IMPORTS,
     CHANGE_TEMPLATES,
     implemented,
-    not_implemented,
-    stub,
 )
+from app.core import jobs
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
+from app.modules.audit.context import require_audit_context
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
@@ -61,6 +60,14 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.photo_upload import (
+    DeclaredPhoto,
+    PhotoLimits,
+    complete_uploads,
+    request_upload_urls,
+)
+from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
+from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
@@ -76,6 +83,12 @@ from app.modules.imports.schemas import (
     MappingTemplateCreate,
     MappingTemplateOut,
     MappingTemplateUpdate,
+    PhotoCompleteOut,
+    PhotoCompleteRequest,
+    PhotoStateOut,
+    PhotoUploadItemOut,
+    PhotoUploadUrlsOut,
+    PhotoUploadUrlsRequest,
     RevertRequest,
     RowDecisionRequest,
     TemplateDryRunOut,
@@ -572,16 +585,105 @@ def associate_import_image(
     return ImportImageOut.from_image(image, _preview_url(storage, image))
 
 
+PHOTOS_CONFLICT = {
+    409: {"model": ErrorResponse, "description": "El lote ya no admite fotos (está aprobado)."}
+}
+
+
+@router.post(
+    "/imports/{batch_id}/photos/upload-urls",
+    response_model=PhotoUploadUrlsOut,
+    responses={**NOT_FOUND, **PHOTOS_CONFLICT},
+    summary="Fotografías del lote: pedir las URL de subida de una tanda",
+    description="Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL "
+    "prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el "
+    "lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar "
+    "la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como "
+    "`rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).",
+    **implemented(),
+)
+def request_import_photo_upload_urls(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: PhotoUploadUrlsRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoUploadUrlsOut:
+    writer(session, user)
+    files = [DeclaredPhoto(**file.model_dump()) for file in body.files]
+    items = request_upload_urls(
+        session,
+        request.app.state.storage,
+        batch_id,
+        files,
+        PhotoLimits.from_settings(request.app.state.settings),
+    )
+    session.commit()
+    return PhotoUploadUrlsOut(
+        batch_id=batch_id, items=[PhotoUploadItemOut.from_item(item) for item in items]
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/photos/complete",
+    response_model=PhotoCompleteOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={**NOT_FOUND, **PHOTOS_CONFLICT},
+    summary="Fotografías del lote: avisar qué archivos terminaron de subirse",
+    description="Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el "
+    "tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su "
+    "copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone "
+    "una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, "
+    "diseño D2).",
+    **implemented(),
+)
+def complete_import_photo_uploads(
+    batch_id: uuid.UUID,
+    body: PhotoCompleteRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoCompleteOut:
+    writer(session, user)
+    photos = complete_uploads(session, batch_id, body.photo_ids)
+    session.commit()
+    jobs.notify(PHOTO_QUEUE)
+    return PhotoCompleteOut(
+        batch_id=batch_id, photos=[PhotoStateOut.from_photo(photo) for photo in photos]
+    )
+
+
 @router.post(
     "/imports/{batch_id}/rollback",
     response_model=ImportBatchOut,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`invalid_batch_transition` (el lote no está aplicado), "
+            "`already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir "
+            "con `confirm_conflicts=true` tras revisar la lista).",
+        },
+    },
     summary="Revertir un lote aplicado (RNF-007)",
-    **stub(CHANGE_IMPORTS),
+    description="Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las "
+    "piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos "
+    "actualizados recuperan su valor anterior y los datos de origen se conservan como "
+    "historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].",
+    **implemented(),
 )
 def rollback_import_batch(
-    batch_id: uuid.UUID, body: RevertRequest, user: Reverter
+    batch_id: uuid.UUID, body: RevertRequest, session: SessionDep, user: Reverter
 ) -> ImportBatchOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
+    writer(session, user, reason=body.reason)
+    result = rollback_batch(
+        session,
+        batch_id,
+        require_audit_context(session),
+        confirm_conflicts=body.confirm_conflicts,
+        permissions=user.permissions,
+    )
+    session.commit()
+    return batch_out(session, result.batch)
 
 
 TEMPLATE_NOT_FOUND = {
