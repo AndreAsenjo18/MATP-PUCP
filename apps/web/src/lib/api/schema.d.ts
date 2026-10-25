@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 49ade3380c5c1d3233e2da86019f69e0a44d6c2e2a9972e1ccd4df80a32a743a
+ * openapi-sha256: 1889fc2d0503466fbfc345fe4360807ff915558d5f064c42f6921f37ac14cf83
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -153,7 +153,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040) */
+        /**
+         * Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)
+         * @description Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos sensibles se enmascaran según el rol).
+         */
         get: operations["getPieceAuditTimeline"];
         put?: never;
         post?: never;
@@ -7632,15 +7635,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
