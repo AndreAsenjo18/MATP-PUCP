@@ -5,14 +5,16 @@
  * tipos de identificador (parametrizables, RN-010), ubicaciones (RF-016), papelera con
  * restauración (RN-005) y consulta global de auditoría con exportación a CSV (RF-040, RF-041);
  * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`. Plantillas de mapeo
- * (tarea 4.2 de `plantillas-mapeo-y-normalizacion`, solo en modo `live`); se abre directamente con
- * `?pestana=plantillas`.
+ * y normalización (marcadores de ausencia, separadores y siglas históricas): tarea 4.2 de
+ * `plantillas-mapeo-y-normalizacion`, solo en modo `live`; se abren directamente con
+ * `?pestana=plantillas` y `?pestana=normalizacion`.
  */
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin";
+import { NormalizationLive } from "@/components/domain/NormalizationAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { TrashPanel } from "@/components/domain/TrashPanel";
 import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
@@ -182,11 +184,11 @@ function UbicacionesLive() {
   );
 }
 
-const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Papelera", "Auditoría"] as const;
+const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Normalización", "Papelera", "Auditoría"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Pestañas que se abren por URL (`/administracion?pestana=plantillas`). */
-const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo" };
+const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo", normalizacion: "Normalización" };
 
 function LiveOnlyNotice() {
   return (
@@ -398,6 +400,17 @@ function AdministracionContent() {
           )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar plantillas de mapeo.</PermissionNotice>
+        ))}
+
+      {tab === "Normalización" &&
+        (hasPermission("vocabularies.manage") ? (
+          getApiMode() === "live" ? (
+            <NormalizationLive />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para administrar los parámetros de normalización.</PermissionNotice>
         ))}
 
       {tab === "Papelera" &&
