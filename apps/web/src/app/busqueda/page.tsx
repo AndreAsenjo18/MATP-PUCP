@@ -3,19 +3,24 @@
 /**
  * Pantalla 3 — Búsqueda: barra única que acepta cualquier código (vigente o histórico,
  * normalizado o tal como está escrito) o denominación (RF-031), filtros combinados en AND
- * (RF-032) y exportación de resultados a Excel (RF-036).
+ * (RF-032) y exportación de resultados a Excel (RF-036). En modo `live`, `SearchLive` usa `GET /search`
+ * con el filtro único, las exportaciones reales y «Mis exportaciones» (change
+ * `busqueda-avanzada-y-exportacion`, tareas 4.1 y 4.2).
  */
 import { Eraser, FileSpreadsheet, Plus, SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
+import { SearchLive } from "@/components/domain/SearchLive";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
+import { getApiMode } from "@/lib/data/mode";
+import { EMPTY_FILTERS } from "@/lib/data/search";
 import { alertsForPiece, COLLECTIONS, getPieceDetail, listPieces, termsByVocabulary } from "@/lib/fixtures";
 import Link from "next/link";
 
@@ -176,11 +181,19 @@ function FilterSelect({
   );
 }
 
+function BusquedaSwitch() {
+  const searchParams = useSearchParams();
+  if (getApiMode() !== "live") return <BusquedaContent />;
+  // El enlace del tablero «Piezas incompletas» llega con `?incompleteOnly=1`.
+  const incompleteOnly = searchParams.get("incompleteOnly") === "1";
+  return <SearchLive initialFilters={{ ...EMPTY_FILTERS, hasAlerts: incompleteOnly ? true : null }} />;
+}
+
 export default function BusquedaPage() {
   return (
     <RequireSession>
       <Suspense fallback={null}>
-        <BusquedaContent />
+        <BusquedaSwitch />
       </Suspense>
     </RequireSession>
   );
