@@ -2423,6 +2423,146 @@
         "title": "ConflictReason",
         "type": "string"
       },
+      "ConservationAssessmentCreate": {
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior a la más reciente se agrega al historial sin cambiar el estado actual.",
+            "title": "Assessed At"
+          },
+          "assessed_by_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Responsable de la evaluación, si no es el usuario.",
+            "title": "Assessed By Label"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "status_term_id": {
+            "description": "Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es).",
+            "format": "uuid",
+            "title": "Status Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_term_id"
+        ],
+        "title": "ConservationAssessmentCreate",
+        "type": "object"
+      },
+      "ConservationAssessmentOut": {
+        "examples": [
+          {
+            "assessed_at": "2026-09-17T10:30:00Z",
+            "assessed_by_label": "Especialista de Conservación (sintético)",
+            "id": "01920000-0000-7000-8000-000000000121",
+            "is_current": true,
+            "notes": "Desprendimiento leve de pintura en la base.",
+            "piece_id": "01920000-0000-7000-8000-000000000101",
+            "status": {
+              "code": "REGULAR",
+              "id": "01920000-0000-7000-8000-000000000301",
+              "label": "Regular"
+            }
+          }
+        ],
+        "properties": {
+          "assessed_at": {
+            "format": "date-time",
+            "title": "Assessed At",
+            "type": "string"
+          },
+          "assessed_by_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed By Label"
+          },
+          "assessed_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed By User Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "description": "Es la evaluación más reciente por fecha: define el estado actual.",
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TermRef"
+          }
+        },
+        "required": [
+          "id",
+          "piece_id",
+          "status",
+          "assessed_at",
+          "assessed_by_user_id",
+          "assessed_by_label",
+          "notes",
+          "is_current"
+        ],
+        "title": "ConservationAssessmentOut",
+        "type": "object"
+      },
       "DashboardHistory": {
         "examples": [
           {
@@ -18412,6 +18552,181 @@
         ],
         "x-change": "ficha-pieza-crud",
         "x-status": "stub"
+      }
+    },
+    "/api/v1/pieces/{piece_id}/conservation-assessments": {
+      "get": {
+        "operationId": "listConservationAssessments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConservationAssessmentOut"
+                  },
+                  "title": "Response Listconservationassessments",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Historial de evaluaciones de conservación, la más reciente primero (RF-012)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "description": "El estado actual de la pieza pasa a ser el de la evaluación con fecha más reciente: una evaluación antigua registrada hoy se agrega al historial sin cambiarlo. Un término inactivo o de otro vocabulario responde 422 con los términos activos. Devuelve el historial completo.",
+        "operationId": "createConservationAssessment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConservationAssessmentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConservationAssessmentOut"
+                  },
+                  "title": "Response Createconservationassessment",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Registrar una evaluación de conservación (RF-012, solo inserción)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers": {

@@ -87,6 +87,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `GET /vocabularies*`, `POST /vocabularies/{code}/terms`, … | RN-010: vocabularios parametrizables (materiales, técnicas, tipos de vista) |
 | `GET /identifier-types`, `POST /identifiers/normalize` | RF-023, RN-010: tipos de identificador y normalizador como datos |
 | `POST /identifier-types`, `PATCH /identifier-types/{code}`, `POST /identifier-types/{code}/normalization-preview` | RN-010, RF-023, RN-002: alta y edición de tipos de identificador, con los tipos del sistema protegidos y el cambio de regla de normalización ligado a una vista previa del impacto (`colecciones-y-vocabularios-admin`, tareas 2.2 a 2.4, diseño D1 y D2) |
+| `GET`/`POST /pieces/{id}/conservation-assessments` | RF-012, RN-005: historial de evaluaciones de conservación de solo inserción; el estado actual es el de la evaluación más reciente por fecha (`colecciones-y-vocabularios-admin`, tarea 3.1, diseño D3) |
 | `POST /pieces/{id}/restore`, `POST /pieces/validate` | RN-005 (restaurar en lugar de borrar) y RF-043 (validación en tiempo real) |
 | `POST /pieces/{id}/identifiers/{id}/correction` | RN-002: corrección auditada del código I, en lugar de borrarlo |
 | `PUT /imports/{batch_id}/mapping`, `GET`/`POST /import-templates` | RF-022: plantillas de mapeo reutilizables; el mapeo de un lote acepta una plantilla guardada, transformaciones por columna y correspondencias con términos (`plantillas-mapeo-y-normalizacion`, tareas 3.1 y 3.5, diseño D1) |

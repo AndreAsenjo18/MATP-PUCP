@@ -11,11 +11,11 @@
 
 ## 3. Conservación
 
-- [ ] 3.1 Implementar `GET`/`POST /api/v1/pieces/{piece_id}/conservation-assessments` (permiso `conservation.assess`, estado actual por `assessed_at`); pruebas de los tres escenarios (Req: Historial de evaluaciones de conservación por API; RF-012)
+- [x] 3.1 Implementar `GET`/`POST /api/v1/pieces/{piece_id}/conservation-assessments` (permiso `conservation.assess`, estado actual por `assessed_at`); pruebas de los tres escenarios (Req: Historial de evaluaciones de conservación por API; RF-012) — hecho el 2026-10-25 en `app/modules/catalog/conservation.py`; el `POST` devuelve el historial completo con `is_current`; pruebas en `tests/api/test_api_conservation_assessments.py`
 
 ## 4. Precarga de vocabularios
 
-- [ ] 4.1 Crear `app/seed/vocabularies/__main__.py` (`--dry-run` por defecto, `--apply`), CSV sintético de ejemplo marcado `[SUPUESTO]` y script `npm run vocabularies:load`; pruebas: informe sin escritura, idempotencia, término ausente conservado, columnas incorrectas (Req: Precarga idempotente de vocabularios desde archivo; RF-011)
+- [x] 4.1 Crear `app/seed/vocabularies/__main__.py` (`--dry-run` por defecto, `--apply`), CSV sintético de ejemplo marcado `[SUPUESTO]` y script `npm run vocabularies:load`; pruebas: informe sin escritura, idempotencia, término ausente conservado, columnas incorrectas (Req: Precarga idempotente de vocabularios desde archivo; RF-011) — hecho el 2026-10-25 en `app/seed/vocabularies/`; CSV de ejemplo en `data/fixtures/vocabularios_sinteticos.csv`; una celda vacía no borra el valor guardado; pruebas en `tests/api/test_vocabulary_preload.py`
 
 ## 5. Frontend
 

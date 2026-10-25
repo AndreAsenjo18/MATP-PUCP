@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: e2891f730a892271c23d9ad2fb382d75356102416d5982d6a5256b3ef4eff1b2
+ * openapi-sha256: 06d9286388400c89a3edf147d1c69743c0bf0df655172439b3980779a530c785
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1155,6 +1155,27 @@ export interface paths {
         put?: never;
         /** Asociar una pieza existente como componente de un conjunto (RF-009) */
         post: operations["addPieceChild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pieces/{piece_id}/conservation-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historial de evaluaciones de conservación, la más reciente primero (RF-012) */
+        get: operations["listConservationAssessments"];
+        put?: never;
+        /**
+         * Registrar una evaluación de conservación (RF-012, solo inserción)
+         * @description El estado actual de la pieza pasa a ser el de la evaluación con fecha más reciente: una evaluación antigua registrada hoy se agrega al historial sin cambiarlo. Un término inactivo o de otro vocabulario responde 422 con los términos activos. Devuelve el historial completo.
+         */
+        post: operations["createConservationAssessment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3004,6 +3025,72 @@ export interface components {
          * @enum {string}
          */
         ConflictReason: "changed_after" | "entity_missing" | "already_deleted" | "not_deleted" | "no_soft_delete";
+        /** ConservationAssessmentCreate */
+        ConservationAssessmentCreate: {
+            /**
+             * Assessed At
+             * @description Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior a la más reciente se agrega al historial sin cambiar el estado actual.
+             */
+            assessed_at?: string | null;
+            /**
+             * Assessed By Label
+             * @description Responsable de la evaluación, si no es el usuario.
+             */
+            assessed_by_label?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Status Term Id
+             * Format: uuid
+             * @description Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es).
+             */
+            status_term_id: string;
+        };
+        /**
+         * ConservationAssessmentOut
+         * @example {
+         *       "assessed_at": "2026-09-17T10:30:00Z",
+         *       "assessed_by_label": "Especialista de Conservación (sintético)",
+         *       "id": "01920000-0000-7000-8000-000000000121",
+         *       "is_current": true,
+         *       "notes": "Desprendimiento leve de pintura en la base.",
+         *       "piece_id": "01920000-0000-7000-8000-000000000101",
+         *       "status": {
+         *         "code": "REGULAR",
+         *         "id": "01920000-0000-7000-8000-000000000301",
+         *         "label": "Regular"
+         *       }
+         *     }
+         */
+        ConservationAssessmentOut: {
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
+            /** Assessed By Label */
+            assessed_by_label: string | null;
+            /** Assessed By User Id */
+            assessed_by_user_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Is Current
+             * @description Es la evaluación más reciente por fecha: define el estado actual.
+             */
+            is_current: boolean;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            status: components["schemas"]["TermRef"];
+        };
         /**
          * DashboardHistory
          * @example {
@@ -11537,6 +11624,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    listConservationAssessments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConservationAssessmentOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createConservationAssessment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConservationAssessmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConservationAssessmentOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
