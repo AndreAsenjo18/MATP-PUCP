@@ -548,6 +548,12 @@ class ImportLog(BaseModel):
 
 class RevertRequest(BaseModel):
     reason: str = Field(min_length=3)
+    confirm_conflicts: bool = Field(
+        default=False,
+        description="Revertir también los campos editados después de aplicar el lote. Sin "
+        "esta confirmación, una edición posterior responde 409 `revert_has_conflicts` con la "
+        "lista de conflictos (design D7).",
+    )
 
 
 class MappingTemplateOut(BaseModel):

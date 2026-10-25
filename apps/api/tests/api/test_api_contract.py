@@ -167,15 +167,15 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
 def test_stub_over_http_returns_501_with_change_and_example(login_as: LoginAs) -> None:
     client = login_as("ADMIN")
     response = client.post(
-        f"/api/v1/imports/{uuid.uuid4()}/rollback",
-        json={"reason": "Lote sintético"},
+        f"/api/v1/ai/suggestions/{uuid.uuid4()}/reject",
+        json={"reason": "Sugerencia sintética"},
     )
     assert response.status_code == 501
     body = response.json()
     assert body["code"] == "not_implemented"
-    assert body["change"] == "importacion-pipeline-reconciliacion"
-    assert "importacion-pipeline-reconciliacion" in body["message"]
-    assert body["example"]["status"] == "IN_PREVIEW"
+    assert body["change"] == "ia-extraccion-texto-libre"
+    assert "ia-extraccion-texto-libre" in body["message"]
+    assert body["example"]["status"] == "PENDING"
 
 
 def test_stub_still_requires_identity(client: TestClient) -> None:
