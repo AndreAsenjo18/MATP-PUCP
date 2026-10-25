@@ -3726,6 +3726,7 @@
             "allowed_for_temporary_loan": false,
             "code": "I",
             "is_active": true,
+            "is_system": true,
             "is_unique_when_current": true,
             "label": "Código de inventario general (I)",
             "locks_on_assignment": true,
@@ -3756,6 +3757,12 @@
           },
           "is_active": {
             "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "description": "Tipo del sistema (I, COLECCION): solo cambian etiqueta, descripción y orden.",
+            "title": "Is System",
             "type": "boolean"
           },
           "is_unique_when_current": {
@@ -3799,6 +3806,30 @@
       },
       "IdentifierTypeUpdate": {
         "properties": {
+          "allowed_for_temporary_loan": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Las reglas estructurales no cambian en un tipo del sistema (409 `system_identifier_type`).",
+            "title": "Allowed For Temporary Loan"
+          },
+          "confirm_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Huella de la vista previa del cambio de regla que se confirma.",
+            "title": "Confirm Token"
+          },
           "description": {
             "anyOf": [
               {
@@ -3821,6 +3852,17 @@
             ],
             "title": "Is Active"
           },
+          "is_unique_when_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Unique When Current"
+          },
           "label": {
             "anyOf": [
               {
@@ -3833,6 +3875,39 @@
               }
             ],
             "title": "Label"
+          },
+          "locks_on_assignment": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locks On Assignment"
+          },
+          "normalization_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NormalizationRule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si el tipo ya tiene identificadores, exige `confirm_token` de `normalization-preview` (409 `normalization_change_requires_preview`)."
+          },
+          "owned_pieces_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owned Pieces Only"
           },
           "sort_order": {
             "anyOf": [
@@ -6370,6 +6445,138 @@
         "title": "MovementType",
         "type": "string"
       },
+      "NormalizationCollisionOut": {
+        "properties": {
+          "normalized_value": {
+            "title": "Normalized Value",
+            "type": "string"
+          },
+          "piece_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Piece Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "normalized_value",
+          "piece_ids"
+        ],
+        "title": "NormalizationCollisionOut",
+        "type": "object"
+      },
+      "NormalizationPreviewOut": {
+        "examples": [
+          {
+            "can_confirm": true,
+            "changed_count": 120,
+            "changed_examples": [],
+            "collisions": [],
+            "confirm_token": "9f2c000000000000000000000000000000000000000000000000000000000000",
+            "current_rule": "GENERIC",
+            "notes": [],
+            "proposed_rule": "INC_RN",
+            "total_identifiers": 140,
+            "type_code": "PUCP",
+            "unparseable_count": 3,
+            "unparseable_examples": []
+          }
+        ],
+        "properties": {
+          "can_confirm": {
+            "title": "Can Confirm",
+            "type": "boolean"
+          },
+          "changed_count": {
+            "description": "Identificadores cuyo valor normalizado cambia.",
+            "title": "Changed Count",
+            "type": "integer"
+          },
+          "changed_examples": {
+            "items": {
+              "$ref": "#/components/schemas/RecalculatedIdentifierOut"
+            },
+            "title": "Changed Examples",
+            "type": "array"
+          },
+          "collisions": {
+            "description": "Mismo código vigente en piezas distintas: impiden confirmar (RN-002).",
+            "items": {
+              "$ref": "#/components/schemas/NormalizationCollisionOut"
+            },
+            "title": "Collisions",
+            "type": "array"
+          },
+          "confirm_token": {
+            "description": "Se envía en el `PATCH` para confirmar este informe.",
+            "title": "Confirm Token",
+            "type": "string"
+          },
+          "current_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "proposed_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          },
+          "total_identifiers": {
+            "title": "Total Identifiers",
+            "type": "integer"
+          },
+          "type_code": {
+            "title": "Type Code",
+            "type": "string"
+          },
+          "unparseable_count": {
+            "description": "Valores que dejan de ser normalizables.",
+            "title": "Unparseable Count",
+            "type": "integer"
+          },
+          "unparseable_examples": {
+            "items": {
+              "$ref": "#/components/schemas/RecalculatedIdentifierOut"
+            },
+            "title": "Unparseable Examples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type_code",
+          "current_rule",
+          "proposed_rule",
+          "total_identifiers",
+          "changed_count",
+          "unparseable_count",
+          "collisions",
+          "changed_examples",
+          "unparseable_examples",
+          "can_confirm",
+          "confirm_token",
+          "notes"
+        ],
+        "title": "NormalizationPreviewOut",
+        "type": "object"
+      },
+      "NormalizationPreviewRequest": {
+        "properties": {
+          "normalization_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          }
+        },
+        "required": [
+          "normalization_rule"
+        ],
+        "title": "NormalizationPreviewRequest",
+        "type": "object"
+      },
       "NormalizationRule": {
         "enum": [
           "INVENTORY",
@@ -8596,6 +8803,55 @@
         ],
         "title": "QualityJobType",
         "type": "string"
+      },
+      "RecalculatedIdentifierOut": {
+        "properties": {
+          "identifier_id": {
+            "format": "uuid",
+            "title": "Identifier Id",
+            "type": "string"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "proposed_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Value"
+          }
+        },
+        "required": [
+          "identifier_id",
+          "piece_id",
+          "original_value",
+          "normalized_value",
+          "proposed_value"
+        ],
+        "title": "RecalculatedIdentifierOut",
+        "type": "object"
       },
       "ReportOut": {
         "examples": [
@@ -13831,6 +14087,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Queda disponible al instante para registrar identificadores y en las plantillas de mapeo. La regla de normalización se elige entre las implementadas; otra responde 422 con las reglas disponibles.",
         "operationId": "createIdentifierType",
         "requestBody": {
           "content": {
@@ -13873,6 +14130,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicto con el estado actual."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13882,16 +14149,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -13899,16 +14156,16 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Crear un tipo de identificador",
+        "summary": "Crear un tipo de identificador (RN-010)",
         "tags": [
           "Identificadores"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifier-types/{type_code}": {
       "patch": {
+        "description": "Los tipos del sistema (I, COLECCION) solo cambian etiqueta, descripción y orden. Cambiar la regla de normalización de un tipo con identificadores exige el `confirm_token` de `normalization-preview`; los valores normalizados se recalculan en una transacción auditada con origen «sistema» y los originales no cambian.",
         "operationId": "updateIdentifierType",
         "parameters": [
           {
@@ -13962,6 +14219,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`system_identifier_type` (regla estructural de un tipo del sistema), `normalization_change_requires_preview` (falta la vista previa o los datos cambiaron desde entonces) o `normalization_collision` (RN-002)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13971,16 +14248,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -13992,8 +14259,96 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/identifier-types/{type_code}/normalization-preview": {
+      "post": {
+        "description": "No escribe nada. Informa cuántos valores normalizados cambiarían, cuáles dejan de ser normalizables y las colisiones de códigos vigentes entre piezas distintas, con el `confirm_token` que exige la confirmación.",
+        "operationId": "previewIdentifierTypeNormalization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type_code",
+            "required": true,
+            "schema": {
+              "title": "Type Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizationPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o fue eliminado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Vista previa del cambio de regla de normalización (RF-023, RNF-007)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifiers/normalize": {
@@ -21582,6 +21937,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "El código no se repite, ni siquiera con vocabularios eliminados (409 `vocabulary_exists`). Lo administran el Gestor de colecciones y el Administrador [SUPUESTO B7].",
         "operationId": "createVocabulary",
         "requestBody": {
           "content": {
@@ -21624,6 +21980,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicto con el estado actual."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -21633,16 +21999,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -21650,12 +22006,11 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Crear un vocabulario nuevo",
+        "summary": "Crear un vocabulario nuevo con código estable (RN-010)",
         "tags": [
           "Vocabularios"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/vocabularies/{vocabulary_code}": {

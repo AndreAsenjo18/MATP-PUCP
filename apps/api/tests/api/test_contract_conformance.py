@@ -60,6 +60,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/identifier-types"),
     ("post", "/identifier-types"),
     ("patch", "/identifier-types/{}"),
+    # Vista previa del cambio de regla (change colecciones-y-vocabularios-admin, diseño D2).
+    ("post", "/identifier-types/{}/normalization-preview"),
     ("post", "/identifiers/normalize"),
     ("get", "/import-templates"),
     ("post", "/import-templates"),

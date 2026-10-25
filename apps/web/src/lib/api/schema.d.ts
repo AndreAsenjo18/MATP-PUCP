@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: f9c206628364ed76e4068cb0ea68a82a8381a8569c7a5226d10670ed520c2168
+ * openapi-sha256: e2891f730a892271c23d9ad2fb382d75356102416d5982d6a5256b3ef4eff1b2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -518,7 +518,10 @@ export interface paths {
         /** Tipos de identificador parametrizables (RN-010) */
         get: operations["listIdentifierTypes"];
         put?: never;
-        /** Crear un tipo de identificador */
+        /**
+         * Crear un tipo de identificador (RN-010)
+         * @description Queda disponible al instante para registrar identificadores y en las plantillas de mapeo. La regla de normalización se elige entre las implementadas; otra responde 422 con las reglas disponibles.
+         */
         post: operations["createIdentifierType"];
         delete?: never;
         options?: never;
@@ -539,8 +542,31 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar o desactivar un tipo de identificador */
+        /**
+         * Editar o desactivar un tipo de identificador
+         * @description Los tipos del sistema (I, COLECCION) solo cambian etiqueta, descripción y orden. Cambiar la regla de normalización de un tipo con identificadores exige el `confirm_token` de `normalization-preview`; los valores normalizados se recalculan en una transacción auditada con origen «sistema» y los originales no cambian.
+         */
         patch: operations["updateIdentifierType"];
+        trace?: never;
+    };
+    "/api/v1/identifier-types/{type_code}/normalization-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del cambio de regla de normalización (RF-023, RNF-007)
+         * @description No escribe nada. Informa cuántos valores normalizados cambiarían, cuáles dejan de ser normalizables y las colisiones de códigos vigentes entre piezas distintas, con el `confirm_token` que exige la confirmación.
+         */
+        post: operations["previewIdentifierTypeNormalization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/identifiers/normalize": {
@@ -1727,7 +1753,10 @@ export interface paths {
         /** Listar vocabularios controlados */
         get: operations["listVocabularies"];
         put?: never;
-        /** Crear un vocabulario nuevo */
+        /**
+         * Crear un vocabulario nuevo con código estable (RN-010)
+         * @description El código no se repite, ni siquiera con vocabularios eliminados (409 `vocabulary_exists`). Lo administran el Gestor de colecciones y el Administrador [SUPUESTO B7].
+         */
         post: operations["createVocabulary"];
         delete?: never;
         options?: never;
@@ -3590,6 +3619,7 @@ export interface components {
          *       "allowed_for_temporary_loan": false,
          *       "code": "I",
          *       "is_active": true,
+         *       "is_system": true,
          *       "is_unique_when_current": true,
          *       "label": "Código de inventario general (I)",
          *       "locks_on_assignment": true,
@@ -3607,6 +3637,12 @@ export interface components {
             description: string | null;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Is System
+             * @description Tipo del sistema (I, COLECCION): solo cambian etiqueta, descripción y orden.
+             * @default false
+             */
+            is_system: boolean;
             /** Is Unique When Current */
             is_unique_when_current: boolean;
             /** Label */
@@ -3621,12 +3657,30 @@ export interface components {
         };
         /** IdentifierTypeUpdate */
         IdentifierTypeUpdate: {
+            /**
+             * Allowed For Temporary Loan
+             * @description Las reglas estructurales no cambian en un tipo del sistema (409 `system_identifier_type`).
+             */
+            allowed_for_temporary_loan?: boolean | null;
+            /**
+             * Confirm Token
+             * @description Huella de la vista previa del cambio de regla que se confirma.
+             */
+            confirm_token?: string | null;
             /** Description */
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Is Unique When Current */
+            is_unique_when_current?: boolean | null;
             /** Label */
             label?: string | null;
+            /** Locks On Assignment */
+            locks_on_assignment?: boolean | null;
+            /** @description Si el tipo ya tiene identificadores, exige `confirm_token` de `normalization-preview` (409 `normalization_change_requires_preview`). */
+            normalization_rule?: components["schemas"]["NormalizationRule"] | null;
+            /** Owned Pieces Only */
+            owned_pieces_only?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
         };
@@ -4783,6 +4837,70 @@ export interface components {
          * @enum {string}
          */
         MovementType: "MOVE" | "VERIFICATION" | "CORRECTION";
+        /** NormalizationCollisionOut */
+        NormalizationCollisionOut: {
+            /** Normalized Value */
+            normalized_value: string;
+            /** Piece Ids */
+            piece_ids: string[];
+        };
+        /**
+         * NormalizationPreviewOut
+         * @example {
+         *       "can_confirm": true,
+         *       "changed_count": 120,
+         *       "changed_examples": [],
+         *       "collisions": [],
+         *       "confirm_token": "9f2c000000000000000000000000000000000000000000000000000000000000",
+         *       "current_rule": "GENERIC",
+         *       "notes": [],
+         *       "proposed_rule": "INC_RN",
+         *       "total_identifiers": 140,
+         *       "type_code": "PUCP",
+         *       "unparseable_count": 3,
+         *       "unparseable_examples": []
+         *     }
+         */
+        NormalizationPreviewOut: {
+            /** Can Confirm */
+            can_confirm: boolean;
+            /**
+             * Changed Count
+             * @description Identificadores cuyo valor normalizado cambia.
+             */
+            changed_count: number;
+            /** Changed Examples */
+            changed_examples: components["schemas"]["RecalculatedIdentifierOut"][];
+            /**
+             * Collisions
+             * @description Mismo código vigente en piezas distintas: impiden confirmar (RN-002).
+             */
+            collisions: components["schemas"]["NormalizationCollisionOut"][];
+            /**
+             * Confirm Token
+             * @description Se envía en el `PATCH` para confirmar este informe.
+             */
+            confirm_token: string;
+            current_rule: components["schemas"]["NormalizationRule"];
+            /** Notes */
+            notes: string[];
+            proposed_rule: components["schemas"]["NormalizationRule"];
+            /** Total Identifiers */
+            total_identifiers: number;
+            /** Type Code */
+            type_code: string;
+            /**
+             * Unparseable Count
+             * @description Valores que dejan de ser normalizables.
+             */
+            unparseable_count: number;
+            /** Unparseable Examples */
+            unparseable_examples: components["schemas"]["RecalculatedIdentifierOut"][];
+        };
+        /** NormalizationPreviewRequest */
+        NormalizationPreviewRequest: {
+            normalization_rule: components["schemas"]["NormalizationRule"];
+        };
         /**
          * NormalizationRule
          * @enum {string}
@@ -5673,6 +5791,25 @@ export interface components {
          * @enum {string}
          */
         QualityJobType: "FULL_SCAN";
+        /** RecalculatedIdentifierOut */
+        RecalculatedIdentifierOut: {
+            /**
+             * Identifier Id
+             * Format: uuid
+             */
+            identifier_id: string;
+            /** Normalized Value */
+            normalized_value: string | null;
+            /** Original Value */
+            original_value: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Proposed Value */
+            proposed_value: string | null;
+        };
         /**
          * ReportOut
          * @example {
@@ -8779,8 +8916,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Conflicto con el estado actual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8788,13 +8925,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8841,6 +8978,24 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description No existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `system_identifier_type` (regla estructural de un tipo del sistema), `normalization_change_requires_preview` (falta la vista previa o los datos cambiaron desde entonces) o `normalization_collision` (RN-002). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -8850,13 +9005,66 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+        };
+    };
+    previewIdentifierTypeNormalization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NormalizationPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["NormalizationPreviewOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -13631,8 +13839,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Conflicto con el estado actual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13640,13 +13848,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

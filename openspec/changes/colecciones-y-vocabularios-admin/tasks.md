@@ -1,13 +1,13 @@
 ## 1. Modelo
 
-- [ ] 1.1 Migración que añade `identifier_type.is_system` y marca los tipos `I` y `COLECCION` en el seed de referencia; verificar con `tests/test_migrations.py` y prueba del seed (Req: Protección de los tipos de identificador del sistema)
+- [x] 1.1 Migración que añade `identifier_type.is_system` y marca los tipos `I` y `COLECCION` en el seed de referencia; verificar con `tests/test_migrations.py` y prueba del seed (Req: Protección de los tipos de identificador del sistema) — hecho el 2026-10-25: migración `0014_identifier_type_is_system`, `SYSTEM_IDENTIFIER_TYPES` en el seed y `is_system` en `IdentifierTypeOut`; pruebas en `tests/test_migrations_identifier_type_is_system.py`
 
 ## 2. API de vocabularios y tipos de identificador
 
-- [ ] 2.1 Implementar `POST /api/v1/vocabularies` (código estable único, auditoría); pruebas: alta 201, código repetido 409, Catalogador 403 (Req: Administración de vocabularios y tipos de identificador por API; RN-010)
-- [ ] 2.2 Implementar `POST /api/v1/identifier-types` y `PATCH /api/v1/identifier-types/{type_code}` con validación de la regla contra `NormalizationRule`; pruebas: alta 201, regla inexistente 422, cambio de bandera en tipo de sistema 409, cambio de etiqueta ok (Req: Administración de vocabularios…; Req: Protección de los tipos de identificador del sistema)
-- [ ] 2.3 Implementar `POST /api/v1/identifier-types/{type_code}/normalization-preview` (sin escritura) con conteo de cambios, colisiones de I vigentes y no normalizables, y `confirm_token` = hash del informe; pruebas unitarias con el seed sintético (Req: Cambio controlado de la regla de normalización)
-- [ ] 2.4 Exigir `confirm_token` en `PATCH` cuando el tipo está en uso y recalcular valores normalizados en una transacción (por lotes sobre el umbral) con auditoría origen sistema; pruebas: sin vista previa 409, confirmación ok, colisión rechazada, token caducado por datos nuevos (Req: Cambio controlado de la regla de normalización; RF-023, RN-002)
+- [x] 2.1 Implementar `POST /api/v1/vocabularies` (código estable único, auditoría); pruebas: alta 201, código repetido 409, Catalogador 403 (Req: Administración de vocabularios y tipos de identificador por API; RN-010) — hecho el 2026-10-25 (`vocabulary_service.create_vocabulary`); pruebas en `tests/api/test_api_identifier_types_admin.py`
+- [x] 2.2 Implementar `POST /api/v1/identifier-types` y `PATCH /api/v1/identifier-types/{type_code}` con validación de la regla contra `NormalizationRule`; pruebas: alta 201, regla inexistente 422, cambio de bandera en tipo de sistema 409, cambio de etiqueta ok (Req: Administración de vocabularios…; Req: Protección de los tipos de identificador del sistema) — hecho el 2026-10-25 en `app/modules/identification/types_admin.py`; la regla inexistente la rechaza el enum con las reglas disponibles en el mensaje
+- [x] 2.3 Implementar `POST /api/v1/identifier-types/{type_code}/normalization-preview` (sin escritura) con conteo de cambios, colisiones de I vigentes y no normalizables, y `confirm_token` = hash del informe; pruebas unitarias con el seed sintético (Req: Cambio controlado de la regla de normalización) — hecho el 2026-10-25 (`preview_rule_change`; ejemplos limitados a 20 por tipo)
+- [x] 2.4 Exigir `confirm_token` en `PATCH` cuando el tipo está en uso y recalcular valores normalizados en una transacción (por lotes sobre el umbral) con auditoría origen sistema; pruebas: sin vista previa 409, confirmación ok, colisión rechazada, token caducado por datos nuevos (Req: Cambio controlado de la regla de normalización; RF-023, RN-002) — hecho el 2026-10-25; en un tipo que se bloquea al asignarse solo confirma el Administrador [SUPUESTO V2]
 
 ## 3. Conservación
 
