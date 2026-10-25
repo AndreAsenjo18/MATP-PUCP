@@ -22,6 +22,10 @@ export interface PieceCardProps {
   tenureRegime: TenureRegimeLabel | string;
   alerts?: PieceAlert[];
   hasPhoto: boolean;
+  /** Miniatura de la foto principal (búsqueda en modo `live`). */
+  thumbnailUrl?: string | null;
+  /** Qué coincidió con la búsqueda, en lenguaje claro (RF-031). */
+  matchReason?: string | null;
 }
 
 /** Props de la tarjeta a partir del resumen de pieza del contrato de la API. */
@@ -38,19 +42,39 @@ export function pieceCardProps(piece: ApiSchemas["PieceSummary"], alerts: PieceA
   };
 }
 
-export function PieceCard({ href, title, inventoryCode, collectionName, locationLabel, tenureRegime, alerts = [], hasPhoto }: PieceCardProps) {
+export function PieceCard({
+  href,
+  title,
+  inventoryCode,
+  collectionName,
+  locationLabel,
+  tenureRegime,
+  alerts = [],
+  hasPhoto,
+  thumbnailUrl,
+  matchReason,
+}: PieceCardProps) {
   // «Sin foto» se muestra en el pie de la tarjeta; no se repite como badge.
   const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
   return (
     <Link href={href} className={cardClassName({ interactive: true, className: "flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota" })}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-sm font-bold text-terracota">{inventoryCode ?? "Sin código I"}</span>
-        <TenureBadge regime={tenureRegime} />
+      <div className="flex items-start gap-3">
+        {thumbnailUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- URL prefirmada del almacenamiento
+          <img src={thumbnailUrl} alt="" loading="lazy" className="size-20 shrink-0 rounded-md bg-crema object-cover" />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-mono text-sm font-bold text-terracota">{inventoryCode ?? "Sin código I"}</span>
+            <TenureBadge regime={tenureRegime} />
+          </div>
+          <h3 className="line-clamp-2 text-lg font-semibold text-tinta" title={title}>
+            {title}
+          </h3>
+          <p className="text-sm text-gris-texto">{collectionName ?? "Sin colección"}</p>
+        </div>
       </div>
-      <h3 className="line-clamp-2 text-lg font-semibold text-tinta" title={title}>
-        {title}
-      </h3>
-      <p className="text-sm text-gris-texto">{collectionName ?? "Sin colección"}</p>
+      {matchReason && <p className="rounded-md bg-crema px-2 py-1 text-sm text-tinta">{matchReason}</p>}
       {badges.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {badges.map((alert) => (

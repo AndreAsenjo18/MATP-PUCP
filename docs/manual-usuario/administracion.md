@@ -185,6 +185,31 @@ Nada cambia en las fichas. Aplicar un cambio así exige revisar antes el impacto
 | «No se guardó nada» | Lea la sección anterior. |
 | «Disponible con la API (modo live)» | Está usando la maqueta de demostración: esta pestaña solo funciona con el sistema conectado. |
 
+## Exportación completa de la base
+
+La pestaña **Exportación completa** (solo Administrador) prepara una copia de todos los datos del museo en formatos abiertos, para que nunca dependan de este sistema (RF-044). Se abre también con `/administracion?pestana=exportacion`.
+
+1. Presione **Preparar exportación completa**. El paquete se arma en segundo plano: la pantalla muestra *Preparándose* y se actualiza sola.
+2. Si ya hay una exportación completa en preparación, o una lista que no caducó, el sistema le muestra esa misma en lugar de empezar otra.
+3. Cuando aparezca *Lista*, presione **Descargar**. El archivo se conserva 72 horas.
+
+### Qué contiene el paquete
+- Una carpeta `csv/` con un archivo por tabla, que se abre en Excel con las tildes correctas.
+- Un libro Excel con una hoja por tabla, cuando el volumen lo permite.
+- `diccionario.csv`: qué significa cada columna, en español.
+- `manifest.json`: la fecha, la versión del esquema de la base y, por cada archivo, cuántas filas tiene y su huella SHA-256.
+
+Incluye las piezas eliminadas con la fecha, el usuario y el motivo de la eliminación, y la auditoría. Las fotografías van solo como datos (el respaldo de los archivos de imagen es aparte). Nunca incluye contraseñas.
+
+### Verificar que el paquete está completo
+Calcule la huella SHA-256 de cada archivo y compárela con la del manifiesto. En Windows, desde PowerShell:
+
+```powershell
+Get-FileHash .\csv\piece.csv -Algorithm SHA256
+```
+
+Si las huellas y los conteos coinciden con el manifiesto, el paquete no se alteró.
+
 ## Versión del sistema y actualizaciones
 
 El sistema existe en dos lugares:

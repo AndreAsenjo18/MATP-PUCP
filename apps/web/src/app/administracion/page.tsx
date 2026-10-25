@@ -7,7 +7,8 @@
  * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`. Plantillas de mapeo
  * y normalización (marcadores de ausencia, separadores y siglas históricas): tarea 4.2 de
  * `plantillas-mapeo-y-normalizacion`, solo en modo `live`; se abren directamente con
- * `?pestana=plantillas` y `?pestana=normalizacion`.
+ * `?pestana=plantillas` y `?pestana=normalizacion`. Exportación completa de la base en formato abierto
+ * (RF-044): tarea 4.2 de `busqueda-avanzada-y-exportacion`, `?pestana=exportacion`.
  */
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -17,6 +18,7 @@ import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin"
 import { NormalizationLive } from "@/components/domain/NormalizationAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { TrashPanel } from "@/components/domain/TrashPanel";
+import { FullExportPanel } from "@/components/domain/SearchLive";
 import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -184,11 +186,21 @@ function UbicacionesLive() {
   );
 }
 
-const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Normalización", "Papelera", "Auditoría"] as const;
+const TABS = [
+  "Usuarios y roles",
+  "Vocabularios",
+  "Tipos de identificador",
+  "Ubicaciones",
+  "Plantillas de mapeo",
+  "Normalización",
+  "Papelera",
+  "Auditoría",
+  "Exportación completa",
+] as const;
 type Tab = (typeof TABS)[number];
 
 /** Pestañas que se abren por URL (`/administracion?pestana=plantillas`). */
-const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo", normalizacion: "Normalización" };
+const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo", normalizacion: "Normalización", exportacion: "Exportación completa" };
 
 function LiveOnlyNotice() {
   return (
@@ -224,7 +236,8 @@ function AdministracionContent() {
     !hasPermission("locations.manage") &&
     !hasPermission("imports.prepare") &&
     !canOpenTrash &&
-    !canReadAudit
+    !canReadAudit &&
+    !hasPermission("exports.full")
   ) {
     return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
@@ -423,6 +436,17 @@ function AdministracionContent() {
 
       {tab === "Auditoría" &&
         (canReadAudit ? <AuditSection /> : <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>)}
+
+      {tab === "Exportación completa" &&
+        (hasPermission("exports.full") ? (
+          getApiMode() === "live" ? (
+            <FullExportPanel />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Solo el Administrador puede exportar la base completa (RF-044).</PermissionNotice>
+        ))}
     </div>
   );
 }
