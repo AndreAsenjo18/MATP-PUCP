@@ -10,6 +10,7 @@ import { useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportsLive } from "@/components/domain/ReportsLive";
+import { FullExportPanel } from "@/components/domain/SearchLive";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
@@ -119,7 +120,8 @@ function ReportesContent() {
         )
       )}
 
-      {hasPermission("exports.full") && (
+      {hasPermission("exports.full") && live && <FullExportPanel />}
+      {hasPermission("exports.full") && !live && (
         <Card as="section">
           <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base (RF-044)</h2>
           <p className="mt-1 text-base text-gris-texto">

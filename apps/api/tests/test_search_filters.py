@@ -11,6 +11,7 @@ from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import Viewer
 from app.modules.collections.models import Collection
 from app.modules.locations.models import Location, LocationLevel
+from app.modules.search import filters
 from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
 from tests.conftest import ActAs
@@ -55,7 +56,9 @@ def test_sensitive_filters_require_permissions() -> None:
     f_loan.validate_permissions(viewer_loan)  # does not raise
 
 
-def test_alerts_filter_raises_not_implemented(session) -> None:
+def test_alerts_filter_raises_not_implemented(session, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Sin predicados registrados (alertas-y-reporte-incompletas sin aplicar), 501 explícito.
+    monkeypatch.setattr(filters, "ALERT_PREDICATES", {})
     f_alert = PieceFilter(has_alerts=True)
     with pytest.raises(NotImplementedEndpoint) as exc:
         f_alert.to_where(session)
