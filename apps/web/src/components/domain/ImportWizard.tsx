@@ -9,7 +9,7 @@
  * (RNF-010): qué hará la aplicación con cada fila, por qué una fila no se puede aceptar y el
  * resumen exacto que se aprueba.
  */
-import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Upload } from "lucide-react";
+import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import {
-  TARGET_OPTIONS,
   WIZARD_STEPS,
   acceptBlocker,
   actionLabel,
@@ -33,12 +32,12 @@ import {
   progressText,
   summarySentence,
   type ApprovalSummary,
-  type ColumnMapping,
   type FieldAction,
   type ImportBatch,
   type ImportImage,
   type ImportLog,
   type ImportRow,
+  type RevertConflict,
   type RowClassification,
   type RowDecisionInput,
 } from "@/lib/data/imports";
@@ -88,109 +87,6 @@ export function UploadPanel({ busy, onUpload }: { busy: boolean; onUpload: (file
       </label>
       <Button icon={Upload} className="self-start" disabled={!file || busy} onClick={() => file && onUpload(file)}>
         {busy ? "Subiendo…" : "Subir archivo"}
-      </Button>
-    </Card>
-  );
-}
-
-export interface MappingDraft {
-  columns: ColumnMapping[];
-  sheetName: string | null;
-  headerRow: number | null;
-  tenureDefault: string;
-}
-
-export function MappingPanel({
-  batch,
-  draft,
-  busy,
-  errors,
-  onChange,
-  onSubmit,
-}: {
-  batch: ImportBatch;
-  draft: MappingDraft;
-  busy: boolean;
-  errors: Record<string, string>;
-  onChange: (draft: MappingDraft) => void;
-  onSubmit: () => void;
-}) {
-  const setColumn = (index: number, target: string) =>
-    onChange({
-      ...draft,
-      columns: draft.columns.map((column, i) => (i === index ? { ...column, target_field: target || null, split_compound: target === "identifier" } : column)),
-    });
-  const sheetNames = batch.sheet_names ?? [];
-  return (
-    <Card as="section" className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-tinta">Mapeo de columnas</h2>
-      <p className="text-base text-gris-texto">
-        Indique a qué campo de la ficha corresponde cada columna. Las columnas que deje como «dato de origen» no se pierden: se guardan
-        junto a cada pieza (RF-008). La denominación es obligatoria.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {sheetNames.length > 1 && (
-          <Select label="Hoja" value={draft.sheetName ?? batch.sheet_name ?? ""} onChange={(event) => onChange({ ...draft, sheetName: event.target.value })}>
-            {sheetNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Input
-          label="Fila de cabeceras"
-          type="number"
-          min={1}
-          value={draft.headerRow ?? batch.header_row ?? 1}
-          hint="Cambiarla vuelve a leer el archivo."
-          onChange={(event) => onChange({ ...draft, headerRow: Number(event.target.value) || null })}
-        />
-        <Select
-          label="Régimen para filas sin dato"
-          value={draft.tenureDefault}
-          onChange={(event) => onChange({ ...draft, tenureDefault: event.target.value })}
-        >
-          <option value="">Sin valor por defecto</option>
-          <option value="Propiedad">Propiedad</option>
-          <option value="Comodato">Comodato</option>
-          <option value="Préstamo Temporal">Préstamo temporal</option>
-        </Select>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-base">
-          <thead className="text-sm text-gris-texto">
-            <tr>
-              <th className="py-1 pr-4 font-medium">Columna del archivo</th>
-              <th className="py-1 pr-4 font-medium">Campo de la ficha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {draft.columns.map((column, index) => (
-              <tr key={column.source_column} className="border-t border-borde align-top">
-                <td className="py-2 pr-4 text-tinta">{column.source_column}</td>
-                <td className="py-2 pr-4">
-                  <Select
-                    label={<span className="sr-only">Destino de {column.source_column}</span>}
-                    value={column.target_field ?? ""}
-                    error={errors[column.source_column]}
-                    onChange={(event) => setColumn(index, event.target.value)}
-                  >
-                    {TARGET_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <ErrorNotice message={errors[""] ?? null} />
-      <Button className="self-start" disabled={busy} onClick={onSubmit}>
-        {busy ? "Guardando…" : "Guardar mapeo y validar"}
       </Button>
     </Card>
   );
@@ -457,6 +353,69 @@ export function ImportLogPanel({ log, downloading, onDownload }: { log: ImportLo
       <Button variant="outline" icon={Download} className="self-start" disabled={downloading} onClick={onDownload}>
         {downloading ? "Preparando…" : "Descargar bitácora (Excel)"}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * Reversión de un lote aplicado (RNF-007, RN-005). Pide el motivo; si hay ediciones posteriores
+ * (`conflicts`) las lista y exige una segunda confirmación explícita antes de pisarlas.
+ */
+export function RollbackPanel({
+  canRevert,
+  busy,
+  conflicts,
+  onRevert,
+}: {
+  canRevert: boolean;
+  busy: boolean;
+  conflicts: RevertConflict[] | null;
+  onRevert: (reason: string | null, confirmConflicts: boolean) => void;
+}) {
+  return (
+    <Card as="section" className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold text-tinta">Revertir el lote</h2>
+      <p className="text-base text-gris-texto">
+        Las piezas que creó el lote quedan eliminadas lógicamente con el motivo (se pueden restaurar) y los campos que actualizó recuperan su
+        valor anterior. Los datos de origen se conservan: nada se borra (RN-005).
+      </p>
+      {!canRevert ? (
+        <PermissionNotice>Solo un Administrador puede revertir un lote aplicado.</PermissionNotice>
+      ) : conflicts ? (
+        <>
+          <div role="alert" className="flex flex-col gap-2 rounded-md bg-ambar-bg p-3 text-base text-ambar-texto">
+            <p className="font-medium">Estas ediciones se hicieron a mano después de aplicar el lote y se perderían:</p>
+            <ul className="list-disc pl-5">
+              {conflicts.map((conflict) => (
+                <li key={`${conflict.entityId}-${conflict.field ?? ""}`}>{conflict.message || `${conflict.entityType}: ${conflict.field ?? "registro"}`}</li>
+              ))}
+            </ul>
+          </div>
+          <ConfirmButton
+            label="Revertir también estas ediciones"
+            variant="danger"
+            icon={Undo2}
+            className="self-start"
+            disabled={busy}
+            confirmTitle="Revertir el lote y las ediciones posteriores"
+            confirmDescription="Las ediciones listadas vuelven al valor que tenían antes del lote. La reversión queda auditada con su usuario y el motivo."
+            onConfirm={() => onRevert(null, true)}
+          />
+        </>
+      ) : (
+        <ConfirmButton
+          label="Revertir lote"
+          variant="danger"
+          icon={Undo2}
+          className="self-start"
+          disabled={busy}
+          confirmTitle="Revertir el lote aplicado"
+          confirmDescription="El lote queda revertido y no se puede volver a aplicar. La reversión queda auditada con su usuario y el motivo."
+          requireReason
+          reasonLabel="Motivo de la reversión"
+          onConfirm={(reason) => onRevert(reason, false)}
+        />
+      )}
     </Card>
   );
 }

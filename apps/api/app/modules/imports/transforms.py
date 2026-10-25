@@ -20,6 +20,9 @@ Transformations v1 (``AVAILABLE_TRANSFORMS``):
 - ``value_map``            replaces values listed in the column's ``value_map``.
 - ``default:<valor>``      fills an empty value.
 
+``absence_markers`` and ``split_concatenated`` use the normalization parameters given to
+``run_transforms`` (design D5; the current ones of the batch), or the defaults of the code.
+
 Text transformations work element by element once a value has been split. Proposals never
 replace the value: they are returned apart, marked as proposals. After an error the chain
 stops, the value is left empty and the original cell is kept (``TransformedValue.original``).
@@ -33,7 +36,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from app.modules.identification.normalization import is_absence_marker, split_compound
+from app.modules.identification.normalization import (
+    NormalizationParams,
+    is_absence_marker,
+    split_compound,
+)
 from app.modules.imports.epoch import interpret_epoch
 
 AVAILABLE_TRANSFORMS = (
@@ -333,7 +340,11 @@ class _Step:
 
 
 def run_transforms(
-    raw: Any, transforms: Sequence[Transform], value_map: Mapping[str, str] | None = None
+    raw: Any,
+    transforms: Sequence[Transform],
+    value_map: Mapping[str, str] | None = None,
+    *,
+    params: NormalizationParams | None = None,
 ) -> TransformedValue:
     result = TransformedValue(original=raw, value=None if _is_empty(raw) else raw)
     for transform in transforms:
@@ -347,7 +358,7 @@ def run_transforms(
         if _is_empty(before):
             continue
         try:
-            step = _apply(result, transform, value_map)
+            step = _apply(result, transform, value_map, params)
         except _Failed as failure:
             result.value = None
             result.error = TransformError(failure.code, failure.message, label)
@@ -358,7 +369,10 @@ def run_transforms(
 
 
 def _apply(
-    result: TransformedValue, transform: Transform, value_map: Mapping[str, str] | None
+    result: TransformedValue,
+    transform: Transform,
+    value_map: Mapping[str, str] | None,
+    params: NormalizationParams | None = None,
 ) -> _Step:
     """Apply one transformation in place. The trace shows the new value, or the proposal."""
     value = result.value
@@ -368,9 +382,9 @@ def _apply(
         case "upper":
             result.value = _upper(value)
         case "absence_markers":
-            _absence_markers(result)
+            _absence_markers(result, params)
         case "split_concatenated":
-            _split_concatenated(result)
+            _split_concatenated(result, params)
         case "split":
             result.value = _split_on(value, transform.arg or "")
         case "date":
@@ -398,33 +412,33 @@ def _apply(
     return _Step(result.value)
 
 
-def _absence_markers(result: TransformedValue) -> None:
+def _absence_markers(result: TransformedValue, params: NormalizationParams | None) -> None:
     value = result.value
     if isinstance(value, list):
-        kept = [item for item in value if not _is_marker(item)]
+        kept = [item for item in value if not _is_marker(item, params)]
         result.value = kept or None
         result.is_absent = not kept
-    elif _is_marker(value):
+    elif _is_marker(value, params):
         result.value = None
         result.is_absent = True
 
 
-def _is_marker(value: Any) -> bool:
+def _is_marker(value: Any, params: NormalizationParams | None = None) -> bool:
     text = _as_text(value)
-    return isinstance(text, str) and is_absence_marker(text)
+    return isinstance(text, str) and is_absence_marker(text, params=params)
 
 
-def _split_concatenated(result: TransformedValue) -> None:
+def _split_concatenated(result: TransformedValue, params: NormalizationParams | None) -> None:
     items = result.value if isinstance(result.value, list) else [result.value]
     parts: list[Any] = []
     for item in items:
         text = _as_text(item)
         if not isinstance(text, str):
             parts.append(item)
-        elif not is_absence_marker(text):
-            parts += split_compound(text)
+        elif not is_absence_marker(text, params=params):
+            parts += split_compound(text, params=params)
     result.value = parts or None
-    result.is_absent = result.is_absent or all(_is_marker(item) for item in items)
+    result.is_absent = result.is_absent or all(_is_marker(item, params) for item in items)
 
 
 def _proposal_text(value: Any) -> str | None:

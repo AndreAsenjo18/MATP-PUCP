@@ -42,9 +42,11 @@ from app.modules.identification.models import (
 )
 from app.modules.identification.normalization import (
     TYPE_OTHER,
+    NormalizationParams,
     is_absence_marker,
     propose_identifiers,
 )
+from app.modules.identification.params import session_params
 from app.modules.imports.classify import RowError, RowInput
 from app.modules.imports.ingest import MERGED_KEY
 from app.modules.imports.matching import RowIdentifier
@@ -422,7 +424,8 @@ class MappingError:
 
 
 class MappingContext:
-    """Identifier types, collections and vocabularies, loaded once per batch."""
+    """Identifier types, collections, vocabularies and normalization parameters, loaded once
+    per batch. The parameters (design D5) are read the first time a value is normalized."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -438,6 +441,11 @@ class MappingContext:
         self._collections: dict[str, uuid.UUID | None] = {}
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
+
+    @property
+    def params(self) -> NormalizationParams:
+        """The current normalization parameters of the session (``session_params``)."""
+        return session_params(self._session)
 
     def collection_id(self, code: str) -> uuid.UUID | None:
         key = _fold(code)
@@ -835,7 +843,10 @@ def apply_mapping(
         value, is_absent = raw, False
         if column.transforms:
             transformed = run_transforms(
-                raw, parse_transforms(column.transforms, column.value_map), column.value_map
+                raw,
+                parse_transforms(column.transforms, column.value_map),
+                column.value_map,
+                params=ctx.params,
             )
             mapped.transformed[column.source] = transformed
             if transformed.error is not None:
@@ -955,15 +966,23 @@ def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatche
 def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> list[RowIdentifier]:
     if value is None:
         return []
-    if not column.split_compound or is_absence_marker(value):
+    params = ctx.params
+    if not column.split_compound or is_absence_marker(value, params=params):
         type_code = column.identifier_type or TYPE_OTHER
-        return [RowIdentifier.from_raw(type_code, value, ctx.identifier_rules.get(type_code))]
+        return [
+            RowIdentifier.from_raw(
+                type_code, value, ctx.identifier_rules.get(type_code), params=params
+            )
+        ]
     identifiers: list[RowIdentifier] = []
-    for proposal in propose_identifiers(value, column.identifier_type):
+    for proposal in propose_identifiers(value, column.identifier_type, params=params):
         type_code = proposal.type_code or TYPE_OTHER
         identifiers.append(
             RowIdentifier.from_raw(
-                type_code, proposal.result.original, ctx.identifier_rules.get(type_code)
+                type_code,
+                proposal.result.original,
+                ctx.identifier_rules.get(type_code),
+                params=params,
             )
         )
     return identifiers

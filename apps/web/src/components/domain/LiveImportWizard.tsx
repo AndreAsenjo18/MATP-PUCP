@@ -6,7 +6,15 @@
  * decisiones, resumen y aprobación, bitácora e imágenes. El paso visible sale del estado del lote
  * (`wizardStep`); mientras una etapa corre en el servidor se consulta su avance.
  *
- * El lote en curso se recuerda en la URL (`?lote=`) para poder volver a él.
+ * El lote en curso se recuerda en la URL (`?lote=`) para poder volver a él. Un lote aplicado se
+ * puede revertir desde aquí (tarea 5.2; solo el Administrador).
+ *
+ * En el paso «Mapeo» se ofrecen primero las plantillas guardadas (change
+ * `plantillas-mapeo-y-normalizacion`, tarea 4.1A): las sugeridas por las cabeceras del archivo,
+ * la lista completa y «Empezar desde cero». Una plantilla elegida, o el mapeo sugerido por las
+ * cabeceras al empezar desde cero, se abre en el editor (4.1B): destino y transformaciones por columna,
+ * guardar como plantilla nueva o guardar cambios, vista previa por columna con la plantilla
+ * guardada y validar con `template_id` (sin cambios) o con las columnas del borrador.
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,16 +27,29 @@ import {
   ImportLogPanel,
   ImportRowCard,
   ImportSteps,
-  MappingPanel,
   ProgressPanel,
+  RollbackPanel,
   RowFilters,
   UploadPanel,
-  type MappingDraft,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
+import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { DryRunPanel, TemplatePicker } from "@/components/domain/ImportTemplatePanels";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
+import {
+  createTemplate,
+  dryRunTemplate,
+  fetchTemplates,
+  mappingFailureMessage,
+  saveBatchMapping,
+  suggestTemplates,
+  updateTemplate,
+  type MappingTemplate,
+  type TemplateDryRun,
+  type TemplateSuggestion,
+} from "@/lib/data/import-templates";
 import {
   IMPORT_PAGE_SIZE,
   IMPORT_POLL_MS,
@@ -41,35 +62,38 @@ import {
   fetchImportDiffs,
   fetchImportLog,
   isProcessing,
-  mappingRequest,
-  saveImportMapping,
+  revertConflicts,
+  rollbackImportBatch,
   startImportValidation,
-  suggestMapping,
   uploadImportFile,
   wizardStep,
   type ImportBatch,
   type ImportDiffs,
   type ImportLog,
+  type RevertConflict,
   type RowClassification,
   type RowDecisionInput,
 } from "@/lib/data/imports";
-
-function draftFor(batch: ImportBatch): MappingDraft {
-  return { columns: suggestMapping(batch.headers ?? []), sheetName: batch.sheet_name ?? null, headerRow: batch.header_row ?? null, tenureDefault: "" };
-}
-
-function mappingErrors(details: Record<string, unknown> | undefined): Record<string, string> {
-  const errors: Record<string, string> = {};
-  const list = Array.isArray(details?.errors) ? details.errors : [];
-  for (const item of list) {
-    if (typeof item === "object" && item !== null) {
-      const { column, message } = item as { column?: string | null; message?: string };
-      const key = column ?? "";
-      errors[key] = errors[key] ? `${errors[key]} ${message ?? ""}` : (message ?? "");
-    }
-  }
-  return errors;
-}
+import {
+  applySource,
+  associateTerm,
+  columnErrors,
+  draftFromScratch,
+  draftFromTemplate,
+  fetchVocabularies,
+  fetchVocabularyTerms,
+  pendingTerm,
+  previewBlocker,
+  saveErrors,
+  templateCreateBody,
+  templateUpdateBody,
+  termsVocabulary,
+  type EditorDraft,
+  type SaveKind,
+  type TemplateFormValues,
+  type TermOption,
+  type Vocabulary,
+} from "@/lib/data/mapping-editor";
 
 export function LiveImportWizard() {
   const { currentUser, hasPermission } = useSession();
@@ -81,8 +105,6 @@ export function LiveImportWizard() {
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState<MappingDraft | null>(null);
-  const [mapErrors, setMapErrors] = useState<Record<string, string>>({});
   const [filters, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean }>({ classification: null, onlyErrors: false });
   const [page, setPage] = useState(1);
   const [diffs, setDiffs] = useState<ImportDiffs | null>(null);
@@ -90,9 +112,48 @@ export function LiveImportWizard() {
   const [log, setLog] = useState<ImportLog | null>(null);
   const [reload, setReload] = useState(0);
   const [busyImage, setBusyImage] = useState<string | null>(null);
+  // Reversión (RNF-007): conflictos del último intento y su motivo, para la segunda confirmación.
+  const [rollbackConflicts, setRollbackConflicts] = useState<RevertConflict[] | null>(null);
+  const [rollbackReason, setRollbackReason] = useState<string | null>(null);
+  // Paso «Mapeo» (4.1A, 4.1B): elegir punto de partida o editar el mapeo.
+  const [mappingMode, setMappingMode] = useState<"pick" | "edit">("pick");
+  const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
+  const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [dryRun, setDryRun] = useState<TemplateDryRun | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  // Editor de mapeo (4.1B): borrador, vocabularios para `terms:` y errores del último guardado.
+  const [editorDraft, setEditorDraft] = useState<EditorDraft | null>(null);
+  const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
+  const [editorErrors, setEditorErrors] = useState<Record<string, string>>({});
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  // Términos activos por vocabulario de las columnas `terms:` del borrador (4.1C).
+  const [termsByVocabulary, setTermsByVocabulary] = useState<Record<string, TermOption[]>>({});
 
   const step = wizardStep(batch);
   const processing = isProcessing(batch);
+
+  const vocabulariesKey = [...new Set((editorDraft?.columns ?? []).map(termsVocabulary).filter((code): code is string => code !== null))].sort().join(",");
+  useEffect(() => {
+    let active = true;
+    const missing = vocabulariesKey.split(",").filter((code) => code && !(code in termsByVocabulary));
+    if (missing.length === 0) return;
+    Promise.all(missing.map((code) => fetchVocabularyTerms(code, devUser))).then((results) => {
+      if (!active) return;
+      setTermsByVocabulary((current) => {
+        const next = { ...current };
+        missing.forEach((code, i) => {
+          const result = results[i];
+          next[code] = result.status === "ok" ? result.value : [];
+        });
+        return next;
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [vocabulariesKey, termsByVocabulary, devUser]);
 
   const loadBatch = useCallback(async () => {
     if (!batchId) return;
@@ -123,8 +184,38 @@ export function LiveImportWizard() {
     return () => clearInterval(timer);
   }, [processing, loadBatch]);
 
-  // Until the person edits it, the mapping is the one suggested from the headers.
-  const mappingDraft = draft ?? (batch && batch.status === "UPLOADED" && !processing ? draftFor(batch) : null);
+  // Plantillas para las cabeceras del archivo, en cuanto el lote está leído (design D3).
+  const headersKey = batch && batch.status === "UPLOADED" && !processing && batch.headers?.length ? JSON.stringify(batch.headers) : "";
+  useEffect(() => {
+    let active = true;
+    if (!headersKey) return;
+    Promise.all([suggestTemplates(JSON.parse(headersKey) as string[], devUser), fetchTemplates(devUser), fetchVocabularies(devUser)]).then(([suggested, all, vocabularyList]) => {
+      if (!active) return;
+      setSuggestions(suggested.status === "ok" ? suggested.value : []);
+      setTemplates(all.status === "ok" ? all.value : []);
+      setVocabularies(vocabularyList.status === "ok" ? vocabularyList.value : []);
+      const failure = suggested.status !== "ok" ? suggested : all.status !== "ok" ? all : null;
+      setTemplatesError(failure ? failure.message : null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [headersKey, devUser]);
+
+  function resetTemplates() {
+    setMappingMode("pick");
+    setSuggestions(null);
+    setTemplates(null);
+    setTemplatesError(null);
+    setDryRun(null);
+    closeEditor();
+  }
+
+  function closeEditor() {
+    setEditorDraft(null);
+    setEditorErrors({});
+    setNameError(null);
+  }
 
   const showRows = batch != null && !processing && step >= 3;
   useEffect(() => {
@@ -173,20 +264,85 @@ export function LiveImportWizard() {
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
-    setDraft(null);
+    resetTemplates();
     router.replace(`/importacion?lote=${result.value.batch_id}`);
   }
 
-  async function handleMapping() {
-    if (!batch || !mappingDraft) return;
+  function handleUseTemplate(template: MappingTemplate) {
+    if (!batch) return;
+    closeEditor();
+    setEditorDraft(draftFromTemplate(template, batch));
+    setDryRun(null);
+    setError(null);
+    setMappingMode("edit");
+  }
+
+  function handleStartFromScratch() {
+    if (!batch) return;
+    closeEditor();
+    setEditorDraft(draftFromScratch(batch));
+    setDryRun(null);
+    setError(null);
+    setMappingMode("edit");
+  }
+
+  // La vista previa ya calculada se conserva marcada como desactualizada (`stale`), para poder
+  // asociar varios valores sin término seguidos (4.1C); se vuelve a pedir al guardar.
+  function handleEditorChange(next: EditorDraft) {
+    setEditorDraft(next);
+  }
+
+  function handleAssociateTerm(source: string, text: string, code: string) {
+    if (editorDraft) handleEditorChange(associateTerm(editorDraft, source, text, code));
+  }
+
+  async function handleSaveTemplate(kind: SaveKind, values: TemplateFormValues) {
+    if (!batch || !editorDraft) return;
+    const headers = batch.headers ?? [];
+    setSaving(true);
+    const result =
+      kind === "update" && editorDraft.base
+        ? await updateTemplate(editorDraft.base.id, templateUpdateBody(editorDraft, values, headers), devUser)
+        : await createTemplate(templateCreateBody(editorDraft, values, headers), devUser);
+    setSaving(false);
+    if (result.status !== "ok") {
+      const failed = saveErrors(result);
+      setNameError(failed.name);
+      setEditorErrors(failed.columns);
+      return setError(failed.name ?? mappingFailureMessage(result));
+    }
+    const saved = result.value;
+    setTemplates((current) => [...(current ?? []).filter((item) => item.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name)));
+    setSuggestions((current) => current?.map((item) => (item.template.id === saved.id ? { ...item, template: saved } : item)) ?? current);
+    // El régimen es del lote: guardar la plantilla no lo cambia.
+    setEditorDraft({ ...draftFromTemplate(saved, batch), tenureDefault: editorDraft.tenureDefault, sheetName: editorDraft.sheetName, headerRow: editorDraft.headerRow });
+    setDryRun(null); // era de la versión anterior de la plantilla
+    setEditorErrors({});
+    setNameError(null);
+    setError(null);
+  }
+
+  async function handlePreview() {
+    const templateId = editorDraft?.base?.id;
+    if (!batch || !templateId) return;
+    setPreviewBusy(true);
+    const result = await dryRunTemplate(templateId, batch.id, devUser);
+    setPreviewBusy(false);
+    if (result.status !== "ok") return setError(result.message);
+    setError(null);
+    setDryRun(result.value);
+  }
+
+  async function handleApplyTemplate() {
+    if (!batch || !editorDraft) return;
     setBusy(true);
-    const saved = await saveImportMapping(batch.id, mappingRequest(mappingDraft.columns, mappingDraft), devUser);
+    const saved = await saveBatchMapping(batch.id, applySource(editorDraft, batch), devUser);
     if (saved.status !== "ok") {
       setBusy(false);
-      setMapErrors(saved.status === "rejected" ? mappingErrors(saved.details) : {});
-      return setError(saved.message);
+      setEditorErrors(columnErrors(saved));
+      return setError(mappingFailureMessage(saved));
     }
-    setMapErrors({});
+    setEditorErrors({});
     const started = await startImportValidation(batch.id, devUser);
     setBusy(false);
     if (started.status !== "ok") return setError(started.message);
@@ -233,6 +389,28 @@ export function LiveImportWizard() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleRollback(reason: string | null, confirmConflicts: boolean) {
+    // La segunda confirmación (ediciones posteriores) reutiliza el motivo de la primera.
+    const motive = reason ?? rollbackReason;
+    if (!batch || !motive) return;
+    setBusy(true);
+    const result = await rollbackImportBatch(batch.id, motive, confirmConflicts, devUser);
+    setBusy(false);
+    if (result.status !== "ok") {
+      const conflicts = revertConflicts(result);
+      if (conflicts) {
+        setRollbackReason(motive);
+        setRollbackConflicts(conflicts);
+      }
+      return setError(result.message);
+    }
+    setError(null);
+    setRollbackConflicts(null);
+    setRollbackReason(null);
+    setBatch(result.value);
+    setReload((n) => n + 1);
+  }
+
   async function handleAssociate(imageId: string, pieceId: string | null) {
     if (!batch) return;
     setBusyImage(imageId);
@@ -255,8 +433,50 @@ export function LiveImportWizard() {
 
       {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
       {batch && processing && <ProgressPanel batch={batch} />}
-      {batch && !processing && step === 1 && mappingDraft && (
-        <MappingPanel batch={batch} draft={mappingDraft} busy={busy} errors={mapErrors} onChange={setDraft} onSubmit={handleMapping} />
+      {batch && !processing && step === 1 && mappingMode === "pick" && (
+        <TemplatePicker
+          suggestions={suggestions}
+          templates={templates}
+          loading={suggestions === null}
+          error={templatesError}
+          onUse={handleUseTemplate}
+          onStartFromScratch={handleStartFromScratch}
+        />
+      )}
+      {batch && !processing && step === 1 && mappingMode === "edit" && editorDraft && (
+        <>
+          <MappingEditor
+            batch={batch}
+            draft={editorDraft}
+            vocabularies={vocabularies}
+            terms={termsByVocabulary}
+            errors={editorErrors}
+            nameError={nameError}
+            busy={busy}
+            saving={saving}
+            previewBusy={previewBusy}
+            onChange={handleEditorChange}
+            onSave={handleSaveTemplate}
+            onPreview={handlePreview}
+            onApply={handleApplyTemplate}
+            onBack={() => {
+              setMappingMode("pick");
+              setDryRun(null);
+              closeEditor();
+            }}
+          />
+          {dryRun && (
+            <DryRunPanel
+              result={dryRun}
+              stale={previewBlocker(editorDraft, batch) !== null}
+              association={{
+                terms: termsByVocabulary,
+                pending: (source, text) => pendingTerm(editorDraft, source, text),
+                onAssociate: handleAssociateTerm,
+              }}
+            />
+          )}
+        </>
       )}
       {batch && !processing && step === 2 && (
         <Card as="section" className="flex flex-col gap-3">
@@ -324,6 +544,9 @@ export function LiveImportWizard() {
       )}
 
       {batch && step === 5 && !processing && log && <ImportLogPanel log={log} downloading={busy} onDownload={handleDownload} />}
+      {batch && batch.status === "APPLIED" && !processing && (
+        <RollbackPanel canRevert={hasPermission("imports.revert")} busy={busy} conflicts={rollbackConflicts} onRevert={handleRollback} />
+      )}
       {showRows && (
         <ImageReviewPanel
           images={allImages}
@@ -339,11 +562,13 @@ export function LiveImportWizard() {
           className="self-start"
           onClick={() => {
             setBatch(null);
-            setDraft(null);
             setDiffs(null);
             setLog(null);
             setAllImages([]);
             setError(null);
+            setRollbackConflicts(null);
+            setRollbackReason(null);
+            resetTemplates();
             router.replace("/importacion");
           }}
         >

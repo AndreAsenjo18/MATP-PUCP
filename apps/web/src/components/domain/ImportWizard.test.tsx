@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ImportBatch, ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
+import type { ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, MappingPanel, RowFilters } from "./ImportWizard";
+import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, RollbackPanel, RowFilters } from "./ImportWizard";
 
 const noop = () => {};
 const acceptButton = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar<\/button>/;
@@ -29,16 +29,6 @@ function row(overrides: Partial<ImportRow> = {}): ImportRow {
     ...overrides,
   };
 }
-
-const BATCH = {
-  id: "batch-1",
-  file_name: "sabana.xlsx",
-  status: "UPLOADED",
-  sheet_names: ["Resumen", "Inventario"],
-  sheet_name: "Resumen",
-  header_row: 1,
-  headers: ["DENOMINACIÓN"],
-} as ImportBatch;
 
 function image(overrides: Partial<ImportImage> = {}): ImportImage {
   return {
@@ -124,24 +114,6 @@ describe("filtros, mapeo y aprobación", () => {
     expect(text).toContain("Con errores (1)");
   });
 
-  it("permite elegir hoja, fila de cabeceras y el destino de cada columna", () => {
-    const html = render(
-      <MappingPanel
-        batch={BATCH}
-        draft={{ columns: [{ source_column: "DENOMINACIÓN", target_field: "denomination", identifier_type_code: null, split_compound: false }], sheetName: null, headerRow: null, tenureDefault: "" }}
-        busy={false}
-        errors={{ "": "Debe indicar la columna de la denominación." }}
-        onChange={noop}
-        onSubmit={noop}
-      />,
-    );
-    const text = visibleText(html);
-    expect(text).toContain("Inventario");
-    expect(text).toContain("Fila de cabeceras");
-    expect(html).toMatch(/<option value="denomination" selected="">Denominación<\/option>/);
-    expect(text).toContain("Debe indicar la columna de la denominación.");
-  });
-
   it("muestra el resumen que se aprueba o el aviso de permiso", () => {
     const summary = { create: 2, update: 1, skip: 4, summary_token: "t" };
     expect(visibleText(render(<ApprovalPanel summary={summary} canApprove busy={false} onConfirm={noop} />))).toContain(
@@ -189,5 +161,25 @@ describe("bitácora e imágenes (RF-028, RF-029)", () => {
     const text = visibleText(render(<ImageReviewPanel images={[{ image: image(), rowNumber: 2 }]} applied={false} canAssociate busyId={null} onAssociate={noop} />));
     expect(text).toContain("Podrá asociarlas cuando el lote esté aplicado.");
     expect(text).not.toContain("Asociar a la pieza");
+  });
+
+  it("ofrece revertir un lote aplicado con motivo solo al Administrador", () => {
+    const admin = visibleText(render(<RollbackPanel canRevert busy={false} conflicts={null} onRevert={noop} />));
+    expect(admin).toContain("Revertir lote");
+    expect(admin).toContain("Motivo de la reversión");
+    expect(admin).toContain("nada se borra");
+
+    const other = visibleText(render(<RollbackPanel canRevert={false} busy={false} conflicts={null} onRevert={noop} />));
+    expect(other).toContain("Solo un Administrador puede revertir");
+    expect(other).not.toContain("Revertir lote");
+  });
+
+  it("lista las ediciones posteriores y pide confirmarlas antes de pisarlas", () => {
+    const conflicts = [{ entityType: "piece", entityId: "p-1", field: "provenance", message: "La procedencia cambió después del lote." }];
+
+    const text = visibleText(render(<RollbackPanel canRevert busy={false} conflicts={conflicts} onRevert={noop} />));
+
+    expect(text).toContain("La procedencia cambió después del lote.");
+    expect(text).toContain("Revertir también estas ediciones");
   });
 });

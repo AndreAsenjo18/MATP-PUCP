@@ -20,6 +20,7 @@ from app.modules.catalog.queries import code_candidates
 from app.modules.catalog.schemas import CodeBrief, PieceSummary
 from app.modules.collections.models import Term
 from app.modules.identification.models import PieceIdentifier
+from app.modules.identification.params import session_params
 from app.modules.search.filters import ActiveFilter, PieceFilter
 from app.modules.search.schemas import SearchHit
 
@@ -45,7 +46,8 @@ def compute_match_reason(
     if not clean_query:
         return 1.0, {"kind": "text", "fields": ["denomination"]}, None
 
-    candidates = {strip_accents(c) for c in code_candidates(text) if c}
+    params = session_params(session)  # read once per session (design D5 of plantillas-mapeo)
+    candidates = {strip_accents(c) for c in code_candidates(text, params=params) if c}
 
     # 1. Check identifiers
     identifiers = session.scalars(

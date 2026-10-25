@@ -1,8 +1,8 @@
 """Import reconciliation pipeline (importacion-datos; RF-021..RF-029).
 
 Implemented by ``importacion-pipeline-reconciliacion``: ingestion, mapping, validation and
-preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3) and embedded images (5.1).
-Rollback stays a stub until the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
+preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3), embedded images (5.1) and
+rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 """
 
 import logging
@@ -28,19 +28,18 @@ from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
-    CHANGE_IMPORTS,
     CHANGE_TEMPLATES,
     implemented,
-    not_implemented,
-    stub,
 )
 from app.core import jobs
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
+from app.modules.audit.context import require_audit_context
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
+from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
@@ -68,6 +67,7 @@ from app.modules.imports.photo_upload import (
     request_upload_urls,
 )
 from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
+from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
@@ -91,6 +91,8 @@ from app.modules.imports.schemas import (
     PhotoUploadUrlsRequest,
     RevertRequest,
     RowDecisionRequest,
+    TemplateDryRunOut,
+    TemplateDryRunRequest,
     TemplateSuggestion,
     TemplateSuggestRequest,
     ValidationSummary,
@@ -653,13 +655,35 @@ def complete_import_photo_uploads(
 @router.post(
     "/imports/{batch_id}/rollback",
     response_model=ImportBatchOut,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`invalid_batch_transition` (el lote no está aplicado), "
+            "`already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir "
+            "con `confirm_conflicts=true` tras revisar la lista).",
+        },
+    },
     summary="Revertir un lote aplicado (RNF-007)",
-    **stub(CHANGE_IMPORTS),
+    description="Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las "
+    "piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos "
+    "actualizados recuperan su valor anterior y los datos de origen se conservan como "
+    "historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].",
+    **implemented(),
 )
 def rollback_import_batch(
-    batch_id: uuid.UUID, body: RevertRequest, user: Reverter
+    batch_id: uuid.UUID, body: RevertRequest, session: SessionDep, user: Reverter
 ) -> ImportBatchOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
+    writer(session, user, reason=body.reason)
+    result = rollback_batch(
+        session,
+        batch_id,
+        require_audit_context(session),
+        confirm_conflicts=body.confirm_conflicts,
+        permissions=user.permissions,
+    )
+    session.commit()
+    return batch_out(session, result.batch)
 
 
 TEMPLATE_NOT_FOUND = {
@@ -728,7 +752,7 @@ def create_import_template(
     "/import-templates/suggest",
     response_model=list[TemplateSuggestion],
     summary="Sugerir plantillas para las cabeceras de un archivo (RF-022)",
-    description="Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de "
+    description="Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de "
     "mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni "
     "mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como "
     "cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
@@ -807,3 +831,28 @@ def delete_import_template(
     templates.delete_template(writer(session, user, reason), template, reason)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/import-templates/{template_id}/dry-run",
+    response_model=TemplateDryRunOut,
+    responses={
+        404: {"model": ErrorResponse, "description": "La plantilla o el lote no existen."},
+        409: {
+            "model": ErrorResponse,
+            "description": "El lote no está subido ni mapeado, o aún no se ha leído.",
+        },
+    },
+    summary="Vista previa de normalización por columna de una plantilla (RF-023)",
+    description="Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote "
+    "subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` "
+    "y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y "
+    "ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.",
+    **implemented(),
+)
+def dry_run_import_template(
+    template_id: uuid.UUID, body: TemplateDryRunRequest, session: SessionDep, user: Preparer
+) -> TemplateDryRunOut:
+    template = templates.get_template(session, template_id)
+    result = run_dry_run(session, template, get_batch(session, body.batch_id))
+    return dry_run_out(result, templates.column_mappings(template))

@@ -262,6 +262,23 @@ entity IMPORT_MAPPING_TEMPLATE {
   ..
   <i>+ timestamps + soft-delete</i>
 }
+entity NORMALIZATION_SETTING {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(80) <<UK>>
+  * value : jsonb
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity COLLECTION_ACRONYM_ALIAS {
+  * id : uuid <<PK>>
+  --
+  * alias : varchar(40)
+  * alias_normalized : varchar(40) <<UK>>
+  * collection_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 entity IMPORT_BATCH {
   * id : uuid <<PK>>
   --
@@ -607,6 +624,7 @@ TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"
 TERM |o--o{ LOAN : "active_availability_term_id"
+COLLECTION ||--o{ COLLECTION_ACRONYM_ALIAS : "collection_id"
 COLLECTION |o--o{ COMPLETENESS_SNAPSHOT : "indicador por colección"
 COLLECTION |o--o{ PIECE : "contiene"
 TERM |o--o{ PIECE : "forma de adquisición"

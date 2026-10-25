@@ -30,6 +30,7 @@ from app.modules.catalog.queries import (
 from app.modules.collections.models import Collection, Term
 from app.modules.collections.service import find_collection_by_code
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
+from app.modules.identification.params import session_params
 from app.modules.locations.models import Location
 from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
 
@@ -169,7 +170,8 @@ class PieceFilter(BaseModel):
             if term_conditions:
                 text_match_clauses.append(and_(*term_conditions))
 
-            for cand in code_candidates(needle):
+            params = session_params(session)  # current aliases (design D5 of plantillas-mapeo)
+            for cand in code_candidates(needle, params=params):
                 c_clean = strip_accents(cand)
                 for variant in {c_clean, c_clean.replace(" ", ""), c_clean.replace("-", "")}:
                     if variant and len(variant) >= 3 and variant not in terms:
@@ -180,7 +182,7 @@ class PieceFilter(BaseModel):
 
             conditions.append(
                 or_(
-                    identifier_match_condition(needle),
+                    identifier_match_condition(needle, params=params),
                     or_(*text_match_clauses),
                 )
             )

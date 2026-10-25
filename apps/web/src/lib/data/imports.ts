@@ -62,6 +62,7 @@ export const IMPORT_PAGE_SIZE = 25;
 export const IMPORT_POLL_MS = 1500;
 
 export const SUMMARY_CHANGED_CODE = "summary_changed";
+export const REVERT_CONFLICTS_CODE = "revert_has_conflicts";
 const CONNECTION_MESSAGE = "No se pudo conectar con el servidor. Intente nuevamente.";
 const MOCK_MESSAGE = "El asistente conectado a la API solo funciona con NEXT_PUBLIC_API_MODE=live.";
 
@@ -81,6 +82,9 @@ export const IMPORT_ERROR_MESSAGES: Record<string, string> = {
   image_already_associated: "La imagen ya está asociada a una pieza.",
   piece_required: "Indique la pieza: la imagen no está anclada en una fila aplicada.",
   permission_denied: "Su rol no tiene permiso para esta operación.",
+  [REVERT_CONFLICTS_CODE]: "Alguien editó piezas de este lote después de aplicarlo: revise la lista antes de revertir también esas ediciones.",
+  admin_required: "Solo un Administrador puede revertir un lote.",
+  invalid_batch_transition: "El lote ya no está aplicado: recargue la página para ver su estado.",
 };
 
 function client(devUser: string | undefined) {
@@ -91,23 +95,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function failureFrom(error: unknown): ImportFailure {
+function failureFrom(error: unknown, messages: Record<string, string> = IMPORT_ERROR_MESSAGES): ImportFailure {
   if (isNotImplemented(error)) return { status: "unavailable", message: apiErrorMessage(error) };
   const code = isRecord(error) && typeof error.code === "string" ? error.code : "error";
   const details = isRecord(error) && isRecord(error.details) ? error.details : undefined;
   return {
     status: "rejected",
     code,
-    message: IMPORT_ERROR_MESSAGES[code] ?? apiErrorMessage(error),
+    message: messages[code] ?? apiErrorMessage(error),
     ...(details ? { details } : {}),
   };
 }
 
-async function call<T>(request: () => Promise<{ data?: T; error?: unknown }>): Promise<ImportResult<T>> {
+/** Llamada a la API con el resultado del asistente; `messages` traduce los códigos de error conocidos. */
+export async function call<T>(
+  request: () => Promise<{ data?: T; error?: unknown }>,
+  messages: Record<string, string> = IMPORT_ERROR_MESSAGES,
+): Promise<ImportResult<T>> {
   if (getApiMode() === "mock") return { status: "unavailable", message: MOCK_MESSAGE };
   try {
     const { data, error } = await request();
-    if (error !== undefined || data === undefined) return failureFrom(error);
+    if (error !== undefined || data === undefined) return failureFrom(error, messages);
     return { status: "ok", value: data };
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };
@@ -462,6 +470,40 @@ export async function downloadImportLog(batchId: string, devUser?: string): Prom
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };
   }
+}
+
+/**
+ * `POST /imports/{batch_id}/rollback` (RNF-007): deshace un lote aplicado. Sin `confirmConflicts`,
+ * una edición posterior responde 409 `revert_has_conflicts` con la lista (`revertConflicts`).
+ */
+export async function rollbackImportBatch(batchId: string, reason: string, confirmConflicts: boolean, devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).POST("/api/v1/imports/{batch_id}/rollback", {
+      params: { path: { batch_id: batchId } },
+      body: { reason: reason.trim(), confirm_conflicts: confirmConflicts },
+    }),
+  );
+}
+
+/** Campo editado a mano después de aplicar el lote, que la reversión pisaría. */
+export interface RevertConflict {
+  entityType: string;
+  entityId: string;
+  field: string | null;
+  message: string;
+}
+
+/** Conflictos que acompañan a un 409 `revert_has_conflicts`; `null` para cualquier otro fallo. */
+export function revertConflicts(failure: ImportFailure): RevertConflict[] | null {
+  if (failure.status !== "rejected" || failure.code !== REVERT_CONFLICTS_CODE) return null;
+  const conflicts = failure.details?.conflicts;
+  if (!Array.isArray(conflicts)) return [];
+  return conflicts.filter(isRecord).map((conflict) => ({
+    entityType: String(conflict.entity_type ?? ""),
+    entityId: String(conflict.entity_id ?? ""),
+    field: typeof conflict.field === "string" ? conflict.field : null,
+    message: String(conflict.message ?? ""),
+  }));
 }
 
 /** `POST /imports/{batch_id}/images/{image_id}/associate` (RF-029): solo tras aplicar el lote. */

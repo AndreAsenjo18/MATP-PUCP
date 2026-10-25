@@ -1,13 +1,13 @@
 ## 1. Configuración y almacenamiento
 
-- [ ] 1.1 Añadir a `Settings` y `.env.example` `MEDIA_MAX_BYTES`, `MEDIA_ALLOWED_TYPES`, `MEDIA_URL_TTL_SECONDS`, `MEDIA_UPLOAD_URL_TTL_SECONDS`, `MEDIA_UPLOAD_MODE`; verificar con la prueba existente que exige documentar toda variable (RNF-004)
+- [x] 1.1 Añadir a `Settings` y `.env.example` `MEDIA_MAX_BYTES`, `MEDIA_ALLOWED_TYPES`, `MEDIA_URL_TTL_SECONDS`, `MEDIA_UPLOAD_URL_TTL_SECONDS`, `MEDIA_UPLOAD_MODE`; verificar con la prueba existente que exige documentar toda variable (RNF-004)
 - [ ] 1.2 Extender `app/core/storage.py` con `presign_put`, `presign_get`, `head`, `stream`, `copy`, `delete_pending`; pruebas con `moto` o un doble en memoria (evaluar dependencia de test y registrar versión estable) (Req: Subida verificada de fotografías…; Req: Acceso a archivos con autorización de corta duración)
-- [ ] 1.3 Migración aditiva `collection.default_usage_restriction_term_id` y atributo `blocks_external_download` en términos de `USAGE_RESTRICTION`; `tests/test_migrations.py` en verde (Req: Restricción efectiva heredada…)
+- [x] 1.3 Migración aditiva `collection.default_usage_restriction_term_id` y atributo `blocks_external_download` en términos de `USAGE_RESTRICTION`; `tests/test_migrations.py` en verde (Req: Restricción efectiva heredada…)
 
 ## 2. API de fotografías
 
-- [ ] 2.1 Implementar `POST /pieces/{piece_id}/media/upload-url` (validación declarada, permiso, advertencia de huella repetida); pruebas: ok, tipo no admitido 422, Consulta interna 403, huella repetida con advertencia (Req: Subida verificada de fotografías al almacenamiento de objetos)
-- [ ] 2.2 Implementar `POST /pieces/{piece_id}/media` con verificación de tipo real (Pillow), tamaño y SHA-256, copia a ruta definitiva y auditoría; pruebas: ok, PDF disfrazado 422, huella distinta 422, objeto inexistente 422 (Req: Subida verificada…; RF-013)
+- [x] 2.1 Implementar `POST /pieces/{piece_id}/media/upload-url` (validación declarada, permiso, advertencia de huella repetida); pruebas: ok, tipo no admitido 422, Consulta interna 403, huella repetida con advertencia (Req: Subida verificada de fotografías al almacenamiento de objetos)
+- [x] 2.2 Implementar `POST /pieces/{piece_id}/media` con verificación de tipo real (Pillow), tamaño y SHA-256, copia a ruta definitiva y auditoría; pruebas: ok, PDF disfrazado 422, huella distinta 422, objeto inexistente 422 (Req: Subida verificada…; RF-013)
 - [ ] 2.3 Generación de derivados en `BackgroundTask` y comando `python -m app.media.rebuild_derivatives`; pruebas: derivados creados, fallo simulado deja la foto registrada (Req: Derivados livianos para visualización)
 - [ ] 2.4 Implementar `PATCH /pieces/{piece_id}/media/{media_id}`, `PUT /pieces/{piece_id}/media/order` y `DELETE` lógico con motivo y reasignación de principal; pruebas de los tres escenarios de galería (Req: Gestión de galería con foto principal única)
 - [ ] 2.5 Calcular `effective_restriction` en lecturas y crear `GET .../media/{media_id}/download-url?purpose=`; pruebas: herencia desde colección, externa bloqueada 409, interna permitida, TTL aplicado (Req: Restricción efectiva heredada…; Req: Acceso a archivos con autorización de corta duración; RN-008)
