@@ -4,14 +4,32 @@ import hashlib
 import io
 import uuid
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ValidationFailed
+from app.core.models_base import new_uuid
 from app.core.storage import ObjectStorage
+from app.modules.audit.context import AuditContext, audit_context
+from app.modules.audit.models import AuditOrigin
+from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
+from app.modules.media.models import MediaAsset
+
+if TYPE_CHECKING:
+    from app.modules.catalog.models import Piece
+    from app.modules.imports.models import ImportPhoto
+
+#: View of the photos imported with a batch until a person sets it (importacion-masiva-fotografias,
+#: D5). Outside the team's contract, like SUPERIOR.
+UNSPECIFIED_VIEW_TYPE = "SIN_ESPECIFICAR"
+UNSPECIFIED_VIEW_LABEL = "Sin especificar"
+UNSPECIFIED_VIEW_CREATOR = "importación de fotografías"
+LOAN_RESTRICTION_NOTE = "Restricción contractual del comodato (RN-008)"
 
 
 @dataclass(frozen=True)
@@ -124,3 +142,92 @@ def comodato_restriction_term_id(session: Session) -> uuid.UUID:
             code="usage_restriction_missing",
         )
     return term.id
+
+
+def unspecified_view_type_id(session: Session) -> uuid.UUID | None:
+    """The «sin especificar» term of ``PHOTO_VIEW_TYPE``, created once where the seed predates it.
+
+    Environments seeded before importacion-masiva-fotografias lack the term (task 5.1). It is
+    created with a system audit context and a change set of its own, so reverting the batch that
+    needed it never removes it. A term deleted logically is a decision of an administrator and is
+    respected: the photos then stay without a view type (``None``). Call it before the batch
+    writes anything, so its flush carries only the term.
+    """
+    vocabulary = session.scalar(
+        select(Vocabulary).where(Vocabulary.code == VocabularyCode.PHOTO_VIEW_TYPE)
+    )
+    if vocabulary is None:
+        return None
+    term = session.scalar(
+        select(Term)
+        .where(Term.vocabulary_id == vocabulary.id, Term.code == UNSPECIFIED_VIEW_TYPE)
+        .execution_options(**{INCLUDE_DELETED: True})
+    )
+    if term is not None:
+        return None if term.deleted_at is not None else term.id
+    last = session.scalar(
+        select(func.max(Term.sort_order))
+        .where(Term.vocabulary_id == vocabulary.id)
+        .execution_options(**{INCLUDE_DELETED: True})
+    )
+    # Imported here: vocabulary_service imports media.models, which loads this module.
+    from app.modules.collections.vocabulary_service import create_term
+
+    context = AuditContext(
+        origin=AuditOrigin.SYSTEM, actor_label=UNSPECIFIED_VIEW_CREATOR, change_set_id=new_uuid()
+    )
+    with audit_context(session, context):
+        term = create_term(
+            session,
+            vocabulary,
+            code=UNSPECIFIED_VIEW_TYPE,
+            label=UNSPECIFIED_VIEW_LABEL,
+            sort_order=(last or 0) + 1,
+        )
+    return term.id
+
+
+def register_from_import(
+    session: Session,
+    piece: "Piece",
+    photo: "ImportPhoto",
+    *,
+    storage_key: str,
+    view_type_term_id: uuid.UUID | None,
+) -> MediaAsset:
+    """Register a photo of an applied import batch on ``piece`` (importacion-masiva-fotografias,
+    task 5.1; design D5).
+
+    The photo was verified when it was uploaded (task 2.2), so nothing is read or copied again:
+    the asset points to the object at ``storage_key`` and its derivatives sit next to it. It
+    follows the last photo of the piece and becomes the primary one when the piece has none, so
+    in a new piece the photo with the lowest ``sort_key`` is the primary one when the caller
+    registers them in that order. A loan for use inherits «No publicar» (RN-008), as in a manual
+    upload. The caller's audit context (the batch and its change set) records the asset.
+    """
+    max_order = session.scalar(
+        select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece.id)
+    )
+    restricted = piece.tenure_regime == TenureRegime.LOAN_FOR_USE
+    asset = MediaAsset(
+        id=new_uuid(),
+        piece_id=piece.id,
+        storage_key=storage_key,
+        original_filename=photo.original_filename,
+        content_type=photo.content_type,
+        size_bytes=photo.size_bytes,
+        content_sha256=photo.content_sha256,
+        view_type_term_id=view_type_term_id,
+        sort_order=(max_order + 1) if max_order is not None else 0,
+        is_primary=max_order is None,
+        usage_restriction_term_id=comodato_restriction_term_id(session) if restricted else None,
+        restriction_note=LOAN_RESTRICTION_NOTE if restricted else None,
+        extra_metadata={
+            "import_batch_id": str(photo.batch_id),
+            "import_photo_id": str(photo.id),
+            "relative_path": photo.relative_path,
+        },
+    )
+    session.add(asset)
+    session.flush()
+    return asset
