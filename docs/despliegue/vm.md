@@ -91,7 +91,7 @@ Internet/red PUCP ──443──▶ proxy (Caddy) ──/api/*, /health*──�
 
 ## Desplegar una versión
 
-Las imágenes se publican solas al crear un tag `vX.Y.Z` en GitHub (workflow «Publicar versión»). **La VM no se despliega sola**: una persona autorizada ejecuta, en la VM:
+Al crear un tag `vX.Y.Z` en GitHub, el workflow «Publicar versión» reetiqueta como `vX.Y.Z` las imágenes ya probadas de ese commit (`sha-<commit>`, publicadas por «Publicar imágenes» tras el CI en verde), **sin reconstruirlas**: producción ejecuta el mismo digest que el ambiente de pruebas (change `pipeline-despliegue-ambientes`, D4). El tag tiene que apuntar a un commit de `main` cuyo CI terminó en verde; si no, el workflow falla y explica por qué. El GitHub Release de la versión trae la tabla de digests. **La VM no se despliega sola**: una persona autorizada ejecuta, en la VM:
 
 ```bash
 cd /opt/matp/app && git fetch --tags && git checkout vX.Y.Z

@@ -32,6 +32,8 @@ APPEND_ONLY_TABLES: frozenset[str] = frozenset(
         # Autenticación (ADR-009): trazas de seguridad que nadie debe poder reescribir.
         "auth_event",
         "sensitive_access_log",
+        # Valorizaciones históricas (reportes-inventario D6): una nueva nunca reemplaza otra.
+        "piece_valuation",
     }
 )
 

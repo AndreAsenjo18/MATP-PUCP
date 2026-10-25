@@ -230,7 +230,10 @@ def _run_report_export(
         params = job.params or {}
         report_type = str(params.get("report_type"))
         fmt = (job.format or "xlsx").lower()
-        data = reports.build(report_type, session, permissions, reports.params_from(params))
+        features = frozenset(params.get("features", []))
+        data = reports.build(
+            report_type, session, permissions, reports.params_from(params), features
+        )
         content, content_type = report_file(
             data, fmt, generated_at=utcnow(), generated_by=user_label
         )
