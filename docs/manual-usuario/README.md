@@ -7,7 +7,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Sección | Archivo | Change que la escribe | Estado |
 |---|---|---|---|
 | Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | escrita |
-| Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | pendiente |
+| Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | parcial: «Conservación» (`colecciones-y-vocabularios-admin`) |
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
 | Depósito: vista móvil, movimientos y verificaciones | `deposito.md` | `ubicacion-jerarquica-y-movimientos` | escrita |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |
@@ -16,7 +16,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | hecho (sin valorización) |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | hecho |
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
-| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Copias de seguridad del sistema» (`despliegue-vm-y-respaldos`), «Usuarios y permisos» (`autenticacion-y-matriz-permisos`), «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) |
+| Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Copias de seguridad del sistema» (`despliegue-vm-y-respaldos`), «Usuarios y permisos» (`autenticacion-y-matriz-permisos`), «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) y «Colecciones, vocabularios y tipos de identificador» (`colecciones-y-vocabularios-admin`) |
 
 ## Cómo moverse por el sistema
 

@@ -19,13 +19,13 @@
 
 ## 5. Frontend
 
-- [ ] 5.1 Crear `lib/data/admin.ts` (mock/live) y conectar `app/administracion` (colecciones, vocabularios, términos, tipos de identificador con candado de sistema); pruebas Vitest de la capa de datos (Req: Administración de vocabularios y tipos de identificador por API; RF-010)
-- [ ] 5.2 Flujo de cambio de regla de normalización con pantalla de vista previa y confirmación en lenguaje claro; prueba de componente (Req: Cambio controlado de la regla de normalización; RNF-010)
-- [ ] 5.3 Pestaña de conservación de la ficha con historial y formulario de nueva evaluación en modo `live`; prueba de componente (Req: Historial de evaluaciones de conservación por API)
+- [x] 5.1 Crear `lib/data/admin.ts` (mock/live) y conectar `app/administracion` (colecciones, vocabularios, términos, tipos de identificador con candado de sistema); pruebas Vitest de la capa de datos (Req: Administración de vocabularios y tipos de identificador por API; RF-010) — hecho el 2026-10-25: pestañas Colecciones, Vocabularios y Tipos de identificador en modo `live` (`components/domain/VocabulariesAdmin.tsx`); pruebas en `lib/data/admin.test.ts`
+- [x] 5.2 Flujo de cambio de regla de normalización con pantalla de vista previa y confirmación en lenguaje claro; prueba de componente (Req: Cambio controlado de la regla de normalización; RNF-010) — hecho el 2026-10-25 (`RulePreviewPanel`); prueba de componente en `VocabulariesAdmin.test.tsx`
+- [x] 5.3 Pestaña de conservación de la ficha con historial y formulario de nueva evaluación en modo `live`; prueba de componente (Req: Historial de evaluaciones de conservación por API) — hecho el 2026-10-25 (`components/domain/ConservationPanel.tsx`, sección de la ficha `live` y pestaña «Conservación»); pruebas de componente en `VocabulariesAdmin.test.tsx`
 
 ## 6. Cierre del change
 
 - [ ] 6.1 Tests requeridos: pruebas de las secciones 1–5 en verde (`npm test`, `npm run lint`); repetir 2.4 y 3.1 contra PostgreSQL en compose cuando Docker esté disponible
-- [ ] 6.2 Actualizar OpenAPI: implementar los 3 stubs, añadir `normalization-preview` y `conservation-assessments` con ejemplos, `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 6.3 Actualizar el manual de usuario: `docs/manual-usuario/administracion.md` (colecciones, vocabularios, tipos de identificador, precarga de listas) y `docs/manual-usuario/catalogo.md` (sección conservación)
+- [x] 6.2 Actualizar OpenAPI: implementar los 3 stubs, añadir `normalization-preview` y `conservation-assessments` con ejemplos, `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — hecho el 2026-10-25 con el PR #98: stubs implementados, operaciones añadidas en `ANADIDOS` y en el mapeo, `openapi:check` en verde
+- [x] 6.3 Actualizar el manual de usuario: `docs/manual-usuario/administracion.md` (colecciones, vocabularios, tipos de identificador, precarga de listas) y `docs/manual-usuario/catalogo.md` (sección conservación) — hecho el 2026-10-25: «Colecciones, vocabularios y tipos de identificador» en `administracion.md` y `catalogo.md` (sección «Conservación»)
 - [ ] 6.4 Registrar supuestos nuevos en `docs/preguntas-contraparte.md`, `openspec validate colecciones-y-vocabularios-admin --strict` en verde y, tras aprobar el PR, `openspec archive colecciones-y-vocabularios-admin -y`
