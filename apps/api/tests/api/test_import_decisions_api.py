@@ -25,7 +25,7 @@ from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditLog, AuditOrigin
 from app.modules.catalog.enums import LEGAL_OWNER_PUCP, TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
-from app.modules.catalog.service import change_tenure, create_piece
+from app.modules.catalog.service import change_tenure, create_piece, update_piece
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import TYPE_COLLECTION, TYPE_INVENTORY
 from app.modules.identification.service import add_identifier
@@ -625,3 +625,152 @@ def test_an_unassigned_image_needs_the_piece(
 
     assert missing.status_code == 422 and missing.json()["code"] == "piece_required"
     assert chosen.status_code == 200 and chosen.json()["status"] == "ASSOCIATED"
+
+
+# --- 5.2 Reversión del lote ----------------------------------------------------------------------
+@dataclass
+class AppliedBatch:
+    id: str
+    tag: str
+    target_id: uuid.UUID
+    reason: str = "Lote cargado con la hoja equivocada"
+
+
+def _applied_update_and_create(pipeline: Pipeline) -> AppliedBatch:
+    """A batch of two rows: row 2 updates a piece of its own, row 3 creates a new one."""
+    tag = _tag()
+    code = int(tag, 16) % 900000 + 100000
+    with pipeline.session() as session:
+        context = AuditContext(origin=AuditOrigin.MANUAL, user_id=_user_id(session, ADMIN))
+        with audit_context(session, context):
+            target = create_piece(
+                session,
+                denomination=f"Por actualizar {tag}",
+                tenure_regime=TenureRegime.OWNED,
+                provenance=f"Procedencia original {tag}",
+            )
+            add_identifier(session, target, TYPE_COLLECTION, f"MMZ {code}")
+        session.commit()
+        target_id = target.id
+    content = (
+        "DENOMINACIÓN;CÓDIGOS;RÉGIMEN;PROCEDENCIA\n"
+        f"Por actualizar {tag};MMZ {code};Propiedad;Procedencia del lote {tag}\n"
+        f"Creada por el lote {tag};S/N;Propiedad;\n"
+    ).encode()
+    batch_id = upload(pipeline.client, f"reversion-{tag}.csv", content)["batch_id"]
+    mapping = {"columns": SHEET_MAPPING["columns"][:4]}
+    assert put_mapping(pipeline.client, batch_id, mapping).status_code == 200
+    assert validate(pipeline.client, batch_id).status_code == 202
+    rows = _rows(pipeline, batch_id)
+    assert rows[2]["classification"] == "UPDATE" and rows[3]["classification"] == "NEW"
+    response = confirm(pipeline, batch_id, summary(pipeline, batch_id)["summary_token"])
+    assert response.status_code == 200, response.text
+    assert get_batch(pipeline.client, batch_id)["status"] == "APPLIED"
+    return AppliedBatch(batch_id, tag, target_id)
+
+
+def rollback(pipeline: Pipeline, batch: AppliedBatch, role: str = "ADMIN", **body: Any) -> Any:
+    return pipeline.login(role).post(
+        f"{BASE}/{batch.id}/rollback", json={"reason": batch.reason, **body}
+    )
+
+
+def test_rolling_back_a_batch_undoes_it_without_deleting_history(pipeline: Pipeline) -> None:
+    """Scenario «Reversión del lote»: created pieces deleted logically, values restored."""
+    batch = _applied_update_and_create(pipeline)
+
+    response = rollback(pipeline, batch)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "REVERTED" and body["status_reason"] == batch.reason
+    with pipeline.session() as session:
+        target = session.get(Piece, batch.target_id)
+        assert target is not None and target.deleted_at is None
+        assert target.provenance == f"Procedencia original {batch.tag}"
+        created = session.scalar(
+            select(Piece)
+            .where(Piece.denomination == f"Creada por el lote {batch.tag}")
+            .execution_options(include_deleted=True)
+        )
+        assert created is not None
+        assert created.deleted_at is not None and created.deletion_reason == batch.reason
+        # The source data of each applied row stays as history (RN-005, append-only).
+        records = session.scalars(
+            select(PieceSourceRecord).where(
+                PieceSourceRecord.import_batch_id == uuid.UUID(batch.id)
+            )
+        ).all()
+        assert {record.source_row_number for record in records} == {2, 3}
+        stored = session.get(ImportBatch, uuid.UUID(batch.id))
+        assert stored is not None and stored.change_set_id is not None
+        reversal = session.scalars(
+            select(AuditLog).where(AuditLog.origin_ref == str(stored.change_set_id))
+        ).all()
+    assert reversal and {entry.reason for entry in reversal} == {batch.reason}
+
+
+def test_a_later_edit_must_be_confirmed_before_rolling_back(pipeline: Pipeline) -> None:
+    """RNF-007: an edit made after applying is never overwritten silently (design D7)."""
+    batch = _applied_update_and_create(pipeline)
+    with pipeline.session() as session:
+        context = AuditContext(origin=AuditOrigin.MANUAL, user_id=_user_id(session, ADMIN))
+        with audit_context(session, context):
+            piece = session.get(Piece, batch.target_id)
+            assert piece is not None
+            update_piece(session, piece, provenance=f"Corregida a mano {batch.tag}")
+            session.flush()
+        session.commit()
+
+    unconfirmed = rollback(pipeline, batch)
+
+    assert unconfirmed.status_code == 409
+    assert unconfirmed.json()["code"] == "revert_has_conflicts"
+    conflicts = unconfirmed.json()["details"]["conflicts"]
+    assert {(c["entity_id"], c["field"]) for c in conflicts} == {
+        (str(batch.target_id), "provenance")
+    }
+    assert get_batch(pipeline.client, batch.id)["status"] == "APPLIED"
+
+    confirmed = rollback(pipeline, batch, confirm_conflicts=True)
+
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["status"] == "REVERTED"
+    with pipeline.session() as session:
+        piece = session.get(Piece, batch.target_id)
+        assert piece is not None and piece.provenance == f"Procedencia original {batch.tag}"
+
+
+def test_only_an_administrator_rolls_back_a_batch(pipeline: Pipeline) -> None:
+    batch = _applied_update_and_create(pipeline)
+
+    response = rollback(pipeline, batch, role="COLLECTIONS_MANAGER")
+
+    assert response.status_code == 403
+    assert get_batch(pipeline.client, batch.id)["status"] == "APPLIED"
+
+
+def test_a_batch_not_applied_or_already_reverted_cannot_be_rolled_back(
+    pipeline: Pipeline,
+) -> None:
+    pending = prepared(pipeline)
+    in_preview = pipeline.login("ADMIN").post(
+        f"{BASE}/{pending.id}/rollback", json={"reason": "No está aplicado"}
+    )
+    batch = _applied_update_and_create(pipeline)
+    assert rollback(pipeline, batch).status_code == 200
+
+    again = rollback(pipeline, batch)
+
+    assert in_preview.status_code == 409
+    assert in_preview.json()["code"] == "invalid_batch_transition"
+    assert again.status_code == 409 and again.json()["code"] == "invalid_batch_transition"
+
+
+def test_rolling_back_requires_a_reason(pipeline: Pipeline) -> None:
+    batch = _applied_update_and_create(pipeline)
+
+    response = pipeline.login("ADMIN").post(f"{BASE}/{batch.id}/rollback", json={"reason": ""})
+
+    assert response.status_code == 422
+    assert get_batch(pipeline.client, batch.id)["status"] == "APPLIED"

@@ -2423,6 +2423,146 @@
         "title": "ConflictReason",
         "type": "string"
       },
+      "ConservationAssessmentCreate": {
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior a la más reciente se agrega al historial sin cambiar el estado actual.",
+            "title": "Assessed At"
+          },
+          "assessed_by_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Responsable de la evaluación, si no es el usuario.",
+            "title": "Assessed By Label"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "status_term_id": {
+            "description": "Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es).",
+            "format": "uuid",
+            "title": "Status Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_term_id"
+        ],
+        "title": "ConservationAssessmentCreate",
+        "type": "object"
+      },
+      "ConservationAssessmentOut": {
+        "examples": [
+          {
+            "assessed_at": "2026-09-17T10:30:00Z",
+            "assessed_by_label": "Especialista de Conservación (sintético)",
+            "id": "01920000-0000-7000-8000-000000000121",
+            "is_current": true,
+            "notes": "Desprendimiento leve de pintura en la base.",
+            "piece_id": "01920000-0000-7000-8000-000000000101",
+            "status": {
+              "code": "REGULAR",
+              "id": "01920000-0000-7000-8000-000000000301",
+              "label": "Regular"
+            }
+          }
+        ],
+        "properties": {
+          "assessed_at": {
+            "format": "date-time",
+            "title": "Assessed At",
+            "type": "string"
+          },
+          "assessed_by_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed By Label"
+          },
+          "assessed_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed By User Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "description": "Es la evaluación más reciente por fecha: define el estado actual.",
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TermRef"
+          }
+        },
+        "required": [
+          "id",
+          "piece_id",
+          "status",
+          "assessed_at",
+          "assessed_by_user_id",
+          "assessed_by_label",
+          "notes",
+          "is_current"
+        ],
+        "title": "ConservationAssessmentOut",
+        "type": "object"
+      },
       "DashboardHistory": {
         "examples": [
           {
@@ -3726,6 +3866,7 @@
             "allowed_for_temporary_loan": false,
             "code": "I",
             "is_active": true,
+            "is_system": true,
             "is_unique_when_current": true,
             "label": "Código de inventario general (I)",
             "locks_on_assignment": true,
@@ -3756,6 +3897,12 @@
           },
           "is_active": {
             "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_system": {
+            "default": false,
+            "description": "Tipo del sistema (I, COLECCION): solo cambian etiqueta, descripción y orden.",
+            "title": "Is System",
             "type": "boolean"
           },
           "is_unique_when_current": {
@@ -3799,6 +3946,30 @@
       },
       "IdentifierTypeUpdate": {
         "properties": {
+          "allowed_for_temporary_loan": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Las reglas estructurales no cambian en un tipo del sistema (409 `system_identifier_type`).",
+            "title": "Allowed For Temporary Loan"
+          },
+          "confirm_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Huella de la vista previa del cambio de regla que se confirma.",
+            "title": "Confirm Token"
+          },
           "description": {
             "anyOf": [
               {
@@ -3821,6 +3992,17 @@
             ],
             "title": "Is Active"
           },
+          "is_unique_when_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Unique When Current"
+          },
           "label": {
             "anyOf": [
               {
@@ -3833,6 +4015,39 @@
               }
             ],
             "title": "Label"
+          },
+          "locks_on_assignment": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locks On Assignment"
+          },
+          "normalization_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NormalizationRule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si el tipo ya tiene identificadores, exige `confirm_token` de `normalization-preview` (409 `normalization_change_requires_preview`)."
+          },
+          "owned_pieces_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owned Pieces Only"
           },
           "sort_order": {
             "anyOf": [
@@ -4536,6 +4751,19 @@
         ],
         "title": "ImportLogEntry",
         "type": "object"
+      },
+      "ImportPhotoStatus": {
+        "description": "Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2).",
+        "enum": [
+          "PENDING_UPLOAD",
+          "UPLOADED",
+          "VERIFIED",
+          "REJECTED",
+          "DISCARDED",
+          "APPLIED"
+        ],
+        "title": "ImportPhotoStatus",
+        "type": "string"
       },
       "ImportRowOut": {
         "examples": [
@@ -6370,6 +6598,138 @@
         "title": "MovementType",
         "type": "string"
       },
+      "NormalizationCollisionOut": {
+        "properties": {
+          "normalized_value": {
+            "title": "Normalized Value",
+            "type": "string"
+          },
+          "piece_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Piece Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "normalized_value",
+          "piece_ids"
+        ],
+        "title": "NormalizationCollisionOut",
+        "type": "object"
+      },
+      "NormalizationPreviewOut": {
+        "examples": [
+          {
+            "can_confirm": true,
+            "changed_count": 120,
+            "changed_examples": [],
+            "collisions": [],
+            "confirm_token": "9f2c000000000000000000000000000000000000000000000000000000000000",
+            "current_rule": "GENERIC",
+            "notes": [],
+            "proposed_rule": "INC_RN",
+            "total_identifiers": 140,
+            "type_code": "PUCP",
+            "unparseable_count": 3,
+            "unparseable_examples": []
+          }
+        ],
+        "properties": {
+          "can_confirm": {
+            "title": "Can Confirm",
+            "type": "boolean"
+          },
+          "changed_count": {
+            "description": "Identificadores cuyo valor normalizado cambia.",
+            "title": "Changed Count",
+            "type": "integer"
+          },
+          "changed_examples": {
+            "items": {
+              "$ref": "#/components/schemas/RecalculatedIdentifierOut"
+            },
+            "title": "Changed Examples",
+            "type": "array"
+          },
+          "collisions": {
+            "description": "Mismo código vigente en piezas distintas: impiden confirmar (RN-002).",
+            "items": {
+              "$ref": "#/components/schemas/NormalizationCollisionOut"
+            },
+            "title": "Collisions",
+            "type": "array"
+          },
+          "confirm_token": {
+            "description": "Se envía en el `PATCH` para confirmar este informe.",
+            "title": "Confirm Token",
+            "type": "string"
+          },
+          "current_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "proposed_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          },
+          "total_identifiers": {
+            "title": "Total Identifiers",
+            "type": "integer"
+          },
+          "type_code": {
+            "title": "Type Code",
+            "type": "string"
+          },
+          "unparseable_count": {
+            "description": "Valores que dejan de ser normalizables.",
+            "title": "Unparseable Count",
+            "type": "integer"
+          },
+          "unparseable_examples": {
+            "items": {
+              "$ref": "#/components/schemas/RecalculatedIdentifierOut"
+            },
+            "title": "Unparseable Examples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type_code",
+          "current_rule",
+          "proposed_rule",
+          "total_identifiers",
+          "changed_count",
+          "unparseable_count",
+          "collisions",
+          "changed_examples",
+          "unparseable_examples",
+          "can_confirm",
+          "confirm_token",
+          "notes"
+        ],
+        "title": "NormalizationPreviewOut",
+        "type": "object"
+      },
+      "NormalizationPreviewRequest": {
+        "properties": {
+          "normalization_rule": {
+            "$ref": "#/components/schemas/NormalizationRule"
+          }
+        },
+        "required": [
+          "normalization_rule"
+        ],
+        "title": "NormalizationPreviewRequest",
+        "type": "object"
+      },
       "NormalizationRule": {
         "enum": [
           "INVENTORY",
@@ -7092,6 +7452,298 @@
           "description"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PhotoCompleteOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoStateOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "photos"
+        ],
+        "title": "PhotoCompleteOut",
+        "type": "object"
+      },
+      "PhotoCompleteRequest": {
+        "properties": {
+          "photo_ids": {
+            "description": "Fotos cuyo archivo ya se subió (hasta 100).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Photo Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "photo_ids"
+        ],
+        "title": "PhotoCompleteRequest",
+        "type": "object"
+      },
+      "PhotoFileIn": {
+        "properties": {
+          "content_sha256": {
+            "description": "Huella SHA-256 calculada en el navegador.",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "Tipo MIME declarado.",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Content Type",
+            "type": "string"
+          },
+          "relative_path": {
+            "description": "Carpeta y nombre del archivo tal como los lista el navegador.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "relative_path",
+          "size_bytes",
+          "content_type",
+          "content_sha256"
+        ],
+        "title": "PhotoFileIn",
+        "type": "object"
+      },
+      "PhotoStateOut": {
+        "properties": {
+          "photo_id": {
+            "format": "uuid",
+            "title": "Photo Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportPhotoStatus",
+            "description": "`UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina."
+          }
+        },
+        "required": [
+          "photo_id",
+          "status"
+        ],
+        "title": "PhotoStateOut",
+        "type": "object"
+      },
+      "PhotoUploadItemOut": {
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headers"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Id"
+          },
+          "photo_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportPhotoStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "relative_path": {
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "result": {
+            "description": "`upload`: subir con `upload_url`; `already_registered`: la huella ya está en el lote y no se sube otra vez; `rejected`: tipo o tamaño no admitido (`reason`).",
+            "enum": [
+              "upload",
+              "already_registered",
+              "rejected"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "upload_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Url"
+          }
+        },
+        "required": [
+          "relative_path",
+          "content_sha256",
+          "result"
+        ],
+        "title": "PhotoUploadItemOut",
+        "type": "object"
+      },
+      "PhotoUploadUrlsOut": {
+        "examples": [
+          {
+            "batch_id": "01920000-0000-7000-8000-000000000601",
+            "items": [
+              {
+                "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+                "expires_at": "2026-09-17T10:30:00Z",
+                "headers": {
+                  "Content-Type": "image/jpeg"
+                },
+                "method": "PUT",
+                "photo_id": "01920000-0000-7000-8000-000000000701",
+                "photo_status": "PENDING_UPLOAD",
+                "relative_path": "MMZ 045/DSC_0001.jpg",
+                "result": "upload",
+                "upload_url": "https://almacenamiento.example/media/..."
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoUploadItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "items"
+        ],
+        "title": "PhotoUploadUrlsOut",
+        "type": "object"
+      },
+      "PhotoUploadUrlsRequest": {
+        "examples": [
+          {
+            "files": [
+              {
+                "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+                "content_type": "image/jpeg",
+                "relative_path": "MMZ 045/DSC_0001.jpg",
+                "size_bytes": 4200000
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "files": {
+            "description": "Hasta 100.",
+            "items": {
+              "$ref": "#/components/schemas/PhotoFileIn"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "PhotoUploadUrlsRequest",
         "type": "object"
       },
       "PieceAlert": {
@@ -8597,6 +9249,55 @@
         "title": "QualityJobType",
         "type": "string"
       },
+      "RecalculatedIdentifierOut": {
+        "properties": {
+          "identifier_id": {
+            "format": "uuid",
+            "title": "Identifier Id",
+            "type": "string"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "piece_id": {
+            "format": "uuid",
+            "title": "Piece Id",
+            "type": "string"
+          },
+          "proposed_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Value"
+          }
+        },
+        "required": [
+          "identifier_id",
+          "piece_id",
+          "original_value",
+          "normalized_value",
+          "proposed_value"
+        ],
+        "title": "RecalculatedIdentifierOut",
+        "type": "object"
+      },
       "ReportOut": {
         "examples": [
           {
@@ -8650,6 +9351,48 @@
             "title": "Generated At",
             "type": "string"
           },
+          "generated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Usuario que generó el reporte.",
+            "title": "Generated By"
+          },
+          "masked_columns": {
+            "description": "Columnas limitadas por el rol (RF-041).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Masked Columns",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aviso en lenguaje claro (p. ej. sin piezas).",
+            "title": "Message"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 0,
+            "title": "Page Size",
+            "type": "integer"
+          },
           "report_type": {
             "$ref": "#/components/schemas/ReportType"
           },
@@ -8661,9 +9404,23 @@
             "title": "Rows",
             "type": "array"
           },
+          "subtotals": {
+            "description": "Subtotales por colección (con `level` de subcolección), régimen o espacio.",
+            "items": {
+              "$ref": "#/components/schemas/ReportSubtotal"
+            },
+            "title": "Subtotals",
+            "type": "array"
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "total_rows": {
+            "default": 0,
+            "description": "Filas del reporte completo; `rows` es una página.",
+            "title": "Total Rows",
+            "type": "integer"
           },
           "totals": {
             "additionalProperties": true,
@@ -8681,6 +9438,34 @@
           "totals"
         ],
         "title": "ReportOut",
+        "type": "object"
+      },
+      "ReportSubtotal": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "level": {
+            "default": 0,
+            "title": "Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group",
+          "label",
+          "count"
+        ],
+        "title": "ReportSubtotal",
         "type": "object"
       },
       "ReportType": {
@@ -9089,6 +9874,12 @@
       },
       "RevertRequest": {
         "properties": {
+          "confirm_conflicts": {
+            "default": false,
+            "description": "Revertir también los campos editados después de aplicar el lote. Sin esta confirmación, una edición posterior responde 409 `revert_has_conflicts` con la lista de conflictos (design D7).",
+            "title": "Confirm Conflicts",
+            "type": "boolean"
+          },
           "reason": {
             "minLength": 3,
             "title": "Reason",
@@ -11814,6 +12605,7 @@
     },
     "/api/v1/audit-logs/pieces/{piece_id}": {
       "get": {
+        "description": "Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos sensibles se enmascaran según el rol).",
         "operationId": "getPieceAuditTimeline",
         "parameters": [
           {
@@ -11894,16 +12686,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`."
           }
         },
         "security": [
@@ -11915,8 +12697,7 @@
         "tags": [
           "Auditoría"
         ],
-        "x-change": "auditoria-y-soft-delete-transversal",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/audit/change-sets/{change_set_id}": {
@@ -13747,6 +14528,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Queda disponible al instante para registrar identificadores y en las plantillas de mapeo. La regla de normalización se elige entre las implementadas; otra responde 422 con las reglas disponibles.",
         "operationId": "createIdentifierType",
         "requestBody": {
           "content": {
@@ -13789,6 +14571,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicto con el estado actual."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13798,16 +14590,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -13815,16 +14597,16 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Crear un tipo de identificador",
+        "summary": "Crear un tipo de identificador (RN-010)",
         "tags": [
           "Identificadores"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifier-types/{type_code}": {
       "patch": {
+        "description": "Los tipos del sistema (I, COLECCION) solo cambian etiqueta, descripción y orden. Cambiar la regla de normalización de un tipo con identificadores exige el `confirm_token` de `normalization-preview`; los valores normalizados se recalculan en una transacción auditada con origen «sistema» y los originales no cambian.",
         "operationId": "updateIdentifierType",
         "parameters": [
           {
@@ -13878,6 +14660,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`system_identifier_type` (regla estructural de un tipo del sistema), `normalization_change_requires_preview` (falta la vista previa o los datos cambiaron desde entonces) o `normalization_collision` (RN-002)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -13887,16 +14689,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -13908,8 +14700,96 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/identifier-types/{type_code}/normalization-preview": {
+      "post": {
+        "description": "No escribe nada. Informa cuántos valores normalizados cambiarían, cuáles dejan de ser normalizables y las colisiones de códigos vigentes entre piezas distintas, con el `confirm_token` que exige la confirmación.",
+        "operationId": "previewIdentifierTypeNormalization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type_code",
+            "required": true,
+            "schema": {
+              "title": "Type Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizationPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe o fue eliminado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Vista previa del cambio de regla de normalización (RF-023, RNF-007)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/identifiers/normalize": {
@@ -15315,8 +16195,209 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/imports/{batch_id}/photos/complete": {
+      "post": {
+        "description": "Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).",
+        "operationId": "completeImportPhotoUploads",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCompleteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite fotos (está aprobado)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: avisar qué archivos terminaron de subirse",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/photos/upload-urls": {
+      "post": {
+        "description": "Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como `rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).",
+        "operationId": "requestImportPhotoUploadUrls",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUploadUrlsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadUrlsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite fotos (está aprobado)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: pedir las URL de subida de una tanda",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/imports/{batch_id}/rollback": {
       "post": {
+        "description": "Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos actualizados recuperan su valor anterior y los datos de origen se conservan como historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].",
         "operationId": "rollbackImportBatch",
         "parameters": [
           {
@@ -15371,6 +16452,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`invalid_batch_transition` (el lote no está aplicado), `already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir con `confirm_conflicts=true` tras revisar la lista)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -15380,16 +16481,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `importacion-pipeline-reconciliacion`."
           }
         },
         "security": [
@@ -15401,8 +16492,7 @@
         "tags": [
           "Importación"
         ],
-        "x-change": "importacion-pipeline-reconciliacion",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/imports/{batch_id}/rows/{row_id}": {
@@ -17975,6 +19065,181 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/pieces/{piece_id}/conservation-assessments": {
+      "get": {
+        "operationId": "listConservationAssessments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConservationAssessmentOut"
+                  },
+                  "title": "Response Listconservationassessments",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Historial de evaluaciones de conservación, la más reciente primero (RF-012)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "description": "El estado actual de la pieza pasa a ser el de la evaluación con fecha más reciente: una evaluación antigua registrada hoy se agrega al historial sin cambiarlo. Un término inactivo o de otro vocabulario responde 422 con los términos activos. Devuelve el historial completo.",
+        "operationId": "createConservationAssessment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConservationAssessmentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConservationAssessmentOut"
+                  },
+                  "title": "Response Createconservationassessment",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Registrar una evaluación de conservación (RF-012, solo inserción)",
+        "tags": [
+          "Piezas"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/pieces/{piece_id}/identifiers": {
       "get": {
         "operationId": "listPieceIdentifiers",
@@ -20270,14 +21535,25 @@
     },
     "/api/v1/reports/{report_type}": {
       "get": {
+        "description": "Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona.",
         "operationId": "getReport",
         "parameters": [
           {
+            "description": "Tipo de reporte.",
             "in": "path",
             "name": "report_type",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ReportType"
+              "description": "Tipo de reporte.",
+              "enum": [
+                "inventory",
+                "by-collection",
+                "by-location",
+                "incomplete",
+                "valuation"
+              ],
+              "title": "Report Type",
+              "type": "string"
             }
           },
           {
@@ -20316,6 +21592,56 @@
           },
           {
             "in": "query",
+            "name": "include_loans_for_use",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Loans For Use",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_verified_since_days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Not Verified Since Days"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "format",
             "required": false,
             "schema": {
@@ -20338,9 +21664,21 @@
                 "schema": {
                   "$ref": "#/components/schemas/ReportOut"
                 }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {},
+              "text/csv": {}
+            },
+            "description": "El reporte en JSON (una página) o, con `format`, el archivo."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Reporte grande: se genera en segundo plano."
           },
           "401": {
             "content": {
@@ -20353,14 +21691,10 @@
             "description": "Falta identificar al usuario (RF-042)."
           },
           "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
+            "description": "`exact_location_required`: detalle por debajo del espacio."
+          },
+          "404": {
+            "description": "`report_not_found`, con los reportes disponibles para su rol."
           },
           "422": {
             "content": {
@@ -20371,16 +21705,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `reportes-inventario`."
           }
         },
         "security": [
@@ -20388,12 +21712,11 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin",
+        "summary": "Reportes: inventario general, por colección, por ubicación e incompletas (RF-033)",
         "tags": [
           "Reportes"
         ],
-        "x-change": "reportes-inventario",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/roles": {
@@ -21440,6 +22763,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "El código no se repite, ni siquiera con vocabularios eliminados (409 `vocabulary_exists`). Lo administran el Gestor de colecciones y el Administrador [SUPUESTO B7].",
         "operationId": "createVocabulary",
         "requestBody": {
           "content": {
@@ -21482,6 +22806,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicto con el estado actual."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -21491,16 +22825,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`."
           }
         },
         "security": [
@@ -21508,12 +22832,11 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Crear un vocabulario nuevo",
+        "summary": "Crear un vocabulario nuevo con código estable (RN-010)",
         "tags": [
           "Vocabularios"
         ],
-        "x-change": "colecciones-y-vocabularios-admin",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/vocabularies/{vocabulary_code}": {

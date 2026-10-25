@@ -28,6 +28,7 @@ from datetime import UTC, datetime
 import sqlalchemy as sa
 from alembic import context, op
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.schema import SchemaItem
 
 revision: str = "0013_normalization_params"
 down_revision: str | None = "0012_completeness_rules"
@@ -62,7 +63,7 @@ CONCATENATION_SEPARATORS = {
 JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 
-def _soft_delete_columns(table: str) -> list[sa.SchemaItem]:
+def _soft_delete_columns(table: str) -> list[SchemaItem]:
     return [
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

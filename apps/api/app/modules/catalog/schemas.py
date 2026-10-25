@@ -417,3 +417,49 @@ class SourceRecordOut(ORMModel):
 
 class DeletionRequest(BaseModel):
     reason: str = Field(min_length=3, description="Motivo obligatorio (RN-005).")
+
+
+class ConservationAssessmentCreate(BaseModel):
+    status_term_id: uuid.UUID = Field(
+        description="Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es)."
+    )
+    assessed_at: datetime | None = Field(
+        None,
+        description="Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior "
+        "a la más reciente se agrega al historial sin cambiar el estado actual.",
+    )
+    assessed_by_label: str | None = Field(
+        None, max_length=200, description="Responsable de la evaluación, si no es el usuario."
+    )
+    notes: str | None = None
+
+
+class ConservationAssessmentOut(ORMModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000121",
+                    "piece_id": EX_PIECE_ID,
+                    "status": _STATUS_REF,
+                    "assessed_at": EX_DATETIME,
+                    "assessed_by_user_id": None,
+                    "assessed_by_label": "Especialista de Conservación (sintético)",
+                    "notes": "Desprendimiento leve de pintura en la base.",
+                    "is_current": True,
+                }
+            ]
+        },
+    )
+
+    id: uuid.UUID
+    piece_id: uuid.UUID
+    status: TermRef
+    assessed_at: datetime
+    assessed_by_user_id: uuid.UUID | None
+    assessed_by_label: str | None
+    notes: str | None
+    is_current: bool = Field(
+        description="Es la evaluación más reciente por fecha: define el estado actual."
+    )

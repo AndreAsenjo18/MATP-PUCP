@@ -60,6 +60,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/identifier-types"),
     ("post", "/identifier-types"),
     ("patch", "/identifier-types/{}"),
+    # Vista previa del cambio de regla (change colecciones-y-vocabularios-admin, diseño D2).
+    ("post", "/identifier-types/{}/normalization-preview"),
     ("post", "/identifiers/normalize"),
     ("get", "/import-templates"),
     ("post", "/import-templates"),
@@ -80,6 +82,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/imports/{}"),
     ("post", "/imports/{}/images/{}/associate"),
     ("get", "/imports/{}/log"),
+    # Fotos del lote (change importacion-masiva-fotografias, diseño D2).
+    ("post", "/imports/{}/photos/complete"),
+    ("post", "/imports/{}/photos/upload-urls"),
     ("put", "/imports/{}/mapping"),
     ("patch", "/imports/{}/rows/{}"),
     ("post", "/imports/{}/validate"),
@@ -100,6 +105,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/pieces/{}/media/{}/download-url"),
     ("get", "/pieces/media/storage-estimate"),
     ("post", "/pieces/{}/restore"),
+    # Historial de conservación (change colecciones-y-vocabularios-admin, diseño D3).
+    ("get", "/pieces/{}/conservation-assessments"),
+    ("post", "/pieces/{}/conservation-assessments"),
     ("get", "/pieces/{}/source-records"),
     ("get", "/quality/completeness-rules"),
     ("put", "/quality/completeness-rules"),

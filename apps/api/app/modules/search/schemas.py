@@ -99,6 +99,13 @@ class ExportFormat(enum.StrEnum):
     CSV = "csv"
 
 
+class ReportSubtotal(BaseModel):
+    group: str
+    label: str
+    count: int
+    level: int = 0
+
+
 class ReportOut(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -125,6 +132,18 @@ class ReportOut(BaseModel):
     rows: list[list[Any]]
     totals: dict[str, Any]
     download_url: str | None = None
+    generated_by: str | None = Field(None, description="Usuario que generó el reporte.")
+    subtotals: list[ReportSubtotal] = Field(
+        default_factory=list,
+        description="Subtotales por colección (con `level` de subcolección), régimen o espacio.",
+    )
+    masked_columns: list[str] = Field(
+        default_factory=list, description="Columnas limitadas por el rol (RF-041)."
+    )
+    message: str | None = Field(None, description="Aviso en lenguaje claro (p. ej. sin piezas).")
+    total_rows: int = Field(0, description="Filas del reporte completo; `rows` es una página.")
+    page: int = 1
+    page_size: int = 0
 
 
 class SearchExportRequest(BaseModel):

@@ -24,7 +24,7 @@
 ## 5. Imágenes y reversión
 
 - [x] 5.1 Extraer imágenes incrustadas en la ingesta (`imports/images.py`) con fila de anclaje y bandeja sin asignar; operación nueva `POST /api/v1/imports/{batch_id}/images/{image_id}/associate`; pruebas con `sabana_sintetica_v1.xlsx`: anclada, sin fila, asociación antes de aplicar 409 (Req: Revisión manual de imágenes extraídas de Excel; RF-029)
-- [ ] 5.2 Implementar `POST /api/v1/imports/{batch_id}/rollback` sobre el motor de reversión de `auditoria-y-soft-delete-transversal` (bloqueada hasta que ese change esté aplicado); pruebas: reversión limpia, reversión con edición posterior exige confirmación (Req: Aplicación atómica… — escenario "Reversión del lote"; RNF-007) — **bloqueada (2026-10-21)**: `POST /audit/change-sets/{change_set_id}/revert` sigue siendo stub; el lote ya guarda `import_batch.change_set_id` para revertirlo (M10)
+- [x] 5.2 Implementar `POST /api/v1/imports/{batch_id}/rollback` sobre el motor de reversión de `auditoria-y-soft-delete-transversal` (bloqueada hasta que ese change esté aplicado); pruebas: reversión limpia, reversión con edición posterior exige confirmación (Req: Aplicación atómica… — escenario "Reversión del lote"; RNF-007) — hecho el 2026-10-25 en `app/modules/imports/rollback.py`; `confirm_conflicts` confirma las ediciones posteriores y `import_batch.change_set_id` se asigna fuera del conjunto de cambios de la importación para que la reversión no lo deshaga; pruebas en `tests/api/test_import_decisions_api.py` (sección 5.2)
 
 ## 6. Frontend
 
@@ -34,6 +34,6 @@
 ## 7. Cierre del change
 
 - [x] 7.1 Tests requeridos: secciones 1–6 en verde (`npm test`, `npm run lint`); prueba de volumen con una sábana sintética de 20 000 filas contra PostgreSQL en compose (tiempo de validación y de aplicación registrados en el PR) cuando Docker esté disponible — 2026-10-21: validación 6,6 s y aplicación 200,4 s (design, «Prueba de volumen»); `npm run test:api:pg` en verde, con `tests/test_import_stages_postgresql.py`
-- [ ] 7.2 Actualizar OpenAPI: implementar los 10 stubs y añadir `images/{image_id}/associate`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — 9 de 10 stubs implementados y `images/{image_id}/associate` añadido, `openapi:check` en verde; falta `rollback` (5.2)
+- [x] 7.2 Actualizar OpenAPI: implementar los 10 stubs y añadir `images/{image_id}/associate`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — los 10 stubs implementados (el último, `rollback`, el 2026-10-25) y `images/{image_id}/associate` añadido, `openapi:check` en verde
 - [x] 7.3 Actualizar el manual de usuario: `docs/manual-usuario/importacion.md` (preparar archivo, pasos del asistente, resolver conflictos, aprobar, bitácora, revertir)
 - [ ] 7.4 Registrar supuestos (formatos, límites, celdas combinadas, política de vacíos) en `docs/preguntas-contraparte.md`, `openspec validate importacion-pipeline-reconciliacion --strict` y, tras aprobar el PR, `openspec archive importacion-pipeline-reconciliacion -y` — supuestos M6–M10 e I9 registrados y `validate --strict` en verde el 2026-10-21; falta archivar tras aprobar el PR

@@ -2,18 +2,21 @@
 
 /**
  * Pantalla 9 — Reportes: inventario general, por colección, por ubicación, incompletas
- * (RF-033..035) y exportación completa de la base en formato abierto (RF-044).
+ * (RF-033..035) y exportación completa de la base en formato abierto (RF-044). En modo `live`,
+ * los tres inventarios vienen de `GET /reports/{report_type}` (change `reportes-inventario`, 3.1).
  */
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
+import { ReportsLive } from "@/components/domain/ReportsLive";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
+import { getApiMode } from "@/lib/data/mode";
 import { computeByCollectionReport, computeByLocationReport, computeInventoryReport } from "@/lib/fixtures";
 
 const REPORTS = [
@@ -32,13 +35,16 @@ function ReportesContent() {
     return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
-  const report = selected === "incomplete" ? null : REPORTS.find((r) => r.key === selected)!.compute!();
+  const live = getApiMode() === "live";
+  const report = selected === "incomplete" || live ? null : REPORTS.find((r) => r.key === selected)!.compute!();
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-tinta">Reportes</h1>
-        <p className="text-base text-gris-texto">Calculados en el momento a partir del catálogo sintético.</p>
+        <p className="text-base text-gris-texto">
+          {live ? "Generados en el momento sobre una instantánea consistente del catálogo." : "Calculados en el momento a partir del catálogo sintético."}
+        </p>
       </header>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de reporte">
@@ -63,6 +69,8 @@ function ReportesContent() {
           <h2 className="text-lg font-semibold text-tinta">Piezas con información incompleta (RF-035)</h2>
           <IncompleteReportPanel devUser={currentUser?.email} canDownload={hasPermission("exports.run")} />
         </Card>
+      ) : live ? (
+        <ReportsLive key={selected} type={selected} />
       ) : (
         report && (
           <Card as="section" className="flex flex-col gap-3">

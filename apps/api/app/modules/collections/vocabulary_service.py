@@ -9,6 +9,7 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.context import require_audit_context
 from app.modules.audit.soft_delete import soft_delete
+from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.models import ConservationAssessment, Piece, PieceMaterial
 from app.modules.collections.models import Term, Vocabulary
 from app.modules.media.models import MediaAsset
@@ -18,6 +19,31 @@ def get_vocabulary(session: Session, code: str) -> Vocabulary:
     vocabulary = session.scalar(select(Vocabulary).where(Vocabulary.code == code.upper()))
     if vocabulary is None:
         raise NotFound(f"El vocabulario '{code}' no existe.", details={"vocabulary_code": code})
+    return vocabulary
+
+
+def create_vocabulary(
+    session: Session, *, code: str, name: str, description: str | None = None
+) -> Vocabulary:
+    """A new controlled vocabulary with a stable code (RN-010); audited like any write."""
+    require_audit_context(session)
+    stable_code = code.strip().upper()
+    existing = session.scalar(
+        select(Vocabulary.id)
+        .where(Vocabulary.code == stable_code)
+        .execution_options(**{INCLUDE_DELETED: True})
+    )
+    if existing is not None:
+        raise ConflictError(
+            f"Ya existe un vocabulario con el código '{stable_code}'.",
+            code="vocabulary_exists",
+            details={"vocabulary_code": stable_code},
+        )
+    vocabulary = Vocabulary(
+        id=new_uuid(), code=stable_code, name=name.strip(), description=description
+    )
+    session.add(vocabulary)
+    session.flush()
     return vocabulary
 
 

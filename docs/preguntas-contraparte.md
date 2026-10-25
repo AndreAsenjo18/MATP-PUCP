@@ -189,7 +189,7 @@ Surgen de la reunión en la que se mostró el prototipo v3 al MATP y de revisar 
 | M7 | ¿Qué confirma exactamente la persona que aprueba? | El resumen «se crearán N piezas, se actualizarán M y K filas no se aplicarán». La aprobación envía su huella (`summary_token`); si otra persona cambió decisiones y los conteos ya no coinciden, se rechaza (409) y se muestra el resumen nuevo. Si solo cambian decisiones sin cambiar los conteos, la huella no cambia | importacion-datos (RF-027, RNF-010) | B |
 | M8 | Al resolver un conflicto eligiendo una pieza, ¿se puede cambiar su código I con el del Excel? | No (RN-002): si la fila trae un código I distinto del de la pieza elegida, se rechaza la resolución. Una fila cuyo código I ya pertenece a una pieza del catálogo tampoco puede crearse como pieza nueva: se elige esa pieza o se rechaza la fila | importacion-datos (RF-025, RN-002) | B |
 | M9 | ¿Quién asocia las imágenes incrustadas en el Excel y en qué formato? | Quien tiene el permiso de subir fotos (Catalogador, Conservación, Gestor de colecciones y Administrador), después de aplicar el lote y una por una. Solo se registran JPEG, PNG y TIFF (como en `fotografias-multiples-por-pieza`); una imagen de otro formato queda en la bandeja. En una pieza en comodato la foto hereda la restricción «No publicar» (RN-008) | importacion-datos (RF-029), multimedia (RF-013, RN-008) | B |
-| M10 | ¿Cuándo se puede revertir un lote aplicado? | **Pendiente**: la reversión (tarea 5.2) espera el motor de reversión de `auditoria-y-soft-delete-transversal`. El lote ya guarda el conjunto de cambios de su aplicación (`import_batch.change_set_id`) para revertirlo cuando ese motor exista | importacion-datos (RNF-007) | A |
+| M10 | ¿Cuándo se puede revertir un lote aplicado? | **[SUPUESTO]** En cualquier momento después de aplicarlo, solo el Administrador ([SUPUESTO B7]) y con motivo. Las ediciones posteriores a mano no se pisan sin confirmación explícita (`confirm_conflicts`); un lote revertido no se vuelve a aplicar ni a revertir. Implementado el 2026-10-25 (tarea 5.2) sobre el motor de `auditoria-y-soft-delete-transversal` | importacion-datos (RNF-007) | A |
 
 ## N. Excepciones a «nunca se borra información» (change `auditoria-y-soft-delete-transversal`, 2026-10-20)
 
@@ -247,7 +247,7 @@ Detalle en `openspec/changes/busqueda-avanzada-y-exportacion/design.md` (D3, D4,
 
 ## R. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
 
-Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/archive/2026-10-23-autenticacion-y-matriz-permisos/design.md`. Amplía C7.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
@@ -313,3 +313,20 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | U7 | ¿Con qué frecuencia se hace el simulacro de restauración? | Mensual y antes de cada entrega del curso | plataforma (RNF-011) | Media |
 | U8 | ¿La VM tiene un respaldo propio a nivel de infraestructura y a quién avisar de los reinicios por parches? | Se desconoce; se pide a la DTI (checklist de la VM, puntos 10 y 12) | plataforma (RNF-011) | Media |
 | U9 | Si el servidor está cerca de llenarse, ¿se avisa al 80 % de uso? | Sí, cada hora, con los directorios que más ocupan | plataforma (RNF-015) | Baja |
+
+## V. Supuestos de la administración de vocabularios y tipos de identificador (change `colecciones-y-vocabularios-admin`, 2026-10-25)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| V1 | ¿Qué tipos de identificador son «del sistema» y no admiten cambiar sus reglas? | El código I y el código de colección: solo cambian su etiqueta, descripción y orden; tampoco se desactivan por API. Los demás tipos son configurables | identificacion-piezas (RN-002, RN-003, RN-010) | Media |
+| V2 | Cambiar la regla de normalización de un tipo que se bloquea al asignarse (como el código I) recalcula códigos ya asignados. ¿Quién puede confirmarlo? | Solo el Administrador, como corrección auditada (RN-002); el Gestor de colecciones puede ver la vista previa pero recibe 403 al confirmar. Para los demás tipos basta el permiso de administrar vocabularios | identificacion-piezas (RF-023, RN-002) | Media |
+| V3 | ¿Se puede confirmar un cambio de regla que deja valores sin normalizar? | Sí: la vista previa los cuenta y lista ejemplos, y quedan como «no normalizable» para revisión humana, sin perder el valor original. Las colisiones de códigos vigentes entre piezas distintas sí impiden confirmar | identificacion-piezas (RF-023) | Baja |
+
+## W. Supuestos de los reportes de inventario (change `reportes-inventario`, 2026-10-25)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| W1 | ¿Las piezas en comodato forman parte del inventario permanente que se entrega? | Sí, con subtotal propio; se pueden excluir con «Incluir comodatos». Nunca entran los préstamos temporales (RN-004) ni las piezas eliminadas o fusionadas | busqueda-reportes (RF-033, RN-004) | Alta |
+| W2 | ¿Qué columnas debe tener el inventario oficial y en qué orden? | Las del diseño D3 (códigos vigentes, denominación, colección, régimen, propietario legal, adquisición, ingreso, autor, procedencia, época, tipo, materiales, medidas, conservación y ubicación), ordenadas por colección, código de colección (orden natural) y denominación | busqueda-reportes (RF-033) | Media |
+| W3 | ¿Cuántas filas se pueden imprimir de una vez? | 2 000; por encima se sugiere Excel o filtrar por colección | busqueda-reportes (RF-033, RNF-010) | Baja |
+| W4 | ¿Se necesita el reporte de valorización en la fase 1? | No implementado todavía: el tipo `valuation` responde «no disponible» hasta confirmarlo (RF-037 es *Could*) | busqueda-reportes (RF-037, RNF-014) | Media |
