@@ -1,8 +1,8 @@
 """Import reconciliation pipeline (importacion-datos; RF-021..RF-029).
 
 Implemented by ``importacion-pipeline-reconciliacion``: ingestion, mapping, validation and
-preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3) and embedded images (5.1).
-Rollback stays a stub until the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
+preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3), embedded images (5.1) and
+rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 """
 
 import logging
@@ -28,14 +28,12 @@ from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
-    CHANGE_IMPORTS,
     CHANGE_TEMPLATES,
     implemented,
-    not_implemented,
-    stub,
 )
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
+from app.modules.audit.context import require_audit_context
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
@@ -61,6 +59,7 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
@@ -575,13 +574,35 @@ def associate_import_image(
 @router.post(
     "/imports/{batch_id}/rollback",
     response_model=ImportBatchOut,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`invalid_batch_transition` (el lote no está aplicado), "
+            "`already_reverted` o `revert_has_conflicts` (hay ediciones posteriores: repetir "
+            "con `confirm_conflicts=true` tras revisar la lista).",
+        },
+    },
     summary="Revertir un lote aplicado (RNF-007)",
-    **stub(CHANGE_IMPORTS),
+    description="Deshace la aplicación del lote como un nuevo conjunto de cambios auditado: las "
+    "piezas e identificadores creados quedan eliminados lógicamente con el motivo, los campos "
+    "actualizados recuperan su valor anterior y los datos de origen se conservan como "
+    "historial. Nada se borra físicamente (RN-005). Solo el Administrador [SUPUESTO B7].",
+    **implemented(),
 )
 def rollback_import_batch(
-    batch_id: uuid.UUID, body: RevertRequest, user: Reverter
+    batch_id: uuid.UUID, body: RevertRequest, session: SessionDep, user: Reverter
 ) -> ImportBatchOut:
-    raise not_implemented(CHANGE_IMPORTS, ImportBatchOut)
+    writer(session, user, reason=body.reason)
+    result = rollback_batch(
+        session,
+        batch_id,
+        require_audit_context(session),
+        confirm_conflicts=body.confirm_conflicts,
+        permissions=user.permissions,
+    )
+    session.commit()
+    return batch_out(session, result.batch)
 
 
 TEMPLATE_NOT_FOUND = {
