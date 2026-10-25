@@ -234,7 +234,7 @@ El trabajo de cada semana está en la tabla «Carga por persona».
 
 **Lo que ya existe:**
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) corre en cada PR y en cada push a main con los jobs API, IA, Web y OpenSpec, más el job de **migraciones en PostgreSQL** (`ci-migraciones-postgresql`, PR #41 y #46).
-- **CD 1**: imágenes en GHCR en cada merge a main con CI en verde, y `/health` con commit y release (PR #37 y #38, [ADR-014](adr/ADR-014-pipeline-despliegue-ambientes.md)).
+- **CD 1**: imágenes en GHCR en cada merge a main con CI en verde, y `/health` con commit y release (PR #37 y #38, [ADR-014](adr/ADR-014-pipeline-despliegue-ambientes.md); `pipeline-despliegue-ambientes` 2.1–2.4). Las versiones `vX.Y.Z` reetiquetan esas imágenes sin reconstruir (`pipeline-despliegue-ambientes` 4.1, design D4).
 
 **Lo que falta:**
 
