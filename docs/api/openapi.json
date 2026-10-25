@@ -6660,6 +6660,48 @@
         "title": "PermissionOut",
         "type": "object"
       },
+      "PhotoCompleteOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoStateOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "photos"
+        ],
+        "title": "PhotoCompleteOut",
+        "type": "object"
+      },
+      "PhotoCompleteRequest": {
+        "properties": {
+          "photo_ids": {
+            "description": "Fotos cuyo archivo ya se subió (hasta 100).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Photo Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "photo_ids"
+        ],
+        "title": "PhotoCompleteRequest",
+        "type": "object"
+      },
       "PhotoFileIn": {
         "properties": {
           "content_sha256": {
@@ -6695,6 +6737,36 @@
           "content_sha256"
         ],
         "title": "PhotoFileIn",
+        "type": "object"
+      },
+      "PhotoStateOut": {
+        "properties": {
+          "photo_id": {
+            "format": "uuid",
+            "title": "Photo Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportPhotoStatus",
+            "description": "`UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina."
+          }
+        },
+        "required": [
+          "photo_id",
+          "status"
+        ],
+        "title": "PhotoStateOut",
         "type": "object"
       },
       "PhotoUploadItemOut": {
@@ -14690,6 +14762,106 @@
           }
         ],
         "summary": "2. Mapeo: asignar columnas (o aplicar una plantilla)",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/photos/complete": {
+      "post": {
+        "description": "Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).",
+        "operationId": "completeImportPhotoUploads",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCompleteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite fotos (está aprobado)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: avisar qué archivos terminaron de subirse",
         "tags": [
           "Importación"
         ],

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c1a1364e009458ef495a1b88a946d63e89671ff48558953cbc9bddf3232131cc
+ * openapi-sha256: f3e8b846ea2e5158bd56c775be59ac5b204099fa8f93df8302b126c6a3b407db
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -719,6 +719,26 @@ export interface paths {
          */
         put: operations["setImportMapping"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fotografías del lote: avisar qué archivos terminaron de subirse
+         * @description Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).
+         */
+        post: operations["completeImportPhotoUploads"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4823,6 +4843,24 @@ export interface components {
             /** Description */
             description: string;
         };
+        /** PhotoCompleteOut */
+        PhotoCompleteOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Photos */
+            photos: components["schemas"]["PhotoStateOut"][];
+        };
+        /** PhotoCompleteRequest */
+        PhotoCompleteRequest: {
+            /**
+             * Photo Ids
+             * @description Fotos cuyo archivo ya se subió (hasta 100).
+             */
+            photo_ids: string[];
+        };
         /** PhotoFileIn */
         PhotoFileIn: {
             /**
@@ -4842,6 +4880,18 @@ export interface components {
             relative_path: string;
             /** Size Bytes */
             size_bytes: number;
+        };
+        /** PhotoStateOut */
+        PhotoStateOut: {
+            /**
+             * Photo Id
+             * Format: uuid
+             */
+            photo_id: string;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** @description `UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina. */
+            status: components["schemas"]["ImportPhotoStatus"];
         };
         /** PhotoUploadItemOut */
         PhotoUploadItemOut: {
@@ -9192,6 +9242,77 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeImportPhotoUploads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoCompleteOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote ya no admite fotos (está aprobado). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

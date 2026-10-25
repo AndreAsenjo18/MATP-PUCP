@@ -9,7 +9,7 @@
 ## 2. Subida reanudable y verificación
 
 - [x] 2.1 `POST /imports/{batch_id}/photos/upload-urls` (tandas de hasta 100, `already_registered` por huella, límite de fotos, 409 si el lote no admite fotos); pruebas: tanda nueva, reanudación sin duplicar, lote aprobado 409, Consulta interna 403 (Req: Fotografías del lote con subida reanudable)
-- [ ] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
+- [x] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
   - Al pasar fotos a `VERIFIED`, la tarea debe llamar a `imports.photos.match_batch_photos` en la misma transacción (es la mitad «al llegar fotos nuevas» de la 3.3).
 - [ ] 2.3 Comando `python -m app.imports.purge_photos` para fotos de lotes abandonados o descartadas tras `IMPORT_PHOTO_RETENTION_DAYS`; prueba de que no toca fotos aplicadas ni de lotes vigentes (Req: Fotografías del lote con subida reanudable; RN-005)
 

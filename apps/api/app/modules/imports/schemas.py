@@ -729,3 +729,26 @@ class PhotoUploadUrlsOut(BaseModel):
 
     batch_id: uuid.UUID
     items: list[PhotoUploadItemOut]
+
+
+class PhotoCompleteRequest(BaseModel):
+    photo_ids: list[uuid.UUID] = Field(
+        min_length=1, max_length=100, description="Fotos cuyo archivo ya se subió (hasta 100)."
+    )
+
+
+class PhotoStateOut(BaseModel):
+    photo_id: uuid.UUID
+    status: ImportPhotoStatus = Field(
+        description="`UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina."
+    )
+    rejection_reason: str | None = None
+
+    @classmethod
+    def from_photo(cls, photo: ImportPhoto) -> "PhotoStateOut":
+        return cls(photo_id=photo.id, status=photo.status, rejection_reason=photo.rejection_reason)
+
+
+class PhotoCompleteOut(BaseModel):
+    batch_id: uuid.UUID
+    photos: list[PhotoStateOut]

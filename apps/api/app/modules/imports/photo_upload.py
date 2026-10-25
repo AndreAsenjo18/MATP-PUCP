@@ -10,8 +10,9 @@ interrupted upload (unique ``(batch_id, content_sha256)``). A photo still waitin
 or one that was rejected, gets a new URL instead.
 
 A file of a type or size the batch does not admit comes back as ``rejected`` with its reason and
-is not registered: one bad file does not stop the rest of its group. Nothing reaches the
-catalogue until the batch is applied (task 5.1).
+is not registered: one bad file does not stop the rest of its group. ``complete_uploads``
+(``POST /imports/{batch_id}/photos/complete``, task 2.2) puts the uploaded photos in the queue of
+``photo_verification``. Nothing reaches the catalogue until the batch is applied (task 5.1).
 """
 
 import uuid
@@ -200,3 +201,33 @@ def request_upload_urls(
         )
     session.flush()
     return items
+
+
+def complete_uploads(
+    session: Session, batch_id: uuid.UUID, photo_ids: Sequence[uuid.UUID]
+) -> list[ImportPhoto]:
+    """The photos whose file the browser uploaded join the verification queue (``UPLOADED``).
+
+    Idempotent: a photo already queued, verified or rejected keeps its status. The caller commits
+    and then wakes the worker up.
+    """
+    batch = admitting_batch(session, batch_id)
+    wanted = list(dict.fromkeys(photo_ids))
+    photos = {
+        photo.id: photo
+        for photo in session.scalars(
+            select(ImportPhoto).where(ImportPhoto.batch_id == batch.id, ImportPhoto.id.in_(wanted))
+        )
+    }
+    foreign = [str(photo_id) for photo_id in wanted if photo_id not in photos]
+    if foreign:
+        raise ValidationFailed(
+            "Algunas fotos no pertenecen a este lote.",
+            code="photo_not_in_batch",
+            details={"photo_ids": foreign},
+        )
+    for photo in photos.values():
+        if photo.status is P.PENDING_UPLOAD:
+            photo.status = P.UPLOADED
+    session.flush()
+    return [photos[photo_id] for photo_id in wanted]
