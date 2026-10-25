@@ -8,11 +8,17 @@ RN-006) together with their flush guards. All changes share one audit context wi
 batch can be reverted (D7). Each applied row leaves a ``piece_source_record`` with its unmapped
 columns, the row number and the batch (RF-008).
 
+The verified photos of each applied row become ``media_asset`` of its piece in the same
+transaction and change set (change importacion-masiva-fotografias, task 5.2; design D5). Before
+anything is written every one of them is checked in the storage with ``HEAD``: a missing object
+fails the batch naming the photo and its row, with the catalogue untouched.
+
 The stage runs in one transaction (``worker.run_stage``): the first domain error rolls back
 every row and the batch goes to ``FAILED_APPLY`` with the row and the rule that failed.
 """
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import select, update
@@ -20,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import BusinessRuleViolation, DomainError, ValidationFailed
 from app.core.models_base import new_uuid
+from app.core.storage import ObjectStorage
 from app.modules.audit.context import refined_context
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
@@ -27,16 +34,21 @@ from app.modules.catalog.service import change_tenure, create_piece, update_piec
 from app.modules.identification.service import add_identifier
 from app.modules.imports.decisions import RowAction, field_actions, row_action
 from app.modules.imports.mapping import IDENTIFIER_TARGET, PIECE_FIELDS, MappedRow
-from app.modules.imports.models import ImportBatch, ImportRow
+from app.modules.imports.models import ImportBatch, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.models import ImportPhotoStatus as P
+from app.modules.imports.photo_upload import upload_key
 from app.modules.imports.state import transition
 from app.modules.imports.worker import Progress, StageWork
+from app.modules.media.service import register_from_import, unspecified_view_type_id
 
 # Fields a new piece takes from the row besides the denomination and the tenure regime.
 CREATE_FIELDS = tuple(
     name for name in PIECE_FIELDS if name not in {"denomination", "tenure_regime"}
 )
 APPLIED_COUNTS = ("APPLIED_CREATED", "APPLIED_UPDATED", "APPLIED_SKIPPED")
+#: Photos checked in the storage between two heartbeats of the stage, before any write.
+HEAD_HEARTBEAT_EVERY = 500
 
 
 class ApplyFailed(BusinessRuleViolation):
@@ -116,13 +128,97 @@ def _update(session: Session, batch: ImportBatch, row: ImportRow, mapped: Mapped
     return piece
 
 
-def apply_batch(session: Session, batch: ImportBatch, progress: Progress | None = None) -> None:
-    """Apply every row of an approved batch and leave it ``APPLIED``; raises on the first error."""
+def _photos_to_apply(
+    session: Session, batch: ImportBatch, rows: Sequence[ImportRow]
+) -> dict[uuid.UUID, list[ImportPhoto]]:
+    """The verified photos of each row that is applied, in their order within the row (D3).
+
+    Ambiguous and unmatched photos have no row, so they stay in the batch. A photo already on the
+    target piece waits for a person to confirm it (task 4.3).
+    """
+    applied = {row.id for row in rows if row_action(row)[0] != RowAction.SKIP}
+    by_row: dict[uuid.UUID, list[ImportPhoto]] = {}
+    for photo in session.scalars(
+        select(ImportPhoto).where(
+            ImportPhoto.batch_id == batch.id,
+            ImportPhoto.status == P.VERIFIED,
+            ImportPhoto.row_id.is_not(None),
+        )
+    ):
+        if photo.row_id not in applied or (
+            photo.duplicate_of_existing and not photo.duplicate_confirmed
+        ):
+            continue
+        by_row.setdefault(photo.row_id, []).append(photo)  # type: ignore[arg-type]
+    for photos in by_row.values():
+        photos.sort(key=lambda photo: (photo.sort_key is None, photo.sort_key or 0, photo.id))
+    return by_row
+
+
+def _check_photo_objects(
+    storage: ObjectStorage | None,
+    rows: Sequence[ImportRow],
+    photos: dict[uuid.UUID, list[ImportPhoto]],
+    progress: Progress | None,
+) -> None:
+    """``HEAD`` of every photo to apply, before anything is written (D5)."""
+    if storage is None:  # every caller with photos passes the storage of the app
+        raise RuntimeError("Applying photos needs the object storage.")
+    numbers = {row.id: row.source_row_number for row in rows}
+    pending = [photo for row_photos in photos.values() for photo in row_photos]
+    for checked, photo in enumerate(pending, start=1):
+        try:
+            storage.head(upload_key(photo))
+        except FileNotFoundError:
+            number = numbers[photo.row_id]  # type: ignore[index]
+            raise ApplyFailed(
+                f"Fila {number}: la foto «{photo.relative_path}» no está en el almacenamiento. "
+                "No se aplicó ninguna fila.",
+                details={
+                    "source_row_number": number,
+                    "photo_id": str(photo.id),
+                    "relative_path": photo.relative_path,
+                    "rule": "photo_object_missing",
+                },
+            ) from None
+        if progress is not None and checked % HEAD_HEARTBEAT_EVERY == 0:
+            progress.advance(0, total=len(rows), force=True)
+
+
+def _register_photos(
+    session: Session, piece: Piece, photos: Sequence[ImportPhoto], view_type: uuid.UUID | None
+) -> None:
+    for photo in photos:
+        asset = register_from_import(
+            session, piece, photo, storage_key=upload_key(photo), view_type_term_id=view_type
+        )
+        photo.status = P.APPLIED
+        photo.media_asset_id = asset.id
+    if photos:
+        session.flush()
+
+
+def apply_batch(
+    session: Session,
+    batch: ImportBatch,
+    progress: Progress | None = None,
+    storage: ObjectStorage | None = None,
+) -> None:
+    """Apply every row of an approved batch and leave it ``APPLIED``; raises on the first error.
+
+    ``storage`` is needed only when the batch has photos to apply.
+    """
     rows = session.scalars(
         select(ImportRow)
         .where(ImportRow.batch_id == batch.id)
         .order_by(ImportRow.source_row_number)
     ).all()
+    photos = _photos_to_apply(session, batch, rows)
+    view_type: uuid.UUID | None = None
+    if photos:
+        _check_photo_objects(storage, rows, photos, progress)
+        # Before any write of the batch: the term, if created, keeps a change set of its own.
+        view_type = unspecified_view_type_id(session)
     # The batch row is written only after the loop: on PostgreSQL the heartbeat updates it from
     # another connection, which would wait forever for this transaction's row lock.
     change_set_id = batch.change_set_id or new_uuid()
@@ -156,6 +252,7 @@ def apply_batch(session: Session, batch: ImportBatch, progress: Progress | None 
                     )
                 )
                 session.flush()
+                _register_photos(session, piece, photos.get(row.id, ()), view_type)
             except DomainError as exc:
                 raise ApplyFailed(
                     f"Fila {row.source_row_number}: {exc.message} No se aplicó ninguna fila.",
@@ -174,8 +271,8 @@ def apply_batch(session: Session, batch: ImportBatch, progress: Progress | None 
     transition(session, batch.id, S.APPLIED)
 
 
-def apply_stage() -> StageWork:
+def apply_stage(storage: ObjectStorage | None = None) -> StageWork:
     def work(session: Session, batch: ImportBatch, progress: Progress) -> None:
-        apply_batch(session, batch, progress)
+        apply_batch(session, batch, progress, storage)
 
     return work

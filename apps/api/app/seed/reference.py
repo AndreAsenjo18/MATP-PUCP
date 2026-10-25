@@ -19,6 +19,7 @@ from app.modules.identification.normalization import (
     TYPE_OWNER,
     TYPE_PUCP,
 )
+from app.modules.media.service import UNSPECIFIED_VIEW_LABEL, UNSPECIFIED_VIEW_TYPE
 from app.modules.quality.completeness import DEFAULT_RECOMMENDED_FIELDS, DEFAULT_REQUIRED_FIELDS
 from app.modules.quality.models import CompletenessFieldKind, CompletenessRule
 from app.modules.users.models import Permission, Role, RolePermission
@@ -40,9 +41,6 @@ IDENTIFIER_TYPES = [
 #: Types whose code and structural rules are fixed (colecciones-y-vocabularios-admin, D1).
 SYSTEM_IDENTIFIER_TYPES = frozenset({TYPE_INVENTORY, TYPE_COLLECTION})
 
-#: View of the photos imported with a batch, set later by a person (importacion-masiva-fotografias,
-#: D5). Outside the team's contract, like SUPERIOR; never drawn for the synthetic photos.
-UNSPECIFIED_VIEW_TYPE = "SIN_ESPECIFICAR"
 
 VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
     VocabularyCode.CATEGORY: (
@@ -116,7 +114,7 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("DETALLE", "Detalle"),
             ("ABIERTA", "Abierta"),
             ("CERRADA", "Cerrada"),
-            (UNSPECIFIED_VIEW_TYPE, "Sin especificar"),
+            (UNSPECIFIED_VIEW_TYPE, UNSPECIFIED_VIEW_LABEL),  # never drawn for the synthetic photos
         ],
     ),
     VocabularyCode.OBJECT_TYPE: (

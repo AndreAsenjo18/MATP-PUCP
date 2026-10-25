@@ -15,6 +15,11 @@ DISPLAY_MAX_DIM = 1600
 WEBP_QUALITY = 80
 
 
+def thumb_key(piece_id: object, asset_id: object) -> str:
+    """Storage key of an asset's thumbnail (`generate_derivatives` writes it there)."""
+    return f"pieces/{piece_id}/{asset_id}/thumb.webp"
+
+
 def _resize_image(data: bytes, max_dim: int) -> bytes:
     """Resize image keeping aspect ratio, max dimension = max_dim, output as WebP."""
     image = Image.open(io.BytesIO(data))

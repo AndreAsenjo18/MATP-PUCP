@@ -10,7 +10,7 @@ import unicodedata
 import uuid
 from collections.abc import Callable
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import ColumnElement, and_, exists, func, or_, select, true
 from sqlalchemy.orm import Session
 
@@ -97,6 +97,13 @@ class PieceFilter(BaseModel):
     # Alerts (from change alertas-y-reporte-incompletas)
     has_alerts: bool | None = None
     alert_code: str | None = None
+
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> object:
+        """Acepta también la etiqueta en español del contrato (`Comodato`), como `GET /pieces`."""
+        labels = {label: code for code, label in TENURE_REGIME_LABELS.items()}
+        return labels.get(value, value) if isinstance(value, str) else value
 
     def validate_permissions(self, viewer: Viewer | None) -> None:
         """Reject filters on sensitive fields if user lacks required permissions (RF-041)."""
@@ -303,16 +310,15 @@ class PieceFilter(BaseModel):
         """Validate permissions and return SQLAlchemy ColumnElement for WHERE clause."""
         self.validate_permissions(viewer)
 
-        alert_key = self.alert_code or ("has_alerts" if self.has_alerts else None)
+        alert_key = self.alert_code or ("has_alerts" if self.has_alerts is not None else None)
         alert_pred = None
         if alert_key:
             pred_factory = ALERT_PREDICATES.get(alert_key)
-            if pred_factory is not None:
-                alert_pred = pred_factory(session)
-            else:
+            if pred_factory is None:
                 raise NotImplementedEndpoint(CHANGE_INCOMPLETE)
-        elif self.has_alerts is not None:
-            raise NotImplementedEndpoint(CHANGE_INCOMPLETE)
+            alert_pred = pred_factory(session)
+            if self.alert_code is None and self.has_alerts is False:
+                alert_pred = ~alert_pred  # piezas sin ninguna alerta
 
         conditions = self._build_conditions(session, include_epoch=True)
         if alert_pred is not None:
@@ -567,12 +573,13 @@ class PieceFilter(BaseModel):
                 )
             )
 
-        if self.alert_code or self.has_alerts:
+        if self.alert_code or self.has_alerts is not None:
             active.append(
                 ActiveFilter(
                     key="alert_code" if self.alert_code else "has_alerts",
                     label="Alertas",
-                    value_display=self.alert_code or "Con alertas",
+                    value_display=self.alert_code
+                    or ("Con alertas" if self.has_alerts else "Sin alertas"),
                 )
             )
 

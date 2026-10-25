@@ -14,6 +14,7 @@ from app.modules.identification.models import (
     NormalizationStatus,
     PieceIdentifier,
 )
+from app.modules.search import filters
 from app.modules.search.filters import PieceFilter, register_alert_predicate
 from app.modules.search.ranking import (
     generate_search_suggestions,
@@ -169,8 +170,11 @@ def test_scenario_zero_results_with_suggestions(session: Session, act_as) -> Non
     assert "search_historical" in suggestions
 
 
-def test_alert_filter_not_implemented_branch(session: Session) -> None:
+def test_alert_filter_not_implemented_branch(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Alert filter raises 501 when alertas-y-reporte-incompletas is not applied (RF-032)."""
+    monkeypatch.setattr(filters, "ALERT_PREDICATES", {})
     f = PieceFilter(has_alerts=True)
     with pytest.raises(NotImplementedEndpoint) as exc_info:
         f.to_where(session)
@@ -182,7 +186,9 @@ def test_alert_filter_not_implemented_branch(session: Session) -> None:
     assert exc_info2.value.change == "alertas-y-reporte-incompletas"
 
 
-def test_alert_filter_applied_branch(session: Session, act_as) -> None:
+def test_alert_filter_applied_branch(
+    session: Session, act_as, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Alert filter applies predicate when registered (RF-032)."""
     with act_as("CATALOGUER"):
         p1 = Piece(denomination="Pieza con alerta", tenure_regime=TenureRegime.OWNED)
@@ -191,6 +197,7 @@ def test_alert_filter_applied_branch(session: Session, act_as) -> None:
         session.commit()
 
     # Register mock predicate for missing_photo
+    monkeypatch.setattr(filters, "ALERT_PREDICATES", dict(filters.ALERT_PREDICATES))
     register_alert_predicate("missing_photo", lambda sess: Piece.id == p1.id)
 
     f = PieceFilter(alert_code="missing_photo")
