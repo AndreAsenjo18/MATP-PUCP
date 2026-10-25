@@ -1,6 +1,6 @@
 # Administración
 
-> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Copias de seguridad del sistema» (change `despliegue-vm-y-respaldos`), «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
+> Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Copias de seguridad del sistema» (change `despliegue-vm-y-respaldos`), «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`), «Plantillas de mapeo» y «Normalización de códigos» (change `plantillas-mapeo-y-normalizacion`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
 
 ## Usuarios y permisos
 
@@ -88,6 +88,102 @@ Cuando se reorganiza un depósito (por ejemplo, mover un rack entero a otra sala
 3. Al confirmar, cada pieza queda con un registro de "reubicación" en su historial de movimientos, aunque su caja o nivel exacto no cambió: solo cambió de qué depósito depende ese mueble.
 
 No se puede colocar un mueble dentro de uno de sus propios niveles o cajas (el sistema lo rechaza).
+
+## Plantillas de mapeo
+
+Una plantilla de mapeo guarda cómo se leen las columnas de un tipo de archivo (por ejemplo, las sábanas de la consultoría) para reutilizarlo en las siguientes cargas. Las plantillas se crean desde el asistente de importación (ver [Importación](importacion.md#3-mapear-las-columnas)); aquí se consultan, se renombran y se eliminan.
+
+- **Ver y editar**: Catalogadores, Gestora de colecciones y Administrador.
+- **Eliminar**: solo la Gestora de colecciones y el Administrador.
+
+> **[SUPUESTO]** Quién puede hacer cada cosa sigue por validar con el museo (pregunta T8).
+
+Para llegar: **Administración › Plantillas de mapeo**, o el botón **Administrar plantillas** del editor de mapeo del asistente. Por ahora el menú lateral solo muestra «Administración» al Administrador; las demás personas pueden abrir la página con la dirección `/administracion?pestana=plantillas`.
+
+### Consultar una plantilla
+
+Cada plantilla muestra su nombre, la fuente, cuántas columnas tiene, cuándo se creó y su descripción. Abra **Columnas** para ver cada columna del archivo, a qué dato de la ficha va y cómo se limpia su valor.
+
+### Cambiar el nombre, la fuente o la descripción
+
+1. Pulse **Editar** en la plantilla.
+2. Cambie el **Nombre**, la **Fuente** o la **Descripción** y pulse **Guardar**.
+
+El nombre no puede repetir el de otra plantilla activa (no importan las mayúsculas ni las tildes). Las columnas y sus transformaciones se cambian desde el asistente de importación, no desde aquí.
+
+### Eliminar una plantilla
+
+1. Pulse **Eliminar** y escriba el **motivo**.
+2. Confirme.
+
+La plantilla pasa a la **Papelera** y deja de sugerirse en el asistente. Los lotes que ya la usaron conservan el mapeo con que se procesaron. Solo el Administrador puede restaurarla desde la Papelera.
+
+## Normalización de códigos
+
+En **Administración › Normalización** se mantienen los valores que usa el sistema para entender los códigos del museo. Se aplican **en adelante** al registro manual de fichas, a la importación y a la búsqueda. Solo la Gestora de colecciones y el Administrador pueden verlos y cambiarlos, y cada cambio queda en la auditoría con quién lo hizo.
+
+> **[SUPUESTO]** Los valores iniciales son los que el sistema usaba antes de que se pudieran editar (preguntas A3, A5 y A8).
+
+Cada bloque muestra la etiqueta **Valores del código** mientras se usan los valores iniciales, y **Personalizado** cuando alguien ya los cambió.
+
+### Marcadores de ausencia
+
+Son los textos que significan «sin código» (S/N, s/c, -, 0, N/A, la celda vacía…). Un código I con uno de estos valores registra la pieza **sin código I**.
+
+1. Escriba un marcador en **Nuevo marcador** y pulse **Añadir**, o quite uno con su ✕.
+2. Pulse **Guardar cambios**. **Descartar** vuelve a los valores guardados.
+
+Los marcadores se comparan sin espacios ni diferencias de mayúsculas: «s / n» y «S/N» son el mismo.
+
+### Separadores de códigos
+
+Son los caracteres que separan varios códigos escritos en una misma celda («I-0236 / M.M.Z. 015»): barra, punto y coma, barra vertical, coma, salto de línea…
+
+- Añada un carácter en **Nuevo separador**, o elija uno especial (salto de línea, retorno de carro, tabulación) y pulse **Añadir**.
+- El **espacio** no puede ser separador: partiría códigos como «I 236».
+- En **Marcadores que no se separan** están los textos que se mantienen enteros aunque lleven un separador (S/N, S/C).
+- Pulse **Guardar cambios** o **Descartar**.
+
+### Siglas históricas de colección
+
+Una sigla histórica es otra sigla con la que se escribió una colección en registros antiguos. Una vez registrada, el sistema la reconoce como la sigla actual: por ejemplo, con «REP» → colección LRM, el código «REP 12» se entiende como «LRM 12» en la búsqueda, en la ficha y en la importación.
+
+> **[SUPUESTO]** «REP» → «LRM» es un ejemplo inventado, no una sigla real del museo (pregunta A3).
+
+1. Escriba la **Sigla histórica** (puntos y espacios no importan: «R.E.P.» es «REP»), elija la **Colección** y pulse **Registrar sigla**.
+2. Para eliminarla, pulse **Eliminar** y escriba el motivo.
+
+El sistema no acepta una sigla que ya es histórica de otra colección ni una que es la sigla actual de una colección; en los dos casos dice cuál.
+
+### Si aparece «No se guardó nada»
+
+Algunos cambios alterarían códigos que **ya están registrados** en fichas. Por ejemplo:
+
+- añadir como marcador un texto que hoy está guardado como código (así esos códigos pasarían a «sin código»);
+- quitar un marcador que hoy marca códigos como ausentes;
+- quitar un separador que se usó para separar códigos de una carga anterior;
+- registrar o eliminar una sigla histórica que cambiaría cómo se lee un código ya guardado.
+
+En esos casos el sistema **no guarda el cambio** y muestra un aviso con:
+
+- cuántos identificadores ya registrados cambiarían;
+- algunos ejemplos, con el tipo de código, el texto original, cómo se lee hoy, cómo quedaría y el motivo («Cambia su forma normalizada» o «Cambia cómo se separa su celda»);
+- cuántos más hay además de los ejemplos.
+
+Nada cambia en las fichas. Aplicar un cambio así exige revisar antes el impacto completo y confirmar que se recalculen esos códigos, una función que todavía no está disponible. Mientras tanto, pulse **Descartar el cambio** y consulte con el equipo técnico.
+
+> **[SUPUESTO]** Qué se considera un código afectado está por validar con el museo (pregunta T10).
+
+### Si algo sale mal
+
+| Qué ve | Qué hacer |
+|---|---|
+| «… ya es un marcador» | Ese marcador ya está en la lista (sin contar espacios ni mayúsculas). |
+| «Un separador no puede ser un espacio…» | Use otro carácter. |
+| «La sigla … ya es un alias de la colección …» | Esa sigla histórica ya está registrada; elimínela primero si apunta a la colección equivocada. |
+| «… es la sigla actual de la colección …» | Una sigla actual no puede ser histórica de otra colección. |
+| «No se guardó nada» | Lea la sección anterior. |
+| «Disponible con la API (modo live)» | Está usando la maqueta de demostración: esta pestaña solo funciona con el sistema conectado. |
 
 ## Versión del sistema y actualizaciones
 

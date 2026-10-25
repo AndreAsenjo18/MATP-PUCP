@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.modules.catalog.queries import code_candidates
 from app.modules.catalog.schemas import CodeBrief, PieceSummary
 from app.modules.identification.models import PieceIdentifier
+from app.modules.identification.params import session_params
 from app.modules.search.schemas import SearchHit
 
 
@@ -15,7 +16,7 @@ def describe_matches(session: Session, text: str, summaries: list[PieceSummary])
     """Explain why each piece matched: a (current or historical) code or the title."""
     if not summaries:
         return []
-    candidates = code_candidates(text)
+    candidates = code_candidates(text, params=session_params(session))
     needle = text.strip().casefold()
     ids: list[uuid.UUID] = [summary.id for summary in summaries]
     identifiers = session.scalars(

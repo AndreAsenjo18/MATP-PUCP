@@ -35,10 +35,12 @@ from app.modules.identification.models import (
 )
 from app.modules.identification.normalization import (
     TYPE_INVENTORY,
+    NormalizationParams,
     NormalizationResult,
     is_absence_marker,
     normalize,
 )
+from app.modules.identification.params import session_params
 from app.modules.users.service import ADMIN_ROLE, user_has_role
 
 TENURE_LABELS = {
@@ -171,12 +173,15 @@ def _ensure_unique(
     )
 
 
-def _normalize_value(identifier_type: IdentifierType, raw_value: str | None) -> NormalizationResult:
+def _normalize_value(
+    identifier_type: IdentifierType, raw_value: str | None, params: NormalizationParams
+) -> NormalizationResult:
+    """Normalize with the current parameters (``session_params``, design D5 of plantillas-mapeo)."""
     if raw_value is None or not raw_value.strip():
         raise ValidationFailed(
             "El valor del identificador no puede estar vacío.", code="empty_identifier"
         )
-    result = normalize(identifier_type.normalization_rule, raw_value)
+    result = normalize(identifier_type.normalization_rule, raw_value, params=params)
     if identifier_type.locks_on_assignment:
         if result.is_absent:
             raise ValidationFailed(
@@ -211,7 +216,7 @@ def add_identifier(
     require_audit_context(session)
     identifier_type = get_identifier_type(session, type_code)
     _check_tenure_allows(identifier_type, piece)
-    result = _normalize_value(identifier_type, raw_value)
+    result = _normalize_value(identifier_type, raw_value, session_params(session))
     assert raw_value is not None
 
     if identifier_type.is_unique_when_current and is_current:
@@ -276,11 +281,12 @@ def set_inventory_code(
     """
     if raw_value is None or not raw_value.strip():
         return None
-    if is_absence_marker(raw_value):
+    params = session_params(session)
+    if is_absence_marker(raw_value, params=params):
         return None
     identifier_type = get_identifier_type(session, TYPE_INVENTORY)
     _check_tenure_allows(identifier_type, piece)
-    result = _normalize_value(identifier_type, raw_value)
+    result = _normalize_value(identifier_type, raw_value, params)
     current = current_identifiers(session, piece, TYPE_INVENTORY)
     if current:
         if result.normalized and result.normalized == current[0].normalized_value:
@@ -312,7 +318,7 @@ def correct_locked_identifier(
     if not current:
         raise NotFound(f"La pieza no tiene {identifier_type.label} que corregir.")
     old = current[0]
-    result = _normalize_value(identifier_type, new_raw_value)
+    result = _normalize_value(identifier_type, new_raw_value, session_params(session))
     if result.normalized == old.normalized_value:
         raise ValidationFailed(
             "El valor corregido es igual al vigente.", code="correction_without_change"

@@ -1,6 +1,88 @@
 {
   "components": {
     "schemas": {
+      "AcronymAliasCreate": {
+        "examples": [
+          {
+            "alias": "R.E.P.",
+            "collection_id": "01920000-0000-7000-8000-000000000201"
+          }
+        ],
+        "properties": {
+          "alias": {
+            "description": "Sigla histórica, como se escribe.",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Alias",
+            "type": "string"
+          },
+          "collection_id": {
+            "format": "uuid",
+            "title": "Collection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias",
+          "collection_id"
+        ],
+        "title": "AcronymAliasCreate",
+        "type": "object"
+      },
+      "AcronymAliasOut": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "alias_normalized": {
+            "description": "Sin puntos ni espacios, en mayúsculas (`REP`).",
+            "title": "Alias Normalized",
+            "type": "string"
+          },
+          "collection_acronym": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Acronym"
+          },
+          "collection_id": {
+            "format": "uuid",
+            "title": "Collection Id",
+            "type": "string"
+          },
+          "collection_name": {
+            "title": "Collection Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "alias",
+          "alias_normalized",
+          "collection_id",
+          "collection_name",
+          "collection_acronym",
+          "created_at"
+        ],
+        "title": "AcronymAliasOut",
+        "type": "object"
+      },
       "AiBatchOut": {
         "description": "State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).",
         "examples": [
@@ -2109,11 +2191,11 @@
                 "type": "null"
               }
             ],
-            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, `terms:<VOCABULARIO>`; null = datos de origen.",
+            "description": "Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o `terms:<VOCABULARIO>`; null = datos de origen.",
             "title": "Target Field"
           },
           "transforms": {
-            "description": "Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+            "description": "Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en la versión 1 (design D1).",
             "items": {
               "type": "string"
             },
@@ -2132,7 +2214,7 @@
                 "type": "null"
               }
             ],
-            "description": "Texto de origen → código de término, para la transformación `value_map`. Solo en plantillas por ahora.",
+            "description": "Texto de origen → código de término, para la transformación `value_map`.",
             "title": "Value Map"
           }
         },
@@ -2303,6 +2385,31 @@
           "rules"
         ],
         "title": "CompletenessRulesUpdate",
+        "type": "object"
+      },
+      "ConcatenationSeparators": {
+        "properties": {
+          "separators": {
+            "description": "Caracteres que separan varios códigos de una celda (`/`, `;`, `|`, `,`, salto de línea…). No se admite el espacio.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Separators",
+            "type": "array"
+          },
+          "unsplit_markers": {
+            "description": "Marcadores que no se separan aunque lleven un separador (`S/N`, `S/C`).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsplit Markers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "separators"
+        ],
+        "title": "ConcatenationSeparators",
         "type": "object"
       },
       "ConflictReason": {
@@ -2492,6 +2599,246 @@
           "expires_at"
         ],
         "title": "DownloadUrlResponse",
+        "type": "object"
+      },
+      "DryRunColumn": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` (estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y `SPLIT_PROPOSED` (se propone separar la celda en varios valores).",
+            "propertyNames": {
+              "enum": [
+                "NORMALIZED",
+                "UNPARSEABLE",
+                "ABSENT",
+                "SPLIT_PROPOSED"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "empty": {
+            "description": "Celdas vacías de la muestra.",
+            "title": "Empty",
+            "type": "integer"
+          },
+          "examples": {
+            "description": "Hasta 5 celdas: primero una de cada estado, luego en orden de fila.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunExample"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "in_file": {
+            "description": "false si el lote no trae esta columna de la plantilla.",
+            "title": "In File",
+            "type": "boolean"
+          },
+          "mapping": {
+            "$ref": "#/components/schemas/ColumnMapping"
+          },
+          "unmatched_values": {
+            "description": "Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4].",
+            "items": {
+              "$ref": "#/components/schemas/DryRunUnmatchedValue"
+            },
+            "title": "Unmatched Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mapping",
+          "in_file",
+          "counts",
+          "empty",
+          "unmatched_values",
+          "examples"
+        ],
+        "title": "DryRunColumn",
+        "type": "object"
+      },
+      "DryRunExample": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "identifiers": {
+            "description": "Solo en columnas de identificadores.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunIdentifier"
+            },
+            "title": "Identifiers",
+            "type": "array"
+          },
+          "matched_terms": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Valor → código de término; solo en columnas `terms:<VOCABULARIO>`.",
+            "title": "Matched Terms",
+            "type": "object"
+          },
+          "original": {
+            "description": "La celda tal como viene en el archivo.",
+            "title": "Original"
+          },
+          "proposals": {
+            "additionalProperties": true,
+            "description": "Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto.",
+            "title": "Proposals",
+            "type": "object"
+          },
+          "source_row_number": {
+            "title": "Source Row Number",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "NORMALIZED",
+              "UNPARSEABLE",
+              "ABSENT",
+              "SPLIT_PROPOSED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trace": {
+            "description": "Cada transformación con su antes y después.",
+            "items": {
+              "$ref": "#/components/schemas/DryRunTraceStep"
+            },
+            "title": "Trace",
+            "type": "array"
+          },
+          "unmatched_terms": {
+            "description": "Valores sin término; irían a los datos de origen de la fila.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unmatched Terms",
+            "type": "array"
+          },
+          "value": {
+            "description": "El valor después de las transformaciones.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "source_row_number",
+          "status",
+          "original",
+          "value",
+          "trace",
+          "proposals",
+          "identifiers",
+          "matched_terms",
+          "unmatched_terms",
+          "errors"
+        ],
+        "title": "DryRunExample",
+        "type": "object"
+      },
+      "DryRunIdentifier": {
+        "properties": {
+          "is_absent": {
+            "title": "Is Absent",
+            "type": "boolean"
+          },
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "NORMALIZED",
+              "UNPARSEABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type_code": {
+            "title": "Type Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type_code",
+          "original_value",
+          "normalized_value",
+          "status",
+          "is_absent"
+        ],
+        "title": "DryRunIdentifier",
+        "type": "object"
+      },
+      "DryRunTraceStep": {
+        "properties": {
+          "after": {
+            "title": "After"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`excel_date_cell` (celda de fecha de Excel, exenta del formato) o `not_recognized` (la propuesta no reconoció el texto).",
+            "title": "Note"
+          },
+          "transform": {
+            "title": "Transform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transform",
+          "before",
+          "after"
+        ],
+        "title": "DryRunTraceStep",
+        "type": "object"
+      },
+      "DryRunUnmatchedValue": {
+        "properties": {
+          "count": {
+            "description": "Apariciones en la muestra.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "DryRunUnmatchedValue",
         "type": "object"
       },
       "DuplicateCandidateOut": {
@@ -6033,6 +6380,106 @@
         "title": "NormalizationRule",
         "type": "string"
       },
+      "NormalizationSettingOut": {
+        "examples": [
+          {
+            "is_default": false,
+            "key": "absence_markers",
+            "updated_at": "2026-09-17T10:30:00Z",
+            "value": [
+              "",
+              "-",
+              "S/N",
+              "S/C",
+              "SINCODIGO"
+            ]
+          }
+        ],
+        "properties": {
+          "is_default": {
+            "description": "true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8].",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "key": {
+            "enum": [
+              "absence_markers",
+              "concatenation_separators"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/ConcatenationSeparators"
+              }
+            ],
+            "description": "`absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "is_default",
+          "updated_at"
+        ],
+        "title": "NormalizationSettingOut",
+        "type": "object"
+      },
+      "NormalizationSettingUpdate": {
+        "examples": [
+          {
+            "value": [
+              "",
+              "-",
+              "S/N",
+              "S/C",
+              "NO REGISTRA"
+            ]
+          }
+        ],
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/ConcatenationSeparators"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "NormalizationSettingUpdate",
+        "type": "object"
+      },
       "NormalizationStatus": {
         "enum": [
           "NORMALIZED",
@@ -9413,6 +9860,70 @@
         "title": "SuggestionStatus",
         "type": "string"
       },
+      "TemplateDryRunOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/DryRunColumn"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "missing_columns": {
+            "description": "Columnas de la plantilla ausentes del lote.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Columns",
+            "type": "array"
+          },
+          "sampled_rows": {
+            "description": "Filas de la muestra: hasta 200 [SUPUESTO T3].",
+            "title": "Sampled Rows",
+            "type": "integer"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "total_rows": {
+            "description": "Filas leídas del lote.",
+            "title": "Total Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_id",
+          "batch_id",
+          "total_rows",
+          "sampled_rows",
+          "missing_columns",
+          "columns"
+        ],
+        "title": "TemplateDryRunOut",
+        "type": "object"
+      },
+      "TemplateDryRunRequest": {
+        "properties": {
+          "batch_id": {
+            "description": "Lote subido o mapeado del que se toma la muestra.",
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "batch_id"
+        ],
+        "title": "TemplateDryRunRequest",
+        "type": "object"
+      },
       "TemplateSuggestRequest": {
         "properties": {
           "headers": {
@@ -12218,6 +12729,247 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/collection-acronym-aliases": {
+      "get": {
+        "operationId": "listAcronymAliases",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AcronymAliasOut"
+                  },
+                  "title": "Response Listacronymaliases",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Siglas históricas de colección vigentes (RF-023)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "description": "El alias es único entre los activos (`acronym_alias_taken`) y no puede ser la sigla actual de una colección (`alias_is_current_acronym`).",
+        "operationId": "createAcronymAlias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcronymAliasCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcronymAliasOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La colección no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Registrar una sigla histórica de una colección (RF-023)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/collection-acronym-aliases/{alias_id}": {
+      "delete": {
+        "operationId": "deleteAcronymAlias",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alias_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alias Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo obligatorio.",
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "description": "Motivo obligatorio.",
+              "minLength": 3,
+              "title": "Reason",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El alias no existe o ya fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Eliminar lógicamente una sigla histórica con motivo (RN-005)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/collections": {
       "get": {
         "operationId": "listCollections",
@@ -13387,7 +14139,7 @@
     },
     "/api/v1/import-templates/suggest": {
       "post": {
-        "description": "Hasta 3 plantillas activas [SUPUESTO S2] con puntaje ≥ 0,6 [SUPUESTO S1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
+        "description": "Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).",
         "operationId": "suggestImportTemplates",
         "requestBody": {
           "content": {
@@ -13701,6 +14453,106 @@
           }
         ],
         "summary": "Editar una plantilla de mapeo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/import-templates/{template_id}/dry-run": {
+      "post": {
+        "description": "Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.",
+        "operationId": "dryRunImportTemplate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateDryRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDryRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La plantilla o el lote no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no está subido ni mapeado, o aún no se ha leído."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Vista previa de normalización por columna de una plantilla (RF-023)",
         "tags": [
           "Importación"
         ],
@@ -15721,6 +16573,170 @@
         "summary": "Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil)",
         "tags": [
           "Ubicaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/normalization-settings/{key}": {
+      "get": {
+        "description": "Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.",
+        "operationId": "getNormalizationSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "enum": [
+                "absence_markers",
+                "concatenation_separators"
+              ],
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationSettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Parámetro de normalización vigente (RN-010)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      },
+      "put": {
+        "description": "Se aplica en adelante al ingreso manual, la importación y la búsqueda. Queda en la auditoría.",
+        "operationId": "putNormalizationSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "enum": [
+                "absence_markers",
+                "concatenation_separators"
+              ],
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizationSettingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationSettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Cambiar un parámetro de normalización (RN-010, RF-023)",
+        "tags": [
+          "Identificadores"
         ],
         "x-status": "implemented"
       }

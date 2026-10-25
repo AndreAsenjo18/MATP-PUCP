@@ -66,6 +66,8 @@ GROUPS = [
         "#EEF6EC",
         [
             "import_mapping_template",
+            "normalization_setting",
+            "collection_acronym_alias",
             "import_batch",
             "import_row",
             "import_image",

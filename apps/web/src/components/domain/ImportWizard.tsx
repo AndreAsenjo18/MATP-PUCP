@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import {
-  TARGET_OPTIONS,
   WIZARD_STEPS,
   acceptBlocker,
   actionLabel,
@@ -33,7 +32,6 @@ import {
   progressText,
   summarySentence,
   type ApprovalSummary,
-  type ColumnMapping,
   type FieldAction,
   type ImportBatch,
   type ImportImage,
@@ -88,109 +86,6 @@ export function UploadPanel({ busy, onUpload }: { busy: boolean; onUpload: (file
       </label>
       <Button icon={Upload} className="self-start" disabled={!file || busy} onClick={() => file && onUpload(file)}>
         {busy ? "Subiendo…" : "Subir archivo"}
-      </Button>
-    </Card>
-  );
-}
-
-export interface MappingDraft {
-  columns: ColumnMapping[];
-  sheetName: string | null;
-  headerRow: number | null;
-  tenureDefault: string;
-}
-
-export function MappingPanel({
-  batch,
-  draft,
-  busy,
-  errors,
-  onChange,
-  onSubmit,
-}: {
-  batch: ImportBatch;
-  draft: MappingDraft;
-  busy: boolean;
-  errors: Record<string, string>;
-  onChange: (draft: MappingDraft) => void;
-  onSubmit: () => void;
-}) {
-  const setColumn = (index: number, target: string) =>
-    onChange({
-      ...draft,
-      columns: draft.columns.map((column, i) => (i === index ? { ...column, target_field: target || null, split_compound: target === "identifier" } : column)),
-    });
-  const sheetNames = batch.sheet_names ?? [];
-  return (
-    <Card as="section" className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-tinta">Mapeo de columnas</h2>
-      <p className="text-base text-gris-texto">
-        Indique a qué campo de la ficha corresponde cada columna. Las columnas que deje como «dato de origen» no se pierden: se guardan
-        junto a cada pieza (RF-008). La denominación es obligatoria.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {sheetNames.length > 1 && (
-          <Select label="Hoja" value={draft.sheetName ?? batch.sheet_name ?? ""} onChange={(event) => onChange({ ...draft, sheetName: event.target.value })}>
-            {sheetNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Input
-          label="Fila de cabeceras"
-          type="number"
-          min={1}
-          value={draft.headerRow ?? batch.header_row ?? 1}
-          hint="Cambiarla vuelve a leer el archivo."
-          onChange={(event) => onChange({ ...draft, headerRow: Number(event.target.value) || null })}
-        />
-        <Select
-          label="Régimen para filas sin dato"
-          value={draft.tenureDefault}
-          onChange={(event) => onChange({ ...draft, tenureDefault: event.target.value })}
-        >
-          <option value="">Sin valor por defecto</option>
-          <option value="Propiedad">Propiedad</option>
-          <option value="Comodato">Comodato</option>
-          <option value="Préstamo Temporal">Préstamo temporal</option>
-        </Select>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-base">
-          <thead className="text-sm text-gris-texto">
-            <tr>
-              <th className="py-1 pr-4 font-medium">Columna del archivo</th>
-              <th className="py-1 pr-4 font-medium">Campo de la ficha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {draft.columns.map((column, index) => (
-              <tr key={column.source_column} className="border-t border-borde align-top">
-                <td className="py-2 pr-4 text-tinta">{column.source_column}</td>
-                <td className="py-2 pr-4">
-                  <Select
-                    label={<span className="sr-only">Destino de {column.source_column}</span>}
-                    value={column.target_field ?? ""}
-                    error={errors[column.source_column]}
-                    onChange={(event) => setColumn(index, event.target.value)}
-                  >
-                    {TARGET_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <ErrorNotice message={errors[""] ?? null} />
-      <Button className="self-start" disabled={busy} onClick={onSubmit}>
-        {busy ? "Guardando…" : "Guardar mapeo y validar"}
       </Button>
     </Card>
   );

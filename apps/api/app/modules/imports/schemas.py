@@ -192,7 +192,7 @@ class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
         description="Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), "
-        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o, solo en plantillas, "
+        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o "
         "`terms:<VOCABULARIO>`; null = datos de origen."
     )
     identifier_type_code: str | None = None
@@ -203,13 +203,13 @@ class ColumnMapping(BaseModel):
     )
     transforms: list[str] = Field(
         default_factory=list,
-        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Solo en "
-        "plantillas por ahora: `PUT /imports/{batch_id}/mapping` aún no las acepta.",
+        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con "
+        "transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en "
+        "la versión 1 (design D1).",
     )
     value_map: dict[str, str] | None = Field(
         None,
-        description="Texto de origen → código de término, para la transformación `value_map`. "
-        "Solo en plantillas por ahora.",
+        description="Texto de origen → código de término, para la transformación `value_map`.",
     )
 
 
@@ -623,3 +623,79 @@ class TemplateSuggestion(BaseModel):
     new_columns: list[str] = Field(
         description="Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen."
     )
+
+
+# --- Vista previa de normalización por columna (design D4) ---------------------------------
+
+
+class TemplateDryRunRequest(BaseModel):
+    batch_id: uuid.UUID = Field(description="Lote subido o mapeado del que se toma la muestra.")
+
+
+class DryRunTraceStep(BaseModel):
+    transform: str
+    before: Any
+    after: Any
+    note: str | None = Field(
+        None,
+        description="`excel_date_cell` (celda de fecha de Excel, exenta del formato) o "
+        "`not_recognized` (la propuesta no reconoció el texto).",
+    )
+
+
+class DryRunIdentifier(BaseModel):
+    type_code: str
+    original_value: str
+    normalized_value: str | None
+    status: Literal["NORMALIZED", "UNPARSEABLE"]
+    is_absent: bool
+
+
+class DryRunExample(BaseModel):
+    source_row_number: int
+    status: Literal["NORMALIZED", "UNPARSEABLE", "ABSENT", "SPLIT_PROPOSED"]
+    original: Any = Field(description="La celda tal como viene en el archivo.")
+    value: Any = Field(description="El valor después de las transformaciones.")
+    trace: list[DryRunTraceStep] = Field(description="Cada transformación con su antes y después.")
+    proposals: dict[str, Any] = Field(
+        description="Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto."
+    )
+    identifiers: list[DryRunIdentifier] = Field(description="Solo en columnas de identificadores.")
+    matched_terms: dict[str, str] = Field(
+        description="Valor → código de término; solo en columnas `terms:<VOCABULARIO>`."
+    )
+    unmatched_terms: list[str] = Field(
+        description="Valores sin término; irían a los datos de origen de la fila."
+    )
+    errors: list[str]
+
+
+class DryRunUnmatchedValue(BaseModel):
+    value: str
+    count: int = Field(description="Apariciones en la muestra.")
+
+
+class DryRunColumn(BaseModel):
+    mapping: ColumnMapping
+    in_file: bool = Field(description="false si el lote no trae esta columna de la plantilla.")
+    counts: dict[Literal["NORMALIZED", "UNPARSEABLE", "ABSENT", "SPLIT_PROPOSED"], int] = Field(
+        description="Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` "
+        "(estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y "
+        "`SPLIT_PROPOSED` (se propone separar la celda en varios valores)."
+    )
+    empty: int = Field(description="Celdas vacías de la muestra.")
+    unmatched_values: list[DryRunUnmatchedValue] = Field(
+        description="Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4]."
+    )
+    examples: list[DryRunExample] = Field(
+        description="Hasta 5 celdas: primero una de cada estado, luego en orden de fila."
+    )
+
+
+class TemplateDryRunOut(BaseModel):
+    template_id: uuid.UUID
+    batch_id: uuid.UUID
+    total_rows: int = Field(description="Filas leídas del lote.")
+    sampled_rows: int = Field(description="Filas de la muestra: hasta 200 [SUPUESTO T3].")
+    missing_columns: list[str] = Field(description="Columnas de la plantilla ausentes del lote.")
+    columns: list[DryRunColumn]
