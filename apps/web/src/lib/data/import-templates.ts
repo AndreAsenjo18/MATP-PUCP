@@ -182,3 +182,36 @@ export async function updateTemplate(templateId: string, body: ApiSchemas["Mappi
     TEMPLATE_ERROR_MESSAGES,
   );
 }
+
+export interface TemplateMetaInput {
+  name: string;
+  sourceName: string;
+  description: string;
+}
+
+/** Por qué no se puede guardar el nombre, la fuente y la descripción, o `null`. */
+export function templateMetaError(input: TemplateMetaInput): string | null {
+  if (!input.name.trim()) return "Indique el nombre de la plantilla.";
+  if (!input.sourceName.trim()) return "Indique la fuente del archivo.";
+  return null;
+}
+
+/** Cuerpo de `PATCH /import-templates/{id}` sin columnas: solo nombre, fuente y descripción. */
+export function templateMetaBody(input: TemplateMetaInput): ApiSchemas["MappingTemplateUpdate"] {
+  return { name: input.name.trim(), source_name: input.sourceName.trim(), description: input.description.trim() || null };
+}
+
+/** `PATCH /import-templates/{id}` con nombre, fuente y descripción; 409 `template_name_taken`. */
+export async function renameTemplate(templateId: string, input: TemplateMetaInput, devUser?: string): Promise<ImportResult<MappingTemplate>> {
+  return updateTemplate(templateId, templateMetaBody(input), devUser);
+}
+
+/** `DELETE /import-templates/{id}?reason=`: borrado lógico con motivo, a la papelera (RN-005). */
+export async function deleteTemplate(templateId: string, reason: string, devUser?: string): Promise<ImportResult<null>> {
+  return call(async () => {
+    const { error } = await client(devUser).DELETE("/api/v1/import-templates/{template_id}", {
+      params: { path: { template_id: templateId }, query: { reason: reason.trim() } },
+    });
+    return error !== undefined ? { error } : { data: null };
+  }, TEMPLATE_ERROR_MESSAGES);
+}

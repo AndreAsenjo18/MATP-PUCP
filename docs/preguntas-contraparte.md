@@ -294,6 +294,8 @@ Detalle en `openspec/changes/plantillas-mapeo-y-normalizacion/design.md` (D1–D
 
 **Pendiente interno (no es pregunta al museo):** al escribir las pruebas de punta a punta de la tarea 2.2 se encontraron tres puntos de la ficha que corresponden a `ficha-pieza-crud`, no a `plantillas-mapeo-y-normalizacion`: (1) `POST /pieces/validate` sigue respondiendo 501 (stub); (2) `POST /pieces/{piece_id}/identifiers` sigue respondiendo 501 (stub); (3) `POST /pieces` acepta el campo `identifiers` (`PieceCreate`), pero no guarda esos identificadores ni avisa: la pieza queda creada sin ellos. Las pruebas de la 2.2 crean la pieza con `POST /pieces` y añaden sus identificadores con el servicio `add_identifier`.
 
+**Pendiente interno (no es pregunta al museo):** en el menú lateral, «Administración» exige `users.manage` (`apps/web/src/components/layout/navigation.ts`), así que el Gestor de colecciones y el Catalogador no la ven, aunque la página les abre las pestañas que su rol permite (plantillas de mapeo con `imports.prepare`, parámetros y siglas con `vocabularies.manage`). Mientras tanto, el editor de mapeo del asistente enlaza «Administrar plantillas» (`/administracion?pestana=plantillas`). Ajustar el permiso del menú corresponde al dueño de la estructura de pantalla (`navigation.ts`), no a `plantillas-mapeo-y-normalizacion` (tarea 4.2).
+
 ## U. Supuestos del despliegue en la VM y los respaldos (change `despliegue-vm-y-respaldos`, 2026-10-22)
 
 Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm.md` y `docs/despliegue/checklist-vm.md`. Amplía C6.

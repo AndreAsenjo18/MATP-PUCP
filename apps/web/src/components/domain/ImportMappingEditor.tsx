@@ -18,13 +18,14 @@
  *   término activo». Con correspondencias la cadena lleva `value_map`, que no se quita a mano:
  *   sale sola al vaciar la tabla.
  */
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, Plus, Save, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, Plus, Save, Settings, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { ErrorNotice } from "@/components/domain/ImportWizard";
 import { mappingDraftStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -63,6 +64,9 @@ import {
   type ValueMap,
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
+
+/** Pestaña de plantillas de Administración (tarea 4.2); se abre aparte para no perder el borrador. */
+export const ADMIN_TEMPLATES_HREF = "/administracion?pestana=plantillas";
 
 export function MappingEditor({
   batch,
@@ -190,6 +194,10 @@ export function MappingEditor({
           <Button variant="secondary" icon={ArrowLeft} disabled={busy || saving} onClick={onBack}>
             Volver a las plantillas
           </Button>
+          <Link href={ADMIN_TEMPLATES_HREF} target="_blank" rel="noopener" className={buttonClassName({ variant: "outline" })}>
+            <Settings size={18} aria-hidden="true" />
+            Administrar plantillas
+          </Link>
         </div>
         {blocker && <p className="text-sm text-gris-texto">{blocker}</p>}
         {notice && <p className="text-sm text-ambar-texto">{notice}</p>}

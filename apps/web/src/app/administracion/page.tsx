@@ -4,11 +4,15 @@
  * Pantalla 10 — Administración: usuarios y roles (RF-039), vocabularios/categorías (RN-010),
  * tipos de identificador (parametrizables, RN-010), ubicaciones (RF-016), papelera con
  * restauración (RN-005) y consulta global de auditoría con exportación a CSV (RF-040, RF-041);
- * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`.
+ * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`. Plantillas de mapeo
+ * (tarea 4.2 de `plantillas-mapeo-y-normalizacion`, solo en modo `live`); se abre directamente con
+ * `?pestana=plantillas`.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
+import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { TrashPanel } from "@/components/domain/TrashPanel";
 import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
@@ -178,8 +182,19 @@ function UbicacionesLive() {
   );
 }
 
-const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Papelera", "Auditoría"] as const;
+const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Papelera", "Auditoría"] as const;
 type Tab = (typeof TABS)[number];
+
+/** Pestañas que se abren por URL (`/administracion?pestana=plantillas`). */
+const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo" };
+
+function LiveOnlyNotice() {
+  return (
+    <Card as="section">
+      <p className="text-base text-gris-texto">Disponible con la API (modo live).</p>
+    </Card>
+  );
+}
 
 /**
  * Consulta global de auditoría. En modo demostración el historial son las filas del store de la
@@ -194,7 +209,8 @@ function AuditSection() {
 
 function AdministracionContent() {
   const { hasPermission, currentRole } = useSession();
-  const [tab, setTab] = useState<Tab>("Usuarios y roles");
+  const params = useSearchParams();
+  const [tab, setTab] = useState<Tab>(TAB_SLUGS[params.get("pestana") ?? ""] ?? "Usuarios y roles");
   const [selectedVocabulary, setSelectedVocabulary] = useState(VOCABULARIES[0]?.code ?? "");
 
   const canOpenTrash = hasPermission("pieces.restore");
@@ -204,6 +220,7 @@ function AdministracionContent() {
     !hasPermission("users.manage") &&
     !hasPermission("vocabularies.manage") &&
     !hasPermission("locations.manage") &&
+    !hasPermission("imports.prepare") &&
     !canOpenTrash &&
     !canReadAudit
   ) {
@@ -372,6 +389,17 @@ function AdministracionContent() {
           <PermissionNotice>Su rol no tiene permiso para administrar ubicaciones.</PermissionNotice>
         ))}
 
+      {tab === "Plantillas de mapeo" &&
+        (hasPermission("imports.prepare") ? (
+          getApiMode() === "live" ? (
+            <MappingTemplatesLive />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para administrar plantillas de mapeo.</PermissionNotice>
+        ))}
+
       {tab === "Papelera" &&
         (canOpenTrash ? (
           // Abrir la papelera exige `pieces.restore`; restaurar es solo del Administrador (el servidor lo vuelve a comprobar).
@@ -389,7 +417,9 @@ function AdministracionContent() {
 export default function AdministracionPage() {
   return (
     <RequireSession>
-      <AdministracionContent />
+      <Suspense fallback={null}>
+        <AdministracionContent />
+      </Suspense>
     </RequireSession>
   );
 }
