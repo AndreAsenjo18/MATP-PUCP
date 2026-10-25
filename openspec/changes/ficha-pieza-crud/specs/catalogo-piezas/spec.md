@@ -11,10 +11,10 @@ La API MUST permitir crear, editar, eliminar lógicamente y restaurar piezas apl
 - **WHEN** un Gestor de colecciones solicita eliminar una pieza sin indicar motivo
 - **THEN** la API responde 422 indicando que el motivo es obligatorio y la pieza sigue activa
 
-#### Scenario: Restauración que duplicaría un código I
-- **GIVEN** una pieza eliminada lógicamente con código I `I-236` y otra pieza activa a la que se asignó después el mismo código mediante corrección
-- **WHEN** un Administrador intenta restaurar la pieza eliminada
-- **THEN** la API responde 409 indicando la pieza activa que tiene ese código I y no restaura
+#### Scenario: Restauración de una pieza con código I
+- **GIVEN** una pieza eliminada lógicamente con código I `I-236`, que ninguna otra pieza puede recibir mientras tanto, ni en el alta ni en la corrección [SUPUESTO: un código I nunca se reutiliza automáticamente, A6]
+- **WHEN** un Administrador restaura la pieza eliminada
+- **THEN** la pieza vuelve activa con `I-236` vigente; si otra pieza activa tuviera ese código, la API respondería 409 indicando esa pieza y no restauraría
 
 #### Scenario: Restauración por un usuario que no es Administrador
 - **WHEN** un Catalogador intenta restaurar una pieza eliminada lógicamente
