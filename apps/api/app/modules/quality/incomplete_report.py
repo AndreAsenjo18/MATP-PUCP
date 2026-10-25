@@ -27,7 +27,7 @@ from app.modules.quality.completeness import (
     ALERTS,
     ActiveRules,
     AlertCode,
-    active_alerts_for_piece,
+    active_alerts_for_pieces,
     alert_condition,
 )
 
@@ -87,12 +87,13 @@ def rows_for_pieces(
         if collection_ids
         else {}
     )
+    alerts = active_alerts_for_pieces(session, [piece.id for piece in pieces], rules)
     return [
         IncompleteRow(
             piece_id=piece.id,
             title=piece.denomination,
             collection_name=names.get(piece.collection_id) if piece.collection_id else None,
-            alerts=active_alerts_for_piece(session, piece.id, rules),
+            alerts=alerts.get(piece.id, []),
         )
         for piece in pieces
     ]

@@ -16,7 +16,7 @@ import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import ColumnElement, and_, exists, literal, not_, or_, select
+from sqlalchemy import ColumnElement, and_, case, exists, literal, not_, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from app.core.errors import ValidationFailed
@@ -268,16 +268,35 @@ def active_alerts_for_piece(
     No incluye piezas eliminadas o fusionadas: si `piece_id` no corresponde a una pieza activa
     y no fusionada, devuelve la lista vacía (spec, escenario "Pieza fusionada").
     """
+    return active_alerts_for_pieces(session, [piece_id], rules).get(piece_id, [])
+
+
+#: Piezas por consulta en `active_alerts_for_pieces` (lista `IN` acotada).
+ALERTS_BATCH_SIZE = 1000
+
+
+def active_alerts_for_pieces(
+    session: Session, piece_ids: Sequence[uuid.UUID], rules: ActiveRules | None = None
+) -> dict[uuid.UUID, list[AlertCode]]:
+    """Alertas activas de varias piezas con una consulta por lote: una columna por alerta, con las
+    mismas definiciones de `ALERTS` (el reporte de incompletas ya no consulta pieza por pieza).
+
+    Las piezas eliminadas o fusionadas no aparecen en el resultado.
+    """
     rules = rules or load_active_rules(session)
-    base = Piece.id == piece_id, Piece.deleted_at.is_(None), Piece.merged_into_id.is_(None)
-    active: list[AlertCode] = []
-    for code in ALERTS:
-        matched = session.scalar(
-            select(Piece.id).where(*base, alert_condition(code, rules)).limit(1)
+    columns = [
+        case((alert_condition(code, rules), True), else_=False).label(code.value) for code in ALERTS
+    ]
+    ids = list(dict.fromkeys(piece_ids))
+    result: dict[uuid.UUID, list[AlertCode]] = {}
+    for start in range(0, len(ids), ALERTS_BATCH_SIZE):
+        chunk = ids[start : start + ALERTS_BATCH_SIZE]
+        statement = select(Piece.id, *columns).where(
+            Piece.id.in_(chunk), Piece.deleted_at.is_(None), Piece.merged_into_id.is_(None)
         )
-        if matched is not None:
-            active.append(code)
-    return active
+        for row in session.execute(statement):
+            result[row[0]] = [code for code, active in zip(ALERTS, row[1:], strict=True) if active]
+    return result
 
 
 def list_completeness_rules(session: Session) -> list[CompletenessRule]:
