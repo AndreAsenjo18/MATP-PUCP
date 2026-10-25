@@ -16,7 +16,7 @@
 
 ## 4. Cierre del change
 
-- [ ] 4.1 Tests requeridos: secciones 1–3 en verde (`npm test`, `npm run lint`); prueba de consistencia con inserciones concurrentes y tiempos con 20 000 piezas contra PostgreSQL en compose cuando Docker esté disponible
+- [x] 4.1 Tests requeridos: secciones 1–3 en verde (`npm test`, `npm run lint`); prueba de consistencia con inserciones concurrentes y tiempos con 20 000 piezas contra PostgreSQL en compose cuando Docker esté disponible — hecho el 2026-10-25: `npm test` y `npm run lint` en verde; consistencia con una pieza registrada durante el reporte en PostgreSQL (`tests/test_reports_postgresql.py`, `npm run test:api:pg`); con 20 298 piezas (`scripts/perf/generate_catalog.py`) el inventario general (20 293 filas) se arma en 1,36 s y el reporte por ubicación en 0,10 s
 - [x] 4.2 Actualizar OpenAPI: implementar el stub `reports/{report_type}` con enum, parámetros y ejemplos por tipo; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — hecho el 2026-10-25: stub implementado con enum, parámetros y respuestas 200/202/403/404; `openapi:check` en verde
 - [x] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/reportes.md` (tipos de reporte, parámetros, imprimir, exportar, verificación en depósito) — hecho el 2026-10-25 (`docs/manual-usuario/reportes.md`, sin valorización)
 - [ ] 4.4 Registrar supuestos (comodato en inventario, valorización en fase 1, límite de impresión) en `docs/preguntas-contraparte.md`, `openspec validate reportes-inventario --strict` y, tras aprobar el PR, `openspec archive reportes-inventario -y`
