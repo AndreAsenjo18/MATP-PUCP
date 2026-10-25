@@ -6,6 +6,7 @@ eliminadas y fusionadas, tal como pide la tarea.
 
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,10 +18,12 @@ from app.modules.identification.models import NormalizationStatus, PieceIdentifi
 from app.modules.identification.service import set_inventory_code
 from app.modules.locations.models import LocationLevel
 from app.modules.locations.service import create_location, move_piece
+from app.modules.quality import completeness
 from app.modules.quality.completeness import (
     ActiveRules,
     AlertCode,
     active_alerts_for_piece,
+    active_alerts_for_pieces,
     alert_condition,
     missing_fields_predicate,
 )
@@ -266,3 +269,48 @@ def test_active_alerts_for_piece_returns_every_matching_code_in_declared_order(
         AlertCode.MISSING_PHOTO,
         AlertCode.MISSING_LOCATION,
     ]
+
+
+def test_batched_alerts_match_each_definition_across_batches(
+    session: Session, act_as: ActAs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The report computes alerts by batch; the result is the per-alert definition, piece by piece,
+    also when the pieces span several batches (alertas-y-reporte-incompletas 4.1)."""
+    monkeypatch.setattr(completeness, "ALERTS_BATCH_SIZE", 2)
+    with act_as("CATALOGUER"):
+        owned = create_piece(
+            session, denomination="Propia sin datos", tenure_regime=TenureRegime.OWNED
+        )
+        loan = create_piece(
+            session, denomination="Comodato", tenure_regime=TenureRegime.LOAN_FOR_USE
+        )
+        temporary = create_piece(
+            session, denomination="Préstamo temporal", tenure_regime=TenureRegime.TEMPORARY_LOAN
+        )
+        session.flush()
+        session.add(
+            MediaAsset(
+                id=new_uuid(),
+                piece_id=loan.id,
+                storage_key=f"pieces/{loan.id}/a.jpg",
+                content_type="image/jpeg",
+                size_bytes=10,
+                content_sha256="a" * 64,
+                sort_order=0,
+                is_primary=True,
+            )
+        )
+        deleted = create_piece(session, denomination="Eliminada", tenure_regime=TenureRegime.OWNED)
+        session.commit()
+        deleted.deleted_at = datetime.now(UTC)
+        deleted.deletion_reason = "prueba"
+        session.commit()
+
+    pieces = [owned, loan, temporary, owned]  # repeated id: computed once
+    batched = active_alerts_for_pieces(session, [p.id for p in [*pieces, deleted]], DEFAULT_RULES)
+    assert deleted.id not in batched
+    for piece in (owned, loan, temporary):
+        expected = [code for code in AlertCode if _matches(session, piece, code, DEFAULT_RULES)]
+        assert batched[piece.id] == expected
+        assert active_alerts_for_piece(session, piece.id, DEFAULT_RULES) == expected
+    assert AlertCode.MISSING_PHOTO not in batched[loan.id]
