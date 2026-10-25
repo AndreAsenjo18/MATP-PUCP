@@ -330,3 +330,13 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | W2 | ¿Qué columnas debe tener el inventario oficial y en qué orden? | Las del diseño D3 (códigos vigentes, denominación, colección, régimen, propietario legal, adquisición, ingreso, autor, procedencia, época, tipo, materiales, medidas, conservación y ubicación), ordenadas por colección, código de colección (orden natural) y denominación | busqueda-reportes (RF-033) | Media |
 | W3 | ¿Cuántas filas se pueden imprimir de una vez? | 2 000; por encima se sugiere Excel o filtrar por colección | busqueda-reportes (RF-033, RNF-010) | Baja |
 | W4 | ¿Se necesita el reporte de valorización en la fase 1? | No implementado todavía: el tipo `valuation` responde «no disponible» hasta confirmarlo (RF-037 es *Could*) | busqueda-reportes (RF-037, RNF-014) | Media |
+
+## X. Supuestos del lote de demostración y su guía en calidad (change `importacion-masiva-fotografias`, tarea 7.1, y plan del MVP, 2026-10-25)
+
+Detalle en `docs/despliegue/demo-calidad.md`, `data/fixtures/lote_demo/LEEME.md` y `apps/api/app/seed/demo_batch.py`.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| X1 | ¿Cuál es la dirección del ambiente de calidad para la demo? | `54-237-95-196.sslip.io`, la que usa `pull-deploy.sh`. Si la IP de la EC2 cambia al reiniciar la sesión, hay que actualizar `MATP_HEALTH_URL`, el `Caddyfile` y los `AllowedOrigins` de la política CORS del bucket | plataforma (RNF-004); multimedia (subida directa de fotos) | Alta |
+| X2 | ¿En qué ruta de la EC2 de calidad vive el despliegue? | `/opt/matp`, la del despliegue de CD2 (`docs/despliegue/pipeline.md`). El seed solo da contraseña al administrador si `SEED_ADMIN_PASSWORD` está en `/opt/matp/.env.pruebas`, y ahí también se cambia `MEDIA_UPLOAD_MODE=proxy` como contingencia | plataforma (RNF-004) | Media |
+| X3 | ¿Qué colección del lote de demostración se presenta como comodato? | AJB, de forma ilustrativa (como en `CLAUDE.md`). La fila 14 (`AJB 501`) debe heredar «No publicar» en sus fotos y la 15 trae un código I, así que da error. El resto de las filas son de propiedad de la PUCP | importacion-datos (RN-003, RN-006, RN-008) | Media |
