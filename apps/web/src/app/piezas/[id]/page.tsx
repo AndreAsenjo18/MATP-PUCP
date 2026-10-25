@@ -40,6 +40,7 @@ import {
   type DialogOutcome,
 } from "@/components/domain/PieceActionDialogs";
 import { MergeLinks } from "@/components/domain/MergedPieceLinks";
+import { ConservationLive } from "@/components/domain/ConservationPanel";
 import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import {
@@ -86,6 +87,7 @@ const TABS = [
   "Identificadores",
   "Fotografías",
   "Ubicación e historial",
+  "Conservación",
   "Datos de origen",
   "Auditoría",
   "Sugerencias IA",
@@ -230,6 +232,13 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
           {tab === "Ubicación e historial" && <LocationTab pieceId={pieceId} piece={piece} movements={movements} />}
 
+          {tab === "Conservación" &&
+            (getApiMode() === "live" ? (
+              <ConservationLive pieceId={pieceId} />
+            ) : (
+              <p className="text-base text-gris-texto">El historial de conservación está disponible con la API (modo live).</p>
+            ))}
+
           {tab === "Datos de origen" && <SourceTab records={sourceRecords} />}
 
           {tab === "Auditoría" && <AuditTab pieceId={pieceId} demoEntries={audit} />}
@@ -294,6 +303,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
       <PieceGeneralData piece={piece} />
       <PieceIdentifiersTable piece={piece} />
+      <ConservationLive pieceId={pieceId} />
       <p className="text-sm text-gris-texto">Fotografías, ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
     </div>
   );
