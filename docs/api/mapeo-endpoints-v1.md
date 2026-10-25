@@ -67,7 +67,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 41 | `PUT /loans/{id}/status` | `RF-028-B` → RF-018 | `PUT /loans/{id}/status` (stub) | Hecho: responde 501 y declara `x-change: prestamos-y-exposiciones` hasta cerrar K1 |
 | 42 | `POST /media/bulk-download` · `bulkDownloadMedia` | `RF-030-B` → Pendiente³ | no existe | Hecho: stub `501` con `BulkDownloadRequest`/`BulkDownloadJob`; lo implementa `descargas-masivas-y-enriquecimiento-lote` (tarea 5.2) |
 | 43 | `GET /public/catalog` · `getPublicCatalog` | `RF-044` → Pendiente⁴ | no existe | Bloqueado por el conflicto C2 |
-| 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (stub) |
+| 44 | `GET /audit-logs/pieces/{id}` · `getPieceAuditTimeline` | `RF-043-B` → RF-040 | `GET /audit?entity_type=piece&entity_id=` (implementado) | Hecho: `GET /audit-logs/pieces/{id}` (implementado sobre la misma consulta que `GET /audit-logs`) |
 | 45 | `POST /ai/batch-enrich` · `batchAiEnrichment` | `RF-029-B` → Pendiente⁵ | no existe (hay lote en `ia-sugerencia-terminos`) | Hecho: stub `501` con `BatchEnrichRequest`/`AiBatchOut`; lo implementa `descargas-masivas-y-enriquecimiento-lote` como RIA-04 (tarea 5.2) |
 
 ³ El catálogo no tiene un requisito de descarga masiva de imágenes. Aplicarían RF-014 y RN-008 (restricciones de uso en comodato).
@@ -97,6 +97,8 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `GET`/`PUT /normalization-settings/{key}` | RN-010, RF-023 y RF-004: consultar y cambiar los marcadores de ausencia (`absence_markers`) y los separadores de códigos concatenados (`concatenation_separators`) como datos auditados; sin valor guardado rige el del código. Permiso `vocabularies.manage` [SUPUESTO T8]. Un cambio que alteraría identificadores ya registrados responde 409 `normalization_change_requires_preview` con cuántos y ejemplos, sin guardar nada [SUPUESTO T10] (`plantillas-mapeo-y-normalizacion`, tarea 2.3, diseño D5) |
 | `GET`/`POST /collection-acronym-aliases`, `DELETE /collection-acronym-aliases/{alias_id}` | RF-023 y RN-010: siglas históricas de colección (alias normalizado → colección), únicas entre los alias activos y distintas de la sigla actual de toda colección; borrado lógico con motivo (RN-005). Mismo permiso y misma regla de impacto que los parámetros (`plantillas-mapeo-y-normalizacion`, tarea 2.3, diseño D5) |
 | `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
+| `POST /imports/{batch_id}/photos/upload-urls` | RF-045: las fotos del lote se suben por tandas de hasta 100, directo al almacenamiento con URL prefirmada; una huella que ya está en el lote vuelve como `already_registered`, así que volver a soltar la carpeta reanuda la subida (`importacion-masiva-fotografias`, tarea 2.1, diseño D2) |
+| `POST /imports/{batch_id}/photos/complete` | RF-045: el navegador avisa qué archivos terminó de subir; en segundo plano se verifican el tipo real, el tamaño y la huella, se generan la miniatura y la copia de visualización y se propone la fila de cada foto, sin tocar el catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, tarea 2.2, diseño D2) |
 | `GET /exports/full` | RF-044 del catálogo: exportación completa en formato abierto |
 | `GET /trash`, `POST /trash/{entity_type}/{entity_id}/restore` | RN-005, RNF-006: nunca se borra información, así que lo eliminado lógicamente se consulta y se restaura verificando dependencias (`auditoria-y-soft-delete-transversal`, diseño D2) |
 | `GET /audit/change-sets/{id}`, `POST /audit/change-sets/{id}/revert-preview` | RNF-007: resumen del conjunto de cambios y vista previa de la reversión, que el contrato no contempla y sin la cual no se puede confirmar una reversión (change `auditoria-y-soft-delete-transversal`) |
@@ -152,7 +154,7 @@ Decisiones registradas en `openspec/changes/alinear-api-endpoints-v1/design.md`,
 
 ## Desviaciones declaradas de la importación (tarea 4.4, 2026-10-18)
 
-La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4) y desde el 2026-10-21 `confirm` (tarea 4.2); `rollback` sigue respondiendo `501` hasta su tarea 5.2. La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
+La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design D8). Desde el 2026-10-19 `importacion-pipeline-reconciliacion` implementa `upload` y `diffs` (tareas 2.1 y 3.4) y desde el 2026-10-21 `confirm` (tarea 4.2) y desde el 2026-10-25 `rollback` (tarea 5.2). La prueba `apps/api/tests/api/test_import_upload_contract.py` verifica el OpenAPI generado.
 
 | Operación | Contrato | API tras la tarea 4.4 | Motivo / pregunta |
 |---|---|---|---|

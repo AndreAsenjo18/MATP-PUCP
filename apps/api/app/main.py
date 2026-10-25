@@ -22,6 +22,7 @@ from app.core.health import router as health_router
 from app.core.jobs import recover_interrupted, start_workers, stop_workers
 from app.core.storage import ObjectStorage
 from app.modules.exports.worker import register_export_jobs
+from app.modules.imports.photo_verification import register_photo_jobs
 from app.modules.imports.worker import register_import_jobs
 from app.modules.quality.incremental import register_incremental_jobs
 from app.modules.quality.scan import register_scan_jobs
@@ -89,6 +90,7 @@ def create_app(
         settings.database_url, connect_timeout=settings.health_check_timeout_seconds
     )
     storage = ObjectStorage.from_settings(settings)
+    register_photo_jobs(storage, settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

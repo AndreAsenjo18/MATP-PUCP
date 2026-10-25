@@ -27,7 +27,7 @@ def _resize_image(data: bytes, max_dim: int) -> bytes:
             new_height = int(image.height * max_dim / image.width)
         else:
             new_height = max_dim
-            new_width = int(image.width * max_dim / image.width)
+            new_width = int(image.width * max_dim / image.height)
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     output = io.BytesIO()
@@ -51,12 +51,21 @@ def generate_derivatives(
     """
     # Download source
     source_data = storage.get_bytes(source_key)
+    return store_derivatives(storage, f"pieces/{piece_id}/{asset_id}/", source_data)
 
-    thumb_data = _resize_image(source_data, THUMB_MAX_DIM)
-    display_data = _resize_image(source_data, DISPLAY_MAX_DIM)
 
-    thumb_key = f"pieces/{piece_id}/{asset_id}/thumb.webp"
-    display_key = f"pieces/{piece_id}/{asset_id}/display.webp"
+def store_derivatives(storage: "ObjectStorage", prefix: str, data: bytes) -> dict[str, str]:
+    """Write thumb.webp and display.webp of the image ``data`` under ``prefix``.
+
+    Shared by the photos of a piece (``pieces/{piece_id}/{asset_id}/``) and the photos of an
+    import batch (``media/{photo_id}/``, change importacion-masiva-fotografias). Both images are
+    computed before anything is written.
+    """
+    thumb_data = _resize_image(data, THUMB_MAX_DIM)
+    display_data = _resize_image(data, DISPLAY_MAX_DIM)
+
+    thumb_key = f"{prefix}thumb.webp"
+    display_key = f"{prefix}display.webp"
 
     storage.put_bytes(thumb_key, thumb_data, "image/webp")
     storage.put_bytes(display_key, display_data, "image/webp")

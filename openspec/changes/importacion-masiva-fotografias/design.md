@@ -92,6 +92,10 @@ sequenceDiagram
 - El SHA-256 se calcula en el navegador dentro de un Web Worker. Así la interfaz no se congela con miles de archivos.
 - Límites configurables: `IMPORT_MAX_PHOTOS` por lote (5 000 [SUPUESTO]) y `MEDIA_MAX_BYTES` (el de `fotografias-multiples-por-pieza`). Se aceptan JPEG, PNG y TIFF (`MEDIA_ALLOWED_TYPES`). Se ignoran en silencio `Thumbs.db`, `.DS_Store` y los archivos ocultos.
 - La verificación y los derivados se ejecutan en el worker en proceso del lote (patrón de `app/core/jobs.py`, ADR-010) con su latido. Las fotos que quedan en `uploaded` se vuelven a encolar al reiniciar.
+- **Decisiones de la 2.1 y la 2.2** (2026-10-25).
+  - Un archivo de tipo o tamaño no admitido vuelve como `rejected` con su motivo y no se registra; el resto de la tanda sigue. Una foto rechazada recibe una URL nueva si se vuelve a soltar; una descartada no.
+  - La verificación rechaza la foto si su tipo real no es el declarado (un PNG con extensión `.jpg`): el tipo declarado fija la clave `upload.<ext>` y la aplicación no vuelve a verificar.
+  - La cola es el propio estado `uploaded`, así que no hace falta un latido por foto: al reiniciar, el worker `import-photos` la drena de inmediato. El latido que cuenta es el de la etapa del lote: mientras una etapa corre con latido vigente, sus fotos esperan al siguiente drenado, y con el latido vencido se verifican. El worker bloquea la fila del lote antes de escribir, como `start_stage`, para que no empiece una etapa a la vez.
 - *Alternativa*: subir un ZIP a la API. Se descartó porque duplica el ancho de banda, obliga a la API a tener el ZIP entero en disco y no permite reanudar. Queda como contingencia `MEDIA_UPLOAD_MODE=proxy`, igual que en `fotografias-multiples-por-pieza`.
 
 ### D3. Emparejamiento propuesto en tres vías
@@ -115,11 +119,12 @@ El emparejamiento se ejecuta al terminar la validación del lote, cuando ya exis
 - `GET /imports/{batch_id}/photos?status=&match_status=&row_id=&page=&limit=` y `GET /imports/{batch_id}/photos/summary` (conteos por estado). Las miniaturas se sirven con URL firmadas de corta duración.
 - `PATCH /imports/{batch_id}/photos` acepta operaciones en lote:
   - `assign {photo_ids, row_id}` → `match_status=manual`;
-  - `unassign {photo_ids}`;
-  - `discard {photo_ids, reason}`;
+  - `unassign {photo_ids}` → `match_status=manual` sin fila (`row_id`, candidatos y `sort_key` vacíos);
+  - `discard {photo_ids, reason}` → `status=discarded`, con el motivo en `rejection_reason`;
   - `confirm_duplicate {photo_ids}`;
   - `reorder {row_id, photo_ids}`.
   Cada operación registra una entrada en la bitácora del lote. Asignar a una fila de otro lote responde `422`.
+- **Decisiones que el emparejamiento respeta** (2026-10-22, tarea 3.3). Una foto `manual`, con fila o sin ella, y una foto `discarded` nunca se vuelven a emparejar solas. Así se distinguen de una foto nunca emparejada, que no tiene `match_status` o tiene uno automático (`matched`, `ambiguous`, `unmatched`). Las fotos automáticas de una fila se numeran a continuación del mayor `sort_key` manual. Al remapear (`reset_validation`) solo se borran las propuestas automáticas. Al volver a leer el archivo (`clear_rows`), las filas se reemplazan y se desvinculan también las asignaciones manuales a una fila; las fotos sin fila y las descartadas se mantienen.
 - **Duplicados**: si la huella ya está en otra foto del lote, la segunda se rechaza como repetida en el lote. Si la fila es de actualización y la huella ya existe en `media_asset` de la pieza destino, se marca `duplicate_of_existing` y no se aplica salvo `confirm_duplicate`.
 - Permiso `imports.prepare` para subir y decidir. La aprobación sigue siendo `imports.approve`.
 

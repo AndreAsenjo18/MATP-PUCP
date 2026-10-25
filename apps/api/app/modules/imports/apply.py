@@ -163,8 +163,9 @@ def apply_batch(session: Session, batch: ImportBatch, progress: Progress | None 
                 ) from exc
             if progress is not None:
                 progress.advance(done, total=total)
-        batch.change_set_id = change_set_id
-        session.flush()
+    # Outside the import change set: reverting the batch (D7) must not undo its own link to it.
+    batch.change_set_id = change_set_id
+    session.flush()
     # Staging data: the new piece of each created row, for the log and the images (D8).
     for start in range(0, len(created), 500):
         session.execute(update(ImportRow), created[start : start + 500])

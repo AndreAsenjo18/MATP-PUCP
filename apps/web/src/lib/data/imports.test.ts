@@ -14,6 +14,8 @@ import {
   isProcessing,
   mappingRequest,
   progressText,
+  revertConflicts,
+  rollbackImportBatch,
   suggestMapping,
   summarySentence,
   uploadImportFile,
@@ -222,5 +224,29 @@ describe("modo live", () => {
     const result = await associateImportImage(BATCH, "img-1", null, DEV_USER);
 
     expect(result).toMatchObject({ status: "rejected", message: expect.stringContaining("después de aplicar el lote") });
+  });
+
+  it("revierte un lote con motivo y lee los conflictos de un 409", async () => {
+    const conflict = { entity_type: "piece", entity_id: "p-1", field: "provenance", reason: "changed_after", message: "Cambió después." };
+    const fetchMock = useLive(async () => json(409, { code: "revert_has_conflicts", message: "Hay cambios posteriores.", details: { conflicts: [conflict] } }));
+
+    const result = await rollbackImportBatch(BATCH, "  Hoja equivocada ", false, DEV_USER);
+
+    const request = fetchMock.mock.calls[0][0] as Request;
+    expect(new URL(request.url).pathname).toBe(`/api/v1/imports/${BATCH}/rollback`);
+    expect(await request.json()).toEqual({ reason: "Hoja equivocada", confirm_conflicts: false });
+    expect(result.status).toBe("rejected");
+    if (result.status !== "ok") {
+      expect(revertConflicts(result)).toEqual([{ entityType: "piece", entityId: "p-1", field: "provenance", message: "Cambió después." }]);
+    }
+  });
+
+  it("otros fallos de la reversión no traen conflictos", async () => {
+    useLive(async () => json(403, { code: "admin_required", message: "x", details: {} }));
+
+    const result = await rollbackImportBatch(BATCH, "Motivo", true, DEV_USER);
+
+    expect(result.status === "rejected" && result.message).toBe("Solo un Administrador puede revertir un lote.");
+    if (result.status !== "ok") expect(revertConflicts(result)).toBeNull();
   });
 });
