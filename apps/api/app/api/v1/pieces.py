@@ -60,12 +60,17 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import PieceIdentifier
+from app.modules.identification.normalization import TYPE_INVENTORY
 from app.modules.identification.schemas import (
     IdentifierCreate,
     IdentifierOut,
     InventoryCodeCorrection,
 )
-from app.modules.identification.service import retire_identifier, set_inventory_code
+from app.modules.identification.service import (
+    correct_locked_identifier,
+    retire_identifier,
+    set_inventory_code,
+)
 from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
 from app.modules.locations.service import UNSET as LOCATION_UNSET
@@ -695,17 +700,51 @@ def delete_piece_identifier(
 @router.post(
     "/{piece_id}/identifiers/{identifier_id}/correction",
     response_model=IdentifierOut,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza o el identificador no existen."},
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el "
+                "código I de otra pieza, activa o eliminada (`details.piece_id`, A6); "
+                "`not_current_inventory_code`: el identificador no es el código I vigente."
+            ),
+        },
+    },
     summary="Corregir un código I con procedimiento auditado (Administrador, RN-002)",
+    description="En una transacción, el código vigente pasa a no vigente enlazado al nuevo "
+    "(`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la "
+    "corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El "
+    "valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.",
     tags=["Identificadores"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def correct_inventory_code(
     piece_id: uuid.UUID,
     identifier_id: uuid.UUID,
     body: InventoryCodeCorrection,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("identifiers.correct_inventory_code"))],
 ) -> IdentifierOut:
-    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+    piece = get_piece(session, piece_id)
+    identifier = session.scalar(
+        select(PieceIdentifier).where(
+            PieceIdentifier.id == identifier_id, PieceIdentifier.piece_id == piece_id
+        )
+    )
+    if identifier is None:
+        raise NotFound("El identificador no existe en esta pieza o ya fue dado de baja.")
+    if identifier.identifier_type_code != TYPE_INVENTORY or not identifier.is_current:
+        raise BusinessRuleViolation(
+            "Solo se corrige el código I vigente de la pieza; los demás códigos se registran o "
+            "se dan de baja en sus identificadores.",
+            code="not_current_inventory_code",
+        )
+    corrected = correct_locked_identifier(
+        writer(session, user, body.reason), piece, TYPE_INVENTORY, body.new_value, body.reason
+    )
+    session.commit()
+    return IdentifierOut.model_validate(corrected)
 
 
 # -------------------------------------------------------------------------- media

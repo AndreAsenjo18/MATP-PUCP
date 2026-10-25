@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 37b6350fe37385254d53253505ea85702d32bebc35e612bd5b73dd04e4d5f592
+ * openapi-sha256: d53f07fcdbe3f317e0b0128fe1e6952b87c20c15773ab34c190981f4cacc6a19
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1281,7 +1281,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Corregir un código I con procedimiento auditado (Administrador, RN-002) */
+        /**
+         * Corregir un código I con procedimiento auditado (Administrador, RN-002)
+         * @description En una transacción, el código vigente pasa a no vigente enlazado al nuevo (`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.
+         */
         post: operations["correctInventoryCode"];
         delete?: never;
         options?: never;
@@ -12398,8 +12401,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza o el identificador no existen. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12407,13 +12410,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el código I de otra pieza, activa o eliminada (`details.piece_id`, A6); `not_current_inventory_code`: el identificador no es el código I vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -18,7 +18,7 @@
 ## 3. API de identificadores
 
 - [ ] 3.1 Implementar `POST /api/v1/pieces/{piece_id}/identifiers` con **detección de concatenados antes de registrar** (comprobar el valor completo con `split_compound()`/`propose_identifiers()` y llamar a `add_identifier()` solo si hay un único código): responde `422 concatenated_identifier` con `details.proposals` en los campos `identifier_type_code`, `original_value` y `normalized_value`, y acepta `confirmed_split: true` en la confirmación; pruebas de los cuatro escenarios (Req: Registro de identificadores con confirmación de códigos concatenados; RF-002, RF-023)
-- [ ] 3.2 Implementar `POST .../identifiers/{identifier_id}/correction` (D6), solo para el Administrador; pruebas: corrección ok con enlace `replaced_by_id`, Catalogador 403, sin motivo 422, valor usado por pieza eliminada 409, búsqueda por el valor anterior sigue encontrando la pieza (Req: Operación de corrección auditada del código I; RF-003, RN-002)
+- [x] 3.2 Implementar `POST .../identifiers/{identifier_id}/correction` (D6), solo para el Administrador; pruebas: corrección ok con enlace `replaced_by_id`, Catalogador 403, sin motivo 422, valor usado por pieza eliminada 409, búsqueda por el valor anterior sigue encontrando la pieza (Req: Operación de corrección auditada del código I; RF-003, RN-002)
 
 ## 4. Frontend
 
