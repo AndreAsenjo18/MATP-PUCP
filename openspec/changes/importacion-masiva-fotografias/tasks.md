@@ -23,7 +23,7 @@
 
 ## 4. Bandeja y previsualización
 
-- [ ] 4.1 `GET /imports/{batch_id}/photos` (filtros y paginación, miniaturas con URL firmada) y `GET /imports/{batch_id}/photos/summary`; pruebas de filtros y conteos (Req: Previsualización del lote con miniaturas y conteos de fotos)
+- [x] 4.1 `GET /imports/{batch_id}/photos` (filtros y paginación, miniaturas con URL firmada) y `GET /imports/{batch_id}/photos/summary`; pruebas de filtros y conteos (Req: Previsualización del lote con miniaturas y conteos de fotos)
 - [ ] 4.2 `PATCH /imports/{batch_id}/photos` con `assign`, `unassign`, `discard`, `confirm_duplicate` y `reorder`, con entrada en la bitácora; pruebas: asignación múltiple, fila de otro lote 422, fila rechazada deja fotos sin aplicar (Req: Bandeja de revisión de fotografías del lote; RF-028)
 - [ ] 4.3 Detección de repetidas en el lote y contra la pieza destino de filas de actualización; prueba de los escenarios de duplicado (Req: Previsualización del lote… — escenario «Foto repetida en una pieza existente»)
 

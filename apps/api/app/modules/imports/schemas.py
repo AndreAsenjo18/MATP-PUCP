@@ -21,6 +21,8 @@ from app.modules.imports.models import (
     ImportPhoto,
     ImportPhotoStatus,
     ImportRow,
+    PhotoMatchSource,
+    PhotoMatchStatus,
     RowClassification,
     RowDecision,
 )
@@ -834,3 +836,74 @@ class TemplateDryRunOut(BaseModel):
     sampled_rows: int = Field(description="Filas de la muestra: hasta 200 [SUPUESTO T3].")
     missing_columns: list[str] = Field(description="Columnas de la plantilla ausentes del lote.")
     columns: list[DryRunColumn]
+
+
+class ImportPhotoOut(BaseModel):
+    """A photo of the batch in the tray, with its proposed row (design D4)."""
+
+    id: uuid.UUID
+    relative_path: str
+    original_filename: str
+    size_bytes: int
+    status: ImportPhotoStatus
+    rejection_reason: str | None = None
+    match_status: PhotoMatchStatus | None = Field(
+        None, description="null: sin propuesta todavía (subiéndose o lote sin validar)."
+    )
+    match_source: PhotoMatchSource | None = None
+    row_id: uuid.UUID | None = Field(None, description="Fila propuesta o asignada.")
+    candidate_row_ids: list[uuid.UUID] | None = Field(
+        None, description="Filas posibles de una foto ambigua; nunca se elige una por adivinanza."
+    )
+    sort_key: int | None = Field(None, description="Orden de la foto dentro de su fila.")
+    duplicate_of_existing: bool = False
+    duplicate_confirmed: bool = False
+    thumbnail_url: str | None = Field(
+        None, description="URL prefirmada temporal de la miniatura; solo de fotos verificadas."
+    )
+
+    @classmethod
+    def from_photo(cls, photo: ImportPhoto, thumbnail_url: str | None = None) -> "ImportPhotoOut":
+        return cls(
+            id=photo.id,
+            relative_path=photo.relative_path,
+            original_filename=photo.original_filename,
+            size_bytes=photo.size_bytes,
+            status=photo.status,
+            rejection_reason=photo.rejection_reason,
+            match_status=photo.match_status,
+            match_source=photo.match_source,
+            row_id=photo.row_id,
+            candidate_row_ids=[uuid.UUID(str(row)) for row in photo.candidate_row_ids or []]
+            or None,
+            sort_key=photo.sort_key,
+            duplicate_of_existing=photo.duplicate_of_existing,
+            duplicate_confirmed=photo.duplicate_confirmed,
+            thumbnail_url=thumbnail_url,
+        )
+
+
+class ImportPhotoSummary(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "batch_id": EX_BATCH_ID,
+                    "total": 80,
+                    "by_status": {"VERIFIED": 76, "REJECTED": 2, "UPLOADED": 2},
+                    "by_match_status": {"MATCHED": 62, "AMBIGUOUS": 3, "UNMATCHED": 11, "NONE": 4},
+                    "duplicates": 0,
+                }
+            ]
+        }
+    )
+
+    batch_id: uuid.UUID
+    total: int
+    by_status: dict[str, int] = Field(description="Fotos por estado (todos los estados).")
+    by_match_status: dict[str, int] = Field(
+        description="Fotos por propuesta; `NONE`: sin propuesta todavía."
+    )
+    duplicates: int = Field(
+        description="Fotos que ya están en la pieza destino y esperan confirmación."
+    )

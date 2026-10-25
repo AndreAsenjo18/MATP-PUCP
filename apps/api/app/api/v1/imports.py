@@ -26,7 +26,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
-from app.api.pagination import Page, PageParams, page_params, paginate
+from app.api.pagination import (
+    LimitPageParams,
+    Page,
+    PageParams,
+    limit_page_params,
+    page_params,
+    paginate,
+)
 from app.api.stubs import (
     CHANGE_TEMPLATES,
     implemented,
@@ -56,10 +63,15 @@ from app.modules.imports.models import (
     ImportBatchStatus,
     ImportImage,
     ImportMappingTemplate,
+    ImportPhotoStatus,
     ImportRow,
+    PhotoMatchStatus,
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.photo_review import photos_query
+from app.modules.imports.photo_review import summary as photo_summary
+from app.modules.imports.photo_review import thumbnail_url as photo_thumbnail_url
 from app.modules.imports.photo_upload import (
     DeclaredPhoto,
     PhotoLimits,
@@ -78,6 +90,8 @@ from app.modules.imports.schemas import (
     ImportImageOut,
     ImportLog,
     ImportLogEntry,
+    ImportPhotoOut,
+    ImportPhotoSummary,
     ImportRowOut,
     MappingRequest,
     MappingTemplateCreate,
@@ -650,6 +664,58 @@ def complete_import_photo_uploads(
     return PhotoCompleteOut(
         batch_id=batch_id, photos=[PhotoStateOut.from_photo(photo) for photo in photos]
     )
+
+
+@router.get(
+    "/imports/{batch_id}/photos",
+    response_model=Page[ImportPhotoOut],
+    responses=NOT_FOUND,
+    summary="Fotografías del lote: bandeja con filtros y miniaturas",
+    description="Fotos del lote con su fila propuesta o asignada, ordenadas por fila y posición, "
+    "con la miniatura firmada de las verificadas. Se filtran por estado, propuesta o fila "
+    "(`importacion-masiva-fotografias`, diseño D4).",
+    **implemented(),
+)
+def list_import_photos(
+    request: Request,
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    params: Annotated[LimitPageParams, Depends(limit_page_params)],
+    photo_status: Annotated[ImportPhotoStatus | None, Query(alias="status")] = None,
+    match_status: Annotated[PhotoMatchStatus | None, Query()] = None,
+    row_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> Page[ImportPhotoOut]:
+    get_batch(session, batch_id)
+    statement = photos_query(
+        batch_id, status=photo_status, match_status=match_status, row_id=row_id
+    )
+    photos, total = paginate(session, statement, params)
+    storage: ObjectStorage = request.app.state.storage
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    return Page(
+        items=[
+            ImportPhotoOut.from_photo(photo, photo_thumbnail_url(storage, photo, ttl))
+            for photo in photos
+        ],
+        total=total,
+        page=params.page,
+        page_size=params.limit,
+    )
+
+
+@router.get(
+    "/imports/{batch_id}/photos/summary",
+    response_model=ImportPhotoSummary,
+    responses=NOT_FOUND,
+    summary="Fotografías del lote: conteos por estado y propuesta",
+    **implemented(),
+)
+def summarize_import_photos(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> ImportPhotoSummary:
+    get_batch(session, batch_id)
+    return ImportPhotoSummary(batch_id=batch_id, **photo_summary(session, batch_id))
 
 
 @router.post(
