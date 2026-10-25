@@ -11,12 +11,12 @@
 
 ## 3. Frontend
 
-- [ ] 3.1 `lib/data/reports.ts` (mock/live) y `app/reportes` en modo `live`: selección de tipo según permisos, parámetros, vista previa paginada y exportación a Excel; pruebas de componente (Req: Catálogo cerrado de reportes…)
-- [ ] 3.2 Vista imprimible `app/reportes/imprimir/[tipo]` con CSS de impresión, cabecera por página, saltos por colección y límite de 2 000 filas; prueba de componente del límite (Req: Vista imprimible de reportes; RNF-010)
+- [x] 3.1 `lib/data/reports.ts` (mock/live) y `app/reportes` en modo `live`: selección de tipo según permisos, parámetros, vista previa paginada y exportación a Excel; pruebas de componente (Req: Catálogo cerrado de reportes…) — hecho el 2026-10-25: `lib/data/reports.ts` y `components/domain/ReportsLive.tsx` en la pantalla de Reportes (modo `live`); pruebas en `reports.test.ts` y `ReportsLive.test.tsx`
+- [x] 3.2 Vista imprimible `app/reportes/imprimir/[tipo]` con CSS de impresión, cabecera por página, saltos por colección y límite de 2 000 filas; prueba de componente del límite (Req: Vista imprimible de reportes; RNF-010) — hecho el 2026-10-25: `app/reportes/imprimir/[tipo]` (cabecera repetida con `table-header-group`, salto por colección, límite `PRINT_LIMIT`); la barra lateral y la cabecera de la aplicación no se imprimen
 
 ## 4. Cierre del change
 
 - [ ] 4.1 Tests requeridos: secciones 1–3 en verde (`npm test`, `npm run lint`); prueba de consistencia con inserciones concurrentes y tiempos con 20 000 piezas contra PostgreSQL en compose cuando Docker esté disponible
 - [x] 4.2 Actualizar OpenAPI: implementar el stub `reports/{report_type}` con enum, parámetros y ejemplos por tipo; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde — hecho el 2026-10-25: stub implementado con enum, parámetros y respuestas 200/202/403/404; `openapi:check` en verde
-- [ ] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/reportes.md` (tipos de reporte, parámetros, imprimir, exportar, verificación en depósito)
+- [x] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/reportes.md` (tipos de reporte, parámetros, imprimir, exportar, verificación en depósito) — hecho el 2026-10-25 (`docs/manual-usuario/reportes.md`, sin valorización)
 - [ ] 4.4 Registrar supuestos (comodato en inventario, valorización en fase 1, límite de impresión) en `docs/preguntas-contraparte.md`, `openspec validate reportes-inventario --strict` y, tras aprobar el PR, `openspec archive reportes-inventario -y`

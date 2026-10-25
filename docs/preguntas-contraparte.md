@@ -313,3 +313,12 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | U7 | ¿Con qué frecuencia se hace el simulacro de restauración? | Mensual y antes de cada entrega del curso | plataforma (RNF-011) | Media |
 | U8 | ¿La VM tiene un respaldo propio a nivel de infraestructura y a quién avisar de los reinicios por parches? | Se desconoce; se pide a la DTI (checklist de la VM, puntos 10 y 12) | plataforma (RNF-011) | Media |
 | U9 | Si el servidor está cerca de llenarse, ¿se avisa al 80 % de uso? | Sí, cada hora, con los directorios que más ocupan | plataforma (RNF-015) | Baja |
+
+## W. Supuestos de los reportes de inventario (change `reportes-inventario`, 2026-10-25)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| W1 | ¿Las piezas en comodato forman parte del inventario permanente que se entrega? | Sí, con subtotal propio; se pueden excluir con «Incluir comodatos». Nunca entran los préstamos temporales (RN-004) ni las piezas eliminadas o fusionadas | busqueda-reportes (RF-033, RN-004) | Alta |
+| W2 | ¿Qué columnas debe tener el inventario oficial y en qué orden? | Las del diseño D3 (códigos vigentes, denominación, colección, régimen, propietario legal, adquisición, ingreso, autor, procedencia, época, tipo, materiales, medidas, conservación y ubicación), ordenadas por colección, código de colección (orden natural) y denominación | busqueda-reportes (RF-033) | Media |
+| W3 | ¿Cuántas filas se pueden imprimir de una vez? | 2 000; por encima se sugiere Excel o filtrar por colección | busqueda-reportes (RF-033, RNF-010) | Baja |
+| W4 | ¿Se necesita el reporte de valorización en la fase 1? | No implementado todavía: el tipo `valuation` responde «no disponible» hasta confirmarlo (RF-037 es *Could*) | busqueda-reportes (RF-037, RNF-014) | Media |
