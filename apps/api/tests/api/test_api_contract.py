@@ -153,10 +153,10 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     # matriz; alertas-y-reporte-incompletas los de calidad; auditoria-y-soft-delete-transversal
     # el historial de la pieza; importacion-pipeline-reconciliacion la reversión del lote y
     # colecciones-y-vocabularios-admin los vocabularios y tipos de identificador;
-    # ficha-pieza-crud la validación, la restauración, los componentes y la corrección del
-    # código I); el umbral solo detecta un vaciado accidental de la lista, no fija cuántos
-    # quedan.
-    assert len(stubs) >= 10
+    # ficha-pieza-crud la validación, la restauración, los componentes, los identificadores y la
+    # corrección del código I); el umbral solo detecta un vaciado accidental de la lista, no fija
+    # cuántos quedan.
+    assert len(stubs) >= 9
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:
