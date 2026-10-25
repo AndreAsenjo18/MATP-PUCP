@@ -27,7 +27,7 @@ def _resize_image(data: bytes, max_dim: int) -> bytes:
             new_height = int(image.height * max_dim / image.width)
         else:
             new_height = max_dim
-            new_width = int(image.width * max_dim / image.width)
+            new_width = int(image.width * max_dim / image.height)
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     output = io.BytesIO()
