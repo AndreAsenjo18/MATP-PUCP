@@ -262,6 +262,23 @@ entity IMPORT_MAPPING_TEMPLATE {
   ..
   <i>+ timestamps + soft-delete</i>
 }
+entity NORMALIZATION_SETTING {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(80) <<UK>>
+  * value : jsonb
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity COLLECTION_ACRONYM_ALIAS {
+  * id : uuid <<PK>>
+  --
+  * alias : varchar(40)
+  * alias_normalized : varchar(40) <<UK>>
+  * collection_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 entity IMPORT_BATCH {
   * id : uuid <<PK>>
   --
@@ -317,6 +334,29 @@ entity IMPORT_IMAGE {
     anchor_row_number : integer
     import_row_id : uuid <<FK>>
   * status : varchar(40)
+    media_asset_id : uuid <<FK>>
+  ..
+  <i>+ timestamps</i>
+}
+entity IMPORT_PHOTO {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * relative_path : varchar(1000)
+  * original_filename : varchar(300)
+  * content_sha256 : varchar(64)
+  * size_bytes : bigint
+  * content_type : varchar(100)
+  * storage_prefix : varchar(500)
+  * status : varchar(40)
+    rejection_reason : text
+    row_id : uuid <<FK>>
+    match_status : varchar(40)
+    match_source : varchar(40)
+    candidate_row_ids : jsonb
+    sort_key : integer
+  * duplicate_of_existing : boolean
+  * duplicate_confirmed : boolean
     media_asset_id : uuid <<FK>>
   ..
   <i>+ timestamps</i>
@@ -525,10 +565,45 @@ entity AUDIT_LOG <<solo inserción>> {
     actor_label : varchar(100)
     reason : text
 }
+entity AUDIT_DIGEST <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * day : date <<UK>>
+  * row_count : integer
+    first_entry_id : uuid
+    last_entry_id : uuid
+  * sha256 : varchar(64)
+    previous_day : date
+    previous_sha256 : varchar(64)
+  * algorithm : varchar(40)
+  * computed_at : timestamptz
+}
+}
+
+package "Búsqueda y Exportación" #E8F4F8 {
+entity EXPORT_JOB {
+  * id : uuid <<PK>>
+  --
+  * kind : varchar(40)
+  * requested_by_id : uuid <<FK>>
+  * format : varchar(20)
+  * params : jsonb
+  * status : varchar(40)
+    row_count : integer
+    storage_key : varchar(500)
+    sha256 : varchar(64)
+    expires_at : timestamptz
+    error : text
+    heartbeat_at : timestamptz
+  * masked_fields : jsonb
+  ..
+  <i>+ timestamps</i>
+}
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
 APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
+APP_USER ||--o{ EXPORT_JOB : "solicita"
 APP_USER |o--o{ IDEMPOTENCY_KEY : "solicita"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
@@ -549,6 +624,7 @@ TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"
 TERM |o--o{ LOAN : "active_availability_term_id"
+COLLECTION ||--o{ COLLECTION_ACRONYM_ALIAS : "collection_id"
 COLLECTION |o--o{ COMPLETENESS_SNAPSHOT : "indicador por colección"
 COLLECTION |o--o{ PIECE : "contiene"
 TERM |o--o{ PIECE : "forma de adquisición"
@@ -593,6 +669,9 @@ APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
 IMPORT_BATCH ||--o{ IMPORT_IMAGE : "imágenes del lote"
 IMPORT_ROW |o--o{ IMPORT_IMAGE : "anclada en"
 MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
+IMPORT_BATCH ||--o{ IMPORT_PHOTO : "fotos del lote"
+IMPORT_ROW |o--o{ IMPORT_PHOTO : "propuesta para"
+MEDIA_ASSET |o--o{ IMPORT_PHOTO : "aplicada como"
 
 note as N1
   <b>Convenciones</b>

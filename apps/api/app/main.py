@@ -21,6 +21,7 @@ from app.core.health import HealthCheck
 from app.core.health import router as health_router
 from app.core.jobs import recover_interrupted, start_workers, stop_workers
 from app.core.storage import ObjectStorage
+from app.modules.exports.worker import register_export_jobs
 from app.modules.imports.worker import register_import_jobs
 from app.modules.quality.incremental import register_incremental_jobs
 from app.modules.quality.scan import register_scan_jobs
@@ -38,7 +39,7 @@ API_DESCRIPTION = """API del Sistema de Gestión y Digitalización de Coleccione
 - Errores con formato uniforme `{code, message, details}` y mensajes en español.
 - Autenticación con **sesión de servidor** (ADR-009): `POST /api/v1/auth/login` entrega la cookie
   `HttpOnly` `matp_session` y la cookie `matp_csrf`; las escrituras con cookie exigen la cabecera
-  `X-CSRF-Token`. La cabecera `X-MATP-User` (ADR-005) solo se acepta con `APP_ENV=test`.
+  `X-CSRF-Token`.
 """
 
 OPENAPI_TAGS = [
@@ -82,6 +83,7 @@ def create_app(
     register_scan_jobs()
     register_incremental_jobs()
     register_import_jobs()
+    register_export_jobs()
     owns_engine = engine is None
     engine = engine or make_engine(
         settings.database_url, connect_timeout=settings.health_check_timeout_seconds

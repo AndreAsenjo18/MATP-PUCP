@@ -1,0 +1,124 @@
+# MATP - Overlay de producción para la VM Linux PUCP (change despliegue-vm-y-respaldos, tarea 1.2).
+#
+# Se aplica SOBRE el compose base y solo publica el proxy (80 y 443); PostgreSQL y el
+# almacenamiento quedan en la red interna de contenedores. Requiere Docker Compose >= 2.24
+# (`!reset` y `!override`).
+#
+#   docker compose --env-file /opt/matp/.env.production \
+#     -f docker-compose.yml -f deploy/vm/docker-compose.prod.yml up -d
+#
+# Lo normal es no ejecutarlo a mano: `scripts/deploy.sh vX.Y.Z` valida las variables, respalda,
+# migra y espera la salud (docs/despliegue/vm.md). `--env-file` es necesario porque el compose
+# base interpola POSTGRES_* y MINIO_ROOT_* al leerse, no solo dentro de los contenedores.
+#
+# Las versiones de Caddy y restic se consultaron el 2026-10-22 (ADR-011). Las imágenes de la
+# aplicación se publican en GHCR por tag `vX.Y.Z` (.github/workflows/release.yml).
+
+x-logging: &logging
+  # Rotación para que los registros no agoten el disco (spec: «Registros acotados»).
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  proxy:
+    <<: *hardening
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    # Sin root dentro del contenedor (spec: «contenedores sin privilegios de superusuario»).
+    # Probado con Docker real: Caddy atiende 80/443 como uid 1000 si el kernel del contenedor
+    # permite puertos bajos a usuarios sin privilegios.
+    user: "1000:1000"
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      MATP_DOMAIN: ${MATP_DOMAIN:?Defina MATP_DOMAIN (dominio de la VM) en /opt/matp/.env.production}
+    volumes:
+      - ./deploy/vm/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificado institucional de la DTI (opcional): ver la sección «Certificado» del Caddyfile.
+      - ${MATP_CERT_DIR:-./deploy/vm/certs}:/etc/caddy/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: *logging
+
+  api:
+    <<: *hardening
+    image: ${MATP_REGISTRY:-ghcr.io/andreasenjo18}/matp-api:${MATP_VERSION:?Defina MATP_VERSION (vX.Y.Z)}
+    build: !reset null
+    ports: !reset []
+    env_file: !override
+      - path: ${MATP_ENV_FILE:-/opt/matp/.env.production}
+        required: true
+    environment:
+      APP_RELEASE: ${MATP_VERSION}
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      # Marcador que escribe scripts/backup/backup-restic.sh y que /health lee (backup_status).
+      - ${MATP_STATE_DIR:-/opt/matp/state}:/var/lib/matp:ro
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+    logging: *logging
+
+  web:
+    <<: *hardening
+    image: ${MATP_REGISTRY:-ghcr.io/andreasenjo18}/matp-web:${MATP_VERSION:?Defina MATP_VERSION (vX.Y.Z)}
+    build: !reset null
+    ports: !reset []
+    # Sin `read_only`: Next.js escribe su caché de imágenes bajo .next/cache. Se endurecerá cuando
+    # el simulacro en la VM confirme qué rutas necesita (tarea 7.1).
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+  db:
+    # Sin cap_drop: las imágenes oficiales necesitan CHOWN/SETUID al iniciar.
+    ports: !reset []
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    logging: *logging
+
+  storage:
+    # Sin cap_drop: las imágenes oficiales necesitan CHOWN/SETUID al iniciar.
+    ports: !reset []
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:

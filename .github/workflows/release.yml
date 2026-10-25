@@ -1,0 +1,87 @@
+# Publicación de imágenes de PRODUCCIÓN por versión (change despliegue-vm-y-respaldos, tarea 2.1).
+#
+# Al crear un tag vX.Y.Z construye las imágenes de la API (que incluye la IA asistiva, ADR-008) y
+# del frontend, las publica en GitHub Container Registry con la etiqueta de la versión y el SHA, y
+# NO toca la VM: no hay ningún secreto ni acceso a la VM en GitHub (design D3). Quien despliega
+# ejecuta `scripts/deploy.sh vX.Y.Z` en la VM (docs/despliegue/vm.md).
+#
+# Complementa a «Publicar imágenes» (publish-images.yml), que publica cada commit de main para el
+# ambiente de pruebas; producción solo recibe versiones con tag.
+name: Publicar versión
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Imagen ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: matp-api
+            dockerfile: apps/api/Dockerfile
+          - image: matp-web
+            dockerfile: apps/web/Dockerfile
+    env:
+      VERSION: ${{ github.ref_name }}
+      COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Un tag que no apunte a un commit de main no es una versión: se rechaza antes de publicar.
+      - name: El tag debe estar en main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$COMMIT" origin/main; then
+            echo "::error::El tag $VERSION apunta a un commit que no está en main."
+            exit 1
+          fi
+
+      - name: Nombre de la imagen
+        id: name
+        run: echo "ref=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: |
+            GIT_SHA=${{ env.COMMIT }}
+          tags: |
+            ${{ steps.name.outputs.ref }}:${{ env.VERSION }}
+            ${{ steps.name.outputs.ref }}:sha-${{ env.COMMIT }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.COMMIT }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Resumen
+        run: |
+          {
+            echo "### ${{ matrix.image }} ${VERSION}"
+            echo ""
+            echo "- Commit: \`${COMMIT}\`"
+            echo "- Despliegue: \`scripts/deploy.sh ${VERSION}\` en la VM"
+          } >> "$GITHUB_STEP_SUMMARY"

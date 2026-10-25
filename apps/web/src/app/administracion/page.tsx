@@ -2,11 +2,22 @@
 
 /**
  * Pantalla 10 — Administración: usuarios y roles (RF-039), vocabularios/categorías (RN-010),
- * tipos de identificador (parametrizables, RN-010) y ubicaciones (RF-016).
+ * tipos de identificador (parametrizables, RN-010), ubicaciones (RF-016), papelera con
+ * restauración (RN-005) y consulta global de auditoría con exportación a CSV (RF-040, RF-041);
+ * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`. Plantillas de mapeo
+ * y normalización (marcadores de ausencia, separadores y siglas históricas): tarea 4.2 de
+ * `plantillas-mapeo-y-normalizacion`, solo en modo `live`; se abren directamente con
+ * `?pestana=plantillas` y `?pestana=normalizacion`.
  */
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
+import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
+import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin";
+import { NormalizationLive } from "@/components/domain/NormalizationAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
+import { TrashPanel } from "@/components/domain/TrashPanel";
+import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +27,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { toEntryView } from "@/lib/data/audit";
+import { useMockStore } from "@/lib/data/mock-store";
 import {
   createLocation,
   fetchLocationsTree,
@@ -171,15 +184,48 @@ function UbicacionesLive() {
   );
 }
 
-const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones"] as const;
+const TABS = ["Usuarios y roles", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Normalización", "Papelera", "Auditoría"] as const;
 type Tab = (typeof TABS)[number];
 
+/** Pestañas que se abren por URL (`/administracion?pestana=plantillas`). */
+const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo", normalizacion: "Normalización" };
+
+function LiveOnlyNotice() {
+  return (
+    <Card as="section">
+      <p className="text-base text-gris-texto">Disponible con la API (modo live).</p>
+    </Card>
+  );
+}
+
+/**
+ * Consulta global de auditoría. En modo demostración el historial son las filas del store de la
+ * sesión; en `live` las trae la API (igual que la pestaña «Auditoría» de la ficha de pieza).
+ */
+function AuditSection() {
+  const { auditLog } = useMockStore();
+  const live = getApiMode() === "live";
+  const entries = useMemo(() => (live ? undefined : auditLog.map(toEntryView)), [live, auditLog]);
+  return <AuditLogPanel demoEntries={entries} />;
+}
+
 function AdministracionContent() {
-  const { hasPermission } = useSession();
-  const [tab, setTab] = useState<Tab>("Usuarios y roles");
+  const { hasPermission, currentRole } = useSession();
+  const params = useSearchParams();
+  const [tab, setTab] = useState<Tab>(TAB_SLUGS[params.get("pestana") ?? ""] ?? "Usuarios y roles");
   const [selectedVocabulary, setSelectedVocabulary] = useState(VOCABULARIES[0]?.code ?? "");
 
-  if (!hasPermission("users.manage") && !hasPermission("vocabularies.manage") && !hasPermission("locations.manage")) {
+  const canOpenTrash = hasPermission("pieces.restore");
+  const canReadAudit = hasPermission("audit.read");
+
+  if (
+    !hasPermission("users.manage") &&
+    !hasPermission("vocabularies.manage") &&
+    !hasPermission("locations.manage") &&
+    !hasPermission("imports.prepare") &&
+    !canOpenTrash &&
+    !canReadAudit
+  ) {
     return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
@@ -210,6 +256,12 @@ function AdministracionContent() {
 
       {tab === "Usuarios y roles" &&
         (hasPermission("users.manage") ? (
+          getApiMode() === "live" ? (
+            <div className="flex flex-col gap-4">
+              <UsersLive />
+              <PermissionMatrixLive />
+            </div>
+          ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="overflow-x-auto">
               <h2 className="text-lg font-semibold text-tinta">Usuarios</h2>
@@ -250,6 +302,7 @@ function AdministracionContent() {
               </ul>
             </Card>
           </div>
+          )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar usuarios y roles.</PermissionNotice>
         ))}
@@ -337,6 +390,39 @@ function AdministracionContent() {
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar ubicaciones.</PermissionNotice>
         ))}
+
+      {tab === "Plantillas de mapeo" &&
+        (hasPermission("imports.prepare") ? (
+          getApiMode() === "live" ? (
+            <MappingTemplatesLive />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para administrar plantillas de mapeo.</PermissionNotice>
+        ))}
+
+      {tab === "Normalización" &&
+        (hasPermission("vocabularies.manage") ? (
+          getApiMode() === "live" ? (
+            <NormalizationLive />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para administrar los parámetros de normalización.</PermissionNotice>
+        ))}
+
+      {tab === "Papelera" &&
+        (canOpenTrash ? (
+          // Abrir la papelera exige `pieces.restore`; restaurar es solo del Administrador (el servidor lo vuelve a comprobar).
+          <TrashPanel canRestore={currentRole?.code === "ADMIN"} />
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para abrir la papelera.</PermissionNotice>
+        ))}
+
+      {tab === "Auditoría" &&
+        (canReadAudit ? <AuditSection /> : <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>)}
     </div>
   );
 }
@@ -344,7 +430,9 @@ function AdministracionContent() {
 export default function AdministracionPage() {
   return (
     <RequireSession>
-      <AdministracionContent />
+      <Suspense fallback={null}>
+        <AdministracionContent />
+      </Suspense>
     </RequireSession>
   );
 }

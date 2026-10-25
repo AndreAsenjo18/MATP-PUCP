@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ImportBatch, ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
+import type { ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, MappingPanel, RowFilters } from "./ImportWizard";
+import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, RowFilters } from "./ImportWizard";
 
 const noop = () => {};
 const acceptButton = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar<\/button>/;
@@ -29,16 +29,6 @@ function row(overrides: Partial<ImportRow> = {}): ImportRow {
     ...overrides,
   };
 }
-
-const BATCH = {
-  id: "batch-1",
-  file_name: "sabana.xlsx",
-  status: "UPLOADED",
-  sheet_names: ["Resumen", "Inventario"],
-  sheet_name: "Resumen",
-  header_row: 1,
-  headers: ["DENOMINACIÓN"],
-} as ImportBatch;
 
 function image(overrides: Partial<ImportImage> = {}): ImportImage {
   return {
@@ -122,24 +112,6 @@ describe("filtros, mapeo y aprobación", () => {
     expect(text).toContain("Conflictos (3)");
     expect(text).toContain("Nuevas (2)");
     expect(text).toContain("Con errores (1)");
-  });
-
-  it("permite elegir hoja, fila de cabeceras y el destino de cada columna", () => {
-    const html = render(
-      <MappingPanel
-        batch={BATCH}
-        draft={{ columns: [{ source_column: "DENOMINACIÓN", target_field: "denomination", identifier_type_code: null, split_compound: false }], sheetName: null, headerRow: null, tenureDefault: "" }}
-        busy={false}
-        errors={{ "": "Debe indicar la columna de la denominación." }}
-        onChange={noop}
-        onSubmit={noop}
-      />,
-    );
-    const text = visibleText(html);
-    expect(text).toContain("Inventario");
-    expect(text).toContain("Fila de cabeceras");
-    expect(html).toMatch(/<option value="denomination" selected="">Denominación<\/option>/);
-    expect(text).toContain("Debe indicar la columna de la denominación.");
   });
 
   it("muestra el resumen que se aprueba o el aviso de permiso", () => {

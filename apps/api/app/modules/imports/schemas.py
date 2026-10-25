@@ -192,13 +192,24 @@ class ColumnMapping(BaseModel):
     source_column: str = Field(description="Encabezado tal como aparece en el Excel.")
     target_field: str | None = Field(
         description="Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), "
-        "`identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen."
+        "`identifier` (con `identifier_type_code`), `identifier:<TIPO>` o "
+        "`terms:<VOCABULARIO>`; null = datos de origen."
     )
     identifier_type_code: str | None = None
     split_compound: bool = Field(
         False,
         description="La celda puede tener varios códigos (N7); cada parte toma el tipo que se "
         "reconoce en ella.",
+    )
+    transforms: list[str] = Field(
+        default_factory=list,
+        description="Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con "
+        "transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en "
+        "la versión 1 (design D1).",
+    )
+    value_map: dict[str, str] | None = Field(
+        None,
+        description="Texto de origen → código de término, para la transformación `value_map`.",
     )
 
 
@@ -226,7 +237,9 @@ class MappingRequest(BaseModel):
     )
 
     template_id: uuid.UUID | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None,
+        description="Plantilla guardada que define el mapeo (sin `columns`); `defaults` se "
+        "aplican sobre los de la plantilla.",
     )
     sheet_name: str | None = Field(None, description="Otra hoja: se vuelve a leer el archivo.")
     header_row: int | None = Field(
@@ -239,7 +252,7 @@ class MappingRequest(BaseModel):
         "Préstamo Temporal) y `collection` (sigla).",
     )
     save_as_template_name: str | None = Field(
-        None, description="Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`."
+        None, description="Aún no disponible: cree la plantilla con `POST /import-templates`."
     )
 
 
@@ -546,7 +559,7 @@ class MappingTemplateOut(BaseModel):
                     "name": "Sábana consultoría (sintética)",
                     "source_name": "Consultoría 2024/25",
                     "header_signature": "a" * 64,
-                    "columns": [{"source_column": "DENOMINACION", "target_field": "title"}],
+                    "columns": [{"source_column": "DENOMINACION", "target_field": "denomination"}],
                     "description": None,
                     "created_at": EX_DATETIME,
                 }
@@ -559,6 +572,11 @@ class MappingTemplateOut(BaseModel):
     source_name: str
     header_signature: str
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo "
+        "Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None
     created_at: datetime
 
@@ -568,4 +586,116 @@ class MappingTemplateCreate(BaseModel):
     source_name: str = Field(min_length=1, max_length=200)
     headers: list[str] = Field(min_length=1)
     columns: list[ColumnMapping]
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, "
+        "Préstamo Temporal), `collection` (sigla) y `denomination`.",
+    )
     description: str | None = None
+
+
+class MappingTemplateUpdate(BaseModel):
+    """Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated
+    against the headers and the signature is computed from them (design D3)."""
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    source_name: str | None = Field(None, min_length=1, max_length=200)
+    headers: list[str] | None = Field(None, min_length=1)
+    columns: list[ColumnMapping] | None = None
+    defaults: dict[str, str] | None = Field(
+        None, description="Se envían con `headers` y `columns`; sin ellos se conservan."
+    )
+    description: str | None = None
+
+
+class TemplateSuggestRequest(BaseModel):
+    headers: list[str] = Field(min_length=1, description="Cabeceras del archivo, tal como vienen.")
+
+
+class TemplateSuggestion(BaseModel):
+    template: MappingTemplateOut
+    score: float = Field(
+        ge=0, le=1, description="1 = mismas cabeceras (en cualquier orden y con otras tildes)."
+    )
+    missing_columns: list[str] = Field(
+        description="Columnas de la plantilla que el archivo no trae."
+    )
+    new_columns: list[str] = Field(
+        description="Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen."
+    )
+
+
+# --- Vista previa de normalización por columna (design D4) ---------------------------------
+
+
+class TemplateDryRunRequest(BaseModel):
+    batch_id: uuid.UUID = Field(description="Lote subido o mapeado del que se toma la muestra.")
+
+
+class DryRunTraceStep(BaseModel):
+    transform: str
+    before: Any
+    after: Any
+    note: str | None = Field(
+        None,
+        description="`excel_date_cell` (celda de fecha de Excel, exenta del formato) o "
+        "`not_recognized` (la propuesta no reconoció el texto).",
+    )
+
+
+class DryRunIdentifier(BaseModel):
+    type_code: str
+    original_value: str
+    normalized_value: str | None
+    status: Literal["NORMALIZED", "UNPARSEABLE"]
+    is_absent: bool
+
+
+class DryRunExample(BaseModel):
+    source_row_number: int
+    status: Literal["NORMALIZED", "UNPARSEABLE", "ABSENT", "SPLIT_PROPOSED"]
+    original: Any = Field(description="La celda tal como viene en el archivo.")
+    value: Any = Field(description="El valor después de las transformaciones.")
+    trace: list[DryRunTraceStep] = Field(description="Cada transformación con su antes y después.")
+    proposals: dict[str, Any] = Field(
+        description="Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto."
+    )
+    identifiers: list[DryRunIdentifier] = Field(description="Solo en columnas de identificadores.")
+    matched_terms: dict[str, str] = Field(
+        description="Valor → código de término; solo en columnas `terms:<VOCABULARIO>`."
+    )
+    unmatched_terms: list[str] = Field(
+        description="Valores sin término; irían a los datos de origen de la fila."
+    )
+    errors: list[str]
+
+
+class DryRunUnmatchedValue(BaseModel):
+    value: str
+    count: int = Field(description="Apariciones en la muestra.")
+
+
+class DryRunColumn(BaseModel):
+    mapping: ColumnMapping
+    in_file: bool = Field(description="false si el lote no trae esta columna de la plantilla.")
+    counts: dict[Literal["NORMALIZED", "UNPARSEABLE", "ABSENT", "SPLIT_PROPOSED"], int] = Field(
+        description="Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` "
+        "(estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y "
+        "`SPLIT_PROPOSED` (se propone separar la celda en varios valores)."
+    )
+    empty: int = Field(description="Celdas vacías de la muestra.")
+    unmatched_values: list[DryRunUnmatchedValue] = Field(
+        description="Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4]."
+    )
+    examples: list[DryRunExample] = Field(
+        description="Hasta 5 celdas: primero una de cada estado, luego en orden de fila."
+    )
+
+
+class TemplateDryRunOut(BaseModel):
+    template_id: uuid.UUID
+    batch_id: uuid.UUID
+    total_rows: int = Field(description="Filas leídas del lote.")
+    sampled_rows: int = Field(description="Filas de la muestra: hasta 200 [SUPUESTO T3].")
+    missing_columns: list[str] = Field(description="Columnas de la plantilla ausentes del lote.")
+    columns: list[DryRunColumn]

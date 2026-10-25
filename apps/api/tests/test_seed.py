@@ -25,6 +25,13 @@ from app.models import (
 from app.modules.audit.models import AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
+from app.modules.imports.mapping import (
+    MappingContext,
+    MappingSpecV1,
+    read_mapping,
+    validate_mapping,
+)
+from app.modules.imports.templates import header_signature
 from app.seed.fixtures import HEADERS, write_synthetic_workbook
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 
@@ -228,3 +235,26 @@ def test_synthetic_excel_fixture(tmp_path: Path) -> None:
     values = [row[1] for row in sheet.iter_rows(min_row=2, values_only=True)]
     assert "I 2362 / RA 28" in values and "S/N" in values
     assert len(sheet._images) == 3  # openpyxl exposes images only privately
+
+
+FIXTURES = Path(__file__).resolve().parents[3] / "data" / "fixtures"
+SABANA_FIXTURE = FIXTURES / "sabana_sintetica_v1.xlsx"
+
+
+def test_seed_template_is_v1_for_the_synthetic_sabana(seeded: tuple[Session, Any]) -> None:
+    """Task 3.4 of plantillas-mapeo-y-normalizacion: the seed template is v1, marked
+    [SUPUESTO], with the signature of the headers of ``data/fixtures/sabana_sintetica_v1.xlsx``
+    computed as the API does, and its mapping is valid for those headers."""
+    session, _summary = seeded
+    template = session.scalars(select(ImportMappingTemplate)).one()
+    sheet = load_workbook(SABANA_FIXTURE, read_only=True)["SABANA"]
+    headers = [str(cell.value) for cell in next(sheet.iter_rows(max_row=1))]
+
+    assert template.mapping["version"] == 1
+    assert "[SUPUESTO]" in (template.description or "")
+    assert headers == HEADERS
+    assert template.header_signature == header_signature(headers)
+    spec = read_mapping(template.mapping)
+    assert isinstance(spec, MappingSpecV1)
+    assert [column.source for column in spec.columns] == headers
+    assert validate_mapping(spec, headers, MappingContext(session)) == []

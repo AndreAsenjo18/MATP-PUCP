@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a7ab4398e6b0f66985d662bf1196ad4423448c59fcc7a073348050c4336a72e8
+ * openapi-sha256: 76a9c0e6478bbb7fa11d78537894114bce84cc80c707d16326cd73b0e9436ad3
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -133,7 +133,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consultar la auditoría campo a campo (más reciente primero) */
+        /**
+         * Consultar la auditoría campo a campo o agrupada por conjunto de cambios, exportable a CSV (RF-040, RF-041)
+         * @description Devuelve `items` (una fila por campo, de la más reciente a la más antigua) o, con `group_by=change_set`, `change_sets` con el resumen de cada operación: usuario, fecha, origen, motivo, entidades afectadas por tipo, campos y estado de reversión. Con `format=csv` la misma vista se descarga en streaming. Los valores anteriores y nuevos de los campos sensibles se ocultan según los permisos del rol (RF-041): la fila sigue mostrando qué campo cambió, quién y cuándo, con `values_masked` en verdadero.
+         */
         get: operations["getAuditLogs"];
         put?: never;
         post?: never;
@@ -160,6 +163,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/change-sets/{change_set_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resumen de un conjunto de cambios: quién, cuándo, origen y alcance (RF-040) */
+        get: operations["getChangeSet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/change-sets/{change_set_id}/revert": {
         parameters: {
             query?: never;
@@ -169,8 +189,55 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007) */
+        /**
+         * Revertir un conjunto de cambios con una nueva entrada auditada (RNF-007)
+         * @description Aplica la reversión en una transacción, como un conjunto de cambios de tipo reversión.
+         *
+         *     Exige el `preview_token` de la vista previa: la reversión solo se aplica ligada a ella. El
+         *     permiso depende del origen del conjunto revertido (design D1), así que lo verifica el
+         *     servicio: aquí basta con una identidad válida.
+         */
         post: operations["revertChangeSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/change-sets/{change_set_id}/revert-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa de una reversión: valores por restaurar, registros y conflictos
+         * @description No escribe nada. Devuelve el `preview_token` que exige la confirmación (RNF-007).
+         */
+        post: operations["previewChangeSetRevert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sensitive-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar los accesos a datos sensibles sin enmascarar (más reciente primero)
+         * @description Una fila por petición que entregó campos sensibles sin enmascarar: usuario, fecha, ruta, entidades y nombres de campo, nunca sus valores (RNF-014).
+         */
+        get: operations["getSensitiveAccess"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -272,6 +339,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/collection-acronym-aliases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Siglas históricas de colección vigentes (RF-023) */
+        get: operations["listAcronymAliases"];
+        put?: never;
+        /**
+         * Registrar una sigla histórica de una colección (RF-023)
+         * @description El alias es único entre los activos (`acronym_alias_taken`) y no puede ser la sigla actual de una colección (`alias_is_current_acronym`).
+         */
+        post: operations["createAcronymAlias"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/collection-acronym-aliases/{alias_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar lógicamente una sigla histórica con motivo (RN-005) */
+        delete: operations["deleteAcronymAlias"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/collections": {
         parameters: {
             query?: never;
@@ -333,8 +438,68 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Exportación completa de la base en formato abierto (RF-044) */
+        /** Exportacin completa de la base en formato abierto (RF-044) */
         get: operations["exportFullDatabase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar trabajos de exportación del usuario (o todos si es administrador)
+         * @description List export jobs. Regular users see only their own jobs; admins see all.
+         */
+        get: operations["listExportJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar estado de un trabajo de exportación (RF-036)
+         * @description Get status and details of an export job.
+         */
+        get: operations["getExportJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports/jobs/{job_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener URL prefirmada de descarga de un archivo de exportación (RF-036)
+         * @description Get presigned download URL for a completed, non-expired export.
+         */
+        get: operations["getExportDownloadUrl"];
         put?: never;
         post?: never;
         delete?: never;
@@ -402,11 +567,82 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Plantillas de mapeo reutilizables (RF-022) */
+        /**
+         * Plantillas de mapeo reutilizables (RF-022)
+         * @description Solo las plantillas activas. La sugerencia por cabeceras se pide con `POST /import-templates/suggest` (design D3).
+         */
         get: operations["listImportTemplates"];
         put?: never;
-        /** Guardar una plantilla de mapeo */
+        /**
+         * Guardar una plantilla de mapeo
+         * @description El mapeo se valida contra `headers`, de los que se calcula `header_signature` (design D3). Admite transformaciones, `value_map` y destinos `terms:<VOCABULARIO>`.
+         */
         post: operations["createImportTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de una plantilla de mapeo */
+        get: operations["getImportTemplate"];
+        put?: never;
+        post?: never;
+        /**
+         * Eliminar lógicamente una plantilla con motivo (RN-005)
+         * @description La plantilla deja de listarse y sugerirse y pasa a la papelera; los lotes que la usaron conservan la referencia y el mapeo con que se procesaron.
+         */
+        delete: operations["deleteImportTemplate"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar una plantilla de mapeo
+         * @description `headers` y `columns` se envían juntos: el mapeo se vuelve a validar y la firma se recalcula. Los lotes ya procesados conservan su mapeo.
+         */
+        patch: operations["updateImportTemplate"];
+        trace?: never;
+    };
+    "/api/v1/import-templates/{template_id}/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa de normalización por columna de una plantilla (RF-023)
+         * @description Aplica la plantilla guardada a las primeras 200 filas [SUPUESTO T3] de un lote subido o mapeado y cuenta, por columna, las celdas `NORMALIZED`, `UNPARSEABLE`, `ABSENT` y `SPLIT_PROPOSED`, con los 20 valores sin término más frecuentes [SUPUESTO T4] y ejemplos con su traza (design D4). No escribe nada: ni filas, ni lote, ni auditoría.
+         */
+        post: operations["dryRunImportTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import-templates/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sugerir plantillas para las cabeceras de un archivo (RF-022)
+         * @description Hasta 3 plantillas activas [SUPUESTO T2] con puntaje ≥ 0,6 [SUPUESTO T1], de mayor a menor: 1 si las cabeceras coinciden (en cualquier orden, sin distinguir tildes ni mayúsculas); si no, `0,5 × Jaccard + 0,5 × similitud media por cabecera`, tomando como cabeceras de la plantilla las columnas de origen de su mapeo (design D3).
+         */
+        post: operations["suggestImportTemplates"];
         delete?: never;
         options?: never;
         head?: never;
@@ -537,7 +773,7 @@ export interface paths {
         get?: never;
         /**
          * 2. Mapeo: asignar columnas (o aplicar una plantilla)
-         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Implementación mínima hasta `plantillas-mapeo-y-normalizacion` (design D3).
+         * @description Asigna cada columna a un campo de la ficha, a un tipo de identificador o a los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). Volver a mapear un lote en previsualización descarta su validación. Con `template_id` (sin `columns`) se aplica una plantilla guardada; con una plantilla, transformaciones, `value_map` o destinos `terms:<VOCABULARIO>` el lote guarda el mapeo en versión 1 (design D1, fase 2).
          */
         put: operations["setImportMapping"];
         post?: never;
@@ -780,6 +1016,30 @@ export interface paths {
         put?: never;
         /** Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil) */
         post: operations["movePiecesBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/normalization-settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Parámetro de normalización vigente (RN-010)
+         * @description Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.
+         */
+        get: operations["getNormalizationSetting"];
+        /**
+         * Cambiar un parámetro de normalización (RN-010, RF-023)
+         * @description Se aplica en adelante al ingreso manual, la importación y la búsqueda. Queda en la auditoría.
+         */
+        put: operations["putNormalizationSetting"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1180,7 +1440,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
+        /** Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso (RF-030) */
         post: operations["scanDuplicates"];
         delete?: never;
         options?: never;
@@ -1195,7 +1455,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Piezas con información incompleta (RF-019, RF-035) */
+        /** Listado de piezas con alertas de incompletitud (RF-019) */
         get: operations["listIncompletePieces"];
         put?: never;
         post?: never;
@@ -1212,7 +1472,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Estado y avance de una detección de duplicados (RF-030, RNF-015) */
+        /** Estado y avance de una deteccin de duplicados (RF-030, RNF-015) */
         get: operations["getQualityJob"];
         put?: never;
         post?: never;
@@ -1229,7 +1489,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reportes: inventario, por colección, por ubicación, incompletas, valorización */
+        /** Reportes: inventario, por coleccin, por ubicacin, incompletas, valorizacin */
         get: operations["getReport"];
         put?: never;
         post?: never;
@@ -1246,7 +1506,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** KPI de completitud general y por colección (RF-035) */
+        /** KPI de completitud general y por coleccin (RF-035) */
         get: operations["getDashboardStats"];
         put?: never;
         post?: never;
@@ -1297,7 +1557,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Generar la ficha museográfica imprimible de una pieza en PDF (RF-006) */
+        /** Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006) */
         get: operations["exportPiecePdf"];
         put?: never;
         post?: never;
@@ -1332,7 +1592,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Actualizar los permisos de un rol */
+        /**
+         * Actualizar los permisos de un rol
+         * @description Reemplaza el conjunto de permisos del rol y audita cada alta y baja. Se aplica desde la siguiente petición de los usuarios del rol. `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         put: operations["updateRolePermissions"];
         post?: never;
         delete?: never;
@@ -1348,10 +1611,44 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Búsqueda avanzada con filtros combinados (RF-031, RF-032) */
+        /** Bsqueda avanzada con filtros combinados (RF-031, RF-032) */
         get: operations["searchPieces"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar los registros eliminados lógicamente, con motivo y responsable (RN-005) */
+        get: operations["listTrashEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash/{entity_type}/{entity_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restaurar un registro eliminado verificando sus dependencias (Administrador) */
+        post: operations["restoreTrashEntry"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1368,7 +1665,10 @@ export interface paths {
         /** Listar usuarios */
         get: operations["listUsers"];
         put?: never;
-        /** Crear un usuario individual con roles */
+        /**
+         * Crear un usuario individual con roles
+         * @description Crea la cuenta con una contraseña temporal (generada si no se indica) y cambio obligatorio. La contraseña temporal aparece solo en esta respuesta.
+         */
         post: operations["createUser"];
         delete?: never;
         options?: never;
@@ -1390,7 +1690,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar, desactivar o cambiar roles de un usuario */
+        /**
+         * Editar, desactivar o cambiar roles de un usuario
+         * @description Desactivar, cambiar roles o restablecer la contraseña revoca las sesiones del usuario de inmediato. Nunca se elimina físicamente (RN-005). `409 last_administrator` si dejaría el sistema sin administrador activo.
+         */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -1520,6 +1823,54 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcronymAliasCreate
+         * @example {
+         *       "alias": "R.E.P.",
+         *       "collection_id": "01920000-0000-7000-8000-000000000201"
+         *     }
+         */
+        AcronymAliasCreate: {
+            /**
+             * Alias
+             * @description Sigla histórica, como se escribe.
+             */
+            alias: string;
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+        };
+        /** AcronymAliasOut */
+        AcronymAliasOut: {
+            /** Alias */
+            alias: string;
+            /**
+             * Alias Normalized
+             * @description Sin puntos ni espacios, en mayúsculas (`REP`).
+             */
+            alias_normalized: string;
+            /** Collection Acronym */
+            collection_acronym: string | null;
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+            /** Collection Name */
+            collection_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /**
          * AiBatchOut
          * @description State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).
@@ -1782,7 +2133,79 @@ export interface components {
          * AuditAction
          * @enum {string}
          */
-        AuditAction: "CREATE" | "UPDATE" | "SOFT_DELETE" | "RESTORE" | "CORRECTION" | "MERGE" | "REVERT";
+        AuditAction: "CREATE" | "UPDATE" | "SOFT_DELETE" | "RESTORE" | "CORRECTION" | "MERGE" | "REVERT" | "EXPORT";
+        /**
+         * AuditChangeSetSummary
+         * @description Resumen de un conjunto de cambios (una operación: edición, carga, fusión, reversión).
+         * @example {
+         *       "actions": [
+         *         "CREATE"
+         *       ],
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entity_count": 54,
+         *       "entity_counts": {
+         *         "piece": 54
+         *       },
+         *       "field_count": 486,
+         *       "last_occurred_at": "2026-09-17T10:30:00Z",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "IMPORT",
+         *       "origin_ref": "01920000-0000-7000-8000-000000000601",
+         *       "reason": "Carga de la sábana 2024",
+         *       "reverted": false,
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        AuditChangeSetSummary: {
+            /** Actions */
+            actions: components["schemas"]["AuditAction"][];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /**
+             * Entity Count
+             * @description Entidades distintas afectadas.
+             */
+            entity_count: number;
+            /**
+             * Entity Counts
+             * @description Entidades distintas por tipo, p. ej. 54 piezas en una carga.
+             */
+            entity_counts: {
+                [key: string]: number;
+            };
+            /**
+             * Field Count
+             * @description Campos registrados en el conjunto.
+             */
+            field_count: number;
+            /**
+             * Last Occurred At
+             * Format: date-time
+             */
+            last_occurred_at: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             * @description Primer registro del conjunto.
+             */
+            occurred_at: string;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /** Reverted */
+            reverted: boolean;
+            /** Reverted By Change Set Id */
+            reverted_by_change_set_id: string | null;
+            /** User Id */
+            user_id: string | null;
+        };
         /**
          * AuditEntryOut
          * @example {
@@ -1839,10 +2262,116 @@ export interface components {
             user_id: string | null;
         };
         /**
+         * AuditEntryView
+         * @description Fila de auditoría como la ve un rol concreto: con los valores sensibles ocultos.
+         * @example {
+         *       "action": "UPDATE",
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entity_id": "01920000-0000-7000-8000-000000000101",
+         *       "entity_type": "piece",
+         *       "field": "lender_name",
+         *       "id": "01920000-0000-7000-8000-000000000a01",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "MANUAL",
+         *       "user_id": "01920000-0000-7000-8000-000000000501",
+         *       "values_masked": true
+         *     }
+         */
+        AuditEntryView: {
+            action: components["schemas"]["AuditAction"];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Field */
+            field: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** New Value */
+            new_value: unknown | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Old Value */
+            old_value: unknown | null;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /** User Id */
+            user_id: string | null;
+            /**
+             * Values Masked
+             * @description El campo cambió, pero su valor anterior y nuevo están ocultos porque el rol no tiene el permiso correspondiente (RF-041).
+             * @default false
+             */
+            values_masked: boolean;
+        };
+        /**
+         * AuditExportFormat
+         * @enum {string}
+         */
+        AuditExportFormat: "csv";
+        /**
+         * AuditGroupBy
+         * @enum {string}
+         */
+        AuditGroupBy: "change_set";
+        /**
+         * AuditLogPage
+         * @description Página de la consulta de auditoría: filas campo a campo o conjuntos agrupados.
+         */
+        AuditLogPage: {
+            /**
+             * Change Sets
+             * @description Solo con `group_by=change_set`.
+             */
+            change_sets?: components["schemas"]["AuditChangeSetSummary"][];
+            /**
+             * Items
+             * @description Vacío cuando se agrupa por conjunto de cambios.
+             */
+            items?: components["schemas"]["AuditEntryView"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /**
          * AuditOrigin
          * @enum {string}
          */
         AuditOrigin: "MANUAL" | "IMPORT" | "AI" | "SYSTEM";
+        /** BackupStatus */
+        BackupStatus: {
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Max Age Hours */
+            max_age_hours?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "disabled" | "ok" | "stale";
+        };
         /**
          * BatchEnrichRequest
          * @description Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).
@@ -2033,6 +2562,89 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** ChangeSetEntityOut */
+        ChangeSetEntityOut: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @description Tabla de la entidad afectada, p. ej. `piece`.
+             */
+            entity_type: string;
+            /**
+             * Field Count
+             * @description Campos registrados para esta entidad.
+             */
+            field_count: number;
+        };
+        /**
+         * ChangeSetSummaryOut
+         * @description Resumen agrupado de un conjunto de cambios (design D3).
+         * @example {
+         *       "actions": [
+         *         "UPDATE"
+         *       ],
+         *       "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *       "entities": [
+         *         {
+         *           "entity_id": "01920000-0000-7000-8000-000000000101",
+         *           "entity_type": "piece",
+         *           "field_count": 2
+         *         }
+         *       ],
+         *       "entity_count": 1,
+         *       "field_count": 2,
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "origin": "MANUAL",
+         *       "reason": "Corrección de procedencia según el libro de inventario",
+         *       "reverted": false,
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        ChangeSetSummaryOut: {
+            /** Actions */
+            actions: components["schemas"]["AuditAction"][];
+            /** Actor Label */
+            actor_label: string | null;
+            /**
+             * Change Set Id
+             * Format: uuid
+             */
+            change_set_id: string;
+            /** Entities */
+            entities: components["schemas"]["ChangeSetEntityOut"][];
+            /** Entity Count */
+            entity_count: number;
+            /** Field Count */
+            field_count: number;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            origin: components["schemas"]["AuditOrigin"];
+            /** Origin Ref */
+            origin_ref: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Reverted
+             * @description Verdadero cuando ya existe un conjunto de reversión.
+             */
+            reverted: boolean;
+            /** Reverted By Change Set Id */
+            reverted_by_change_set_id: string | null;
+            /**
+             * Reverts Change Set Id
+             * @description Conjunto original cuando este conjunto es una reversión.
+             */
+            reverts_change_set_id?: string | null;
+            /** User Id */
+            user_id: string | null;
+        };
         /** ClassificationRule */
         ClassificationRule: {
             /** Description */
@@ -2222,9 +2834,21 @@ export interface components {
             split_compound: boolean;
             /**
              * Target Field
-             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`) o `identifier:<TIPO>`; null = datos de origen.
+             * @description Campo de la ficha (`denomination`, `tenure_regime`, `collection`…), `identifier` (con `identifier_type_code`), `identifier:<TIPO>` o `terms:<VOCABULARIO>`; null = datos de origen.
              */
             target_field: string | null;
+            /**
+             * Transforms
+             * @description Transformaciones en orden (`trim`, `split:,`, `date:dd/mm/yyyy`…). Con transformaciones, correspondencias o destino `terms:` el mapeo del lote se guarda en la versión 1 (design D1).
+             */
+            transforms?: string[];
+            /**
+             * Value Map
+             * @description Texto de origen → código de término, para la transformación `value_map`.
+             */
+            value_map?: {
+                [key: string]: string;
+            } | null;
         };
         /**
          * CompletenessFieldKind
@@ -2330,6 +2954,24 @@ export interface components {
             /** Rules */
             rules: components["schemas"]["CompletenessRuleIn"][];
         };
+        /** ConcatenationSeparators */
+        ConcatenationSeparators: {
+            /**
+             * Separators
+             * @description Caracteres que separan varios códigos de una celda (`/`, `;`, `|`, `,`, salto de línea…). No se admite el espacio.
+             */
+            separators: string[];
+            /**
+             * Unsplit Markers
+             * @description Marcadores que no se separan aunque lleven un separador (`S/N`, `S/C`).
+             */
+            unsplit_markers?: string[];
+        };
+        /**
+         * ConflictReason
+         * @enum {string}
+         */
+        ConflictReason: "changed_after" | "entity_missing" | "already_deleted" | "not_deleted" | "no_soft_delete";
         /**
          * DashboardHistory
          * @example {
@@ -2429,6 +3071,128 @@ export interface components {
              * @enum {string}
              */
             restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
+        };
+        /** DryRunColumn */
+        DryRunColumn: {
+            /**
+             * Counts
+             * @description Celdas no vacías de la muestra por estado: `NORMALIZED` y `UNPARSEABLE` (estados de normalización), `ABSENT` (marcador de ausencia como `S/N`) y `SPLIT_PROPOSED` (se propone separar la celda en varios valores).
+             */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Empty
+             * @description Celdas vacías de la muestra.
+             */
+            empty: number;
+            /**
+             * Examples
+             * @description Hasta 5 celdas: primero una de cada estado, luego en orden de fila.
+             */
+            examples: components["schemas"]["DryRunExample"][];
+            /**
+             * In File
+             * @description false si el lote no trae esta columna de la plantilla.
+             */
+            in_file: boolean;
+            mapping: components["schemas"]["ColumnMapping"];
+            /**
+             * Unmatched Values
+             * @description Valores sin término del vocabulario, los 20 más frecuentes [SUPUESTO T4].
+             */
+            unmatched_values: components["schemas"]["DryRunUnmatchedValue"][];
+        };
+        /** DryRunExample */
+        DryRunExample: {
+            /** Errors */
+            errors: string[];
+            /**
+             * Identifiers
+             * @description Solo en columnas de identificadores.
+             */
+            identifiers: components["schemas"]["DryRunIdentifier"][];
+            /**
+             * Matched Terms
+             * @description Valor → código de término; solo en columnas `terms:<VOCABULARIO>`.
+             */
+            matched_terms: {
+                [key: string]: string;
+            };
+            /**
+             * Original
+             * @description La celda tal como viene en el archivo.
+             */
+            original: unknown;
+            /**
+             * Proposals
+             * @description Campos propuestos (`epoch_*`, `dimensions`); nunca reemplazan el texto.
+             */
+            proposals: {
+                [key: string]: unknown;
+            };
+            /** Source Row Number */
+            source_row_number: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NORMALIZED" | "UNPARSEABLE" | "ABSENT" | "SPLIT_PROPOSED";
+            /**
+             * Trace
+             * @description Cada transformación con su antes y después.
+             */
+            trace: components["schemas"]["DryRunTraceStep"][];
+            /**
+             * Unmatched Terms
+             * @description Valores sin término; irían a los datos de origen de la fila.
+             */
+            unmatched_terms: string[];
+            /**
+             * Value
+             * @description El valor después de las transformaciones.
+             */
+            value: unknown;
+        };
+        /** DryRunIdentifier */
+        DryRunIdentifier: {
+            /** Is Absent */
+            is_absent: boolean;
+            /** Normalized Value */
+            normalized_value: string | null;
+            /** Original Value */
+            original_value: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NORMALIZED" | "UNPARSEABLE";
+            /** Type Code */
+            type_code: string;
+        };
+        /** DryRunTraceStep */
+        DryRunTraceStep: {
+            /** After */
+            after: unknown;
+            /** Before */
+            before: unknown;
+            /**
+             * Note
+             * @description `excel_date_cell` (celda de fecha de Excel, exenta del formato) o `not_recognized` (la propuesta no reconoció el texto).
+             */
+            note?: string | null;
+            /** Transform */
+            transform: string;
+        };
+        /** DryRunUnmatchedValue */
+        DryRunUnmatchedValue: {
+            /**
+             * Count
+             * @description Apariciones en la muestra.
+             */
+            count: number;
+            /** Value */
+            value: string;
         };
         /**
          * DuplicateCandidateOut
@@ -2623,6 +3387,7 @@ export interface components {
          *       "download_url": "http://localhost:9000/matp-media/exports/ejemplo.xlsx",
          *       "expires_at": "2026-09-17T10:30:00Z",
          *       "format": "xlsx",
+         *       "id": "00000000-0000-0000-0000-000000000001",
          *       "masked_fields": [
          *         "lender_name"
          *       ],
@@ -2632,19 +3397,25 @@ export interface components {
          */
         ExportJob: {
             /** Download Url */
-            download_url: string | null;
+            download_url?: string | null;
+            /** Error */
+            error?: string | null;
             /** Expires At */
-            expires_at: string | null;
+            expires_at?: string | null;
             format: components["schemas"]["ExportFormat"];
+            /** Id */
+            id?: string | null;
             /** Masked Fields */
             masked_fields?: string[];
             /** Row Count */
-            row_count: number | null;
+            row_count?: number | null;
+            /** Sha256 */
+            sha256?: string | null;
             /**
              * Status
              * @enum {string}
              */
-            status: "PENDING" | "READY" | "FAILED";
+            status: "PENDING" | "RUNNING" | "READY" | "FAILED";
         };
         /** FieldDiff */
         FieldDiff: {
@@ -2679,6 +3450,7 @@ export interface components {
         };
         /** HealthResponse */
         HealthResponse: {
+            backup: components["schemas"]["BackupStatus"];
             /** Checks */
             checks: {
                 [key: string]: components["schemas"]["DependencyStatus"];
@@ -2696,6 +3468,11 @@ export interface components {
             status: "ok" | "degraded";
             /** Version */
             version: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
         };
         /**
          * IdentifierCreate
@@ -3616,7 +4393,7 @@ export interface components {
             header_row?: number | null;
             /**
              * Save As Template Name
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Aún no disponible: cree la plantilla con `POST /import-templates`.
              */
             save_as_template_name?: string | null;
             /**
@@ -3626,7 +4403,7 @@ export interface components {
             sheet_name?: string | null;
             /**
              * Template Id
-             * @description Plantillas: pendiente de `plantillas-mapeo-y-normalizacion`.
+             * @description Plantilla guardada que define el mapeo (sin `columns`); `defaults` se aplican sobre los de la plantilla.
              */
             template_id?: string | null;
         };
@@ -3634,6 +4411,13 @@ export interface components {
         MappingTemplateCreate: {
             /** Columns */
             columns: components["schemas"]["ColumnMapping"][];
+            /**
+             * Defaults
+             * @description Valor para las filas sin dato: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description?: string | null;
             /** Headers */
@@ -3649,7 +4433,7 @@ export interface components {
          *       "columns": [
          *         {
          *           "source_column": "DENOMINACION",
-         *           "target_field": "title"
+         *           "target_field": "denomination"
          *         }
          *       ],
          *       "created_at": "2026-09-17T10:30:00Z",
@@ -3667,6 +4451,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Defaults
+             * @description Valores por defecto: `tenure_regime` (Propiedad, Comodato, Préstamo Temporal), `collection` (sigla) y `denomination`.
+             */
+            defaults?: {
+                [key: string]: string;
+            };
             /** Description */
             description: string | null;
             /** Header Signature */
@@ -3680,6 +4471,30 @@ export interface components {
             name: string;
             /** Source Name */
             source_name: string;
+        };
+        /**
+         * MappingTemplateUpdate
+         * @description Partial edit; ``headers`` and ``columns`` go together, because the mapping is validated
+         *     against the headers and the signature is computed from them (design D3).
+         */
+        MappingTemplateUpdate: {
+            /** Columns */
+            columns?: components["schemas"]["ColumnMapping"][] | null;
+            /**
+             * Defaults
+             * @description Se envían con `headers` y `columns`; sin ellos se conservan.
+             */
+            defaults?: {
+                [key: string]: string;
+            } | null;
+            /** Description */
+            description?: string | null;
+            /** Headers */
+            headers?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Source Name */
+            source_name?: string | null;
         };
         /**
          * Me
@@ -3971,6 +4786,56 @@ export interface components {
          */
         NormalizationRule: "INVENTORY" | "COLLECTION" | "INC_RN" | "GENERIC";
         /**
+         * NormalizationSettingOut
+         * @example {
+         *       "is_default": false,
+         *       "key": "absence_markers",
+         *       "updated_at": "2026-09-17T10:30:00Z",
+         *       "value": [
+         *         "",
+         *         "-",
+         *         "S/N",
+         *         "S/C",
+         *         "SINCODIGO"
+         *       ]
+         *     }
+         */
+        NormalizationSettingOut: {
+            /**
+             * Is Default
+             * @description true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8].
+             */
+            is_default: boolean;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "absence_markers" | "concatenation_separators";
+            /** Updated At */
+            updated_at: string | null;
+            /**
+             * Value
+             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.
+             */
+            value: string[] | components["schemas"]["ConcatenationSeparators"];
+        };
+        /**
+         * NormalizationSettingUpdate
+         * @example {
+         *       "value": [
+         *         "",
+         *         "-",
+         *         "S/N",
+         *         "S/C",
+         *         "NO REGISTRA"
+         *       ]
+         *     }
+         */
+        NormalizationSettingUpdate: {
+            /** Value */
+            value: string[] | components["schemas"]["ConcatenationSeparators"];
+        };
+        /**
          * NormalizationStatus
          * @enum {string}
          */
@@ -4160,6 +5025,34 @@ export interface components {
         Page_IncompletePiece_: {
             /** Items */
             items: components["schemas"]["IncompletePiece"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
+        /** Page[SensitiveAccessOut] */
+        Page_SensitiveAccessOut_: {
+            /** Items */
+            items: components["schemas"]["SensitiveAccessOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
+        /** Page[TrashEntryOut] */
+        Page_TrashEntryOut_: {
+            /** Items */
+            items: components["schemas"]["TrashEntryOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -4781,21 +5674,21 @@ export interface components {
          * ReportOut
          * @example {
          *       "columns": [
-         *         "Colección",
+         *         "Coleccin",
          *         "Piezas",
-         *         "Sin código I"
+         *         "Sin cdigo I"
          *       ],
          *       "filters": {},
          *       "generated_at": "2026-09-17T10:30:00Z",
          *       "report_type": "by-collection",
          *       "rows": [
          *         [
-         *           "Colección MMZ (ficticia)",
+         *           "Coleccin MMZ (ficticia)",
          *           54,
          *           30
          *         ]
          *       ],
-         *       "title": "Inventario por colección",
+         *       "title": "Inventario por coleccin",
          *       "totals": {
          *         "Piezas": 298
          *       }
@@ -4830,38 +5723,34 @@ export interface components {
          * @enum {string}
          */
         ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
-        /** RevertChangeSetRequest */
-        RevertChangeSetRequest: {
-            /** Reason */
-            reason: string;
-        };
-        /** RevertRequest */
-        RevertRequest: {
-            /** Reason */
-            reason: string;
-        };
         /**
-         * RevertResult
+         * RevertChangeSetOut
+         * @description Resultado de una reversión aplicada.
          * @example {
          *       "conflicts": [],
+         *       "deleted_entities": 0,
          *       "new_change_set_id": "01920000-0000-7000-8000-000000000a10",
+         *       "notes": [],
+         *       "restored_entities": 0,
          *       "reverted_change_set_id": "01920000-0000-7000-8000-000000000a00",
-         *       "reverted_fields": 3
+         *       "reverted_fields": 2
          *     }
          */
-        RevertResult: {
-            /**
-             * Conflicts
-             * @description Campos modificados después; no se revierten.
-             */
-            conflicts?: {
-                [key: string]: unknown;
-            }[];
+        RevertChangeSetOut: {
+            /** Conflicts */
+            conflicts?: components["schemas"]["RevertConflictOut"][];
+            /** Deleted Entities */
+            deleted_entities: number;
             /**
              * New Change Set Id
              * Format: uuid
+             * @description Conjunto de cambios de tipo reversión, que a su vez puede revertirse.
              */
             new_change_set_id: string;
+            /** Notes */
+            notes?: string[];
+            /** Restored Entities */
+            restored_entities: number;
             /**
              * Reverted Change Set Id
              * Format: uuid
@@ -4869,6 +5758,192 @@ export interface components {
             reverted_change_set_id: string;
             /** Reverted Fields */
             reverted_fields: number;
+        };
+        /**
+         * RevertConfirmRequest
+         * @description Confirmación de una reversión, ligada a la vista previa que la generó.
+         * @example {
+         *       "confirm_conflicts": false,
+         *       "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+         *       "reason": "La edición masiva del 20/10 se aplicó al lote equivocado"
+         *     }
+         */
+        RevertConfirmRequest: {
+            /**
+             * Confirm Conflicts
+             * @description Confirma explícitamente que los cambios posteriores en conflicto se descartarán.
+             * @default false
+             */
+            confirm_conflicts: boolean;
+            /**
+             * Preview Token
+             * @description Huella devuelta por la vista previa, obligatoria: la reversión solo se aplica ligada a una vista previa. Si el plan cambió, se rechaza con `revert_plan_changed`.
+             */
+            preview_token: string;
+            /**
+             * Reason
+             * @description Motivo de la reversión (queda en auditoría).
+             */
+            reason: string;
+        };
+        /** RevertConflictOut */
+        RevertConflictOut: {
+            /** Changed At */
+            changed_at?: string | null;
+            /** Changed By Id */
+            changed_by_id?: string | null;
+            /**
+             * Current Value
+             * @description Valor almacenado hoy.
+             */
+            current_value?: unknown | null;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Expected Value
+             * @description Valor que dejó el conjunto de cambios.
+             */
+            expected_value?: unknown | null;
+            /** Field */
+            field: string | null;
+            /**
+             * Message
+             * @description Explicación en español para la persona usuaria.
+             */
+            message: string;
+            reason: components["schemas"]["ConflictReason"];
+        };
+        /**
+         * RevertItemKind
+         * @enum {string}
+         */
+        RevertItemKind: "RESTORE_VALUE" | "CORRECT_INVENTORY_CODE" | "SOFT_DELETE_ENTITY" | "RESTORE_ENTITY" | "APPEND_ONLY_NOTE";
+        /** RevertItemOut */
+        RevertItemOut: {
+            /**
+             * Applicable
+             * @description Falso en filas informativas (solo inserción) y estados ya resueltos.
+             */
+            applicable: boolean;
+            conflict?: components["schemas"]["RevertConflictOut"] | null;
+            /**
+             * Current Value
+             * @description Valor almacenado hoy.
+             */
+            current_value?: unknown | null;
+            /**
+             * Description
+             * @description Qué hará la reversión con este registro, en español.
+             */
+            description: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Field */
+            field: string | null;
+            kind: components["schemas"]["RevertItemKind"];
+            source_action: components["schemas"]["AuditAction"];
+            /**
+             * Target Value
+             * @description Valor que se restauraría.
+             */
+            target_value?: unknown | null;
+        };
+        /**
+         * RevertPreviewOut
+         * @description Vista previa de una reversión: qué cambia, qué no se toca y qué está en conflicto.
+         * @example {
+         *       "applicable_count": 1,
+         *       "change_set": {
+         *         "actions": [
+         *           "UPDATE"
+         *         ],
+         *         "change_set_id": "01920000-0000-7000-8000-000000000a00",
+         *         "entities": [
+         *           {
+         *             "entity_id": "01920000-0000-7000-8000-000000000101",
+         *             "entity_type": "piece",
+         *             "field_count": 2
+         *           }
+         *         ],
+         *         "entity_count": 1,
+         *         "field_count": 2,
+         *         "occurred_at": "2026-09-17T10:30:00Z",
+         *         "origin": "MANUAL",
+         *         "reason": "Corrección de procedencia según el libro de inventario",
+         *         "reverted": false,
+         *         "user_id": "01920000-0000-7000-8000-000000000501"
+         *       },
+         *       "conflicts": [],
+         *       "items": [
+         *         {
+         *           "applicable": true,
+         *           "current_value": "Huancavelica",
+         *           "description": "Restaurar «provenance» al valor anterior.",
+         *           "entity_id": "01920000-0000-7000-8000-000000000101",
+         *           "entity_type": "piece",
+         *           "field": "provenance",
+         *           "kind": "RESTORE_VALUE",
+         *           "source_action": "UPDATE",
+         *           "target_value": "Ayacucho"
+         *         }
+         *       ],
+         *       "notes": [],
+         *       "preview_token": "9f2b7c1d4e6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c",
+         *       "required_permissions": [
+         *         "pieces.update"
+         *       ],
+         *       "requires_admin": false,
+         *       "touches_inventory_code": false
+         *     }
+         */
+        RevertPreviewOut: {
+            /**
+             * Applicable Count
+             * @description Elementos que la reversión aplicaría.
+             */
+            applicable_count: number;
+            change_set: components["schemas"]["ChangeSetSummaryOut"];
+            /**
+             * Conflicts
+             * @description Campos modificados después del conjunto; exigen confirmación explícita.
+             */
+            conflicts?: components["schemas"]["RevertConflictOut"][];
+            /** Items */
+            items: components["schemas"]["RevertItemOut"][];
+            /**
+             * Notes
+             * @description Avisos en español, p. ej. movimientos que requieren un movimiento correctivo.
+             */
+            notes?: string[];
+            /**
+             * Preview Token
+             * @description Huella del plan. Debe enviarse al confirmar la reversión.
+             */
+            preview_token: string;
+            /** Required Permissions */
+            required_permissions: string[];
+            /** Requires Admin */
+            requires_admin: boolean;
+            /**
+             * Touches Inventory Code
+             * @description Verdadero cuando la reversión afecta un código I (RN-002).
+             */
+            touches_inventory_code: boolean;
+        };
+        /** RevertRequest */
+        RevertRequest: {
+            /** Reason */
+            reason: string;
         };
         /**
          * RoleOut
@@ -4976,6 +6051,12 @@ export interface components {
         /**
          * SearchHit
          * @example {
+         *       "match_reason": {
+         *         "historical": false,
+         *         "kind": "identifier",
+         *         "original": "I-0236",
+         *         "type": "I"
+         *       },
          *       "match_type": "IDENTIFIER",
          *       "matched_identifier": {
          *         "identifier_type_code": "I",
@@ -5019,8 +6100,15 @@ export interface components {
          */
         SearchHit: {
             /**
+             * Match Reason
+             * @description Detalle estructurado de la coincidencia (identificador o campos de texto).
+             */
+            match_reason?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Match Type
-             * @description IDENTIFIER: coincide un código (vigente o histórico); TITLE: la denominación.
+             * @description IDENTIFIER: coincide un cdigo (vigente o histrico); TITLE: la denominacin.
              * @enum {string}
              */
             match_type: "IDENTIFIER" | "TITLE";
@@ -5031,12 +6119,19 @@ export interface components {
          * SearchResultPage
          * @description Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
          *
-         *     A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
-         *     `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
-         *     la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+         *     A diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de
+         *     `/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar
+         *     la paginacin compartida que usan otros endpoints (`app/api/pagination.py`).
          * @example {
+         *       "excluded_uninterpreted_period": 0,
          *       "items": [
          *         {
+         *           "match_reason": {
+         *             "historical": false,
+         *             "kind": "identifier",
+         *             "original": "I-0236",
+         *             "type": "I"
+         *           },
          *           "match_type": "IDENTIFIER",
          *           "matched_identifier": {
          *             "identifier_type_code": "I",
@@ -5080,18 +6175,81 @@ export interface components {
          *       ],
          *       "limit": 20,
          *       "page": 1,
+         *       "suggestions": [
+         *         "remove_filter:collection_code"
+         *       ],
          *       "total": 1
          *     }
          */
         SearchResultPage: {
+            /**
+             * Active Filters
+             * @description Filtros activos descritos en lenguaje claro.
+             */
+            active_filters?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Excluded Uninterpreted Period
+             * @description Piezas con poca solo en texto excluidas por filtro de rango (RF-032).
+             */
+            excluded_uninterpreted_period?: number | null;
             /** Items */
             items: components["schemas"]["SearchHit"][];
             /** Limit */
             limit: number;
             /** Page */
             page: number;
+            /**
+             * Suggestions
+             * @description Sugerencias de accin cuando no hay resultados (RF-031).
+             */
+            suggestions?: string[] | null;
             /** Total */
             total: number;
+        };
+        /**
+         * SensitiveAccessOut
+         * @description One request that delivered unmasked sensitive fields (never their values; RNF-014).
+         * @example {
+         *       "entity_ids": [
+         *         "01920000-0000-7000-8000-000000000101"
+         *       ],
+         *       "entity_type": "piece",
+         *       "fields": [
+         *         "lender_name",
+         *         "loan_agreement_ref"
+         *       ],
+         *       "id": "01920000-0000-7000-8000-000000000501",
+         *       "occurred_at": "2026-09-17T10:30:00Z",
+         *       "route": "/api/v1/pieces/01920000-0000-7000-8000-000000000101",
+         *       "user_id": "01920000-0000-7000-8000-000000000501"
+         *     }
+         */
+        SensitiveAccessOut: {
+            /** Entity Ids */
+            entity_ids: string[];
+            /** Entity Type */
+            entity_type: string;
+            /** Fields */
+            fields: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Route */
+            route: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
         };
         /** SkippedPiece */
         SkippedPiece: {
@@ -5235,6 +6393,72 @@ export interface components {
          * @enum {string}
          */
         SuggestionStatus: "PENDING" | "APPROVED" | "PARTIALLY_APPROVED" | "REJECTED";
+        /** TemplateDryRunOut */
+        TemplateDryRunOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Columns */
+            columns: components["schemas"]["DryRunColumn"][];
+            /**
+             * Missing Columns
+             * @description Columnas de la plantilla ausentes del lote.
+             */
+            missing_columns: string[];
+            /**
+             * Sampled Rows
+             * @description Filas de la muestra: hasta 200 [SUPUESTO T3].
+             */
+            sampled_rows: number;
+            /**
+             * Template Id
+             * Format: uuid
+             */
+            template_id: string;
+            /**
+             * Total Rows
+             * @description Filas leídas del lote.
+             */
+            total_rows: number;
+        };
+        /** TemplateDryRunRequest */
+        TemplateDryRunRequest: {
+            /**
+             * Batch Id
+             * Format: uuid
+             * @description Lote subido o mapeado del que se toma la muestra.
+             */
+            batch_id: string;
+        };
+        /** TemplateSuggestion */
+        TemplateSuggestion: {
+            /**
+             * Missing Columns
+             * @description Columnas de la plantilla que el archivo no trae.
+             */
+            missing_columns: string[];
+            /**
+             * New Columns
+             * @description Cabeceras del archivo que la plantilla no mapea: irán a los datos de origen.
+             */
+            new_columns: string[];
+            /**
+             * Score
+             * @description 1 = mismas cabeceras (en cualquier orden y con otras tildes).
+             */
+            score: number;
+            template: components["schemas"]["MappingTemplateOut"];
+        };
+        /** TemplateSuggestRequest */
+        TemplateSuggestRequest: {
+            /**
+             * Headers
+             * @description Cabeceras del archivo, tal como vienen.
+             */
+            headers: string[];
+        };
         /**
          * TermCreate
          * @example {
@@ -5336,6 +6560,79 @@ export interface components {
             sort_order?: number | null;
         };
         /**
+         * TrashEntryOut
+         * @description Registro eliminado lógicamente, con quién lo eliminó, cuándo y por qué.
+         * @example {
+         *       "deleted_at": "2026-09-17T10:30:00Z",
+         *       "deleted_by_id": "01920000-0000-7000-8000-000000000501",
+         *       "deleted_by_name": "Administradora de prueba (sintética)",
+         *       "deletion_reason": "Duplicado del término Totora",
+         *       "entity_id": "01920000-0000-7000-8000-000000000301",
+         *       "entity_label": "Totora",
+         *       "entity_type": "term",
+         *       "type_label": "Término de vocabulario"
+         *     }
+         */
+        TrashEntryOut: {
+            /** Deleted At */
+            deleted_at: string | null;
+            /** Deleted By Id */
+            deleted_by_id: string | null;
+            /** Deleted By Name */
+            deleted_by_name: string | null;
+            /** Deletion Reason */
+            deletion_reason: string | null;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /**
+             * Entity Label
+             * @description Texto con el que se reconoce el registro.
+             */
+            entity_label: string;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Type Label
+             * @description Nombre del tipo de entidad, en español.
+             */
+            type_label: string;
+        };
+        /**
+         * TrashRestoreResult
+         * @description Resultado de una restauración desde la papelera.
+         * @example {
+         *       "entity_id": "01920000-0000-7000-8000-000000000301",
+         *       "entity_label": "Totora",
+         *       "entity_type": "term",
+         *       "previous_deletion_reason": "Duplicado del término Totora",
+         *       "restored": true,
+         *       "type_label": "Término de vocabulario"
+         *     }
+         */
+        TrashRestoreResult: {
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Label */
+            entity_label: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Previous Deletion Reason */
+            previous_deletion_reason: string | null;
+            /**
+             * Restored
+             * @default true
+             */
+            restored: boolean;
+            /** Type Label */
+            type_label: string;
+        };
+        /**
          * UploadUrlRequest
          * @example {
          *       "content_type": "image/jpeg",
@@ -5430,8 +6727,18 @@ export interface components {
             last_login_at: string | null;
             /** Locked Until */
             locked_until: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
             /** Roles */
             roles: string[];
+            /**
+             * Temporary Password
+             * @description Contraseña temporal generada: solo se devuelve al crear el usuario o al restablecerla, una única vez, y no se puede volver a consultar.
+             */
+            temporary_password?: string | null;
         };
         /**
          * UserRoleUpdate
@@ -5455,8 +6762,27 @@ export interface components {
             full_name?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /**
+             * Reset Password
+             * @description Genera una contraseña temporal nueva y revoca las sesiones.
+             * @default false
+             */
+            reset_password: boolean;
             /** Roles */
             roles?: string[] | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
         /**
          * ValidationSummary
@@ -5955,13 +7281,21 @@ export interface operations {
     getAuditLogs: {
         parameters: {
             query?: {
+                action?: components["schemas"]["AuditAction"] | null;
+                change_set_id?: string | null;
                 entity_id?: string | null;
                 /** @description p. ej. piece, collection. */
                 entity_type?: string | null;
                 field?: string | null;
+                /** @description Descargar en CSV. */
+                format?: components["schemas"]["AuditExportFormat"] | null;
+                /** @description Agrupar por conjunto de cambios. */
+                group_by?: components["schemas"]["AuditGroupBy"] | null;
                 occurred_from?: string | null;
                 occurred_to?: string | null;
                 origin?: components["schemas"]["AuditOrigin"] | null;
+                /** @description Lote de importación o sugerencia de IA del cambio. */
+                origin_ref?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
@@ -5980,7 +7314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_AuditEntryOut_"];
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -6075,6 +7409,64 @@ export interface operations {
             };
         };
     };
+    getChangeSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetSummaryOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     revertChangeSet: {
         parameters: {
             query?: never;
@@ -6086,7 +7478,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RevertChangeSetRequest"];
+                "application/json": components["schemas"]["RevertConfirmRequest"];
             };
         };
         responses: {
@@ -6096,7 +7488,139 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RevertResult"];
+                    "application/json": components["schemas"]["RevertChangeSetOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `already_reverted` (ya existe un conjunto de reversión), `revert_plan_changed` (los datos cambiaron tras la vista previa), `revert_has_conflicts` (hay cambios posteriores sin confirmar) o `nothing_to_revert`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewChangeSetRevert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevertPreviewOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El conjunto de cambios no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSensitiveAccess: {
+        parameters: {
+            query?: {
+                entity_type?: string | null;
+                occurred_from?: string | null;
+                occurred_to?: string | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                user_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SensitiveAccessOut_"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -6124,15 +7648,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -6430,6 +7945,190 @@ export interface operations {
                 };
             };
             /** @description Conflicto con el estado actual. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAcronymAliases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcronymAliasOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createAcronymAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcronymAliasCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcronymAliasOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La colección no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAcronymAlias: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio. */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                alias_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El alias no existe o ya fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6843,13 +8542,99 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
-            501: {
+        };
+    };
+    listExportJobs: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ExportJob"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getExportJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getExportDownloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7077,8 +8862,8 @@ export interface operations {
     listImportTemplates: {
         parameters: {
             query?: {
-                /** @description Sugiere plantillas para estos encabezados. */
-                header_signature?: string | null;
+                /** @description Solo las de esta fuente. */
+                source_name?: string | null;
             };
             header?: never;
             path?: never;
@@ -7120,15 +8905,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -7173,6 +8949,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Ya hay una plantilla activa con ese nombre. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -7182,13 +8967,305 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `plantillas-mapeo-y-normalizacion`. */
-            501: {
+        };
+    };
+    getImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["MappingTemplateOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteImportTemplate: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio. */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MappingTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingTemplateOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dryRunImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateDryRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDryRunOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La plantilla o el lote no existen. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no está subido ni mapeado, o aún no se ha leído. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestImportTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateSuggestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSuggestion"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8568,6 +10645,117 @@ export interface operations {
             };
         };
     };
+    getNormalizationSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "absence_markers" | "concatenation_separators";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NormalizationSettingOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putNormalizationSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "absence_markers" | "concatenation_separators";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NormalizationSettingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NormalizationSettingOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listPermissions: {
         parameters: {
             query?: never;
@@ -8619,16 +10807,23 @@ export interface operations {
         parameters: {
             query?: {
                 author?: string | null;
+                category_id?: string | null;
                 category_term_id?: string | null;
                 /** @description Incluye subcolecciones. */
                 collection_id?: string | null;
+                conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description Año de fin de época. */
+                epoch_end_year?: number | null;
+                /** @description Año de inicio de época. */
+                epoch_start_year?: number | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
+                material_id?: string | null;
                 material_term_id?: string | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
@@ -10165,7 +12360,7 @@ export interface operations {
                 /** @description Incluye las subcolecciones. */
                 collection_id?: string | null;
                 min_score?: number | null;
-                /** @description CATALOG: dos piezas del catálogo; IMPORT: fila de importación. */
+                /** @description CATALOG: dos piezas del catlogo; IMPORT: fila de importacin. */
                 origin?: ("CATALOG" | "IMPORT") | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
@@ -10641,15 +12836,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `busqueda-avanzada-y-exportacion`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     exportPiecePdf: {
@@ -10799,6 +12985,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Dejaría sin administradores. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -10808,29 +13003,20 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     searchPieces: {
         parameters: {
             query: {
-                /** @description Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.). */
+                /** @description Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.). */
                 collection_code?: string | null;
-                /** @description Resultados por página (máx. 100). */
+                /** @description Resultados por pgina (mx. 100). */
                 limit?: number;
-                /** @description Número de página (desde 1). */
+                /** @description Nmero de pgina (desde 1). */
                 page?: number;
-                /** @description Código o texto. */
+                /** @description Cdigo o texto. */
                 q: string;
-                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                /** @description Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal. */
                 tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             };
             header?: never;
@@ -10859,6 +13045,136 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTrashEntries: {
+        parameters: {
+            query?: {
+                /** @description Quién eliminó. */
+                deleted_by?: string | null;
+                /** @description Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary. */
+                entity_type?: string | null;
+                from?: string | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrashEntryOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restoreTrashEntry: {
+        parameters: {
+            query?: {
+                /** @description Motivo de la restauración. */
+                reason?: string | null;
+            };
+            header?: never;
+            path: {
+                entity_id: string;
+                /** @description Tipo de entidad. Admitidos: collection, import_mapping_template, location, media_asset, piece, piece_identifier, term, vocabulary. */
+                entity_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrashRestoreResult"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El registro no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `restore_dependency`: alguna dependencia sigue eliminada (hay que restaurarla primero) o `not_deleted`: el registro no está en la papelera. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10928,15 +13244,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     createUser: {
@@ -10979,8 +13286,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Correo repetido o rol desactivado. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10988,13 +13295,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11046,15 +13353,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     updateUser: {
@@ -11099,8 +13397,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11108,13 +13406,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11161,8 +13459,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Rol desactivado o último admin. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11170,13 +13468,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `autenticacion-y-matriz-permisos`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

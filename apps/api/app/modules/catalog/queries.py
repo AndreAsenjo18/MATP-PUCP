@@ -27,12 +27,15 @@ from app.modules.catalog.schemas import (
 from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import (
+    DEFAULT_PARAMS,
     DEFAULT_RULES,
     TYPE_INVENTORY,
+    NormalizationParams,
     canonical,
     normalize_for_type,
     propose_identifiers,
 )
+from app.modules.identification.params import session_params
 from app.modules.identification.schemas import IdentifierOut
 from app.modules.locations.models import Location
 from app.modules.locations.schemas import PieceLocation
@@ -76,16 +79,28 @@ def _contains(value: str) -> str:
     return f"%{escaped}%"
 
 
-def code_candidates(text: str) -> set[str]:
-    """Normalized forms a typed code may have under any identifier rule (N1-N7)."""
+def _code_candidates(text: str, params: NormalizationParams) -> set[str]:
     candidates: set[str] = set()
-    for part in [text, *[p.result.original for p in propose_identifiers(text)]]:
+    for part in [text, *[p.result.original for p in propose_identifiers(text, params=params)]]:
         for type_code in DEFAULT_RULES:
-            normalized = normalize_for_type(type_code, part).normalized
+            normalized = normalize_for_type(type_code, part, params=params).normalized
             if normalized:
                 candidates.add(normalized)
         if part.strip():
             candidates.add(canonical(part))
+    return candidates
+
+
+def code_candidates(text: str, *, params: NormalizationParams | None = None) -> set[str]:
+    """Normalized forms a typed code may have under any identifier rule (N1-N7).
+
+    With ``params`` (the current ones, design D5 of plantillas-mapeo) the forms under those
+    values are added to those under the defaults of the code: ``REP 12`` with the alias ``REP``
+    -> ``LRM`` finds ``LRM 12`` and the codes stored as ``REP 12`` before the alias existed.
+    """
+    candidates = _code_candidates(text, DEFAULT_PARAMS)
+    if params is not None and params != DEFAULT_PARAMS:
+        candidates |= _code_candidates(text, params)
     return candidates
 
 
@@ -106,8 +121,8 @@ def _descendants(
     return found
 
 
-def identifier_match_condition(text: str) -> Any:
-    candidates = code_candidates(text)
+def identifier_match_condition(text: str, *, params: NormalizationParams | None = None) -> Any:
+    candidates = code_candidates(text, params=params)
     return exists().where(
         PieceIdentifier.piece_id == Piece.id,
         PieceIdentifier.deleted_at.is_(None),
@@ -118,14 +133,18 @@ def identifier_match_condition(text: str) -> Any:
     )
 
 
-def build_piece_query(session: Session, filters: PieceFilters) -> Select[tuple[Piece]]:
+def build_piece_query(session: Session, filters: PieceFilters | Any) -> Select[tuple[Piece]]:
     """All filters are combined with AND (RF-032)."""
+    from app.modules.search.filters import PieceFilter
+
+    if isinstance(filters, PieceFilter):
+        return select(Piece).where(filters.to_where(session)).order_by(Piece.denomination)
     statement = select(Piece)
     conditions: list[Any] = []
     if filters.q and filters.q.strip():
         conditions.append(
             or_(
-                identifier_match_condition(filters.q),
+                identifier_match_condition(filters.q, params=session_params(session)),
                 Piece.denomination.ilike(_contains(filters.q), escape="\\"),
             )
         )
