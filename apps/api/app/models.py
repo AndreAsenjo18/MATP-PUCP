@@ -28,6 +28,7 @@ from app.modules.quality.models import (
     QualityJobItem,
     QualitySetting,
 )
+from app.modules.reports.models import PieceValuation
 from app.modules.search.models import ExportJobModel
 from app.modules.users.models import (
     AppUser,
@@ -68,6 +69,7 @@ __all__ = [
     "PieceMaterial",
     "PieceMovement",
     "PieceSourceRecord",
+    "PieceValuation",
     "QualityJob",
     "QualityJobItem",
     "QualitySetting",

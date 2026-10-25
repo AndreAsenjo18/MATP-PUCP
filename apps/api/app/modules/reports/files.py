@@ -8,6 +8,7 @@ is printed or shared always says when, by whom and with which filters it was gen
 import csv
 import io
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from openpyxl import Workbook
@@ -20,7 +21,7 @@ CSV_CONTENT_TYPE = "text/csv"
 
 
 def _cell(value: Any) -> Any:
-    return value if isinstance(value, int | float) or value is None else str(value)
+    return value if isinstance(value, int | float | Decimal) or value is None else str(value)
 
 
 def filters_text(filters: dict[str, Any]) -> str:

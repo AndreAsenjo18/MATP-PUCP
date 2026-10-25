@@ -120,6 +120,18 @@ entity CONSERVATION_ASSESSMENT <<solo inserción>> {
     assessed_by_label : varchar(200)
     notes : text
 }
+entity PIECE_VALUATION {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * amount : numeric(14, 2)
+  * currency : varchar(3)
+  * valued_on : date
+  * source : varchar(200)
+    notes : text
+  * recorded_at : timestamptz
+    recorded_by_label : varchar(200)
+}
 entity PIECE_SOURCE_RECORD <<solo inserción>> {
   * id : uuid <<PK>>
   --
@@ -661,6 +673,7 @@ APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
 PIECE_MOVEMENT |o--o{ PIECE_MOVEMENT : "corrige"
 PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
 IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
+PIECE ||--o{ PIECE_VALUATION : "valorizaciones"
 PIECE ||--o{ QUALITY_JOB_ITEM : "detección incremental"
 PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
 PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
