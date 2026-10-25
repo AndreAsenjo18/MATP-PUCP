@@ -43,6 +43,10 @@ class SearchHit(BaseModel):
         default=None,
         description="Detalle estructurado de la coincidencia (identificador o campos de texto).",
     )
+    thumbnail_url: str | None = Field(
+        default=None,
+        description="URL prefirmada de la miniatura de la foto principal; null si no tiene fotos.",
+    )
 
 
 class SearchResultPage(BaseModel):
@@ -157,7 +161,13 @@ class SearchExportRequest(BaseModel):
 
     filters: dict[str, Any] = Field(default_factory=dict)
     format: ExportFormat = ExportFormat.XLSX
-    columns: list[str] | None = None
+    columns: list[str] | None = Field(
+        default=None,
+        description="Columnas y su orden, por clave: code_i, denomination, collection, "
+        "tenure_regime, category, conservation_state, location, author, provenance, period, "
+        "lender_name, loan_agreement_ref. Sin selección, todas las que el rol puede ver; las "
+        "sensibles sin permiso se omiten (RF-041).",
+    )
 
 
 class ExportJob(BaseModel):
@@ -178,9 +188,13 @@ class ExportJob(BaseModel):
     )
 
     id: uuid.UUID | None = None
+    kind: Literal["results", "full", "report"] | None = Field(
+        default=None, description="Resultados de búsqueda, base completa o reporte."
+    )
     status: Literal["PENDING", "RUNNING", "READY", "FAILED"]
     format: ExportFormat
     row_count: int | None = None
+    created_at: datetime | None = None
     download_url: str | None = None
     expires_at: datetime | None = None
     masked_fields: list[str] = Field(default_factory=list)
