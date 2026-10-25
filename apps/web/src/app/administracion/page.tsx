@@ -227,7 +227,7 @@ function AdministracionContent() {
   const [tab, setTab] = useState<Tab>(TAB_SLUGS[params.get("pestana") ?? ""] ?? "Usuarios y roles");
   const [selectedVocabulary, setSelectedVocabulary] = useState(VOCABULARIES[0]?.code ?? "");
 
-  const canOpenTrash = hasPermission("pieces.restore");
+  const canOpenTrash = hasPermission("trash.read");
   const canReadAudit = hasPermission("audit.read");
 
   if (
@@ -448,7 +448,7 @@ function AdministracionContent() {
 
       {tab === "Papelera" &&
         (canOpenTrash ? (
-          // Abrir la papelera exige `pieces.restore`; restaurar es solo del Administrador (el servidor lo vuelve a comprobar).
+          // Abrir la papelera exige `trash.read`; restaurar es solo del Administrador (el servidor lo vuelve a comprobar).
           <TrashPanel canRestore={currentRole?.code === "ADMIN"} />
         ) : (
           <PermissionNotice>Su rol no tiene permiso para abrir la papelera.</PermissionNotice>

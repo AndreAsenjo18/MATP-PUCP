@@ -26,11 +26,11 @@ from app.modules.audit.trash import (
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
-# La papelera y la restauración comparten el permiso de restauración: el Catalogador no lo
-# tiene, así que no puede abrirla (escenario «Usuario sin permiso»). [SUPUESTO] Pendiente de
-# confirmar si el museo quiere un permiso propio `trash.read` (pregunta B7 de
-# docs/preguntas-contraparte.md).
-TrashReader = Annotated[CurrentUser, Depends(require_permission("pieces.restore"))]
+# La papelera se abre con `trash.read` (Administrador y Gestor); el Catalogador no lo tiene, así
+# que no puede abrirla (escenario «Usuario sin permiso»). Restaurar sigue siendo solo del
+# Administrador: lo comprueba `soft_delete.restore` (`admin_required`). [SUPUESTO Ñ3, B7]
+# Pendiente de confirmar qué otros roles pueden mirar la papelera sin restaurar.
+TrashReader = Annotated[CurrentUser, Depends(require_permission("trash.read"))]
 
 ENTITY_TYPES = ", ".join(sorted(TRASHABLE))
 
