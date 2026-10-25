@@ -1,5 +1,7 @@
 # Plan de sprints
 
+> **Aviso (24 oct):** redistribución propuesta en [`redistribucion-v8.md`](redistribucion-v8.md); mientras no se acuerde, rige esta versión, salvo las asignaciones de desarrollo, que ya reemplaza [`plan-mvp-dos-desarrolladores.md`](plan-mvp-dos-desarrolladores.md).
+
 > **Estado: versión 7 (2026-10-07), propuesta para la planificación del jueves 8 de octubre.** Reemplaza la versión 6. Se ajusta en cada planificación (ver «Cómo se modifica este plan»).
 > Asignaciones basadas en [`ownership.md`](ownership.md), con refuerzos temporales a Importación y Catálogo indicados en cada sprint.
 
@@ -304,3 +306,4 @@ Un change cuenta como hecho en su sprint solo si:
 | 5 | 2026-09-28 | Sprints de jueves a miércoles 23:59; tareas del sprint 0 independientes entre sí; fin del desarrollo el 4 de noviembre y demo el 23 de noviembre [SUPUESTO] |
 | 6 | 2026-09-28 | Sprint 0 centrado en aprender el flujo: reglas paso a paso, acompañantes; `develop` → `main` pasa a preparación del Arquitecto; `ci-migraciones-postgresql` repartido entre Josué Moreno y Sergio Huamán |
 | 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho»; Camilo Gomez sin trabajo en S2 y con carga doble en S3 (2.2 → Sergio Chumbimuni, 4.1 → Josué Moreno, 6.3 → Germán Asenjo); regla explícita de trabajo semanal para todos, alternativas en S5 y S6, S7 y S8 detallados por semana |
+| 8 | 2026-10-24 | **Propuesta, pendiente de acuerdo del equipo:** redistribución en [`redistribucion-v8.md`](redistribucion-v8.md). El código, para André Asenjo y Sergio Chumbimuni, como ya fija `plan-mvp-dos-desarrolladores.md`; la documentación, las pruebas y la UI/UX, la demo y la exposición, para el resto del equipo. Esta versión sigue vigente hasta que se acuerde |
