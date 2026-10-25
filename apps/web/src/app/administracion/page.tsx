@@ -7,8 +7,10 @@
  * las dos últimas son la tarea 5.2 de `auditoria-y-soft-delete-transversal`. Plantillas de mapeo
  * y normalización (marcadores de ausencia, separadores y siglas históricas): tarea 4.2 de
  * `plantillas-mapeo-y-normalizacion`, solo en modo `live`; se abren directamente con
- * `?pestana=plantillas` y `?pestana=normalizacion`. Exportación completa de la base en formato abierto
- * (RF-044): tarea 4.2 de `busqueda-avanzada-y-exportacion`, `?pestana=exportacion`.
+ * `?pestana=plantillas` y `?pestana=normalizacion`. Colecciones, vocabularios y tipos de
+ * identificador en modo `live`: tareas 5.1 y 5.2 de `colecciones-y-vocabularios-admin`
+ * (`?pestana=colecciones`, `vocabularios`, `tipos`). Exportación completa de la base en formato
+ * abierto (RF-044): tarea 4.2 de `busqueda-avanzada-y-exportacion`, `?pestana=exportacion`.
  */
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -18,6 +20,7 @@ import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin"
 import { NormalizationLive } from "@/components/domain/NormalizationAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { TrashPanel } from "@/components/domain/TrashPanel";
+import { CollectionsLive, IdentifierTypesLive, VocabulariesLive } from "@/components/domain/VocabulariesAdmin";
 import { FullExportPanel } from "@/components/domain/SearchLive";
 import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
@@ -186,21 +189,18 @@ function UbicacionesLive() {
   );
 }
 
-const TABS = [
-  "Usuarios y roles",
-  "Vocabularios",
-  "Tipos de identificador",
-  "Ubicaciones",
-  "Plantillas de mapeo",
-  "Normalización",
-  "Papelera",
-  "Auditoría",
-  "Exportación completa",
-] as const;
+const TABS = ["Usuarios y roles", "Colecciones", "Vocabularios", "Tipos de identificador", "Ubicaciones", "Plantillas de mapeo", "Normalización", "Papelera", "Auditoría", "Exportación completa"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Pestañas que se abren por URL (`/administracion?pestana=plantillas`). */
-const TAB_SLUGS: Record<string, Tab> = { plantillas: "Plantillas de mapeo", normalizacion: "Normalización", exportacion: "Exportación completa" };
+const TAB_SLUGS: Record<string, Tab> = {
+  colecciones: "Colecciones",
+  vocabularios: "Vocabularios",
+  tipos: "Tipos de identificador",
+  plantillas: "Plantillas de mapeo",
+  normalizacion: "Normalización",
+  exportacion: "Exportación completa",
+};
 
 function LiveOnlyNotice() {
   return (
@@ -233,6 +233,7 @@ function AdministracionContent() {
   if (
     !hasPermission("users.manage") &&
     !hasPermission("vocabularies.manage") &&
+    !hasPermission("collections.manage") &&
     !hasPermission("locations.manage") &&
     !hasPermission("imports.prepare") &&
     !canOpenTrash &&
@@ -320,8 +321,22 @@ function AdministracionContent() {
           <PermissionNotice>Su rol no tiene permiso para administrar usuarios y roles.</PermissionNotice>
         ))}
 
+      {tab === "Colecciones" &&
+        (hasPermission("collections.manage") || hasPermission("vocabularies.manage") ? (
+          getApiMode() === "live" ? (
+            <CollectionsLive />
+          ) : (
+            <LiveOnlyNotice />
+          )
+        ) : (
+          <PermissionNotice>Su rol no tiene permiso para administrar colecciones.</PermissionNotice>
+        ))}
+
       {tab === "Vocabularios" &&
         (hasPermission("vocabularies.manage") ? (
+          getApiMode() === "live" ? (
+            <VocabulariesLive />
+          ) : (
           <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
             <ul className="flex flex-col gap-1">
               {VOCABULARIES.map((v) => (
@@ -351,12 +366,16 @@ function AdministracionContent() {
               </ul>
             </Card>
           </div>
+          )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar vocabularios.</PermissionNotice>
         ))}
 
       {tab === "Tipos de identificador" &&
         (hasPermission("vocabularies.manage") ? (
+          getApiMode() === "live" ? (
+            <IdentifierTypesLive />
+          ) : (
           <Card className="overflow-x-auto">
             <table className="w-full text-left text-base">
               <thead className="text-sm text-gris-texto">
@@ -381,6 +400,7 @@ function AdministracionContent() {
               </tbody>
             </table>
           </Card>
+          )
         ) : (
           <PermissionNotice>Su rol no tiene permiso para administrar tipos de identificador.</PermissionNotice>
         ))}

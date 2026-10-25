@@ -20,6 +20,7 @@ El navegador solo deja que la web (`https://<dominio>`) suba a `media.<dominio>`
 | Entorno | Dónde se configura | Qué permitir |
 |---|---|---|
 | VM (MinIO) | Variable `MINIO_API_CORS_ALLOW_ORIGIN` del contenedor `storage` | `https://<dominio>` |
+| Calidad (S3 de AWS Academy) | `aws s3api put-bucket-cors` o consola de S3 → *Permisos* → *CORS* (ver [demo-calidad.md](demo-calidad.md)) | Origen de la web de calidad; métodos `GET`, `PUT`, `HEAD`; cabeceras `Content-Type`, `x-amz-*`; `ExposeHeaders: ETag` |
 | Contingencia (R2) | Panel de R2 → bucket → *Settings* → *CORS policy* | Origen `https://<web>.vercel.app`; métodos `GET`, `PUT`, `HEAD`; cabeceras `Content-Type`, `x-amz-*`; `ExposeHeaders: ETag` |
 | Desarrollo | Ninguna: la web y MinIO se llaman en `localhost` | — |
 

@@ -247,7 +247,7 @@ Detalle en `openspec/changes/busqueda-avanzada-y-exportacion/design.md` (D3, D4,
 
 ## R. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
 
-Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/archive/2026-10-23-autenticacion-y-matriz-permisos/design.md`. Amplía C7.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
@@ -314,6 +314,14 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | U8 | ¿La VM tiene un respaldo propio a nivel de infraestructura y a quién avisar de los reinicios por parches? | Se desconoce; se pide a la DTI (checklist de la VM, puntos 10 y 12) | plataforma (RNF-011) | Media |
 | U9 | Si el servidor está cerca de llenarse, ¿se avisa al 80 % de uso? | Sí, cada hora, con los directorios que más ocupan | plataforma (RNF-015) | Baja |
 
+## V. Supuestos de la administración de vocabularios y tipos de identificador (change `colecciones-y-vocabularios-admin`, 2026-10-25)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| V1 | ¿Qué tipos de identificador son «del sistema» y no admiten cambiar sus reglas? | El código I y el código de colección: solo cambian su etiqueta, descripción y orden; tampoco se desactivan por API. Los demás tipos son configurables | identificacion-piezas (RN-002, RN-003, RN-010) | Media |
+| V2 | Cambiar la regla de normalización de un tipo que se bloquea al asignarse (como el código I) recalcula códigos ya asignados. ¿Quién puede confirmarlo? | Solo el Administrador, como corrección auditada (RN-002); el Gestor de colecciones puede ver la vista previa pero recibe 403 al confirmar. Para los demás tipos basta el permiso de administrar vocabularios | identificacion-piezas (RF-023, RN-002) | Media |
+| V3 | ¿Se puede confirmar un cambio de regla que deja valores sin normalizar? | Sí: la vista previa los cuenta y lista ejemplos, y quedan como «no normalizable» para revisión humana, sin perder el valor original. Las colisiones de códigos vigentes entre piezas distintas sí impiden confirmar | identificacion-piezas (RF-023) | Baja |
+
 ## W. Supuestos de los reportes de inventario (change `reportes-inventario`, 2026-10-25)
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
@@ -322,3 +330,13 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | W2 | ¿Qué columnas debe tener el inventario oficial y en qué orden? | Las del diseño D3 (códigos vigentes, denominación, colección, régimen, propietario legal, adquisición, ingreso, autor, procedencia, época, tipo, materiales, medidas, conservación y ubicación), ordenadas por colección, código de colección (orden natural) y denominación | busqueda-reportes (RF-033) | Media |
 | W3 | ¿Cuántas filas se pueden imprimir de una vez? | 2 000; por encima se sugiere Excel o filtrar por colección | busqueda-reportes (RF-033, RNF-010) | Baja |
 | W4 | ¿Se necesita el reporte de valorización en la fase 1? | No implementado todavía: el tipo `valuation` responde «no disponible» hasta confirmarlo (RF-037 es *Could*) | busqueda-reportes (RF-037, RNF-014) | Media |
+
+## X. Supuestos del lote de demostración y su guía en calidad (change `importacion-masiva-fotografias`, tarea 7.1, y plan del MVP, 2026-10-25)
+
+Detalle en `docs/despliegue/demo-calidad.md`, `data/fixtures/lote_demo/LEEME.md` y `apps/api/app/seed/demo_batch.py`.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| X1 | ¿Cuál es la dirección del ambiente de calidad para la demo? | `54-237-95-196.sslip.io`, la que usa `pull-deploy.sh`. Si la IP de la EC2 cambia al reiniciar la sesión, hay que actualizar `MATP_HEALTH_URL`, el `Caddyfile` y los `AllowedOrigins` de la política CORS del bucket | plataforma (RNF-004); multimedia (subida directa de fotos) | Alta |
+| X2 | ¿En qué ruta de la EC2 de calidad vive el despliegue? | `/opt/matp`, la del despliegue de CD2 (`docs/despliegue/pipeline.md`). El seed solo da contraseña al administrador si `SEED_ADMIN_PASSWORD` está en `/opt/matp/.env.pruebas`, y ahí también se cambia `MEDIA_UPLOAD_MODE=proxy` como contingencia | plataforma (RNF-004) | Media |
+| X3 | ¿Qué colección del lote de demostración se presenta como comodato? | AJB, de forma ilustrativa (como en `CLAUDE.md`). La fila 14 (`AJB 501`) debe heredar «No publicar» en sus fotos y la 15 trae un código I, así que da error. El resto de las filas son de propiedad de la PUCP | importacion-datos (RN-003, RN-006, RN-008) | Media |

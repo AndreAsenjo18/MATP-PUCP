@@ -25,6 +25,7 @@ from app.core.errors import NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.catalog import conservation
 from app.modules.catalog import service as catalog_service
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
@@ -34,6 +35,8 @@ from app.modules.catalog.queries import (
     get_piece,
 )
 from app.modules.catalog.schemas import (
+    ConservationAssessmentCreate,
+    ConservationAssessmentOut,
     MergedFrom,
     MergedInto,
     PieceChildLink,
@@ -99,6 +102,7 @@ Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 Creator = Annotated[CurrentUser, Depends(require_permission("pieces.create"))]
 Editor = Annotated[CurrentUser, Depends(require_permission("pieces.update"))]
 IdentifierManager = Annotated[CurrentUser, Depends(require_permission("identifiers.manage"))]
+Assessor = Annotated[CurrentUser, Depends(require_permission("conservation.assess"))]
 
 
 def piece_filters(
@@ -397,6 +401,68 @@ def list_source_records(
         .order_by(PieceSourceRecord.recorded_at)
     )
     return [SourceRecordOut.model_validate(row) for row in rows]
+
+
+def _assessments_out(session: Session, piece: Piece) -> list[ConservationAssessmentOut]:
+    rows = conservation.list_assessments(session, piece)
+    terms = {
+        term.id: term
+        for term in session.scalars(
+            select(Term).where(Term.id.in_({r.status_term_id for r in rows}))
+        )
+    }
+    return [
+        ConservationAssessmentOut(
+            id=row.id,
+            piece_id=row.piece_id,
+            status=TermRef.model_validate(terms[row.status_term_id]),
+            assessed_at=row.assessed_at,
+            assessed_by_user_id=row.assessed_by_user_id,
+            assessed_by_label=row.assessed_by_label,
+            notes=row.notes,
+            is_current=index == 0,
+        )
+        for index, row in enumerate(rows)
+    ]
+
+
+@router.get(
+    "/{piece_id}/conservation-assessments",
+    response_model=list[ConservationAssessmentOut],
+    responses=NOT_FOUND,
+    summary="Historial de evaluaciones de conservación, la más reciente primero (RF-012)",
+    tags=["Piezas"],
+    **implemented(),
+)
+def list_conservation_assessments(
+    piece_id: uuid.UUID, session: SessionDep, user: Reader
+) -> list[ConservationAssessmentOut]:
+    return _assessments_out(session, get_piece(session, piece_id))
+
+
+@router.post(
+    "/{piece_id}/conservation-assessments",
+    response_model=list[ConservationAssessmentOut],
+    status_code=status.HTTP_201_CREATED,
+    responses=NOT_FOUND,
+    summary="Registrar una evaluación de conservación (RF-012, solo inserción)",
+    description="El estado actual de la pieza pasa a ser el de la evaluación con fecha más "
+    "reciente: una evaluación antigua registrada hoy se agrega al historial sin cambiarlo. "
+    "Un término inactivo o de otro vocabulario responde 422 con los términos activos. "
+    "Devuelve el historial completo.",
+    tags=["Piezas"],
+    **implemented(),
+)
+def create_conservation_assessment(
+    piece_id: uuid.UUID,
+    body: ConservationAssessmentCreate,
+    session: SessionDep,
+    user: Assessor,
+) -> list[ConservationAssessmentOut]:
+    piece = get_piece(session, piece_id)
+    conservation.record_assessment(writer(session, user), piece, **body.model_dump())
+    session.commit()
+    return _assessments_out(session, piece)
 
 
 @router.get(

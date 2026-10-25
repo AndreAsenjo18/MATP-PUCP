@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: e75f8a83acdc0d52e1ffb76517f9a3096ec5b2d19d9175edbf10d91a05a31706
+ * openapi-sha256: d094abff0aa17c15c57dfbc8ade156f828e823b6097a189cfd2cd50d5083cf7c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -153,7 +153,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040) */
+        /**
+         * Trazabilidad completa de una pieza, de la más reciente a la más antigua (RF-040)
+         * @description Cada cambio de la ficha, campo a campo, con quién, cuándo, origen y motivo; mismos datos y máscaras que `GET /audit-logs?entity_type=piece&entity_id=` (los campos sensibles se enmascaran según el rol).
+         */
         get: operations["getPieceAuditTimeline"];
         put?: never;
         post?: never;
@@ -518,7 +521,10 @@ export interface paths {
         /** Tipos de identificador parametrizables (RN-010) */
         get: operations["listIdentifierTypes"];
         put?: never;
-        /** Crear un tipo de identificador */
+        /**
+         * Crear un tipo de identificador (RN-010)
+         * @description Queda disponible al instante para registrar identificadores y en las plantillas de mapeo. La regla de normalización se elige entre las implementadas; otra responde 422 con las reglas disponibles.
+         */
         post: operations["createIdentifierType"];
         delete?: never;
         options?: never;
@@ -539,8 +545,31 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar o desactivar un tipo de identificador */
+        /**
+         * Editar o desactivar un tipo de identificador
+         * @description Los tipos del sistema (I, COLECCION) solo cambian etiqueta, descripción y orden. Cambiar la regla de normalización de un tipo con identificadores exige el `confirm_token` de `normalization-preview`; los valores normalizados se recalculan en una transacción auditada con origen «sistema» y los originales no cambian.
+         */
         patch: operations["updateIdentifierType"];
+        trace?: never;
+    };
+    "/api/v1/identifier-types/{type_code}/normalization-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista previa del cambio de regla de normalización (RF-023, RNF-007)
+         * @description No escribe nada. Informa cuántos valores normalizados cambiarían, cuáles dejan de ser normalizables y las colisiones de códigos vigentes entre piezas distintas, con el `confirm_token` que exige la confirmación.
+         */
+        post: operations["previewIdentifierTypeNormalization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/identifiers/normalize": {
@@ -1178,6 +1207,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pieces/{piece_id}/conservation-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historial de evaluaciones de conservación, la más reciente primero (RF-012) */
+        get: operations["listConservationAssessments"];
+        put?: never;
+        /**
+         * Registrar una evaluación de conservación (RF-012, solo inserción)
+         * @description El estado actual de la pieza pasa a ser el de la evaluación con fecha más reciente: una evaluación antigua registrada hoy se agrega al historial sin cambiarlo. Un término inactivo o de otro vocabulario responde 422 con los términos activos. Devuelve el historial completo.
+         */
+        post: operations["createConservationAssessment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pieces/{piece_id}/identifiers": {
         parameters: {
             query?: never;
@@ -1773,7 +1823,10 @@ export interface paths {
         /** Listar vocabularios controlados */
         get: operations["listVocabularies"];
         put?: never;
-        /** Crear un vocabulario nuevo */
+        /**
+         * Crear un vocabulario nuevo con código estable (RN-010)
+         * @description El código no se repite, ni siquiera con vocabularios eliminados (409 `vocabulary_exists`). Lo administran el Gestor de colecciones y el Administrador [SUPUESTO B7].
+         */
         post: operations["createVocabulary"];
         delete?: never;
         options?: never;
@@ -3021,6 +3074,72 @@ export interface components {
          * @enum {string}
          */
         ConflictReason: "changed_after" | "entity_missing" | "already_deleted" | "not_deleted" | "no_soft_delete";
+        /** ConservationAssessmentCreate */
+        ConservationAssessmentCreate: {
+            /**
+             * Assessed At
+             * @description Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior a la más reciente se agrega al historial sin cambiar el estado actual.
+             */
+            assessed_at?: string | null;
+            /**
+             * Assessed By Label
+             * @description Responsable de la evaluación, si no es el usuario.
+             */
+            assessed_by_label?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Status Term Id
+             * Format: uuid
+             * @description Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es).
+             */
+            status_term_id: string;
+        };
+        /**
+         * ConservationAssessmentOut
+         * @example {
+         *       "assessed_at": "2026-09-17T10:30:00Z",
+         *       "assessed_by_label": "Especialista de Conservación (sintético)",
+         *       "id": "01920000-0000-7000-8000-000000000121",
+         *       "is_current": true,
+         *       "notes": "Desprendimiento leve de pintura en la base.",
+         *       "piece_id": "01920000-0000-7000-8000-000000000101",
+         *       "status": {
+         *         "code": "REGULAR",
+         *         "id": "01920000-0000-7000-8000-000000000301",
+         *         "label": "Regular"
+         *       }
+         *     }
+         */
+        ConservationAssessmentOut: {
+            /**
+             * Assessed At
+             * Format: date-time
+             */
+            assessed_at: string;
+            /** Assessed By Label */
+            assessed_by_label: string | null;
+            /** Assessed By User Id */
+            assessed_by_user_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Is Current
+             * @description Es la evaluación más reciente por fecha: define el estado actual.
+             */
+            is_current: boolean;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            status: components["schemas"]["TermRef"];
+        };
         /**
          * DashboardHistory
          * @example {
@@ -3643,6 +3762,7 @@ export interface components {
          *       "allowed_for_temporary_loan": false,
          *       "code": "I",
          *       "is_active": true,
+         *       "is_system": true,
          *       "is_unique_when_current": true,
          *       "label": "Código de inventario general (I)",
          *       "locks_on_assignment": true,
@@ -3660,6 +3780,12 @@ export interface components {
             description: string | null;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Is System
+             * @description Tipo del sistema (I, COLECCION): solo cambian etiqueta, descripción y orden.
+             * @default false
+             */
+            is_system: boolean;
             /** Is Unique When Current */
             is_unique_when_current: boolean;
             /** Label */
@@ -3674,12 +3800,30 @@ export interface components {
         };
         /** IdentifierTypeUpdate */
         IdentifierTypeUpdate: {
+            /**
+             * Allowed For Temporary Loan
+             * @description Las reglas estructurales no cambian en un tipo del sistema (409 `system_identifier_type`).
+             */
+            allowed_for_temporary_loan?: boolean | null;
+            /**
+             * Confirm Token
+             * @description Huella de la vista previa del cambio de regla que se confirma.
+             */
+            confirm_token?: string | null;
             /** Description */
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Is Unique When Current */
+            is_unique_when_current?: boolean | null;
             /** Label */
             label?: string | null;
+            /** Locks On Assignment */
+            locks_on_assignment?: boolean | null;
+            /** @description Si el tipo ya tiene identificadores, exige `confirm_token` de `normalization-preview` (409 `normalization_change_requires_preview`). */
+            normalization_rule?: components["schemas"]["NormalizationRule"] | null;
+            /** Owned Pieces Only */
+            owned_pieces_only?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
         };
@@ -4842,6 +4986,70 @@ export interface components {
          * @enum {string}
          */
         MovementType: "MOVE" | "VERIFICATION" | "CORRECTION";
+        /** NormalizationCollisionOut */
+        NormalizationCollisionOut: {
+            /** Normalized Value */
+            normalized_value: string;
+            /** Piece Ids */
+            piece_ids: string[];
+        };
+        /**
+         * NormalizationPreviewOut
+         * @example {
+         *       "can_confirm": true,
+         *       "changed_count": 120,
+         *       "changed_examples": [],
+         *       "collisions": [],
+         *       "confirm_token": "9f2c000000000000000000000000000000000000000000000000000000000000",
+         *       "current_rule": "GENERIC",
+         *       "notes": [],
+         *       "proposed_rule": "INC_RN",
+         *       "total_identifiers": 140,
+         *       "type_code": "PUCP",
+         *       "unparseable_count": 3,
+         *       "unparseable_examples": []
+         *     }
+         */
+        NormalizationPreviewOut: {
+            /** Can Confirm */
+            can_confirm: boolean;
+            /**
+             * Changed Count
+             * @description Identificadores cuyo valor normalizado cambia.
+             */
+            changed_count: number;
+            /** Changed Examples */
+            changed_examples: components["schemas"]["RecalculatedIdentifierOut"][];
+            /**
+             * Collisions
+             * @description Mismo código vigente en piezas distintas: impiden confirmar (RN-002).
+             */
+            collisions: components["schemas"]["NormalizationCollisionOut"][];
+            /**
+             * Confirm Token
+             * @description Se envía en el `PATCH` para confirmar este informe.
+             */
+            confirm_token: string;
+            current_rule: components["schemas"]["NormalizationRule"];
+            /** Notes */
+            notes: string[];
+            proposed_rule: components["schemas"]["NormalizationRule"];
+            /** Total Identifiers */
+            total_identifiers: number;
+            /** Type Code */
+            type_code: string;
+            /**
+             * Unparseable Count
+             * @description Valores que dejan de ser normalizables.
+             */
+            unparseable_count: number;
+            /** Unparseable Examples */
+            unparseable_examples: components["schemas"]["RecalculatedIdentifierOut"][];
+        };
+        /** NormalizationPreviewRequest */
+        NormalizationPreviewRequest: {
+            normalization_rule: components["schemas"]["NormalizationRule"];
+        };
         /**
          * NormalizationRule
          * @enum {string}
@@ -5860,6 +6068,25 @@ export interface components {
          * @enum {string}
          */
         QualityJobType: "FULL_SCAN";
+        /** RecalculatedIdentifierOut */
+        RecalculatedIdentifierOut: {
+            /**
+             * Identifier Id
+             * Format: uuid
+             */
+            identifier_id: string;
+            /** Normalized Value */
+            normalized_value: string | null;
+            /** Original Value */
+            original_value: string;
+            /**
+             * Piece Id
+             * Format: uuid
+             */
+            piece_id: string;
+            /** Proposed Value */
+            proposed_value: string | null;
+        };
         /**
          * ReportOut
          * @example {
@@ -7652,15 +7879,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `auditoria-y-soft-delete-transversal`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
-                };
-            };
         };
     };
     getChangeSet: {
@@ -8980,8 +9198,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Conflicto con el estado actual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8989,13 +9207,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -9042,6 +9260,24 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description No existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `system_identifier_type` (regla estructural de un tipo del sistema), `normalization_change_requires_preview` (falta la vista previa o los datos cambiaron desde entonces) o `normalization_collision` (RN-002). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -9051,13 +9287,66 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+        };
+    };
+    previewIdentifierTypeNormalization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NormalizationPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["NormalizationPreviewOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11689,6 +11978,126 @@ export interface operations {
             };
         };
     };
+    listConservationAssessments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConservationAssessmentOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createConservationAssessment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConservationAssessmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConservationAssessmentOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listPieceIdentifiers: {
         parameters: {
             query?: {
@@ -14013,8 +14422,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description Conflicto con el estado actual. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14022,13 +14431,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `colecciones-y-vocabularios-admin`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

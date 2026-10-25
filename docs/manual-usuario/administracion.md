@@ -185,30 +185,52 @@ Nada cambia en las fichas. Aplicar un cambio así exige revisar antes el impacto
 | «No se guardó nada» | Lea la sección anterior. |
 | «Disponible con la API (modo live)» | Está usando la maqueta de demostración: esta pestaña solo funciona con el sistema conectado. |
 
-## Exportación completa de la base
+## Colecciones, vocabularios y tipos de identificador
 
-La pestaña **Exportación completa** (solo Administrador) prepara una copia de todos los datos del museo en formatos abiertos, para que nunca dependan de este sistema (RF-044). Se abre también con `/administracion?pestana=exportacion`.
+Las listas que usa la ficha se administran sin cambiar el sistema (RN-010). Cada cambio queda en la auditoría con quién lo hizo.
 
-1. Presione **Preparar exportación completa**. El paquete se arma en segundo plano: la pantalla muestra *Preparándose* y se actualiza sola.
-2. Si ya hay una exportación completa en preparación, o una lista que no caducó, el sistema le muestra esa misma en lugar de empezar otra.
-3. Cuando aparezca *Lista*, presione **Descargar**. El archivo se conserva 72 horas.
+### Colecciones
 
-### Qué contiene el paquete
-- Una carpeta `csv/` con un archivo por tabla, que se abre en Excel con las tildes correctas.
-- Un libro Excel con una hoja por tabla, cuando el volumen lo permite.
-- `diccionario.csv`: qué significa cada columna, en español.
-- `manifest.json`: la fecha, la versión del esquema de la base y, por cada archivo, cuántas filas tiene y su huella SHA-256.
+En **Administración › Colecciones** está la lista de colecciones y subcolecciones con su sigla y cuántas piezas tienen.
 
-Incluye las piezas eliminadas con la fecha, el usuario y el motivo de la eliminación, y la auditoría. Las fotografías van solo como datos (el respaldo de los archivos de imagen es aparte). Nunca incluye contraseñas.
+1. Escriba el **Nombre** y la **Sigla** (puntos y espacios no importan: «M.M.Z.» es «MMZ»).
+2. Elija el **Régimen por defecto** y, si es una subcolección, la **Colección padre**.
+3. Pulse **Crear colección**.
 
-### Verificar que el paquete está completo
-Calcule la huella SHA-256 de cada archivo y compárela con la del manifiesto. En Windows, desde PowerShell:
+El sistema no acepta una sigla que ya tiene otra colección.
 
-```powershell
-Get-FileHash .\csv\piece.csv -Algorithm SHA256
-```
+### Vocabularios y términos
 
-Si las huellas y los conteos coinciden con el manifiesto, el paquete no se alteró.
+En **Administración › Vocabularios** se elige un vocabulario (categorías, materiales, técnicas, estados de conservación…) y se ven sus términos.
+
+- **Agregar un término:** escriba la etiqueta en **Nuevo término** y pulse **Agregar término**. El sistema propone el código estable a partir de la etiqueta («Arte plumario» → ARTE_PLUMARIO).
+- **Desactivar un término:** pulse **Desactivar**. Deja de ofrecerse en las fichas nuevas, pero las fichas que ya lo usan lo conservan. Nunca se borra; **Activar** lo devuelve.
+- **Crear un vocabulario:** escriba el **Nombre**; el **Código estable** se propone solo y no cambia después.
+
+Para cargar una lista completa (por ejemplo, la lista oficial de categorías cuando llegue), el equipo técnico usa la **precarga desde archivo**: primero muestra qué términos crearía o actualizaría sin escribir nada, y al aplicarla nunca desactiva los términos que no están en el archivo.
+
+> **[SUPUESTO]** Las listas actuales son ilustrativas hasta recibir las del museo (preguntas B4 y B5).
+
+### Tipos de identificador
+
+En **Administración › Tipos de identificador** están los tipos de código que puede tener una pieza (código I, código de colección, INC, PUCP…).
+
+- Los tipos con **candado** (código I y código de colección) son **del sistema**: sus reglas fijas (se bloquea al asignarse, es único, solo para piezas en propiedad) no se pueden cambiar. Solo se cambian su etiqueta, descripción y orden.
+- **Crear un tipo:** escriba la **Etiqueta**, revise el **Código estable** y elija la **Regla de normalización**. Queda disponible al momento para las fichas y las plantillas de mapeo.
+- **Cambiar la etiqueta:** pulse **Editar** en la fila, escriba la etiqueta y pulse **Guardar etiqueta**.
+
+### Cambiar la regla de normalización
+
+La regla decide cómo se lee un código («I 0236» → «I-236»). Cambiarla en un tipo que ya tiene códigos registrados se hace en dos pasos:
+
+1. Pulse **Editar**, elija la nueva **Regla de normalización** y pulse **Ver el impacto**. El sistema muestra, **sin cambiar nada**, cuántos códigos cambiarían, cuántos dejarían de reconocerse y ejemplos de cómo quedarían.
+2. Si está de acuerdo, pulse **Confirmar el cambio de regla**. Los códigos se recalculan; los valores originales escritos en las fichas no cambian.
+
+- Si la nueva regla dejaría **el mismo código vigente en dos piezas distintas**, el sistema no deja confirmar y lista esos códigos: corríjalos primero desde la ficha de cada pieza (RN-002).
+- Si alguien registró códigos nuevos entre la vista previa y la confirmación, el sistema pide volver a ver el impacto.
+- En el código I (y en cualquier tipo que se bloquea al asignarse) solo el **Administrador** puede confirmar, porque corrige códigos ya asignados.
+
+> **[SUPUESTO]** Quién confirma y qué pasa con los códigos que dejan de reconocerse está por validar con el museo (preguntas V2 y V3).
 
 ## Versión del sistema y actualizaciones
 
@@ -278,9 +300,9 @@ Por motivos de seguridad y confidencialidad institucional, la exportación compl
 
 ### Cómo solicitar la exportación completa
 1. Inicie sesión con una cuenta de Administrador.
-2. Diríjase a **Administración → Exportación completa de la base de datos** (o mediante la ruta `GET /api/v1/exports/full`).
-3. El sistema programará la exportación en segundo plano y devolverá el identificador del trabajo.
-4. **Idempotencia**: Si ya existe una exportación completa en ejecución o generada recientemente en las últimas 24 horas, el sistema devolverá el trabajo existente para no sobrecargar el servidor con consultas duplicadas.
+2. Diríjase a **Administración → Exportación completa** (también se abre con `/administracion?pestana=exportacion`) y pulse **Preparar exportación completa**.
+3. El paquete se arma en segundo plano: la pantalla muestra *Preparándose* y se actualiza sola. Cuando aparezca *Lista*, pulse **Descargar**. El archivo se conserva 72 horas.
+4. **Idempotencia**: si ya hay una exportación completa en preparación, o una lista que todavía no caducó, el sistema muestra esa misma en lugar de empezar otra.
 
 ### Contenido del paquete descargable (`matp_full_export.zip`)
 El archivo comprimido generado contiene:
