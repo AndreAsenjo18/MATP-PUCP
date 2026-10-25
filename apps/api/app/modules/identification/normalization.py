@@ -19,11 +19,20 @@ museum (docs/preguntas-contraparte.md, questions A2, A4, A5, A8 and B8):
 - N6  Generic types (PUCP, owner, other): N1 plus removal of spaces around ``-``, ``/``, ``.``.
 - N7  A cell may contain several codes separated by ``/``, ``;``, ``|``, ``,`` or line breaks;
       each part is proposed as a separate identifier pending human confirmation.
+
+The absence markers (N2), the separators (N7) and the historical acronym aliases are data
+(change ``plantillas-mapeo-y-normalizacion``, design D5): every public function takes the
+current values as an optional keyword-only ``params`` (``identification/params.py`` reads them
+once per session). Without it they use ``DEFAULT_PARAMS``, built from the constants below, so
+the result is the same as before those values became data.
 """
 
 import re
 import unicodedata
+import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from app.modules.identification.models import NormalizationRule, NormalizationStatus
 
@@ -81,9 +90,94 @@ _COLLECTION_RE = re.compile(
     r"(?P<suffix>(?:\s*[.\-]\s*[0-9A-Z]+)*)$"
 )
 _INC_PREFIX_RE = re.compile(r"^(?:INC|R\.?\s*N\.?|N\s*[°º.]?)?\s*[-:#°º.]?\s*(?P<body>[\d\s.\-]+)$")
-# "/" separates codes, except inside the absence markers S/N and S/C.
-_SPLIT_RE = re.compile(r"\s*(?:(?<![Ss]\s)(?<![Ss])/(?!\s?[NnCc]\b)|;|\||,|\n|\r)\s*")
 _GENERIC_SEPARATORS_RE = re.compile(r"\s*([-/.])\s*")
+
+# N7 — "/" separates codes, except inside the absence markers S/N and S/C.
+DEFAULT_SEPARATORS: tuple[str, ...] = ("/", ";", "|", ",", "\n", "\r")
+DEFAULT_UNSPLIT_MARKERS: tuple[str, ...] = ("S/N", "S/C")
+
+_SEPARATOR_PATTERNS = {"\n": r"\n", "\r": r"\r", "\t": r"\t", "|": r"\|"}
+
+
+def _char_pattern(chars: str) -> str:
+    """``SN`` -> ``Ss`` for a letter class (upper and lower case), escaped otherwise."""
+    out = ""
+    for char in dict.fromkeys(chars):
+        out += f"{char.upper()}{char.lower()}" if char.isalpha() else re.escape(char)
+    return out
+
+
+def _literal(text: str) -> str:
+    """``REP`` -> ``[Rr][Ee][Pp]``: the text in any case."""
+    return "".join(f"[{_char_pattern(c)}]" if c.isalpha() else re.escape(c) for c in text)
+
+
+def _guarded(separator: str, markers: Sequence[str]) -> str:
+    """The separator, unless it is inside one of the markers: a separator preceded by the left
+    side of a marker (``S/``, ``S /``) or followed by its right side (``/N``, ``/ N``) does not
+    split. Single-letter sides give exactly the expression used before (``S/N``, ``S/C``)."""
+    escaped = _SEPARATOR_PATTERNS.get(separator) or re.escape(separator)
+    sides = [marker.split(separator, 1) for marker in markers if separator in marker]
+    lefts = [left.strip() for left, _right in sides if left.strip()]
+    rights = [right.strip() for _left, right in sides if right.strip()]
+    if not lefts and not rights:
+        return escaped
+    behind = ahead = ""
+    if lefts and all(len(left) == 1 for left in lefts):
+        letters = _char_pattern("".join(lefts))
+        behind = f"(?<![{letters}]\\s)(?<![{letters}])"
+    elif lefts:
+        behind = "".join(f"(?<!{_literal(left)}\\s)(?<!{_literal(left)})" for left in lefts)
+    if rights and all(len(right) == 1 for right in rights):
+        ahead = f"(?!\\s?[{_char_pattern(''.join(rights))}]\\b)"
+    elif rights:
+        ahead = f"(?!\\s?(?:{'|'.join(_literal(right) for right in rights)})\\b)"
+    return f"{behind}{escaped}{ahead}"
+
+
+@lru_cache(maxsize=32)
+def split_regex(separators: tuple[str, ...], unsplit_markers: tuple[str, ...]) -> re.Pattern[str]:
+    """N7 regex for these separators; no separators never splits."""
+    if not separators:
+        return re.compile(r"(?!)")
+    alternatives = "|".join(_guarded(separator, unsplit_markers) for separator in separators)
+    return re.compile(rf"\s*(?:{alternatives})\s*")
+
+
+_SPLIT_RE = split_regex(DEFAULT_SEPARATORS, DEFAULT_UNSPLIT_MARKERS)
+
+
+@dataclass(frozen=True)
+class NormalizationParams:
+    """Current values of the normalization parameters (design D5).
+
+    ``absence_markers`` are kept as they are compared: N1 without any whitespace (``NO
+    REGISTRA`` -> ``NOREGISTRA``). ``acronym_aliases`` maps a normalized alias to the
+    normalized acronym of its collection (``REP`` -> ``LRM``); ``alias_collection_ids`` maps it
+    to the collection, which may have no acronym.
+    """
+
+    absence_markers: frozenset[str] = ABSENCE_MARKERS
+    separators: tuple[str, ...] = DEFAULT_SEPARATORS
+    unsplit_markers: tuple[str, ...] = DEFAULT_UNSPLIT_MARKERS
+    acronym_aliases: Mapping[str, str] = field(default_factory=dict)
+    alias_collection_ids: Mapping[str, uuid.UUID] = field(default_factory=dict)
+
+    @staticmethod
+    def marker_key(marker: str) -> str:
+        """How a marker is compared: N1 without whitespace."""
+        return re.sub(r"\s+", "", canonical(marker))
+
+    @property
+    def split_re(self) -> re.Pattern[str]:
+        return split_regex(self.separators, self.unsplit_markers)
+
+
+DEFAULT_PARAMS = NormalizationParams()
+
+
+def _params(params: NormalizationParams | None) -> NormalizationParams:
+    return DEFAULT_PARAMS if params is None else params
 
 
 @dataclass(frozen=True)
@@ -111,10 +205,10 @@ def canonical(raw: str) -> str:
     return re.sub(r"\s+", " ", text).strip().upper()
 
 
-def is_absence_marker(raw: str | None) -> bool:
+def is_absence_marker(raw: str | None, *, params: NormalizationParams | None = None) -> bool:
     if raw is None:
         return True
-    return re.sub(r"\s+", "", canonical(raw)) in ABSENCE_MARKERS
+    return NormalizationParams.marker_key(raw) in _params(params).absence_markers
 
 
 def _absent(original: str) -> NormalizationResult:
@@ -125,8 +219,10 @@ def _unparseable(original: str) -> NormalizationResult:
     return NormalizationResult(original, None, NormalizationStatus.UNPARSEABLE)
 
 
-def normalize_inventory_code(raw: str) -> NormalizationResult:
-    if is_absence_marker(raw):
+def normalize_inventory_code(
+    raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    if is_absence_marker(raw, params=params):
         return _absent(raw)
     match = _INVENTORY_RE.match(canonical(raw))
     if not match:
@@ -138,21 +234,27 @@ def normalize_inventory_code(raw: str) -> NormalizationResult:
     return NormalizationResult(raw, f"I-{number}", NormalizationStatus.NORMALIZED, detected)
 
 
-def normalize_acronym(raw: str | None) -> str | None:
-    """Collection acronym without dots or spaces (``M.M.Z.`` -> ``MMZ``)."""
+def normalize_acronym(raw: str | None, *, params: NormalizationParams | None = None) -> str | None:
+    """Collection acronym without dots or spaces (``M.M.Z.`` -> ``MMZ``); with ``params``, a
+    historical alias becomes the acronym of its collection."""
     if raw is None:
         return None
     value = re.sub(r"[^A-Z0-9]", "", canonical(raw))
+    if params is not None:
+        value = params.acronym_aliases.get(value, value)
     return value or None
 
 
-def normalize_collection_code(raw: str) -> NormalizationResult:
-    if is_absence_marker(raw):
+def normalize_collection_code(
+    raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    if is_absence_marker(raw, params=params):
         return _absent(raw)
     match = _COLLECTION_RE.match(canonical(raw))
     if not match:
         return _unparseable(raw)
     acronym = re.sub(r"[\s.]", "", match.group("acronym"))
+    acronym = _params(params).acronym_aliases.get(acronym, acronym)
     number = int(match.group("number"))
     suffix_parts = [part for part in re.split(r"\s*[.\-]\s*", match.group("suffix")) if part]
     normalized = f"{acronym} {number}"
@@ -163,8 +265,10 @@ def normalize_collection_code(raw: str) -> NormalizationResult:
     return NormalizationResult(raw, normalized, NormalizationStatus.NORMALIZED, detected)
 
 
-def normalize_inc_code(raw: str) -> NormalizationResult:
-    if is_absence_marker(raw):
+def normalize_inc_code(
+    raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    if is_absence_marker(raw, params=params):
         return _absent(raw)
     match = _INC_PREFIX_RE.match(canonical(raw))
     if not match:
@@ -177,8 +281,10 @@ def normalize_inc_code(raw: str) -> NormalizationResult:
     return _unparseable(raw)
 
 
-def normalize_generic_code(raw: str) -> NormalizationResult:
-    if is_absence_marker(raw):
+def normalize_generic_code(
+    raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    if is_absence_marker(raw, params=params):
         return _absent(raw)
     value = _GENERIC_SEPARATORS_RE.sub(r"\1", canonical(raw))
     return NormalizationResult(raw, value, NormalizationStatus.NORMALIZED)
@@ -192,28 +298,34 @@ _NORMALIZERS = {
 }
 
 
-def normalize(rule: NormalizationRule, raw: str) -> NormalizationResult:
-    return _NORMALIZERS[rule](raw)
+def normalize(
+    rule: NormalizationRule, raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    return _NORMALIZERS[rule](raw, params=params)
 
 
-def normalize_for_type(type_code: str, raw: str) -> NormalizationResult:
-    return normalize(DEFAULT_RULES.get(type_code, NormalizationRule.GENERIC), raw)
+def normalize_for_type(
+    type_code: str, raw: str, *, params: NormalizationParams | None = None
+) -> NormalizationResult:
+    return normalize(DEFAULT_RULES.get(type_code, NormalizationRule.GENERIC), raw, params=params)
 
 
-def split_compound(raw: str | None) -> list[str]:
+def split_compound(raw: str | None, *, params: NormalizationParams | None = None) -> list[str]:
     """N7: split a cell with several codes. Absence markers such as ``S/N`` are not split."""
-    if raw is None or is_absence_marker(raw):
+    if raw is None or is_absence_marker(raw, params=params):
         return []
-    parts = [part.strip() for part in _SPLIT_RE.split(unicodedata.normalize("NFKC", raw))]
-    return [part for part in parts if part and not is_absence_marker(part)]
+    pattern = _params(params).split_re
+    parts = [part.strip() for part in pattern.split(unicodedata.normalize("NFKC", raw))]
+    return [part for part in parts if part and not is_absence_marker(part, params=params)]
 
 
-def detect_type(part: str) -> str | None:
+def detect_type(part: str, *, params: NormalizationParams | None = None) -> str | None:
     """Guess the identifier type of a single code; None when it cannot be told apart."""
     value = canonical(part)
     if re.match(r"^I\s*[-.:#_]?\s*\d+$", value):
         return TYPE_INVENTORY
-    if re.match(r"^(?:INC|R\.?\s*N\.?)\b", value) and normalize_inc_code(part).normalized:
+    inc = normalize_inc_code(part, params=params).normalized
+    if re.match(r"^(?:INC|R\.?\s*N\.?)\b", value) and inc:
         return TYPE_INC_RN
     match = _COLLECTION_RE.match(value)
     if match and len(re.sub(r"[\s.]", "", match.group("acronym"))) >= 2:
@@ -222,13 +334,16 @@ def detect_type(part: str) -> str | None:
 
 
 def propose_identifiers(
-    raw: str | None, default_type: str | None = None
+    raw: str | None,
+    default_type: str | None = None,
+    *,
+    params: NormalizationParams | None = None,
 ) -> list[IdentifierProposal]:
     """Detect every identifier inside a cell. Results always require human confirmation."""
-    parts = split_compound(raw)
+    parts = split_compound(raw, params=params)
     proposals: list[IdentifierProposal] = []
     for part in parts:
-        detected = detect_type(part)
+        detected = detect_type(part, params=params)
         type_code = detected or default_type
         notes: list[str] = []
         if len(parts) > 1:
@@ -237,8 +352,8 @@ def propose_identifiers(
             notes.append(f"El valor parece de tipo {detected} y no {default_type}.")
         if type_code is None:
             notes.append("No se pudo determinar el tipo de identificador.")
-            result = normalize_generic_code(part)
+            result = normalize_generic_code(part, params=params)
         else:
-            result = normalize_for_type(type_code, part)
+            result = normalize_for_type(type_code, part, params=params)
         proposals.append(IdentifierProposal(type_code=type_code, result=result, notes=notes))
     return proposals

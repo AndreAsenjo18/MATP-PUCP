@@ -3,13 +3,14 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.models_base import (
     Base,
+    JsonType,
     SoftDeleteMixin,
     TimestampMixin,
     UUIDPrimaryKeyMixin,
@@ -97,5 +98,57 @@ class PieceIdentifier(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base
             sqlite_where=text(
                 "identifier_type_code = 'I' AND is_current = 1 AND deleted_at IS NULL"
             ),
+        ),
+    )
+
+
+# --- Normalization parameters as data (plantillas-mapeo-y-normalizacion, design D5) ---------
+
+ABSENCE_MARKERS_KEY = "absence_markers"
+CONCATENATION_SEPARATORS_KEY = "concatenation_separators"
+
+
+class NormalizationSetting(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
+    """A normalization parameter (RN-010), administrable instead of a constant in the code.
+
+    ``absence_markers``: list of "no code" markers, compared without spaces (N2).
+    ``concatenation_separators``: ``{"separators": [...], "unsplit_markers": [...]}``, the
+    characters that split a cell with several codes and the markers that are never split (N7).
+    The initial values are the constants of ``normalization.py`` (migration 0013).
+    """
+
+    __tablename__ = "normalization_setting"
+
+    key: Mapped[str] = mapped_column(String(80))
+    value: Mapped[Any] = mapped_column(JsonType)
+
+    __table_args__ = (
+        Index(
+            "uq_normalization_setting_key_active",
+            "key",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+
+class CollectionAcronymAlias(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
+    """Another acronym of a collection, such as a historical one (design D5): normalized as
+    ``collection.acronym_normalized`` and unique among the active aliases."""
+
+    __tablename__ = "collection_acronym_alias"
+
+    alias: Mapped[str] = mapped_column(String(40))
+    alias_normalized: Mapped[str] = mapped_column(String(40))
+    collection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("collection.id"), index=True)
+
+    __table_args__ = (
+        Index(
+            "uq_collection_acronym_alias_active",
+            "alias_normalized",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
         ),
     )

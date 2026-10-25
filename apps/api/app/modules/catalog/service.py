@@ -18,6 +18,7 @@ from app.modules.catalog.tenure import audit_reason, check_transition, legal_own
 from app.modules.identification.models import NormalizationStatus
 from app.modules.identification.normalization import TYPE_INVENTORY, TYPE_OTHER, is_absence_marker
 from app.modules.identification.normalization import normalize as normalize_value
+from app.modules.identification.params import session_params
 from app.modules.identification.service import add_identifier, find_code_owner, get_identifier_type
 
 EDITABLE_FIELDS = frozenset(
@@ -212,7 +213,8 @@ def _inventory_code_findings(
     if code_i is None or not code_i.strip():
         return []
     raw = code_i.strip()
-    if is_absence_marker(raw):
+    params = session_params(session)  # current markers and aliases (design D5 of plantillas-mapeo)
+    if is_absence_marker(raw, params=params):
         message = f"'{raw}' indica ausencia de código: la pieza se registra sin código I."
         return [
             _Finding(
@@ -225,7 +227,7 @@ def _inventory_code_findings(
             )
         ]
     identifier_type = get_identifier_type(session, TYPE_INVENTORY)
-    result = normalize_value(identifier_type.normalization_rule, raw)
+    result = normalize_value(identifier_type.normalization_rule, raw, params=params)
     if result.status is NormalizationStatus.UNPARSEABLE or not result.normalized:
         message = f"El formato de '{raw}' no se reconoce como {identifier_type.label}."
         return [
