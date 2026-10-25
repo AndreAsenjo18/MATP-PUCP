@@ -23,6 +23,7 @@ from app.api.stubs import (
     stub,
 )
 from app.core.errors import (
+    BusinessRuleViolation,
     ConflictError,
     NotFound,
     PermissionDenied,
@@ -1326,12 +1327,40 @@ def get_piece_children(
 @router.post(
     "/{piece_id}/children",
     response_model=PieceSummary,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; "
+                "`component_already_linked`: ya es componente de otro conjunto "
+                "(`details.parent_piece_id`)."
+            ),
+        },
+    },
     summary="Asociar una pieza existente como componente de un conjunto (RF-009)",
+    description="Responde la pieza componente. El vínculo queda en la auditoría como cambio de "
+    "`parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El "
+    "código derivado del conjunto no se genera todavía [SUPUESTO B8].",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
-def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> PieceSummary:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceSummary)
+def add_piece_child(
+    piece_id: uuid.UUID, body: PieceChildLink, session: SessionDep, user: Editor
+) -> PieceSummary:
+    parent = get_piece(session, piece_id)
+    child = get_piece(session, body.child_piece_id)
+    if child.parent_piece_id not in (None, parent.id):
+        raise BusinessRuleViolation(
+            "La pieza ya es componente de otro conjunto; desvincúlela de ese conjunto antes de "
+            "asociarla a este.",
+            code="component_already_linked",
+            details={"parent_piece_id": str(child.parent_piece_id)},
+        )
+    if child.parent_piece_id is None:
+        catalog_service.set_parent(writer(session, user), child, parent.id)
+        session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).summaries([child])[0]
 
 
 # ---------------------------------------------------------------------- movements

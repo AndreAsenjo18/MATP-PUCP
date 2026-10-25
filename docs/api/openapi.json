@@ -19091,6 +19091,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].",
         "operationId": "addPieceChild",
         "parameters": [
           {
@@ -19145,6 +19146,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19154,16 +19175,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -19175,8 +19186,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/conservation-assessments": {

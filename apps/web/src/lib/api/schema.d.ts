@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 07ab42997eb912b1e8775bb54b68ae19678bb57e0cc6b03a117653330599bd5d
+ * openapi-sha256: 51b164de24b2e7d7a1383f2bc4acc7c260b909874eaf95fae29ca918316f33c8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1202,7 +1202,10 @@ export interface paths {
         /** Listar las piezas componentes de un conjunto (RF-009) */
         get: operations["getPieceChildren"];
         put?: never;
-        /** Asociar una pieza existente como componente de un conjunto (RF-009) */
+        /**
+         * Asociar una pieza existente como componente de un conjunto (RF-009)
+         * @description Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].
+         */
         post: operations["addPieceChild"];
         delete?: never;
         options?: never;
@@ -11994,8 +11997,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12003,13 +12006,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
