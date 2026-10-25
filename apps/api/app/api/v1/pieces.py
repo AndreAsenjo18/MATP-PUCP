@@ -32,6 +32,7 @@ from app.core.errors import (
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.audit.trash import restore_from_trash
 from app.modules.catalog import conservation
 from app.modules.catalog import service as catalog_service
 from app.modules.catalog.enums import TenureRegime
@@ -455,16 +456,34 @@ def soft_delete_piece(
 @router.post(
     "/{piece_id}/restore",
     response_model=PieceDetail,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza no existe."},
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza "
+                "activa (`details.dependency_entity_id`) o su colección sigue eliminada; "
+                "`not_deleted`: la pieza no está eliminada."
+            ),
+        },
+    },
     summary="Restaurar una pieza eliminada (Administrador)",
+    description="Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que "
+    "el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un "
+    "Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su "
+    "motivo (ficha-pieza-crud, diseño D7).",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def restore_piece(
     piece_id: uuid.UUID,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("pieces.restore"))],
-    reason: Annotated[str | None, Query()] = None,
+    reason: Annotated[str | None, Query(description="Motivo de la restauración.")] = None,
 ) -> PieceDetail:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceDetail)
+    restore_from_trash(writer(session, user, reason), "piece", piece_id, reason)
+    session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).detail(get_piece(session, piece_id))
 
 
 @router.get(

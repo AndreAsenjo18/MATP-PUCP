@@ -20500,6 +20500,7 @@
     },
     "/api/v1/pieces/{piece_id}/restore": {
       "post": {
+        "description": "Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).",
         "operationId": "restorePiece",
         "parameters": [
           {
@@ -20513,6 +20514,7 @@
             }
           },
           {
+            "description": "Motivo de la restauración.",
             "in": "query",
             "name": "reason",
             "required": false,
@@ -20525,6 +20527,7 @@
                   "type": "null"
                 }
               ],
+              "description": "Motivo de la restauración.",
               "title": "Reason"
             }
           }
@@ -20560,6 +20563,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -20569,16 +20592,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -20590,8 +20603,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/source-records": {

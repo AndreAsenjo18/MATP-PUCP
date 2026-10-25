@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5687a4161083674b018a04228f83ef7a58da4cefc67fa981267622eb110acd27
+ * openapi-sha256: 07ab42997eb912b1e8775bb54b68ae19678bb57e0cc6b03a117653330599bd5d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1416,7 +1416,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Restaurar una pieza eliminada (Administrador) */
+        /**
+         * Restaurar una pieza eliminada (Administrador)
+         * @description Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).
+         */
         post: operations["restorePiece"];
         delete?: never;
         options?: never;
@@ -12878,6 +12881,7 @@ export interface operations {
     restorePiece: {
         parameters: {
             query?: {
+                /** @description Motivo de la restauración. */
                 reason?: string | null;
             };
             header?: never;
@@ -12915,8 +12919,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12924,13 +12928,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
