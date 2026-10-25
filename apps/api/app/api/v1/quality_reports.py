@@ -7,13 +7,13 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated, Any
 
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
 from fastapi import Path as FastAPIPath
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
-from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES
 from app.api.pagination import (
     DEFAULT_PAGE_SIZE,
@@ -29,6 +29,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
+from app.api.v1.pieces import piece_filters
 from app.core.errors import NotFound
 from app.core.jobs import run_in_background
 from app.core.models_base import new_uuid, utcnow
@@ -37,9 +38,10 @@ from app.modules.audit.context import AuditContext, set_audit_context
 from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import CatalogReader, Viewer
-from app.modules.collections.models import Collection, Term
+from app.modules.exports.results import masked_fields, resolve_columns, result_row
 from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
-from app.modules.locations.models import Location
+from app.modules.media.derivatives import thumb_key
+from app.modules.media.models import MediaAsset
 from app.modules.quality.completeness import (
     list_completeness_rules,
     load_active_rules,
@@ -89,9 +91,9 @@ from app.modules.search.schemas import (
     ReportSubtotal,
     ReportType,
     SearchExportRequest,
+    SearchHit,
     SearchResultPage,
 )
-from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
@@ -380,38 +382,34 @@ def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> Qua
     **implemented(),
 )
 def search_pieces(
-    q: Annotated[str, Query(min_length=1, max_length=200, description="Cdigo o texto.")],
     session: SessionDep,
     user: Reader,
+    request: Request,
+    filters: Annotated[PieceFilter, Depends(piece_filters)],
     collection_code: Annotated[
-        str | None, Query(description="Sigla de la coleccin, con o sin puntos (ej. MMZ, M.M.Z.).")
+        str | None, Query(description="Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).")
     ] = None,
-    tenure_regime: Annotated[
-        TenureRegimeLabel | None,
-        Query(description="Rgimen de tenencia: Propiedad, Comodato o Prstamo Temporal."),
-    ] = None,
-    page: Annotated[int, Query(ge=1, description="Nmero de pgina (desde 1).")] = 1,
+    page: Annotated[int, Query(ge=1, description="Número de página (desde 1).")] = 1,
     limit: Annotated[
-        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por pgina (mx. 100).")
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
     ] = DEFAULT_PAGE_SIZE,
 ) -> SearchResultPage:
-    regime = (
-        code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
-        if tenure_regime is not None
-        else None
-    )
-    piece_filter = PieceFilter(
-        q=q,
-        collection_code=collection_code,
-        tenure_regime=regime,
-    )
+    """Sin `q`, lista las piezas que cumplen los filtros en orden alfabético, sin `match_reason`."""
+    piece_filter = filters.model_copy(update={"collection_code": collection_code})
+    q = (piece_filter.q or "").strip()
     viewer = Viewer(user.permissions)
     where_clause = piece_filter.to_where(session, viewer)
     params = PageParams(page=page, page_size=limit)
     query = select(Piece).where(where_clause).order_by(Piece.denomination)
     pieces, total = paginate(session, query, params)
     summaries = CatalogReader(session, viewer).summaries(pieces)
-    hits = rank_and_describe_pieces(session, pieces, summaries, q)
+    if q:
+        hits = rank_and_describe_pieces(session, pieces, summaries, q)
+    else:
+        hits = [SearchHit(piece=summary, match_type="TITLE") for summary in summaries]
+    thumbnails = _thumbnail_urls(session, request, [hit.piece.id for hit in hits])
+    for hit in hits:
+        hit.thumbnail_url = thumbnails.get(hit.piece.id)
 
     extra_kwargs: dict[str, Any] = {}
     active_other_filters = [f for f in piece_filter.describe() if f.key != "q"]
@@ -421,6 +419,10 @@ def search_pieces(
             extra_kwargs["suggestions"] = suggestions
         if active_f:
             extra_kwargs["active_filters"] = [a.model_dump() for a in active_f]
+    if piece_filter.epoch_start_year is not None or piece_filter.epoch_end_year is not None:
+        extra_kwargs["excluded_uninterpreted_period"] = (
+            piece_filter.count_excluded_uninterpreted_period(session, viewer)
+        )
 
     return SearchResultPage(
         items=hits,
@@ -429,6 +431,31 @@ def search_pieces(
         limit=limit,
         **extra_kwargs,
     )
+
+
+def _thumbnail_urls(
+    session: SessionDep, request: Request, piece_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """URL prefirmada de la miniatura de la foto principal de cada pieza (o de la primera)."""
+    storage = getattr(request.app.state, "storage", None)
+    if storage is None or not piece_ids:
+        return {}
+    assets = session.execute(
+        select(MediaAsset.piece_id, MediaAsset.id)
+        .where(MediaAsset.piece_id.in_(piece_ids), MediaAsset.deleted_at.is_(None))
+        .order_by(MediaAsset.is_primary.desc(), MediaAsset.sort_order, MediaAsset.created_at)
+    ).all()
+    keys: dict[uuid.UUID, str] = {}
+    for piece_id, asset_id in assets:
+        keys.setdefault(piece_id, thumb_key(piece_id, asset_id))
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    urls: dict[uuid.UUID, str] = {}
+    for piece_id, key in keys.items():
+        try:
+            urls[piece_id] = storage.presign_get(key, ttl)
+        except (BotoCoreError, ClientError):  # sin miniatura, la tarjeta muestra un marcador
+            continue
+    return urls
 
 
 @router.post(
@@ -454,87 +481,18 @@ def export_excel_report(
     count = session.scalar(select(func.count(Piece.id)).where(where_clause)) or 0
     fmt = body.format.value if hasattr(body.format, "value") else str(body.format).lower()
 
+    columns = resolve_columns(body.columns, user.permissions)
+    masked = masked_fields(user.permissions)
+
     # 3. Synchronous export if count <= EXPORT_SYNC_MAX_ROWS (5 000)
     if count <= EXPORT_SYNC_MAX_ROWS:
-        user_perms = user.permissions
-        can_view_lender = PERM_DONOR_DATA in user_perms
-        can_view_loan = PERM_LOAN_TERMS in user_perms
-        can_view_valuation = PERM_VALUATION in user_perms
-
-        masked_fields: list[str] = []
-        if not can_view_lender:
-            masked_fields.append("lender_name")
-        if not can_view_loan:
-            masked_fields.append("loan_agreement_ref")
-        if not can_view_valuation:
-            masked_fields.append("valuation")
-
-        columns = [
-            "Cdigo I",
-            "Denominacin",
-            "Coleccin",
-            "Rgimen de tenencia",
-            "Categora",
-            "Estado de conservacin",
-            "Ubicacin",
-            "Autor",
-            "Procedencia",
-            "poca",
-        ]
-        if can_view_lender:
-            columns.append("Comodante")
-        if can_view_loan:
-            columns.append("Convenio de prstamo")
-
         pieces = session.scalars(
             select(Piece).where(where_clause).order_by(Piece.denomination)
         ).all()
         reader = CatalogReader(session, viewer)
         summaries = {s.id: s for s in reader.summaries(pieces)}
-
-        rows = []
-        for piece in pieces:
-            summary = summaries.get(piece.id)
-            code_i = summary.code_i if summary else ""
-            coll_name = ""
-            if piece.collection_id:
-                coll = session.get(Collection, piece.collection_id)
-                coll_name = coll.name if coll else ""
-            cat_name = ""
-            if piece.category_id:
-                term = session.get(Term, piece.category_id)
-                cat_name = term.label if term else ""
-            state_name = ""
-            if piece.conservation_state_id:
-                term = session.get(Term, piece.conservation_state_id)
-                state_name = term.label if term else ""
-            loc_name = ""
-            if piece.current_location_id:
-                loc = session.get(Location, piece.current_location_id)
-                loc_name = loc.name if loc else ""
-            regime_label = (
-                TENURE_REGIME_LABELS.get(piece.tenure_regime, piece.tenure_regime.value)
-                if piece.tenure_regime
-                else ""
-            )
-
-            row = [
-                code_i,
-                piece.denomination,
-                coll_name,
-                regime_label,
-                cat_name,
-                state_name,
-                loc_name,
-                piece.author or "",
-                piece.provenance or "",
-                piece.epoch_original_text or "",
-            ]
-            if can_view_lender:
-                row.append(piece.lender_name or "")
-            if can_view_loan:
-                row.append(piece.loan_agreement_ref or "")
-            rows.append(row)
+        headers = [column.header for column in columns]
+        rows = [result_row(session, piece, summaries.get(piece.id), columns) for piece in pieces]
 
         with tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
             tmp_path = Path(tmp.name)
@@ -543,17 +501,17 @@ def export_excel_report(
                 write_table(
                     tmp_path,
                     rows,
-                    columns,
+                    headers,
                     sheet_title="Resultados",
                     active_filters=piece_filter.describe(session),
                     user_label=user.email or "usuario",
-                    omitted_columns=masked_fields if masked_fields else None,
+                    omitted_columns=masked or None,
                 )
                 media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             else:
                 with open(tmp_path, "w", encoding="utf-8-sig", newline="") as csv_f:
                     csv_w = csv.writer(csv_f)
-                    csv_w.writerow(columns)
+                    csv_w.writerow(headers)
                     for r in rows:
                         csv_w.writerow(r)
                 media_type = "text/csv"
@@ -580,8 +538,9 @@ def export_excel_report(
                     "format": fmt,
                     "row_count": count,
                     "filters": body.filters,
-                    "includes_sensitive_fields": can_view_lender or can_view_loan,
-                    "masked_fields": masked_fields,
+                    "includes_sensitive_fields": any(c.permission for c in columns),
+                    "masked_fields": masked,
+                    "columns": [c.key for c in columns],
                 },
                 action=AuditAction.EXPORT,
                 origin=AuditOrigin.MANUAL,
@@ -593,8 +552,8 @@ def export_excel_report(
             session.commit()
 
             resp_headers = {"Content-Disposition": f'attachment; filename="reporte_catalogo.{fmt}"'}
-            if masked_fields:
-                resp_headers["X-Omited-Columns"] = ", ".join(masked_fields)
+            if masked:
+                resp_headers["X-Omited-Columns"] = ", ".join(masked)
 
             return Response(
                 content=file_bytes,
