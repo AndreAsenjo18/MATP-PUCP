@@ -78,6 +78,9 @@ def run_export_job(
 
             export_full_database_job(factory, job_id, storage)
             return
+        if job.kind == ExportJobKind.REPORT:
+            _run_report_export(factory, job_id, storage, frozenset(user_perms), user_label)
+            return
 
         # Results export (XLSX or CSV)
         _run_results_export(factory, job_id, storage, user_perms, user_label, heartbeat)
@@ -277,6 +280,44 @@ def _run_results_export(
         finally:
             if tmp_path.exists():
                 tmp_path.unlink()
+
+
+def _run_report_export(
+    factory: SessionFactory,
+    job_id: uuid.UUID,
+    storage: ObjectStorage | None,
+    permissions: frozenset[str],
+    user_label: str,
+) -> None:
+    """A report above the synchronous limit (reportes-inventario 1.2), rebuilt on its own
+    consistent snapshot with the permissions of whoever asked for it."""
+    from app.modules.reports import registry as reports
+    from app.modules.reports.files import report_file
+
+    with factory() as session:
+        job = session.get(ExportJobModel, job_id)
+        if not job:
+            return
+        params = job.params or {}
+        report_type = str(params.get("report_type"))
+        fmt = (job.format or "xlsx").lower()
+        data = reports.build(report_type, session, permissions, reports.params_from(params))
+        content, content_type = report_file(
+            data, fmt, generated_at=utcnow(), generated_by=user_label
+        )
+        storage_key = f"exports/{job_id}/reporte-{report_type}.{fmt}"
+        if storage is not None:
+            storage.put_bytes(storage_key, content, content_type)
+        job.status = ExportJobStatus.READY
+        job.storage_key = storage_key
+        job.sha256 = hashlib.sha256(content).hexdigest()
+        job.row_count = len(data.rows)
+        job.expires_at = utcnow() + datetime.timedelta(hours=EXPORT_TTL_HOURS)
+        job.masked_fields = data.masked_columns
+        reports.record_report_export(
+            session, job.requested_by_id, user_label, report_type, fmt, data, entity_id=job.id
+        )
+        session.commit()
 
 
 def recover_interrupted_exports(factory: SessionFactory) -> int:

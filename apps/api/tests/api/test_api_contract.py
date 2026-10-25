@@ -150,9 +150,10 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     stubs = [r for r in _api_routes() if r.openapi_extra.get(X_STATUS) == STATUS_STUB]
     # Baja cada vez que un change implementa un stub (p. ej. ubicacion-jerarquica-y-movimientos
     # implementó POST/PUT /locations y autenticacion-y-matriz-permisos los usuarios y la
-    # matriz; alertas-y-reporte-incompletas los de calidad); el umbral solo detecta un
-    # vaciado accidental de la lista, no fija cuántos quedan.
-    assert len(stubs) >= 20
+    # matriz; alertas-y-reporte-incompletas los de calidad; auditoria-y-soft-delete-transversal
+    # el historial de la pieza); el umbral solo detecta un vaciado accidental de la lista, no
+    # fija cuántos quedan.
+    assert len(stubs) >= 15
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:

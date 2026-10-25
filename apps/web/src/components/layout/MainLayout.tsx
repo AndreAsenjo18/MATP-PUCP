@@ -4,7 +4,8 @@
  * Estructura común de las pantallas autenticadas (docs/system-design.md §5): barra lateral en
  * escritorio, botón «Menú» con panel en móvil (RNF-001) y encabezado con usuario, rol, cambio de
  * rol y aviso de modo demostración. Las secciones se filtran por el permiso del rol simulado
- * (RF-039). Sin sesión (pantalla de acceso) devuelve solo el contenido.
+ * (RF-039). Sin sesión (pantalla de acceso) devuelve solo el contenido. Al imprimir solo queda el
+ * contenido (vista imprimible de reportes, `reportes-inventario` 3.2).
  */
 import { LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -59,13 +60,13 @@ export function MainLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-1">
-      <aside className="hidden w-64 shrink-0 bg-tinta text-crema md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
+      <aside className="hidden w-64 shrink-0 print:!hidden bg-tinta text-crema md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
         <Brand className="px-6 pt-6 pb-4 text-crema" />
         <Sidebar items={items} pathname={pathname} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-borde bg-white">
+        <header className="border-b border-borde bg-white print:hidden">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex flex-wrap items-center gap-3">
               <Button
@@ -112,7 +113,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           />
         )}
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6">{children}</main>
+        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 print:max-w-none print:p-0">{children}</main>
       </div>
     </div>
   );
