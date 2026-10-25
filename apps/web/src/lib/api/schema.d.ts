@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: d53f07fcdbe3f317e0b0128fe1e6952b87c20c15773ab34c190981f4cacc6a19
+ * openapi-sha256: ce1dcd6160fd92eddf0b8e482949cb91e064d682fe615ae71e4fa30d9bd9ef51
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1244,7 +1244,10 @@ export interface paths {
         /** Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja) */
         get: operations["listPieceIdentifiers"];
         put?: never;
-        /** Registrar un identificador externo (I bloqueado; comodato sin I) */
+        /**
+         * Registrar un identificador externo (I bloqueado; comodato sin I)
+         * @description Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).
+         */
         post: operations["addPieceIdentifier"];
         delete?: never;
         options?: never;
@@ -3673,6 +3676,12 @@ export interface components {
          *     }
          */
         IdentifierCreate: {
+            /**
+             * Confirmed Split
+             * @description La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).
+             * @default false
+             */
+            confirmed_split: boolean;
             /** Identifier Type Code */
             identifier_type_code: string;
             /** Notes */
@@ -3684,6 +3693,11 @@ export interface components {
             replaces_identifier_id?: string | null;
             /** Source */
             source?: string | null;
+            /**
+             * Split From
+             * @description Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.
+             */
+            split_from?: string | null;
             /** Value */
             value: string;
         };
@@ -12267,8 +12281,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12276,13 +12290,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

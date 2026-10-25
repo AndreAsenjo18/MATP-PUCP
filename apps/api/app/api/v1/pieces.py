@@ -16,12 +16,7 @@ from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
-from app.api.stubs import (
-    CHANGE_PIECE_CRUD,
-    implemented,
-    not_implemented,
-    stub,
-)
+from app.api.stubs import implemented
 from app.core.errors import (
     BusinessRuleViolation,
     ConflictError,
@@ -60,13 +55,15 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import PieceIdentifier
-from app.modules.identification.normalization import TYPE_INVENTORY
+from app.modules.identification.normalization import TYPE_INVENTORY, propose_identifiers
+from app.modules.identification.params import session_params
 from app.modules.identification.schemas import (
     IdentifierCreate,
     IdentifierOut,
     InventoryCodeCorrection,
 )
 from app.modules.identification.service import (
+    add_identifier,
     correct_locked_identifier,
     retire_identifier,
     set_inventory_code,
@@ -652,16 +649,85 @@ def list_piece_identifiers(
     "/{piece_id}/identifiers",
     response_model=IdentifierOut,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "Reglas del identificador: código I en una pieza que no es de "
+            "propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra "
+            "pieza o código I ya vigente.",
+        },
+        422: {
+            "model": ErrorResponse,
+            "description": "`concatenated_identifier`: el valor reúne varios códigos; "
+            "`details.proposals` trae uno por código (`identifier_type_code`, "
+            "`original_value`, `normalized_value`) y no se registra nada.",
+        },
+    },
     summary="Registrar un identificador externo (I bloqueado; comodato sin I)",
+    description="Detecta los códigos concatenados **antes** de registrar: si el valor reúne "
+    "varios, responde la propuesta de separación y la persona reenvía cada código por separado "
+    "con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la "
+    "auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).",
     tags=["Identificadores"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def add_piece_identifier(
     piece_id: uuid.UUID,
     body: IdentifierCreate,
-    user: Annotated[CurrentUser, Depends(require_permission("identifiers.manage"))],
+    session: SessionDep,
+    user: IdentifierManager,
 ) -> IdentifierOut:
-    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+    piece = get_piece(session, piece_id)
+    if body.split_from is not None and not body.confirmed_split:
+        raise ValidationFailed(
+            "`split_from` solo acompaña a una separación confirmada (`confirmed_split`).",
+            code="split_without_confirmation",
+        )
+    if not body.confirmed_split:
+        proposals = propose_identifiers(
+            body.value, body.identifier_type_code, params=session_params(session)
+        )
+        if len(proposals) > 1:
+            raise ValidationFailed(
+                "El valor reúne varios códigos. Confirme la separación y registre cada uno por "
+                "separado (RF-023).",
+                code="concatenated_identifier",
+                details={
+                    "original_value": body.value,
+                    "proposals": [
+                        {
+                            "identifier_type_code": proposal.type_code,
+                            "original_value": proposal.result.original,
+                            "normalized_value": proposal.result.normalized,
+                            "notes": proposal.notes,
+                        }
+                        for proposal in proposals
+                    ],
+                },
+            )
+    replaces = None
+    if body.replaces_identifier_id is not None:
+        replaces = session.scalar(
+            select(PieceIdentifier).where(
+                PieceIdentifier.id == body.replaces_identifier_id,
+                PieceIdentifier.piece_id == piece_id,
+            )
+        )
+        if replaces is None:
+            raise NotFound("El identificador que se reemplaza no existe en esta pieza.")
+    origin = (body.split_from or "").strip()
+    identifier = add_identifier(
+        writer(session, user, f"Separado de «{origin}»" if origin else None),
+        piece,
+        body.identifier_type_code,
+        body.value,
+        source=body.source or "manual",
+        replaces=replaces,
+        notes=body.notes,
+    )
+    session.commit()
+    return IdentifierOut.model_validate(identifier)
 
 
 @router.delete(

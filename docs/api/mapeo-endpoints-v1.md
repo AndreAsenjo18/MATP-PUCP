@@ -37,7 +37,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
-| 21 | `POST /pieces/{id}/identifiers` · `addPieceIdentifier` | `RF-009` → RF-002 | igual (stub) | Hecho: ruta ya conforme |
+| 21 | `POST /pieces/{id}/identifiers` · `addPieceIdentifier` | `RF-009` → RF-002 | igual (stub) | Hecho: ruta ya conforme. Campos añadidos al cuerpo `confirmed_split` y `split_from`: la confirmación de la separación de un valor concatenado y ese valor original, que queda en la auditoría (`ficha-pieza-crud` D5) |
 | 22 | `DELETE /pieces/{id}/identifiers/{identifier_id}` · `deletePieceIdentifier` | `RF-010` → RF-002, RN-002, RN-005 | no existe (hay `.../correction`) | Hecho: baja lógica con motivo; queda en el historial (`include_history`) y en la auditoría; el código I responde 409 (tarea 5.3) |
 | 23 | `GET /pieces/{id}/children` · `getPieceChildren` | `RF-011` → RF-009 | no existe (se resuelve con filtro) | Hecho: `GET /pieces/{id}/children` |
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |

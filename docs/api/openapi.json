@@ -3638,6 +3638,12 @@
           }
         ],
         "properties": {
+          "confirmed_split": {
+            "default": false,
+            "description": "La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).",
+            "title": "Confirmed Split",
+            "type": "boolean"
+          },
           "identifier_type_code": {
             "maxLength": 40,
             "minLength": 1,
@@ -3679,6 +3685,19 @@
               }
             ],
             "title": "Source"
+          },
+          "split_from": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.",
+            "title": "Split From"
           },
           "value": {
             "minLength": 1,
@@ -19500,6 +19519,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).",
         "operationId": "addPieceIdentifier",
         "parameters": [
           {
@@ -19554,6 +19574,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19562,17 +19602,7 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
+            "description": "`concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada."
           }
         },
         "security": [
@@ -19584,8 +19614,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}": {
