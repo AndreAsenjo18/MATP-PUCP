@@ -9073,6 +9073,18 @@
             ],
             "title": "Recorded By"
           },
+          "supporting_document_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Supporting Document Ref"
+          },
           "temporary_inventory_number": {
             "anyOf": [
               {
@@ -9083,6 +9095,35 @@
               }
             ],
             "title": "Temporary Inventory Number"
+          },
+          "tenure_change_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Tenure Change Reason"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.",
+            "title": "Tenure Regime"
           }
         },
         "title": "PieceUpdate",
@@ -18809,7 +18850,7 @@
         "x-status": "implemented"
       },
       "put": {
-        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3).",
+        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.",
         "operationId": "updatePiece",
         "parameters": [
           {
@@ -18900,7 +18941,7 @@
                 }
               }
             },
-            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales."
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`)."
           },
           "422": {
             "content": {

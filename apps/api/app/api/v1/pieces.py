@@ -106,6 +106,10 @@ from app.modules.users.sensitive_log import delivered_piece_fields, record_sensi
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
 
 NOT_FOUND = {404: {"model": ErrorResponse, "description": "La pieza no existe o fue eliminada."}}
+# Viajan en el PUT pero no son columnas: los aplica `change_tenure` (ficha-pieza-crud D4).
+TENURE_CHANGE_FIELDS = frozenset(
+    {"tenure_regime", "tenure_change_reason", "supporting_document_ref"}
+)
 
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 Creator = Annotated[CurrentUser, Depends(require_permission("pieces.create"))]
@@ -388,14 +392,17 @@ def _edit_conflict(session: Session, user: CurrentUser, piece_id: uuid.UUID) -> 
         409: {
             "model": ErrorResponse,
             "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae "
-            "su versión y sus valores actuales.",
+            "su versión y sus valores actuales. También las reglas del régimen de tenencia "
+            "(`tenure_change_with_inventory_code`, `invalid_tenure_transition`).",
         },
         428: {"model": ErrorResponse, "description": "Falta la cabecera `If-Match`."},
     },
     summary="Editar la ficha (auditoría campo a campo)",
     description="Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la "
     "`version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión "
-    "(ficha-pieza-crud, diseño D2 y D3).",
+    "(ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de "
+    "transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la "
+    "tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.",
     tags=["Piezas"],
     **implemented(),
 )
@@ -413,7 +420,17 @@ def update_piece(
     if _requested_version(if_match) != piece.version:
         raise _edit_conflict(session, user, piece_id)
     writer(session, user)
-    changes = body.model_dump(exclude_unset=True, exclude={"code_i", "material_term_ids"})
+    if body.tenure_regime is not None:  # first, so the code I and the rules see the new regime
+        catalog_service.change_tenure(
+            session,
+            piece,
+            code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime"),
+            body.tenure_change_reason,
+            body.supporting_document_ref,
+        )
+    changes = body.model_dump(
+        exclude_unset=True, exclude={"code_i", "material_term_ids", *TENURE_CHANGE_FIELDS}
+    )
     if "period" in changes:
         period = changes.pop("period") or {}
         changes["epoch_original_text"] = period.get("text")

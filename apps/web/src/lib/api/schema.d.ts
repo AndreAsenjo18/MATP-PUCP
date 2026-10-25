@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 51b164de24b2e7d7a1383f2bc4acc7c260b909874eaf95fae29ca918316f33c8
+ * openapi-sha256: 37b6350fe37385254d53253505ea85702d32bebc35e612bd5b73dd04e4d5f592
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1164,7 +1164,7 @@ export interface paths {
         get: operations["getPieceById"];
         /**
          * Editar la ficha (auditoría campo a campo)
-         * @description Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3).
+         * @description Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.
          */
         put: operations["updatePiece"];
         post?: never;
@@ -5998,8 +5998,23 @@ export interface components {
             provenance?: string | null;
             /** Recorded By */
             recorded_by?: string | null;
+            /**
+             * Supporting Document Ref
+             * @description Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            supporting_document_ref?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
+            /**
+             * Tenure Change Reason
+             * @description Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            tenure_change_reason?: string | null;
+            /**
+             * Tenure Regime
+             * @description Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.
+             */
+            tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
         };
         /**
          * PieceValidationResult
@@ -11760,7 +11775,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description `edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. */
+            /** @description `edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`). */
             409: {
                 headers: {
                     [name: string]: unknown;
