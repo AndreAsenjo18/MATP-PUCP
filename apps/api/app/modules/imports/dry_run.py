@@ -13,8 +13,9 @@ matches and errors of a row belong to that column. Every non-empty cell gets one
                       transformation did not recognize the text.
 - ``NORMALIZED``      anything else.
 
-The normalizer runs with the values of the code: when the configurable parameters of block 2
-exist, the preview will use the current ones (design D4).
+The normalizer runs with the current parameters of the session (design D4, D5): the absence
+markers, separators and acronym aliases of ``normalization_setting`` and
+``collection_acronym_alias``, or the defaults of the code when there are none.
 """
 
 from collections import Counter
