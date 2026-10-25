@@ -300,9 +300,9 @@ Por motivos de seguridad y confidencialidad institucional, la exportación compl
 
 ### Cómo solicitar la exportación completa
 1. Inicie sesión con una cuenta de Administrador.
-2. Diríjase a **Administración → Exportación completa de la base de datos** (o mediante la ruta `GET /api/v1/exports/full`).
-3. El sistema programará la exportación en segundo plano y devolverá el identificador del trabajo.
-4. **Idempotencia**: Si ya existe una exportación completa en ejecución o generada recientemente en las últimas 24 horas, el sistema devolverá el trabajo existente para no sobrecargar el servidor con consultas duplicadas.
+2. Diríjase a **Administración → Exportación completa** (también se abre con `/administracion?pestana=exportacion`) y pulse **Preparar exportación completa**.
+3. El paquete se arma en segundo plano: la pantalla muestra *Preparándose* y se actualiza sola. Cuando aparezca *Lista*, pulse **Descargar**. El archivo se conserva 72 horas.
+4. **Idempotencia**: si ya hay una exportación completa en preparación, o una lista que todavía no caducó, el sistema muestra esa misma en lugar de empezar otra.
 
 ### Contenido del paquete descargable (`matp_full_export.zip`)
 El archivo comprimido generado contiene:

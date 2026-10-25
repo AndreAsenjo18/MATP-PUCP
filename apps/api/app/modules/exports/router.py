@@ -25,14 +25,18 @@ Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
 def _to_export_job_schema(job: ExportJobModel) -> ExportJob:
     fmt = ExportFormat.XLSX
     with contextlib.suppress(ValueError):
-        fmt = ExportFormat(job.format.upper())
+        fmt = ExportFormat(job.format.lower())
     return ExportJob(
         id=job.id,
+        kind=job.kind.value,
         status=job.status.value,
         format=fmt,
         row_count=job.row_count,
+        created_at=job.created_at,
         expires_at=job.expires_at,
         masked_fields=job.masked_fields or [],
+        sha256=job.sha256,
+        error=job.error,
     )
 
 

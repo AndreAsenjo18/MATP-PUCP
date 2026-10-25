@@ -28,42 +28,53 @@ Cada pieza en los resultados incluye una etiqueta explicativa (`match_reason`), 
 
 ## 2. Filtros combinados
 
-En el panel lateral izquierdo puede refinar la búsqueda combinando múltiples criterios:
-- **Colección**: Seleccione una colección principal o subcolección (incluye automáticamente piezas de subcolecciones dependientes).
-- **Categoría y Estado**: Filtre por términos controlados del vocabulario (ej. *Textil*, *Metalurgia*, *Bueno*, *Regular*).
+En el panel lateral izquierdo puede combinar varios criterios. La pantalla muestra solo las piezas que cumplen **todos** a la vez:
+- **Colección**: incluye las piezas de sus subcolecciones.
+- **Categoría**, **Material** y **Estado de conservación**: términos de los vocabularios del museo.
+- **Ubicación**: incluye todo lo que contiene ese lugar (por ejemplo, un depósito con sus muebles, niveles y contenedores).
 - **Régimen de tenencia**: *Propiedad*, *Comodato* o *Préstamo Temporal*.
-- **Época o Periodo**: Rango de años cronológicos calculados o texto original.
+- **Código I**: solo piezas con código I o solo piezas sin él.
+- **Época desde / hasta (año)**: rango de años. Si una pieza tiene la época escrita solo como texto (por ejemplo, «colonial tardío»), no se puede comparar con el rango. La pantalla le avisa cuántas piezas quedaron fuera por eso.
+- **Completitud de la ficha**: solo piezas incompletas (con alguna alerta) o solo piezas completas.
+
+No hace falta escribir nada en el buscador: con solo elegir filtros, la pantalla lista las piezas en orden alfabético.
 
 ### Filtros activos
-Cada filtro seleccionado aparece como una etiqueta interactiva (*chip*) en la parte superior. Puede hacer clic en la **X** de cualquier chip para quitar ese filtro individual sin reiniciar toda la búsqueda.
+Cada filtro elegido aparece como una etiqueta (*chip*) sobre los resultados. Haga clic en una etiqueta para quitar ese filtro sin reiniciar la búsqueda.
+
+### Qué coincidió y foto de la pieza
+Cuando escribe un texto o un código, cada resultado indica qué coincidió: por ejemplo, *«Coincide por código de colección «M.M.Z. 15»»* o *«Coincide en denominación y procedencia»*. Si la pieza tiene fotografías, la tarjeta muestra una miniatura de la foto principal.
 
 ---
 
 ## 3. Sugerencias cuando no hay resultados
 
-Si combina varios filtros muy específicos y ninguna pieza coincide exactamente:
-1. El sistema le informará que no se encontraron piezas con todos los filtros simultáneos.
-2. Propondrá automáticamente **búsquedas relajadas**, indicándole cuántas piezas encontraría si retira uno de los filtros (por ejemplo: *"Si retira el filtro 'Estado: Regular', se encontrarán 14 piezas"*).
-3. Puede hacer clic en la sugerencia para aplicar ese ajuste de inmediato.
+Si combina varios filtros y ninguna pieza los cumple todos:
+1. La pantalla le indica que no se encontraron piezas con estos filtros.
+2. Le sugiere acciones concretas: quitar uno de los filtros, revisar cómo escribió el código (sin puntos, guiones ni ceros a la izquierda) o buscar por un código anterior de la pieza.
+3. Las sugerencias de quitar un filtro son enlaces: haga clic y el filtro se quita de inmediato.
 
 ---
 
-## 4. Exportar resultados a Excel
+## 4. Exportar resultados
 
-Cualquier búsqueda o listado de catálogo puede exportarse para trabajo de inventario, investigación o auditoría:
-1. Presione el botón **Exportar a Excel** en la esquina superior derecha de la tabla.
-2. Si la consulta tiene **hasta 5 000 piezas**, el archivo `.xlsx` se descarga de forma inmediata en su navegador.
-3. Si la consulta tiene **más de 5 000 piezas**, el sistema genera un **trabajo en segundo plano** para no congelar su pantalla. El sistema le avisará que la exportación ha iniciado y podrá continuar trabajando.
+Debajo de los resultados está el panel **Exportar resultados** (requiere permiso de exportación):
+1. Marque las **columnas** que quiere en el archivo. Las columnas con datos restringidos (comodante, convenio de préstamo) solo aparecen si su rol puede verlas.
+2. Elija el **formato**: Excel (`.xlsx`) o CSV.
+3. Presione **Exportar**. El archivo tiene exactamente las mismas piezas que la búsqueda, con los mismos filtros.
+4. Si la búsqueda tiene **hasta 5 000 piezas**, el archivo se descarga en el momento. Si tiene **más**, se prepara en segundo plano y aparece en **Mis exportaciones** cuando está listo. Puede seguir trabajando mientras tanto.
 
 ### Estructura del archivo Excel generado
-- **Hoja `Resultados`**: Contiene la lista tabular con los mismos datos visibles en pantalla (código, denominación, colección, categoría, estado, ubicación, etc.).
-- **Hoja `Filtros`**: Registro de auditoría con la fecha y hora de generación, el usuario responsable, los filtros aplicados y las columnas omitidas por política de confidencialidad (ej. comodantes o tasación).
+- **Hoja `Resultados`**: las columnas que eligió, en el orden del panel.
+- **Hoja `Filtros`**: la fecha y hora de generación, el usuario, los filtros aplicados y las columnas omitidas por confidencialidad (por ejemplo, comodantes o valorización).
+
+Cada exportación queda registrada en la auditoría (quién, cuándo, con qué filtros y si incluyó datos restringidos).
 
 ---
 
 ## 5. Mis exportaciones
 
-En el menú superior, acceda a **Mis exportaciones** para revisar sus archivos generados:
-- Muestra el estado del trabajo: *Pendiente*, *En proceso*, *Listo* o *Fallido*.
-- Al finalizar, aparece el botón **Descargar archivo**.
-- **Caducidad**: Por seguridad y para optimizar el almacenamiento del servidor, los enlaces de descarga son válidos durante **24 horas**. Pasado ese tiempo, la exportación caduca y deberá solicitar una nueva si la requiere.
+El panel **Mis exportaciones**, debajo del panel de exportación, lista sus archivos recientes:
+- El estado de cada uno: *En cola*, *Preparándose*, *Lista*, *Falló* o *Caducada*. Mientras haya alguna en preparación, el estado se actualiza solo; también puede presionar **Actualizar**.
+- Cuando está lista, aparece el botón **Descargar**.
+- **Caducidad**: los archivos se conservan **72 horas**. Después, la exportación figura como *Caducada* y debe generarla de nuevo. El registro de la exportación se conserva.

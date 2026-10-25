@@ -96,6 +96,7 @@ HTTP_CODES = {
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
+    410: "gone",
     413: "payload_too_large",
     415: "unsupported_media_type",
     422: "request_validation_failed",
