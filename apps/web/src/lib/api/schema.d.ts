@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: cee8d53c36a5205f27b2c8f3219cc8274b19900a83f9a063b9341a2400cb6a35
+ * openapi-sha256: fdcac4171cb11825591e737be992969a126129d08f8498ee040f906556efb9d2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1162,7 +1162,10 @@ export interface paths {
         };
         /** Ficha de una pieza (campos sensibles según rol) */
         get: operations["getPieceById"];
-        /** Editar la ficha (auditoría campo a campo) */
+        /**
+         * Editar la ficha (auditoría campo a campo)
+         * @description Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3).
+         */
         put: operations["updatePiece"];
         post?: never;
         /** Eliminar lógicamente una pieza con motivo (RN-005) */
@@ -11697,7 +11700,10 @@ export interface operations {
     updatePiece: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description `version` de la ficha leída (ficha-pieza-crud D2). */
+                "If-Match"?: string | null;
+            };
             path: {
                 piece_id: string;
             };
@@ -11745,8 +11751,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Falta la cabecera `If-Match`. */
+            428: {
                 headers: {
                     [name: string]: unknown;
                 };

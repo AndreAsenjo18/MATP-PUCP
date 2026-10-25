@@ -5,10 +5,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
@@ -21,7 +22,13 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound, PermissionDenied, ValidationFailed
+from app.core.errors import (
+    ConflictError,
+    NotFound,
+    PermissionDenied,
+    PreconditionRequired,
+    ValidationFailed,
+)
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
@@ -318,18 +325,69 @@ def _piece_detail(piece_id: uuid.UUID, session: Session, user: CurrentUser) -> P
     return reader.detail(piece).model_copy(update={"merged_from": merged_from})
 
 
+EDIT_CONFLICT = (
+    "Otra persona guardó cambios en esta ficha mientras usted la editaba. Revise sus cambios "
+    "antes de volver a guardar."
+)
+PRECONDITION_MISSING = (
+    "Falta la versión de la ficha (cabecera If-Match): recargue la ficha antes de guardar."
+)
+
+
+def _requested_version(if_match: str | None) -> int:
+    """The version sent in If-Match (``3``, ``"3"`` or ``W/"3"``); 428 without it (D2)."""
+    raw = (if_match or "").strip().removeprefix("W/").strip('"')
+    if not raw.isdigit():
+        raise PreconditionRequired(PRECONDITION_MISSING)
+    return int(raw)
+
+
+def _edit_conflict(session: Session, user: CurrentUser, piece_id: uuid.UUID) -> ConflictError:
+    current = get_piece(session, piece_id)
+    return ConflictError(
+        EDIT_CONFLICT,
+        code="edit_conflict",
+        details={
+            "current_version": current.version,
+            "current": CatalogReader(session, Viewer(user.permissions))
+            .detail(current)
+            .model_dump(mode="json"),
+        },
+    )
+
+
 @router.put(
     "/{piece_id}",
     response_model=PieceDetail,
-    responses=NOT_FOUND,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae "
+            "su versión y sus valores actuales.",
+        },
+        428: {"model": ErrorResponse, "description": "Falta la cabecera `If-Match`."},
+    },
     summary="Editar la ficha (auditoría campo a campo)",
+    description="Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la "
+    "`version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión "
+    "(ficha-pieza-crud, diseño D2 y D3).",
     tags=["Piezas"],
     **implemented(),
 )
 def update_piece(
-    piece_id: uuid.UUID, body: PieceUpdate, session: SessionDep, user: Editor
+    piece_id: uuid.UUID,
+    body: PieceUpdate,
+    session: SessionDep,
+    user: Editor,
+    if_match: Annotated[
+        str | None,
+        Header(alias="If-Match", description="`version` de la ficha leída (ficha-pieza-crud D2)."),
+    ] = None,
 ) -> PieceDetail:
     piece = get_piece(session, piece_id)
+    if _requested_version(if_match) != piece.version:
+        raise _edit_conflict(session, user, piece_id)
     writer(session, user)
     changes = body.model_dump(exclude_unset=True, exclude={"code_i", "material_term_ids"})
     if "period" in changes:
@@ -345,7 +403,11 @@ def update_piece(
         catalog_service.update_piece(session, piece, code_i=code_i, **changes)
     if "code_i" in body.model_fields_set:
         set_inventory_code(session, piece, body.code_i)
-    session.commit()
+    try:
+        session.commit()
+    except StaleDataError:  # another edit was committed between the check and this one
+        session.rollback()
+        raise _edit_conflict(session, user, piece_id) from None
     return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
 

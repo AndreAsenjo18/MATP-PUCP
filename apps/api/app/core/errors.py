@@ -70,3 +70,9 @@ class ConflictError(BusinessRuleViolation):
     """The operation conflicts with the current state (e.g. deleting a term still in use)."""
 
     code = "conflict"
+
+
+class PreconditionRequired(DomainError):
+    """A write that needs the version the client read (If-Match) arrived without it (428)."""
+
+    code = "precondition_required"

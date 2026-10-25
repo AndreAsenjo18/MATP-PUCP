@@ -18819,6 +18819,7 @@
         "x-status": "implemented"
       },
       "put": {
+        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3).",
         "operationId": "updatePiece",
         "parameters": [
           {
@@ -18829,6 +18830,24 @@
               "format": "uuid",
               "title": "Piece Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "`version` de la ficha leída (ficha-pieza-crud D2).",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`version` de la ficha leída (ficha-pieza-crud D2).",
+              "title": "If-Match"
             }
           }
         ],
@@ -18883,6 +18902,16 @@
             },
             "description": "La pieza no existe o fue eliminada."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -18892,6 +18921,16 @@
               }
             },
             "description": "Datos no válidos."
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta la cabecera `If-Match`."
           }
         },
         "security": [

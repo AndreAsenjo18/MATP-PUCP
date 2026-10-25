@@ -8,7 +8,7 @@
 ## 2. API de piezas
 
 - [ ] 2.1 Verificar y ajustar `POST /api/v1/pieces` (ya implementada): 201 con auditoría de origen manual y reglas de dominio; pruebas: alta válida, sin denominación 422, comodato con I 409, Consulta interna 403 (Req: Operaciones de escritura de la ficha con auditoría)
-- [ ] 2.2 Ajustar `PUT /api/v1/pieces/{piece_id}` (verbo del contrato) con actualización parcial por JSON merge, `If-Match` y 409/428; pruebas: dos ediciones concurrentes, sin versión 428, guardado sin cambios sin auditoría y sin incremento de `version` (Req: Control de concurrencia en la edición)
+- [x] 2.2 Ajustar `PUT /api/v1/pieces/{piece_id}` (verbo del contrato) con actualización parcial por JSON merge, `If-Match` y 409/428; pruebas: dos ediciones concurrentes, sin versión 428, guardado sin cambios sin auditoría y sin incremento de `version` (Req: Control de concurrencia en la edición)
 - [ ] 2.3 Implementar `POST /api/v1/pieces/validate` en transacción siempre revertida; responde `{is_valid, issues[]}` con `severity` `error` o `warning`; prueba que verifica cero filas nuevas en `piece` y `audit_log` (Req: Validación previa sin persistencia)
 - [ ] 2.4 Verificar y ajustar `DELETE /api/v1/pieces/{piece_id}` (ya implementada): motivo obligatorio como parámetro de consulta `?reason=`; pruebas: sin motivo 422, con motivo la pieza queda eliminada lógicamente y auditada (Req: Operaciones de escritura de la ficha con auditoría; RNF-006)
 - [ ] 2.5 Aplicar transiciones de régimen en `PUT /api/v1/pieces/{piece_id}`; el motivo y el documento de respaldo viajan en la auditoría, sin columna nueva; pruebas de integración de los escenarios del requirement (Req: Transiciones controladas del régimen de tenencia)
