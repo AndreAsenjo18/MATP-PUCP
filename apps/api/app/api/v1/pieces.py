@@ -81,7 +81,12 @@ from app.modules.media.service import (
     comodato_restriction_term_id,
     verify_image_stream,
 )
-from app.modules.quality.completeness import ALERTS, active_alerts_for_piece, load_active_rules
+from app.modules.quality.completeness import (
+    ALERTS,
+    AlertCode,
+    active_alerts_for_piece,
+    load_active_rules,
+)
 from app.modules.quality.schemas import PieceAlert
 from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
@@ -124,6 +129,13 @@ def piece_filters(
     period_text: Annotated[str | None, Query(max_length=200)] = None,
     epoch_start_year: Annotated[int | None, Query(description="Año de inicio de época.")] = None,
     epoch_end_year: Annotated[int | None, Query(description="Año de fin de época.")] = None,
+    has_alerts: Annotated[
+        bool | None,
+        Query(description="true = piezas con alguna alerta de completitud; false = sin alertas."),
+    ] = None,
+    alert_code: Annotated[
+        AlertCode | None, Query(description="Solo piezas con esa alerta de completitud.")
+    ] = None,
     sort: PieceSort = "denomination",
 ) -> PieceFilter:
     regime = (
@@ -146,6 +158,8 @@ def piece_filters(
         period_text=period_text,
         epoch_start_year=epoch_start_year,
         epoch_end_year=epoch_end_year,
+        has_alerts=has_alerts,
+        alert_code=alert_code.value if alert_code else None,
     )
 
 

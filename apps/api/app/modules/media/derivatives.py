@@ -15,6 +15,11 @@ DISPLAY_MAX_DIM = 1600
 WEBP_QUALITY = 80
 
 
+def thumb_key(piece_id: object, asset_id: object) -> str:
+    """Storage key of an asset's thumbnail (`generate_derivatives` writes it there)."""
+    return f"pieces/{piece_id}/{asset_id}/thumb.webp"
+
+
 def _resize_image(data: bytes, max_dim: int) -> bytes:
     """Resize image keeping aspect ratio, max dimension = max_dim, output as WebP."""
     image = Image.open(io.BytesIO(data))
@@ -55,13 +60,13 @@ def generate_derivatives(
     thumb_data = _resize_image(source_data, THUMB_MAX_DIM)
     display_data = _resize_image(source_data, DISPLAY_MAX_DIM)
 
-    thumb_key = f"pieces/{piece_id}/{asset_id}/thumb.webp"
+    thumb = thumb_key(piece_id, asset_id)
     display_key = f"pieces/{piece_id}/{asset_id}/display.webp"
 
-    storage.put_bytes(thumb_key, thumb_data, "image/webp")
+    storage.put_bytes(thumb, thumb_data, "image/webp")
     storage.put_bytes(display_key, display_data, "image/webp")
 
-    return {"thumb_key": thumb_key, "display_key": display_key}
+    return {"thumb_key": thumb, "display_key": display_key}
 
 
 def rebuild_derivatives_cli() -> int:

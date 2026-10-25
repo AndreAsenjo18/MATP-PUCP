@@ -320,3 +320,27 @@ def replace_completeness_rules(
             rule.is_active = False
     session.flush()
     return list_completeness_rules(session)
+
+
+def _register_search_filters() -> None:
+    """Expone las alertas al filtro único de búsqueda (`PieceFilter.has_alerts` y
+    `PieceFilter.alert_code`, RF-032), con las mismas definiciones que el reporte y los KPI."""
+    from app.modules.search.filters import register_alert_predicate
+
+    def any_alert(session: Session) -> ColumnElement[bool]:
+        rules = load_active_rules(session)
+        return and_(
+            Piece.merged_into_id.is_(None), or_(*(alert_condition(c, rules) for c in ALERTS))
+        )
+
+    def one_alert(code: AlertCode) -> Callable[[Session], ColumnElement[bool]]:
+        return lambda session: and_(
+            Piece.merged_into_id.is_(None), alert_condition(code, load_active_rules(session))
+        )
+
+    register_alert_predicate("has_alerts", any_alert)
+    for code in ALERTS:
+        register_alert_predicate(code.value, one_alert(code))
+
+
+_register_search_filters()

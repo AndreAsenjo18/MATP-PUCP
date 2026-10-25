@@ -17,7 +17,6 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.api.deps import load_permissions
-from app.api.enums import TENURE_REGIME_LABELS
 from app.core.jobs import Heartbeat, SessionFactory, is_stale, register_recovery
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
@@ -26,12 +25,11 @@ from app.modules.audit.context import AuditContext, set_audit_context
 from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import CatalogReader, Viewer
-from app.modules.collections.models import Collection, Term
-from app.modules.locations.models import Location
+from app.modules.exports.results import masked_fields as sensitive_masked_fields
+from app.modules.exports.results import resolve_columns, result_row
 from app.modules.search.filters import PieceFilter
 from app.modules.search.models import ExportJobKind, ExportJobModel, ExportJobStatus
 from app.modules.users.models import AppUser
-from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
 
 logger = logging.getLogger(__name__)
 
@@ -116,35 +114,9 @@ def _run_results_export(
         viewer = Viewer(frozenset(user_perms))
         where_clause = piece_filter.to_where(session, viewer)
 
-        # Check sensitive columns permissions
-        masked_fields: list[str] = []
-        can_view_lender = PERM_DONOR_DATA in user_perms
-        can_view_loan = PERM_LOAN_TERMS in user_perms
-        can_view_valuation = PERM_VALUATION in user_perms
-
-        if not can_view_lender:
-            masked_fields.append("lender_name")
-        if not can_view_loan:
-            masked_fields.append("loan_agreement_ref")
-        if not can_view_valuation:
-            masked_fields.append("valuation")
-
-        columns = [
-            "Cdigo I",
-            "Denominacin",
-            "Coleccin",
-            "Rgimen de tenencia",
-            "Categora",
-            "Estado de conservacin",
-            "Ubicacin",
-            "Autor",
-            "Procedencia",
-            "poca",
-        ]
-        if can_view_lender:
-            columns.append("Comodante")
-        if can_view_loan:
-            columns.append("Convenio de prstamo")
+        columns = resolve_columns(params.get("columns"), user_perms)
+        masked_fields = sensitive_masked_fields(user_perms)
+        headers = [column.header for column in columns]
 
         query = select(Piece).where(where_clause).order_by(Piece.denomination)
         pieces = session.scalars(query).all()
@@ -159,51 +131,7 @@ def _run_results_export(
             for idx, piece in enumerate(pieces):
                 if idx % 100 == 0:
                     heartbeat.tick()
-                summary = summaries_by_id.get(piece.id)
-                code_i = summary.code_i if summary else ""
-                coll_name = ""
-                if piece.collection_id:
-                    c = session.get(Collection, piece.collection_id)
-                    coll_name = c.name if c else ""
-
-                cat_name = ""
-                if piece.category_id:
-                    term = session.get(Term, piece.category_id)
-                    cat_name = term.label if term else ""
-
-                state_name = ""
-                if piece.conservation_state_id:
-                    term = session.get(Term, piece.conservation_state_id)
-                    state_name = term.label if term else ""
-
-                loc_name = ""
-                if piece.current_location_id:
-                    loc = session.get(Location, piece.current_location_id)
-                    loc_name = loc.name if loc else ""
-
-                regime_label = (
-                    TENURE_REGIME_LABELS.get(piece.tenure_regime, piece.tenure_regime.value)
-                    if piece.tenure_regime
-                    else ""
-                )
-
-                row = [
-                    code_i,
-                    piece.denomination,
-                    coll_name,
-                    regime_label,
-                    cat_name,
-                    state_name,
-                    loc_name,
-                    piece.author or "",
-                    piece.provenance or "",
-                    piece.epoch_original_text or "",
-                ]
-                if can_view_lender:
-                    row.append(piece.lender_name or "")
-                if can_view_loan:
-                    row.append(piece.loan_agreement_ref or "")
-                yield row
+                yield result_row(session, piece, summaries_by_id.get(piece.id), columns)
 
         # Write output
         with tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
@@ -214,7 +142,7 @@ def _run_results_export(
                 write_table(
                     tmp_path,
                     row_generator(),
-                    columns,
+                    headers,
                     sheet_title="Resultados",
                     active_filters=piece_filter.describe(session),
                     user_label=user_label,
@@ -224,7 +152,7 @@ def _run_results_export(
             else:
                 with open(tmp_path, "w", encoding="utf-8-sig", newline="") as csv_f:
                     writer = csv.writer(csv_f)
-                    writer.writerow(columns)
+                    writer.writerow(headers)
                     for r in row_generator():
                         writer.writerow(r)
                 content_type = "text/csv"
@@ -264,8 +192,9 @@ def _run_results_export(
                     "format": fmt,
                     "row_count": row_count,
                     "filters": filter_dict,
-                    "includes_sensitive_fields": can_view_lender or can_view_loan,
+                    "includes_sensitive_fields": any(c.permission for c in columns),
                     "masked_fields": masked_fields,
+                    "columns": [c.key for c in columns],
                     "sha256": sha256_hash,
                 },
                 action=AuditAction.EXPORT,
