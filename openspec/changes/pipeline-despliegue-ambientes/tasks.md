@@ -24,7 +24,7 @@
 
 ## 5. Coordinación con otros changes
 
-- [ ] 5.1 Con la célula Plataforma, aplicar `/opsx:update despliegue-vm-y-respaldos` para que sus tareas 2.1 y 6.3 remitan a este change (D6), y actualizar las filas CD 1 y CD 2 de `docs/plan-sprints.md`. Sin tocar la guía de GitHub Flow ni el flujo de ramas. Verificar con `openspec validate --all --strict` en verde y que ambas tareas citan este change (Req: Despliegue automático…; Req: Producción solo…)
+- [x] 5.1 Con la célula Plataforma, aplicar `/opsx:update despliegue-vm-y-respaldos` para que sus tareas 2.1 y 6.3 remitan a este change (D6), y actualizar las filas CD 1 y CD 2 de `docs/plan-sprints.md`. Sin tocar la guía de GitHub Flow ni el flujo de ramas. Verificar con `openspec validate --all --strict` en verde y que ambas tareas citan este change (Req: Despliegue automático…; Req: Producción solo…) — hecho el 2026-10-25 en el PR #108, con la revisión de Plataforma (`amvz1704`): las tareas 2.1 y 6.3 de `despliegue-vm-y-respaldos` remiten a este change y la fila CD 1 de `docs/plan-sprints.md` lo cita (la de CD 2 ya lo hacía); sin cambios en la guía de GitHub Flow
 
 ## 6. Cierre del change
 
