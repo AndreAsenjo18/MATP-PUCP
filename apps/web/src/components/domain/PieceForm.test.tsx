@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { initialPieceCatalogs, type PieceUpdateResult } from "@/lib/data/pieces";
+import { initialPieceCatalogs, PRECONDITION_MESSAGE, type PieceUpdateResult } from "@/lib/data/pieces";
 import { draftKey, saveDraft, type DraftStorage } from "@/lib/forms/piece-draft";
 import { EMPTY_PIECE_FORM, type PieceFormValues } from "@/lib/forms/piece-form";
 import { memoryStorage } from "@/test/memory-storage";
@@ -62,6 +62,12 @@ describe("outcomeFromUpdate", () => {
 
     expect(outcomeFromUpdate(immutable, "x")).toEqual({ status: "error", message: "El código I está bloqueado." });
     expect(outcomeFromUpdate(offline, "x")).toEqual({ status: "error", message: "No se pudo conectar con el servidor." });
+  });
+
+  it("el 428 (la ficha abierta no indica su versión) pide recargar antes de guardar", () => {
+    const precondition: PieceUpdateResult = { status: "rejected", code: "precondition_required", message: PRECONDITION_MESSAGE };
+
+    expect(outcomeFromUpdate(precondition, "x")).toEqual({ status: "error", message: PRECONDITION_MESSAGE });
   });
 });
 

@@ -113,6 +113,9 @@ export type PieceUpdateResult =
 
 /** Código de error de la edición concurrente (design D2 de `ficha-pieza-crud`). */
 export const EDIT_CONFLICT_CODE = "edit_conflict";
+/** Código del `428`: la edición no indicó en `If-Match` qué versión de la ficha tenía abierta. */
+export const PRECONDITION_CODE = "precondition_required";
+export const PRECONDITION_MESSAGE = "La ficha abierta no indica su versión: recárguela antes de guardar los cambios.";
 /** `aborted`: la validación fue reemplazada o cancelada; quien llama debe ignorarla. */
 export type PieceValidationOutcome =
   | { status: "ok"; result: PieceValidationResult }
@@ -255,12 +258,11 @@ export async function createPiece(input: PieceCreateInput): Promise<PieceCreateR
 }
 
 /**
- * `PUT /pieces/{piece_id}` (actualización parcial). Un 409 `edit_conflict` se informa como
- * `conflict`. Todavía no envía `If-Match`: la columna `version` y la precondición (409/428) llegan
- * con las tareas 1.1 y 2.2 del backend, y `PieceDetail` aún no expone `version`. En modo mock
- * nunca hay conflicto (una sola sesión).
+ * `PUT /pieces/{piece_id}` (actualización parcial) con la versión de la ficha abierta en
+ * `If-Match` (design D2). Un 409 `edit_conflict` se informa como `conflict`; un 428 (sin versión)
+ * como `rejected` con `precondition_required`. En modo mock nunca hay conflicto (una sola sesión).
  */
-export async function updatePiece(id: string, input: PieceUpdateInput): Promise<PieceUpdateResult> {
+export async function updatePiece(id: string, input: PieceUpdateInput, version?: number): Promise<PieceUpdateResult> {
   if (getApiMode() === "mock") {
     const current = getPieceDetail(id);
     if (!current) return { status: "rejected", code: "not_found", message: "La pieza no existe." };
@@ -269,10 +271,12 @@ export async function updatePiece(id: string, input: PieceUpdateInput): Promise<
   try {
     const { data, error } = await client().PUT("/api/v1/pieces/{piece_id}", {
       params: { path: { piece_id: id } },
+      headers: version === undefined ? undefined : { "If-Match": String(version) },
       body: input,
     });
     if (error) {
       if (isEditConflict(error)) return { status: "conflict", message: apiErrorMessage(error) };
+      if (isRecord(error) && error.code === PRECONDITION_CODE) return { status: "rejected", code: PRECONDITION_CODE, message: PRECONDITION_MESSAGE };
       return failureFrom(error);
     }
     return { status: "ok", piece: data };

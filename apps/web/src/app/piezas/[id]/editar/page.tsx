@@ -36,6 +36,8 @@ interface EditorViewProps {
 function EditorView({ piece, afterSave }: EditorViewProps) {
   const router = useRouter();
   const { hasPermission } = useSession();
+  // Versión de la ficha contra la que se guarda (If-Match, design D2 de ficha-pieza-crud).
+  const [version, setVersion] = useState(piece.version);
 
   if (!hasPermission("pieces.update")) {
     return <PermissionNotice>Su rol no tiene permiso para editar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
@@ -43,7 +45,8 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
 
   async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {
     const input = toUpdateInput(values, piece.period, piece.masked_fields ?? []);
-    const result = await updatePiece(piece.id, input);
+    const result = await updatePiece(piece.id, input, version);
+    if (result.status === "ok") setVersion(result.piece.version);
     const outcome = outcomeFromUpdate(
       result,
       getApiMode() === "live" ? "Cambios guardados." : "Cambios guardados en esta sesión de demostración.",
@@ -55,7 +58,10 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
   /** Versión actual de la ficha en el servidor: solo se pide tras un 409, para «Ver cambios del otro usuario». */
   async function loadCurrentValues(): Promise<PieceFormValues | null> {
     const current = await fetchPieceDetail(piece.id);
-    return current.status === "ok" ? toFormValues(current.piece) : null;
+    if (current.status !== "ok") return null;
+    // Quien vio los cambios del otro usuario guarda contra esa versión, no contra la que abrió.
+    setVersion(current.piece.version);
+    return toFormValues(current.piece);
   }
 
   return (

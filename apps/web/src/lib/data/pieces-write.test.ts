@@ -9,6 +9,7 @@ import {
   createPieceValidator,
   fetchPieceCatalogs,
   initialPieceCatalogs,
+  PRECONDITION_MESSAGE,
   updatePiece,
   validatePiece,
   type PieceCreateInput,
@@ -362,6 +363,25 @@ describe("updatePiece (modo live): conflicto de edición", () => {
     useLive(async () => json(409, { code: "edit_conflict", message }));
 
     expect(await updatePiece(ids.piece(1), { notes: "x" })).toEqual({ status: "conflict", message });
+  });
+
+  it("envía la versión de la ficha abierta en If-Match (design D2)", async () => {
+    const detail = detailOf(1);
+    const fetchMock = useLive(async () => json(200, { ...detail, version: 4 }));
+
+    const result = await updatePiece(detail.id, { notes: "Revisado" }, 3);
+
+    expect(lastRequest(fetchMock).headers.get("If-Match")).toBe("3");
+    expect(result.status === "ok" && result.piece.version).toBe(4);
+  });
+
+  it("sin versión no inventa la cabecera y el 428 se explica en lenguaje claro", async () => {
+    const fetchMock = useLive(async () => json(428, { code: "precondition_required", message: "Falta If-Match." }));
+
+    const result = await updatePiece(ids.piece(1), { notes: "x" });
+
+    expect(lastRequest(fetchMock).headers.has("If-Match")).toBe(false);
+    expect(result).toEqual({ status: "rejected", code: "precondition_required", message: PRECONDITION_MESSAGE });
   });
 
   it("otros 409 (código I inmutable) siguen siendo rejected y no se tratan como conflicto", async () => {

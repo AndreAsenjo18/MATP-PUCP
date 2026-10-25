@@ -26,7 +26,7 @@
 - [x] 4.2 Crear `app/piezas/nueva` (no existe en la maqueta) y conectar `app/piezas/[id]/editar` al modo `live` (`lib/data/pieces.ts`: `createPiece`, `updatePiece`, `validatePiece`) con debounce y `AbortController`; pruebas Vitest de la capa de datos (rama mock y rama live con `fetch` simulado) (Req: Validación previa sin persistencia; RF-043)
 - [x] 4.3 Mostrar errores y advertencias junto al campo, conflicto 409 con opción "ver cambios del otro usuario" y borrador en `sessionStorage`; prueba de componente del conflicto (Req: Control de concurrencia en la edición; RNF-010)
 - [x] 4.4 Diálogos de eliminación (motivo obligatorio), restauración, corrección de código I (solo con permiso) y confirmación de separación de códigos concatenados; pruebas de componente (Req: Operación de corrección auditada del código I)
-- [ ] 4.5 Adaptar el editor al control de concurrencia del backend: leer `version` de la ficha, enviar `If-Match` en `PUT` y tratar el `428` (falta la precondición) y el `409 edit_conflict` ya contemplado; la capa de datos (`lib/data/pieces.ts`) y los componentes de edición deben cubrir los tres casos con pruebas Vitest (Req: Control de concurrencia en la edición; RNF-007)
+- [x] 4.5 Adaptar el editor al control de concurrencia del backend: leer `version` de la ficha, enviar `If-Match` en `PUT` y tratar el `428` (falta la precondición) y el `409 edit_conflict` ya contemplado; la capa de datos (`lib/data/pieces.ts`) y los componentes de edición deben cubrir los tres casos con pruebas Vitest (Req: Control de concurrencia en la edición; RNF-007)
 
 ## 5. Cierre del change
 
