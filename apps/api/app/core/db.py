@@ -26,6 +26,9 @@ def make_engine(database_url: str, *, connect_timeout: float = 2.0, echo: bool =
     connect_args: dict[str, object] = {}
     if database_url.startswith("postgresql"):
         connect_args["connect_timeout"] = max(1, int(connect_timeout))
+        # JIT off for every connection (ADR-018): on these short OLTP queries compiling costs more
+        # than running them (KPI 714 → 266 ms, incomplete report page 2.6 s → 92 ms, 20 000 pieces).
+        connect_args["options"] = "-c jit=off"
     return create_engine(database_url, pool_pre_ping=True, echo=echo, connect_args=connect_args)
 
 
