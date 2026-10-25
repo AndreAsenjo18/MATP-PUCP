@@ -37,6 +37,9 @@ IDENTIFIER_TYPES = [
     (TYPE_OTHER, "Otro código histórico", NormalizationRule.GENERIC, False, False, False, True),
 ]  # fmt: skip
 
+#: Types whose code and structural rules are fixed (colecciones-y-vocabularios-admin, D1).
+SYSTEM_IDENTIFIER_TYPES = frozenset({TYPE_INVENTORY, TYPE_COLLECTION})
+
 #: View of the photos imported with a batch, set later by a person (importacion-masiva-fotografias,
 #: D5). Outside the team's contract, like SUPERIOR; never drawn for the synthetic photos.
 UNSPECIFIED_VIEW_TYPE = "SIN_ESPECIFICAR"
@@ -258,6 +261,7 @@ def seed_reference_data(session: Session) -> ReferenceData:
             owned_pieces_only=owned,
             allowed_for_temporary_loan=temporary,
             sort_order=order,
+            is_system=code in SYSTEM_IDENTIFIER_TYPES,
             description="[SUPUESTO] Tipo inicial; ajustar con la contraparte.",
         )
     session.add_all(identifier_types.values())

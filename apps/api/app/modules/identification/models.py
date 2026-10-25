@@ -58,6 +58,9 @@ class IdentifierType(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base)
     allowed_for_temporary_loan: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # System types (I, COLECCION): code and structural rules are fixed; only label, description
+    # and order change through the API (RN-002, RN-003; colecciones-y-vocabularios-admin, D1).
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class PieceIdentifier(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
