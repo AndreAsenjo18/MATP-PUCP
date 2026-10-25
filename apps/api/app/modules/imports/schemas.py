@@ -907,3 +907,35 @@ class ImportPhotoSummary(BaseModel):
     duplicates: int = Field(
         description="Fotos que ya están en la pieza destino y esperan confirmación."
     )
+
+
+class PhotoDecisionRequest(BaseModel):
+    """A decision of a person on photos of the batch (design D4).
+
+    Only ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and
+    ``reorder`` come later.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "op": "assign",
+                    "photo_ids": ["01920000-0000-7000-8000-000000000701"],
+                    "row_id": "01920000-0000-7000-8000-000000000611",
+                }
+            ]
+        }
+    )
+
+    op: Literal["assign"] = Field(
+        description="`assign`: las fotos quedan asignadas a mano a `row_id`, después de su "
+        "última foto; el emparejamiento ya no las cambia."
+    )
+    photo_ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+    row_id: uuid.UUID = Field(description="Fila del mismo lote.")
+
+
+class PhotoDecisionOut(BaseModel):
+    batch_id: uuid.UUID
+    photos: list[ImportPhotoOut]

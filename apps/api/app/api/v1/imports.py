@@ -69,7 +69,7 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
-from app.modules.imports.photo_review import photos_query
+from app.modules.imports.photo_review import assign_photos, photos_query
 from app.modules.imports.photo_review import summary as photo_summary
 from app.modules.imports.photo_review import thumbnail_url as photo_thumbnail_url
 from app.modules.imports.photo_upload import (
@@ -99,6 +99,8 @@ from app.modules.imports.schemas import (
     MappingTemplateUpdate,
     PhotoCompleteOut,
     PhotoCompleteRequest,
+    PhotoDecisionOut,
+    PhotoDecisionRequest,
     PhotoStateOut,
     PhotoUploadItemOut,
     PhotoUploadUrlsOut,
@@ -716,6 +718,41 @@ def summarize_import_photos(
 ) -> ImportPhotoSummary:
     get_batch(session, batch_id)
     return ImportPhotoSummary(batch_id=batch_id, **photo_summary(session, batch_id))
+
+
+@router.patch(
+    "/imports/{batch_id}/photos",
+    response_model=PhotoDecisionOut,
+    responses={
+        **NOT_FOUND,
+        409: {"model": ErrorResponse, "description": "El lote ya no admite cambios en sus fotos."},
+    },
+    summary="Fotografías del lote: asignar fotos a una fila",
+    description="`assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, "
+    "en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya "
+    "no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al "
+    "catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).",
+    **implemented(),
+)
+def decide_import_photos(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: PhotoDecisionRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoDecisionOut:
+    writer(session, user)
+    photos = assign_photos(session, batch_id, body.photo_ids, body.row_id)
+    session.commit()
+    storage: ObjectStorage = request.app.state.storage
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    return PhotoDecisionOut(
+        batch_id=batch_id,
+        photos=[
+            ImportPhotoOut.from_photo(photo, photo_thumbnail_url(storage, photo, ttl))
+            for photo in photos
+        ],
+    )
 
 
 @router.post(

@@ -86,6 +86,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/imports/{}/photos/complete"),
     ("get", "/imports/{}/photos"),
     ("get", "/imports/{}/photos/summary"),
+    ("patch", "/imports/{}/photos"),
     ("post", "/imports/{}/photos/upload-urls"),
     ("put", "/imports/{}/mapping"),
     ("patch", "/imports/{}/rows/{}"),

@@ -9,16 +9,21 @@ never changes them again (task 3.3). Nothing reaches the catalogue until the bat
 """
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import ConflictError, ValidationFailed
 from app.core.storage import ObjectStorage
-from app.modules.imports.models import ImportPhoto
+from app.modules.imports.models import ImportPhoto, ImportRow
 from app.modules.imports.models import ImportPhotoStatus as P
+from app.modules.imports.models import PhotoMatchSource as Source
 from app.modules.imports.models import PhotoMatchStatus as M
+from app.modules.imports.photos import MATCHING_STATES
+from app.modules.imports.state import STATUS_LABELS, lock_batch
 
 #: Photos whose thumbnail exists: it is written when the photo is verified (task 2.2).
 WITH_THUMBNAIL = frozenset({P.VERIFIED, P.APPLIED})
@@ -91,3 +96,62 @@ def summary(session: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         "by_match_status": by_match,
         "duplicates": duplicates,
     }
+
+
+def assign_photos(
+    session: Session, batch_id: uuid.UUID, photo_ids: Sequence[uuid.UUID], row_id: uuid.UUID
+) -> list[ImportPhoto]:
+    """Assign verified photos of the batch to one of its rows, in the order given (D4).
+
+    The batch row is locked first, as the photo verification does, so the matching of new
+    photos never works on the same batch at the same time. The caller commits.
+    """
+    batch = lock_batch(session, batch_id)
+    if batch.status not in MATCHING_STATES:
+        raise ConflictError(
+            f"El lote está en «{STATUS_LABELS[batch.status]}»: sus fotos ya no se pueden asignar.",
+            code="batch_not_reviewable",
+            details={"current_status": batch.status.value},
+        )
+    row = session.get(ImportRow, row_id)
+    if row is None or row.batch_id != batch.id:
+        raise ValidationFailed(
+            "La fila indicada no es de este lote.",
+            code="row_not_in_batch",
+            details={"row_id": str(row_id)},
+        )
+    wanted = list(dict.fromkeys(photo_ids))
+    found = {
+        photo.id: photo
+        for photo in session.scalars(
+            select(ImportPhoto).where(ImportPhoto.batch_id == batch.id, ImportPhoto.id.in_(wanted))
+        )
+    }
+    foreign = [str(photo_id) for photo_id in wanted if photo_id not in found]
+    if foreign:
+        raise ValidationFailed(
+            "Algunas fotos no pertenecen a este lote.",
+            code="photo_not_in_batch",
+            details={"photo_ids": foreign},
+        )
+    unverified = [str(photo_id) for photo_id in wanted if found[photo_id].status is not P.VERIFIED]
+    if unverified:
+        raise ValidationFailed(
+            "Solo se asignan fotos verificadas: espere a que termine su verificación.",
+            code="photo_not_verified",
+            details={"photo_ids": unverified},
+        )
+    last = session.scalar(
+        select(func.max(ImportPhoto.sort_key)).where(
+            ImportPhoto.row_id == row.id, ImportPhoto.id.not_in(wanted)
+        )
+    )
+    for position, photo_id in enumerate(wanted, start=(last or 0) + 1):
+        photo = found[photo_id]
+        photo.match_status = M.MANUAL
+        photo.match_source = Source.MANUAL
+        photo.row_id = row.id
+        photo.candidate_row_ids = None
+        photo.sort_key = position
+    session.flush()
+    return [found[photo_id] for photo_id in wanted]

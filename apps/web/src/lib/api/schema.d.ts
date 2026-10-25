@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 606c6c7248311ba07fb736c20a5f5940abbe6ccef99a3ecb5e79a6aaac6252aa
+ * openapi-sha256: c7b8935dbbd7a8284868273f1ff0beaa0295714febd1813734b4e554e57ba7cf
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -829,7 +829,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Fotografías del lote: asignar fotos a una fila
+         * @description `assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).
+         */
+        patch: operations["decideImportPhotos"];
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/photos/complete": {
@@ -5550,6 +5554,46 @@ export interface components {
              * @description Fotos cuyo archivo ya se subió (hasta 100).
              */
             photo_ids: string[];
+        };
+        /** PhotoDecisionOut */
+        PhotoDecisionOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Photos */
+            photos: components["schemas"]["ImportPhotoOut"][];
+        };
+        /**
+         * PhotoDecisionRequest
+         * @description A decision of a person on photos of the batch (design D4).
+         *
+         *     Only ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and
+         *     ``reorder`` come later.
+         * @example {
+         *       "op": "assign",
+         *       "photo_ids": [
+         *         "01920000-0000-7000-8000-000000000701"
+         *       ],
+         *       "row_id": "01920000-0000-7000-8000-000000000611"
+         *     }
+         */
+        PhotoDecisionRequest: {
+            /**
+             * Op
+             * @description `assign`: las fotos quedan asignadas a mano a `row_id`, después de su última foto; el emparejamiento ya no las cambia.
+             * @constant
+             */
+            op: "assign";
+            /** Photo Ids */
+            photo_ids: string[];
+            /**
+             * Row Id
+             * Format: uuid
+             * @description Fila del mismo lote.
+             */
+            row_id: string;
         };
         /** PhotoFileIn */
         PhotoFileIn: {
@@ -10449,6 +10493,77 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decideImportPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoDecisionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote ya no admite cambios en sus fotos. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

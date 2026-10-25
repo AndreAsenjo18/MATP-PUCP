@@ -7751,6 +7751,71 @@
         "title": "PhotoCompleteRequest",
         "type": "object"
       },
+      "PhotoDecisionOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/ImportPhotoOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "photos"
+        ],
+        "title": "PhotoDecisionOut",
+        "type": "object"
+      },
+      "PhotoDecisionRequest": {
+        "description": "A decision of a person on photos of the batch (design D4).\n\nOnly ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and\n``reorder`` come later.",
+        "examples": [
+          {
+            "op": "assign",
+            "photo_ids": [
+              "01920000-0000-7000-8000-000000000701"
+            ],
+            "row_id": "01920000-0000-7000-8000-000000000611"
+          }
+        ],
+        "properties": {
+          "op": {
+            "const": "assign",
+            "description": "`assign`: las fotos quedan asignadas a mano a `row_id`, después de su última foto; el emparejamiento ya no las cambia.",
+            "title": "Op",
+            "type": "string"
+          },
+          "photo_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Photo Ids",
+            "type": "array"
+          },
+          "row_id": {
+            "description": "Fila del mismo lote.",
+            "format": "uuid",
+            "title": "Row Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "photo_ids",
+          "row_id"
+        ],
+        "title": "PhotoDecisionRequest",
+        "type": "object"
+      },
       "PhotoFileIn": {
         "properties": {
           "content_sha256": {
@@ -16636,6 +16701,104 @@
           }
         ],
         "summary": "Fotografías del lote: bandeja con filtros y miniaturas",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "patch": {
+        "description": "`assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).",
+        "operationId": "decideImportPhotos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite cambios en sus fotos."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: asignar fotos a una fila",
         "tags": [
           "Importación"
         ],
