@@ -11,6 +11,7 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select
@@ -30,6 +31,7 @@ from app.modules.identification.normalization import (
     TYPE_PUCP,
 )
 from app.modules.locations.models import Location, PieceMovement
+from app.modules.reports.models import PieceValuation
 from app.modules.users.sensitive import PERM_EXACT_LOCATION, PUBLIC_LOCATION_LEVELS
 
 NO_COLLECTION = "Sin colección"
@@ -421,4 +423,97 @@ def by_location(
         totals={"Piezas": len(rows), "Nunca verificadas": never},
         filters=filters,
         message=message,
+    )
+
+
+# ------------------------------------------------------------------------- valuation
+VALUATION_COLUMNS = ["Colección", "Moneda", "Piezas valorizadas", "Total"]
+
+
+def _current_valuations(
+    session: Session, piece_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, PieceValuation]:
+    """The most recent valuation of each piece, by ``valued_on`` (ties: the last recorded)."""
+    current: dict[uuid.UUID, PieceValuation] = {}
+    if not piece_ids:
+        return current
+    statement = (
+        select(PieceValuation)
+        .where(PieceValuation.piece_id.in_(piece_ids))
+        .order_by(PieceValuation.valued_on.desc(), PieceValuation.recorded_at.desc())
+    )
+    for valuation_row in session.scalars(statement):
+        current.setdefault(valuation_row.piece_id, valuation_row)
+    return current
+
+
+def valuation(
+    session: Session,
+    viewer: Viewer,
+    *,
+    collection_id: uuid.UUID | None = None,
+    include_loans_for_use: bool = True,
+) -> ReportData:
+    """Valuation by collection and currency (D6, RF-037) over the same pieces as the permanent
+    inventory, with the most recent valuation of each one. No currency conversion: every
+    currency has its own total, and the pieces without a valuation are counted apart."""
+    regimes = [TenureRegime.OWNED] + ([TenureRegime.LOAN_FOR_USE] if include_loans_for_use else [])
+    statement = _active_pieces(session).where(Piece.tenure_regime.in_(regimes))
+    title = "Valorización por colección"
+    filters: dict[str, Any] = {"include_loans_for_use": include_loans_for_use}
+    paths = _collection_paths(session)
+    if collection_id is not None:
+        if collection_id not in paths:
+            raise ValidationFailed(
+                "La colección indicada no existe.",
+                code="invalid_report_parameter",
+                details={"parameter": "collection_id", "value": str(collection_id)},
+            )
+        statement = statement.where(Piece.collection_id.in_(_descendants(session, collection_id)))
+        title = f"Valorización de la colección {paths[collection_id][-1].name}"
+        filters["collection"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
+    pieces = list(session.scalars(statement))
+    current = _current_valuations(session, [piece.id for piece in pieces])
+
+    groups: dict[tuple[str, str], tuple[int, Decimal]] = {}
+    by_currency: dict[str, tuple[int, Decimal]] = {}
+    for piece in pieces:
+        found = current.get(piece.id)
+        if found is None:
+            continue
+        name = (
+            PATH_SEPARATOR.join(c.name for c in paths[piece.collection_id])
+            if piece.collection_id in paths
+            else NO_COLLECTION
+        )
+        count, total = groups.get((name, found.currency), (0, Decimal(0)))
+        groups[(name, found.currency)] = (count + 1, total + found.amount)
+        count, total = by_currency.get(found.currency, (0, Decimal(0)))
+        by_currency[found.currency] = (count + 1, total + found.amount)
+
+    rows: list[list[Any]] = [
+        [name, currency, count, total]
+        for (name, currency), (count, total) in sorted(
+            groups.items(), key=lambda item: (item[0][0] == NO_COLLECTION, item[0])
+        )
+    ]
+    valued = sum(count for count, _total in by_currency.values())
+    totals: dict[str, Any] = {
+        "Piezas": len(pieces),
+        "Piezas valorizadas": valued,
+        "Piezas sin valorización": len(pieces) - valued,
+    }
+    for currency, (_count, total) in sorted(by_currency.items()):
+        totals[f"Total {currency}"] = total
+    return ReportData(
+        title=title,
+        columns=VALUATION_COLUMNS,
+        rows=rows,
+        subtotals=[
+            Subtotal("Moneda", currency, count)
+            for currency, (count, _total) in sorted(by_currency.items())
+        ],
+        totals=totals,
+        filters=filters,
+        message=None if rows else "No hay piezas valorizadas con estos filtros.",
     )

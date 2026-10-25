@@ -77,6 +77,12 @@ class Settings(BaseSettings):
         gt=0,
         description="Umbral de la cuota de fotos (bytes); vacío = sin aviso.",
     )
+    # --- Valuation report (reportes-inventario, design D6; RF-037) -------------
+    # Off until the museum confirms it belongs to phase 1 [SUPUESTO]: very sensitive data.
+    feature_valuation_report: bool = Field(
+        default=False,
+        description="Habilita el reporte de valorización (además exige sensitive.valuation).",
+    )
 
     # Authentication: opaque server-side sessions, not JWT (ADR-009). There is no shared secret
     # to configure: the session token is random and only its SHA-256 digest is stored.

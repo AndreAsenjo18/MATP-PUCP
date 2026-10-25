@@ -51,6 +51,25 @@ Pulse **Vista imprimible**: se abre una pestaña con el reporte completo, listo 
 - Cada colección empieza en una página nueva.
 - Si el reporte tiene más de **2 000 filas**, no se imprime: el sistema sugiere exportarlo a Excel o filtrar por colección.
 
+## Valorización (desactivada por ahora)
+
+El reporte **Valorización por colección** suma, por colección y por moneda, la valorización más reciente de cada pieza del inventario permanente, y cuenta las piezas sin valorización. No convierte monedas: los soles y los dólares tienen su propio total.
+
+Es un dato muy sensible, por eso:
+
+- está **desactivado** hasta que el museo confirme que se necesita en esta fase (pregunta W4); quien administra el sistema lo activa con `FEATURE_VALUATION_REPORT=true`;
+- solo lo pueden generar los roles con el permiso **Ver valorización** (Administrador y Gestor de colecciones); con otro rol, el sistema responde que no tiene permiso;
+- **cada vez** que alguien lo genera, aunque no lo descargue, queda registrado en la auditoría.
+
+Las valorizaciones no se capturan desde la ficha. Quien administra el sistema las carga desde un archivo CSV con las columnas `codigo, monto, moneda, fecha, fuente, notas`, donde `codigo` es un código vigente de la pieza y `fecha` va como AAAA-MM-DD:
+
+```
+python -m app.reports.load_valuations valorizaciones.csv           # solo revisa, no escribe
+python -m app.reports.load_valuations valorizaciones.csv --apply   # registra las filas válidas
+```
+
+El comando informa cada fila con error (código que no existe, monto o fecha mal escritos). Una valorización nunca se reemplaza: una nueva se agrega con su fecha. Si se vuelve a cargar el mismo archivo, las filas ya registradas se omiten.
+
 ## Si algo sale mal
 
 | Qué ve | Qué hacer |

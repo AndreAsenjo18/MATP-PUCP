@@ -605,16 +605,26 @@ def export_excel_report(
             "description": "El reporte en JSON (una página) o, con `format`, el archivo.",
         },
         202: {"model": ExportJob, "description": "Reporte grande: se genera en segundo plano."},
-        403: {"description": "`exact_location_required`: detalle por debajo del espacio."},
-        404: {"description": "`report_not_found`, con los reportes disponibles para su rol."},
+        403: {
+            "description": "`exact_location_required`: detalle por debajo del espacio; "
+            "`permission_denied`: reporte sin su permiso (valorización)."
+        },
+        404: {
+            "description": "`report_not_found`, con los reportes disponibles para su rol; "
+            "también la valorización mientras `FEATURE_VALUATION_REPORT` está desactivada."
+        },
     },
-    summary="Reportes: inventario general, por colección, por ubicación e incompletas (RF-033)",
+    summary="Reportes: inventario general, por colección, por ubicación, incompletas y "
+    "valorización (RF-033, RF-037)",
     description="Catálogo cerrado de reportes generados sobre una instantánea consistente: el "
     "total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, "
     "piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo "
     "`include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el "
     "permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en "
-    "segundo plano (202) si supera el límite de la exportación síncrona.",
+    "segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza "
+    "por colección y moneda la valorización más reciente de cada pieza: exige "
+    "`sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada "
+    "generación queda en la auditoría (RNF-014).",
     tags=["Reportes"],
     **implemented(),
 )
@@ -645,7 +655,12 @@ def get_report(
         not_verified_since_days=not_verified_since_days,
     )
     permissions = frozenset(user.permissions)
-    data = reports.build(report_type, session, permissions, params)
+    features = (
+        frozenset({reports.VALUATION_FEATURE})
+        if request.app.state.settings.feature_valuation_report
+        else frozenset()
+    )
+    data = reports.build(report_type, session, permissions, params, features)
     generated_at = utcnow()
     generated_by = user.email or "usuario"
     if export_format is not None:
@@ -655,7 +670,11 @@ def get_report(
                 kind=ExportJobKind.REPORT,
                 requested_by_id=user.id,
                 format=fmt,
-                params={"report_type": report_type, **reports.serialize_params(params)},
+                params={
+                    "report_type": report_type,
+                    "features": sorted(features),
+                    **reports.serialize_params(params),
+                },
                 status=ExportJobStatus.PENDING,
                 row_count=len(data.rows),
             )
@@ -684,6 +703,9 @@ def get_report(
             media_type=media_type,
             headers={"Content-Disposition": f'attachment; filename="reporte-{report_type}.{fmt}"'},
         )
+    if reports.REPORTS[report_type].audit_every_generation:
+        reports.record_report_export(session, user.id, generated_by, report_type, "json", data)
+        session.commit()
     start = (page - 1) * page_size
     return ReportOut(
         report_type=ReportType(report_type),

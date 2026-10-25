@@ -51,6 +51,7 @@ GROUPS = [
             "identifier_type",
             "piece_material",
             "conservation_assessment",
+            "piece_valuation",
             "piece_source_record",
             "media_asset",
         ],
@@ -168,6 +169,7 @@ LABELS = {
     ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
+    ("piece_valuation", "piece_id"): "valorizaciones",
 }
 
 
