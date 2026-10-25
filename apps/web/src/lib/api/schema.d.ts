@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 4ddeaaa43c614e2ef23dc02b7c7f071fd2fb0d396e863e52aa996a005974aa9a
+ * openapi-sha256: 2361a95e49a4eb1265e83224fcc4fc5aa57b87072e0895540fdecc3e22dada56
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -334,6 +334,44 @@ export interface paths {
         /** Crear una línea artesanal o categoría (RF-011) */
         post: operations["createCategory"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/collection-acronym-aliases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Siglas históricas de colección vigentes (RF-023) */
+        get: operations["listAcronymAliases"];
+        put?: never;
+        /**
+         * Registrar una sigla histórica de una colección (RF-023)
+         * @description El alias es único entre los activos (`acronym_alias_taken`) y no puede ser la sigla actual de una colección (`alias_is_current_acronym`).
+         */
+        post: operations["createAcronymAlias"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/collection-acronym-aliases/{alias_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar lógicamente una sigla histórica con motivo (RN-005) */
+        delete: operations["deleteAcronymAlias"];
         options?: never;
         head?: never;
         patch?: never;
@@ -978,6 +1016,30 @@ export interface paths {
         put?: never;
         /** Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil) */
         post: operations["movePiecesBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/normalization-settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Parámetro de normalización vigente (RN-010)
+         * @description Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.
+         */
+        get: operations["getNormalizationSetting"];
+        /**
+         * Cambiar un parámetro de normalización (RN-010, RF-023)
+         * @description Se aplica en adelante al ingreso manual, la importación y la búsqueda. Queda en la auditoría.
+         */
+        put: operations["putNormalizationSetting"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1761,6 +1823,54 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AcronymAliasCreate
+         * @example {
+         *       "alias": "R.E.P.",
+         *       "collection_id": "01920000-0000-7000-8000-000000000201"
+         *     }
+         */
+        AcronymAliasCreate: {
+            /**
+             * Alias
+             * @description Sigla histórica, como se escribe.
+             */
+            alias: string;
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+        };
+        /** AcronymAliasOut */
+        AcronymAliasOut: {
+            /** Alias */
+            alias: string;
+            /**
+             * Alias Normalized
+             * @description Sin puntos ni espacios, en mayúsculas (`REP`).
+             */
+            alias_normalized: string;
+            /** Collection Acronym */
+            collection_acronym: string | null;
+            /**
+             * Collection Id
+             * Format: uuid
+             */
+            collection_id: string;
+            /** Collection Name */
+            collection_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /**
          * AiBatchOut
          * @description State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).
@@ -2843,6 +2953,19 @@ export interface components {
         CompletenessRulesUpdate: {
             /** Rules */
             rules: components["schemas"]["CompletenessRuleIn"][];
+        };
+        /** ConcatenationSeparators */
+        ConcatenationSeparators: {
+            /**
+             * Separators
+             * @description Caracteres que separan varios códigos de una celda (`/`, `;`, `|`, `,`, salto de línea…). No se admite el espacio.
+             */
+            separators: string[];
+            /**
+             * Unsplit Markers
+             * @description Marcadores que no se separan aunque lleven un separador (`S/N`, `S/C`).
+             */
+            unsplit_markers?: string[];
         };
         /**
          * ConflictReason
@@ -4662,6 +4785,56 @@ export interface components {
          * @enum {string}
          */
         NormalizationRule: "INVENTORY" | "COLLECTION" | "INC_RN" | "GENERIC";
+        /**
+         * NormalizationSettingOut
+         * @example {
+         *       "is_default": false,
+         *       "key": "absence_markers",
+         *       "updated_at": "2026-09-17T10:30:00Z",
+         *       "value": [
+         *         "",
+         *         "-",
+         *         "S/N",
+         *         "S/C",
+         *         "SINCODIGO"
+         *       ]
+         *     }
+         */
+        NormalizationSettingOut: {
+            /**
+             * Is Default
+             * @description true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8].
+             */
+            is_default: boolean;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "absence_markers" | "concatenation_separators";
+            /** Updated At */
+            updated_at: string | null;
+            /**
+             * Value
+             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.
+             */
+            value: string[] | components["schemas"]["ConcatenationSeparators"];
+        };
+        /**
+         * NormalizationSettingUpdate
+         * @example {
+         *       "value": [
+         *         "",
+         *         "-",
+         *         "S/N",
+         *         "S/C",
+         *         "NO REGISTRA"
+         *       ]
+         *     }
+         */
+        NormalizationSettingUpdate: {
+            /** Value */
+            value: string[] | components["schemas"]["ConcatenationSeparators"];
+        };
         /**
          * NormalizationStatus
          * @enum {string}
@@ -7791,6 +7964,190 @@ export interface operations {
             };
         };
     };
+    listAcronymAliases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcronymAliasOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createAcronymAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcronymAliasCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcronymAliasOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La colección no existe. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAcronymAlias: {
+        parameters: {
+            query: {
+                /** @description Motivo obligatorio. */
+                reason: string;
+            };
+            header?: never;
+            path: {
+                alias_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El alias no existe o ya fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listCollections: {
         parameters: {
             query?: {
@@ -10278,6 +10635,117 @@ export interface operations {
                 };
             };
             /** @description Lote vacío, destino inválido o límite excedido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getNormalizationSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "absence_markers" | "concatenation_separators";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NormalizationSettingOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putNormalizationSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "absence_markers" | "concatenation_separators";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NormalizationSettingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NormalizationSettingOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
             422: {
                 headers: {
                     [name: string]: unknown;

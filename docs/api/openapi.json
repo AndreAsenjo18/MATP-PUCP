@@ -1,6 +1,88 @@
 {
   "components": {
     "schemas": {
+      "AcronymAliasCreate": {
+        "examples": [
+          {
+            "alias": "R.E.P.",
+            "collection_id": "01920000-0000-7000-8000-000000000201"
+          }
+        ],
+        "properties": {
+          "alias": {
+            "description": "Sigla histórica, como se escribe.",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Alias",
+            "type": "string"
+          },
+          "collection_id": {
+            "format": "uuid",
+            "title": "Collection Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alias",
+          "collection_id"
+        ],
+        "title": "AcronymAliasCreate",
+        "type": "object"
+      },
+      "AcronymAliasOut": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "alias_normalized": {
+            "description": "Sin puntos ni espacios, en mayúsculas (`REP`).",
+            "title": "Alias Normalized",
+            "type": "string"
+          },
+          "collection_acronym": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Acronym"
+          },
+          "collection_id": {
+            "format": "uuid",
+            "title": "Collection Id",
+            "type": "string"
+          },
+          "collection_name": {
+            "title": "Collection Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "alias",
+          "alias_normalized",
+          "collection_id",
+          "collection_name",
+          "collection_acronym",
+          "created_at"
+        ],
+        "title": "AcronymAliasOut",
+        "type": "object"
+      },
       "AiBatchOut": {
         "description": "State of an AI batch; each draft is a PENDING suggestion, never applied (RN-009).",
         "examples": [
@@ -2303,6 +2385,31 @@
           "rules"
         ],
         "title": "CompletenessRulesUpdate",
+        "type": "object"
+      },
+      "ConcatenationSeparators": {
+        "properties": {
+          "separators": {
+            "description": "Caracteres que separan varios códigos de una celda (`/`, `;`, `|`, `,`, salto de línea…). No se admite el espacio.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Separators",
+            "type": "array"
+          },
+          "unsplit_markers": {
+            "description": "Marcadores que no se separan aunque lleven un separador (`S/N`, `S/C`).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsplit Markers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "separators"
+        ],
+        "title": "ConcatenationSeparators",
         "type": "object"
       },
       "ConflictReason": {
@@ -6272,6 +6379,106 @@
         ],
         "title": "NormalizationRule",
         "type": "string"
+      },
+      "NormalizationSettingOut": {
+        "examples": [
+          {
+            "is_default": false,
+            "key": "absence_markers",
+            "updated_at": "2026-09-17T10:30:00Z",
+            "value": [
+              "",
+              "-",
+              "S/N",
+              "S/C",
+              "SINCODIGO"
+            ]
+          }
+        ],
+        "properties": {
+          "is_default": {
+            "description": "true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8].",
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "key": {
+            "enum": [
+              "absence_markers",
+              "concatenation_separators"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/ConcatenationSeparators"
+              }
+            ],
+            "description": "`absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "is_default",
+          "updated_at"
+        ],
+        "title": "NormalizationSettingOut",
+        "type": "object"
+      },
+      "NormalizationSettingUpdate": {
+        "examples": [
+          {
+            "value": [
+              "",
+              "-",
+              "S/N",
+              "S/C",
+              "NO REGISTRA"
+            ]
+          }
+        ],
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/ConcatenationSeparators"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "NormalizationSettingUpdate",
+        "type": "object"
       },
       "NormalizationStatus": {
         "enum": [
@@ -12522,6 +12729,247 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/collection-acronym-aliases": {
+      "get": {
+        "operationId": "listAcronymAliases",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AcronymAliasOut"
+                  },
+                  "title": "Response Listacronymaliases",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Siglas históricas de colección vigentes (RF-023)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "description": "El alias es único entre los activos (`acronym_alias_taken`) y no puede ser la sigla actual de una colección (`alias_is_current_acronym`).",
+        "operationId": "createAcronymAlias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcronymAliasCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcronymAliasOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La colección no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Registrar una sigla histórica de una colección (RF-023)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/collection-acronym-aliases/{alias_id}": {
+      "delete": {
+        "operationId": "deleteAcronymAlias",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alias_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alias Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Motivo obligatorio.",
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "description": "Motivo obligatorio.",
+              "minLength": 3,
+              "title": "Reason",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El alias no existe o ya fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Eliminar lógicamente una sigla histórica con motivo (RN-005)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/collections": {
       "get": {
         "operationId": "listCollections",
@@ -16125,6 +16573,170 @@
         "summary": "Mover o verificar varias piezas escaneadas hacia un mismo destino (vista móvil)",
         "tags": [
           "Ubicaciones"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/normalization-settings/{key}": {
+      "get": {
+        "description": "Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.",
+        "operationId": "getNormalizationSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "enum": [
+                "absence_markers",
+                "concatenation_separators"
+              ],
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationSettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Parámetro de normalización vigente (RN-010)",
+        "tags": [
+          "Identificadores"
+        ],
+        "x-status": "implemented"
+      },
+      "put": {
+        "description": "Se aplica en adelante al ingreso manual, la importación y la búsqueda. Queda en la auditoría.",
+        "operationId": "putNormalizationSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "enum": [
+                "absence_markers",
+                "concatenation_separators"
+              ],
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizationSettingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormalizationSettingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`normalization_change_requires_preview`: el cambio alteraría identificadores ya registrados (cuántos y ejemplos en `details`); no se guardó nada."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Cambiar un parámetro de normalización (RN-010, RF-023)",
+        "tags": [
+          "Identificadores"
         ],
         "x-status": "implemented"
       }
