@@ -1,4 +1,4 @@
-"""Applying an import batch with its photos (change importacion-masiva-fotografias, task 5.2).
+"""Applying an import batch with its photos (change importacion-masiva-fotografias, 5.2 and 5.3).
 
 Spec importacion-datos, «Aplicación y reversión conjunta de piezas y fotografías»; design D5.
 The batch goes through the real stages over HTTP: upload, mapping, validation, photos uploaded,
@@ -14,10 +14,11 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
+from app.modules.audit.models import AuditAction, AuditLog
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.models import Piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
-from app.modules.imports.models import ImportPhoto, ImportRow
+from app.modules.imports.models import ImportBatch, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.media.models import MediaAsset
 from app.modules.media.service import UNSPECIFIED_VIEW_TYPE
@@ -183,7 +184,8 @@ def test_a_missing_photo_fails_the_batch_before_anything_is_written(
 def test_rolling_back_a_batch_with_photos(pipeline: Pipeline, storage: Any) -> None:
     """Applied and then reverted with the batch rollback (importacion-pipeline-reconciliacion 5.2).
 
-    What happens to the photos is task 5.3; this test records today's behaviour.
+    Task 5.3: the photos are registered in the change set of the batch, so the rollback retires
+    them logically with the pieces and keeps every file (RN-005).
     """
     lot = lot_with_photos(pipeline, storage)
     approve(pipeline, lot.batch_id)
@@ -202,6 +204,19 @@ def test_rolling_back_a_batch_with_photos(pipeline: Pipeline, storage: Any) -> N
     assert len(assets) == 3
     assert all(asset.deleted_at is not None for asset in assets)  # retired logically (RN-005)
     assert set(pipeline.stored) >= stored_before  # no file is deleted
+    with pipeline.session() as session:
+        batch = session.get(ImportBatch, uuid.UUID(lot.batch_id))
+        assert batch is not None and batch.change_set_id is not None
+        created_in = set(
+            session.scalars(
+                select(AuditLog.change_set_id).where(
+                    AuditLog.entity_type == MediaAsset.__tablename__,
+                    AuditLog.entity_id.in_([asset.id for asset in assets]),
+                    AuditLog.action == AuditAction.CREATE,
+                )
+            )
+        )
+    assert created_in == {batch.change_set_id}  # the photos travel in the batch change set
     # The batch photos go back to where they were before applying, ready to apply again.
     photos = photo_rows(pipeline, lot).values()
     assert {(photo.status, photo.media_asset_id) for photo in photos} == {(P.VERIFIED, None)}
