@@ -82,6 +82,11 @@ export function computeIncompletePieces(): IncompletePiece[] {
   }).filter((p) => p.alerts.length > 0);
 }
 
+/** Un reporte de demostración en una sola página: `rows` es el reporte completo. */
+function singlePage(report: Omit<ReportOut, "page" | "page_size" | "total_rows">): ReportOut {
+  return { ...report, page: 1, page_size: report.rows.length, total_rows: report.rows.length };
+}
+
 export function computeInventoryReport(): ReportOut {
   const rows = PIECES.map((p) => [
     p.denomination,
@@ -91,7 +96,7 @@ export function computeInventoryReport(): ReportOut {
     p.conservation_status?.label ?? "Sin registrar",
     p.location.path.length > 0 ? p.location.path.map((l) => l.name).join(" / ") : "Sin ubicación",
   ]);
-  return {
+  return singlePage({
     report_type: "inventory",
     title: "Inventario general (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -100,12 +105,12 @@ export function computeInventoryReport(): ReportOut {
     rows,
     totals: { piezas: PIECES.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeByCollectionReport(): ReportOut {
   const counts = countPiecesByCollection();
-  return {
+  return singlePage({
     report_type: "by-collection",
     title: "Inventario por colección (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -114,7 +119,7 @@ export function computeByCollectionReport(): ReportOut {
     rows: counts.map((row) => [row.collection, row.count]),
     totals: { colecciones: counts.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeByLocationReport(): ReportOut {
@@ -123,7 +128,7 @@ export function computeByLocationReport(): ReportOut {
     const key = piece.location.path.length > 0 ? piece.location.path[0].name : "Sin ubicación";
     byLocation.set(key, (byLocation.get(key) ?? 0) + 1);
   }
-  return {
+  return singlePage({
     report_type: "by-location",
     title: "Inventario por ubicación (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -132,12 +137,12 @@ export function computeByLocationReport(): ReportOut {
     rows: [...byLocation.entries()].map(([location, count]) => [location, count]),
     totals: { piezas: PIECES.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeIncompleteReport(): ReportOut {
   const incomplete = computeIncompletePieces();
-  return {
+  return singlePage({
     report_type: "incomplete",
     title: "Piezas con información incompleta (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -146,5 +151,5 @@ export function computeIncompleteReport(): ReportOut {
     rows: incomplete.map((p) => [p.title, p.collection_name ?? "Sin colección", p.alerts.join(", ")]),
     totals: { piezas_incompletas: incomplete.length },
     download_url: null,
-  };
+  });
 }
