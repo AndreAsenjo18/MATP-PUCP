@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
-from app.api.stubs import CHANGE_COLLECTIONS_ADMIN, implemented, not_implemented, stub
+from app.api.stubs import implemented
 from app.core.errors import NotFound
 from app.modules.catalog.models import Piece
 from app.modules.collections import vocabulary_service
@@ -35,11 +35,16 @@ from app.modules.collections.service import (
     delete_collection,
     update_collection,
 )
+from app.modules.identification import types_admin
 from app.modules.identification.models import IdentifierType
 from app.modules.identification.schemas import (
     IdentifierTypeCreate,
     IdentifierTypeOut,
     IdentifierTypeUpdate,
+    NormalizationCollisionOut,
+    NormalizationPreviewOut,
+    NormalizationPreviewRequest,
+    RecalculatedIdentifierOut,
 )
 from app.modules.users.sensitive import COLLECTION_SENSITIVE_FIELDS
 
@@ -250,12 +255,26 @@ def list_vocabularies(session: SessionDep, user: Reader) -> list[VocabularyOut]:
     "/vocabularies",
     response_model=VocabularyOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear un vocabulario nuevo",
+    responses=CONFLICT,
+    summary="Crear un vocabulario nuevo con código estable (RN-010)",
+    description="El código no se repite, ni siquiera con vocabularios eliminados (409 "
+    "`vocabulary_exists`). Lo administran el Gestor de colecciones y el Administrador "
+    "[SUPUESTO B7].",
     tags=["Vocabularios"],
-    **stub(CHANGE_COLLECTIONS_ADMIN),
+    **implemented(),
 )
-def create_vocabulary(body: VocabularyCreate, user: VocabularyManager) -> VocabularyOut:
-    raise not_implemented(CHANGE_COLLECTIONS_ADMIN, VocabularyOut)
+def create_vocabulary(
+    body: VocabularyCreate, session: SessionDep, user: VocabularyManager
+) -> VocabularyOut:
+    vocabulary = vocabulary_service.create_vocabulary(writer(session, user), **body.model_dump())
+    session.commit()
+    return VocabularyOut(
+        id=vocabulary.id,
+        code=vocabulary.code,
+        name=vocabulary.name,
+        description=vocabulary.description,
+        term_count=0,
+    )
 
 
 @router.get(
@@ -381,24 +400,94 @@ def list_identifier_types(session: SessionDep, user: Reader) -> list[IdentifierT
     "/identifier-types",
     response_model=IdentifierTypeOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear un tipo de identificador",
+    responses=CONFLICT,
+    summary="Crear un tipo de identificador (RN-010)",
+    description="Queda disponible al instante para registrar identificadores y en las "
+    "plantillas de mapeo. La regla de normalización se elige entre las implementadas; otra "
+    "responde 422 con las reglas disponibles.",
     tags=["Identificadores"],
-    **stub(CHANGE_COLLECTIONS_ADMIN),
+    **implemented(),
 )
 def create_identifier_type(
-    body: IdentifierTypeCreate, user: VocabularyManager
+    body: IdentifierTypeCreate, session: SessionDep, user: VocabularyManager
 ) -> IdentifierTypeOut:
-    raise not_implemented(CHANGE_COLLECTIONS_ADMIN, IdentifierTypeOut)
+    identifier_type = types_admin.create_identifier_type(writer(session, user), **body.model_dump())
+    session.commit()
+    return IdentifierTypeOut.model_validate(identifier_type)
 
 
 @router.patch(
     "/identifier-types/{type_code}",
     response_model=IdentifierTypeOut,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`system_identifier_type` (regla estructural de un tipo del sistema), "
+            "`normalization_change_requires_preview` (falta la vista previa o los datos "
+            "cambiaron desde entonces) o `normalization_collision` (RN-002).",
+        },
+    },
     summary="Editar o desactivar un tipo de identificador",
+    description="Los tipos del sistema (I, COLECCION) solo cambian etiqueta, descripción y "
+    "orden. Cambiar la regla de normalización de un tipo con identificadores exige el "
+    "`confirm_token` de `normalization-preview`; los valores normalizados se recalculan en una "
+    "transacción auditada con origen «sistema» y los originales no cambian.",
     tags=["Identificadores"],
-    **stub(CHANGE_COLLECTIONS_ADMIN),
+    **implemented(),
 )
 def update_identifier_type(
-    type_code: str, body: IdentifierTypeUpdate, user: VocabularyManager
+    type_code: str, body: IdentifierTypeUpdate, session: SessionDep, user: VocabularyManager
 ) -> IdentifierTypeOut:
-    raise not_implemented(CHANGE_COLLECTIONS_ADMIN, IdentifierTypeOut)
+    identifier_type = types_admin.get_type(session, type_code)
+    changes = body.model_dump(exclude_unset=True, exclude={"confirm_token"})
+    types_admin.update_identifier_type(
+        writer(session, user), identifier_type, changes, confirm_token=body.confirm_token
+    )
+    session.commit()
+    return IdentifierTypeOut.model_validate(identifier_type)
+
+
+@router.post(
+    "/identifier-types/{type_code}/normalization-preview",
+    response_model=NormalizationPreviewOut,
+    responses=NOT_FOUND,
+    summary="Vista previa del cambio de regla de normalización (RF-023, RNF-007)",
+    description="No escribe nada. Informa cuántos valores normalizados cambiarían, cuáles dejan "
+    "de ser normalizables y las colisiones de códigos vigentes entre piezas distintas, con el "
+    "`confirm_token` que exige la confirmación.",
+    tags=["Identificadores"],
+    **implemented(),
+)
+def preview_identifier_type_normalization(
+    type_code: str,
+    body: NormalizationPreviewRequest,
+    session: SessionDep,
+    user: VocabularyManager,
+) -> NormalizationPreviewOut:
+    identifier_type = types_admin.get_type(session, type_code)
+    preview = types_admin.preview_rule_change(session, identifier_type, body.normalization_rule)
+    examples = types_admin.PREVIEW_EXAMPLES
+    return NormalizationPreviewOut(
+        type_code=preview.type_code,
+        current_rule=preview.current_rule,
+        proposed_rule=preview.proposed_rule,
+        total_identifiers=preview.total_identifiers,
+        changed_count=len(preview.changed),
+        unparseable_count=len(preview.unparseable),
+        collisions=[
+            NormalizationCollisionOut(
+                normalized_value=collision.normalized_value, piece_ids=list(collision.piece_ids)
+            )
+            for collision in preview.collisions
+        ],
+        changed_examples=[
+            RecalculatedIdentifierOut(**value.as_json()) for value in preview.changed[:examples]
+        ],
+        unparseable_examples=[
+            RecalculatedIdentifierOut(**value.as_json()) for value in preview.unparseable[:examples]
+        ],
+        can_confirm=preview.can_confirm,
+        confirm_token=preview.confirm_token,
+        notes=preview.notes,
+    )

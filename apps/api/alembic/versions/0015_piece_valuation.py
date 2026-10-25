@@ -1,7 +1,7 @@
 """Historical valuations of a piece, append-only.
 
-Revision ID: 0014_piece_valuation
-Revises: 0013_normalization_params
+Revision ID: 0015_piece_valuation
+Revises: 0014_identifier_type_is_system
 Create Date: 2026-10-25
 
 Change de OpenSpec: reportes-inventario (tarea 2.3, design D6; RF-037). Additive only:
@@ -15,8 +15,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0014_piece_valuation"
-down_revision: str | None = "0013_normalization_params"
+revision: str = "0015_piece_valuation"
+down_revision: str | None = "0014_identifier_type_is_system"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

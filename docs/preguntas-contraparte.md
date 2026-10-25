@@ -247,7 +247,7 @@ Detalle en `openspec/changes/busqueda-avanzada-y-exportacion/design.md` (D3, D4,
 
 ## R. Supuestos de la autenticación y los permisos (change `autenticacion-y-matriz-permisos`, 2026-10-22)
 
-Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/autenticacion-y-matriz-permisos/design.md`. Amplía C7.
+Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/archive/2026-10-23-autenticacion-y-matriz-permisos/design.md`. Amplía C7.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
@@ -313,6 +313,14 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | U7 | ¿Con qué frecuencia se hace el simulacro de restauración? | Mensual y antes de cada entrega del curso | plataforma (RNF-011) | Media |
 | U8 | ¿La VM tiene un respaldo propio a nivel de infraestructura y a quién avisar de los reinicios por parches? | Se desconoce; se pide a la DTI (checklist de la VM, puntos 10 y 12) | plataforma (RNF-011) | Media |
 | U9 | Si el servidor está cerca de llenarse, ¿se avisa al 80 % de uso? | Sí, cada hora, con los directorios que más ocupan | plataforma (RNF-015) | Baja |
+
+## V. Supuestos de la administración de vocabularios y tipos de identificador (change `colecciones-y-vocabularios-admin`, 2026-10-25)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| V1 | ¿Qué tipos de identificador son «del sistema» y no admiten cambiar sus reglas? | El código I y el código de colección: solo cambian su etiqueta, descripción y orden; tampoco se desactivan por API. Los demás tipos son configurables | identificacion-piezas (RN-002, RN-003, RN-010) | Media |
+| V2 | Cambiar la regla de normalización de un tipo que se bloquea al asignarse (como el código I) recalcula códigos ya asignados. ¿Quién puede confirmarlo? | Solo el Administrador, como corrección auditada (RN-002); el Gestor de colecciones puede ver la vista previa pero recibe 403 al confirmar. Para los demás tipos basta el permiso de administrar vocabularios | identificacion-piezas (RF-023, RN-002) | Media |
+| V3 | ¿Se puede confirmar un cambio de regla que deja valores sin normalizar? | Sí: la vista previa los cuenta y lista ejemplos, y quedan como «no normalizable» para revisión humana, sin perder el valor original. Las colisiones de códigos vigentes entre piezas distintas sí impiden confirmar | identificacion-piezas (RF-023) | Baja |
 
 ## W. Supuestos de los reportes de inventario (change `reportes-inventario`, 2026-10-25)
 

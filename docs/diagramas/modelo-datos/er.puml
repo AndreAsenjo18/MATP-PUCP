@@ -99,6 +99,7 @@ entity IDENTIFIER_TYPE {
   * allowed_for_temporary_loan : boolean
   * sort_order : integer
   * is_active : boolean
+  * is_system : boolean
   ..
   <i>+ timestamps + soft-delete</i>
 }

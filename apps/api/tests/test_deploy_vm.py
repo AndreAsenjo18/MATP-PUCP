@@ -167,6 +167,13 @@ UNITS = [
 ]
 
 
+def test_the_audit_digest_unit_runs_the_real_command() -> None:
+    service = (VM / "systemd" / "matp-audit-digest.service").read_text(encoding="utf-8")
+    assert "ExecStart=/opt/matp/app/deploy/vm/audit-digest.sh" in service
+    script = (VM / "audit-digest.sh").read_text(encoding="utf-8")
+    assert "python -m app.modules.audit.digest" in script and "--verify" in script
+
+
 @pytest.mark.parametrize("name", UNITS)
 def test_every_unit_has_a_service_and_a_timer(name: str) -> None:
     service = (VM / "systemd" / f"{name}.service").read_text(encoding="utf-8")
@@ -185,7 +192,7 @@ def test_schedule_follows_the_design() -> None:
     assert "OnCalendar=*-*-* 00:30:00" in timer("matp-audit-digest")
 
 
-@pytest.mark.parametrize("name", ["matp-kpis-snapshot", "matp-audit-digest"])
+@pytest.mark.parametrize("name", ["matp-kpis-snapshot"])
 def test_commands_that_do_not_exist_yet_stay_commented(name: str) -> None:
     service = (VM / "systemd" / f"{name}.service").read_text(encoding="utf-8")
     assert "ExecStart=/bin/true" in service
@@ -259,7 +266,9 @@ def _calls(env: dict[str, str]) -> str:
 
 
 @needs_bash
-@pytest.mark.parametrize("script", [*sorted(BACKUP.glob("*.sh")), VM / "disk-check.sh"])
+@pytest.mark.parametrize(
+    "script", [*sorted(BACKUP.glob("*.sh")), VM / "disk-check.sh", VM / "audit-digest.sh"]
+)
 def test_scripts_have_valid_bash_syntax(script: Path) -> None:
     result = subprocess.run([BASH or "bash", "-n", _posix(script)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
@@ -414,3 +423,90 @@ def test_the_restic_container_sees_the_mirror_and_runs_as_the_caller(
     assert f"-v {_posix(work)}:{_posix(work)}" in call
     assert f"-v {shim['RESTIC_PASSWORD_FILE']}:{shim['RESTIC_PASSWORD_FILE']}:ro" in call
     assert "--user " in call and "restic/restic:0.19.1 backup" in call
+
+
+@needs_bash
+def test_the_env_file_is_read_before_the_defaults_and_is_never_executed(
+    tmp_path: Path, shim: dict[str, str]
+) -> None:
+    """Regresión del ensayo de `deploy.sh`: BACKUP_KEEP_* de .env.production se ignoraban.
+
+    Además el archivo se lee como datos: un valor con `$(...)` o `&` no ejecuta nada.
+    """
+    sentinel = tmp_path / "ejecutado"
+    env_file = tmp_path / "prod.env"
+    env_file.write_text(
+        "# comentario\n"
+        "BACKUP_KEEP_DAILY=7\n"
+        'BACKUP_KEEP_WEEKLY="3"\n'
+        "BACKUP_SKIP_OBJECTS=1\n"
+        f"S3_ENDPOINT_URL=http://storage:9000/?a=1&b=$(touch {_posix(sentinel)})\n"
+        "export BACKUP_KEEP_MONTHLY='2'\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    shim = {**shim, "MATP_ENV_FILE": _posix(env_file)}
+
+    result = _run(BACKUP / "backup-restic.sh", shim)
+
+    assert result.returncode == 0, result.stderr
+    calls = _calls(shim)
+    assert "forget --prune --keep-daily 7 --keep-weekly 3 --keep-monthly 2" in calls
+    assert "rclone" not in calls  # BACKUP_SKIP_OBJECTS=1 came from the file
+    assert not sentinel.exists(), "el archivo de variables no debe ejecutar su contenido"
+
+
+@needs_bash
+def test_the_environment_wins_over_the_env_file(tmp_path: Path, shim: dict[str, str]) -> None:
+    env_file = tmp_path / "prod.env"
+    env_file.write_text("BACKUP_KEEP_DAILY=7\n", encoding="utf-8", newline="\n")
+    shim = {**shim, "MATP_ENV_FILE": _posix(env_file), "BACKUP_KEEP_DAILY": "30"}
+    assert _run(BACKUP / "backup-restic.sh", shim).returncode == 0
+    assert "--keep-daily 30" in _calls(shim)
+
+
+@needs_bash
+@pytest.mark.skipif(shutil.which("rclone") is not None, reason="rclone está instalado aquí")
+def test_rclone_runs_in_a_container_inside_the_compose_network(
+    tmp_path: Path, shim: dict[str, str]
+) -> None:
+    """Regresión del ensayo: `storage:9000` solo resuelve dentro de la red de Compose."""
+    import os
+
+    bin_dir = tmp_path / "dockerbin"
+    bin_dir.mkdir()
+    log = tmp_path / "docker.log"
+    docker = bin_dir / "docker"
+    docker.write_text(
+        "#!/usr/bin/env bash\n"
+        f'echo "docker $*" >> {_posix(log)}\n'
+        '[[ "$1" == "inspect" ]] && echo "matp_default"\nexit 0\n',
+        newline="\n",
+    )
+    docker.chmod(0o755)
+    compose = tmp_path / "compose2"
+    compose.write_text(
+        '#!/usr/bin/env bash\n[[ "$*" == *"ps -q storage"* ]] && echo "abc123"\n', newline="\n"
+    )
+    compose.chmod(0o755)
+    mirror = tmp_path / "mirror"
+    script = (
+        f'source "{_posix(BACKUP / "lib.sh")}"; rclone_sync_bucket matp-media "{_posix(mirror)}"'
+    )
+    env = {
+        **os.environ,
+        "PATH": f"{_posix(bin_dir)}:{os.environ['PATH']}",
+        "MATP_STATE_DIR": _posix(tmp_path / "s"),
+        "MATP_ENV_FILE": _posix(tmp_path / "no.env"),
+        "MATP_COMPOSE": f"bash {_posix(compose)}",
+        "RCLONE_IMAGE": "rclone/rclone:1.75.2",
+        "S3_ENDPOINT_URL": "http://storage:9000",
+        "S3_ACCESS_KEY_ID": "id",
+        "S3_SECRET_ACCESS_KEY": "secreto",
+    }
+    subprocess.run([BASH or "bash", "-c", script], env=env, check=True)
+
+    run = next(line for line in log.read_text(encoding="utf-8").splitlines() if " run " in line)
+    assert "--network matp_default" in run and "--user " in run
+    assert f"-v {_posix(mirror)}:{_posix(mirror)}" in run
+    assert "rclone/rclone:1.75.2 sync :s3:matp-media" in run
