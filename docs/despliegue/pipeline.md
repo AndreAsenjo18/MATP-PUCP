@@ -139,3 +139,40 @@ El ambiente sigue funcionando con la versión que tiene. Para volver a la anteri
 ### Sin credenciales de despliegue en el repositorio
 
 Comprobado el 2026-10-25: `gh secret list` y `gh variable list` no devuelven nada. El repositorio no guarda credenciales de AWS, llaves SSH ni tokens; los workflows usan solo `GITHUB_TOKEN`.
+
+## Producción
+
+Producción (la VM de la PUCP) **solo recibe versiones con tag y por acción humana**. Un merge a `main` nunca la toca: la VM no tiene temporizador de *pull* y ningún workflow tiene acceso a ella (los tres workflows usan solo `GITHUB_TOKEN`; comprobado el 2026-10-25).
+
+### Publicar una versión
+
+1. **Confirmar lo que se probó.** En el ambiente de pruebas, `GET /health` devuelve el `commit` que corre ahí. Ese commit es el que se va a etiquetar:
+
+   ```bash
+   curl -s https://<ambiente-de-pruebas>/health   # campo "commit"
+   ```
+
+2. **Crear el tag** sobre ese commit, con formato `vMAYOR.MENOR.PARCHE` (solo pueden hacerlo los roles autorizados por el *ruleset* de tags `v*`, tarea 4.2):
+
+   ```bash
+   git tag -a v0.1.0 <commit> -m "v0.1.0"
+   git push origin v0.1.0
+   ```
+
+3. **Revisar el workflow «Publicar versión»** ([`release.yml`](../../.github/workflows/release.yml)). No reconstruye nada: reetiqueta las imágenes `sha-<commit>` ya probadas como `v0.1.0`. Falla, y explica por qué, si:
+   - el tag no tiene el formato `vMAYOR.MENOR.PARCHE`;
+   - el commit no está en `main`;
+   - no existen las imágenes `sha-<commit>`, es decir, el CI de ese commit no terminó en verde.
+
+4. **Revisar el GitHub Release** que crea el workflow: trae la tabla de digests de `matp-api` y `matp-web` (los mismos del ambiente de pruebas) y las notas generadas de los PR desde la versión anterior.
+
+5. **Desplegar en la VM**, como persona autorizada (detalle en [`vm.md`](vm.md#desplegar-una-versión)):
+
+   ```bash
+   cd /opt/matp/app && git fetch --tags && git checkout v0.1.0
+   MATP_ENV=production ./scripts/deploy.sh v0.1.0
+   ```
+
+   `deploy.sh` exporta la versión como `MATP_VERSION`, y el compose de producción la pasa a la API como `APP_RELEASE`. Después del despliegue, `GET /health` de producción muestra `"release": "v0.1.0"` y el mismo `commit` del paso 1. El despliegue queda en `/opt/matp/deployments.log`.
+
+Para volver a la versión anterior: `MATP_ENV=production ./scripts/deploy.sh --rollback` (revierte los contenedores, **no** la base de datos; antes de cada migración `deploy.sh` hace un respaldo).
