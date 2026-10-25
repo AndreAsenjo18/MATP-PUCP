@@ -200,16 +200,14 @@ La imagen queda como foto de la pieza, con referencia al lote. En una pieza en c
 
 ## Revertir un lote aplicado
 
-Solo el **Administrador** puede revertir un lote aplicado, indicando el motivo. Al revertirlo:
+Solo el **Administrador** puede revertir un lote aplicado. En el asistente, abra el lote aplicado, pulse **Revertir lote** al final de la pantalla y escriba el motivo. Al revertirlo:
 
 - las piezas e identificadores que creó el lote quedan **eliminados lógicamente** con ese motivo (se pueden consultar y restaurar; nada se borra);
 - los campos que el lote actualizó **recuperan su valor anterior**;
 - los datos de origen de cada fila se conservan como historial;
 - el lote queda en estado **revertido** y ya no se puede volver a aplicar ni revertir.
 
-Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no revierte nada** y muestra la lista de campos editados. Revise la lista: si confirma, esas ediciones también se pierden y vuelven al valor de antes del lote.
-
-> El botón **Revertir lote** en la pantalla del lote está pendiente; mientras tanto la reversión se hace desde la API (`POST /api/v1/imports/{batch_id}/rollback`).
+Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no revierte nada** y muestra la lista de campos editados. Revise la lista: si pulsa **Revertir también estas ediciones** y confirma, esas ediciones se pierden y vuelven al valor de antes del lote.
 
 ## Si algo sale mal
 

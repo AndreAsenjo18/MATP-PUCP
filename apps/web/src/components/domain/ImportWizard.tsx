@@ -9,7 +9,7 @@
  * (RNF-010): qué hará la aplicación con cada fila, por qué una fila no se puede aceptar y el
  * resumen exacto que se aprueba.
  */
-import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Upload } from "lucide-react";
+import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -37,6 +37,7 @@ import {
   type ImportImage,
   type ImportLog,
   type ImportRow,
+  type RevertConflict,
   type RowClassification,
   type RowDecisionInput,
 } from "@/lib/data/imports";
@@ -352,6 +353,69 @@ export function ImportLogPanel({ log, downloading, onDownload }: { log: ImportLo
       <Button variant="outline" icon={Download} className="self-start" disabled={downloading} onClick={onDownload}>
         {downloading ? "Preparando…" : "Descargar bitácora (Excel)"}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * Reversión de un lote aplicado (RNF-007, RN-005). Pide el motivo; si hay ediciones posteriores
+ * (`conflicts`) las lista y exige una segunda confirmación explícita antes de pisarlas.
+ */
+export function RollbackPanel({
+  canRevert,
+  busy,
+  conflicts,
+  onRevert,
+}: {
+  canRevert: boolean;
+  busy: boolean;
+  conflicts: RevertConflict[] | null;
+  onRevert: (reason: string | null, confirmConflicts: boolean) => void;
+}) {
+  return (
+    <Card as="section" className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold text-tinta">Revertir el lote</h2>
+      <p className="text-base text-gris-texto">
+        Las piezas que creó el lote quedan eliminadas lógicamente con el motivo (se pueden restaurar) y los campos que actualizó recuperan su
+        valor anterior. Los datos de origen se conservan: nada se borra (RN-005).
+      </p>
+      {!canRevert ? (
+        <PermissionNotice>Solo un Administrador puede revertir un lote aplicado.</PermissionNotice>
+      ) : conflicts ? (
+        <>
+          <div role="alert" className="flex flex-col gap-2 rounded-md bg-ambar-bg p-3 text-base text-ambar-texto">
+            <p className="font-medium">Estas ediciones se hicieron a mano después de aplicar el lote y se perderían:</p>
+            <ul className="list-disc pl-5">
+              {conflicts.map((conflict) => (
+                <li key={`${conflict.entityId}-${conflict.field ?? ""}`}>{conflict.message || `${conflict.entityType}: ${conflict.field ?? "registro"}`}</li>
+              ))}
+            </ul>
+          </div>
+          <ConfirmButton
+            label="Revertir también estas ediciones"
+            variant="danger"
+            icon={Undo2}
+            className="self-start"
+            disabled={busy}
+            confirmTitle="Revertir el lote y las ediciones posteriores"
+            confirmDescription="Las ediciones listadas vuelven al valor que tenían antes del lote. La reversión queda auditada con su usuario y el motivo."
+            onConfirm={() => onRevert(null, true)}
+          />
+        </>
+      ) : (
+        <ConfirmButton
+          label="Revertir lote"
+          variant="danger"
+          icon={Undo2}
+          className="self-start"
+          disabled={busy}
+          confirmTitle="Revertir el lote aplicado"
+          confirmDescription="El lote queda revertido y no se puede volver a aplicar. La reversión queda auditada con su usuario y el motivo."
+          requireReason
+          reasonLabel="Motivo de la reversión"
+          onConfirm={(reason) => onRevert(reason, false)}
+        />
+      )}
     </Card>
   );
 }

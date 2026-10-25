@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, RowFilters } from "./ImportWizard";
+import { ApprovalPanel, ImageReviewPanel, ImportLogPanel, ImportRowCard, RollbackPanel, RowFilters } from "./ImportWizard";
 
 const noop = () => {};
 const acceptButton = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar<\/button>/;
@@ -161,5 +161,25 @@ describe("bitácora e imágenes (RF-028, RF-029)", () => {
     const text = visibleText(render(<ImageReviewPanel images={[{ image: image(), rowNumber: 2 }]} applied={false} canAssociate busyId={null} onAssociate={noop} />));
     expect(text).toContain("Podrá asociarlas cuando el lote esté aplicado.");
     expect(text).not.toContain("Asociar a la pieza");
+  });
+
+  it("ofrece revertir un lote aplicado con motivo solo al Administrador", () => {
+    const admin = visibleText(render(<RollbackPanel canRevert busy={false} conflicts={null} onRevert={noop} />));
+    expect(admin).toContain("Revertir lote");
+    expect(admin).toContain("Motivo de la reversión");
+    expect(admin).toContain("nada se borra");
+
+    const other = visibleText(render(<RollbackPanel canRevert={false} busy={false} conflicts={null} onRevert={noop} />));
+    expect(other).toContain("Solo un Administrador puede revertir");
+    expect(other).not.toContain("Revertir lote");
+  });
+
+  it("lista las ediciones posteriores y pide confirmarlas antes de pisarlas", () => {
+    const conflicts = [{ entityType: "piece", entityId: "p-1", field: "provenance", message: "La procedencia cambió después del lote." }];
+
+    const text = visibleText(render(<RollbackPanel canRevert busy={false} conflicts={conflicts} onRevert={noop} />));
+
+    expect(text).toContain("La procedencia cambió después del lote.");
+    expect(text).toContain("Revertir también estas ediciones");
   });
 });
