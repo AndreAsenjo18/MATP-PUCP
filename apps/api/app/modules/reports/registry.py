@@ -1,10 +1,11 @@
 """Closed catalog of reports (change reportes-inventario, design D1 and D2; RF-033, RF-034).
 
 ``REPORTS`` declares every report: its title, the permission it needs on top of
-``reports.view`` and how it is built. An unknown type answers 404 with the reports available to
-the caller's role; invalid parameters answer 422 from the builder. ``consistent_session`` opens
-the read-only ``REPEATABLE READ`` transaction of D2 on PostgreSQL, so the detail and the totals
-come from the same snapshot even while other users register pieces.
+``reports.view``, the configuration feature that enables it and how it is built. An unknown or
+disabled type answers 404 with the reports available to the caller's role; a known type without
+its permission answers 403; invalid parameters answer 422 from the builder.
+``consistent_session`` opens the read-only ``REPEATABLE READ`` transaction of D2 on PostgreSQL, so
+the detail and the totals come from the same snapshot even while other users register pieces.
 """
 
 import uuid
@@ -16,14 +17,18 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.db import make_session_factory
-from app.core.errors import NotFound, ValidationFailed
+from app.core.errors import NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.context import AuditContext, set_audit_context
 from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.queries import Viewer
 from app.modules.quality.completeness import load_active_rules
 from app.modules.quality.incomplete_report import build_incomplete_query, rows_for_pieces
-from app.modules.reports.builders import ReportData, by_location, inventory
+from app.modules.reports.builders import ReportData, by_location, inventory, valuation
+from app.modules.users.sensitive import PERM_VALUATION
+
+#: Feature of the valuation report, enabled by ``FEATURE_VALUATION_REPORT`` (design D6).
+VALUATION_FEATURE = "valuation_report"
 
 
 @dataclass(frozen=True)
@@ -44,6 +49,9 @@ class ReportDefinition:
     description: str
     builder: Builder
     permission: str | None = None  # needed on top of reports.view
+    feature: str | None = None  # configuration feature that enables the report
+    # Very sensitive reports record every generation, not only the downloaded files (RNF-014).
+    audit_every_generation: bool = False
 
 
 def _incomplete(session: Session, viewer: Viewer, params: ReportParams) -> ReportData:
@@ -98,6 +106,17 @@ REPORTS: dict[str, ReportDefinition] = {
             "Piezas con alertas de completitud (RF-035).",
             _incomplete,
         ),
+        ReportDefinition(
+            "valuation",
+            "Valorización por colección",
+            "Totales por colección y moneda con la valorización más reciente de cada pieza.",
+            lambda s, v, p: valuation(
+                s, v, collection_id=p.collection_id, include_loans_for_use=p.include_loans_for_use
+            ),
+            permission=PERM_VALUATION,
+            feature=VALUATION_FEATURE,
+            audit_every_generation=True,
+        ),
     )
 }
 
@@ -112,20 +131,34 @@ def _required_collection(params: ReportParams) -> uuid.UUID:
     return params.collection_id
 
 
-def available_for(permissions: frozenset[str]) -> list[ReportDefinition]:
-    return [d for d in REPORTS.values() if d.permission is None or d.permission in permissions]
+def _enabled(definition: ReportDefinition, features: frozenset[str]) -> bool:
+    return definition.feature is None or definition.feature in features
 
 
-def get_definition(report_type: str, permissions: frozenset[str]) -> ReportDefinition:
+def available_for(
+    permissions: frozenset[str], features: frozenset[str] = frozenset()
+) -> list[ReportDefinition]:
+    return [
+        d
+        for d in REPORTS.values()
+        if _enabled(d, features) and (d.permission is None or d.permission in permissions)
+    ]
+
+
+def get_definition(
+    report_type: str, permissions: frozenset[str], features: frozenset[str] = frozenset()
+) -> ReportDefinition:
     definition = REPORTS.get(report_type)
-    available = available_for(permissions)
-    if definition is None or definition not in available:
+    available = available_for(permissions, features)
+    if definition is None or not _enabled(definition, features):
         raise NotFound(
-            f"El reporte «{report_type}» no existe. Reportes disponibles: "
+            f"El reporte «{report_type}» no existe o no está disponible. Reportes disponibles: "
             f"{', '.join(d.type for d in available)}.",
             code="report_not_found",
             details={"available": [{"type": d.type, "title": d.title} for d in available]},
         )
+    if definition not in available:
+        raise PermissionDenied(f"Su rol no tiene permiso para el reporte «{definition.title}».")
     return definition
 
 
@@ -149,9 +182,13 @@ def consistent_session(session: Session) -> Iterator[Session]:
 
 
 def build(
-    report_type: str, session: Session, permissions: frozenset[str], params: ReportParams
+    report_type: str,
+    session: Session,
+    permissions: frozenset[str],
+    params: ReportParams,
+    features: frozenset[str] = frozenset(),
 ) -> ReportData:
-    definition = get_definition(report_type, permissions)
+    definition = get_definition(report_type, permissions, features)
     with consistent_session(session) as snapshot:
         return definition.builder(snapshot, Viewer(permissions), params)
 
