@@ -224,7 +224,10 @@ class SyntheticCatalogBuilder:
             - self.options.duplicate_pairs
             - (self.options.sets * self.options.components_per_set)
         )
-        inventory_numbers = self.rng.sample(range(100, 9000), base_count)
+        # El rango por defecto (100-8999) alcanza para el seed habitual; una medición de volumen
+        # (p. ej. 20 000 piezas, tarea 4.1 de alertas-y-reporte-incompletas) necesita más valores
+        # únicos de los que ese rango tiene, así que crece con `base_count`.
+        inventory_numbers = self.rng.sample(range(100, max(9000, base_count + 200)), base_count)
         pieces = [
             self._create_piece(index, inventory_numbers[index]) for index in range(base_count)
         ]
@@ -716,7 +719,10 @@ class SyntheticCatalogBuilder:
                         self.session,
                         piece,
                         TYPE_INVENTORY,
-                        "I-9990",
+                        # Muy por encima de cualquier rango de `inventory_numbers` real (crece con
+                        # `base_count`, ver `build()`), para que este ejemplo nunca choque con un
+                        # código generado al azar en seeds grandes (p. ej. 20 000 piezas).
+                        "I-999000",
                         "Código I asignado por error de transcripción (ejemplo sintético)",
                     )
                     return

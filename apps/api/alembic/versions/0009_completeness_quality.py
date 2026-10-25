@@ -18,7 +18,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0009_completeness_rules_and_snapshots"
+revision: str = "0009_completeness_quality"
 down_revision: str | None = "0008_locations_idempotency"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
