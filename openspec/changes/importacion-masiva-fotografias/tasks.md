@@ -38,7 +38,7 @@
 
 ## 6. Frontend (`apps/web`)
 
-- [ ] 6.1 `lib/data/importPhotos.ts` (mock/live): listado de carpeta con ruta relativa, SHA-256 en Web Worker, tandas, concurrencia 4, reintento con espera exponencial y reanudación; pruebas Vitest (Req: Fotografías del lote con subida reanudable)
+- [x] 6.1 `lib/data/importPhotos.ts` (mock/live): listado de carpeta con ruta relativa, SHA-256 en Web Worker, tandas, concurrencia 4, reintento con espera exponencial y reanudación; pruebas Vitest (Req: Fotografías del lote con subida reanudable)
 - [ ] 6.2 Paso «Fotografías» del asistente de importación (selector de carpeta, arrastrar carpetas, avance global y por archivo, reanudar), con el prototipo v3 como referencia de UX; prueba de componente (Req: Fotografías del lote con subida reanudable)
 - [ ] 6.3 Miniaturas por fila en la previsualización y bandeja lateral con filtros, selección múltiple y «asignar a fila»; pruebas de componente (Req: Bandeja de revisión…; Req: Previsualización del lote…)
 
