@@ -291,6 +291,8 @@ Detalle en `openspec/changes/plantillas-mapeo-y-normalizacion/design.md` (D1–D
 
 **Pendiente interno (no es pregunta al museo):** el emparejamiento de fotos por nombre de archivo (`apps/api/app/modules/imports/photo_matching.py`) sigue normalizando con los valores de código y no con los parámetros vigentes (tarea 2.2, design D5): una foto llamada con una sigla histórica (p. ej. `REP 12.jpg`, con el alias sintético `REP` → `LRM`) no se reconoce como código de la colección `LRM`, aunque la búsqueda y el matching de importación sí lo hagan. Es una mejora posible que corresponde a `importacion-masiva-fotografias`, no a `plantillas-mapeo-y-normalizacion`; basta con pasar los parámetros de la sesión (`session_params`) a `normalize`.
 
+**Pendiente interno (no es pregunta al museo):** al escribir las pruebas de punta a punta de la tarea 2.2 se encontraron tres puntos de la ficha que corresponden a `ficha-pieza-crud`, no a `plantillas-mapeo-y-normalizacion`: (1) `POST /pieces/validate` sigue respondiendo 501 (stub); (2) `POST /pieces/{piece_id}/identifiers` sigue respondiendo 501 (stub); (3) `POST /pieces` acepta el campo `identifiers` (`PieceCreate`), pero no guarda esos identificadores ni avisa: la pieza queda creada sin ellos. Las pruebas de la 2.2 crean la pieza con `POST /pieces` y añaden sus identificadores con el servicio `add_identifier`.
+
 ## U. Supuestos del despliegue en la VM y los respaldos (change `despliegue-vm-y-respaldos`, 2026-10-22)
 
 Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm.md` y `docs/despliegue/checklist-vm.md`. Amplía C6.
