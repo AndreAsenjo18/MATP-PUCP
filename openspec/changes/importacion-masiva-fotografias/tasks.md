@@ -17,8 +17,8 @@
 
 - [x] 3.1 `app/modules/imports/photo_matching.py`: limpieza de sufijos, extracción de candidatos y normalización con `identification.normalization.normalize`; pruebas unitarias con nombres sintéticos (`I 1234 (2).JPG`, `MMZ045_frontal.jpg`, `1234.0.jpg`, `IMG_20190312.jpg`) (Req: Emparejamiento automático propuesto entre fotos y filas; RF-023)
 - [x] 3.2 Índice del lote y resolución en tres vías (archivo → carpeta → columna `photo_filename` del mapeo), orden natural y `ambiguous`/`unmatched`; pruebas de los cinco escenarios del requirement (Req: Emparejamiento automático propuesto…)
-- [ ] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
-  - Hecho (2026-10-22): `imports/photos.py` (`match_batch_photos`) y su llamada al final de la etapa de validación, con sus pruebas. Pendiente: la llamada desde la verificación, que se hace en la 2.2.
+- [x] 3.3 Ejecución del emparejamiento al terminar la validación y al llegar fotos nuevas, sin pisar asignaciones manuales; prueba de reejecución idempotente (Req: Emparejamiento automático propuesto…)
+  - Hecho (2026-10-22): `imports/photos.py` (`match_batch_photos`) y su llamada al final de la etapa de validación, con sus pruebas. La llamada desde la verificación entró con la 2.2 (2026-10-25): `imports/photo_verification.py`, prueba `test_a_photo_verified_after_the_validation_gets_its_row_right_away`.
 - [ ] 3.4 Campo `photo_filename` en `MappingSpec` (coordinar con la célula dueña de `plantillas-mapeo-y-normalizacion`); prueba de mapeo con la columna «Foto» (Req: Emparejamiento automático propuesto… — escenario «Columna de archivo definida en el mapeo»)
 
 ## 4. Bandeja y previsualización
