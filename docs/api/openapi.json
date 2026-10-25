@@ -4537,6 +4537,19 @@
         "title": "ImportLogEntry",
         "type": "object"
       },
+      "ImportPhotoStatus": {
+        "description": "Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2).",
+        "enum": [
+          "PENDING_UPLOAD",
+          "UPLOADED",
+          "VERIFIED",
+          "REJECTED",
+          "DISCARDED",
+          "APPLIED"
+        ],
+        "title": "ImportPhotoStatus",
+        "type": "string"
+      },
       "ImportRowOut": {
         "examples": [
           {
@@ -7092,6 +7105,298 @@
           "description"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PhotoCompleteOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoStateOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "photos"
+        ],
+        "title": "PhotoCompleteOut",
+        "type": "object"
+      },
+      "PhotoCompleteRequest": {
+        "properties": {
+          "photo_ids": {
+            "description": "Fotos cuyo archivo ya se subió (hasta 100).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Photo Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "photo_ids"
+        ],
+        "title": "PhotoCompleteRequest",
+        "type": "object"
+      },
+      "PhotoFileIn": {
+        "properties": {
+          "content_sha256": {
+            "description": "Huella SHA-256 calculada en el navegador.",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "content_type": {
+            "description": "Tipo MIME declarado.",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Content Type",
+            "type": "string"
+          },
+          "relative_path": {
+            "description": "Carpeta y nombre del archivo tal como los lista el navegador.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "relative_path",
+          "size_bytes",
+          "content_type",
+          "content_sha256"
+        ],
+        "title": "PhotoFileIn",
+        "type": "object"
+      },
+      "PhotoStateOut": {
+        "properties": {
+          "photo_id": {
+            "format": "uuid",
+            "title": "Photo Id",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportPhotoStatus",
+            "description": "`UPLOADED`: en cola de verificación; `VERIFIED` o `REJECTED` cuando termina."
+          }
+        },
+        "required": [
+          "photo_id",
+          "status"
+        ],
+        "title": "PhotoStateOut",
+        "type": "object"
+      },
+      "PhotoUploadItemOut": {
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "headers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headers"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "photo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Id"
+          },
+          "photo_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportPhotoStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "relative_path": {
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "result": {
+            "description": "`upload`: subir con `upload_url`; `already_registered`: la huella ya está en el lote y no se sube otra vez; `rejected`: tipo o tamaño no admitido (`reason`).",
+            "enum": [
+              "upload",
+              "already_registered",
+              "rejected"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "upload_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upload Url"
+          }
+        },
+        "required": [
+          "relative_path",
+          "content_sha256",
+          "result"
+        ],
+        "title": "PhotoUploadItemOut",
+        "type": "object"
+      },
+      "PhotoUploadUrlsOut": {
+        "examples": [
+          {
+            "batch_id": "01920000-0000-7000-8000-000000000601",
+            "items": [
+              {
+                "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+                "expires_at": "2026-09-17T10:30:00Z",
+                "headers": {
+                  "Content-Type": "image/jpeg"
+                },
+                "method": "PUT",
+                "photo_id": "01920000-0000-7000-8000-000000000701",
+                "photo_status": "PENDING_UPLOAD",
+                "relative_path": "MMZ 045/DSC_0001.jpg",
+                "result": "upload",
+                "upload_url": "https://almacenamiento.example/media/..."
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoUploadItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "items"
+        ],
+        "title": "PhotoUploadUrlsOut",
+        "type": "object"
+      },
+      "PhotoUploadUrlsRequest": {
+        "examples": [
+          {
+            "files": [
+              {
+                "content_sha256": "9f2c000000000000000000000000000000000000000000000000000000000000",
+                "content_type": "image/jpeg",
+                "relative_path": "MMZ 045/DSC_0001.jpg",
+                "size_bytes": 4200000
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "files": {
+            "description": "Hasta 100.",
+            "items": {
+              "$ref": "#/components/schemas/PhotoFileIn"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "PhotoUploadUrlsRequest",
         "type": "object"
       },
       "PieceAlert": {
@@ -15399,6 +15704,206 @@
           }
         ],
         "summary": "2. Mapeo: asignar columnas (o aplicar una plantilla)",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/photos/complete": {
+      "post": {
+        "description": "Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).",
+        "operationId": "completeImportPhotoUploads",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCompleteOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite fotos (está aprobado)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: avisar qué archivos terminaron de subirse",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/photos/upload-urls": {
+      "post": {
+        "description": "Registra hasta 100 archivos por llamada y devuelve, por archivo, una URL prefirmada para subirlo directo al almacenamiento. Si la huella SHA-256 ya está en el lote, el archivo vuelve como `already_registered` y no se sube otra vez: volver a soltar la misma carpeta reanuda una subida cortada. Un tipo o tamaño no admitido vuelve como `rejected` sin detener la tanda (RF-045; `importacion-masiva-fotografias`, diseño D2).",
+        "operationId": "requestImportPhotoUploadUrls",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUploadUrlsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoUploadUrlsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite fotos (está aprobado)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: pedir las URL de subida de una tanda",
         "tags": [
           "Importación"
         ],
