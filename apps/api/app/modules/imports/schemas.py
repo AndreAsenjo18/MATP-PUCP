@@ -41,6 +41,11 @@ class ApprovalSummaryOut(BaseModel):
         description="Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver)."
     )
     summary_token: str = Field(description="Huella del resumen; se envía al aprobar.")
+    photo_quota_warning: str | None = Field(
+        None,
+        description="Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la "
+        "aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).",
+    )
 
 
 class ImportBatchOut(BaseModel):

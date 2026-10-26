@@ -10,6 +10,7 @@ creates its own piece. Synthetic data only (RNF-014).
 import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -229,8 +230,13 @@ def test_the_averages_are_the_real_ones_of_the_pieces_with_photos(seeded_api: Se
     assert body["projection"] is None
 
 
+def _request(*, keep_originals: bool = True, quota: int | None = None) -> Any:
+    settings = SimpleNamespace(media_keep_originals=keep_originals, media_quota_bytes=quota)
+    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(settings=settings)))
+
+
 def test_without_photos_there_are_no_averages(session: Session) -> None:
-    body = get_media_storage_estimate(session, None, StorageEstimateRequest())  # type: ignore[arg-type]
+    body = get_media_storage_estimate(_request(), session, None, StorageEstimateRequest())  # type: ignore[arg-type]
 
     assert (body.current_volume_bytes, body.avg_photos_per_piece, body.avg_mb_per_photo) == (
         0,

@@ -187,6 +187,14 @@ class StorageEstimateRequest(BaseModel):
     )
 
 
+class FileTypeVolume(BaseModel):
+    """Volume by file type (importacion-masiva-fotografias D6)."""
+
+    original_bytes: int = Field(description="Originales conservados.")
+    display_bytes: int = Field(description="Versiones de visualización (1600 px).")
+    thumb_bytes: int = Field(description="Miniaturas (320 px).")
+
+
 class StorageEstimateResponse(BaseModel):
     """Response with current storage volume and projection."""
 
@@ -199,6 +207,22 @@ class StorageEstimateResponse(BaseModel):
                     "current_derivatives_bytes": 246913569,
                     "avg_photos_per_piece": 3.5,
                     "avg_mb_per_photo": 2.1,
+                    "keeps_originals": True,
+                    "by_file_type": {
+                        "original_bytes": 987654321,
+                        "display_bytes": 230000000,
+                        "thumb_bytes": 16913569,
+                    },
+                    "expected_collection": {
+                        "photos": 25000,
+                        "mb_per_photo": 4,
+                        "original_bytes": 104857600000,
+                        "display_bytes": 7680000000,
+                        "thumb_bytes": 512000000,
+                        "total_bytes": 113049600000,
+                    },
+                    "quota_bytes": None,
+                    "exceeds_quota": None,
                     "projection": {
                         "pieces": 20000,
                         "photos_per_piece": 5,
@@ -227,6 +251,21 @@ class StorageEstimateResponse(BaseModel):
     )
     projection: dict | None = Field(
         default=None, description="Proyección de volumen según parámetros indicados."
+    )
+    keeps_originals: bool = Field(
+        description="`MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las "
+        "proyecciones lo respetan (importacion-masiva-fotografias D6)."
+    )
+    by_file_type: FileTypeVolume = Field(description="Volumen actual por tipo de archivo.")
+    expected_collection: dict = Field(
+        description="Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con "
+        "el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
+    )
+    quota_bytes: int | None = Field(
+        default=None, description="`MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada."
+    )
+    exceeds_quota: bool | None = Field(
+        default=None, description="Si el volumen actual supera la cuota; vacío sin cuota."
     )
 
 

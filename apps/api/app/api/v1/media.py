@@ -29,9 +29,17 @@ from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
     BulkDownloadJob,
     BulkDownloadRequest,
+    FileTypeVolume,
     MediaAssetOut,
     StorageEstimateRequest,
     StorageEstimateResponse,
+)
+from app.modules.media.volume import (
+    DEFAULT_MB_PER_PHOTO,
+    EXPECTED_PHOTOS,
+    MIB,
+    current_volume,
+    projected_volume,
 )
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Multimedia"])
@@ -220,36 +228,37 @@ def bulk_download_media(body: BulkDownloadRequest, user: Exporter) -> BulkDownlo
     raise not_implemented(CHANGE_BULK, BulkDownloadJob)
 
 
-# Thumbnail (~20 KB) and display copy (~300 KB) of each photo [SUPUESTO: average of the derivatives
-# of a 4 MB JPEG; it only feeds the estimate].
-DERIVATIVES_BYTES_PER_PHOTO = 320 * 1024
+def _projection_json(photos: float, mb_per_photo: float, keep_originals: bool) -> dict:
+    volume = projected_volume(photos, mb_per_photo, keep_originals=keep_originals)
+    return {**volume.as_json(), "total_bytes": volume.total_bytes}
 
 
 @router.get(
     "/media/storage-estimate",
     response_model=StorageEstimateResponse,
     summary="Estimación del volumen fotográfico",
-    description="Volumen actual de las fotos activas (originales y derivados estimados) y, con "
-    "`pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los "
-    "parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.",
+    description="Volumen actual de las fotos activas por tipo de archivo, la proyección para las "
+    "fotos que espera el museo y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la de un "
+    "volumen a medida; los parámetros que faltan toman los promedios reales (RNF-003). Las "
+    "proyecciones respetan `MEDIA_KEEP_ORIGINALS` y la cuota es `MEDIA_QUOTA_BYTES` "
+    "(importacion-masiva-fotografias D6). Parámetros negativos: 422.",
     **implemented(),
 )
 def get_media_storage_estimate(
+    request: Request,
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("reports.view"))],
     query: Annotated[StorageEstimateRequest, Depends()],
 ) -> StorageEstimateResponse:
-    originals_bytes, photo_count, pieces_with_photos = session.execute(
-        select(
-            func.coalesce(func.sum(MediaAsset.size_bytes), 0),
-            func.count(MediaAsset.id),
-            func.count(func.distinct(MediaAsset.piece_id)),
-        ).where(MediaAsset.deleted_at.is_(None))
-    ).one()
-    derivatives_bytes = photo_count * DERIVATIVES_BYTES_PER_PHOTO
+    settings = request.app.state.settings
+    keep = settings.media_keep_originals
+    current = current_volume(session)
+    volume = current.volume
     # Averages over the pieces that have photos: the others say nothing of how many a piece has.
-    avg_photos_per_piece = photo_count / pieces_with_photos if pieces_with_photos else None
-    avg_mb_per_photo = originals_bytes / photo_count / 1024 / 1024 if photo_count else None
+    avg_photos_per_piece = (
+        current.photos / current.pieces_with_photos if current.pieces_with_photos else None
+    )
+    avg_mb_per_photo = volume.original_bytes / current.photos / MIB if current.photos else None
 
     projection = None
     if any(
@@ -258,23 +267,32 @@ def get_media_storage_estimate(
         pieces = query.pieces or 0
         photos_per_piece = query.photos_per_piece or avg_photos_per_piece or 0
         mb_per_photo = query.mb_per_photo or avg_mb_per_photo or 0
-        photos = pieces * photos_per_piece
-        projected_originals = int(photos * mb_per_photo * 1024 * 1024)
-        projected_derivatives = int(photos * DERIVATIVES_BYTES_PER_PHOTO)
+        planned = projected_volume(pieces * photos_per_piece, mb_per_photo, keep_originals=keep)
         projection = {
             "pieces": pieces,
             "photos_per_piece": photos_per_piece,
             "mb_per_photo": mb_per_photo,
-            "projected_originals_bytes": projected_originals,
-            "projected_derivatives_bytes": projected_derivatives,
-            "projected_total_bytes": projected_originals + projected_derivatives,
+            "projected_originals_bytes": planned.original_bytes,
+            "projected_derivatives_bytes": planned.display_bytes + planned.thumb_bytes,
+            "projected_total_bytes": planned.total_bytes,
         }
 
+    expected_mb = avg_mb_per_photo or DEFAULT_MB_PER_PHOTO
+    quota = settings.media_quota_bytes
     return StorageEstimateResponse(
-        current_volume_bytes=originals_bytes + derivatives_bytes,
-        current_originals_bytes=originals_bytes,
-        current_derivatives_bytes=derivatives_bytes,
+        current_volume_bytes=volume.total_bytes,
+        current_originals_bytes=volume.original_bytes,
+        current_derivatives_bytes=volume.display_bytes + volume.thumb_bytes,
         avg_photos_per_piece=avg_photos_per_piece,
         avg_mb_per_photo=avg_mb_per_photo,
         projection=projection,
+        keeps_originals=keep,
+        by_file_type=FileTypeVolume(**volume.as_json()),
+        expected_collection={
+            "photos": EXPECTED_PHOTOS,
+            "mb_per_photo": expected_mb,
+            **_projection_json(EXPECTED_PHOTOS, expected_mb, keep),
+        },
+        quota_bytes=quota,
+        exceeds_quota=volume.total_bytes > quota if quota else None,
     )

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 784ec2f6bde355c436bcfe818c27bd0f55bc443008d8a9b8b22752193c9874ac
+ * openapi-sha256: 810fcb09881206cf29a08fad5c593f6798e22dda68ba69bfc7d471f3803ec819
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1069,7 +1069,7 @@ export interface paths {
         };
         /**
          * Estimación del volumen fotográfico
-         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         * @description Volumen actual de las fotos activas por tipo de archivo, la proyección para las fotos que espera el museo y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la de un volumen a medida; los parámetros que faltan toman los promedios reales (RNF-003). Las proyecciones respetan `MEDIA_KEEP_ORIGINALS` y la cuota es `MEDIA_QUOTA_BYTES` (importacion-masiva-fotografias D6). Parámetros negativos: 422.
          */
         get: operations["getMediaStorageEstimate"];
         put?: never;
@@ -2221,6 +2221,11 @@ export interface components {
              * @description Filas que crearán una pieza nueva.
              */
             create: number;
+            /**
+             * Photo Quota Warning
+             * @description Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).
+             */
+            photo_quota_warning?: string | null;
             /**
              * Skip
              * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).
@@ -3609,6 +3614,27 @@ export interface components {
              * @enum {string}
              */
             severity: "error" | "warning";
+        };
+        /**
+         * FileTypeVolume
+         * @description Volume by file type (importacion-masiva-fotografias D6).
+         */
+        FileTypeVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
         };
         /** HealthResponse */
         HealthResponse: {
@@ -6825,9 +6851,23 @@ export interface components {
          * @example {
          *       "avg_mb_per_photo": 2.1,
          *       "avg_photos_per_piece": 3.5,
+         *       "by_file_type": {
+         *         "display_bytes": 230000000,
+         *         "original_bytes": 987654321,
+         *         "thumb_bytes": 16913569
+         *       },
          *       "current_derivatives_bytes": 246913569,
          *       "current_originals_bytes": 987654321,
          *       "current_volume_bytes": 1234567890,
+         *       "expected_collection": {
+         *         "display_bytes": 7680000000,
+         *         "mb_per_photo": 4,
+         *         "original_bytes": 104857600000,
+         *         "photos": 25000,
+         *         "thumb_bytes": 512000000,
+         *         "total_bytes": 113049600000
+         *       },
+         *       "keeps_originals": true,
          *       "projection": {
          *         "mb_per_photo": 4,
          *         "photos_per_piece": 5,
@@ -6849,6 +6889,8 @@ export interface components {
              * @description Promedio real de fotos por pieza.
              */
             avg_photos_per_piece?: number | null;
+            /** @description Volumen actual por tipo de archivo. */
+            by_file_type: components["schemas"]["FileTypeVolume"];
             /**
              * Current Derivatives Bytes
              * @description Tamaño total de derivados (thumb + display).
@@ -6865,12 +6907,34 @@ export interface components {
              */
             current_volume_bytes: number;
             /**
+             * Exceeds Quota
+             * @description Si el volumen actual supera la cuota; vacío sin cuota.
+             */
+            exceeds_quota?: boolean | null;
+            /**
+             * Expected Collection
+             * @description Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3].
+             */
+            expected_collection: {
+                [key: string]: unknown;
+            };
+            /**
+             * Keeps Originals
+             * @description `MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).
+             */
+            keeps_originals: boolean;
+            /**
              * Projection
              * @description Proyección de volumen según parámetros indicados.
              */
             projection?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Quota Bytes
+             * @description `MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada.
+             */
+            quota_bytes?: number | null;
         };
         /**
          * SuggestionStatus
