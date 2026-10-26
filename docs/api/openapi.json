@@ -3638,6 +3638,12 @@
           }
         ],
         "properties": {
+          "confirmed_split": {
+            "default": false,
+            "description": "La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).",
+            "title": "Confirmed Split",
+            "type": "boolean"
+          },
           "identifier_type_code": {
             "maxLength": 40,
             "minLength": 1,
@@ -3679,6 +3685,19 @@
               }
             ],
             "title": "Source"
+          },
+          "split_from": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.",
+            "title": "Split From"
           },
           "value": {
             "minLength": 1,
@@ -9073,6 +9092,18 @@
             ],
             "title": "Recorded By"
           },
+          "supporting_document_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Supporting Document Ref"
+          },
           "temporary_inventory_number": {
             "anyOf": [
               {
@@ -9083,6 +9114,35 @@
               }
             ],
             "title": "Temporary Inventory Number"
+          },
+          "tenure_change_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Tenure Change Reason"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.",
+            "title": "Tenure Regime"
           }
         },
         "title": "PieceUpdate",
@@ -18809,7 +18869,7 @@
         "x-status": "implemented"
       },
       "put": {
-        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3).",
+        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.",
         "operationId": "updatePiece",
         "parameters": [
           {
@@ -18900,7 +18960,7 @@
                 }
               }
             },
-            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales."
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`)."
           },
           "422": {
             "content": {
@@ -19459,6 +19519,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).",
         "operationId": "addPieceIdentifier",
         "parameters": [
           {
@@ -19513,6 +19574,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19521,17 +19602,7 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
+            "description": "`concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada."
           }
         },
         "security": [
@@ -19543,8 +19614,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}": {
@@ -19661,6 +19731,7 @@
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction": {
       "post": {
+        "description": "En una transacción, el código vigente pasa a no vigente enlazado al nuevo (`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.",
         "operationId": "correctInventoryCode",
         "parameters": [
           {
@@ -19725,6 +19796,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza o el identificador no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el código I de otra pieza, activa o eliminada (`details.piece_id`, A6); `not_current_inventory_code`: el identificador no es el código I vigente."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19734,16 +19825,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -19755,8 +19836,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/location-history": {

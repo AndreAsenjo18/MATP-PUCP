@@ -474,11 +474,11 @@ export async function fetchPieceCatalogs(): Promise<PieceCatalogsResult> {
 type IdentifierOut = ApiSchemas["IdentifierOut"];
 
 /**
- * Cuerpo de `POST /pieces/{id}/identifiers`. `confirmed_split` (design D5) todavía no figura en
- * `IdentifierCreate` del contrato: el tipo lo añade aquí y el cuerpo lo envía igualmente. Pendiente
- * de backend/OpenAPI (tareas 3.1 y 5.2).
+ * Cuerpo de `POST /pieces/{id}/identifiers`. `confirmed_split` tiene valor por defecto en el
+ * servidor (`false`), así que aquí es opcional; `split_from` lleva el valor concatenado original a
+ * la auditoría (design D5).
  */
-export type IdentifierCreateInput = ApiSchemas["IdentifierCreate"] & { confirmed_split?: boolean };
+export type IdentifierCreateInput = Omit<ApiSchemas["IdentifierCreate"], "confirmed_split"> & { confirmed_split?: boolean };
 /** Cuerpo de `POST .../identifiers/{identifier_id}/correction` (design D6). */
 export type InventoryCodeCorrectionInput = ApiSchemas["InventoryCodeCorrection"];
 
@@ -628,7 +628,7 @@ export async function addIdentifier(pieceId: string, input: IdentifierCreateInpu
   try {
     const { data, error } = await client().POST("/api/v1/pieces/{piece_id}/identifiers", {
       params: { path: { piece_id: pieceId } },
-      body: input,
+      body: { ...input, confirmed_split: input.confirmed_split ?? false },
     });
     if (error) {
       if ((error as { code?: unknown }).code === CONCATENATED_IDENTIFIER_CODE) {
@@ -646,11 +646,12 @@ export async function addIdentifier(pieceId: string, input: IdentifierCreateInpu
 /**
  * Registra **cada** propuesta por separado con `confirmed_split: true` (design D5), en orden y
  * deteniéndose en el primer fallo. Solo se llama tras la confirmación explícita de la persona.
+ * `splitFrom` es el valor concatenado original: viaja en `split_from` y queda en la auditoría.
  */
 export async function registerSplitIdentifiers(
   pieceId: string,
   proposals: readonly SplitProposal[],
-  extras: { source?: string | null; notes?: string | null } = {},
+  extras: { source?: string | null; notes?: string | null; splitFrom?: string | null } = {},
 ): Promise<SplitIdentifiersResult> {
   const identifiers: IdentifierOut[] = [];
   for (const proposal of proposals) {
@@ -660,6 +661,7 @@ export async function registerSplitIdentifiers(
       source: extras.source ?? null,
       notes: extras.notes ?? null,
       confirmed_split: true,
+      split_from: extras.splitFrom ?? null,
     });
     if (result.status === "ok") {
       identifiers.push(result.identifier);

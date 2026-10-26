@@ -342,14 +342,21 @@ def test_revert_of_an_inventory_code_without_the_admin_procedure_is_rejected(
         correct_locked_identifier(session, piece, "I", "4321", "Dígito invertido en el libro")
         session.commit()
     change_set = change_set_of(session, identifier.id, "is_current", AuditAction.CORRECTION)
+    plan = plan_revert(session, change_set)
+    manager = ctx_for(users, "COLLECTIONS_MANAGER")
+    # Desde ficha-pieza-crud 1.4 el permiso de corrección es solo del Administrador.
+    with pytest.raises(PermissionDenied) as missing:
+        revert_change_set(session, change_set, manager, confirm_conflicts=True)
+    assert missing.value.details["permissions"] == ["identifiers.correct_inventory_code"]
+    # Aunque la matriz le conceda el permiso, sigue faltando el rol (Ñ2).
     with pytest.raises(PermissionDenied) as raised:
-        revert_change_set(
-            session, change_set, ctx_for(users, "COLLECTIONS_MANAGER"), confirm_conflicts=True
+        check_revert_permissions(
+            session, plan, manager, permissions=frozenset(plan.required_permissions)
         )
     assert raised.value.code == "admin_required"
     assert "Administrador" in raised.value.message
     # El Administrador sí supera la verificación de permisos del mismo plan.
-    check_revert_permissions(session, plan_revert(session, change_set), ctx_for(users, "ADMIN"))
+    check_revert_permissions(session, plan, ctx_for(users, "ADMIN"))
 
 
 def test_revert_of_an_import_change_set_requires_the_import_permission(
