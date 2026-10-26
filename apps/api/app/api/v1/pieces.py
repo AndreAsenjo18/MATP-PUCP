@@ -21,7 +21,7 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound, PermissionDenied, ValidationFailed
+from app.core.errors import BusinessRuleViolation, NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
@@ -1019,7 +1019,14 @@ def reorder_media(
 @router.get(
     "/{piece_id}/media/{media_id}/download-url",
     response_model=DownloadUrlResponse,
-    responses=NOT_FOUND,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`usage_restricted`: la restricción efectiva bloquea la descarga "
+            "externa; `details` trae la restricción, su origen y el acuerdo de comodato.",
+        },
+    },
     summary="Obtener URL prefirmada para descargar una foto",
     description="URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción "
     "efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).",
@@ -1049,11 +1056,18 @@ def get_media_download_url(
         and term is not None
         and (term.extra or {}).get("blocks_external_download")
     ):
-        raise ValidationFailed(
-            f"Descarga externa bloqueada por restricción '{term.label}' "
-            f"(origen: {restriction.origin}).",
+        agreement = piece.loan_agreement_ref
+        raise BusinessRuleViolation(
+            f"Descarga externa bloqueada por la restricción «{term.label}» "
+            f"(origen: {restriction.origin})"
+            + (f", del acuerdo {agreement}." if agreement else ".")
+            + " La foto se puede ver en la ficha (RN-008).",
             code="usage_restricted",
-            details={"restriction": term.code, "origin": restriction.origin},
+            details={
+                "restriction": term.code,
+                "origin": restriction.origin,
+                "loan_agreement_ref": agreement,
+            },
         )
 
     ttl = request.app.state.settings.media_url_ttl_seconds

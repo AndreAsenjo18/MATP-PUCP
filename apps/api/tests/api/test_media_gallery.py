@@ -13,8 +13,16 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
-from tests.api.conftest import ADMIN, CATALOGUER, SeededApi, as_user
+from app.core.models_base import new_uuid
+from app.models import AppUser
+from app.modules.audit.context import AuditContext, audit_context
+from app.modules.audit.models import AuditOrigin
+from app.modules.catalog.enums import TenureRegime
+from app.modules.collections.models import Collection
+from app.modules.media.service import comodato_restriction_term_id
+from tests.api.conftest import ADMIN, CATALOGUER, MANAGER, SeededApi, as_user
 from tests.api.test_media_register import _jpeg_bytes, fake_storage  # noqa: F401
 
 H = as_user(CATALOGUER)
@@ -91,4 +99,69 @@ def test_the_download_url_is_a_get_with_the_purpose_and_the_short_ttl(
     expires = datetime.fromisoformat(body["expires_at"])
     assert timedelta(0) < expires - datetime.now(UTC) <= timedelta(seconds=ttl)
     assert (body["effective_restriction"], body["restriction_origin"]) == (None, "ninguna")
+    _delete(seeded_api, piece_id)
+
+
+def _restricted_collection(seeded_api: SeededApi) -> str:
+    """A collection whose photos default to «No publicar» [SUPUESTO B2: illustrative]."""
+    with seeded_api.session() as session:
+        admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
+        assert admin is not None
+        with audit_context(session, AuditContext(origin=AuditOrigin.MANUAL, user_id=admin.id)):
+            acronym = f"RST{uuid.uuid4().hex[:5].upper()}"
+            collection = Collection(
+                id=new_uuid(),
+                name=f"Colección restringida {acronym} (sintética)",
+                acronym=acronym,
+                acronym_normalized=acronym,
+                default_tenure_regime=TenureRegime.OWNED,
+                default_usage_restriction_term_id=comodato_restriction_term_id(session),
+            )
+            session.add(collection)
+            session.commit()
+            return str(collection.id)
+
+
+def test_an_external_download_blocked_by_the_collection_is_409_and_inside_it_is_seen(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    piece_id = _new_piece(seeded_api, collection_id=_restricted_collection(seeded_api))
+    photo = _register(seeded_api, fake_storage, piece_id, 20)
+    manager = as_user(MANAGER)
+
+    external = _download_url(seeded_api.client, piece_id, photo["id"], "external", manager)
+    internal = _download_url(seeded_api.client, piece_id, photo["id"], "internal", H)
+
+    assert external.status_code == 409, external.text
+    error = external.json()
+    assert error["code"] == "usage_restricted"
+    assert (error["details"]["restriction"], error["details"]["origin"]) == (
+        "NO_PUBLICAR",
+        "colección",
+    )
+    assert internal.status_code == 200, internal.text
+    assert internal.json()["effective_restriction"]["code"] == "NO_PUBLICAR"
+    assert internal.json()["restriction_origin"] == "colección"
+    _delete(seeded_api, piece_id)
+
+
+def test_the_409_of_a_loan_for_use_names_its_agreement(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    piece_id = _new_piece(
+        seeded_api, tenure_regime="Comodato", loan_agreement_ref="Acuerdo sintético 07-2026"
+    )
+    photo = _register(seeded_api, fake_storage, piece_id, 30)
+
+    response = _download_url(seeded_api.client, piece_id, photo["id"], "external", as_user(MANAGER))
+
+    assert response.status_code == 409, response.text
+    details = response.json()["details"]
+    assert (details["origin"], details["loan_agreement_ref"]) == (
+        "foto",
+        "Acuerdo sintético 07-2026",
+    )
+    assert "Acuerdo sintético 07-2026" in response.json()["message"]
     _delete(seeded_api, piece_id)
