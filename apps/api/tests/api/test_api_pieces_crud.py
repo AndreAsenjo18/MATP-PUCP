@@ -79,6 +79,52 @@ def test_create_piece_without_category_or_conservation_state_succeeds(
     _delete(seeded_api, body["id"])
 
 
+def test_a_piece_without_denomination_is_not_created(seeded_api: SeededApi) -> None:
+    """ficha-pieza-crud 2.1: the denomination is mandatory (RF-006)."""
+    client = seeded_api.login_as("CATALOGUER")
+
+    for body in (
+        {"tenure_regime": "Propiedad"},
+        {"denomination": "", "tenure_regime": "Propiedad"},
+    ):
+        assert client.post("/api/v1/pieces", json=body).status_code == 422
+
+
+def test_an_internal_viewer_cannot_create_a_piece(seeded_api: SeededApi) -> None:
+    client = seeded_api.login_as("INTERNAL_VIEWER")
+
+    response = client.post(
+        "/api/v1/pieces", json={"denomination": "Pieza no permitida", "tenure_regime": "Propiedad"}
+    )
+
+    assert response.status_code == 403
+
+
+def test_creating_a_piece_is_audited_as_manual_with_its_user(seeded_api: SeededApi) -> None:
+    """ficha-pieza-crud 2.1: the creation leaves its audit with manual origin and the user."""
+    client = seeded_api.login_as("CATALOGUER")
+    me = client.get("/api/v1/auth/me").json()
+
+    created = client.post(
+        "/api/v1/pieces",
+        json={"denomination": "Pieza auditada (sintética)", "tenure_regime": "Propiedad"},
+    )
+
+    assert created.status_code == 201, created.text
+    with seeded_api.session() as session:
+        entries = session.scalars(
+            select(AuditLog).where(
+                AuditLog.entity_id == uuid.UUID(created.json()["id"]),
+                AuditLog.action == AuditAction.CREATE,
+            )
+        ).all()
+    assert entries
+    assert {(entry.origin, str(entry.user_id)) for entry in entries} == {
+        (AuditOrigin.MANUAL, me["id"])
+    }
+    _delete(seeded_api, created.json()["id"])
+
+
 def _create_throwaway_piece(seeded_api: SeededApi, denomination: str) -> str:
     client = seeded_api.login_as("CATALOGUER")
     created = client.post(

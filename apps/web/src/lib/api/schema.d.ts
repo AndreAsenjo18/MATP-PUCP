@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: fdcac4171cb11825591e737be992969a126129d08f8498ee040f906556efb9d2
+ * openapi-sha256: 51b164de24b2e7d7a1383f2bc4acc7c260b909874eaf95fae29ca918316f33c8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1202,7 +1202,10 @@ export interface paths {
         /** Listar las piezas componentes de un conjunto (RF-009) */
         get: operations["getPieceChildren"];
         put?: never;
-        /** Asociar una pieza existente como componente de un conjunto (RF-009) */
+        /**
+         * Asociar una pieza existente como componente de un conjunto (RF-009)
+         * @description Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].
+         */
         post: operations["addPieceChild"];
         delete?: never;
         options?: never;
@@ -1416,7 +1419,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Restaurar una pieza eliminada (Administrador) */
+        /**
+         * Restaurar una pieza eliminada (Administrador)
+         * @description Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).
+         */
         post: operations["restorePiece"];
         delete?: never;
         options?: never;
@@ -1467,7 +1473,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validar en tiempo real un formulario de ficha (RF-043) */
+        /**
+         * Validar en tiempo real un formulario de ficha (RF-043)
+         * @description Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.
+         */
         post: operations["validatePiece"];
         delete?: never;
         options?: never;
@@ -11988,8 +11997,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11997,13 +12006,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12875,6 +12893,7 @@ export interface operations {
     restorePiece: {
         parameters: {
             query?: {
+                /** @description Motivo de la restauración. */
                 reason?: string | null;
             };
             header?: never;
@@ -12912,8 +12931,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12921,13 +12940,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -13091,15 +13119,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

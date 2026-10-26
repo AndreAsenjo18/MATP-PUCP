@@ -23,6 +23,7 @@ from app.api.stubs import (
     stub,
 )
 from app.core.errors import (
+    BusinessRuleViolation,
     ConflictError,
     NotFound,
     PermissionDenied,
@@ -32,6 +33,7 @@ from app.core.errors import (
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.audit.trash import restore_from_trash
 from app.modules.catalog import conservation
 from app.modules.catalog import service as catalog_service
 from app.modules.catalog.enums import TenureRegime
@@ -244,15 +246,37 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
     "/validate",
     response_model=PieceValidationResult,
     summary="Validar en tiempo real un formulario de ficha (RF-043)",
+    description="Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y "
+    "responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad "
+    "`error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño "
+    "D1). Con `piece_id` se valida la edición de esa pieza.",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def validate_piece(
     body: PieceCreate,
+    session: SessionDep,
     user: Creator,
     piece_id: Annotated[uuid.UUID | None, Query(description="Pieza en edición.")] = None,
 ) -> PieceValidationResult:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceValidationResult)
+    try:
+        piece = get_piece(session, piece_id) if piece_id else None
+        issues = catalog_service.validate_piece_payload(
+            session,
+            denomination=body.denomination,
+            tenure_regime=code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime"),
+            code_i=body.code_i,
+            epoch_start_year=body.period.year_from if body.period else None,
+            epoch_end_year=body.period.year_to if body.period else None,
+            dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
+            parent_piece_id=body.parent_piece_id,
+            piece=piece,
+        )
+    finally:
+        session.rollback()  # a validation never persists anything (D1)
+    return PieceValidationResult(
+        is_valid=all(issue.severity != "error" for issue in issues), issues=issues
+    )
 
 
 def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
@@ -433,16 +457,34 @@ def soft_delete_piece(
 @router.post(
     "/{piece_id}/restore",
     response_model=PieceDetail,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza no existe."},
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza "
+                "activa (`details.dependency_entity_id`) o su colección sigue eliminada; "
+                "`not_deleted`: la pieza no está eliminada."
+            ),
+        },
+    },
     summary="Restaurar una pieza eliminada (Administrador)",
+    description="Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que "
+    "el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un "
+    "Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su "
+    "motivo (ficha-pieza-crud, diseño D7).",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def restore_piece(
     piece_id: uuid.UUID,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("pieces.restore"))],
-    reason: Annotated[str | None, Query()] = None,
+    reason: Annotated[str | None, Query(description="Motivo de la restauración.")] = None,
 ) -> PieceDetail:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceDetail)
+    restore_from_trash(writer(session, user, reason), "piece", piece_id, reason)
+    session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).detail(get_piece(session, piece_id))
 
 
 @router.get(
@@ -1285,12 +1327,40 @@ def get_piece_children(
 @router.post(
     "/{piece_id}/children",
     response_model=PieceSummary,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; "
+                "`component_already_linked`: ya es componente de otro conjunto "
+                "(`details.parent_piece_id`)."
+            ),
+        },
+    },
     summary="Asociar una pieza existente como componente de un conjunto (RF-009)",
+    description="Responde la pieza componente. El vínculo queda en la auditoría como cambio de "
+    "`parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El "
+    "código derivado del conjunto no se genera todavía [SUPUESTO B8].",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
-def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> PieceSummary:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceSummary)
+def add_piece_child(
+    piece_id: uuid.UUID, body: PieceChildLink, session: SessionDep, user: Editor
+) -> PieceSummary:
+    parent = get_piece(session, piece_id)
+    child = get_piece(session, body.child_piece_id)
+    if child.parent_piece_id not in (None, parent.id):
+        raise BusinessRuleViolation(
+            "La pieza ya es componente de otro conjunto; desvincúlela de ese conjunto antes de "
+            "asociarla a este.",
+            code="component_already_linked",
+            details={"parent_piece_id": str(child.parent_piece_id)},
+        )
+    if child.parent_piece_id is None:
+        catalog_service.set_parent(writer(session, user), child, parent.id)
+        session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).summaries([child])[0]
 
 
 # ---------------------------------------------------------------------- movements
