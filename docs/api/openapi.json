@@ -17539,6 +17539,117 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/media/storage-estimate": {
+      "get": {
+        "description": "Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.",
+        "operationId": "getMediaStorageEstimate",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pieces",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pieces"
+            }
+          },
+          {
+            "in": "query",
+            "name": "photos_per_piece",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Photos Per Piece"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mb_per_photo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mb Per Photo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageEstimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Estimación del volumen fotográfico",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/media/upload": {
       "post": {
         "operationId": "uploadMediaAsset",
@@ -18450,116 +18561,6 @@
         "summary": "Registrar una pieza",
         "tags": [
           "Piezas"
-        ],
-        "x-status": "implemented"
-      }
-    },
-    "/api/v1/pieces/media/storage-estimate": {
-      "get": {
-        "operationId": "getMediaStorageEstimate",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "pieces",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Pieces"
-            }
-          },
-          {
-            "in": "query",
-            "name": "photos_per_piece",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Photos Per Piece"
-            }
-          },
-          {
-            "in": "query",
-            "name": "mb_per_photo",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Mb Per Photo"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorageEstimateResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Falta identificar al usuario (RF-042)."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "El rol no tiene el permiso requerido."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Datos no válidos."
-          }
-        },
-        "security": [
-          {
-            "cookieAuth": []
-          }
-        ],
-        "summary": "Estimación del volumen fotográfico",
-        "tags": [
-          "Multimedia"
         ],
         "x-status": "implemented"
       }

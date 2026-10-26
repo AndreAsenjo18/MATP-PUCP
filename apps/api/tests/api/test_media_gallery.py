@@ -12,15 +12,20 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
+from app.api.v1.media import get_media_storage_estimate
 from app.core.models_base import new_uuid
 from app.models import AppUser
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection
+from app.modules.media.models import MediaAsset
+from app.modules.media.schemas import StorageEstimateRequest
 from app.modules.media.service import comodato_restriction_term_id
 from tests.api.conftest import ADMIN, CATALOGUER, MANAGER, SeededApi, as_user
 from tests.api.test_media_register import _jpeg_bytes, fake_storage  # noqa: F401
@@ -182,3 +187,61 @@ def test_a_new_photo_shows_the_restriction_inherited_from_its_collection(
         assert photo["effective_restriction"]["code"] == "NO_PUBLICAR"
         assert photo["restriction_origin"] == "colección"
     _delete(seeded_api, piece_id)
+
+
+# --------------------------------------------------------------- storage estimate (task 2.6)
+ESTIMATE = "/api/v1/media/storage-estimate"
+
+
+def test_the_projection_of_20000_pieces_with_5_photos_of_4_mb_is_about_400_gb(
+    seeded_api: SeededApi,
+) -> None:
+    response = seeded_api.client.get(
+        ESTIMATE,
+        params={"pieces": 20000, "photos_per_piece": 5, "mb_per_photo": 4},
+        headers=as_user(ADMIN),
+    )
+
+    assert response.status_code == 200, response.text
+    projection = response.json()["projection"]
+    assert projection["projected_originals_bytes"] == 20000 * 5 * 4 * 1024 * 1024  # ≈ 419 GB
+    assert 380 * 10**9 < projection["projected_originals_bytes"] < 440 * 10**9
+
+
+def test_the_averages_are_the_real_ones_of_the_pieces_with_photos(seeded_api: SeededApi) -> None:
+    with seeded_api.session() as session:
+        photos, pieces, size = session.execute(
+            select(
+                func.count(MediaAsset.id),
+                func.count(func.distinct(MediaAsset.piece_id)),
+                func.sum(MediaAsset.size_bytes),
+            ).where(MediaAsset.deleted_at.is_(None))
+        ).one()
+    assert photos > pieces  # the seeded catalogue has pieces with several photos
+
+    body = seeded_api.client.get(ESTIMATE, headers=as_user(ADMIN)).json()
+
+    assert body["avg_photos_per_piece"] == pytest.approx(photos / pieces)
+    assert body["avg_mb_per_photo"] == pytest.approx(size / photos / 1024 / 1024)
+    assert body["current_originals_bytes"] == size
+    assert body["projection"] is None
+
+
+def test_without_photos_there_are_no_averages(session: Session) -> None:
+    body = get_media_storage_estimate(session, None, StorageEstimateRequest())  # type: ignore[arg-type]
+
+    assert (body.current_volume_bytes, body.avg_photos_per_piece, body.avg_mb_per_photo) == (
+        0,
+        None,
+        None,
+    )
+
+
+def test_a_negative_parameter_is_422_and_the_old_path_is_gone(seeded_api: SeededApi) -> None:
+    negative = seeded_api.client.get(
+        ESTIMATE, params={"photos_per_piece": -1}, headers=as_user(ADMIN)
+    )
+    old = seeded_api.client.get("/api/v1/pieces/media/storage-estimate", headers=as_user(ADMIN))
+
+    assert negative.status_code == 422
+    assert old.status_code in (404, 422)  # it now reads as /pieces/{piece_id}/media

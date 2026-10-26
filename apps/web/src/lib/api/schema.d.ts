@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 77ed4629904ac59bcbd6d4db69b4047cd24b4789b9f15febd25b6fac241a20e8
+ * openapi-sha256: 784ec2f6bde355c436bcfe818c27bd0f55bc443008d8a9b8b22752193c9874ac
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1060,6 +1060,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media/storage-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estimación del volumen fotográfico
+         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         */
+        get: operations["getMediaStorageEstimate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/upload": {
         parameters: {
             query?: never;
@@ -1433,23 +1453,6 @@ export interface paths {
         };
         /** Datos de origen sin mapeo (payload, solo lectura) */
         get: operations["listSourceRecords"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/pieces/media/storage-estimate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Estimación del volumen fotográfico */
-        get: operations["getMediaStorageEstimate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11208,6 +11211,57 @@ export interface operations {
             };
         };
     };
+    getMediaStorageEstimate: {
+        parameters: {
+            query?: {
+                mb_per_photo?: number | null;
+                photos_per_piece?: number | null;
+                pieces?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageEstimateResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     uploadMediaAsset: {
         parameters: {
             query?: never;
@@ -12959,57 +13013,6 @@ export interface operations {
             };
             /** @description La pieza no existe o fue eliminada. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getMediaStorageEstimate: {
-        parameters: {
-            query?: {
-                mb_per_photo?: number | null;
-                photos_per_piece?: number | null;
-                pieces?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StorageEstimateResponse"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };
