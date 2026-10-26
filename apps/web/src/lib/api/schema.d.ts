@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: bfcbfc8f64ef59a16aea5fbb365103e031d60487b25aeff64518380b7bb3a403
+ * openapi-sha256: 384c01c09e021521e303043e7624f36a6061b1cc8395d3139a76a15cff23afd0
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -4791,6 +4791,7 @@ export interface components {
          *       "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
          *       "content_type": "image/jpeg",
          *       "created_at": "2026-09-17T10:30:00Z",
+         *       "download_url": "http://localhost:9000/matp-media/pieces/.../display.webp?X-Amz-Signature=...",
          *       "height_px": 900,
          *       "id": "01920000-0000-7000-8000-000000000801",
          *       "is_primary": true,
@@ -4800,6 +4801,7 @@ export interface components {
          *       "size_bytes": 48213,
          *       "sort_order": 0,
          *       "taken_on": "2025-03-10",
+         *       "thumbnail_url": "http://localhost:9000/matp-media/pieces/.../thumb.webp?X-Amz-Signature=...",
          *       "view_type": {
          *         "code": "Frontal",
          *         "id": "01920000-0000-7000-8000-000000000321",
@@ -4820,7 +4822,7 @@ export interface components {
             created_at: string;
             /**
              * Download Url
-             * @description URL prefirmada temporal; null hasta fotografias-multiples-por-pieza.
+             * @description En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.
              */
             download_url?: string | null;
             /** Height Px */
@@ -4849,6 +4851,11 @@ export interface components {
             sort_order: number;
             /** Taken On */
             taken_on: string | null;
+            /**
+             * Thumbnail Url
+             * @description En el listado de la galería, URL prefirmada temporal de la miniatura (`thumb.webp`, 320 px).
+             */
+            thumbnail_url?: string | null;
             /** @description Restricción de uso (RF-014, RN-008). */
             usage_restriction: components["schemas"]["TermRef"] | null;
             view_type: components["schemas"]["TermRef"] | null;
