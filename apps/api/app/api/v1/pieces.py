@@ -82,6 +82,7 @@ from app.modules.media.schemas import (
 from app.modules.media.service import (
     EXTENSION_BY_FORMAT,
     comodato_restriction_term_id,
+    gallery_urls,
     verify_image_stream,
 )
 from app.modules.quality.completeness import (
@@ -596,7 +597,9 @@ def correct_inventory_code(
     tags=["Multimedia"],
     **implemented(),
 )
-def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> list[MediaAssetOut]:
+def list_piece_media(
+    request: Request, piece_id: uuid.UUID, session: SessionDep, user: Reader
+) -> list[MediaAssetOut]:
     get_piece(session, piece_id)
     assets = list(
         session.scalars(
@@ -611,6 +614,9 @@ def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> 
         for asset in assets
         for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
     )
+    storage = request.app.state.storage
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    urls = {asset.id: gallery_urls(storage, asset, ttl) for asset in assets}
     return [
         MediaAssetOut(
             id=asset.id,
@@ -632,7 +638,8 @@ def list_piece_media(piece_id: uuid.UUID, session: SessionDep, user: Reader) -> 
             if asset.usage_restriction_term_id in terms
             else None,
             restriction_note=asset.restriction_note,
-            download_url=None,
+            download_url=urls[asset.id][1],
+            thumbnail_url=urls[asset.id][0],
             created_at=asset.created_at,
         )
         for asset in assets

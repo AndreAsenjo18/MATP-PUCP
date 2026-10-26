@@ -43,6 +43,7 @@ import { MergeLinks } from "@/components/domain/MergedPieceLinks";
 import { ConservationLive } from "@/components/domain/ConservationPanel";
 import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
+import { PieceGallery } from "@/components/domain/PieceGallery";
 import {
   PieceCurrentLocation,
   PieceGeneralData,
@@ -303,8 +304,9 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
       <PieceGeneralData piece={piece} />
       <PieceIdentifiersTable piece={piece} />
+      <PieceGallery pieceId={pieceId} pieceTitle={piece.denomination} />
       <ConservationLive pieceId={pieceId} />
-      <p className="text-sm text-gris-texto">Fotografías, ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
+      <p className="text-sm text-gris-texto">Ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
     </div>
   );
 }
