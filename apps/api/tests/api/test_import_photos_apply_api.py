@@ -7,6 +7,7 @@ pipeline fixture. Every test builds its own batch with codes of its own. Synthet
 (RNF-014).
 """
 
+import hashlib
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -18,8 +19,10 @@ from app.modules.audit.models import AuditAction, AuditLog
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.models import Piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
+from app.modules.imports.apply import _delete_uploads_after_commit
 from app.modules.imports.models import ImportBatch, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportPhotoStatus as P
+from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.service import UNSPECIFIED_VIEW_TYPE
 from tests.api.conftest import Pipeline
@@ -220,3 +223,114 @@ def test_rolling_back_a_batch_with_photos(pipeline: Pipeline, storage: Any) -> N
     # The batch photos go back to where they were before applying, ready to apply again.
     photos = photo_rows(pipeline, lot).values()
     assert {(photo.status, photo.media_asset_id) for photo in photos} == {(P.VERIFIED, None)}
+
+
+# ------------------------------------------------- MEDIA_KEEP_ORIGINALS (task 5.4; design D6)
+@pytest.fixture
+def without_originals(pipeline: Pipeline, storage: Any, monkeypatch: pytest.MonkeyPatch) -> Any:
+    """`MEDIA_KEEP_ORIGINALS=false` and a storage double that can delete objects."""
+    monkeypatch.setattr(pipeline.client.app.state.settings, "media_keep_originals", False)  # type: ignore[attr-defined]
+    monkeypatch.setattr(storage, "delete_pending", lambda key: pipeline.stored.pop(key, None))
+    return storage
+
+
+def test_with_originals_each_photo_keeps_its_original_and_both_derivatives(
+    pipeline: Pipeline, storage: Any
+) -> None:
+    lot = lot_with_photos(pipeline, storage)
+
+    assert approve(pipeline, lot.batch_id)["status"] == "APPLIED"
+
+    for photo in photo_rows(pipeline, lot).values():
+        prefix = photo.storage_prefix
+        assert {f"{prefix}upload.jpeg", f"{prefix}thumb.webp", f"{prefix}display.webp"} <= set(
+            pipeline.stored
+        )
+    toro = pieces_of(pipeline, lot.batch_id)[2]
+    assert toro is not None
+    assert all(
+        "original" not in (asset.extra_metadata or {}) for asset in assets_of(pipeline, toro.id)
+    )
+
+
+def test_without_originals_the_display_copy_is_the_file_and_the_upload_goes(
+    pipeline: Pipeline, without_originals: Any
+) -> None:
+    lot = lot_with_photos(pipeline, without_originals)
+
+    assert approve(pipeline, lot.batch_id)["status"] == "APPLIED"
+
+    photos = {photo.media_asset_id: photo for photo in photo_rows(pipeline, lot).values()}
+    pieces = [piece for piece in pieces_of(pipeline, lot.batch_id).values() if piece is not None]
+    assets = [asset for piece in pieces for asset in assets_of(pipeline, piece.id)]
+    assert len(assets) == len(lot.photos)
+    for asset in assets:
+        photo = photos[asset.id]
+        display = pipeline.stored[f"{photo.storage_prefix}display.webp"]
+        assert asset.storage_key == f"{photo.storage_prefix}display.webp"
+        assert (asset.content_type, asset.size_bytes) == ("image/webp", len(display))
+        assert asset.content_sha256 == hashlib.sha256(display).hexdigest()
+        assert asset.extra_metadata["original"] == {
+            "content_type": "image/jpeg",
+            "size_bytes": photo.size_bytes,
+            "content_sha256": photo.content_sha256,
+        }
+        assert f"{photo.storage_prefix}upload.jpeg" not in pipeline.stored  # after the commit
+        assert f"{photo.storage_prefix}thumb.webp" in pipeline.stored
+
+
+def test_without_originals_a_missing_display_copy_fails_the_batch_and_keeps_the_upload(
+    pipeline: Pipeline, without_originals: Any
+) -> None:
+    lot = lot_with_photos(pipeline, without_originals)
+    name = next(name for name in lot.photos if "(3)" in name)
+    del pipeline.stored[f"media/{lot.photos[name]}/display.webp"]
+
+    batch = approve(pipeline, lot.batch_id)
+
+    assert batch["status"] == "FAILED_APPLY"
+    assert batch["status_reason"].startswith("Fila 2: la versión de visualización de la foto")
+    assert {f"media/{photo_id}/upload.jpeg" for photo_id in lot.photos.values()} <= set(
+        pipeline.stored
+    )
+    assert {photo.status for photo in photo_rows(pipeline, lot).values()} == {P.VERIFIED}
+
+
+def test_a_photo_whose_derivatives_cannot_be_made_is_rejected(
+    pipeline: Pipeline, storage: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenario «Derivado imposible de generar»: never available without its display copy."""
+    lot = lot_with_photos(pipeline, storage)
+    batch_id = lot.batch_id
+
+    def broken(_data: bytes, _max_dim: int) -> bytes:
+        raise OSError("imagen truncada (sintética)")
+
+    monkeypatch.setattr(derivatives, "_resize_image", broken)
+    photo_id = _send(pipeline, batch_id, f"{lot.tag}/rota.jpg", _jpeg(70, 50))
+    _drain(pipeline, storage)
+
+    with pipeline.session() as session:
+        photo = session.get(ImportPhoto, uuid.UUID(photo_id))
+    assert photo is not None and photo.status is P.REJECTED
+    assert (photo.rejection_reason or "").startswith("No se pudo procesar la imagen")
+
+
+def test_the_uploads_are_kept_when_the_transaction_rolls_back(pipeline: Pipeline) -> None:
+    deleted: list[str] = []
+
+    class Recorder:
+        def delete_pending(self, key: str) -> None:
+            deleted.append(key)
+
+    with pipeline.session() as session:
+        session.scalar(select(ImportPhoto.id).limit(1))  # the stage always has its transaction
+        _delete_uploads_after_commit(session, Recorder(), ["media/x/upload.jpeg"])  # type: ignore[arg-type]
+        session.rollback()
+        session.commit()  # a later commit of the same session, as when the failure is recorded
+    assert deleted == []
+
+    with pipeline.session() as session:
+        _delete_uploads_after_commit(session, Recorder(), ["media/y/upload.jpeg"])  # type: ignore[arg-type]
+        session.commit()
+    assert deleted == ["media/y/upload.jpeg"]
