@@ -35,6 +35,7 @@ import {
 } from "@/components/domain/ImportWizard";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
+import { ImportPhotoTray } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, TemplatePicker } from "@/components/domain/ImportTemplatePanels";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -496,6 +497,7 @@ export function LiveImportWizard() {
         </Card>
       )}
       {batch && !processing && <ImportPhotosPanel batch={batch} devUser={devUser} />}
+      {batch && !processing && <ImportPhotoTray batch={batch} devUser={devUser} />}
 
       {showRows && step === 3 && diffs && (
         <Card as="section" className="flex flex-col gap-3">
