@@ -4,7 +4,7 @@ import hashlib
 import io
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, UnidentifiedImageError
@@ -188,6 +188,16 @@ def unspecified_view_type_id(session: Session) -> uuid.UUID | None:
     return term.id
 
 
+@dataclass(frozen=True)
+class StoredCopy:
+    """The file a photo keeps when its original is not kept (``display.webp``, D6)."""
+
+    storage_key: str
+    content_type: str
+    size_bytes: int
+    content_sha256: str
+
+
 def register_from_import(
     session: Session,
     piece: "Piece",
@@ -195,6 +205,7 @@ def register_from_import(
     *,
     storage_key: str,
     view_type_term_id: uuid.UUID | None,
+    display: StoredCopy | None = None,
 ) -> MediaAsset:
     """Register a photo of an applied import batch on ``piece`` (importacion-masiva-fotografias,
     task 5.1; design D5).
@@ -205,29 +216,43 @@ def register_from_import(
     in a new piece the photo with the lowest ``sort_key`` is the primary one when the caller
     registers them in that order. A loan for use inherits «No publicar» (RN-008), as in a manual
     upload. The caller's audit context (the batch and its change set) records the asset.
+
+    With ``display`` (``MEDIA_KEEP_ORIGINALS=false``, design D6) the asset points to the display
+    copy and describes it; the size and fingerprint of the original received stay in
+    ``extra_metadata.original``.
     """
     max_order = session.scalar(
         select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece.id)
     )
     restricted = piece.tenure_regime == TenureRegime.LOAN_FOR_USE
+    metadata: dict[str, Any] = {
+        "import_batch_id": str(photo.batch_id),
+        "import_photo_id": str(photo.id),
+        "relative_path": photo.relative_path,
+    }
+    if display is not None:
+        metadata["original"] = {
+            "content_type": photo.content_type,
+            "size_bytes": photo.size_bytes,
+            "content_sha256": photo.content_sha256,
+        }
+    stored = display or StoredCopy(
+        storage_key, photo.content_type, photo.size_bytes, photo.content_sha256
+    )
     asset = MediaAsset(
         id=new_uuid(),
         piece_id=piece.id,
-        storage_key=storage_key,
+        storage_key=stored.storage_key,
         original_filename=photo.original_filename,
-        content_type=photo.content_type,
-        size_bytes=photo.size_bytes,
-        content_sha256=photo.content_sha256,
+        content_type=stored.content_type,
+        size_bytes=stored.size_bytes,
+        content_sha256=stored.content_sha256,
         view_type_term_id=view_type_term_id,
         sort_order=(max_order + 1) if max_order is not None else 0,
         is_primary=max_order is None,
         usage_restriction_term_id=comodato_restriction_term_id(session) if restricted else None,
         restriction_note=LOAN_RESTRICTION_NOTE if restricted else None,
-        extra_metadata={
-            "import_batch_id": str(photo.batch_id),
-            "import_photo_id": str(photo.id),
-            "relative_path": photo.relative_path,
-        },
+        extra_metadata=metadata,
     )
     session.add(asset)
     session.flush()

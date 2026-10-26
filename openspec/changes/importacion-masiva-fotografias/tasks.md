@@ -11,7 +11,7 @@
 - [x] 2.1 `POST /imports/{batch_id}/photos/upload-urls` (tandas de hasta 100, `already_registered` por huella, límite de fotos, 409 si el lote no admite fotos); pruebas: tanda nueva, reanudación sin duplicar, lote aprobado 409, Consulta interna 403 (Req: Fotografías del lote con subida reanudable)
 - [x] 2.2 `POST /imports/{batch_id}/photos/complete` y tarea del worker del lote: verificación de tipo real, tamaño y SHA-256 y generación de `thumb`/`display` reutilizando el servicio de derivados de `media`; pruebas: verificada, PDF disfrazado rechazado, huella distinta rechazada, reencolado al reiniciar con latido vencido (Req: Fotografías del lote con subida reanudable)
   - Al pasar fotos a `VERIFIED`, la tarea debe llamar a `imports.photos.match_batch_photos` en la misma transacción (es la mitad «al llegar fotos nuevas» de la 3.3).
-- [ ] 2.3 Comando `python -m app.imports.purge_photos` para fotos de lotes abandonados o descartadas tras `IMPORT_PHOTO_RETENTION_DAYS`; prueba de que no toca fotos aplicadas ni de lotes vigentes (Req: Fotografías del lote con subida reanudable; RN-005)
+- [x] 2.3 Comando `python -m app.imports.purge_photos` para fotos de lotes abandonados o descartadas tras `IMPORT_PHOTO_RETENTION_DAYS`; prueba de que no toca fotos aplicadas ni de lotes vigentes (Req: Fotografías del lote con subida reanudable; RN-005)
 
 ## 3. Emparejamiento
 
@@ -33,9 +33,9 @@
 - [x] 5.1 `media.service.register_from_import()` reutilizando restricción efectiva y auditoría, sin volver a verificar ni copiar; principal por menor `sort_key` en piezas nuevas; pruebas: pieza nueva con 3 fotos, comodato con restricción heredada (Req: Aplicación y reversión conjunta de piezas y fotografías; RN-008)
   - Resuelto (2026-10-25): `media.service.unspecified_view_type_id()` crea el término `SIN_ESPECIFICAR` al aplicar si falta, con contexto de auditoría «sistema» y un conjunto de cambios propio, para que revertir el lote no lo borre. Si está borrado lógicamente se respeta y la foto queda sin tipo de vista. Se descartó la migración de datos. Pruebas en `tests/test_media_register_from_import.py`.
 - [x] 5.2 Integrar el registro en la transacción de aplicación del lote con verificación `HEAD` previa; prueba: objeto faltante deja el lote en `FAILED_APPLY` y el catálogo sin cambios (Req: Aplicación y reversión conjunta… — escenario «Fallo al registrar una foto durante la aplicación»)
-- [ ] 5.3 Incluir las fotos en el `change_set` del lote para la reversión; prueba: revertir un lote retira lógicamente sus fotos y conserva archivos (Req: Aplicación y reversión conjunta…; RN-005)
+- [x] 5.3 Incluir las fotos en el `change_set` del lote para la reversión; prueba: revertir un lote retira lógicamente sus fotos y conserva archivos (Req: Aplicación y reversión conjunta…; RN-005)
   - Observado (2026-10-25, desde la 5.2): como las fotos se registran en el conjunto de cambios del lote, la reversión de `importacion-pipeline-reconciliacion` (5.2) ya retira lógicamente sus `media_asset`, deja las fotos del lote en `verified` sin `media_asset_id` y no borra archivos (`tests/api/test_import_photos_apply_api.py::test_rolling_back_a_batch_with_photos`). Falta decidir si eso basta para cerrar la 5.3.
-- [ ] 5.4 `MEDIA_KEEP_ORIGINALS=false`: `storage_key` en `display.webp`, datos del original en `extra_metadata.original`, borrado de `upload.<ext>` tras aplicar y rechazo si falta el derivado; pruebas de los escenarios del requirement de multimedia (Req: Conservación configurable del original en cargas masivas)
+- [x] 5.4 `MEDIA_KEEP_ORIGINALS=false`: `storage_key` en `display.webp`, datos del original en `extra_metadata.original`, borrado de `upload.<ext>` tras aplicar y rechazo si falta el derivado; pruebas de los escenarios del requirement de multimedia (Req: Conservación configurable del original en cargas masivas)
 - [ ] 5.5 Extender `GET /media/storage-estimate` con `keeps_originals` y desglose por tipo de archivo; aviso de cuota en el resumen del lote cuando se supera `MEDIA_QUOTA_BYTES`; pruebas (Req: Conservación configurable… — escenario «Estimación con el parámetro vigente»; RNF-003)
 
 ## 6. Frontend (`apps/web`)

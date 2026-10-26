@@ -516,7 +516,10 @@ def confirm_import_batch(
         request.app.state.session_factory,
         batch_id,
         Stage.APPLY,
-        apply_stage(request.app.state.storage),
+        apply_stage(
+            request.app.state.storage,
+            keep_originals=request.app.state.settings.media_keep_originals,
+        ),
         user.id,
     )
     return ImportBatchOut.from_batch(batch)
