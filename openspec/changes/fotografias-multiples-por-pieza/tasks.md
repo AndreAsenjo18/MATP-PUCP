@@ -17,6 +17,7 @@
 
 - [ ] 3.1 `lib/data/media.ts` (mock/live) con cálculo de SHA-256 en el navegador y subida con progreso y reintento; pruebas Vitest (Req: Subida verificada…; RNF-005)
 - [ ] 3.2 Galería de la ficha: miniaturas, visor, selector de tipo de vista, reordenamiento, marca de principal, retiro con motivo y etiqueta de restricción; pruebas de componente (Req: Gestión de galería…; Req: Restricción efectiva heredada…)
+  - Galería mínima en la ficha `live` (`PieceGallery`, 2026-10-25): miniaturas, visor con URL prefirmadas y etiqueta de restricción. Faltan el selector de tipo de vista, el reordenamiento, la marca de principal y el retiro con motivo.
 - [ ] 3.3 Tarjeta de estimación de volumen en Reportes (solo con permiso); prueba de componente (Req: Operación de estimación del volumen fotográfico)
 
 ## 4. Cierre del change
