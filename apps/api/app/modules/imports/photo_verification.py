@@ -24,6 +24,7 @@ import uuid
 from collections.abc import Sequence
 
 from botocore.exceptions import BotoCoreError, ClientError
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -86,7 +87,13 @@ def rejection(storage: ObjectStorage, photo: ImportPhoto, max_bytes: int) -> str
         return exc.message
     if image.content_type != photo.content_type:
         return f"El archivo es {image.content_type} y se declaró {photo.content_type}."
-    derivatives.store_derivatives(storage, photo.storage_prefix, data)
+    try:
+        derivatives.store_derivatives(storage, photo.storage_prefix, data)
+    except STORAGE_ERRORS:
+        raise
+    except (OSError, ValueError, Image.DecompressionBombError):
+        # Without its display copy the photo is never available (spec multimedia, D6).
+        return "No se pudo procesar la imagen: no se generaron su miniatura ni su versión liviana."
     return None
 
 

@@ -4781,6 +4781,135 @@
         "title": "ImportLogEntry",
         "type": "object"
       },
+      "ImportPhotoOut": {
+        "description": "A photo of the batch in the tray, with its proposed row (design D4).",
+        "properties": {
+          "candidate_row_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filas posibles de una foto ambigua; nunca se elige una por adivinanza.",
+            "title": "Candidate Row Ids"
+          },
+          "duplicate_confirmed": {
+            "default": false,
+            "title": "Duplicate Confirmed",
+            "type": "boolean"
+          },
+          "duplicate_of_existing": {
+            "default": false,
+            "title": "Duplicate Of Existing",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "match_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoMatchSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoMatchStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null: sin propuesta todavía (subiéndose o lote sin validar)."
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "relative_path": {
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "row_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fila propuesta o asignada.",
+            "title": "Row Id"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "sort_key": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Orden de la foto dentro de su fila.",
+            "title": "Sort Key"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportPhotoStatus"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "URL prefirmada temporal de la miniatura; solo de fotos verificadas.",
+            "title": "Thumbnail Url"
+          }
+        },
+        "required": [
+          "id",
+          "relative_path",
+          "original_filename",
+          "size_bytes",
+          "status"
+        ],
+        "title": "ImportPhotoOut",
+        "type": "object"
+      },
       "ImportPhotoStatus": {
         "description": "Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2).",
         "enum": [
@@ -4793,6 +4922,67 @@
         ],
         "title": "ImportPhotoStatus",
         "type": "string"
+      },
+      "ImportPhotoSummary": {
+        "examples": [
+          {
+            "batch_id": "01920000-0000-7000-8000-000000000601",
+            "by_match_status": {
+              "AMBIGUOUS": 3,
+              "MATCHED": 62,
+              "NONE": 4,
+              "UNMATCHED": 11
+            },
+            "by_status": {
+              "REJECTED": 2,
+              "UPLOADED": 2,
+              "VERIFIED": 76
+            },
+            "duplicates": 0,
+            "total": 80
+          }
+        ],
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "by_match_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Fotos por propuesta; `NONE`: sin propuesta todavía.",
+            "title": "By Match Status",
+            "type": "object"
+          },
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Fotos por estado (todos los estados).",
+            "title": "By Status",
+            "type": "object"
+          },
+          "duplicates": {
+            "description": "Fotos que ya están en la pieza destino y esperan confirmación.",
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "total",
+          "by_status",
+          "by_match_status",
+          "duplicates"
+        ],
+        "title": "ImportPhotoSummary",
+        "type": "object"
       },
       "ImportRowOut": {
         "examples": [
@@ -7264,6 +7454,42 @@
         "title": "Page[ImportBatchOut]",
         "type": "object"
       },
+      "Page_ImportPhotoOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportPhotoOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[ImportPhotoOut]",
+        "type": "object"
+      },
       "Page_IncompletePiece_": {
         "properties": {
           "items": {
@@ -7539,6 +7765,71 @@
         "title": "PhotoCompleteRequest",
         "type": "object"
       },
+      "PhotoDecisionOut": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/ImportPhotoOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "photos"
+        ],
+        "title": "PhotoDecisionOut",
+        "type": "object"
+      },
+      "PhotoDecisionRequest": {
+        "description": "A decision of a person on photos of the batch (design D4).\n\nOnly ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and\n``reorder`` come later.",
+        "examples": [
+          {
+            "op": "assign",
+            "photo_ids": [
+              "01920000-0000-7000-8000-000000000701"
+            ],
+            "row_id": "01920000-0000-7000-8000-000000000611"
+          }
+        ],
+        "properties": {
+          "op": {
+            "const": "assign",
+            "description": "`assign`: las fotos quedan asignadas a mano a `row_id`, después de su última foto; el emparejamiento ya no las cambia.",
+            "title": "Op",
+            "type": "string"
+          },
+          "photo_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Photo Ids",
+            "type": "array"
+          },
+          "row_id": {
+            "description": "Fila del mismo lote.",
+            "format": "uuid",
+            "title": "Row Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "photo_ids",
+          "row_id"
+        ],
+        "title": "PhotoDecisionRequest",
+        "type": "object"
+      },
       "PhotoFileIn": {
         "properties": {
           "content_sha256": {
@@ -7575,6 +7866,29 @@
         ],
         "title": "PhotoFileIn",
         "type": "object"
+      },
+      "PhotoMatchSource": {
+        "description": "Path that proposed the row (D3): file name, folder, mapped column, person or workbook.",
+        "enum": [
+          "FILENAME",
+          "FOLDER",
+          "COLUMN",
+          "MANUAL",
+          "EMBEDDED"
+        ],
+        "title": "PhotoMatchSource",
+        "type": "string"
+      },
+      "PhotoMatchStatus": {
+        "description": "Proposed row of a photo (D3): never applied to the catalogue without batch approval.",
+        "enum": [
+          "MATCHED",
+          "AMBIGUOUS",
+          "UNMATCHED",
+          "MANUAL"
+        ],
+        "title": "PhotoMatchStatus",
+        "type": "string"
       },
       "PhotoStateOut": {
         "properties": {
@@ -16251,6 +16565,260 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/imports/{batch_id}/photos": {
+      "get": {
+        "description": "Fotos del lote con su fila propuesta o asignada, ordenadas por fila y posición, con la miniatura firmada de las verificadas. Se filtran por estado, propuesta o fila (`importacion-masiva-fotografias`, diseño D4).",
+        "operationId": "listImportPhotos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ImportPhotoStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "match_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PhotoMatchStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Match Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "row_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Row Id"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ImportPhotoOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: bandeja con filtros y miniaturas",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "patch": {
+        "description": "`assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).",
+        "operationId": "decideImportPhotos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote ya no admite cambios en sus fotos."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: asignar fotos a una fila",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/imports/{batch_id}/photos/complete": {
       "post": {
         "description": "Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).",
@@ -16345,6 +16913,85 @@
           }
         ],
         "summary": "Fotografías del lote: avisar qué archivos terminaron de subirse",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/photos/summary": {
+      "get": {
+        "operationId": "summarizeImportPhotos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPhotoSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Fotografías del lote: conteos por estado y propuesta",
         "tags": [
           "Importación"
         ],
