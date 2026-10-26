@@ -31,6 +31,6 @@
 ## 5. Cierre del change
 
 - [ ] 5.1 Tests requeridos: pruebas de las secciones 1–4 en verde con `npm test` y `npm run lint`; repetir 2.x y 3.x contra PostgreSQL en compose (`npm run dev`, `npm run migrate`, `npm run seed`) cuando Docker esté disponible
-- [ ] 5.2 Actualizar OpenAPI: marcar las 5 operaciones de este change como `x-status: implemented` (quitar `x-change`), `npm run openapi && npm run openapi:client` y verificar `npm run openapi:check`; las extensiones de esquema (`version`, `confirmed_split`) no cambian rutas ni `operationId`, pero se declaran en `docs/api/mapeo-endpoints-v1.md` y en la lista congelada de `test_contract_conformance.py`
+- [x] 5.2 Actualizar OpenAPI: marcar las 5 operaciones de este change como `x-status: implemented` (quitar `x-change`), `npm run openapi && npm run openapi:client` y verificar `npm run openapi:check`; las extensiones de esquema (`version`, `confirmed_split`) no cambian rutas ni `operationId`, pero se declaran en `docs/api/mapeo-endpoints-v1.md` y en la lista congelada de `test_contract_conformance.py`
 - [ ] 5.3 Actualizar el manual de usuario: `docs/manual-usuario/catalogo.md` (alta, edición, conflictos, eliminación y restauración, corrección de código I) con capturas de datos sintéticos
 - [ ] 5.4 Registrar nuevos supuestos en `docs/preguntas-contraparte.md`, `openspec validate ficha-pieza-crud --strict` en verde y, tras aprobar el PR, `openspec archive ficha-pieza-crud -y` (o `/opsx:archive ficha-pieza-crud`)
