@@ -25,6 +25,7 @@ export const PERMISSIONS: Record<string, string> = {
   "pieces.update": "Editar fichas de piezas",
   "pieces.delete": "Eliminar piezas lógicamente",
   "pieces.restore": "Restaurar piezas eliminadas",
+  "trash.read": "Abrir la papelera de registros eliminados",
   "identifiers.manage": "Registrar identificadores",
   "identifiers.correct_inventory_code": "Corregir código I (procedimiento auditado)",
   "collections.manage": "Administrar colecciones",
@@ -57,7 +58,8 @@ const READ_ONLY = ["pieces.read", "reports.view"];
 const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
   ADMIN: ALL_PERMISSIONS,
   COLLECTIONS_MANAGER: ALL_PERMISSIONS.filter(
-    (code) => !["users.manage", "exports.full", "imports.revert"].includes(code),
+    (code) =>
+      !["users.manage", "exports.full", "imports.revert", "pieces.restore", "identifiers.correct_inventory_code"].includes(code),
   ),
   CATALOGUER: [
     ...READ_ONLY,

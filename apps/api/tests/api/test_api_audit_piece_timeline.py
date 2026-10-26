@@ -9,8 +9,12 @@ from tests.api.conftest import LoginAs, SeededApi
 def _edited_piece(seeded_api: SeededApi, login_as: LoginAs) -> str:
     with seeded_api.session() as db:
         piece_id = str(db.scalars(select(Piece.id).limit(1)).first())
-    response = login_as("CATALOGUER").put(
-        f"/api/v1/pieces/{piece_id}", json={"notes": "Nota para la línea de tiempo (sintética)"}
+    client = login_as("CATALOGUER")
+    version = client.get(f"/api/v1/pieces/{piece_id}").json()["version"]
+    response = client.put(
+        f"/api/v1/pieces/{piece_id}",
+        json={"notes": "Nota para la línea de tiempo (sintética)"},
+        headers={"If-Match": str(version)},
     )
     assert response.status_code == 200, response.text
     return piece_id

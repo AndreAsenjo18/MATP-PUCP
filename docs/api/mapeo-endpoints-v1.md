@@ -12,8 +12,8 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 |---|---|---|---|---|
 | 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1) |
 | 2 | `GET /pieces` · `listPieces` (`page`, `limit`) | `RF-014` → Pendiente¹ | `GET /pieces` (implementado, cursor + filtros) | Pendiente: paginación `page`/`limit` (tarea 4.1) |
-| 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById` |
-| 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`) |
+| 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById`. Campo añadido `version` (concurrencia optimista, `ficha-pieza-crud` D2) |
+| 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`). Cabecera `If-Match` con la `version` (`ficha-pieza-crud` D2). Campos añadidos al cuerpo `tenure_change_reason` y `supporting_document_ref`: el motivo y el documento de respaldo del cambio de régimen, que quedan en la auditoría y no en la ficha (`ficha-pieza-crud` D4) |
 | 5 | `DELETE /pieces/{id}` · `softDeletePiece` | `RF-005` → RN-005, RNF-006 | `DELETE /pieces/{piece_id}` (stub) | Hecho: `softDeletePiece` |
 | 6 | `GET /collections` · `listCollections` | `RF-006` → RF-010 | `GET /collections` (implementado) | Hecho: `CollectionOut` contiene `CollectionItem` (`code` = sigla normalizada); `TermOut` añade `name` en `/categories` y `/conservation-states` (tarea 4.2) |
 | 7 | `POST /collections` · `createCollection` | `RF-039` → RF-010 | `POST /collections` (implementado) | Hecho: `createCollection`; acepta el cuerpo `CollectionItem` (`code` equivale a `acronym`) |
@@ -37,7 +37,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
-| 21 | `POST /pieces/{id}/identifiers` · `addPieceIdentifier` | `RF-009` → RF-002 | igual (stub) | Hecho: ruta ya conforme |
+| 21 | `POST /pieces/{id}/identifiers` · `addPieceIdentifier` | `RF-009` → RF-002 | igual (stub) | Hecho: ruta ya conforme. Campos añadidos al cuerpo `confirmed_split` y `split_from`: la confirmación de la separación de un valor concatenado y ese valor original, que queda en la auditoría (`ficha-pieza-crud` D5) |
 | 22 | `DELETE /pieces/{id}/identifiers/{identifier_id}` · `deletePieceIdentifier` | `RF-010` → RF-002, RN-002, RN-005 | no existe (hay `.../correction`) | Hecho: baja lógica con motivo; queda en el historial (`include_history`) y en la auditoría; el código I responde 409 (tarea 5.3) |
 | 23 | `GET /pieces/{id}/children` · `getPieceChildren` | `RF-011` → RF-009 | no existe (se resuelve con filtro) | Hecho: `GET /pieces/{id}/children` |
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |

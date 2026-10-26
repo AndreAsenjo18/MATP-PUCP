@@ -5,26 +5,30 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import LimitPageParams, limit_page_params, paginate
 from app.api.refs import LocationRef, TermRef, translate_view_term
-from app.api.stubs import (
-    CHANGE_PIECE_CRUD,
-    implemented,
-    not_implemented,
-    stub,
+from app.api.stubs import implemented
+from app.core.errors import (
+    BusinessRuleViolation,
+    ConflictError,
+    NotFound,
+    PermissionDenied,
+    PreconditionRequired,
+    ValidationFailed,
 )
-from app.core.errors import NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
+from app.modules.audit.trash import restore_from_trash
 from app.modules.catalog import conservation
 from app.modules.catalog import service as catalog_service
 from app.modules.catalog.enums import TenureRegime
@@ -51,12 +55,19 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import PieceIdentifier
+from app.modules.identification.normalization import TYPE_INVENTORY, propose_identifiers
+from app.modules.identification.params import session_params
 from app.modules.identification.schemas import (
     IdentifierCreate,
     IdentifierOut,
     InventoryCodeCorrection,
 )
-from app.modules.identification.service import retire_identifier, set_inventory_code
+from app.modules.identification.service import (
+    add_identifier,
+    correct_locked_identifier,
+    retire_identifier,
+    set_inventory_code,
+)
 from app.modules.locations.models import Location, MovementType, PieceMovement
 from app.modules.locations.schemas import MovementCreate, MovementOut
 from app.modules.locations.service import UNSET as LOCATION_UNSET
@@ -98,6 +109,10 @@ from app.modules.users.sensitive_log import delivered_piece_fields, record_sensi
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
 
 NOT_FOUND = {404: {"model": ErrorResponse, "description": "La pieza no existe o fue eliminada."}}
+# Viajan en el PUT pero no son columnas: los aplica `change_tenure` (ficha-pieza-crud D4).
+TENURE_CHANGE_FIELDS = frozenset(
+    {"tenure_regime", "tenure_change_reason", "supporting_document_ref"}
+)
 
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 Creator = Annotated[CurrentUser, Depends(require_permission("pieces.create"))]
@@ -238,15 +253,37 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
     "/validate",
     response_model=PieceValidationResult,
     summary="Validar en tiempo real un formulario de ficha (RF-043)",
+    description="Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y "
+    "responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad "
+    "`error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño "
+    "D1). Con `piece_id` se valida la edición de esa pieza.",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def validate_piece(
     body: PieceCreate,
+    session: SessionDep,
     user: Creator,
     piece_id: Annotated[uuid.UUID | None, Query(description="Pieza en edición.")] = None,
 ) -> PieceValidationResult:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceValidationResult)
+    try:
+        piece = get_piece(session, piece_id) if piece_id else None
+        issues = catalog_service.validate_piece_payload(
+            session,
+            denomination=body.denomination,
+            tenure_regime=code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime"),
+            code_i=body.code_i,
+            epoch_start_year=body.period.year_from if body.period else None,
+            epoch_end_year=body.period.year_to if body.period else None,
+            dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
+            parent_piece_id=body.parent_piece_id,
+            piece=piece,
+        )
+    finally:
+        session.rollback()  # a validation never persists anything (D1)
+    return PieceValidationResult(
+        is_valid=all(issue.severity != "error" for issue in issues), issues=issues
+    )
 
 
 def _merged_from(session: Session, piece_id: uuid.UUID) -> list[MergedFrom]:
@@ -319,20 +356,84 @@ def _piece_detail(piece_id: uuid.UUID, session: Session, user: CurrentUser) -> P
     return reader.detail(piece).model_copy(update={"merged_from": merged_from})
 
 
+EDIT_CONFLICT = (
+    "Otra persona guardó cambios en esta ficha mientras usted la editaba. Revise sus cambios "
+    "antes de volver a guardar."
+)
+PRECONDITION_MISSING = (
+    "Falta la versión de la ficha (cabecera If-Match): recargue la ficha antes de guardar."
+)
+
+
+def _requested_version(if_match: str | None) -> int:
+    """The version sent in If-Match (``3``, ``"3"`` or ``W/"3"``); 428 without it (D2)."""
+    raw = (if_match or "").strip().removeprefix("W/").strip('"')
+    if not raw.isdigit():
+        raise PreconditionRequired(PRECONDITION_MISSING)
+    return int(raw)
+
+
+def _edit_conflict(session: Session, user: CurrentUser, piece_id: uuid.UUID) -> ConflictError:
+    current = get_piece(session, piece_id)
+    return ConflictError(
+        EDIT_CONFLICT,
+        code="edit_conflict",
+        details={
+            "current_version": current.version,
+            "current": CatalogReader(session, Viewer(user.permissions))
+            .detail(current)
+            .model_dump(mode="json"),
+        },
+    )
+
+
 @router.put(
     "/{piece_id}",
     response_model=PieceDetail,
-    responses=NOT_FOUND,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae "
+            "su versión y sus valores actuales. También las reglas del régimen de tenencia "
+            "(`tenure_change_with_inventory_code`, `invalid_tenure_transition`).",
+        },
+        428: {"model": ErrorResponse, "description": "Falta la cabecera `If-Match`."},
+    },
     summary="Editar la ficha (auditoría campo a campo)",
+    description="Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la "
+    "`version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión "
+    "(ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de "
+    "transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la "
+    "tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.",
     tags=["Piezas"],
     **implemented(),
 )
 def update_piece(
-    piece_id: uuid.UUID, body: PieceUpdate, session: SessionDep, user: Editor
+    piece_id: uuid.UUID,
+    body: PieceUpdate,
+    session: SessionDep,
+    user: Editor,
+    if_match: Annotated[
+        str | None,
+        Header(alias="If-Match", description="`version` de la ficha leída (ficha-pieza-crud D2)."),
+    ] = None,
 ) -> PieceDetail:
     piece = get_piece(session, piece_id)
+    if _requested_version(if_match) != piece.version:
+        raise _edit_conflict(session, user, piece_id)
     writer(session, user)
-    changes = body.model_dump(exclude_unset=True, exclude={"code_i", "material_term_ids"})
+    if body.tenure_regime is not None:  # first, so the code I and the rules see the new regime
+        catalog_service.change_tenure(
+            session,
+            piece,
+            code_of(TENURE_REGIME_LABELS, body.tenure_regime, "tenure_regime"),
+            body.tenure_change_reason,
+            body.supporting_document_ref,
+        )
+    changes = body.model_dump(
+        exclude_unset=True, exclude={"code_i", "material_term_ids", *TENURE_CHANGE_FIELDS}
+    )
     if "period" in changes:
         period = changes.pop("period") or {}
         changes["epoch_original_text"] = period.get("text")
@@ -346,7 +447,11 @@ def update_piece(
         catalog_service.update_piece(session, piece, code_i=code_i, **changes)
     if "code_i" in body.model_fields_set:
         set_inventory_code(session, piece, body.code_i)
-    session.commit()
+    try:
+        session.commit()
+    except StaleDataError:  # another edit was committed between the check and this one
+        session.rollback()
+        raise _edit_conflict(session, user, piece_id) from None
     return CatalogReader(session, Viewer(user.permissions)).detail(piece)
 
 
@@ -372,16 +477,34 @@ def soft_delete_piece(
 @router.post(
     "/{piece_id}/restore",
     response_model=PieceDetail,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza no existe."},
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza "
+                "activa (`details.dependency_entity_id`) o su colección sigue eliminada; "
+                "`not_deleted`: la pieza no está eliminada."
+            ),
+        },
+    },
     summary="Restaurar una pieza eliminada (Administrador)",
+    description="Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que "
+    "el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un "
+    "Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su "
+    "motivo (ficha-pieza-crud, diseño D7).",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def restore_piece(
     piece_id: uuid.UUID,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("pieces.restore"))],
-    reason: Annotated[str | None, Query()] = None,
+    reason: Annotated[str | None, Query(description="Motivo de la restauración.")] = None,
 ) -> PieceDetail:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceDetail)
+    restore_from_trash(writer(session, user, reason), "piece", piece_id, reason)
+    session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).detail(get_piece(session, piece_id))
 
 
 @router.get(
@@ -527,16 +650,85 @@ def list_piece_identifiers(
     "/{piece_id}/identifiers",
     response_model=IdentifierOut,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "Reglas del identificador: código I en una pieza que no es de "
+            "propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra "
+            "pieza o código I ya vigente.",
+        },
+        422: {
+            "model": ErrorResponse,
+            "description": "`concatenated_identifier`: el valor reúne varios códigos; "
+            "`details.proposals` trae uno por código (`identifier_type_code`, "
+            "`original_value`, `normalized_value`) y no se registra nada.",
+        },
+    },
     summary="Registrar un identificador externo (I bloqueado; comodato sin I)",
+    description="Detecta los códigos concatenados **antes** de registrar: si el valor reúne "
+    "varios, responde la propuesta de separación y la persona reenvía cada código por separado "
+    "con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la "
+    "auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).",
     tags=["Identificadores"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def add_piece_identifier(
     piece_id: uuid.UUID,
     body: IdentifierCreate,
-    user: Annotated[CurrentUser, Depends(require_permission("identifiers.manage"))],
+    session: SessionDep,
+    user: IdentifierManager,
 ) -> IdentifierOut:
-    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+    piece = get_piece(session, piece_id)
+    if body.split_from is not None and not body.confirmed_split:
+        raise ValidationFailed(
+            "`split_from` solo acompaña a una separación confirmada (`confirmed_split`).",
+            code="split_without_confirmation",
+        )
+    if not body.confirmed_split:
+        proposals = propose_identifiers(
+            body.value, body.identifier_type_code, params=session_params(session)
+        )
+        if len(proposals) > 1:
+            raise ValidationFailed(
+                "El valor reúne varios códigos. Confirme la separación y registre cada uno por "
+                "separado (RF-023).",
+                code="concatenated_identifier",
+                details={
+                    "original_value": body.value,
+                    "proposals": [
+                        {
+                            "identifier_type_code": proposal.type_code,
+                            "original_value": proposal.result.original,
+                            "normalized_value": proposal.result.normalized,
+                            "notes": proposal.notes,
+                        }
+                        for proposal in proposals
+                    ],
+                },
+            )
+    replaces = None
+    if body.replaces_identifier_id is not None:
+        replaces = session.scalar(
+            select(PieceIdentifier).where(
+                PieceIdentifier.id == body.replaces_identifier_id,
+                PieceIdentifier.piece_id == piece_id,
+            )
+        )
+        if replaces is None:
+            raise NotFound("El identificador que se reemplaza no existe en esta pieza.")
+    origin = (body.split_from or "").strip()
+    identifier = add_identifier(
+        writer(session, user, f"Separado de «{origin}»" if origin else None),
+        piece,
+        body.identifier_type_code,
+        body.value,
+        source=body.source or "manual",
+        replaces=replaces,
+        notes=body.notes,
+    )
+    session.commit()
+    return IdentifierOut.model_validate(identifier)
 
 
 @router.delete(
@@ -575,17 +767,51 @@ def delete_piece_identifier(
 @router.post(
     "/{piece_id}/identifiers/{identifier_id}/correction",
     response_model=IdentifierOut,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza o el identificador no existen."},
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el "
+                "código I de otra pieza, activa o eliminada (`details.piece_id`, A6); "
+                "`not_current_inventory_code`: el identificador no es el código I vigente."
+            ),
+        },
+    },
     summary="Corregir un código I con procedimiento auditado (Administrador, RN-002)",
+    description="En una transacción, el código vigente pasa a no vigente enlazado al nuevo "
+    "(`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la "
+    "corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El "
+    "valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.",
     tags=["Identificadores"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
 def correct_inventory_code(
     piece_id: uuid.UUID,
     identifier_id: uuid.UUID,
     body: InventoryCodeCorrection,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("identifiers.correct_inventory_code"))],
 ) -> IdentifierOut:
-    raise not_implemented(CHANGE_PIECE_CRUD, IdentifierOut)
+    piece = get_piece(session, piece_id)
+    identifier = session.scalar(
+        select(PieceIdentifier).where(
+            PieceIdentifier.id == identifier_id, PieceIdentifier.piece_id == piece_id
+        )
+    )
+    if identifier is None:
+        raise NotFound("El identificador no existe en esta pieza o ya fue dado de baja.")
+    if identifier.identifier_type_code != TYPE_INVENTORY or not identifier.is_current:
+        raise BusinessRuleViolation(
+            "Solo se corrige el código I vigente de la pieza; los demás códigos se registran o "
+            "se dan de baja en sus identificadores.",
+            code="not_current_inventory_code",
+        )
+    corrected = correct_locked_identifier(
+        writer(session, user, body.reason), piece, TYPE_INVENTORY, body.new_value, body.reason
+    )
+    session.commit()
+    return IdentifierOut.model_validate(corrected)
 
 
 # -------------------------------------------------------------------------- media
@@ -1230,12 +1456,40 @@ def get_piece_children(
 @router.post(
     "/{piece_id}/children",
     response_model=PieceSummary,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": (
+                "`piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; "
+                "`component_already_linked`: ya es componente de otro conjunto "
+                "(`details.parent_piece_id`)."
+            ),
+        },
+    },
     summary="Asociar una pieza existente como componente de un conjunto (RF-009)",
+    description="Responde la pieza componente. El vínculo queda en la auditoría como cambio de "
+    "`parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El "
+    "código derivado del conjunto no se genera todavía [SUPUESTO B8].",
     tags=["Piezas"],
-    **stub(CHANGE_PIECE_CRUD),
+    **implemented(),
 )
-def add_piece_child(piece_id: uuid.UUID, body: PieceChildLink, user: Editor) -> PieceSummary:
-    raise not_implemented(CHANGE_PIECE_CRUD, PieceSummary)
+def add_piece_child(
+    piece_id: uuid.UUID, body: PieceChildLink, session: SessionDep, user: Editor
+) -> PieceSummary:
+    parent = get_piece(session, piece_id)
+    child = get_piece(session, body.child_piece_id)
+    if child.parent_piece_id not in (None, parent.id):
+        raise BusinessRuleViolation(
+            "La pieza ya es componente de otro conjunto; desvincúlela de ese conjunto antes de "
+            "asociarla a este.",
+            code="component_already_linked",
+            details={"parent_piece_id": str(child.parent_piece_id)},
+        )
+    if child.parent_piece_id is None:
+        catalog_service.set_parent(writer(session, user), child, parent.id)
+        session.commit()
+    return CatalogReader(session, Viewer(user.permissions)).summaries([child])[0]
 
 
 # ---------------------------------------------------------------------- movements

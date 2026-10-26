@@ -3638,6 +3638,12 @@
           }
         ],
         "properties": {
+          "confirmed_split": {
+            "default": false,
+            "description": "La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).",
+            "title": "Confirmed Split",
+            "type": "boolean"
+          },
           "identifier_type_code": {
             "maxLength": 40,
             "minLength": 1,
@@ -3679,6 +3685,19 @@
               }
             ],
             "title": "Source"
+          },
+          "split_from": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.",
+            "title": "Split From"
           },
           "value": {
             "minLength": 1,
@@ -8520,7 +8539,8 @@
             "provenance": "Ayacucho (sintético)",
             "recorded_by": "Registrador sintético",
             "tenure_regime": "Comodato",
-            "updated_at": "2026-09-17T10:30:00Z"
+            "updated_at": "2026-09-17T10:30:00Z",
+            "version": 3
           }
         ],
         "properties": {
@@ -8825,6 +8845,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "version": {
+            "description": "Versión de la ficha: se envía en `If-Match` al editarla (control de concurrencia, ficha-pieza-crud D2).",
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -8857,7 +8882,8 @@
           "code_i",
           "media_count",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "version"
         ],
         "title": "PieceDetail",
         "type": "object"
@@ -9394,6 +9420,18 @@
             ],
             "title": "Recorded By"
           },
+          "supporting_document_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Supporting Document Ref"
+          },
           "temporary_inventory_number": {
             "anyOf": [
               {
@@ -9404,6 +9442,35 @@
               }
             ],
             "title": "Temporary Inventory Number"
+          },
+          "tenure_change_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+            "title": "Tenure Change Reason"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.",
+            "title": "Tenure Regime"
           }
         },
         "title": "PieceUpdate",
@@ -19215,6 +19282,7 @@
     },
     "/api/v1/pieces/validate": {
       "post": {
+        "description": "Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.",
         "operationId": "validatePiece",
         "parameters": [
           {
@@ -19287,16 +19355,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -19308,8 +19366,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}": {
@@ -19473,6 +19530,7 @@
         "x-status": "implemented"
       },
       "put": {
+        "description": "Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.",
         "operationId": "updatePiece",
         "parameters": [
           {
@@ -19483,6 +19541,24 @@
               "format": "uuid",
               "title": "Piece Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "`version` de la ficha leída (ficha-pieza-crud D2).",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`version` de la ficha leída (ficha-pieza-crud D2).",
+              "title": "If-Match"
             }
           }
         ],
@@ -19537,6 +19613,16 @@
             },
             "description": "La pieza no existe o fue eliminada."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19546,6 +19632,16 @@
               }
             },
             "description": "Datos no válidos."
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta la cabecera `If-Match`."
           }
         },
         "security": [
@@ -19716,6 +19812,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].",
         "operationId": "addPieceChild",
         "parameters": [
           {
@@ -19770,6 +19867,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19779,16 +19896,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -19800,8 +19907,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/conservation-assessments": {
@@ -20074,6 +20180,7 @@
         "x-status": "implemented"
       },
       "post": {
+        "description": "Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).",
         "operationId": "addPieceIdentifier",
         "parameters": [
           {
@@ -20128,6 +20235,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -20136,17 +20263,7 @@
                 }
               }
             },
-            "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
+            "description": "`concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada."
           }
         },
         "security": [
@@ -20158,8 +20275,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}": {
@@ -20276,6 +20392,7 @@
     },
     "/api/v1/pieces/{piece_id}/identifiers/{identifier_id}/correction": {
       "post": {
+        "description": "En una transacción, el código vigente pasa a no vigente enlazado al nuevo (`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.",
         "operationId": "correctInventoryCode",
         "parameters": [
           {
@@ -20340,6 +20457,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza o el identificador no existen."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el código I de otra pieza, activa o eliminada (`details.piece_id`, A6); `not_current_inventory_code`: el identificador no es el código I vigente."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -20349,16 +20486,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -20370,8 +20497,7 @@
         "tags": [
           "Identificadores"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/location-history": {
@@ -21125,6 +21251,7 @@
     },
     "/api/v1/pieces/{piece_id}/restore": {
       "post": {
+        "description": "Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).",
         "operationId": "restorePiece",
         "parameters": [
           {
@@ -21138,6 +21265,7 @@
             }
           },
           {
+            "description": "Motivo de la restauración.",
             "in": "query",
             "name": "reason",
             "required": false,
@@ -21150,6 +21278,7 @@
                   "type": "null"
                 }
               ],
+              "description": "Motivo de la restauración.",
               "title": "Reason"
             }
           }
@@ -21185,6 +21314,26 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -21194,16 +21343,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ficha-pieza-crud`."
           }
         },
         "security": [
@@ -21215,8 +21354,7 @@
         "tags": [
           "Piezas"
         ],
-        "x-change": "ficha-pieza-crud",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/pieces/{piece_id}/source-records": {

@@ -213,6 +213,7 @@ class PieceDetail(BaseModel):
                     "media_count": 0,
                     "created_at": EX_DATETIME,
                     "updated_at": EX_DATETIME,
+                    "version": 3,
                     "masked_fields": ["lender_name", "loan_agreement_ref", "location.path"],
                 }
             ]
@@ -258,6 +259,10 @@ class PieceDetail(BaseModel):
     media_count: int
     created_at: datetime
     updated_at: datetime
+    version: int = Field(
+        description="Versión de la ficha: se envía en `If-Match` al editarla (control de "
+        "concurrencia, ficha-pieza-crud D2)."
+    )
     masked_fields: list[str] = Field(default_factory=list)
     merged_into: MergedInto | None = Field(
         None,
@@ -273,6 +278,18 @@ class PieceDetail(BaseModel):
             "evaluaciones siguen en ellas (calidad-datos; RF-030)."
         ),
     )
+
+
+def canonical_tenure_label(value: object) -> str | None:
+    """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+    if value is None:
+        return None
+    code = (
+        value
+        if isinstance(value, TenureRegime)
+        else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
+    )
+    return TENURE_REGIME_LABELS[code]
 
 
 class PieceWrite(BaseModel):
@@ -331,15 +348,7 @@ class PieceCreate(PieceWrite):
     @field_validator("tenure_regime", mode="before")
     @classmethod
     def _tenure_from_label(cls, value: object) -> str | None:
-        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
-        if value is None:
-            return None
-        code = (
-            value
-            if isinstance(value, TenureRegime)
-            else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
-        )
-        return TENURE_REGIME_LABELS[code]
+        return canonical_tenure_label(value)
 
 
 class PieceUpdate(PieceWrite):
@@ -352,6 +361,26 @@ class PieceUpdate(PieceWrite):
         None,
         description="Código I a verificar o asignar (RN-002, RN-003); omitir para no tocarlo.",
     )
+    tenure_regime: TenureRegimeLabel | None = Field(
+        None,
+        description="Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, "
+        "RN-004). Omitir para no tocarlo.",
+    )
+    tenure_change_reason: str | None = Field(
+        None,
+        description="Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. "
+        "Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+    )
+    supporting_document_ref: str | None = Field(
+        None,
+        description="Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. "
+        "Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+    )
+
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> str | None:
+        return canonical_tenure_label(value)
 
 
 class FieldIssue(BaseModel):

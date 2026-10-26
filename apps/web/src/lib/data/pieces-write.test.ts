@@ -9,6 +9,8 @@ import {
   createPieceValidator,
   fetchPieceCatalogs,
   initialPieceCatalogs,
+  PRECONDITION_MESSAGE,
+  registerSplitIdentifiers,
   updatePiece,
   validatePiece,
   type PieceCreateInput,
@@ -364,6 +366,25 @@ describe("updatePiece (modo live): conflicto de edición", () => {
     expect(await updatePiece(ids.piece(1), { notes: "x" })).toEqual({ status: "conflict", message });
   });
 
+  it("envía la versión de la ficha abierta en If-Match (design D2)", async () => {
+    const detail = detailOf(1);
+    const fetchMock = useLive(async () => json(200, { ...detail, version: 4 }));
+
+    const result = await updatePiece(detail.id, { notes: "Revisado" }, 3);
+
+    expect(lastRequest(fetchMock).headers.get("If-Match")).toBe("3");
+    expect(result.status === "ok" && result.piece.version).toBe(4);
+  });
+
+  it("sin versión no inventa la cabecera y el 428 se explica en lenguaje claro", async () => {
+    const fetchMock = useLive(async () => json(428, { code: "precondition_required", message: "Falta If-Match." }));
+
+    const result = await updatePiece(ids.piece(1), { notes: "x" });
+
+    expect(lastRequest(fetchMock).headers.has("If-Match")).toBe(false);
+    expect(result).toEqual({ status: "rejected", code: "precondition_required", message: PRECONDITION_MESSAGE });
+  });
+
   it("otros 409 (código I inmutable) siguen siendo rejected y no se tratan como conflicto", async () => {
     useLive(async () => json(409, { code: "immutable_inventory_code", message: "El código I está bloqueado." }));
 
@@ -495,5 +516,44 @@ describe("createPieceValidator (debounce y AbortController)", () => {
     await vi.advanceTimersByTimeAsync(50);
 
     await expect(result).resolves.toMatchObject({ status: "ok", result: { is_valid: false } });
+  });
+});
+
+describe("registerSplitIdentifiers (live)", () => {
+  it("envía cada código con confirmed_split y el valor concatenado original en split_from (design D5)", async () => {
+    const fetchMock = useLive(async (request) => {
+      const body = (await request.clone().json()) as { identifier_type_code: string; value: string };
+      return json(201, {
+        id: crypto.randomUUID(),
+        piece_id: ids.piece(1),
+        identifier_type_code: body.identifier_type_code,
+        original_value: body.value,
+        normalized_value: body.value,
+        normalization_status: "NORMALIZED",
+        detected_format: null,
+        is_current: true,
+        is_locked: false,
+        source: "manual",
+        recorded_at: "2026-10-25T10:00:00Z",
+        replaced_by_id: null,
+        notes: null,
+      });
+    });
+
+    const result = await registerSplitIdentifiers(
+      ids.piece(1),
+      [
+        { identifier_type_code: "I", original_value: "I 2362", normalized_value: "I-2362" },
+        { identifier_type_code: "COLECCION", original_value: "RA 28", normalized_value: "RA 28" },
+      ],
+      { splitFrom: "I 2362 / RA 28" },
+    );
+
+    expect(result.status).toBe("ok");
+    const sent = await Promise.all([0, 1].map((index) => requestAt(fetchMock, index).json()));
+    expect(sent).toEqual([
+      expect.objectContaining({ value: "I 2362", confirmed_split: true, split_from: "I 2362 / RA 28" }),
+      expect.objectContaining({ value: "RA 28", confirmed_split: true, split_from: "I 2362 / RA 28" }),
+    ]);
   });
 });

@@ -38,6 +38,17 @@ BLOQUEADAS: set[tuple[str, str]] = {("get", "/public/catalog")}
 # Vacía desde la tarea 1.4: `operation_id()` convierte el nombre del handler a camelCase.
 PENDIENTES_OPERATION_ID: set[tuple[str, str]] = set()
 
+# Campos propios que extienden un esquema sin cambiar rutas ni `operationId`, justificados en el
+# mapeo (`ficha-pieza-crud` 5.2): la versión de la ficha (D2), el motivo y el documento del cambio
+# de régimen (D4) y la confirmación de un valor concatenado con su original (D5).
+CAMPOS_ANADIDOS: set[tuple[str, str]] = {
+    ("PieceDetail", "version"),
+    ("PieceUpdate", "tenure_change_reason"),
+    ("PieceUpdate", "supporting_document_ref"),
+    ("IdentifierCreate", "confirmed_split"),
+    ("IdentifierCreate", "split_from"),
+}
+
 # Operaciones propias que el documento no contempla, justificadas en el mapeo.
 ANADIDOS: set[tuple[str, str]] = {
     ("get", "/ai/suggestions"),
@@ -256,3 +267,19 @@ def test_documented_schema_fields_are_not_silently_renamed(
         "Los campos del contrato (denomination, code_i) deben aparecer en el esquema de la API "
         "(tarea 4.1 del change alinear-api-endpoints-v1)."
     )
+
+
+def test_added_schema_fields_exist_and_are_declared_in_the_mapping() -> None:
+    """`CAMPOS_ANADIDOS`: cada extensión existe en la API y figura en el mapeo."""
+    schemas = build_spec()["components"]["schemas"]
+    missing = {
+        (schema, field)
+        for schema, field in CAMPOS_ANADIDOS
+        if field not in schemas.get(schema, {}).get("properties", {})
+    }
+    assert not missing, f"CAMPOS_ANADIDOS cita campos que la API ya no tiene: {sorted(missing)}"
+    mapping = (REPO_ROOT / MAPPING_DOC).read_text(encoding="utf-8")
+    undeclared = {
+        (schema, field) for schema, field in CAMPOS_ANADIDOS if f"`{field}`" not in mapping
+    }
+    assert not undeclared, f"Campos añadidos sin justificar en {MAPPING_DOC}: {sorted(undeclared)}"

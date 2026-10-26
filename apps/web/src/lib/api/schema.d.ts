@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 89140497c6159f79bb15d07bd315734f4957dc3cda95fa7b2af2cae633de0ecf
+ * openapi-sha256: 671eba9ff4127bc9e4df275a46a6ec87eff9baa516fb8ef5fc717c43f64debef
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1203,7 +1203,10 @@ export interface paths {
         };
         /** Ficha de una pieza (campos sensibles según rol) */
         get: operations["getPieceById"];
-        /** Editar la ficha (auditoría campo a campo) */
+        /**
+         * Editar la ficha (auditoría campo a campo)
+         * @description Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.
+         */
         put: operations["updatePiece"];
         post?: never;
         /** Eliminar lógicamente una pieza con motivo (RN-005) */
@@ -1240,7 +1243,10 @@ export interface paths {
         /** Listar las piezas componentes de un conjunto (RF-009) */
         get: operations["getPieceChildren"];
         put?: never;
-        /** Asociar una pieza existente como componente de un conjunto (RF-009) */
+        /**
+         * Asociar una pieza existente como componente de un conjunto (RF-009)
+         * @description Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].
+         */
         post: operations["addPieceChild"];
         delete?: never;
         options?: never;
@@ -1279,7 +1285,10 @@ export interface paths {
         /** Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja) */
         get: operations["listPieceIdentifiers"];
         put?: never;
-        /** Registrar un identificador externo (I bloqueado; comodato sin I) */
+        /**
+         * Registrar un identificador externo (I bloqueado; comodato sin I)
+         * @description Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).
+         */
         post: operations["addPieceIdentifier"];
         delete?: never;
         options?: never;
@@ -1316,7 +1325,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Corregir un código I con procedimiento auditado (Administrador, RN-002) */
+        /**
+         * Corregir un código I con procedimiento auditado (Administrador, RN-002)
+         * @description En una transacción, el código vigente pasa a no vigente enlazado al nuevo (`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.
+         */
         post: operations["correctInventoryCode"];
         delete?: never;
         options?: never;
@@ -1454,7 +1466,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Restaurar una pieza eliminada (Administrador) */
+        /**
+         * Restaurar una pieza eliminada (Administrador)
+         * @description Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).
+         */
         post: operations["restorePiece"];
         delete?: never;
         options?: never;
@@ -1505,7 +1520,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validar en tiempo real un formulario de ficha (RF-043) */
+        /**
+         * Validar en tiempo real un formulario de ficha (RF-043)
+         * @description Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.
+         */
         post: operations["validatePiece"];
         delete?: never;
         options?: never;
@@ -3699,6 +3717,12 @@ export interface components {
          *     }
          */
         IdentifierCreate: {
+            /**
+             * Confirmed Split
+             * @description La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).
+             * @default false
+             */
+            confirmed_split: boolean;
             /** Identifier Type Code */
             identifier_type_code: string;
             /** Notes */
@@ -3710,6 +3734,11 @@ export interface components {
             replaces_identifier_id?: string | null;
             /** Source */
             source?: string | null;
+            /**
+             * Split From
+             * @description Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.
+             */
+            split_from?: string | null;
             /** Value */
             value: string;
         };
@@ -5899,7 +5928,8 @@ export interface components {
          *       "provenance": "Ayacucho (sintético)",
          *       "recorded_by": "Registrador sintético",
          *       "tenure_regime": "Comodato",
-         *       "updated_at": "2026-09-17T10:30:00Z"
+         *       "updated_at": "2026-09-17T10:30:00Z",
+         *       "version": 3
          *     }
          */
         PieceDetail: {
@@ -5989,6 +6019,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Version
+             * @description Versión de la ficha: se envía en `If-Match` al editarla (control de concurrencia, ficha-pieza-crud D2).
+             */
+            version: number;
         };
         /**
          * PieceLocation
@@ -6194,8 +6229,23 @@ export interface components {
             provenance?: string | null;
             /** Recorded By */
             recorded_by?: string | null;
+            /**
+             * Supporting Document Ref
+             * @description Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            supporting_document_ref?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
+            /**
+             * Tenure Change Reason
+             * @description Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            tenure_change_reason?: string | null;
+            /**
+             * Tenure Regime
+             * @description Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.
+             */
+            tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
         };
         /**
          * PieceValidationResult
@@ -12100,7 +12150,10 @@ export interface operations {
     updatePiece: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description `version` de la ficha leída (ficha-pieza-crud D2). */
+                "If-Match"?: string | null;
+            };
             path: {
                 piece_id: string;
             };
@@ -12148,8 +12201,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Falta la cabecera `If-Match`. */
+            428: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12367,8 +12438,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12376,13 +12447,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12610,8 +12690,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12619,13 +12699,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12744,8 +12833,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza o el identificador no existen. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12753,13 +12842,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el código I de otra pieza, activa o eliminada (`details.piece_id`, A6); `not_current_inventory_code`: el identificador no es el código I vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -13254,6 +13352,7 @@ export interface operations {
     restorePiece: {
         parameters: {
             query?: {
+                /** @description Motivo de la restauración. */
                 reason?: string | null;
             };
             header?: never;
@@ -13291,8 +13390,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13300,13 +13399,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -13470,15 +13578,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
