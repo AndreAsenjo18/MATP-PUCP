@@ -49,7 +49,7 @@ from app.modules.catalog.schemas import (
     PieceValidationResult,
     SourceRecordOut,
 )
-from app.modules.collections.models import Collection, Term
+from app.modules.collections.models import Term
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.schemas import (
     IdentifierCreate,
@@ -69,7 +69,6 @@ from app.modules.locations.service import move_piece as move_piece_service
 from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
-    DownloadUrlRequest,
     DownloadUrlResponse,
     MediaAssetCreate,
     MediaAssetOut,
@@ -82,6 +81,7 @@ from app.modules.media.schemas import (
 from app.modules.media.service import (
     EXTENSION_BY_FORMAT,
     comodato_restriction_term_id,
+    effective_restriction,
     gallery_urls,
     verify_image_stream,
 )
@@ -1019,7 +1019,10 @@ def reorder_media(
 @router.get(
     "/{piece_id}/media/{media_id}/download-url",
     response_model=DownloadUrlResponse,
+    responses=NOT_FOUND,
     summary="Obtener URL prefirmada para descargar una foto",
+    description="URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción "
+    "efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).",
     tags=["Multimedia"],
     **implemented(),
 )
@@ -1029,60 +1032,36 @@ def get_media_download_url(
     user: Annotated[CurrentUser, Depends(require_permission("pieces.read"))],
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
-    body: DownloadUrlRequest,
+    purpose: Annotated[
+        Literal["internal", "external"],
+        Query(description="Uso previsto: `internal` (verla en la ficha) o `external` (descarga)."),
+    ] = "internal",
 ) -> DownloadUrlResponse:
     piece = get_piece(session, piece_id)
     asset = session.get(MediaAsset, media_id)
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
 
-    # Calcular restricción efectiva: foto > pieza > colección (comodato)
-    effective_restriction_term_id: uuid.UUID | None = None
-    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = "ninguna"
+    restriction = effective_restriction(session, asset, piece)
+    term = session.get(Term, restriction.term_id) if restriction.term_id else None
+    if (
+        purpose == "external"
+        and term is not None
+        and (term.extra or {}).get("blocks_external_download")
+    ):
+        raise ValidationFailed(
+            f"Descarga externa bloqueada por restricción '{term.label}' "
+            f"(origen: {restriction.origin}).",
+            code="usage_restricted",
+            details={"restriction": term.code, "origin": restriction.origin},
+        )
 
-    if asset.usage_restriction_term_id is not None:
-        effective_restriction_term_id = asset.usage_restriction_term_id
-        restriction_origin = "foto"
-    elif piece.usage_restriction_term_id is not None:
-        effective_restriction_term_id = piece.usage_restriction_term_id
-        restriction_origin = "pieza"
-    elif piece.collection_id is not None:
-        collection = session.get(Collection, piece.collection_id)
-        if collection and collection.default_usage_restriction_term_id is not None:
-            effective_restriction_term_id = collection.default_usage_restriction_term_id
-            restriction_origin = "colección"
-
-    # Validar propósito y restricción
-    if body.purpose == "external" and effective_restriction_term_id is not None:
-        term = session.get(Term, effective_restriction_term_id)
-        if term and term.extra and term.extra.get("blocks_external_download") is True:
-            raise ValidationFailed(
-                "Descarga externa bloqueada por restricción "
-                f"'{term.label}' (origen: {restriction_origin}).",
-                code="usage_restricted",
-                details={"restriction": term.code, "origin": restriction_origin},
-            )
-
-    # Generar URL prefirmada
     ttl = request.app.state.settings.media_url_ttl_seconds
-    presigned = request.app.state.storage.presign_get(asset.storage_key, ttl)
-
-    # Respuesta
-    terms = {
-        term.id: term
-        for term in session.scalars(select(Term).where(Term.id == effective_restriction_term_id))
-    }
-    effective_restriction = (
-        TermRef.model_validate(terms[effective_restriction_term_id])
-        if effective_restriction_term_id and effective_restriction_term_id in terms
-        else None
-    )
-
     return DownloadUrlResponse(
-        download_url=presigned["url"],
+        download_url=request.app.state.storage.presign_get(asset.storage_key, ttl),
         expires_at=datetime.now(UTC) + timedelta(seconds=ttl),
-        effective_restriction=effective_restriction,
-        restriction_origin=restriction_origin,
+        effective_restriction=TermRef.model_validate(term) if term is not None else None,
+        restriction_origin=restriction.origin,
     )
 
 

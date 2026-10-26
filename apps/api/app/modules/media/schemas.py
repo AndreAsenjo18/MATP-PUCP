@@ -131,24 +131,6 @@ class MediaAssetUpdate(BaseModel):
     restriction_note: str | None = None
 
 
-class DownloadUrlRequest(BaseModel):
-    """Request for download URL with purpose."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {"purpose": "internal"},
-                {"purpose": "external"},
-            ]
-        }
-    )
-
-    purpose: Literal["internal", "external"] = Field(
-        default="internal",
-        description="Uso previsto: internal (visualización) o external (descarga).",
-    )
-
-
 class DownloadUrlResponse(BaseModel):
     """Response with pre-signed download URL."""
 
