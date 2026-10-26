@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 384c01c09e021521e303043e7624f36a6061b1cc8395d3139a76a15cff23afd0
+ * openapi-sha256: 77ed4629904ac59bcbd6d4db69b4047cd24b4789b9f15febd25b6fac241a20e8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1343,7 +1343,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obtener URL prefirmada para descargar una foto */
+        /**
+         * Obtener URL prefirmada para descargar una foto
+         * @description URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).
+         */
         get: operations["getMediaDownloadUrl"];
         put?: never;
         post?: never;
@@ -3186,25 +3189,6 @@ export interface components {
             value: number;
         };
         /**
-         * DownloadUrlRequest
-         * @description Request for download URL with purpose.
-         * @example {
-         *       "purpose": "internal"
-         *     }
-         * @example {
-         *       "purpose": "external"
-         *     }
-         */
-        DownloadUrlRequest: {
-            /**
-             * Purpose
-             * @description Uso previsto: internal (visualización) o external (descarga).
-             * @default internal
-             * @enum {string}
-             */
-            purpose: "internal" | "external";
-        };
-        /**
          * DownloadUrlResponse
          * @description Response with pre-signed download URL.
          * @example {
@@ -4825,6 +4809,8 @@ export interface components {
              * @description En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.
              */
             download_url?: string | null;
+            /** @description Restricción que se aplica: la propia o, si no tiene, la de su colección. */
+            effective_restriction?: components["schemas"]["TermRef"] | null;
             /** Height Px */
             height_px: number | null;
             /**
@@ -4845,6 +4831,13 @@ export interface components {
             piece_id: string;
             /** Restriction Note */
             restriction_note: string | null;
+            /**
+             * Restriction Origin
+             * @description De dónde viene la restricción efectiva (RN-008).
+             * @default ninguna
+             * @enum {string}
+             */
+            restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
             /** Size Bytes */
             size_bytes: number;
             /** Sort Order */
@@ -12638,7 +12631,10 @@ export interface operations {
     };
     getMediaDownloadUrl: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Uso previsto: `internal` (verla en la ficha) o `external` (descarga). */
+                purpose?: "internal" | "external";
+            };
             header?: never;
             path: {
                 media_id: string;
@@ -12646,11 +12642,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DownloadUrlRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -12672,6 +12664,24 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `usage_restricted`: la restricción efectiva bloquea la descarga externa; `details` trae la restricción, su origen y el acuerdo de comodato. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

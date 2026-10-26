@@ -589,6 +589,52 @@ def correct_inventory_code(
 
 
 # -------------------------------------------------------------------------- media
+def _media_out(
+    session: Session,
+    piece: Piece,
+    asset: MediaAsset,
+    *,
+    urls: tuple[str | None, str | None] = (None, None),
+) -> MediaAssetOut:
+    """A photo of the gallery with its own and its effective restriction (fotografias 2.5).
+
+    ``urls`` are the signed thumbnail and display copy (``gallery_urls``), only in the list.
+    """
+
+    def term_ref(term_id: uuid.UUID | None) -> TermRef | None:
+        term = (
+            session.get(Term, term_id, execution_options={INCLUDE_DELETED: True})
+            if term_id
+            else None
+        )
+        return TermRef.model_validate(term) if term is not None else None
+
+    restriction = effective_restriction(session, asset, piece)
+    view_type = term_ref(asset.view_type_term_id)
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(view_type) if view_type else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=term_ref(asset.usage_restriction_term_id),
+        effective_restriction=term_ref(restriction.term_id),
+        restriction_origin=restriction.origin,
+        restriction_note=asset.restriction_note,
+        download_url=urls[1],
+        thumbnail_url=urls[0],
+        created_at=asset.created_at,
+    )
+
+
 @router.get(
     "/{piece_id}/media",
     response_model=list[MediaAssetOut],
@@ -600,7 +646,7 @@ def correct_inventory_code(
 def list_piece_media(
     request: Request, piece_id: uuid.UUID, session: SessionDep, user: Reader
 ) -> list[MediaAssetOut]:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     assets = list(
         session.scalars(
             select(MediaAsset)
@@ -608,40 +654,10 @@ def list_piece_media(
             .order_by(MediaAsset.sort_order, MediaAsset.created_at)
         )
     )
-    reader = CatalogReader(session, Viewer(user.permissions))
-    terms = reader.terms(
-        term_id
-        for asset in assets
-        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
-    )
     storage = request.app.state.storage
     ttl = request.app.state.settings.media_url_ttl_seconds
-    urls = {asset.id: gallery_urls(storage, asset, ttl) for asset in assets}
     return [
-        MediaAssetOut(
-            id=asset.id,
-            piece_id=asset.piece_id,
-            original_filename=asset.original_filename,
-            content_type=asset.content_type,
-            size_bytes=asset.size_bytes,
-            content_sha256=asset.content_sha256,
-            width_px=asset.width_px,
-            height_px=asset.height_px,
-            view_type=translate_view_term(TermRef.model_validate(terms[asset.view_type_term_id]))
-            if asset.view_type_term_id in terms
-            else None,
-            sort_order=asset.sort_order,
-            is_primary=asset.is_primary,
-            photographer=asset.photographer,
-            taken_on=asset.taken_on,
-            usage_restriction=TermRef.model_validate(terms[asset.usage_restriction_term_id])
-            if asset.usage_restriction_term_id in terms
-            else None,
-            restriction_note=asset.restriction_note,
-            download_url=urls[asset.id][1],
-            thumbnail_url=urls[asset.id][0],
-            created_at=asset.created_at,
-        )
+        _media_out(session, piece, asset, urls=gallery_urls(storage, asset, ttl))
         for asset in assets
     ]
 
@@ -811,42 +827,7 @@ def register_media(
 
     background_tasks.add_task(_generate_derivatives)
 
-    # 9. Respuesta MediaAssetOut (mapeo igual que list_piece_media)
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for term_id in (body.view_type_term_id, restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    view_term = terms.get(body.view_type_term_id)
-    restriction_term = terms.get(restriction_term_id) if restriction_term_id else None
-    return MediaAssetOut(
-        id=asset.id,
-        piece_id=asset.piece_id,
-        original_filename=asset.original_filename,
-        content_type=asset.content_type,
-        size_bytes=asset.size_bytes,
-        content_sha256=asset.content_sha256,
-        width_px=asset.width_px,
-        height_px=asset.height_px,
-        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
-        sort_order=asset.sort_order,
-        is_primary=asset.is_primary,
-        photographer=asset.photographer,
-        taken_on=asset.taken_on,
-        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
-        restriction_note=asset.restriction_note,
-        download_url=None,
-        created_at=asset.created_at,
-    )
+    return _media_out(session, piece, asset)
 
 
 @router.patch(
@@ -863,7 +844,7 @@ def update_media(
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     asset = session.get(MediaAsset, media_id)
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
@@ -896,44 +877,7 @@ def update_media(
     writer(session, user)
     session.commit()
 
-    # Respuesta
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    view_term = terms.get(asset.view_type_term_id)
-    restriction_term = (
-        terms.get(asset.usage_restriction_term_id) if asset.usage_restriction_term_id else None
-    )
-    return MediaAssetOut(
-        id=asset.id,
-        piece_id=asset.piece_id,
-        original_filename=asset.original_filename,
-        content_type=asset.content_type,
-        size_bytes=asset.size_bytes,
-        content_sha256=asset.content_sha256,
-        width_px=asset.width_px,
-        height_px=asset.height_px,
-        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
-        sort_order=asset.sort_order,
-        is_primary=asset.is_primary,
-        photographer=asset.photographer,
-        taken_on=asset.taken_on,
-        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
-        restriction_note=asset.restriction_note,
-        download_url=None,
-        created_at=asset.created_at,
-    )
+    return _media_out(session, piece, asset)
 
 
 @router.put(
@@ -949,7 +893,7 @@ def reorder_media(
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> list[MediaAssetOut]:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     # Obtener todas las fotos activas de la pieza
     assets = list(
         session.scalars(
@@ -972,48 +916,7 @@ def reorder_media(
         asset.sort_order = idx
     writer(session, user)
     session.commit()
-    # Respuesta ordenada
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for a in assets
-                        for term_id in (a.view_type_term_id, a.usage_restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    return [
-        MediaAssetOut(
-            id=a.id,
-            piece_id=a.piece_id,
-            original_filename=a.original_filename,
-            content_type=a.content_type,
-            size_bytes=a.size_bytes,
-            content_sha256=a.content_sha256,
-            width_px=a.width_px,
-            height_px=a.height_px,
-            view_type=translate_view_term(TermRef.model_validate(terms[a.view_type_term_id]))
-            if a.view_type_term_id and a.view_type_term_id in terms
-            else None,
-            sort_order=a.sort_order,
-            is_primary=a.is_primary,
-            photographer=a.photographer,
-            taken_on=a.taken_on,
-            usage_restriction=TermRef.model_validate(terms[a.usage_restriction_term_id])
-            if a.usage_restriction_term_id and a.usage_restriction_term_id in terms
-            else None,
-            restriction_note=a.restriction_note,
-            download_url=None,
-            created_at=a.created_at,
-        )
-        for a in sorted(assets, key=lambda x: x.sort_order)
-    ]
+    return [_media_out(session, piece, a) for a in sorted(assets, key=lambda x: x.sort_order)]
 
 
 @router.get(

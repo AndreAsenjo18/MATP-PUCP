@@ -2659,31 +2659,6 @@
         "title": "Dimension",
         "type": "object"
       },
-      "DownloadUrlRequest": {
-        "description": "Request for download URL with purpose.",
-        "examples": [
-          {
-            "purpose": "internal"
-          },
-          {
-            "purpose": "external"
-          }
-        ],
-        "properties": {
-          "purpose": {
-            "default": "internal",
-            "description": "Uso previsto: internal (visualización) o external (descarga).",
-            "enum": [
-              "internal",
-              "external"
-            ],
-            "title": "Purpose",
-            "type": "string"
-          }
-        },
-        "title": "DownloadUrlRequest",
-        "type": "object"
-      },
       "DownloadUrlResponse": {
         "description": "Response with pre-signed download URL.",
         "examples": [
@@ -6154,6 +6129,17 @@
             "description": "En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.",
             "title": "Download Url"
           },
+          "effective_restriction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Restricción que se aplica: la propia o, si no tiene, la de su colección."
+          },
           "height_px": {
             "anyOf": [
               {
@@ -6211,6 +6197,18 @@
               }
             ],
             "title": "Restriction Note"
+          },
+          "restriction_origin": {
+            "default": "ninguna",
+            "description": "De dónde viene la restricción efectiva (RN-008).",
+            "enum": [
+              "foto",
+              "pieza",
+              "colección",
+              "ninguna"
+            ],
+            "title": "Restriction Origin",
+            "type": "string"
           },
           "size_bytes": {
             "title": "Size Bytes",
@@ -20310,6 +20308,7 @@
     },
     "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
       "get": {
+        "description": "URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).",
         "operationId": "getMediaDownloadUrl",
         "parameters": [
           {
@@ -20331,18 +20330,24 @@
               "title": "Media Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Uso previsto: `internal` (verla en la ficha) o `external` (descarga).",
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "default": "internal",
+              "description": "Uso previsto: `internal` (verla en la ficha) o `external` (descarga).",
+              "enum": [
+                "internal",
+                "external"
+              ],
+              "title": "Purpose",
+              "type": "string"
+            }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DownloadUrlRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
@@ -20373,6 +20378,26 @@
               }
             },
             "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe o fue eliminada."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`usage_restricted`: la restricción efectiva bloquea la descarga externa; `details` trae la restricción, su origen y el acuerdo de comodato."
           },
           "422": {
             "content": {

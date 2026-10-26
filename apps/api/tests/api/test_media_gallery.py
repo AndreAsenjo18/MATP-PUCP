@@ -165,3 +165,20 @@ def test_the_409_of_a_loan_for_use_names_its_agreement(
     )
     assert "Acuerdo sintético 07-2026" in response.json()["message"]
     _delete(seeded_api, piece_id)
+
+
+def test_a_new_photo_shows_the_restriction_inherited_from_its_collection(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    """Scenario «Herencia desde la colección en comodato»: no restriction of its own."""
+    piece_id = _new_piece(seeded_api, collection_id=_restricted_collection(seeded_api))
+
+    registered = _register(seeded_api, fake_storage, piece_id, 40)
+    (listed,) = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+
+    for photo in (registered, listed):
+        assert photo["usage_restriction"] is None
+        assert photo["effective_restriction"]["code"] == "NO_PUBLICAR"
+        assert photo["restriction_origin"] == "colección"
+    _delete(seeded_api, piece_id)
