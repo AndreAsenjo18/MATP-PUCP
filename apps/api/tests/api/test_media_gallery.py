@@ -25,6 +25,7 @@ from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection
+from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import StorageEstimateRequest
 from app.modules.media.service import comodato_restriction_term_id
@@ -287,4 +288,64 @@ def test_retiring_the_primary_photo_keeps_it_and_the_next_one_becomes_primary(
             )
         )
     assert reasons == {"Foto movida (sintética)"}
+    _delete(seeded_api, piece_id)
+
+
+def test_marking_another_photo_as_primary_leaves_only_that_one(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    piece_id = _new_piece(seeded_api)
+    front, side = (_register(seeded_api, fake_storage, piece_id, n) for n in (80, 90))
+
+    response = seeded_api.client.patch(
+        f"/api/v1/pieces/{piece_id}/media/{side['id']}", json={"is_primary": True}, headers=H
+    )
+
+    assert response.status_code == 200, response.text
+    gallery = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+    assert {photo["id"] for photo in gallery if photo["is_primary"]} == {side["id"]}
+    assert front["is_primary"] is True  # it was the primary one before
+    _delete(seeded_api, piece_id)
+
+
+def test_a_reorder_that_leaves_a_photo_out_is_422_and_changes_nothing(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    piece_id = _new_piece(seeded_api)
+    photos = [_register(seeded_api, fake_storage, piece_id, n) for n in (100, 110, 120)]
+    url = f"/api/v1/pieces/{piece_id}/media/order"
+
+    incomplete = seeded_api.client.put(url, json=[photos[2]["id"], photos[0]["id"]], headers=H)
+    unchanged = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+    complete = seeded_api.client.put(url, json=[p["id"] for p in reversed(photos)], headers=H)
+
+    assert incomplete.status_code == 422
+    assert [photo["id"] for photo in unchanged] == [p["id"] for p in photos]
+    assert complete.status_code == 200, complete.text
+    assert [photo["id"] for photo in complete.json()] == [p["id"] for p in reversed(photos)]
+    _delete(seeded_api, piece_id)
+
+
+def test_a_photo_whose_derivatives_fail_stays_registered_and_marked(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scenario «Fallo al generar derivados» (task 2.3): the command regenerates them later."""
+    piece_id = _new_piece(seeded_api)
+
+    def broken(_data: bytes, _max_dim: int) -> bytes:
+        raise OSError("TIFF demasiado grande (sintético)")
+
+    monkeypatch.setattr(derivatives, "_resize_image", broken)
+    photo = _register(seeded_api, fake_storage, piece_id, 130)
+
+    with seeded_api.session() as session:
+        asset = session.get(MediaAsset, uuid.UUID(photo["id"]))
+        assert asset is not None and asset.deleted_at is None
+        assert asset.extra_metadata == {"derivatives": "failed"}
+    (listed,) = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+    assert listed["id"] == photo["id"]
     _delete(seeded_api, piece_id)
