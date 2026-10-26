@@ -95,6 +95,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/imports/{}/log"),
     # Fotos del lote (change importacion-masiva-fotografias, diseño D2).
     ("post", "/imports/{}/photos/complete"),
+    ("get", "/imports/{}/photos"),
+    ("get", "/imports/{}/photos/summary"),
+    ("patch", "/imports/{}/photos"),
     ("post", "/imports/{}/photos/upload-urls"),
     ("put", "/imports/{}/mapping"),
     ("patch", "/imports/{}/rows/{}"),
