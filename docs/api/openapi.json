@@ -6109,6 +6109,7 @@
             "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
             "content_type": "image/jpeg",
             "created_at": "2026-09-17T10:30:00Z",
+            "download_url": "http://localhost:9000/matp-media/pieces/.../display.webp?X-Amz-Signature=...",
             "height_px": 900,
             "id": "01920000-0000-7000-8000-000000000801",
             "is_primary": true,
@@ -6118,6 +6119,7 @@
             "size_bytes": 48213,
             "sort_order": 0,
             "taken_on": "2025-03-10",
+            "thumbnail_url": "http://localhost:9000/matp-media/pieces/.../thumb.webp?X-Amz-Signature=...",
             "view_type": {
               "code": "Frontal",
               "id": "01920000-0000-7000-8000-000000000321",
@@ -6149,7 +6151,7 @@
                 "type": "null"
               }
             ],
-            "description": "URL prefirmada temporal; null hasta fotografias-multiples-por-pieza.",
+            "description": "En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.",
             "title": "Download Url"
           },
           "height_px": {
@@ -6229,6 +6231,18 @@
               }
             ],
             "title": "Taken On"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "En el listado de la galería, URL prefirmada temporal de la miniatura (`thumb.webp`, 320 px).",
+            "title": "Thumbnail Url"
           },
           "usage_restriction": {
             "anyOf": [
