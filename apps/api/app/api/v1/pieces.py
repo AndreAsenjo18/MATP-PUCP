@@ -999,27 +999,19 @@ def retire_media(
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
 
+    # The audit context first: every flush from here on (the query below too) is audited.
+    writer(session, user, reason)
     was_primary = asset.is_primary
-    asset.deleted_at = datetime.now(UTC)
-    asset.deletion_reason = reason
-    asset.deleted_by_id = user.id
     asset.is_primary = False
-
-    # Si era la principal, la siguiente en orden pasa a ser principal
-    if was_primary:
+    soft_delete(session, asset, reason)  # kept and audited with its reason (RN-005)
+    if was_primary:  # the next one in order becomes the primary photo
         next_asset = session.scalar(
             select(MediaAsset)
-            .where(
-                MediaAsset.piece_id == piece_id,
-                MediaAsset.deleted_at.is_(None),
-                MediaAsset.id != media_id,
-            )
+            .where(MediaAsset.piece_id == piece_id, MediaAsset.id != media_id)
             .order_by(MediaAsset.sort_order, MediaAsset.created_at)
         )
         if next_asset:
             next_asset.is_primary = True
-
-    writer(session, user)
     session.commit()
 
 

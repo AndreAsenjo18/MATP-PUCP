@@ -21,7 +21,8 @@ from app.api.v1.media import get_media_storage_estimate
 from app.core.models_base import new_uuid
 from app.models import AppUser
 from app.modules.audit.context import AuditContext, audit_context
-from app.modules.audit.models import AuditOrigin
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
+from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection
 from app.modules.media.models import MediaAsset
@@ -245,3 +246,45 @@ def test_a_negative_parameter_is_422_and_the_old_path_is_gone(seeded_api: Seeded
 
     assert negative.status_code == 422
     assert old.status_code in (404, 422)  # it now reads as /pieces/{piece_id}/media
+
+
+# ------------------------------------------------------------------- gallery (task 2.4)
+def test_retiring_the_primary_photo_keeps_it_and_the_next_one_becomes_primary(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    piece_id = _new_piece(seeded_api)
+    first, second, third = (_register(seeded_api, fake_storage, piece_id, n) for n in (50, 60, 70))
+    assert first["is_primary"] is True
+    manager = as_user(MANAGER)
+    url = f"/api/v1/pieces/{piece_id}/media/{first['id']}"
+
+    without_reason = seeded_api.client.delete(url, headers=manager)
+    retired = seeded_api.client.delete(
+        url, params={"reason": "Foto movida (sintética)"}, headers=manager
+    )
+
+    assert without_reason.status_code == 422
+    assert retired.status_code == 204, retired.text
+    gallery = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+    assert [(photo["id"], photo["is_primary"]) for photo in gallery] == [
+        (second["id"], True),
+        (third["id"], False),
+    ]
+    with seeded_api.session() as session:
+        kept = session.scalar(
+            select(MediaAsset)
+            .where(MediaAsset.id == uuid.UUID(first["id"]))
+            .execution_options(**{INCLUDE_DELETED: True})
+        )
+        assert kept is not None and kept.deleted_at is not None
+        assert kept.deletion_reason == "Foto movida (sintética)"
+        reasons = set(
+            session.scalars(
+                select(AuditLog.reason).where(
+                    AuditLog.entity_id == kept.id, AuditLog.action == AuditAction.SOFT_DELETE
+                )
+            )
+        )
+    assert reasons == {"Foto movida (sintética)"}
+    _delete(seeded_api, piece_id)
