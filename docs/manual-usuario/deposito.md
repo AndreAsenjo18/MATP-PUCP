@@ -1,28 +1,34 @@
 # Depósito: vista móvil, movimientos y verificaciones
 
-Esta pantalla está pensada para usarse de pie, con un teléfono, mientras se trabaja en el depósito. Los botones son grandes y la pantalla muestra una sola pieza a la vez.
+Esta pantalla sirve para usarse de pie, con un teléfono, y también en una computadora.
+
+- **En el celular** hay una sola columna con botones grandes: al elegir una pieza se ve su panel y el botón **Buscar otra pieza** vuelve a los resultados.
+- **En una computadora** (pantalla ancha) hay dos columnas: a la izquierda se busca y se ven los resultados; a la derecha está la pieza elegida con sus acciones. Los resultados siguen a la vista, así que se puede pasar de una pieza a otra sin volver atrás. Letras y botones son más pequeños para aprovechar el espacio.
+
+Para **cerrar sesión** desde el celular, abra el **Menú**: el botón está al final.
 
 El rol **Personal auxiliar de depósito** (y cualquier rol con el mismo permiso) puede usarla. Si su rol no tiene permiso, la pantalla lo indica y sugiere cambiar de rol para probarla.
 
 ## Buscar una pieza
 
 1. Abra **Vista de depósito**.
-2. Escriba el código (por ejemplo `I-0236`) o parte de la denominación en el buscador.
-3. Elija la pieza de la lista. Se muestra su nombre y su ubicación actual.
+2. Escriba el código (por ejemplo `I-0236`) o parte del nombre en **Buscar pieza**.
+3. Elija la pieza de la lista. Cada resultado muestra el **nombre en negrita** y el **código I** en una etiqueta a su lado; debajo, en gris, su ubicación. Si la pieza no tiene código, la etiqueta dice «Sin código I».
 
 Si la pieza no tiene ubicación registrada todavía, se indica como «Sin ubicación».
 
 ## Verificar que una pieza sigue donde dice el sistema
 
-Presione **Registrar verificación física** cuando confirmó, en persona, que la pieza está en la ubicación que muestra la pantalla. No cambia la ubicación: solo deja constancia de que alguien la comprobó, con fecha y responsable.
+En el panel de la pieza, bajo **Verificar**, presione **Registrar verificación** cuando confirmó, en persona, que la pieza está en la ubicación que muestra la pantalla. No cambia la ubicación: solo deja constancia de que alguien la comprobó, con fecha y responsable.
 
 Si la pieza en realidad está en otro lugar, **no** use verificación: registre un movimiento (siguiente sección).
 
 ## Mover una pieza
 
-1. En **Mover a**, elija el depósito, mueble, nivel o caja de destino.
-2. Si quiere, escriba un motivo (por ejemplo «reorganización del depósito 2»).
-3. Presione **Registrar movimiento**.
+1. En **Mover**, escriba en **Buscar destino** parte del lugar (por ejemplo «rack a») o abra la lista **Mover a**. Cada opción muestra la ruta completa, como «Sede central › Depósito 1 › Rack A › Nivel 2».
+2. Elija el destino. La lista incluye **solo lugares finales** (niveles y contenedores, donde la pieza queda guardada); las sedes, depósitos y muebles que contienen otros lugares no aparecen. Si falta un lugar, créelo en **Administración › Catálogo › Ubicaciones**.
+3. Si quiere, escriba un motivo (por ejemplo «reorganización del depósito 2»).
+4. Presione **Registrar movimiento**.
 
 El sistema guarda quién, cuándo, desde dónde y hacia dónde se movió la pieza. Ese historial nunca se borra ni se edita.
 
@@ -35,9 +41,9 @@ El sistema recuerda en qué ubicación vio la pieza cuando la abrió. Si alguien
 Cuando se traslada una fila completa de piezas a un mismo destino (por ejemplo, vaciar una caja hacia otro depósito):
 
 1. Busque y abra cada pieza, y presione **Agregar al lote** en lugar de moverla de inmediato.
-2. Repita con todas las piezas del traslado. Van apareciendo en la lista «Lote pendiente».
-3. Elija el destino común en **Mover a**.
-4. Presione **Enviar lote al destino seleccionado**.
+2. Repita con todas las piezas del traslado. Van apareciendo en el cuadro «Lote pendiente».
+3. Elija el destino común en **Mover a** (también aparece en el cuadro «Lote pendiente»).
+4. Presione **Enviar lote al destino elegido**.
 
 El lote se aplica completo o no se aplica nada: si una sola pieza ya no está donde el sistema esperaba, ninguna se mueve y la pantalla indica cuál es el problema para que lo revise antes de reintentar.
 
