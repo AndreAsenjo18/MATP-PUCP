@@ -1,9 +1,11 @@
 "use client";
 
 /**
- * Pestaña «Normalización» de Administración, modo `live` (change `plantillas-mapeo-y-normalizacion`,
- * tarea 4.2; spec identificacion-piezas: RN-010, RF-023, RF-004; design D5). Exige
- * `vocabularies.manage` [SUPUESTO T8].
+ * Sección «Lectura de códigos» de Administración, modo `live` (change `plantillas-mapeo-y-normalizacion`,
+ * tarea 4.2, y `rediseno-ux-administracion`; spec identificacion-piezas: RN-010, RF-023, RF-004;
+ * design D5). Es la «normalización» de los códigos: cómo el sistema entiende lo que escribe el
+ * museo. Exige `vocabularies.manage` [SUPUESTO T8]. Los tres editores van plegados (`Fold`), con su
+ * número de valores, y se abren solos si tienen cambios, un error o un impacto que mostrar.
  *
  * - `MarkersEditor`: marcadores de ausencia vigentes, con etiqueta «Valores del código» o
  *   «Personalizado»; se añaden y quitan en un borrador que se guarda o descarta entero.
@@ -16,10 +18,11 @@
  * Las reglas (comparar marcadores como el servidor, rechazar el espacio como separador, leer el
  * 409) están en `lib/data/normalization-admin.ts` (ADR-012).
  */
-import { Plus, Save, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronRight, Plus, Save, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
+import { SectionHeader } from "@/components/domain/AdminShell";
 import { ErrorNotice } from "@/components/domain/ImportWizard";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { Button } from "@/components/ui/Button";
@@ -70,8 +73,7 @@ export function NormalizationImpactNotice({ impact, onDiscard }: { impact: Norma
       </p>
       <p className="text-sm">
         Este cambio alteraría {impact.affected} {impact.affected === 1 ? "identificador ya registrado" : "identificadores ya registrados"}. Para
-        aplicarlo hace falta revisar la vista previa del impacto y confirmar el recálculo, que todavía no está disponible
-        (colecciones-y-vocabularios-admin).
+        aplicarlo hace falta revisar el impacto y confirmar el recálculo, que todavía no está disponible desde esta pantalla.
       </p>
       {impact.examples.length > 0 && (
         <div className="overflow-x-auto">
@@ -167,11 +169,11 @@ export function MarkersEditor({
   return (
     <section aria-label="Marcadores de ausencia" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-tinta">Marcadores de ausencia</h3>
+        <h3 className="sr-only">Marcadores de ausencia</h3>
         <DefaultBadge isDefault={isDefault} />
       </div>
       <p className="text-sm text-gris-texto">
-        Textos que significan «sin código»: un código I con uno de estos valores se registra como pieza sin código I (RF-004). Se comparan sin
+        Textos que significan «sin código»: un código I con uno de estos valores se registra como pieza sin código I. Se comparan sin
         espacios ni diferencias de mayúsculas.
       </p>
       <Chips items={draft} label={markerLabel} name="Marcadores de ausencia" disabled={busy} onRemove={(item) => onChange(removeItem(draft, item))} />
@@ -228,7 +230,7 @@ export function SeparatorsEditor({
   return (
     <section aria-label="Separadores de códigos" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-tinta">Separadores de códigos</h3>
+        <h3 className="sr-only">Separadores de códigos</h3>
         <DefaultBadge isDefault={isDefault} />
       </div>
       <p className="text-sm text-gris-texto">Caracteres que separan varios códigos escritos en una misma celda (I-0236 / M.M.Z. 015).</p>
@@ -326,7 +328,7 @@ export function AliasesEditor({
   const [collectionId, setCollectionId] = useState("");
   return (
     <section aria-label="Siglas históricas" className="flex flex-col gap-3">
-      <h3 className="text-base font-semibold text-tinta">Siglas históricas de colección</h3>
+      <h3 className="sr-only">Siglas históricas de colección</h3>
       <p className="text-sm text-gris-texto">
         Otra sigla con la que se escribió una colección. La búsqueda, la ficha y la importación la reconocen como la sigla actual.
       </p>
@@ -347,7 +349,7 @@ export function AliasesEditor({
                 icon={Trash2}
                 disabled={busy}
                 confirmTitle={`Eliminar la sigla histórica «${item.alias_normalized}»`}
-                confirmDescription="Deja de reconocerse como sigla de la colección. Queda en la auditoría con el motivo (RN-005)."
+                confirmDescription="Deja de reconocerse como sigla de la colección. Queda en la auditoría con el motivo."
                 requireReason
                 reasonLabel="Motivo de la eliminación"
                 onConfirm={(reason) => onDelete(item.id, reason)}
@@ -374,6 +376,23 @@ export function AliasesEditor({
       <ErrorNotice message={error} />
       {impact && <NormalizationImpactNotice impact={impact} onDiscard={onDismissImpact} />}
     </section>
+  );
+}
+
+/**
+ * Editor plegado: su título lleva cuántos valores tiene y se abre solo si `open` (cambios sin
+ * guardar, un error o un aviso de impacto), para que nada importante quede escondido.
+ */
+export function Fold({ title, count, open, children }: { title: string; count: number; open: boolean; children: ReactNode }) {
+  return (
+    <details open={open || undefined} className="group rounded-md border border-borde">
+      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-semibold text-tinta">
+        <ChevronRight size={16} aria-hidden="true" className="transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+        {title}
+        <span className="rounded-full bg-crema px-2 text-xs font-medium text-gris-texto">{count}</span>
+      </summary>
+      <div className="border-t border-borde p-3">{children}</div>
+    </details>
   );
 }
 
@@ -480,40 +499,55 @@ export function NormalizationLive() {
   }
 
   return (
-    <Card as="section" aria-label="Normalización" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-tinta">Normalización de códigos</h2>
-        <p className="text-sm text-gris-texto">Parámetros que usan el ingreso manual, la importación y la búsqueda (RN-010, RF-023). Cada cambio queda en la auditoría.</p>
-      </div>
+    <Card as="section" aria-label="Lectura de códigos" className="flex flex-col gap-4">
+      <SectionHeader
+        title="Lectura de códigos"
+        description="Cómo entiende el sistema los códigos que escribe el museo: reconoce cuando una celda dice «sin código», separa las celdas con varios códigos y entiende las siglas históricas de las colecciones. Lo usan el ingreso manual, la importación y la búsqueda; cada cambio queda en la auditoría."
+      />
       <ErrorNotice message={loadError} />
       {message && <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">{message}</p>}
       {markers && (
-        <MarkersEditor
-          {...markers}
-          busy={busy === "markers"}
-          onChange={(draft) => setMarkers({ ...markers, draft, error: null, impact: null })}
-          onSave={saveMarkers}
-          onDiscard={() => setMarkers({ ...markers, draft: markers.saved, error: null, impact: null })}
-        />
+        <Fold title="Textos que significan «sin código»" count={markers.draft.length} open={hasChanges(markers.saved, markers.draft) || markers.error !== null || markers.impact !== null}>
+          <MarkersEditor
+            {...markers}
+            busy={busy === "markers"}
+            onChange={(draft) => setMarkers({ ...markers, draft, error: null, impact: null })}
+            onSave={saveMarkers}
+            onDiscard={() => setMarkers({ ...markers, draft: markers.saved, error: null, impact: null })}
+          />
+        </Fold>
       )}
       {separators && (
-        <SeparatorsEditor
-          {...separators}
-          busy={busy === "separators"}
-          onChange={(draft) => setSeparators({ ...separators, draft, error: null, impact: null })}
-          onSave={saveSeparators}
-          onDiscard={() => setSeparators({ ...separators, draft: separators.saved, error: null, impact: null })}
-        />
+        <Fold
+          title="Separadores de varios códigos"
+          count={separators.draft.separators.length}
+          open={
+            hasChanges(separators.saved.separators, separators.draft.separators) ||
+            hasChanges(separators.saved.unsplit_markers ?? [], separators.draft.unsplit_markers ?? []) ||
+            separators.error !== null ||
+            separators.impact !== null
+          }
+        >
+          <SeparatorsEditor
+            {...separators}
+            busy={busy === "separators"}
+            onChange={(draft) => setSeparators({ ...separators, draft, error: null, impact: null })}
+            onSave={saveSeparators}
+            onDiscard={() => setSeparators({ ...separators, draft: separators.saved, error: null, impact: null })}
+          />
+        </Fold>
       )}
-      <AliasesEditor
-        aliases={aliases}
-        collections={collections}
-        busy={busy === "aliases"}
-        {...aliasState}
-        onCreate={handleCreateAlias}
-        onDelete={handleDeleteAlias}
-        onDismissImpact={() => setAliasState({ fieldError: null, error: null, impact: null })}
-      />
+      <Fold title="Siglas históricas de colección" count={aliases.length} open={aliasState.error !== null || aliasState.fieldError !== null || aliasState.impact !== null}>
+        <AliasesEditor
+          aliases={aliases}
+          collections={collections}
+          busy={busy === "aliases"}
+          {...aliasState}
+          onCreate={handleCreateAlias}
+          onDelete={handleDeleteAlias}
+          onDismissImpact={() => setAliasState({ fieldError: null, error: null, impact: null })}
+        />
+      </Fold>
     </Card>
   );
 }

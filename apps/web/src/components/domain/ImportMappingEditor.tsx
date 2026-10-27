@@ -111,48 +111,51 @@ export function MappingEditor({
   return (
     <Card as="section" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-tinta">{draft.base ? `Mapeo con la plantilla «${draft.base.name}»` : "Mapeo de columnas"}</h2>
+        <h2 className="text-lg font-semibold text-tinta">{draft.base ? `Ajustar columnas · ${draft.base.name}` : "Ajustar columnas"}</h2>
         <StatusBadge status={mappingDraftStatus(status)} />
       </div>
       <p className="text-base text-gris-texto">
-        Indique a qué campo de la ficha corresponde cada columna y cómo se limpia su valor. Las columnas que deje como «dato de origen» no se pierden:
-        se guardan junto a cada pieza (RF-008). La denominación es obligatoria.
+        Elija a qué corresponde cada columna. La denominación es obligatoria. Lo que deje como «dato de origen» no se pierde: se guarda con cada pieza.
       </p>
       {dropped.length > 0 && (
         <p className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
           Se quitaron del mapeo las columnas de la plantilla que este archivo no trae: {dropped.join(", ")}.
         </p>
       )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {sheetNames.length > 1 && (
-          <Select label="Hoja" value={draft.sheetName ?? batch.sheet_name ?? ""} onChange={(event) => onChange({ ...draft, sheetName: event.target.value })}>
-            {sheetNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Input
-          label="Fila de cabeceras"
-          type="number"
-          min={1}
-          value={draft.headerRow ?? batch.header_row ?? 1}
-          hint="Cambiarla vuelve a leer el archivo al validar."
-          onChange={(event) => onChange({ ...draft, headerRow: Number(event.target.value) || null })}
-        />
-        <Select
-          label="Régimen para filas sin dato"
-          value={draft.tenureDefault}
-          hint={templateDefaults ? `Solo para este lote; no cambia la plantilla, que trae: ${templateDefaults}.` : "Solo para este lote; no cambia la plantilla."}
-          onChange={(event) => onChange({ ...draft, tenureDefault: event.target.value })}
-        >
-          <option value="">Sin valor por defecto</option>
-          <option value="Propiedad">Propiedad</option>
-          <option value="Comodato">Comodato</option>
-          <option value="Préstamo Temporal">Préstamo temporal</option>
-        </Select>
-      </div>
+      <Select
+        label="Régimen para las filas que no lo traen"
+        value={draft.tenureDefault}
+        hint={templateDefaults ? `Solo para este lote. El formato trae: ${templateDefaults}.` : "Solo para este lote."}
+        onChange={(event) => onChange({ ...draft, tenureDefault: event.target.value })}
+        fieldClassName="max-w-sm"
+      >
+        <option value="">Ninguno</option>
+        <option value="Propiedad">Propiedad</option>
+        <option value="Comodato">Comodato</option>
+        <option value="Préstamo Temporal">Préstamo temporal</option>
+      </Select>
+      <details className="rounded-md border border-borde px-3 py-2">
+        <summary className="cursor-pointer text-base font-medium text-tinta">Opciones avanzadas</summary>
+        <div className="grid gap-3 pt-3 sm:grid-cols-2">
+          {sheetNames.length > 1 && (
+            <Select label="Hoja" value={draft.sheetName ?? batch.sheet_name ?? ""} onChange={(event) => onChange({ ...draft, sheetName: event.target.value })}>
+              {sheetNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Input
+            label="Fila de los títulos"
+            type="number"
+            min={1}
+            value={draft.headerRow ?? batch.header_row ?? 1}
+            hint="Si la cambia, el archivo se vuelve a leer al validar."
+            onChange={(event) => onChange({ ...draft, headerRow: Number(event.target.value) || null })}
+          />
+        </div>
+      </details>
       <ul className="flex flex-col gap-3" aria-label="Columnas del archivo">
         {draft.columns.map((column, index) => {
           const vocabulary = termsVocabulary(column);
@@ -172,31 +175,36 @@ export function MappingEditor({
       </ul>
       <ErrorNotice message={errors[""] ?? null} />
       {status !== "unchanged" && (
-        <SaveTemplateForm
-          key={draft.base?.id ?? "new"}
-          status={status}
-          baseName={draft.base?.name ?? null}
-          defaultSourceName={draft.base?.source_name ?? batch.source_name}
-          nameError={nameError}
-          busy={saving || busy}
-          onSave={onSave}
-        />
+        <details className="rounded-md border border-borde px-3 py-2" open={nameError !== null}>
+          <summary className="cursor-pointer text-base font-medium text-tinta">Guardar este ajuste como formato</summary>
+          <div className="pt-3">
+            <SaveTemplateForm
+              key={draft.base?.id ?? "new"}
+              status={status}
+              baseName={draft.base?.name ?? null}
+              defaultSourceName={draft.base?.source_name ?? batch.source_name}
+              nameError={nameError}
+              busy={saving || busy}
+              onSave={onSave}
+            />
+          </div>
+        </details>
       )}
       <div className="flex flex-col gap-2 border-t border-borde pt-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" icon={Eye} disabled={blocker !== null || previewBusy || busy} onClick={onPreview}>
-            {previewBusy ? "Calculando vista previa…" : "Ver vista previa"}
-          </Button>
           <Button disabled={busy || saving} onClick={onApply}>
-            {busy ? "Guardando…" : "Usar este mapeo y validar"}
+            {busy ? "Guardando…" : "Validar con estas columnas"}
             <ArrowRight size={18} aria-hidden="true" />
           </Button>
-          <Button variant="secondary" icon={ArrowLeft} disabled={busy || saving} onClick={onBack}>
-            Volver a las plantillas
+          <Button variant="outline" icon={Eye} disabled={blocker !== null || previewBusy || busy} onClick={onPreview}>
+            {previewBusy ? "Calculando…" : "Ver cómo quedará"}
           </Button>
-          <Link href={ADMIN_TEMPLATES_HREF} target="_blank" rel="noopener" className={buttonClassName({ variant: "outline" })}>
+          <Button variant="secondary" icon={ArrowLeft} disabled={busy || saving} onClick={onBack}>
+            Volver
+          </Button>
+          <Link href={ADMIN_TEMPLATES_HREF} target="_blank" rel="noopener" className={buttonClassName({ variant: "secondary" })}>
             <Settings size={18} aria-hidden="true" />
-            Administrar plantillas
+            Administrar formatos
           </Link>
         </div>
         {blocker && <p className="text-sm text-gris-texto">{blocker}</p>}
@@ -241,12 +249,18 @@ export function ColumnMappingRow({
           ))}
         </Select>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <TransformChain source={column.source_column} chain={column.transforms ?? []} locked={Object.keys(map).length > 0 ? ["value_map"] : []} onChange={onTransforms} />
-        {vocabulary && onValueMap && (
-          <ValueMapEditor source={column.source_column} vocabulary={vocabulary} map={map} terms={terms ?? []} onChange={onValueMap} />
-        )}
-      </div>
+      <details className="min-w-0 flex-1 rounded-md bg-crema-light px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium text-gris-texto">
+          Limpieza del valor
+          {(column.transforms ?? []).length > 0 && ` · ${(column.transforms ?? []).length} ${(column.transforms ?? []).length === 1 ? "paso" : "pasos"}`}
+        </summary>
+        <div className="flex flex-col gap-3 pt-3">
+          <TransformChain source={column.source_column} chain={column.transforms ?? []} locked={Object.keys(map).length > 0 ? ["value_map"] : []} onChange={onTransforms} />
+          {vocabulary && onValueMap && (
+            <ValueMapEditor source={column.source_column} vocabulary={vocabulary} map={map} terms={terms ?? []} onChange={onValueMap} />
+          )}
+        </div>
+      </details>
     </li>
   );
 }
@@ -453,16 +467,16 @@ export function SaveTemplateForm({
   const [values, setValues] = useState<TemplateFormValues>({ name: "", sourceName: defaultSourceName, description: "" });
   const newError = saveFormError(values, "new");
   return (
-    <section className="flex flex-col gap-3 rounded-md border border-borde bg-crema-light p-3" aria-label="Guardar como plantilla">
-      <h3 className="text-base font-semibold text-tinta">Guardar como plantilla</h3>
+    <section className="flex flex-col gap-3 rounded-md border border-borde bg-crema-light p-3" aria-label="Guardar como formato">
+      <h3 className="text-base font-semibold text-tinta">Guardar como formato</h3>
       <p className="text-sm text-gris-texto">
         {status === "modified"
-          ? "Guarde los cambios para reutilizarlos en otras cargas y para ver la vista previa."
-          : "Guarde el mapeo como plantilla para reutilizarlo en otras cargas de esta fuente y para ver la vista previa."}
+          ? "Guarde los cambios para reutilizarlos con otros archivos y para ver cómo quedará."
+          : "Guárdelo para reutilizarlo con otros archivos de esta fuente y para ver cómo quedará."}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Input
-          label={status === "modified" ? "Nombre de la plantilla nueva" : "Nombre de la plantilla"}
+          label={status === "modified" ? "Nombre del formato nuevo" : "Nombre del formato"}
           value={values.name}
           error={nameError ?? undefined}
           onChange={(event) => setValues({ ...values, name: event.target.value })}
@@ -472,7 +486,7 @@ export function SaveTemplateForm({
       <Textarea label="Descripción (opcional)" value={values.description} rows={2} onChange={(event) => setValues({ ...values, description: event.target.value })} />
       <div className="flex flex-wrap items-center gap-3">
         <Button icon={Save} disabled={busy || newError !== null} onClick={() => onSave("new", values)}>
-          {status === "modified" ? "Guardar como nueva" : "Guardar como plantilla"}
+          {status === "modified" ? "Guardar como nuevo" : "Guardar como formato"}
         </Button>
         {status === "modified" && baseName && (
           <Button variant="outline" icon={Save} disabled={busy} onClick={() => onSave("update", values)}>
@@ -483,7 +497,7 @@ export function SaveTemplateForm({
       {newError && <p className="text-sm text-gris-texto">{newError}</p>}
       {status === "modified" && (
         <p className="text-sm text-gris-texto">
-          «Guardar cambios» modifica la plantilla para las próximas cargas; los lotes ya procesados conservan el mapeo con que se procesaron.
+          «Guardar cambios» modifica el formato para los próximos archivos; los ya procesados no cambian.
         </p>
       )}
     </section>

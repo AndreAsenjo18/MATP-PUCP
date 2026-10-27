@@ -5,9 +5,10 @@
  * calidad-datos, RF-030, RNF-010):
  *
  * - `DuplicateFilters`: estado, colección, puntaje mínimo y origen.
- * - `DuplicateCandidateCard`: comparación lado a lado de las dos fichas, con las filas que motivan
- *   la sospecha resaltadas y con texto (el color nunca es el único portador), y las señales con sus
- *   valores comparados.
+ * - `DuplicateCandidateCard`: similitud en cifra grande (`SimilarityMeter`), señales como etiquetas
+ *   y comparación de las dos fichas con el campo al centro (A | campo | B); cada fila es igual,
+ *   distinta o en conflicto, con color, palabra e icono (el color nunca es el único portador).
+ * - `QueuePager`: «Anterior / Siguiente» que la pantalla monta encima y debajo de la lista.
  * - `DistinctDialog` y `PostponeDialog`: resolución como distinto (motivo obligatorio) o pospuesto
  *   hasta una fecha de como máximo 180 días (design D5).
  * - `ScanPanel`: detección completa bajo demanda y su avance (design D3).
@@ -17,7 +18,7 @@
  * a la vista, si el par está bloqueado (regímenes o códigos I distintos) o si es una fila de
  * importación, que se decide en su lote.
  */
-import { ArrowRight, CalendarClock, GitMerge, ScanSearch, Split } from "lucide-react";
+import { ArrowRight, CalendarClock, Equal, EqualNot, GitMerge, ScanSearch, Split, TriangleAlert, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
+import { cn } from "@/lib/cn";
 import { IMPORT_ROW_MERGE_MESSAGE, mergeBlock } from "@/lib/data/merge-plan";
 import {
   postponeBounds,
@@ -51,7 +53,7 @@ type CollectionOut = ApiSchemas["CollectionOut"];
 // Reglas puras (se prueban sin DOM)
 // ---------------------------------------------------------------------------------------------
 
-export const DISTINCT_REASON_REQUIRED = "Indique por qué son piezas distintas: quedará registrado en la auditoría (RN-005).";
+export const DISTINCT_REASON_REQUIRED = "Indique por qué son piezas distintas: queda registrado.";
 export const MERGE_LOADING_NOTE = "Cargando las dos fichas para poder fusionar…";
 export const MERGE_UNAVAILABLE_NOTE = "No se pudieron leer las dos fichas: recargue la cola para poder fusionar.";
 
@@ -142,24 +144,64 @@ export function signalValueLines(signal: DuplicateSignal): SignalValueLine[] {
 export type ComparisonRowKey = "denomination" | "collection" | "tenure" | "code_i" | "identifiers" | "author" | "provenance" | "period" | "dimensions";
 export type RowMark = "match" | "conflict";
 
-export const COMPARISON_ROWS: { key: ComparisonRowKey; label: string; value: (piece: PieceDetail) => ReactNode }[] = [
-  { key: "denomination", label: "Denominación", value: (p) => p.denomination },
-  { key: "collection", label: "Colección", value: (p) => p.collection?.name ?? "Sin colección" },
-  { key: "tenure", label: "Régimen", value: (p) => <TenureBadge regime={p.tenure_regime} /> },
-  { key: "code_i", label: "Código I", value: (p) => <span className="font-mono font-bold text-terracota">{p.code_i ?? "Sin código I"}</span> },
+export interface ComparisonRow {
+  key: ComparisonRowKey;
+  label: string;
+  value: (piece: PieceDetail) => ReactNode;
+  /** El mismo valor como texto, para decidir si las dos piezas coinciden en este campo. */
+  text: (piece: PieceDetail) => string;
+}
+
+function otherCodes(p: PieceDetail): string {
+  const others = p.identifiers.filter((i) => i.identifier_type_code !== "I");
+  return others.length ? others.map((i) => `${i.identifier_type_code} ${i.original_value}${i.is_current ? "" : " (histórico)"}`).join(" · ") : "—";
+}
+
+export const COMPARISON_ROWS: ComparisonRow[] = [
+  { key: "denomination", label: "Denominación", value: (p) => p.denomination, text: (p) => p.denomination },
+  { key: "collection", label: "Colección", value: (p) => p.collection?.name ?? "Sin colección", text: (p) => p.collection?.name ?? "" },
+  { key: "tenure", label: "Régimen", value: (p) => <TenureBadge regime={p.tenure_regime} />, text: (p) => p.tenure_regime },
   {
-    key: "identifiers",
-    label: "Otros códigos",
-    value: (p) => {
-      const others = p.identifiers.filter((i) => i.identifier_type_code !== "I");
-      return others.length ? others.map((i) => `${i.identifier_type_code} ${i.original_value}${i.is_current ? "" : " (histórico)"}`).join(" · ") : "—";
-    },
+    key: "code_i",
+    label: "Código I",
+    value: (p) => <span className="font-mono font-bold text-terracota">{p.code_i ?? "Sin código I"}</span>,
+    text: (p) => p.code_i ?? "",
   },
-  { key: "author", label: "Autor", value: (p) => p.author ?? "—" },
-  { key: "provenance", label: "Procedencia", value: (p) => p.provenance ?? "—" },
-  { key: "period", label: "Época", value: (p) => p.period?.text ?? "—" },
-  { key: "dimensions", label: "Medidas", value: (p) => p.dimensions_text ?? "—" },
+  { key: "identifiers", label: "Otros códigos", value: otherCodes, text: otherCodes },
+  { key: "author", label: "Autor", value: (p) => p.author ?? "—", text: (p) => p.author ?? "" },
+  { key: "provenance", label: "Procedencia", value: (p) => p.provenance ?? "—", text: (p) => p.provenance ?? "" },
+  { key: "period", label: "Época", value: (p) => p.period?.text ?? "—", text: (p) => p.period?.text ?? "" },
+  { key: "dimensions", label: "Medidas", value: (p) => p.dimensions_text ?? "—", text: (p) => p.dimensions_text ?? "" },
 ];
+
+/** Estado de una fila de la comparación: `empty` = ninguna de las dos piezas tiene el dato. */
+export type RowState = "same" | "different" | "conflict" | "empty";
+
+function fold(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isBlank(value: string): boolean {
+  const folded = fold(value);
+  return folded === "" || folded === "sin registrar";
+}
+
+/**
+ * Igual, distinta o en conflicto. Una señal de conflicto manda; valores iguales al plegar
+ * mayúsculas, tildes y puntuación son iguales, y una señal de coincidencia también (códigos que se
+ * escriben distinto pero normalizan igual).
+ */
+export function comparisonRowState(a: string, b: string, mark?: RowMark): RowState {
+  if (mark === "conflict") return "conflict";
+  if (isBlank(a) && isBlank(b)) return "empty";
+  if (mark === "match" || fold(a) === fold(b)) return "same";
+  return "different";
+}
 
 /** Filas de la comparación que motiva cada señal: coincidencia o conflicto (código I). */
 export function markedRows(signals: readonly DuplicateSignal[]): Map<ComparisonRowKey, RowMark> {
@@ -277,13 +319,43 @@ export function DuplicateFilters({
 }
 
 // ---------------------------------------------------------------------------------------------
-// Tarjeta del par
+// Similitud, tabla y tarjeta del par
 // ---------------------------------------------------------------------------------------------
 
-const ROW_STYLES: Record<RowMark, string> = { match: "bg-ambar-bg", conflict: "bg-carmin-bg" };
-const ROW_TEXT: Record<RowMark, { label: string; intent: "warning" | "danger" }> = {
-  match: { label: "Coincide", intent: "warning" },
-  conflict: { label: "Conflicto", intent: "danger" },
+export type SimilarityLevel = "high" | "medium" | "low";
+
+/** Alta desde 85 %, media desde 70 %, baja por debajo (el nivel se dice también con texto). */
+export function similarityLevel(score: number): SimilarityLevel {
+  return score >= 0.85 ? "high" : score >= 0.7 ? "medium" : "low";
+}
+
+const LEVELS: Record<SimilarityLevel, { label: string; ring: string }> = {
+  high: { label: "alta", ring: "var(--color-terracota)" },
+  medium: { label: "media", ring: "var(--color-ambar-alerta)" },
+  low: { label: "baja", ring: "var(--color-gris-texto)" },
+};
+
+/** Anillo con el porcentaje en cifra grande; el nivel va también en palabras. */
+export function SimilarityMeter({ score }: { score: number }) {
+  const level = LEVELS[similarityLevel(score)];
+  const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
+  return (
+    <div
+      className="flex size-24 shrink-0 items-center justify-center rounded-full p-1.5"
+      style={{ background: `conic-gradient(${level.ring} ${percent}%, var(--color-borde) 0)` }}
+    >
+      <div className="flex size-full flex-col items-center justify-center rounded-full bg-white">
+        <span className="font-heading text-3xl leading-none font-bold text-tinta">{percent} %</span>
+        <span className="mt-1 text-xs text-gris-texto">similitud {level.label}</span>
+      </div>
+    </div>
+  );
+}
+
+const ROW_STATES: Record<Exclude<RowState, "empty">, { label: string; icon: LucideIcon; row: string; tag: string }> = {
+  same: { label: "igual", icon: Equal, row: "", tag: "text-verde-exito" },
+  different: { label: "distinto", icon: EqualNot, row: "bg-ambar-bg", tag: "text-ambar-texto" },
+  conflict: { label: "conflicto", icon: TriangleAlert, row: "bg-carmin-bg", tag: "text-carmin-texto" },
 };
 
 /** Una pieza sin ficha (aún cargando o sin acceso) se indica en su columna. */
@@ -304,57 +376,89 @@ function pieceHeader(title: string, piece: PieceSlot, piecesLoading: boolean): R
   );
 }
 
-export function ComparisonTable({ pieceA, pieceB, signals, piecesLoading }: { pieceA: PieceSlot; pieceB: PieceSlot; signals: readonly DuplicateSignal[]; piecesLoading: boolean }) {
-  const marks = markedRows(signals);
+function ColumnHeader({ title, piece, piecesLoading }: { title: string; piece: PieceSlot; piecesLoading: boolean }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[32rem] border-collapse text-left text-base text-tinta">
-        <caption className="sr-only">Comparación lado a lado de las dos piezas; las filas marcadas motivan la sospecha.</caption>
-        <thead>
-          <tr className="border-b border-borde">
-            <th scope="col" className="w-36 p-2 text-sm font-medium text-gris-texto">
-              Campo
-            </th>
-            <th scope="col" className="p-2">
-              {pieceHeader("Pieza A", pieceA, piecesLoading)}
-            </th>
-            <th scope="col" className="p-2">
-              {pieceHeader("Pieza B", pieceB, piecesLoading)}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {COMPARISON_ROWS.map((row) => {
-            const mark = marks.get(row.key);
-            return (
-              <tr key={row.key} data-mark={mark} className={mark ? ROW_STYLES[mark] : "border-b border-borde last:border-b-0"}>
-                <th scope="row" className="p-2 align-top text-sm font-medium text-gris-texto">
-                  <span className="flex flex-col items-start gap-1">
-                    {row.label}
-                    {mark && <Badge intent={ROW_TEXT[mark].intent}>{ROW_TEXT[mark].label}</Badge>}
-                  </span>
-                </th>
-                <td className="p-2 align-top">{pieceA ? row.value(pieceA) : "—"}</td>
-                <td className="p-2 align-top">{pieceB ? row.value(pieceB) : "—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div role="columnheader" className="min-w-0 text-center text-sm break-words">
+      {pieceHeader(title, piece, piecesLoading)}
     </div>
   );
 }
 
+const GRID = "grid grid-cols-2 gap-x-3 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)]";
+
+export function ComparisonTable({ pieceA, pieceB, signals, piecesLoading }: { pieceA: PieceSlot; pieceB: PieceSlot; signals: readonly DuplicateSignal[]; piecesLoading: boolean }) {
+  const marks = markedRows(signals);
+  return (
+    <div role="table" aria-label="Comparación de las dos piezas, campo por campo" className="mx-auto flex w-full max-w-4xl flex-col text-sm text-tinta">
+      <div role="row" className={cn(GRID, "items-end border-b border-borde px-2 pb-2")}>
+        <div className="order-1 sm:order-1">
+          <ColumnHeader title="Pieza A" piece={pieceA} piecesLoading={piecesLoading} />
+        </div>
+        <div role="columnheader" className="order-2 hidden text-center text-xs font-medium text-gris-texto sm:order-2 sm:block">
+          Campo
+        </div>
+        <div className="order-3">
+          <ColumnHeader title="Pieza B" piece={pieceB} piecesLoading={piecesLoading} />
+        </div>
+      </div>
+      {COMPARISON_ROWS.map((row) => {
+        const state = comparisonRowState(pieceA ? row.text(pieceA) : "", pieceB ? row.text(pieceB) : "", marks.get(row.key));
+        const info = state === "empty" ? null : ROW_STATES[state];
+        const Icon = info?.icon;
+        return (
+          <div
+            key={row.key}
+            role="row"
+            data-mark={state === "same" ? "match" : state === "empty" ? undefined : state}
+            className={cn(GRID, "items-center gap-y-0.5 border-b border-borde px-2 py-1.5 last:border-b-0", info?.row)}
+          >
+            <div role="rowheader" className="order-1 col-span-2 flex items-center justify-center gap-2 text-center text-xs font-medium text-gris-texto sm:order-2 sm:col-span-1 sm:flex-col sm:gap-0.5">
+              {row.label}
+              {info && Icon && (
+                <span className={cn("inline-flex items-center gap-1 font-semibold", info.tag)}>
+                  <Icon size={13} aria-hidden="true" />
+                  {info.label}
+                </span>
+              )}
+            </div>
+            <div role="cell" className="order-2 min-w-0 text-center break-words sm:order-1">
+              {pieceA ? row.value(pieceA) : "—"}
+            </div>
+            <div role="cell" className="order-3 min-w-0 text-center break-words">
+              {pieceB ? row.value(pieceB) : "—"}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Etiquetas cortas con las señales del motor: «Denominación parecida 100 %». */
+export function SignalChips({ signals }: { signals: readonly DuplicateSignal[] }) {
+  if (signals.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="Por qué se propone">
+      {signals.map((signal, index) => (
+        <li key={`${signal.field}-${index}`} className="rounded-full bg-crema px-2.5 py-0.5 text-xs text-tinta">
+          {signalLabel(signal)} <span className="font-semibold">{scorePercent(signal.similarity)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** El detalle de cada señal con los valores comparados, plegado. */
 export function SignalList({ signals }: { signals: readonly DuplicateSignal[] }) {
   if (signals.length === 0) return null;
   return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-base font-semibold text-tinta">Por qué se propone</h3>
-      <ul className="flex flex-col gap-2">
+    <details className="text-sm">
+      <summary className="cursor-pointer text-gris-texto">Ver por qué se propone</summary>
+      <ul className="mt-2 flex flex-col gap-1.5">
         {signals.map((signal, index) => {
           const lines = signalValueLines(signal);
           return (
-            <li key={`${signal.field}-${index}`} className="rounded-md border border-borde p-2 text-sm text-tinta">
+            <li key={`${signal.field}-${index}`} className="rounded-md border border-borde p-2 text-xs text-tinta">
               <p className="font-medium">
                 {signalLabel(signal)} · similitud {scorePercent(signal.similarity)}
                 {signal.contribution != null && <span className="text-gris-texto"> · aporta {scorePercent(signal.contribution)}</span>}
@@ -368,7 +472,7 @@ export function SignalList({ signals }: { signals: readonly DuplicateSignal[] })
           );
         })}
       </ul>
-    </section>
+    </details>
   );
 }
 
@@ -389,35 +493,34 @@ export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoadin
   const mergeNote = isImportRow ? IMPORT_ROW_MERGE_MESSAGE : mergeUnavailableReason(candidate, pieceA, pieceB, piecesLoading);
   return (
     <Card as="article" className="flex flex-col gap-4" aria-label={`Par con similitud ${scorePercent(candidate.score)}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-base text-gris-texto">
-          Similitud <strong className="text-tinta">{scorePercent(candidate.score)}</strong>
-          {isImportRow && " · fila de importación"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code" && (
-            <Badge intent="danger">Códigos I distintos: fusión bloqueada (RN-002)</Badge>
-          )}
-          <StatusBadge status={duplicateStatus(candidate.status)} />
+      <div className="flex flex-wrap items-center gap-4">
+        <SimilarityMeter score={candidate.score} />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={duplicateStatus(candidate.status)} />
+            {isImportRow && <Badge intent="info">Fila de importación</Badge>}
+            {mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code" && <Badge intent="danger">Códigos I distintos: no se puede fusionar</Badge>}
+          </div>
+          <SignalChips signals={candidate.matched_fields} />
         </div>
       </div>
       {candidate.status === "POSTPONED" && candidate.postponed_until && (
-        <p className="text-sm text-gris-texto">Pospuesto hasta el {formatDate(candidate.postponed_until)}; después vuelve a estar pendiente.</p>
+        <p className="text-sm text-gris-texto">Pospuesto hasta el {formatDate(candidate.postponed_until)}; después vuelve a pendiente.</p>
       )}
       {candidate.resolution_note && <p className="text-sm text-gris-texto">Motivo registrado: {candidate.resolution_note}</p>}
 
       {isImportRow ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1 rounded-md border border-borde p-3 text-base text-tinta">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1 rounded-md border border-borde p-3 text-sm text-tinta">
             {pieceHeader("Pieza del catálogo", pieceA, piecesLoading)}
-            {pieceA && <p className="text-sm text-gris-texto">{pieceA.collection?.name ?? "Sin colección"} · Código I {pieceA.code_i ?? "sin asignar"}</p>}
+            {pieceA && <p className="text-xs text-gris-texto">{pieceA.collection?.name ?? "Sin colección"} · Código I {pieceA.code_i ?? "sin asignar"}</p>}
           </div>
-          <div className="rounded-md border border-dashed border-borde p-3 text-base text-tinta">
+          <div className="rounded-md border border-dashed border-borde p-3 text-sm text-tinta">
             <p className="font-medium">Fila de importación</p>
-            <p className="text-sm text-gris-texto">Aún no forma parte del catálogo: se decide en el lote en previsualización.</p>
-            <Link href="/importacion" className="inline-flex items-center gap-1 text-sm text-terracota underline">
-              Ver en el asistente de importación
-              <ArrowRight size={16} aria-hidden="true" />
+            <p className="text-xs text-gris-texto">Aún no está en el catálogo: se decide en su lote.</p>
+            <Link href="/importacion" className="inline-flex items-center gap-1 text-xs text-terracota underline">
+              Ver en Importación
+              <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -456,6 +559,24 @@ export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoadin
         </div>
       )}
     </Card>
+  );
+}
+
+/** Controles de página; se montan encima y debajo de la lista y no se pintan con una sola página. */
+export function QueuePager({ page, pageCount, label, onPage }: { page: number; pageCount: number; label: string; onPage: (page: number) => void }) {
+  if (pageCount <= 1) return null;
+  return (
+    <nav aria-label={label} className="flex flex-wrap items-center justify-between gap-3">
+      <Button variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        Anterior
+      </Button>
+      <span className="text-sm text-gris-texto">
+        Página {page} de {pageCount}
+      </span>
+      <Button variant="secondary" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
+        Siguiente
+      </Button>
+    </nav>
   );
 }
 
@@ -587,7 +708,7 @@ export function DistinctDialog({ open, onClose, onSubmit }: { open: boolean; onC
         onClose();
       }}
       title="Marcar como piezas distintas"
-      description="A pesar de la similitud, son piezas distintas. El par no vuelve a la cola mientras no cambien los datos comparados, y la decisión queda en la auditoría."
+      description="Son piezas distintas aunque se parezcan. El par no vuelve a la cola mientras no cambien sus datos."
       submitLabel="Marcar como distinto"
       submitIcon={Split}
       busy={submit.busy}
@@ -644,7 +765,7 @@ export function PostponeDialog({
         onClose();
       }}
       title="Posponer la revisión"
-      description="El par sale de los pendientes hasta la fecha elegida y luego vuelve solo a la cola. Se puede posponer como máximo 180 días."
+      description="El par sale de los pendientes hasta esa fecha (máximo 180 días) y luego vuelve solo."
       submitLabel="Posponer"
       submitIcon={CalendarClock}
       busy={submit.busy}
@@ -700,8 +821,8 @@ export function ScanPanel({
     <Card className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-tinta">Detección en todo el catálogo</h2>
-          <p className="text-sm text-gris-texto">Al crear o editar una pieza la detección ya corre sola; lance una completa después de cambios masivos.</p>
+          <h2 className="text-base font-semibold text-tinta">Buscar en todo el catálogo</h2>
+          <p className="text-sm text-gris-texto">Corre sola al crear o editar piezas. Lance una completa tras cambios masivos.</p>
         </div>
         {canScan && (
           <Button variant="outline" icon={ScanSearch} disabled={starting || running} onClick={onStart}>

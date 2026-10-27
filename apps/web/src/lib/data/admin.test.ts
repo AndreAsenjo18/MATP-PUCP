@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  NO_COLLECTION_FILTERS,
   codeError,
   createVocabulary,
+  filterCollections,
   lockedRules,
   previewRuleChange,
   previewSentence,
   recordAssessment,
   suggestCode,
   updateIdentifierType,
+  type CollectionItem,
 } from "./admin";
 
 // Modo `mock` por defecto; `useLive` sustituye `fetch` por un simulacro (sin API real ni red).
@@ -49,7 +52,7 @@ describe("reglas de la pantalla", () => {
 
   it("explica las reglas fijas de un tipo del sistema y ninguna de uno configurable", () => {
     const inventory = { is_system: true, is_unique_when_current: true, locks_on_assignment: true, owned_pieces_only: true };
-    expect(lockedRules(inventory)).toEqual(["se bloquea al asignarse (RN-002)", "es único entre los códigos vigentes", "solo aplica a piezas en propiedad (RN-003)"]);
+    expect(lockedRules(inventory)).toEqual(["se bloquea al asignarse", "es único entre los códigos vigentes", "solo aplica a piezas en propiedad"]);
     expect(lockedRules({ ...inventory, is_system: false })).toEqual([]);
   });
 
@@ -79,7 +82,7 @@ describe("operaciones en modo live", () => {
     const result = await createVocabulary("MATERIAL", " Materiales ", DEV_USER);
 
     expect(await (fetchMock.mock.calls[0][0] as Request).json()).toEqual({ code: "MATERIAL", name: "Materiales" });
-    expect(result.status === "rejected" && result.message).toBe("Ya existe un vocabulario con ese código.");
+    expect(result.status === "rejected" && result.message).toBe("Ya existe una lista con ese código.");
   });
 
   it("pide la vista previa y confirma con su token", async () => {
@@ -103,7 +106,7 @@ describe("operaciones en modo live", () => {
 
     const result = await updateIdentifierType("I", { rule: "GENERIC", confirmToken: "t" }, DEV_USER);
 
-    expect(result.status === "rejected" && result.message).toContain("RN-002");
+    expect(result.status === "rejected" && result.message).toContain("mismo código vigente en piezas distintas");
   });
 
   it("registra una evaluación con la fecha elegida y notas recortadas", async () => {
@@ -116,5 +119,32 @@ describe("operaciones en modo live", () => {
       assessed_at: "2024-05-03T12:00:00Z",
       notes: "Grietas",
     });
+  });
+});
+
+describe("filtro de colecciones", () => {
+  const items = [
+    { id: "1", name: "Cerámica de Puno", acronym: "M.M.Z.", parent_id: null, is_active: true, piece_count: 3 },
+    { id: "2", name: "Retablos ayacuchanos", acronym: "RA", parent_id: null, is_active: false, piece_count: 1 },
+    { id: "3", name: "Retablos de cajón", acronym: "RAB", parent_id: "2", is_active: true, piece_count: 2 },
+  ] as unknown as CollectionItem[];
+  const ids = (found: CollectionItem[]) => found.map((item) => item.id);
+
+  it("sin filtros devuelve todo", () => {
+    expect(ids(filterCollections(items, NO_COLLECTION_FILTERS))).toEqual(["1", "2", "3"]);
+  });
+
+  it("busca por nombre o sigla sin distinguir mayúsculas ni tildes", () => {
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, query: "ceramica" }))).toEqual(["1"]);
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, query: "rab" }))).toEqual(["3"]);
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, query: "retablos" }))).toEqual(["2", "3"]);
+  });
+
+  it("filtra por estado y por tipo, y combina los filtros", () => {
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, status: "inactive" }))).toEqual(["2"]);
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, status: "active" }))).toEqual(["1", "3"]);
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, kind: "sub" }))).toEqual(["3"]);
+    expect(ids(filterCollections(items, { ...NO_COLLECTION_FILTERS, kind: "main", status: "active" }))).toEqual(["1"]);
+    expect(filterCollections(items, { query: "xyz", status: "", kind: "" })).toEqual([]);
   });
 });

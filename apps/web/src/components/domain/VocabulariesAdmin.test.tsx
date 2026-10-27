@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { IdentifierType, NormalizationPreview, VocabularyTerm } from "@/lib/data/admin";
+import type { CollectionItem, IdentifierType, NormalizationPreview, VocabularyTerm } from "@/lib/data/admin";
 import { render, visibleText } from "@/test/render";
 
 import { ConservationForm, ConservationHistory } from "./ConservationPanel";
-import { IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
+import { CollectionsTable, IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
 
 // Datos sintéticos (RNF-014).
 
@@ -61,16 +61,51 @@ const term = (overrides: Partial<VocabularyTerm> = {}): VocabularyTerm => ({
   ...overrides,
 });
 
-describe("términos de un vocabulario", () => {
-  it("ofrece desactivar los activos y activar los desactivados, sin borrar", () => {
-    const text = visibleText(render(<TermList terms={[term(), term({ id: "t-2", code: "REPUJADO", label: "Repujado", is_active: false })]} busy={false} onToggle={noop} />));
-    expect(text).toContain("Tallado (TALLADO) Desactivar");
-    expect(text).toContain("Repujado (REPUJADO) Desactivado Activar");
+describe("términos de una lista de valores", () => {
+  it("son etiquetas: verde las activas y gris tachada las desactivadas, con su estado en texto, sin un botón por término", () => {
+    const html = render(<TermList terms={[term(), term({ id: "t-2", code: "REPUJADO", label: "Repujado", is_active: false })]} busy={false} onToggle={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Tallado (activo)");
+    expect(text).toContain("Repujado (desactivado)");
+    expect(html).toMatch(/aria-pressed="true"[^>]*bg-verde-bg|bg-verde-bg[^>]*aria-pressed="true"/);
+    expect(html).toContain("line-through");
+    expect(html).toContain('title="REPUJADO · Pulse para activar"');
     expect(text).not.toContain("Eliminar");
+    expect(text).not.toMatch(/Desactivar|Activar/);
+    expect(text).toContain("Pulse una etiqueta para cambiarla.");
+  });
+
+  it("una lista sin términos invita a agregar el primero desde la barra", () => {
+    expect(visibleText(render(<TermList terms={[]} busy={false} onToggle={noop} />))).toContain("Agregue el primero desde la barra de arriba.");
+  });
+
+  it("no cita requisitos", () => {
+    expect(visibleText(render(<TermList terms={[term()]} busy={false} onToggle={noop} />))).not.toMatch(/(RF|RN)-0/);
   });
 });
 
-describe("tipos de identificador", () => {
+describe("listado de colecciones", () => {
+  const items = [
+    { id: "1", name: "Cerámica de Puno", acronym: "M.M.Z.", parent_id: null, is_active: true, piece_count: 3 },
+    { id: "2", name: "Retablos de cajón", acronym: "RAB", parent_id: "1", is_active: false, piece_count: 2 },
+  ] as unknown as CollectionItem[];
+
+  it("distingue las subcolecciones con el nombre de su colección padre y el estado con texto", () => {
+    const text = visibleText(render(<CollectionsTable items={items} all={items} />));
+    expect(text).toContain("Cerámica de Puno");
+    expect(text).toContain("Subcolección de Cerámica de Puno");
+    expect(text).toContain("Activa");
+    expect(text).toContain("Inactiva");
+  });
+
+  it("sin resultados lo dice y ofrece limpiar los filtros", () => {
+    const text = visibleText(render(<CollectionsTable items={[]} all={items} onClearFilters={noop} />));
+    expect(text).toContain("No hay colecciones con estos filtros.");
+    expect(text).toContain("Limpiar filtros");
+  });
+});
+
+describe("tipos de código", () => {
   it("muestra el candado y las reglas fijas de un tipo del sistema", () => {
     const html = render(
       <IdentifierTypesTable
@@ -81,8 +116,11 @@ describe("tipos de identificador", () => {
     );
     const text = visibleText(html);
     expect(html).toContain('aria-label="Tipo del sistema"');
-    expect(text).toContain("Tipo del sistema: se bloquea al asignarse (RN-002), es único entre los códigos vigentes, solo aplica a piezas en propiedad (RN-003).");
+    expect(text).toContain("Del sistema");
+    expect(text).toContain("se bloquea al asignarse, es único entre los códigos vigentes, solo aplica a piezas en propiedad.");
     expect(text).toContain("Configurable");
+    expect(text).not.toMatch(/(RF|RN)-0/);
+    expect(html).toContain('aria-label="Editar I"'); // la edición es un botón de icono con su nombre
   });
 
   it("explica el impacto y permite confirmar cuando no hay colisiones", () => {

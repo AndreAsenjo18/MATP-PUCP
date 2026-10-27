@@ -419,20 +419,21 @@ export function previewBlocker(draft: EditorDraft, batch: Pick<ImportBatch, "she
  * API los aplica sobre los de la plantilla); si no, las columnas del borrador (v1) con los valores
  * por defecto de la plantilla y el régimen del lote encima.
  */
-export function applySource(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row">): BatchMappingSource {
-  if (draft.base && draftStatus(draft) === "unchanged" && !sourceChanged(draft, batch)) {
+export function applySource(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row" | "headers">): BatchMappingSource {
+  // Una plantilla a la que el archivo no le trae columnas no se puede aplicar tal cual: se envían las columnas que quedaron.
+  if (draft.base && draftStatus(draft) === "unchanged" && !sourceChanged(draft, batch) && droppedColumns(draft, batch).length === 0) {
     return { kind: "template", templateId: draft.base.id, tenureDefault: draft.tenureDefault };
   }
   return { kind: "columns", columns: draft.columns.map(canonicalColumn), sheetName: draft.sheetName, headerRow: draft.headerRow, tenureDefault: draft.tenureDefault, defaults: draft.templateDefaults };
 }
 
 /** Aviso junto a «Usar este mapeo y validar» cuando el mapeo no queda guardado como plantilla. */
-export function applyNotice(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row">): string | null {
+export function applyNotice(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row" | "headers">): string | null {
   return applySource(draft, batch).kind === "columns" ? "Este mapeo se usará solo en este lote: no queda guardado como plantilla." : null;
 }
 
 /** Cuerpo de `PUT /imports/{batch_id}/mapping` al validar desde el editor. */
-export function applyRequest(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row">) {
+export function applyRequest(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row" | "headers">) {
   return batchMappingRequest(applySource(draft, batch));
 }
 

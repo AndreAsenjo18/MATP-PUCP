@@ -13,12 +13,17 @@ import {
   fieldAction,
   isProcessing,
   mappingRequest,
+  batchStateText,
+  plainMessage,
+  progressStep,
   progressText,
+  stageFraction,
   revertConflicts,
   rollbackImportBatch,
   suggestMapping,
   summarySentence,
   uploadImportFile,
+  validationHint,
   wizardStep,
   type ApprovalSummary,
   type ImportRow,
@@ -117,7 +122,7 @@ describe("mapeo sugerido por cabecera (RF-022)", () => {
 
 describe("decisiones por fila (D5)", () => {
   it("una fila con errores o un conflicto sin resolver no se puede aceptar", () => {
-    expect(acceptBlocker(row({ has_validation_errors: true }))).toMatch(/errores de validación/);
+    expect(acceptBlocker(row({ has_validation_errors: true }))).toMatch(/no se puede aceptar/);
     expect(acceptBlocker(row({ classification: "CONFLICT" }))).toMatch(/elija la pieza destino/);
     expect(acceptBlocker(row({ classification: "CONFLICT", resolution: { target_piece_id: "p-1" } }))).toBeNull();
     expect(acceptBlocker(row({ classification: "POSSIBLE_DUPLICATE", resolution: { as_new: true } }))).toBeNull();
@@ -132,11 +137,66 @@ describe("decisiones por fila (D5)", () => {
         { kind: "batch_row", row_number: 7, identifier_type: "I", value: "I-0236" },
       ],
     });
-    expect(candidatePieces(conflict)).toEqual([
-      { pieceId: "p-1", reason: "Código I I-0236 (vigente)" },
-      { pieceId: "p-2", reason: "Similitud 82 %" },
+    const candidates = candidatePieces(conflict);
+    expect(candidates.map((candidate) => [candidate.pieceId, candidate.reason])).toEqual([
+      ["p-1", "Mismo código: I-0236 (vigente)"],
+      ["p-2", "Se parece 82 %"],
     ]);
     expect(conflictingRows(conflict)).toEqual([7]);
+  });
+
+  it("distingue a los candidatos por denominación, colección y código I", () => {
+    const toro = { denomination: "Toro de Pucará", available: true };
+    const conflict = row({
+      matches: [
+        { kind: "piece", piece_id: "p-1", identifiers: [{ identifier_type: "I", value: "I-0236", via: "current" }], ...toro, collection_name: "Cerámica de Puno", inventory_code: "I-0236" },
+        { kind: "similar_piece", piece_id: "p-2", score: 0.9, ...toro, collection_name: "Colección Cusco", inventory_code: null },
+      ],
+    });
+
+    const [first, second] = candidatePieces(conflict);
+
+    expect(first.label).toBe("Toro de Pucará · Cerámica de Puno · Código I-0236 — Mismo código: I-0236 (vigente)");
+    expect(second.label).toBe("Toro de Pucará · Colección Cusco · Sin código I — Se parece 90 %");
+    expect(first.label).not.toBe(second.label);
+  });
+
+  it("no repite una pieza que coincide por dos vías y junta sus motivos", () => {
+    const conflict = row({
+      matches: [
+        { kind: "piece", piece_id: "p-1", identifiers: [{ identifier_type: "I", value: "I-0236", via: "current" }], denomination: "Retablo", collection_name: "Ayacucho", inventory_code: "I-0236", available: true },
+        { kind: "similar_piece", piece_id: "p-1", score: 0.8, denomination: "Retablo", collection_name: "Ayacucho", inventory_code: "I-0236", available: true },
+      ],
+    });
+
+    const candidates = candidatePieces(conflict);
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].reason).toBe("Mismo código: I-0236 (vigente); Se parece 80 %");
+  });
+
+  it("si dos piezas distintas se ven idénticas añade el final de su identificador, porque el principio es la fecha", () => {
+    const same = { denomination: "Máscara", collection_name: "Sin clasificar", inventory_code: null, available: true };
+    const conflict = row({
+      matches: [
+        { kind: "similar_piece", piece_id: "aaaaaaaa-1111", score: 0.8, ...same },
+        { kind: "similar_piece", piece_id: "bbbbbbbb-2222", score: 0.8, ...same },
+      ],
+    });
+
+    const [first, second] = candidatePieces(conflict);
+
+    expect(first.label).toContain("(n.º a-1111)");
+    expect(second.label).toContain("(n.º b-2222)");
+  });
+
+  it("una pieza que ya no está en el catálogo se muestra como no disponible", () => {
+    const conflict = row({ matches: [{ kind: "piece", piece_id: "p-9", identifiers: [{ identifier_type: "I", value: "I-1", via: "current" }], available: false, denomination: null }] });
+
+    const [candidate] = candidatePieces(conflict);
+
+    expect(candidate.available).toBe(false);
+    expect(candidate.label).toContain("Pieza no disponible · ya no está en el catálogo");
   });
 
   it("una celda vacía conserva el valor actual salvo que la persona lo acepte [B10]", () => {
@@ -248,5 +308,64 @@ describe("modo live", () => {
 
     expect(result.status === "rejected" && result.message).toBe("Solo un Administrador puede revertir un lote.");
     if (result.status !== "ok") expect(revertConflicts(result)).toBeNull();
+  });
+});
+
+describe("lenguaje llano en los mensajes", () => {
+  it("quita las referencias a requisitos entre paréntesis y deja el resto", () => {
+    expect(plainMessage("El código I no cambia en una importación (RN-002).")).toBe("El código I no cambia en una importación.");
+    expect(plainMessage("Resumen del lote (RF-027, RNF-010) listo")).toBe("Resumen del lote listo");
+  });
+
+  it("quita una referencia suelta y no toca un mensaje sin ellas", () => {
+    expect(plainMessage("Falta el régimen según RN-003 para la fila")).toBe("Falta el régimen según para la fila");
+    expect(plainMessage("Falta el régimen de tenencia.")).toBe("Falta el régimen de tenencia.");
+  });
+
+  it("los errores de la API llegan sin identificadores de requisitos", async () => {
+    useLive(async () => json(422, { code: "otro_error", message: "No se puede (RN-005).", details: {} }));
+
+    const result = await rollbackImportBatch(BATCH, "Motivo", false, DEV_USER);
+
+    expect(result.status === "rejected" && result.message).toBe("No se puede.");
+  });
+});
+
+describe("avance en cuatro pasos", () => {
+  it("agrupa los estados del lote en Archivo, Revisión, Aprobación y Resultado", () => {
+    expect(progressStep(null)).toBe(0);
+    expect(progressStep({ status: "UPLOADED" })).toBe(0);
+    expect(progressStep({ status: "VALIDATED" })).toBe(0);
+    expect(progressStep({ status: "IN_PREVIEW" })).toBe(1);
+    expect(progressStep({ status: "FAILED_APPLY" })).toBe(1);
+    expect(progressStep({ status: "APPROVED" })).toBe(2);
+    expect(progressStep({ status: "APPLIED" })).toBe(3);
+    expect(progressStep({ status: "ABANDONED" })).toBe(3);
+    // Un archivo que no se pudo leer se queda en el primer paso.
+    expect(progressStep({ status: "FAILED_INGESTION" })).toBe(0);
+  });
+
+  it("dice el estado en palabras de todos los días y, en curso, el avance en filas", () => {
+    expect(batchStateText({ status: "IN_PREVIEW", processing: false, progress: null })).toBe("Listo para revisar");
+    expect(batchStateText({ status: "UPLOADED", processing: true, progress: { stage: "VALIDATE", done: 1200, total: 8000 } })).toContain("de 8");
+  });
+
+  it("calcula la fracción de la etapa en curso y la omite si no hay total", () => {
+    expect(stageFraction({ stage: "VALIDATE", done: 50, total: 200 })).toBe(0.25);
+    expect(stageFraction({ stage: "INGEST", done: 5 })).toBeNull();
+    expect(stageFraction(null)).toBeNull();
+  });
+});
+
+describe("sugerencias para los errores de validación", () => {
+  it("el régimen faltante ofrece la acción de asignarlo", () => {
+    expect(validationHint("tenure_required")?.action).toBe("assign_tenure");
+  });
+
+  it("los demás códigos conocidos traen una sugerencia sin acción y los desconocidos, nada", () => {
+    expect(validationHint("invalid_inventory_code")?.hint).toContain("Corrija esa celda");
+    expect(validationHint("invalid_inventory_code")?.action).toBeUndefined();
+    expect(validationHint("otro")).toBeNull();
+    expect(validationHint(undefined)).toBeNull();
   });
 });

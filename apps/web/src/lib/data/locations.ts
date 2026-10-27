@@ -154,3 +154,78 @@ export type LocationRef = ApiSchemas["LocationRef"];
 export function locationPathLabel(path: readonly Pick<LocationRef, "name">[]): string {
   return path.map((node) => node.name).join(" › ");
 }
+
+export interface LocationFilters {
+  query: string;
+  /** `""` = todos los niveles. */
+  level: "" | LocationLevelLabel;
+}
+
+function foldName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * El árbol reducido a las ubicaciones cuyo nombre contiene la búsqueda y que son del nivel elegido,
+ * con sus ascendientes como contexto (aunque no coincidan). Sin filtros devuelve el árbol entero.
+ */
+export function filterLocationTree(nodes: readonly LocationNode[], filters: LocationFilters): LocationNode[] {
+  const query = foldName(filters.query);
+  if (!query && !filters.level) return [...nodes];
+  const visit = (node: LocationNode): LocationNode | null => {
+    const children = (node.children ?? []).map(visit).filter((child): child is LocationNode => child !== null);
+    const matches = (!query || foldName(node.name).includes(query)) && (!filters.level || node.level_type === filters.level);
+    return matches || children.length > 0 ? { ...node, children } : null;
+  };
+  return nodes.map(visit).filter((node): node is LocationNode => node !== null);
+}
+
+/** Un lugar donde puede quedar guardada una pieza, con su ruta completa desde la sede. */
+export interface DestinationOption {
+  id: string;
+  label: string;
+  /** Nivel jerárquico, para el texto de ayuda (p. ej. «Nivel»). */
+  level: string;
+}
+
+/**
+ * Lugares finales del árbol (los que no tienen otros dentro), con la ruta completa como etiqueta.
+ * El selector «Mover a» de Depósito solo ofrece estos: una pieza queda en un nivel o un contenedor,
+ * no en una sede o un mueble con niveles. La API acepta cualquier destino activo que no sea sede;
+ * la restricción es de interfaz (`rediseno-ux-deposito`, D1).
+ */
+export function finalLocations(nodes: readonly LocationNode[], prefix: readonly string[] = []): DestinationOption[] {
+  return nodes.flatMap((node) => {
+    const path = [...prefix, node.name];
+    const children = node.children ?? [];
+    return children.length === 0 ? [{ id: node.id, label: path.join(" › "), level: node.level_type }] : finalLocations(children, path);
+  });
+}
+
+/** Lo mismo que `finalLocations` para una lista plana con `parent_id` (datos de demostración). */
+export function finalLocationsFromList(
+  locations: readonly { id: string; name: string; level: string; parent_id?: string | null; is_active?: boolean }[],
+): DestinationOption[] {
+  const active = locations.filter((location) => location.is_active !== false);
+  const byId = new Map(active.map((location) => [location.id, location]));
+  const parents = new Set(active.map((location) => location.parent_id).filter((id): id is string => !!id));
+  const pathOf = (id: string): string[] => {
+    const location = byId.get(id);
+    if (!location) return [];
+    return [...(location.parent_id ? pathOf(location.parent_id) : []), location.name];
+  };
+  return active
+    .filter((location) => !parents.has(location.id))
+    .map((location) => ({ id: location.id, label: pathOf(location.id).join(" › "), level: location.level }));
+}
+
+/** Destinos cuya ruta contiene la búsqueda, sin distinguir mayúsculas ni acentos. */
+export function filterDestinations(items: readonly DestinationOption[], query: string): DestinationOption[] {
+  const needle = foldName(query);
+  if (!needle) return [...items];
+  return items.filter((item) => foldName(item.label).includes(needle));
+}

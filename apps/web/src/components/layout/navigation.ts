@@ -56,3 +56,29 @@ export function mobileMenuReducer(open: boolean, action: MobileMenuAction): bool
       return open;
   }
 }
+
+/** Clave del navegador donde se recuerda si la barra lateral está contraída. */
+export const SIDEBAR_STORAGE_KEY = "matp.sidebar";
+
+type SidebarStorage = Pick<Storage, "getItem" | "setItem">;
+
+/**
+ * Preferencia guardada de la barra lateral: `true` = contraída. Si el navegador no deja leer el
+ * almacenamiento (ventana privada, datos bloqueados) la barra queda expandida.
+ */
+export function readSidebarCollapsed(storage: SidebarStorage | null): boolean {
+  try {
+    return storage?.getItem(SIDEBAR_STORAGE_KEY) === "collapsed";
+  } catch {
+    return false;
+  }
+}
+
+/** Guarda la preferencia; si el almacenamiento falla, la barra sigue funcionando en la sesión. */
+export function writeSidebarCollapsed(storage: SidebarStorage | null, collapsed: boolean): void {
+  try {
+    storage?.setItem(SIDEBAR_STORAGE_KEY, collapsed ? "collapsed" : "expanded");
+  } catch {
+    // Sin almacenamiento solo se pierde la preferencia entre visitas.
+  }
+}

@@ -9,7 +9,7 @@
  * (RNF-010): qué hará la aplicación con cada fila, por qué una fila no se puede aceptar y el
  * resumen exacto que se aprueba.
  */
-import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2, Upload } from "lucide-react";
+import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -22,15 +22,21 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import {
-  WIZARD_STEPS,
+  PROGRESS_STEPS,
+  TENURE_DEFAULT_OPTIONS,
   acceptBlocker,
   actionLabel,
+  batchStateText,
   candidatePieces,
   conflictingRows,
   fieldAction,
+  fieldLabel,
   needsResolution,
+  plainMessage,
   progressText,
+  stageFraction,
   summarySentence,
+  validationHint,
   type ApprovalSummary,
   type FieldAction,
   type ImportBatch,
@@ -42,23 +48,43 @@ import {
   type RowDecisionInput,
 } from "@/lib/data/imports";
 
-export function ImportSteps({ current }: { current: number }) {
+export function ImportSteps({ current, complete = false }: { current: number; complete?: boolean }) {
+  const last = PROGRESS_STEPS.length - 1;
+  const percent = Math.round(((complete ? PROGRESS_STEPS.length : current + 1) / PROGRESS_STEPS.length) * 100);
   return (
-    <ol className="flex flex-wrap gap-2" aria-label="Pasos de la importación">
-      {WIZARD_STEPS.map((label, index) => (
-        <li
-          key={label}
-          aria-current={index === current ? "step" : undefined}
-          className={cn(
-            "flex min-h-11 items-center gap-1 rounded-full px-4 py-2 text-sm font-medium",
-            index === current ? "bg-terracota text-white" : index < current ? "bg-verde-bg text-verde-exito" : "bg-crema text-tinta",
-          )}
-        >
-          {index < current && <Check size={16} aria-hidden="true" />}
-          {index + 1}. {label}
-        </li>
-      ))}
-    </ol>
+    <nav aria-label="Avance de la importación" className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 sm:hidden">
+        <p className="text-sm font-medium text-tinta">
+          Paso {current + 1} de {PROGRESS_STEPS.length} · {PROGRESS_STEPS[current]}
+        </p>
+        <div className="h-2 overflow-hidden rounded-full bg-crema" role="presentation">
+          <div className="h-full rounded-full bg-terracota transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
+        </div>
+      </div>
+      <ol className="hidden items-center sm:flex">
+        {PROGRESS_STEPS.map((label, index) => {
+          const done = index < current || (complete && index === current);
+          const active = index === current && !done;
+          return (
+            <li key={label} aria-current={active ? "step" : undefined} className={cn("flex items-center gap-3", index < last && "flex-1")}>
+              <span
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold",
+                  done ? "border-verde-exito bg-verde-exito text-white" : active ? "border-terracota bg-terracota text-white" : "border-borde bg-white text-gris-texto",
+                )}
+              >
+                {done ? <Check size={16} aria-hidden="true" /> : index + 1}
+              </span>
+              <span className={cn("text-sm font-medium", active ? "text-tinta" : done ? "text-verde-exito" : "text-gris-texto")}>
+                {label}
+                <span className="sr-only">{done ? " (completado)" : active ? " (paso actual)" : ""}</span>
+              </span>
+              {index < last && <span aria-hidden="true" className={cn("h-0.5 flex-1 rounded-full", done ? "bg-verde-exito" : "bg-borde")} />}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -71,43 +97,31 @@ export function ErrorNotice({ message }: { message: string | null }) {
   );
 }
 
-export function UploadPanel({ busy, onUpload }: { busy: boolean; onUpload: (file: File) => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  return (
-    <Card as="section" className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-tinta">Subir la hoja de cálculo</h2>
-      <p className="text-base text-gris-texto">
-        Elija un archivo Excel (.xlsx) o CSV. El archivo original se guarda sin cambios y nada llega al catálogo hasta que una persona
-        autorizada apruebe el lote.
-      </p>
-      <label className="flex flex-col items-center gap-2 rounded-md border border-dashed border-borde p-6 text-center text-gris-texto">
-        <FileSpreadsheet size={28} aria-hidden="true" className="text-terracota" />
-        <span className="font-medium text-tinta">{file ? file.name : "Seleccionar archivo"}</span>
-        <input type="file" accept=".xlsx,.csv" className="text-sm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-      </label>
-      <Button icon={Upload} className="self-start" disabled={!file || busy} onClick={() => file && onUpload(file)}>
-        {busy ? "Subiendo…" : "Subir archivo"}
-      </Button>
-    </Card>
-  );
-}
-
 export function ProgressPanel({ batch }: { batch: ImportBatch }) {
+  const fraction = stageFraction(batch.progress);
   return (
-    <Card as="section" className="flex flex-col gap-2" aria-live="polite">
-      <h2 className="text-lg font-semibold text-tinta">Procesando el lote</h2>
-      <p className="text-base text-gris-texto">{progressText(batch.progress)}</p>
-      <p className="text-sm text-gris-texto">Puede salir de esta pantalla: el proceso continúa en el servidor.</p>
+    <Card as="section" className="flex flex-col gap-3" aria-live="polite">
+      <h2 className="text-lg font-semibold text-tinta">{progressText(batch.progress)}</h2>
+      <div className="h-2 overflow-hidden rounded-full bg-crema" role="presentation">
+        <div
+          className={cn("h-full rounded-full bg-terracota transition-[width] duration-300 motion-reduce:transition-none", fraction === null && "w-1/3 animate-pulse motion-reduce:animate-none")}
+          style={fraction === null ? undefined : { width: `${Math.max(4, Math.round(fraction * 100))}%` }}
+        />
+      </div>
+      <p className="text-sm text-gris-texto">Puede salir de esta pantalla: el proceso sigue en el servidor.</p>
     </Card>
   );
 }
 
+/** Archivo y estado del lote, en una banda bajo el título. */
 export function BatchHeader({ batch }: { batch: ImportBatch }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="font-medium text-tinta">{batch.file_name}</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-crema-light px-4 py-3">
+      <FileSpreadsheet size={20} aria-hidden="true" className="shrink-0 text-terracota" />
+      <span className="min-w-0 font-medium break-all text-tinta">{batch.file_name}</span>
       <StatusBadge status={importBatchStatus(batch.status)} />
-      {batch.status_reason && <span className="text-sm text-carmin-texto">{batch.status_reason}</span>}
+      <span className="text-sm text-gris-texto">{batchStateText(batch)}</span>
+      {batch.status_reason && <span className="w-full text-sm text-carmin-texto">{batch.status_reason}</span>}
     </div>
   );
 }
@@ -157,6 +171,25 @@ function display(value: unknown): string {
   return String(value);
 }
 
+/** Denominación de la fila tal como quedó mapeada, o la primera celda del archivo. */
+function rowTitle(row: ImportRow): string {
+  const fields = isRecordLike(row.mapped_data) && isRecordLike(row.mapped_data.fields) ? row.mapped_data.fields : null;
+  const denomination = fields?.denomination;
+  if (typeof denomination === "string" && denomination.trim()) return denomination.trim();
+  const first = Object.entries(row.raw_data).find(([key, value]) => !key.startsWith("__") && value != null && value !== "");
+  return first ? display(first[1]) : "Sin denominación";
+}
+
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const ACTION_HELP = {
+  accept: "Se importa al aprobar el lote.",
+  exclude: "No se importa. Puede cambiar de idea.",
+  reject: "Queda en la bitácora con su motivo.",
+} as const;
+
 export function ImportRowCard({
   row,
   canDecide,
@@ -177,8 +210,14 @@ export function ImportRowCard({
   );
   const blocker = acceptBlocker(row);
   const choosing = resolvable && target !== "";
+  const acceptBlocked = busy || (Boolean(blocker) && !choosing) || row.has_validation_errors;
   const others = conflictingRows(row);
-  const errors = row.validation_errors.map((error) => String((error as { message?: unknown }).message ?? "")).filter(Boolean);
+  const errors = row.validation_errors
+    .filter(isRecordLike)
+    .map((error) => ({ message: plainMessage(String(error.message ?? "")), hint: validationHint(error.code)?.hint ?? null }))
+    .filter((error) => error.message);
+  const blockerId = `fila-${row.id}-bloqueo`;
+  const dataEntries = Object.entries(row.raw_data).filter(([key]) => !key.startsWith("__"));
 
   const accept = () =>
     onDecide({
@@ -189,88 +228,211 @@ export function ImportRowCard({
     });
 
   return (
-    <article className="rounded-md border border-borde p-3" aria-label={`Fila ${row.source_row_number}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium text-tinta">Fila {row.source_row_number}</span>
+    <article className="flex flex-col gap-3 rounded-md border border-borde p-4" aria-label={`Fila ${row.source_row_number}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-gris-texto">Fila {row.source_row_number}</p>
+          <h3 className="text-base font-semibold break-words text-tinta">{rowTitle(row)}</h3>
+        </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={importClassificationStatus(row.classification)} />
           <StatusBadge status={importDecisionStatus(row.decision)} />
         </div>
       </div>
-      <p className="mt-1 text-sm text-gris-texto">{actionLabel(row.action)}</p>
-      <dl className="mt-2 grid grid-cols-2 gap-2 text-sm text-tinta sm:grid-cols-4">
-        {Object.entries(row.raw_data)
-          .filter(([key]) => !key.startsWith("__"))
-          .map(([key, value]) => (
+      <p className="text-sm text-gris-texto">{actionLabel(row.action)}</p>
+
+      {errors.length > 0 && (
+        <ul className="flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
+          {errors.map((error) => (
+            <li key={error.message}>
+              <span className="font-medium">{error.message}</span>
+              {error.hint && <span className="block text-tinta">{error.hint}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {others.length > 0 && <p className="text-sm text-ambar-texto">El mismo código I aparece en la fila {others.join(", ")} de este lote.</p>}
+      {row.decision_reason && <p className="text-sm text-gris-texto">Motivo: {row.decision_reason}</p>}
+
+      {row.diff.length > 0 && (
+        <section role="group" aria-labelledby={`${blockerId}-cambios`} className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
+          <h4 id={`${blockerId}-cambios`} className="mb-2 text-left font-semibold">
+            Cambios sobre la pieza del catálogo
+          </h4>
+          <div className="hidden grid-cols-[minmax(8rem,1fr)_2fr_2fr] gap-x-4 pb-1 text-xs font-medium sm:grid">
+            <span>Campo</span>
+            <span>Ahora en el catálogo</span>
+            <span>En el archivo</span>
+          </div>
+          <ul className="flex flex-col divide-y divide-ambar-alerta/30">
+            {row.diff.map((change) => (
+              <li key={change.field} className="py-2 first:pt-0 last:pb-0">
+                <label className="grid cursor-pointer grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-[minmax(8rem,1fr)_2fr_2fr] sm:items-baseline">
+                  <span className="flex items-center gap-2 font-medium">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-terracota"
+                      disabled={!canDecide}
+                      checked={fields[change.field] === "accept"}
+                      onChange={(event) => setFields({ ...fields, [change.field]: event.target.checked ? "accept" : "exclude" })}
+                    />
+                    {fieldLabel(change.field)}
+                  </span>
+                  <span className="break-words">
+                    <span className="sm:hidden">Ahora: </span>
+                    {display(change.current_value)}
+                  </span>
+                  <span className="font-medium break-words">
+                    <span className="font-normal sm:hidden">En el archivo: </span>
+                    {display(change.incoming_value)}
+                    {change.default_action === "keep" && <span className="block font-normal">Celda vacía: se conserva el valor actual.</span>}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {resolvable && canDecide && (
+        <Select label="¿A qué pieza corresponde esta fila?" value={target} onChange={(event) => setTarget(event.target.value)}>
+          <option value="">Elegir…</option>
+          {candidates.map((candidate) => (
+            <option key={candidate.pieceId} value={candidate.pieceId} disabled={!candidate.available}>
+              {candidate.label}
+            </option>
+          ))}
+          <option value="new">Ninguna: es una pieza nueva</option>
+        </Select>
+      )}
+
+      <details className="text-sm">
+        <summary className="cursor-pointer text-gris-texto">Ver datos del archivo</summary>
+        <dl className="mt-2 grid grid-cols-1 gap-2 text-tinta sm:grid-cols-2 lg:grid-cols-4">
+          {dataEntries.map(([key, value]) => (
             <div key={key} className="min-w-0">
               <dt className="font-medium text-gris-texto">{key}</dt>
               <dd className="break-words">{display(value)}</dd>
             </div>
           ))}
-      </dl>
-      {errors.length > 0 && <p className="mt-2 text-sm font-medium text-carmin-texto">{errors.join("; ")}</p>}
-      {others.length > 0 && <p className="mt-2 text-sm text-ambar-texto">El mismo código I aparece en la fila {others.join(", ")} de este lote.</p>}
-      {row.decision_reason && <p className="mt-2 text-sm text-gris-texto">Motivo: {row.decision_reason}</p>}
-
-      {row.diff.length > 0 && (
-        <fieldset className="mt-2 rounded-md bg-ambar-bg p-2 text-sm text-ambar-texto">
-          <legend className="font-medium">Cambios sobre la pieza del catálogo</legend>
-          {row.diff.map((change) => (
-            <label key={change.field} className="flex flex-wrap items-center gap-2">
-              <input
-                type="checkbox"
-                disabled={!canDecide}
-                checked={fields[change.field] === "accept"}
-                onChange={(event) => setFields({ ...fields, [change.field]: event.target.checked ? "accept" : "exclude" })}
-              />
-              <strong>{change.field}</strong>: {display(change.current_value)} → {display(change.incoming_value)}
-              {change.default_action === "keep" && <span>(la celda está vacía: se conserva el valor actual)</span>}
-            </label>
-          ))}
-        </fieldset>
-      )}
-
-      {resolvable && canDecide && (
-        <Select label="¿A qué pieza corresponde esta fila?" value={target} onChange={(event) => setTarget(event.target.value)} fieldClassName="mt-2">
-          <option value="">Elegir…</option>
-          {candidates.map((candidate) => (
-            <option key={candidate.pieceId} value={candidate.pieceId}>
-              Pieza {candidate.pieceId.slice(0, 8)} · {candidate.reason}
-            </option>
-          ))}
-          <option value="new">Es una pieza nueva</option>
-        </Select>
-      )}
+        </dl>
+      </details>
 
       {row.images && row.images.length > 0 && (
-        <p className="mt-2 flex items-center gap-1 text-sm text-gris-texto">
+        <p className="flex items-center gap-1 text-sm text-gris-texto">
           <ImageIcon size={16} aria-hidden="true" />
           {row.images.length === 1 ? "1 imagen anclada en esta fila" : `${row.images.length} imágenes ancladas en esta fila`} (se asocian después de aplicar).
         </p>
       )}
 
       {canDecide && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button variant="outline" icon={Check} disabled={busy || (Boolean(blocker) && !choosing) || row.has_validation_errors} onClick={accept}>
-            Aceptar
-          </Button>
-          <Button variant="secondary" icon={MinusCircle} disabled={busy} onClick={() => onDecide({ decision: "EXCLUDED" })}>
-            Excluir
-          </Button>
-          <ConfirmButton
-            label="Rechazar"
-            variant="danger"
-            disabled={busy}
-            confirmTitle="Rechazar fila"
-            confirmDescription="La fila queda en la bitácora como rechazada, con el motivo indicado (RF-028)."
-            requireReason
-            reasonLabel="Motivo del rechazo"
-            onConfirm={(reason) => onDecide({ decision: "REJECTED", reason })}
-          />
-          {blocker && !choosing && <span className="text-sm text-gris-texto">{blocker}</span>}
+        <div className="grid gap-3 border-t border-borde pt-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-1">
+            <Button variant="outline" icon={Check} className="w-full" disabled={acceptBlocked} aria-describedby={blocker && !choosing ? blockerId : undefined} onClick={accept}>
+              Aceptar
+            </Button>
+            {blocker && !choosing ? (
+              <p id={blockerId} className="text-xs text-carmin-texto">
+                {blocker}
+              </p>
+            ) : (
+              <p className="text-xs text-gris-texto">{ACTION_HELP.accept}</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <Button variant="secondary" icon={MinusCircle} className="w-full" disabled={busy} onClick={() => onDecide({ decision: "EXCLUDED" })}>
+              Dejar fuera
+            </Button>
+            <p className="text-xs text-gris-texto">{ACTION_HELP.exclude}</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <ConfirmButton
+              label="Rechazar"
+              variant="danger"
+              className="w-full"
+              disabled={busy}
+              dialogSize="lg"
+              confirmTitle="Rechazar la fila"
+              confirmDescription="La fila no se importa y queda en la bitácora del lote como rechazada, con el motivo que indique."
+              requireReason
+              reasonLabel="Motivo del rechazo"
+              onConfirm={(reason) => onDecide({ decision: "REJECTED", reason })}
+            />
+            <p className="text-xs text-gris-texto">{ACTION_HELP.reject}</p>
+          </div>
         </div>
       )}
     </article>
+  );
+}
+
+/** Filas sin régimen de tenencia: elegir uno para todas y validar de nuevo. */
+/** Aviso de que validar de nuevo recalcula todas las filas y descarta las decisiones tomadas. */
+export function decisionsLostNotice(decided: number): string | null {
+  if (decided <= 0) return null;
+  return `Al validar de nuevo se recalculan las filas: ${decided === 1 ? "la decisión que ya tomó se pierde" : `las ${decided.toLocaleString("es-PE")} decisiones que ya tomó se pierden`}.`;
+}
+
+export function TenureBanner({
+  count,
+  complete,
+  decided = 0,
+  busy,
+  canAdjust,
+  onApply,
+}: {
+  count: number;
+  complete: boolean;
+  /** Filas con una decisión ya tomada, que validar de nuevo descarta. */
+  decided?: number;
+  busy: boolean;
+  /** Se puede reaplicar el mapeo desde aquí; si no, la acción lleva a «Ajustar columnas». */
+  canAdjust: boolean;
+  onApply: (tenure: string) => void;
+}) {
+  const [tenure, setTenure] = useState<string>(TENURE_DEFAULT_OPTIONS[0].value);
+  if (count === 0) return null;
+  return (
+    <section aria-label="Filas sin régimen de tenencia" className="flex flex-col gap-3 rounded-lg border border-ambar-alerta bg-ambar-bg p-4 text-ambar-texto">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">
+          {count.toLocaleString("es-PE")}
+          {complete ? "" : " o más"} {count === 1 ? "fila no trae" : "filas no traen"} régimen de tenencia
+        </h2>
+        <p className="text-base">
+          Sin régimen no se pueden aceptar. {canAdjust ? "Elija uno para todas ellas y validamos de nuevo; las filas que ya lo traen no cambian." : "Ajuste las columnas e indique uno para todas ellas."}
+        </p>
+      </div>
+      {decisionsLostNotice(decided) && canAdjust && <p className="text-sm font-medium">{decisionsLostNotice(decided)}</p>}
+      <div className="flex flex-wrap items-end gap-3">
+        {canAdjust && (
+          <Select label="Régimen para esas filas" value={tenure} disabled={busy} onChange={(event) => setTenure(event.target.value)} fieldClassName="min-w-56">
+            {TENURE_DEFAULT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        )}
+        <Button variant="primary" disabled={busy} onClick={() => onApply(tenure)}>
+          {busy ? "Validando…" : canAdjust ? "Aplicar y validar de nuevo" : "Ajustar columnas"}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Formato con que se leyó el archivo y acceso a cambiarlo sin volver a subirlo. */
+export function FormatBar({ formatName, busy, onChange }: { formatName: string | null; busy: boolean; onChange: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gris-texto">
+      <span>
+        Formato aplicado: <strong className="font-medium text-tinta">{formatName ?? "columnas ajustadas a mano"}</strong>
+      </span>
+      <Button variant="secondary" disabled={busy} onClick={onChange}>
+        Cambiar formato
+      </Button>
+    </div>
   );
 }
 
@@ -294,7 +456,7 @@ export function ApprovalPanel({
         aplican. Si una fila incumple una regla al aplicar, no se aplica ninguna y el lote vuelve a revisión.
       </p>
       {!canApprove ? (
-        <PermissionNotice>Su rol puede preparar la carga pero no aprobarla (RF-027). La aprueba un Gestor de colecciones o un Administrador.</PermissionNotice>
+        <PermissionNotice>Su rol puede preparar la carga, pero no aprobarla. La aprueba un Gestor de colecciones o un Administrador.</PermissionNotice>
       ) : (
         <ConfirmButton
           label="Aprobar y aplicar"
@@ -377,7 +539,7 @@ export function RollbackPanel({
       <h2 className="text-lg font-semibold text-tinta">Revertir el lote</h2>
       <p className="text-base text-gris-texto">
         Las piezas que creó el lote quedan eliminadas lógicamente con el motivo (se pueden restaurar) y los campos que actualizó recuperan su
-        valor anterior. Los datos de origen se conservan: nada se borra (RN-005).
+        valor anterior. Los datos de origen se conservan: nada se borra.
       </p>
       {!canRevert ? (
         <PermissionNotice>Solo un Administrador puede revertir un lote aplicado.</PermissionNotice>

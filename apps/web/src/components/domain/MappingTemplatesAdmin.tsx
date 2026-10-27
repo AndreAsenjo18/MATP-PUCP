@@ -1,12 +1,15 @@
 "use client";
 
 /**
- * Pestaña «Plantillas de mapeo» de Administración, modo `live` (change
- * `plantillas-mapeo-y-normalizacion`, tarea 4.2; spec importacion-datos: RF-022, RN-005).
+ * Sección «Formatos de archivo» de Administración, modo `live` (change
+ * `plantillas-mapeo-y-normalizacion`, tarea 4.2, y `rediseno-ux-administracion`; spec
+ * importacion-datos: RF-022, RN-005). Un formato es una plantilla de mapeo: la forma de leer las
+ * columnas de una misma fuente.
  *
- * - `TemplateAdminList` (presentación): cada plantilla con sus columnas plegadas, edición en línea
- *   de nombre, fuente y descripción, y eliminación con motivo. Las columnas se editan en el
- *   asistente de importación, no aquí.
+ * - `TemplateAdminList` (presentación): los formatos agrupados por fuente, cada uno con sus columnas
+ *   plegadas, edición en línea de nombre, fuente y descripción, y eliminación con motivo. Las
+ *   columnas se editan en el asistente de importación, no aquí.
+ * - `filterTemplates` y `groupTemplatesBySource`: búsqueda por nombre o fuente y agrupación.
  * - `MappingTemplatesLive`: lee las plantillas y hace las llamadas. Ver y editar exigen
  *   `imports.prepare`; eliminar, `imports.approve` [SUPUESTO T8].
  */
@@ -17,6 +20,7 @@ import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ErrorNotice } from "@/components/domain/ImportWizard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { AdminToolbar, SectionHeader } from "@/components/domain/AdminShell";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSession } from "@/lib/auth/session";
@@ -32,6 +36,29 @@ import {
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function fold(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Formatos cuyo nombre o fuente contiene la búsqueda. */
+export function filterTemplates(templates: readonly MappingTemplate[], query: string): MappingTemplate[] {
+  const wanted = fold(query);
+  return templates.filter((template) => !wanted || fold(template.name).includes(wanted) || fold(template.source_name).includes(wanted));
+}
+
+/** Formatos agrupados por fuente, con las fuentes y los formatos en orden alfabético. */
+export function groupTemplatesBySource(templates: readonly MappingTemplate[]): { source: string; templates: MappingTemplate[] }[] {
+  const groups = new Map<string, MappingTemplate[]>();
+  for (const template of templates) groups.set(template.source_name, [...(groups.get(template.source_name) ?? []), template]);
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "es"))
+    .map(([source, items]) => ({ source, templates: [...items].sort((a, b) => a.name.localeCompare(b.name, "es")) }));
 }
 
 export function TemplateAdminList({
@@ -53,23 +80,32 @@ export function TemplateAdminList({
   onDelete: (templateId: string, reason: string) => void;
 }) {
   if (templates.length === 0) {
-    return <p className="text-base text-gris-texto">No hay plantillas de mapeo guardadas. Se crean desde el asistente de importación.</p>;
+    return <p className="text-sm text-gris-texto">No hay formatos que mostrar. Los formatos nuevos se crean desde el asistente de importación.</p>;
   }
   return (
-    <ul className="flex flex-col gap-3" aria-label="Plantillas de mapeo">
-      {templates.map((template) => (
-        <TemplateAdminItem
-          key={`${template.id}-${template.name}-${template.description ?? ""}`}
-          template={template}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          busy={busyId === template.id}
-          error={errors[template.id] ?? null}
-          onRename={(input) => onRename(template.id, input)}
-          onDelete={(reason) => onDelete(template.id, reason)}
-        />
+    <div className="flex flex-col gap-5" aria-label="Formatos de archivo">
+      {groupTemplatesBySource(templates).map((group) => (
+        <section key={group.source} aria-label={`Fuente ${group.source}`} className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-tinta">
+            {group.source} <span className="font-normal text-gris-texto">· {group.templates.length === 1 ? "1 formato" : `${group.templates.length} formatos`}</span>
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {group.templates.map((template) => (
+              <TemplateAdminItem
+                key={`${template.id}-${template.name}-${template.description ?? ""}`}
+                template={template}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                busy={busyId === template.id}
+                error={errors[template.id] ?? null}
+                onRename={(input) => onRename(template.id, input)}
+                onDelete={(reason) => onDelete(template.id, reason)}
+              />
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -98,18 +134,18 @@ function TemplateAdminItem({
   });
   const invalid = templateMetaError(values);
   return (
-    <li className="flex flex-col gap-3 rounded-md border border-borde p-3">
+    <li className="flex flex-col gap-2 rounded-md border border-borde p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="font-medium text-tinta">{template.name}</p>
-          <p className="text-sm text-gris-texto">
+          <p className="text-sm font-medium text-tinta">{template.name}</p>
+          <p className="text-xs text-gris-texto">
             {template.source_name} · {template.columns.length} columnas · creada el {formatDate(template.created_at)}
           </p>
-          {template.description && <p className="text-sm text-gris-texto">{template.description}</p>}
+          {template.description && <p className="text-xs text-gris-texto">{template.description}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && !editing && (
-            <Button variant="outline" icon={Pencil} disabled={busy} onClick={() => setEditing(true)}>
+            <Button variant="outline" size="sm" icon={Pencil} disabled={busy} onClick={() => setEditing(true)}>
               Editar
             </Button>
           )}
@@ -117,10 +153,11 @@ function TemplateAdminItem({
             <ConfirmButton
               label="Eliminar"
               variant="danger"
+              size="sm"
               icon={Trash2}
               disabled={busy}
-              confirmTitle={`Eliminar la plantilla «${template.name}»`}
-              confirmDescription="La plantilla pasa a la papelera y deja de sugerirse. Los lotes que la usaron conservan el mapeo con que se procesaron (RN-005)."
+              confirmTitle={`Eliminar el formato «${template.name}»`}
+              confirmDescription="El formato pasa a la papelera y deja de sugerirse. Los lotes que lo usaron conservan las columnas con que se procesaron."
               requireReason
               reasonLabel="Motivo de la eliminación"
               onConfirm={onDelete}
@@ -128,7 +165,7 @@ function TemplateAdminItem({
           )}
         </div>
       </div>
-      {!canDelete && <p className="text-sm text-gris-texto">Eliminar una plantilla corresponde al Gestor de colecciones o al Administrador.</p>}
+      {!canDelete && <p className="text-xs text-gris-texto">Eliminar un formato corresponde al Gestor de colecciones o al Administrador.</p>}
       {editing && (
         <div className="flex flex-col gap-3 rounded-md bg-crema-light p-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -137,10 +174,10 @@ function TemplateAdminItem({
           </div>
           <Textarea label="Descripción (opcional)" rows={2} value={values.description} onChange={(event) => setValues({ ...values, description: event.target.value })} />
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={busy || invalid !== null} onClick={() => onRename(values)}>
+            <Button size="sm" disabled={busy || invalid !== null} onClick={() => onRename(values)}>
               {busy ? "Guardando…" : "Guardar"}
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => setEditing(false)}>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => setEditing(false)}>
               Cancelar
             </Button>
             {invalid && <span className="text-sm text-gris-texto">{invalid}</span>}
@@ -183,6 +220,7 @@ export function MappingTemplatesLive() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -202,7 +240,7 @@ export function MappingTemplatesLive() {
     setBusyId(null);
     if (result.status !== "ok") return setErrors({ ...errors, [templateId]: result.message });
     setErrors({});
-    setMessage(`Plantilla «${result.value.name}» guardada.`);
+    setMessage(`Formato «${result.value.name}» guardado.`);
     setReload((n) => n + 1);
   }
 
@@ -212,23 +250,26 @@ export function MappingTemplatesLive() {
     setBusyId(null);
     if (result.status !== "ok") return setErrors({ ...errors, [templateId]: result.message });
     setErrors({});
-    setMessage("Plantilla eliminada: está en la papelera.");
+    setMessage("Formato eliminado: está en la papelera.");
     setReload((n) => n + 1);
   }
 
   return (
-    <Card as="section" aria-label="Plantillas de mapeo" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-tinta">Plantillas de mapeo</h2>
-        <p className="text-sm text-gris-texto">Mapeos guardados para reutilizar en las cargas de la misma fuente (RF-022).</p>
-      </div>
+    <Card as="section" aria-label="Formatos de archivo" className="flex flex-col gap-4">
+      <SectionHeader
+        title="Formatos de archivo"
+        description="Cómo leer las columnas de cada fuente (el libro de inventario, una ficha en Word, una tabla de Access…). El asistente de importación los reconoce solo por los títulos de las columnas."
+      />
+      <AdminToolbar label="Buscar formatos">
+        <Input label="Buscar" value={query} placeholder="Nombre o fuente" onChange={(event) => setQuery(event.target.value)} fieldClassName="w-64" />
+      </AdminToolbar>
       <ErrorNotice message={error} />
       {message && <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">{message}</p>}
       {templates === null ? (
-        <p className="text-base text-gris-texto">Cargando plantillas…</p>
+        <p className="text-sm text-gris-texto">Cargando formatos…</p>
       ) : (
         <TemplateAdminList
-          templates={templates}
+          templates={filterTemplates(templates, query)}
           canEdit={hasPermission("imports.prepare")}
           canDelete={hasPermission("imports.approve")}
           busyId={busyId}

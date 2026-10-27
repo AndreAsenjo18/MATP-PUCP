@@ -269,6 +269,19 @@ describe("vista previa y validar (design D1, D4)", () => {
     expect(applyNotice(loaded(), BATCH)).toBeNull();
   });
 
+  it("si el archivo no trae columnas de la plantilla, valida con las columnas que quedaron y no con template_id", () => {
+    const withoutOne = { ...BATCH, headers: HEADERS.filter((header) => header !== "MATERIAL") };
+    const draft = draftFromTemplate(template(), withoutOne);
+
+    const source = applySource(draft, withoutOne);
+
+    expect(source.kind).toBe("columns");
+    const body = applyRequest(draft, withoutOne);
+    expect(body.template_id).toBeNull();
+    expect(body.columns?.length ?? 0).toBeGreaterThan(0);
+    expect(applyNotice(draft, withoutOne)).toContain("solo en este lote");
+  });
+
   it("el régimen del lote viaja como defaults junto con template_id, sobre los de la plantilla", () => {
     const comodato = applyRequest({ ...loaded(), tenureDefault: "Comodato" }, BATCH);
     expect(comodato.template_id).toBe(TEMPLATE_ID);
