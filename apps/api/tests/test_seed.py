@@ -32,7 +32,9 @@ from app.modules.imports.mapping import (
     validate_mapping,
 )
 from app.modules.imports.templates import header_signature
+from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
 from app.seed.fixtures import HEADERS, write_synthetic_workbook
+from app.seed.import_templates import PREDEFINED_TEMPLATES
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 
 ALL = {INCLUDE_DELETED: True}
@@ -246,7 +248,11 @@ def test_seed_template_is_v1_for_the_synthetic_sabana(seeded: tuple[Session, Any
     [SUPUESTO], with the signature of the headers of ``data/fixtures/sabana_sintetica_v1.xlsx``
     computed as the API does, and its mapping is valid for those headers."""
     session, _summary = seeded
-    template = session.scalars(select(ImportMappingTemplate)).one()
+    template = session.scalars(
+        select(ImportMappingTemplate).where(
+            ImportMappingTemplate.name == "Plantilla sábana sintética v1"
+        )
+    ).one()
     sheet = load_workbook(SABANA_FIXTURE, read_only=True)["SABANA"]
     headers = [str(cell.value) for cell in next(sheet.iter_rows(max_row=1))]
 
@@ -258,3 +264,73 @@ def test_seed_template_is_v1_for_the_synthetic_sabana(seeded: tuple[Session, Any
     assert isinstance(spec, MappingSpecV1)
     assert [column.source for column in spec.columns] == headers
     assert validate_mapping(spec, headers, MappingContext(session)) == []
+
+
+def test_seed_has_a_template_that_recognizes_the_demo_batch(seeded: tuple[Session, Any]) -> None:
+    """Change rediseno-ux-importacion: the demo batch (``data/fixtures/lote_demo``) is recognized
+    by its headers, and its "RÉGIMEN" column reaches the validation as the tenure regime."""
+    session, _summary = seeded
+    template = session.scalars(
+        select(ImportMappingTemplate).where(ImportMappingTemplate.name == "Lote de demostración v1")
+    ).one()
+
+    spec = read_mapping(template.mapping)
+
+    assert "[SUPUESTO]" in (template.description or "")
+    assert template.header_signature == header_signature(DEMO_BATCH_HEADERS)
+    assert isinstance(spec, MappingSpecV1)
+    assert [column.source for column in spec.columns] == DEMO_BATCH_HEADERS
+    assert validate_mapping(spec, DEMO_BATCH_HEADERS, MappingContext(session)) == []
+    assert any(
+        column.source == "RÉGIMEN" and column.target.model_dump().get("name") == "tenure_regime"
+        for column in spec.columns
+    )
+
+
+def test_seed_has_one_predefined_template_per_source_the_museum_names(
+    seeded: tuple[Session, Any],
+) -> None:
+    """Change rediseno-ux-administracion: Administration shows more formats than the sábana ones,
+    each an illustrative [SUPUESTO] v1 template whose mapping is valid for its own headers."""
+    session, _summary = seeded
+    stored = {
+        template.name: template for template in session.scalars(select(ImportMappingTemplate)).all()
+    }
+
+    assert len(PREDEFINED_TEMPLATES) == 5
+    assert len({template.name for template in PREDEFINED_TEMPLATES}) == 5
+    assert len({template.source_name for template in PREDEFINED_TEMPLATES}) == 5
+    for predefined in PREDEFINED_TEMPLATES:
+        template = stored[predefined.name]
+        spec = read_mapping(template.mapping)
+
+        assert "[SUPUESTO]" in (template.description or "")
+        assert template.source_name == predefined.source_name
+        assert template.header_signature == header_signature(predefined.headers)
+        assert isinstance(spec, MappingSpecV1)
+        assert [column.source for column in spec.columns] == predefined.headers
+        assert validate_mapping(spec, predefined.headers, MappingContext(session)) == []
+        assert any(
+            column.target.kind == "field" and column.target.name == "denomination"
+            for column in spec.columns
+        )
+
+
+def test_the_predefined_templates_do_not_look_alike_so_detection_is_unambiguous() -> None:
+    """A file with the headers of one of the five formats must not reach the suggestion threshold
+    (0.6) of any other format: the wizard applies the best match without asking. (The sábana and
+    demo batch formats already share most columns; the wizard picks the best of those.)"""
+    from app.modules.imports.templates import SUGGEST_THRESHOLD, header_key, similarity
+
+    all_headers = [template.headers for template in PREDEFINED_TEMPLATES] + [
+        HEADERS,
+        DEMO_BATCH_HEADERS,
+    ]
+    keys = [{header_key(header) for header in headers} for headers in all_headers]
+    for index in range(len(PREDEFINED_TEMPLATES)):
+        for other_index, other in enumerate(keys):
+            if index != other_index:
+                assert similarity(keys[index], other) < SUGGEST_THRESHOLD, (
+                    all_headers[index],
+                    all_headers[other_index],
+                )

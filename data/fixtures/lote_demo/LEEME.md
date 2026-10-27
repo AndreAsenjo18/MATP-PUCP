@@ -9,7 +9,13 @@ Datos **sintéticos** (Ley 29733, RNF-014): ninguna pieza, código ni foto viene
 Funciona sobre un ambiente con el seed sintético (`npm run seed`): las filas 19 y 20 actualizan dos
 piezas de ese seed.
 
-## Mapeo
+## Formato
+
+El seed (`npm run seed`) deja guardado el formato **Lote de demostración v1**. Al subir `lote_demo_sabana.xlsx` con
+**Detectar automáticamente** (o eligiéndolo), el asistente lo reconoce por los títulos de las columnas, lo aplica y
+valida el lote sin pasar por el editor: llega directo a **Revise las filas**. Si el ambiente se sembró antes de que
+existiera ese formato, el asistente propone el de la sábana sintética, al que le falta la columna `UBICACIÓN`: pulse
+**Ajustar columnas** y asigne las columnas como en esta tabla.
 
 | Columna del Excel | Campo |
 |---|---|
@@ -19,7 +25,7 @@ piezas de ese seed.
 | RÉGIMEN | Régimen de tenencia |
 | PROCEDENCIA | Procedencia |
 | ÉPOCA | Época (texto original) |
-| MATERIAL, MEDIDAS, OBS. CONSULTORÍA | Sin mapear: se conservan como datos de origen (RF-008) |
+| MATERIAL, MEDIDAS, OBS. CONSULTORÍA | Sin mapear: se conservan como datos de origen |
 | FOTO | Archivo de la foto (cuando el asistente ofrezca esa columna) |
 
 ## Qué debería pasar con las filas
@@ -32,7 +38,7 @@ Los números son las filas de Excel (la 1 es la cabecera).
 | **Actualización** con diff | 19 y 20 | `M.M.Z. 001` y `RA 2` son piezas del seed; cambia la procedencia |
 | **Posible duplicado** | 5 filas (2, 7, 14, 16 y 23) | Denominación muy parecida a una pieza existente; la fila 16 repite el «Toro de Pucará» de la fila 2 |
 | **Conflicto** | 17 y 18 | Las dos traen el mismo código I (`I-9116`) |
-| **Error** | 15 | Comodato con código I (RN-003) |
+| **Error** | 15 | Comodato con código I: no se puede aceptar, pero sí dejar fuera o rechazar |
 
 Además, los códigos están escritos a propósito de muchas formas: `I 9102`, `I.9103`, `R.A. 502`,
 `M B B 502`, `mbb-503`, `INC 4521` (4 dígitos), `RN 009121` (6 dígitos), `S/N` y `s/c` (sin código),

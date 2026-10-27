@@ -398,6 +398,7 @@ class ImportRowOut(BaseModel):
         *,
         action: str | None = None,
         images: list[ImportImageOut] | None = None,
+        matches: list[dict[str, Any]] | None = None,
     ) -> "ImportRowOut":
         return cls(
             id=row.id,
@@ -408,7 +409,7 @@ class ImportRowOut(BaseModel):
             classification=row.classification,
             has_validation_errors=row.has_validation_errors,
             validation_errors=row.validation_errors or [],
-            matches=row.matches or [],
+            matches=matches if matches is not None else row.matches or [],
             diff=[
                 FieldDiff(
                     field=name,
