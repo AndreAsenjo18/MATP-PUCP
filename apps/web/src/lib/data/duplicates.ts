@@ -22,6 +22,8 @@
  * ficha con la identidad de la sesión para mostrar `merged_into` y `merged_from`.
  */
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
+
+import { plainMessage } from "./imports";
 import { COLLECTIONS, DUPLICATE_CANDIDATES, getPieceDetail } from "@/lib/fixtures";
 
 import { mergeBlock, mergeReasonError, survivorRestriction, type MergeChoice } from "./merge-plan";
@@ -77,10 +79,10 @@ export const DUPLICATE_ERROR_MESSAGES: Record<string, string> = {
   permission_denied: "Su rol no tiene permiso para resolver duplicados.",
   merge_blocked_tenure: "Las piezas tienen regímenes de tenencia distintos: primero corrija el régimen de una de ellas. No se fusionó nada.",
   merge_blocked_inventory_code:
-    "Las dos piezas tienen códigos I vigentes distintos: corrija primero el código I con el procedimiento auditado (RN-002). No se fusionó nada.",
+    "Las dos piezas tienen códigos I vigentes distintos: corrija primero el código I con el procedimiento auditado. No se fusionó nada.",
   merge_surviving_must_hold_inventory_code:
-    "Solo la pieza que iba a absorberse tiene código I vigente: conserve esa pieza, porque un código I nunca cambia de pieza (RN-002). No se fusionó nada.",
-  merge_reason_required: "Indique el motivo de la fusión (al menos 3 caracteres): quedará registrado en la auditoría (RN-005).",
+    "Solo la pieza que iba a absorberse tiene código I vigente: conserve esa pieza, porque un código I nunca cambia de pieza. No se fusionó nada.",
+  merge_reason_required: "Indique el motivo de la fusión (al menos 3 caracteres): queda en la auditoría.",
   merge_requires_two_pieces: "Una fila de importación no se fusiona desde la cola: se decide en su lote de importación.",
   surviving_not_in_pair: "Elija cuál de las dos piezas del par se conserva.",
   unknown_merge_fields: "Uno de los campos elegidos ya no se puede fusionar. Recargue la cola e intente nuevamente.",
@@ -123,13 +125,13 @@ export function duplicateErrorMessage(code: string, details?: Record<string, unk
 }
 
 function failureFrom(error: unknown): DuplicateFailure {
-  if (isNotImplemented(error)) return { status: "unavailable", message: apiErrorMessage(error) };
+  if (isNotImplemented(error)) return { status: "unavailable", message: plainMessage(apiErrorMessage(error)) };
   const code = isRecord(error) && typeof error.code === "string" ? error.code : "error";
   const details = isRecord(error) && isRecord(error.details) ? error.details : undefined;
   return {
     status: "rejected",
     code,
-    message: duplicateErrorMessage(code, details, apiErrorMessage(error)),
+    message: duplicateErrorMessage(code, details, plainMessage(apiErrorMessage(error))),
     ...(details ? { details } : {}),
   };
 }

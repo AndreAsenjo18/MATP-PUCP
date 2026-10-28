@@ -126,30 +126,32 @@ class ClassifiedRow:
 def classification_rules(scorer: SimilarityScorer | None) -> list[dict[str, Any]]:
     """Rules shown in the preview (RF-025), in evaluation order."""
     duplicate = (
-        f"Sin coincidencias por código y similitud ≥ {scorer.threshold:.2f} con una pieza "
-        f"existente ({scorer.description})."
+        f"Ningún código coincide, pero se parece a una pieza existente (similitud de "
+        f"{scorer.threshold:.2f} o más según {scorer.description})."
         if scorer
-        else "Desactivada: no hay evaluador de similitud configurado."
+        else "Desactivada: no hay un evaluador de similitud configurado."
     )
     return [
         {
             "order": 1,
             "result": "validation_errors",
-            "description": "Sin denominación o régimen de tenencia; código I en comodato "
-            "(RN-003); código I o de colección en préstamo temporal (RN-004); código I "
-            "ilegible. La fila se clasifica igual, pero no se puede aceptar.",
+            "description": "La fila tiene errores: falta la denominación o el régimen de "
+            "tenencia, trae código I siendo comodato, trae código I o de colección siendo "
+            "préstamo temporal, o el código I no se entiende. No se puede aceptar, pero sí "
+            "dejar fuera o rechazar.",
         },
         {
             "order": 2,
             "result": RowClassification.CONFLICT.value,
-            "description": "Sus códigos coinciden con piezas distintas, intenta cambiar el "
-            "código I de la pieza encontrada (RN-002) u otra fila del lote tiene el mismo "
-            "código I.",
+            "description": "Sus códigos apuntan a piezas distintas, traería otro código I "
+            "para una pieza que ya tiene uno, o hay otra fila del lote con el mismo código I. "
+            "Hay que elegir a qué pieza corresponde.",
         },
         {
             "order": 3,
             "result": RowClassification.UPDATE.value,
-            "description": "Sus códigos (vigentes o históricos) coinciden con una sola pieza.",
+            "description": "Sus códigos, vigentes o históricos, coinciden con una sola pieza "
+            "del catálogo.",
         },
         {
             "order": 4,
@@ -157,7 +159,11 @@ def classification_rules(scorer: SimilarityScorer | None) -> list[dict[str, Any]
             "description": duplicate,
             "threshold": scorer.threshold if scorer else None,
         },
-        {"order": 5, "result": RowClassification.NEW.value, "description": "Ningún candidato."},
+        {
+            "order": 5,
+            "result": RowClassification.NEW.value,
+            "description": "No coincide con ninguna pieza del catálogo: se creará una pieza nueva.",
+        },
     ]
 
 
@@ -174,7 +180,7 @@ def validate_row(row: RowInput) -> list[RowError]:
         errors.append(
             RowError(
                 "loan_for_use_with_inventory_code",
-                "Una pieza en comodato no puede tener código I (RN-003).",
+                "Una pieza en comodato no puede tener código I.",
                 f"identifier:{INVENTORY_CODE_TYPE}",
             )
         )
@@ -182,7 +188,7 @@ def validate_row(row: RowInput) -> list[RowError]:
         errors.append(
             RowError(
                 "temporary_loan_with_code",
-                "Un préstamo temporal no recibe código I ni código de colección (RN-004).",
+                "Un préstamo temporal no recibe código I ni código de colección.",
                 f"identifier:{INVENTORY_CODE_TYPE if inventory else TYPE_COLLECTION}",
             )
         )

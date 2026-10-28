@@ -2,15 +2,28 @@
 
 > Sección en construcción. Cada change del backlog añade aquí su parte (usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos). Por ahora están escritas «Copias de seguridad del sistema» (change `despliegue-vm-y-respaldos`), «Usuarios y permisos» (change `autenticacion-y-matriz-permisos`), «Ubicaciones» (change `ubicacion-jerarquica-y-movimientos`), «Plantillas de mapeo» y «Normalización de códigos» (change `plantillas-mapeo-y-normalizacion`) y «Versión del sistema y actualizaciones» (change `pipeline-despliegue-ambientes`).
 
+## Cómo está organizada Administración
+
+Las secciones se agrupan en **cuatro áreas**: primero se elige el área y debajo aparecen sus secciones. Cada persona ve solo las que su rol puede usar.
+
+| Área | Secciones | Para qué sirve |
+|---|---|---|
+| **Personas** | Usuarios · Permisos por rol | Quién entra al sistema y qué puede hacer cada rol. |
+| **Catálogo** | Colecciones · Ubicaciones · Listas de valores · Tipos de código | Lo que se elige al llenar una ficha. |
+| **Importación** | Formatos de archivo · Lectura de códigos | Cómo se leen los Excel y los códigos que escribe el museo. |
+| **Control** | Papelera · Auditoría · Exportación completa | Recuperar, revisar y respaldar. |
+
+En cada listado, los **filtros y la búsqueda están arriba** y el botón **Nuevo …** (nuevo usuario, nueva colección, nueva ubicación, nueva lista, nuevo tipo) abre un cuadro para crear; al guardar, el cuadro se cierra y el listado se actualiza. Los estados se ven con color y texto (verde «Activo», gris «Desactivado») y las acciones de cada fila son botones con un icono: deje el cursor encima para leer su nombre. Las direcciones que ya se usaban, como `/administracion?pestana=plantillas`, siguen funcionando.
+
 ## Usuarios y permisos
 
 Solo el rol **Administrador** gestiona cuentas y permisos. Las cuentas son individuales y **nunca se eliminan**: se desactivan, y todo lo que hicieron queda en la auditoría.
 
 ### Crear un usuario
 
-1. Vaya a **Administración › Usuarios** y pulse **Nuevo usuario**.
+1. Vaya a **Administración › Personas › Usuarios** y pulse **Nuevo usuario** (arriba a la derecha). Antes puede buscar a la persona por nombre o correo, o filtrar por rol, para comprobar que no existe.
 2. Escriba el **correo** (no puede repetirse, aunque cambien las mayúsculas), el **nombre** y elija uno o más **roles**.
-3. Pulse **Crear**. El sistema muestra una **contraseña temporal** en pantalla.
+3. Pulse **Crear usuario**. El cuadro se cierra y el sistema muestra una **contraseña temporal** sobre el listado.
 4. **Anótela y entréguela en persona o por un canal privado: se muestra una sola vez** y no se puede volver a consultar. Si se pierde, restablezca la contraseña.
 
 La persona deberá cambiar esa contraseña la primera vez que ingrese (ver [Acceso](acceso.md)).
@@ -19,8 +32,8 @@ El rol «Consulta externa / investigador» aparece desactivado en esta fase y no
 
 ### Cambiar roles, desactivar o restablecer la contraseña
 
-1. En **Administración › Usuarios**, abra a la persona.
-2. Cambie sus roles, pulse **Desactivar** o pulse **Restablecer contraseña**.
+1. En **Administración › Personas › Usuarios**, busque a la persona. Marque **Incluir desactivados** para ver también las cuentas que ya no se usan.
+2. Use el icono de **Desactivar** o **Reactivar** (la persona con una cruz o un visto) o el de **Restablecer contraseña** (la llave) de su fila.
 
 Cualquiera de las tres cosas **cierra de inmediato las sesiones abiertas** de esa persona: en su siguiente acción deberá volver a iniciar sesión (y no podrá, si fue desactivada). Restablecer la contraseña además quita un bloqueo por intentos fallidos y genera una temporal nueva.
 
@@ -28,9 +41,10 @@ Siempre debe quedar **al menos un administrador activo**. Si un cambio dejaría 
 
 ### Matriz de permisos por rol
 
-1. Vaya a **Administración › Permisos** y elija el rol.
-2. Marque o desmarque los permisos y escriba el **motivo** del cambio.
-3. Pulse **Guardar**.
+1. Vaya a **Administración › Personas › Permisos por rol** y elija el rol con los botones de arriba (cada uno dice cuántos permisos tiene).
+2. Los permisos están agrupados en **paquetes** por área: Fichas, Importación, Calidad de datos, Ubicación y movimientos, Fotografías, Datos sensibles, Reportes y exportación, IA y Administración. Cada paquete dice cuántos permisos del rol tiene («3 de 5 · parte») y su casilla de arriba marca o quita **todo el paquete** de una vez; también puede marcar permisos sueltos.
+3. En cuanto hay cambios aparece, abajo, una barra con **lo que se agrega y lo que se retira**. Escriba el **motivo** del cambio.
+4. Pulse **Guardar permisos**.
 
 El cambio vale **desde la siguiente acción** de las personas con ese rol, sin que tengan que volver a entrar. Cada permiso dado o quitado queda en la auditoría con quién, cuándo y el motivo.
 
@@ -89,16 +103,16 @@ Cuando se reorganiza un depósito (por ejemplo, mover un rack entero a otra sala
 
 No se puede colocar un mueble dentro de uno de sus propios niveles o cajas (el sistema lo rechaza).
 
-## Plantillas de mapeo
+## Formatos de archivo (plantillas de mapeo)
 
-Una plantilla de mapeo guarda cómo se leen las columnas de un tipo de archivo (por ejemplo, las sábanas de la consultoría) para reutilizarlo en las siguientes cargas. Las plantillas se crean desde el asistente de importación (ver [Importación](importacion.md#3-mapear-las-columnas)); aquí se consultan, se renombran y se eliminan.
+Un **formato** —en el sistema, una plantilla de mapeo— guarda cómo se leen las columnas de un tipo de archivo (por ejemplo, las sábanas de la consultoría) para reutilizarlo en las siguientes cargas. Las plantillas se crean desde el asistente de importación (ver [Importación](importacion.md#3-mapear-las-columnas)); aquí se consultan, se renombran y se eliminan.
 
 - **Ver y editar**: Catalogadores, Gestora de colecciones y Administrador.
 - **Eliminar**: solo la Gestora de colecciones y el Administrador.
 
 > **[SUPUESTO]** Quién puede hacer cada cosa sigue por validar con el museo (pregunta T8).
 
-Para llegar: **Administración › Plantillas de mapeo**, o el botón **Administrar plantillas** del editor de mapeo del asistente. Por ahora el menú lateral solo muestra «Administración» al Administrador; las demás personas pueden abrir la página con la dirección `/administracion?pestana=plantillas`.
+Para llegar: **Administración › Importación › Formatos de archivo**, o el botón **Administrar formatos** del editor de columnas del asistente. Los formatos aparecen **agrupados por fuente** y se pueden buscar por nombre o fuente. El entorno de demostración trae formatos de ejemplo para cada fuente que el museo menciona (libro de inventario, ficha en Word, tabla de Access, inventario de depósito y colecciones en comodato) además de los de la sábana; sus columnas son ilustrativas hasta recibir los archivos reales. Por ahora el menú lateral solo muestra «Administración» al Administrador; las demás personas pueden abrir la página con la dirección `/administracion?pestana=plantillas`.
 
 ### Consultar una plantilla
 
@@ -118,9 +132,9 @@ El nombre no puede repetir el de otra plantilla activa (no importan las mayúscu
 
 La plantilla pasa a la **Papelera** y deja de sugerirse en el asistente. Los lotes que ya la usaron conservan el mapeo con que se procesaron. Solo el Administrador puede restaurarla desde la Papelera.
 
-## Normalización de códigos
+## Lectura de códigos (normalización)
 
-En **Administración › Normalización** se mantienen los valores que usa el sistema para entender los códigos del museo. Se aplican **en adelante** al registro manual de fichas, a la importación y a la búsqueda. Solo la Gestora de colecciones y el Administrador pueden verlos y cambiarlos, y cada cambio queda en la auditoría con quién lo hizo.
+En **Administración › Importación › Lectura de códigos** se mantienen los valores que usa el sistema para entender los códigos del museo. Se aplican **en adelante** al registro manual de fichas, a la importación y a la búsqueda. Solo la Gestora de colecciones y el Administrador pueden verlos y cambiarlos, y cada cambio queda en la auditoría con quién lo hizo.
 
 > **[SUPUESTO]** Los valores iniciales son los que el sistema usaba antes de que se pudieran editar (preguntas A3, A5 y A8).
 
@@ -185,39 +199,40 @@ Nada cambia en las fichas. Aplicar un cambio así exige revisar antes el impacto
 | «No se guardó nada» | Lea la sección anterior. |
 | «Disponible con la API (modo live)» | Está usando la maqueta de demostración: esta pestaña solo funciona con el sistema conectado. |
 
-## Colecciones, vocabularios y tipos de identificador
+## Colecciones, listas de valores y tipos de código
 
-Las listas que usa la ficha se administran sin cambiar el sistema (RN-010). Cada cambio queda en la auditoría con quién lo hizo.
+Las listas que usa la ficha se administran sin cambiar el sistema. Cada cambio queda en la auditoría con quién lo hizo.
 
 ### Colecciones
 
-En **Administración › Colecciones** está la lista de colecciones y subcolecciones con su sigla y cuántas piezas tienen.
+En **Administración › Catálogo › Colecciones** está la lista de colecciones y subcolecciones con su sigla y cuántas piezas tienen. Arriba se puede **buscar** por nombre o sigla y filtrar por **estado** (activas o inactivas) y por **tipo** (principales o subcolecciones); las subcolecciones llevan la etiqueta «Subcolección de …».
 
-1. Escriba el **Nombre** y la **Sigla** (puntos y espacios no importan: «M.M.Z.» es «MMZ»).
-2. Elija el **Régimen por defecto** y, si es una subcolección, la **Colección padre**.
-3. Pulse **Crear colección**.
+1. Pulse **Nueva colección** (arriba a la derecha).
+2. Escriba el **Nombre** y la **Sigla** (puntos y espacios no importan: «M.M.Z.» es «MMZ»).
+3. Elija el **Régimen por defecto** y, si es una subcolección, la **Colección padre**.
+4. Pulse **Crear colección**.
 
 El sistema no acepta una sigla que ya tiene otra colección.
 
-### Vocabularios y términos
+### Listas de valores (vocabularios)
 
-En **Administración › Vocabularios** se elige un vocabulario (categorías, materiales, técnicas, estados de conservación…) y se ven sus términos.
+Una **lista de valores** son las opciones que se eligen al llenar una ficha: materiales, técnicas, estados de conservación, categorías… En **Administración › Catálogo › Listas de valores** se elige la lista en el selector (dice cuántos términos tiene) y sus términos se ven como **etiquetas**: **verdes** las que se ofrecen en las fichas y **grises y tachadas** las desactivadas.
 
-- **Agregar un término:** escriba la etiqueta en **Nuevo término** y pulse **Agregar término**. El sistema propone el código estable a partir de la etiqueta («Arte plumario» → ARTE_PLUMARIO).
-- **Desactivar un término:** pulse **Desactivar**. Deja de ofrecerse en las fichas nuevas, pero las fichas que ya lo usan lo conservan. Nunca se borra; **Activar** lo devuelve.
-- **Crear un vocabulario:** escriba el **Nombre**; el **Código estable** se propone solo y no cambia después.
+- **Agregar un término:** escriba la etiqueta en **Nuevo término** (arriba) y pulse **Agregar**. El sistema propone el código estable a partir de la etiqueta («Arte plumario» → ARTE_PLUMARIO).
+- **Desactivar un término:** pulse su etiqueta. Deja de ofrecerse en las fichas nuevas, pero las fichas que ya lo usan lo conservan. Nunca se borra; pulsarla otra vez lo devuelve.
+- **Crear una lista:** pulse **Nueva lista**, escriba el **Nombre**; el **Código estable** se propone solo y no cambia después.
 
 Para cargar una lista completa (por ejemplo, la lista oficial de categorías cuando llegue), el equipo técnico usa la **precarga desde archivo**: primero muestra qué términos crearía o actualizaría sin escribir nada, y al aplicarla nunca desactiva los términos que no están en el archivo.
 
 > **[SUPUESTO]** Las listas actuales son ilustrativas hasta recibir las del museo (preguntas B4 y B5).
 
-### Tipos de identificador
+### Tipos de código (tipos de identificador)
 
-En **Administración › Tipos de identificador** están los tipos de código que puede tener una pieza (código I, código de colección, INC, PUCP…).
+En **Administración › Catálogo › Tipos de código** están los tipos de código que puede tener una pieza (código I, código de colección, INC, PUCP…).
 
 - Los tipos con **candado** (código I y código de colección) son **del sistema**: sus reglas fijas (se bloquea al asignarse, es único, solo para piezas en propiedad) no se pueden cambiar. Solo se cambian su etiqueta, descripción y orden.
-- **Crear un tipo:** escriba la **Etiqueta**, revise el **Código estable** y elija la **Regla de normalización**. Queda disponible al momento para las fichas y las plantillas de mapeo.
-- **Cambiar la etiqueta:** pulse **Editar** en la fila, escriba la etiqueta y pulse **Guardar etiqueta**.
+- **Crear un tipo:** pulse **Nuevo tipo** (arriba), escriba la **Etiqueta**, revise el **Código estable** y elija **Cómo se escribe**. Queda disponible al momento para las fichas y los formatos de archivo.
+- **Cambiar la etiqueta:** pulse el icono del lápiz de la fila, escriba la etiqueta y pulse **Guardar etiqueta**.
 
 ### Cambiar la regla de normalización
 

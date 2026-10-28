@@ -6,7 +6,7 @@ import { draftFromTemplate } from "@/lib/data/mapping-editor";
 import { render, visibleText } from "@/test/render";
 
 import { ADMIN_TEMPLATES_HREF, MappingEditor } from "./ImportMappingEditor";
-import { TemplateAdminList } from "./MappingTemplatesAdmin";
+import { TemplateAdminList, filterTemplates, groupTemplatesBySource } from "./MappingTemplatesAdmin";
 
 // Datos sintéticos (RNF-014); cabeceras ilustrativas de la sábana sintética [SUPUESTO A1].
 
@@ -63,7 +63,7 @@ describe("lista de plantillas", () => {
     expect(button(list(), "Eliminar")).not.toBeNull();
     const html = list({ canDelete: false });
     expect(button(html, "Eliminar")).toBeNull();
-    expect(visibleText(html)).toContain("Eliminar una plantilla corresponde al Gestor de colecciones o al Administrador.");
+    expect(visibleText(html)).toContain("Eliminar un formato corresponde al Gestor de colecciones o al Administrador.");
   });
 
   it("sin imports.prepare no ofrece editar, y muestra el error de la plantilla", () => {
@@ -74,7 +74,40 @@ describe("lista de plantillas", () => {
   });
 
   it("sin plantillas explica dónde se crean", () => {
-    expect(visibleText(list({ templates: [] }))).toContain("Se crean desde el asistente de importación.");
+    expect(visibleText(list({ templates: [] }))).toContain("Los formatos nuevos se crean desde el asistente de importación.");
+  });
+});
+
+describe("formatos por fuente", () => {
+  const libro = template({ id: "l1", name: "Libro de inventario general", source_name: "Libro de inventario (sintético)" });
+  const sabanaB = template({ id: "s2", name: "Sábana 2025", source_name: "Sábana consultoría (sintética)" });
+  const sabanaA = template({ id: "s1", name: "Plantilla sábana sintética v1", source_name: "Sábana consultoría (sintética)" });
+
+  it("agrupa por fuente en orden alfabético y ordena los formatos de cada fuente por nombre", () => {
+    const groups = groupTemplatesBySource([sabanaB, libro, sabanaA]);
+    expect(groups.map((group) => group.source)).toEqual(["Libro de inventario (sintético)", "Sábana consultoría (sintética)"]);
+    expect(groups[1].templates.map((item) => item.name)).toEqual(["Plantilla sábana sintética v1", "Sábana 2025"]);
+  });
+
+  it("la lista muestra cada fuente como encabezado con su número de formatos", () => {
+    const text = visibleText(list({ templates: [libro, sabanaA, sabanaB] }));
+    expect(text).toContain("Libro de inventario (sintético) · 1 formato");
+    expect(text).toContain("Sábana consultoría (sintética) · 2 formatos");
+  });
+
+  it("busca por nombre o por fuente sin distinguir mayúsculas ni tildes", () => {
+    const all = [libro, sabanaA, sabanaB];
+    expect(filterTemplates(all, "libro").map((item) => item.id)).toEqual(["l1"]);
+    expect(filterTemplates(all, "SABANA").map((item) => item.id)).toEqual(["s1", "s2"]);
+    expect(filterTemplates(all, "2025").map((item) => item.id)).toEqual(["s2"]);
+    expect(filterTemplates(all, "")).toHaveLength(3);
+    expect(filterTemplates(all, "word")).toEqual([]);
+  });
+
+  it("los botones de la lista son compactos", () => {
+    const html = list();
+    expect(html).toContain("min-h-8");
+    expect(visibleText(html)).not.toMatch(/\b(RF|RN)-0/);
   });
 });
 
@@ -99,7 +132,7 @@ describe("enlace desde el editor de mapeo", () => {
       />,
     );
     expect(ADMIN_TEMPLATES_HREF).toBe("/administracion?pestana=plantillas");
-    const link = html.match(/<a [^>]*>(?:(?!<\/a>)[\s\S])*Administrar plantillas/)?.[0] ?? "";
+    const link = html.match(/<a [^>]*>(?:(?!<\/a>)[\s\S])*Administrar formatos/)?.[0] ?? "";
     expect(link).toContain('href="/administracion?pestana=plantillas"');
     expect(link).toContain('target="_blank"');
   });

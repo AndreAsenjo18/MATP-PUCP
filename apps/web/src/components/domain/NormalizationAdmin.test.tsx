@@ -46,7 +46,7 @@ describe("aviso de impacto (409 normalization_change_requires_preview)", () => {
     expect(html).toContain('role="alert"');
     expect(text).toContain("No se guardó nada.");
     expect(text).toContain("Este cambio alteraría 7 identificadores ya registrados.");
-    expect(text).toContain("colecciones-y-vocabularios-admin");
+    expect(text).toContain("todavía no está disponible desde esta pantalla");
     expect(text).toContain("I I-9101 I-9101 I-9101 Cambia cómo se separa su celda");
     expect(text).toContain("PUCP S/N (sin código) S/N Cambia su forma normalizada");
     expect(text).toContain("… y 5 más.");

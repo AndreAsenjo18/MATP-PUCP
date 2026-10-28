@@ -7,7 +7,7 @@ rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 
 import logging
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import (
@@ -21,7 +21,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
@@ -44,6 +44,7 @@ from app.core.storage import ObjectStorage
 from app.modules.audit.context import require_audit_context
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
+from app.modules.imports.candidates import enrich_matches
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
@@ -159,7 +160,16 @@ def batch_out(session: SessionDep, batch: ImportBatch) -> ImportBatchOut:
         if batch.status in APPROVABLE_STATUSES
         else None
     )
-    return ImportBatchOut.from_batch(batch, approval)
+    out = ImportBatchOut.from_batch(batch, approval)
+    if batch.status in APPROVABLE_STATUSES:
+        # Rows a person already decided: validating again recalculates every row and drops them.
+        decided = session.scalar(
+            select(func.count())
+            .select_from(ImportRow)
+            .where(ImportRow.batch_id == batch.id, ImportRow.decision != RowDecision.PENDING)
+        )
+        out.counts = {**(out.counts or {}), "DECIDED": int(decided or 0)}
+    return out
 
 
 def _preview_url(storage: ObjectStorage, image: ImportImage) -> str | None:
@@ -179,8 +189,14 @@ def _generate_derivatives(
         logger.exception("No se generaron los derivados de la foto %s", asset_id)
 
 
-def _row_out(row: ImportRow, images: list[ImportImageOut] | None = None) -> ImportRowOut:
-    return ImportRowOut.from_row(row, action=row_action(row)[0].value, images=images)
+def _row_out(
+    row: ImportRow,
+    images: list[ImportImageOut] | None = None,
+    matches: list[dict[str, Any]] | None = None,
+) -> ImportRowOut:
+    return ImportRowOut.from_row(
+        row, action=row_action(row)[0].value, images=images, matches=matches
+    )
 
 
 def _read_upload(file: UploadFile, max_bytes: int) -> bytes:
@@ -436,13 +452,14 @@ def get_import_batch_diffs(
         statement = statement.where(ImportRow.has_validation_errors.is_(True))
     rows, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
+    candidates = enrich_matches(session, rows)
     images: dict[uuid.UUID | None, list[ImportImageOut]] = {}
     for image in batch_images(session, batch.id):
         images.setdefault(image.import_row_id, []).append(
             ImportImageOut.from_image(image, _preview_url(storage, image))
         )
     return ImportDiffsPage(
-        items=[_row_out(row, images.get(row.id)) for row in rows],
+        items=[_row_out(row, images.get(row.id), candidates.get(row.id)) for row in rows],
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -485,7 +502,7 @@ def decide_import_row(
         field_decisions=dict(body.field_decisions),
     )
     session.commit()
-    return _row_out(row)
+    return _row_out(row, matches=enrich_matches(session, [row])[row.id])
 
 
 @router.post(

@@ -17,6 +17,7 @@ import {
   DuplicateCandidateCard,
   DuplicateFilters,
   PostponeDialog,
+  QueuePager,
   ScanPanel,
   formatDate,
   type DuplicateFilterValue,
@@ -25,7 +26,6 @@ import { MergeWizard, type MergeSubmission } from "@/components/domain/MergeWiza
 import type { DialogOutcome } from "@/components/domain/PieceActionDialogs";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
@@ -64,7 +64,7 @@ type Notice = { tone: "success" | "warning"; text: string; link?: { href: string
 function DuplicadosContent() {
   const { hasPermission } = useSession();
   if (!hasPermission("duplicates.resolve")) {
-    return <PermissionNotice>Su rol no tiene permiso para resolver duplicados (calidad-datos). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para resolver duplicados. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
   return <DuplicateQueue />;
 }
@@ -157,6 +157,12 @@ function DuplicateQueue() {
     if (pieceA && pieceB) setDialog({ kind: "merge", candidate, pieceA, pieceB });
   }
 
+  /** Cambia de página y vuelve al principio de la lista (también desde los controles de abajo). */
+  function goToPage(next: number) {
+    setPage(next);
+    window.scrollTo({ top: 0 });
+  }
+
   function changeFilters(next: DuplicateFilterValue) {
     setFilters(next);
     setPage(1);
@@ -211,10 +217,7 @@ function DuplicateQueue() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>
-        <p className="text-base text-gris-texto">
-          Pares detectados por identificadores normalizados, denominación, colección, autor, procedencia, época y medidas. Compare lado a lado y
-          decida: nunca se elimina ninguna pieza, solo se registra la decisión (RN-005).
-        </p>
+        <p className="text-base text-gris-texto">Compare cada par y decida. No se borra ninguna pieza.</p>
       </header>
 
       <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
@@ -246,9 +249,10 @@ function DuplicateQueue() {
       {!loading && queue?.status === "error" && <PermissionNotice>{queue.message}</PermissionNotice>}
       {!loading && queue?.status === "ready" && (
         <>
-          <p className="text-sm text-gris-texto">
-            {total === 1 ? "1 par" : `${total} pares`} · página {page} de {pageCount}
-          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-gris-texto">{total === 1 ? "1 par" : `${total} pares`}</p>
+            <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, arriba" onPage={goToPage} />
+          </div>
           <div className="flex flex-col gap-4">
             {items.map((candidate) => (
               <DuplicateCandidateCard
@@ -268,16 +272,7 @@ function DuplicateQueue() {
             ))}
             {items.length === 0 && <Card className="border-dashed text-center text-base text-gris-texto">No hay pares con estos filtros.</Card>}
           </div>
-          {pageCount > 1 && (
-            <nav aria-label="Páginas de la cola" className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Anterior
-              </Button>
-              <Button variant="secondary" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
-                Siguiente
-              </Button>
-            </nav>
-          )}
+          <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, abajo" onPage={goToPage} />
         </>
       )}
 

@@ -51,6 +51,22 @@ describe("Button", () => {
     expect(cls).toContain("px-4 py-2");
   });
 
+  it("size sm es compacto (32 px) y los demás conservan los 44 px", () => {
+    const small = render(<Button size="sm">Editar</Button>);
+    expect(small).toContain("min-h-8");
+    expect(small).toContain("text-sm");
+    expect(small).not.toContain("min-h-11");
+    expect(render(<Button>Guardar</Button>)).toContain("min-h-11");
+    expect(render(<Button size="lg">Guardar</Button>)).toContain("min-h-11");
+  });
+
+  it("size touch es táctil en celular y compacto desde md", () => {
+    const html = render(<Button size="touch">Registrar</Button>);
+    expect(html).toContain("min-h-11");
+    expect(html).toContain("md:min-h-9");
+    expect(html).toContain("md:text-sm");
+  });
+
   it("size lg produce una acción grande para depósito", () => {
     expect(render(<Button size="lg">Registrar movimiento</Button>)).toContain("text-lg");
   });

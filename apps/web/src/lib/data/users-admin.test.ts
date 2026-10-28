@@ -1,13 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ROLES } from "@/lib/fixtures";
+
 import {
+  PERMISSION_PACKAGES,
   createUser,
   describeUsersFailure,
   fetchUsers,
+  filterUsers,
+  packagePermissions,
+  packageState,
   permissionDiff,
   saveRolePermissions,
+  togglePackage,
   togglePermission,
   updateUser,
+  type PermissionOut,
+  type UserOut,
 } from "./users-admin";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -96,5 +105,68 @@ describe("permission editing helpers", () => {
     expect(togglePermission(base, "exports.run")).toEqual(["exports.run", "pieces.read"]);
     expect(togglePermission(["a", "b"], "a")).toEqual(["b"]);
     expect(base).toEqual(["pieces.read"]);
+  });
+});
+
+function permission(code: string): PermissionOut {
+  return { code, description: `Permiso ${code}` } as PermissionOut;
+}
+
+describe("paquetes de permisos", () => {
+  const IMPORTS = PERMISSION_PACKAGES.find((pkg) => pkg.id === "importacion")!.codes;
+
+  it("todos los permisos de los roles del sistema pertenecen a un paquete", () => {
+    const known = new Set(PERMISSION_PACKAGES.flatMap((pkg) => pkg.codes));
+    const used = new Set(ROLES.flatMap((role) => role.permissions));
+    expect([...used].filter((code) => !known.has(code))).toEqual([]);
+  });
+
+  it("ningún permiso está en dos paquetes", () => {
+    const all = PERMISSION_PACKAGES.flatMap((pkg) => pkg.codes);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("reparte los permisos de la API en paquetes, omite los vacíos y manda los desconocidos a «Otros»", () => {
+    const views = packagePermissions([permission("imports.approve"), permission("pieces.read"), permission("imports.prepare"), permission("algo.nuevo")]);
+    expect(views.map((view) => view.label)).toEqual(["Fichas", "Importación", "Otros"]);
+    expect(views[1].permissions.map((item) => item.code)).toEqual(["imports.prepare", "imports.approve"]); // orden del paquete
+    expect(views[2].permissions.map((item) => item.code)).toEqual(["algo.nuevo"]);
+  });
+
+  it("sin permisos desconocidos no hay paquete «Otros»", () => {
+    expect(packagePermissions([permission("pieces.read")]).map((view) => view.id)).toEqual(["fichas"]);
+  });
+
+  it("dice si el rol tiene ninguno, parte o todo el paquete", () => {
+    expect(packageState([], IMPORTS)).toBe("none");
+    expect(packageState(["imports.prepare"], IMPORTS)).toBe("partial");
+    expect(packageState([...IMPORTS], IMPORTS)).toBe("all");
+  });
+
+  it("marcar un paquete lo completa y volver a marcarlo lo quita, sin tocar lo demás", () => {
+    const marked = togglePackage(["pieces.read", "imports.prepare"], IMPORTS);
+    expect(IMPORTS.every((code) => marked.includes(code))).toBe(true);
+    expect(marked).toContain("pieces.read");
+    const cleared = togglePackage(marked, IMPORTS);
+    expect(IMPORTS.some((code) => cleared.includes(code))).toBe(false);
+    expect(cleared).toEqual(["pieces.read"]);
+  });
+});
+
+describe("filtro de usuarios", () => {
+  const users = [
+    { id: "1", email: "ana.garcia@matp.local", full_name: "Ana García", roles: ["ADMIN"], is_active: true },
+    { id: "2", email: "luis@matp.local", full_name: "Luis Quispe", roles: ["CATALOGUER"], is_active: true },
+  ] as unknown as UserOut[];
+
+  it("busca por nombre o correo sin distinguir mayúsculas ni tildes", () => {
+    expect(filterUsers(users, { query: "garcia", role: "" }).map((user) => user.id)).toEqual(["1"]);
+    expect(filterUsers(users, { query: "LUIS@", role: "" }).map((user) => user.id)).toEqual(["2"]);
+  });
+
+  it("filtra por rol y combina ambos filtros", () => {
+    expect(filterUsers(users, { query: "", role: "CATALOGUER" }).map((user) => user.id)).toEqual(["2"]);
+    expect(filterUsers(users, { query: "ana", role: "CATALOGUER" })).toEqual([]);
+    expect(filterUsers(users, { query: "", role: "" })).toHaveLength(2);
   });
 });

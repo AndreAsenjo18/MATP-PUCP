@@ -342,3 +342,18 @@ Detalle en `docs/despliegue/demo-calidad.md`, `data/fixtures/lote_demo/LEEME.md`
 | X1 | ¿Cuál es la dirección del ambiente de calidad para la demo? | `54-237-95-196.sslip.io`, la que usa `pull-deploy.sh`. Si la IP de la EC2 cambia al reiniciar la sesión, hay que actualizar `MATP_HEALTH_URL`, el `Caddyfile` y los `AllowedOrigins` de la política CORS del bucket | plataforma (RNF-004); multimedia (subida directa de fotos) | Alta |
 | X2 | ¿En qué ruta de la EC2 de calidad vive el despliegue? | `/opt/matp`, la del despliegue de CD2 (`docs/despliegue/pipeline.md`). El seed solo da contraseña al administrador si `SEED_ADMIN_PASSWORD` está en `/opt/matp/.env.pruebas`, y ahí también se cambia `MEDIA_UPLOAD_MODE=proxy` como contingencia | plataforma (RNF-004) | Media |
 | X3 | ¿Qué colección del lote de demostración se presenta como comodato? | AJB, de forma ilustrativa (como en `CLAUDE.md`). La fila 14 (`AJB 501`) debe heredar «No publicar» en sus fotos y la 15 trae un código I, así que da error. El resto de las filas son de propiedad de la PUCP | importacion-datos (RN-003, RN-006, RN-008) | Media |
+
+## Y. Supuestos del rediseño de UX de Importación (change `rediseno-ux-importacion`, 2026-10-27)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Y1 | ¿Cómo llama el museo a la forma guardada de leer un Excel: «formato» o «plantilla»? | [SUPUESTO] «Formato del archivo» en la pantalla de Importación; el código y la API siguen usando «plantilla» (`import-templates`). | Solo textos de la interfaz y del manual | Baja |
+| Y2 | ¿Debe «Detectar automáticamente» aplicar la plantilla de mayor coincidencia sin preguntar? | [SUPUESTO] Sí, si alcanza el umbral de sugerencia vigente (0,6) y no le faltan columnas; la pantalla dice qué formato se aplicó y permite cambiarlo sin volver a subir el archivo. | Qué tanto revisa la persona antes de ver las filas | Media |
+| Y3 | ¿El régimen de tenencia puede asignarse a todas las filas que no lo traen desde la revisión? | [SUPUESTO] Sí, con un valor para todas las filas sin dato; las que ya lo traen conservan el suyo y las reglas de comodato y préstamo siguen aplicando. | Catalogación de sábanas sin columna de régimen | Media |
+
+## Z. Supuestos del rediseño de UX de Depósito (change `rediseno-ux-deposito`, 2026-10-27)
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| Z1 | ¿Una pieza puede registrarse directamente en un mueble o un depósito, o siempre en un nivel o contenedor? | [SUPUESTO] Siempre en un lugar final (el que no tiene otros dentro): «Mover a» solo ofrece esos. La API sigue aceptando cualquier destino activo que no sea una sede; si el museo guarda piezas en muebles sin niveles definidos, basta crearles un nivel en Administración o relajar la regla en la interfaz. | Vista de depósito (movimientos y lote) | Media |
+
