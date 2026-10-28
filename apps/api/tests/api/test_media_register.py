@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import select
@@ -60,8 +61,13 @@ def _catalogador_user(seeded_api: SeededApi) -> "CurrentUser":
 
 
 @pytest.fixture
-def fake_storage(seeded_api: SeededApi, monkeypatch: pytest.MonkeyPatch) -> dict:
-    """Mock storage for testing without network - replaces entire storage object."""
+def fake_storage(seeded_api: SeededApi) -> Iterator[dict]:
+    """Mock storage for testing without network - replaces entire storage object.
+
+    Not ``monkeypatch.setattr(app.state, ...)``: Starlette's ``State`` keeps its values in
+    ``_state``, so recent pytest releases see no attribute to restore and *delete* ``storage`` on
+    teardown, which breaks every later test that reads ``app.state.storage``.
+    """
     objects: dict[str, bytes] = {}
 
     class FakeStorage:
@@ -125,9 +131,13 @@ def fake_storage(seeded_api: SeededApi, monkeypatch: pytest.MonkeyPatch) -> dict
             self.deleted.append(key)
 
     fake = FakeStorage()
-    fake.bucket = seeded_api.app.state.storage.bucket
-    monkeypatch.setattr(seeded_api.app.state, "storage", fake)
-    return {"objects": objects, "fake": fake}
+    original = seeded_api.app.state.storage
+    fake.bucket = original.bucket
+    seeded_api.app.state.storage = fake
+    try:
+        yield {"objects": objects, "fake": fake}
+    finally:
+        seeded_api.app.state.storage = original
 
 
 def _setup_audit_context(session, seeded_api: SeededApi):
