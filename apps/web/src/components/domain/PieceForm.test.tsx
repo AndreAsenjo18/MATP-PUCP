@@ -216,6 +216,22 @@ describe("PieceForm: campos de catalogación y tenencia", () => {
     expect(visibleText(html)).not.toContain("Propietario legal");
   });
 
+  it("marca con asterisco y aria-required solo los campos obligatorios, y explica la marca", () => {
+    const create = renderWithSession(memoryStorage(), CREATE_PROPS);
+    const edit = renderWithSession(memoryStorage(), EDIT_PROPS);
+    const marked = (html: string) =>
+      [...html.matchAll(/<label[^>]*>(.*?)<\/label>/g)].map((m) => visibleText(m[1] ?? "")).filter((l) => l.endsWith("*"));
+
+    expect(marked(create)).toEqual(["Denominación *", "Régimen de tenencia *"]);
+    expect(marked(edit)).toEqual(["Denominación *"]);
+    expect(create).toMatch(/<input[^>]*id="denomination"[^>]*aria-required="true"|<input[^>]*aria-required="true"[^>]*id="denomination"/);
+    expect(create).toMatch(/<select[^>]*id="tenure_regime"[^>]*aria-required="true"|<select[^>]*aria-required="true"[^>]*id="tenure_regime"/);
+    expect(create).not.toMatch(/<select[^>]*id="collection_id"[^>]*aria-required/);
+    for (const html of [create, edit]) {
+      expect(visibleText(html)).toContain("Los campos marcados con * son obligatorios");
+    }
+  });
+
   it("comodante y convenio solo aparecen con régimen Comodato", () => {
     const owned = visibleText(renderWithSession(memoryStorage(), EDIT_PROPS));
     const loan = renderWithSession(memoryStorage(), { ...EDIT_PROPS, initialValues: COMODATO });
