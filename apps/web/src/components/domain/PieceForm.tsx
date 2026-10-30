@@ -147,6 +147,23 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
 }
 
 /** Campo de texto de una línea o de varias (`rows`), con el error local y los mensajes del servidor. */
+/** Asterisco de campo obligatorio; la leyenda del formulario lo explica en texto (RNF-010). */
+function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="text-carmin-texto">
+      *
+    </span>
+  );
+}
+
+function RequiredLabel({ children }: { children: ReactNode }) {
+  return (
+    <>
+      {children} <RequiredMark />
+    </>
+  );
+}
+
 function TextControl({
   control,
   grouped,
@@ -155,6 +172,7 @@ function TextControl({
   rows,
   hint,
   type,
+  required,
 }: {
   control: Control<PieceFormValues>;
   grouped: GroupedIssues;
@@ -164,7 +182,10 @@ function TextControl({
   hint?: ReactNode;
   /** Tipo de `<input>` (p. ej. `date` para la fecha de ingreso); se ignora si hay `rows`. */
   type?: string;
+  /** Campo que el servidor exige para guardar: lleva asterisco y `aria-required`. */
+  required?: boolean;
 }) {
+  const shownLabel = required ? <RequiredLabel>{label}</RequiredLabel> : label;
   return (
     <Controller
       control={control}
@@ -175,7 +196,8 @@ function TextControl({
           return (
             <Textarea
               id={name}
-              label={label}
+              label={shownLabel}
+              aria-required={required || undefined}
               name={field.name}
               value={field.value}
               onChange={field.onChange}
@@ -190,7 +212,8 @@ function TextControl({
         return (
           <Input
             id={name}
-            label={label}
+            label={shownLabel}
+            aria-required={required || undefined}
             name={field.name}
             type={type}
             value={field.value}
@@ -455,16 +478,17 @@ export function PieceForm({
           />
         )}
 
+        <p className="text-sm text-gris-texto">
+          Los campos marcados con <span className="text-carmin-texto">*</span> son obligatorios; el resto puede completarse después.
+        </p>
+
         <FormSection title="Identificación">
           <TextControl
             control={control}
             grouped={grouped}
             name="denomination"
-            label={
-              <>
-                Denominación <span className="text-carmin-texto">*</span>
-              </>
-            }
+            label="Denominación"
+            required
           />
           {mode === "create" ? (
             <>
@@ -476,7 +500,8 @@ export function PieceForm({
                   return (
                     <Select
                       id="tenure_regime"
-                      label="Régimen de tenencia"
+                      label={<RequiredLabel>Régimen de tenencia</RequiredLabel>}
+                      aria-required
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
