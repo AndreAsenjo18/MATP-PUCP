@@ -59,7 +59,7 @@ Desde el 2026-10-25 solo programan Sergio Chumbimuni y Germán Asenjo; el resto 
 | `formatos-reales-importacion` | importacion-datos, identificacion-piezas | Sergio Chumbimuni | `ajustes-lectura-importacion` (RN de 5 dígitos) | 1 (para la demo del 2026-11-06: secciones 1–4) |
 | `importacion-masiva-fotografias` (activo) | importacion-datos, multimedia | Sergio Chumbimuni | — | 1 (fotos junto con el Excel: tarea 6.2 para la demo) |
 | `importacion-fotos-a-catalogo` | importacion-datos, multimedia | Sergio Chumbimuni | `importacion-masiva-fotografias` (**bloqueante**) | 2 (para la demo solo 3.1, 3.9 y 4.1, aplicadas también al lote con Excel; el lote de solo fotos va después del 2026-11-06) |
-| `ajustes-lectura-importacion` | importacion-datos, identificacion-piezas | Germán Asenjo | — | 1 (pequeño; respuesta L5 y RN de 5 dígitos) |
+| `ajustes-lectura-importacion` | importacion-datos, identificacion-piezas | Sergio Chumbimuni | — | 1 (pequeño; respuesta L5 y RN de 5 dígitos; requisito de `formatos-reales-importacion`) |
 | `fusion-busqueda-deposito` | busqueda-reportes, ubicacion-movimientos | Germán Asenjo | — | 1 |
 | `reportes-por-atributo` | busqueda-reportes | Germán Asenjo | `reportes-inventario` (activo) | 2 (amplía el enumerado `ReportType`: avisar al Líder) |
 | `crud-manual-completo` | colecciones-vocabularios, ubicacion-movimientos, catalogo-piezas | Germán Asenjo | `fusion-busqueda-deposito` (sección 3: árbol de ubicaciones) | 2 |
