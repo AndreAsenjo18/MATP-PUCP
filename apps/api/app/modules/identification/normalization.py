@@ -12,10 +12,12 @@ museum (docs/preguntas-contraparte.md, questions A2, A4, A5, A8 and B8):
 - N4  Collection code: acronym letters with optional dots/spaces, optional separator, number and
       optional component suffix. Dots/spaces in the acronym and leading zeros are removed:
       ``M.M.Z. 015``, ``M M Z 15``, ``mmz 15`` -> ``MMZ 15``; ``MBB 40.1`` -> ``MBB 40.1``.
-- N5  INC / Registro Nacional: optional ``INC``, ``RN`` or ``N°`` prefix and 4 or 6 digits
+- N5  INC / Registro Nacional: optional ``INC``, ``RN`` or ``N°`` prefix and 4, 5 or 6 digits
       (grouping dots, spaces or hyphens ignored). Digits are kept as written (fixed width,
-      zeros significant) and the format (4 or 6 digits) is reported. Other lengths are
-      "not normalizable" and kept for review.
+      zeros significant: ``12345`` is never padded to ``012345``) and the format (4, 5 or 6
+      digits) is reported. Other lengths are "not normalizable" and kept for review. The
+      5-digit format is [SUPUESTO A4]: 1 306 such numbers appear in the museum's standardized
+      files (change ``ajustes-lectura-importacion``).
 - N6  Generic types (PUCP, owner, other): N1 plus removal of spaces around ``-``, ``/``, ``.``.
 - N7  A cell may contain several codes separated by ``/``, ``;``, ``|``, ``,`` or line breaks;
       each part is proposed as a separate identifier pending human confirmation.
@@ -82,6 +84,7 @@ FORMAT_I_NUMBER_ONLY = "SOLO_NUMERO"
 FORMAT_COLLECTION = "SIGLA_NUMERO"
 FORMAT_COLLECTION_SUFFIX = "SIGLA_NUMERO_SUFIJO"
 FORMAT_INC_4 = "INC_4_DIGITOS"
+FORMAT_INC_5 = "INC_5_DIGITOS"
 FORMAT_INC_6 = "INC_6_DIGITOS"
 
 _INVENTORY_RE = re.compile(r"^(I)?\s*[-.:#_]?\s*(\d+)$")
@@ -147,6 +150,30 @@ def split_regex(separators: tuple[str, ...], unsplit_markers: tuple[str, ...]) -
 _SPLIT_RE = split_regex(DEFAULT_SEPARATORS, DEFAULT_UNSPLIT_MARKERS)
 
 
+def fold_label(text: str) -> str:
+    """How a label is compared: lowercase, without accents, inner whitespace collapsed."""
+    folded = unicodedata.normalize("NFKD", text.strip().casefold())
+    return " ".join("".join(c for c in folded if not unicodedata.combining(c)).split())
+
+
+# Acquisition method (or tenure label) -> tenure regime code, used when importing a row without
+# an explicit regime (change ajustes-lectura-importacion, design D1). «Cesión de uso» and
+# «Custodia» are comodato (museum's answer to L5, 2026-10-31); the owned ones are [SUPUESTO].
+# Migration 0018 copies these values into ``normalization_setting``.
+DEFAULT_TENURE_ALIASES: Mapping[str, str] = {
+    "propiedad": "OWNED",
+    "propio": "OWNED",
+    "donacion": "OWNED",
+    "compra": "OWNED",
+    "legado": "OWNED",
+    "transferencia interna": "OWNED",
+    "comodato": "LOAN_FOR_USE",
+    "cesion de uso": "LOAN_FOR_USE",
+    "custodia": "LOAN_FOR_USE",
+    "prestamo temporal": "TEMPORARY_LOAN",
+}
+
+
 @dataclass(frozen=True)
 class NormalizationParams:
     """Current values of the normalization parameters (design D5).
@@ -162,6 +189,8 @@ class NormalizationParams:
     unsplit_markers: tuple[str, ...] = DEFAULT_UNSPLIT_MARKERS
     acronym_aliases: Mapping[str, str] = field(default_factory=dict)
     alias_collection_ids: Mapping[str, uuid.UUID] = field(default_factory=dict)
+    # Folded label -> tenure regime code (``fold_label`` keys).
+    tenure_aliases: Mapping[str, str] = field(default_factory=lambda: dict(DEFAULT_TENURE_ALIASES))
 
     @staticmethod
     def marker_key(marker: str) -> str:
@@ -276,6 +305,8 @@ def normalize_inc_code(
     digits = re.sub(r"\D", "", match.group("body"))
     if len(digits) == 4:
         return NormalizationResult(raw, digits, NormalizationStatus.NORMALIZED, FORMAT_INC_4)
+    if len(digits) == 5:
+        return NormalizationResult(raw, digits, NormalizationStatus.NORMALIZED, FORMAT_INC_5)
     if len(digits) == 6:
         return NormalizationResult(raw, digits, NormalizationStatus.NORMALIZED, FORMAT_INC_6)
     return _unparseable(raw)

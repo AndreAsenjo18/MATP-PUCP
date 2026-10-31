@@ -11,6 +11,8 @@
  *   «Personalizado»; se añaden y quitan en un borrador que se guarda o descarta entero.
  * - `SeparatorsEditor`: separadores de códigos concatenados y marcadores que no se separan.
  * - `AliasesEditor`: siglas históricas (alias → colección), alta y eliminación con motivo.
+ * - `TenureAliasesEditor`: régimen que corresponde a cada forma de adquisición, para deducirlo al
+ *   importar una fila que no lo trae (change `ajustes-lectura-importacion`, tarea 1.6).
  * - `NormalizationImpactNotice`: el 409 `normalization_change_requires_preview`: cuántos
  *   identificadores cambiarían, algunos ejemplos y que no se guardó nada [SUPUESTO T10].
  * - `NormalizationLive`: lee los valores y hace las llamadas.
@@ -32,6 +34,7 @@ import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import {
   SPECIAL_SEPARATORS,
+  TENURE_LABELS,
   addMarker,
   addSeparator,
   aliasFieldError,
@@ -50,10 +53,14 @@ import {
   separatorError,
   separatorLabel,
   separatorsValue,
+  tenureAliasError,
+  tenureAliasesChanged,
+  tenureAliasesValue,
   type AcronymAlias,
   type CollectionOption,
   type ConcatenationSeparators,
   type NormalizationImpact,
+  type TenureAliases,
 } from "@/lib/data/normalization-admin";
 
 function markerLabel(marker: string): string {
@@ -383,6 +390,93 @@ export function AliasesEditor({
  * Editor plegado: su título lleva cuántos valores tiene y se abre solo si `open` (cambios sin
  * guardar, un error o un aviso de impacto), para que nada importante quede escondido.
  */
+export function TenureAliasesEditor({
+  saved,
+  draft,
+  isDefault,
+  busy,
+  error,
+  onChange,
+  onSave,
+  onDiscard,
+}: {
+  saved: TenureAliases;
+  draft: TenureAliases;
+  isDefault: boolean;
+  busy: boolean;
+  error: string | null;
+  onChange: (draft: TenureAliases) => void;
+  onSave: () => void;
+  onDiscard: () => void;
+}) {
+  const [alias, setAlias] = useState("");
+  const [regime, setRegime] = useState<string>("Comodato");
+  const addError = alias ? tenureAliasError(draft, alias) : null;
+  const rows = Object.entries(draft).sort(([a], [b]) => a.localeCompare(b));
+  return (
+    <section aria-label="Forma de adquisición y régimen" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="sr-only">Forma de adquisición y régimen</h3>
+        <DefaultBadge isDefault={isDefault} />
+      </div>
+      <p className="text-sm text-gris-texto">
+        Al importar una fila que no dice su régimen, el sistema lo deduce de su forma de adquisición con esta tabla. Si una fila trae las dos cosas y no
+        coinciden, se conserva el régimen y la fila queda marcada para revisarla.
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-gris-texto">Ninguna.</p>
+      ) : (
+        <ul className="flex flex-col gap-2" aria-label="Correspondencias registradas">
+          {rows.map(([name, label]) => (
+            <li key={name} className="flex flex-wrap items-end gap-2">
+              <span className="min-w-48 py-2 text-base text-tinta">{name}</span>
+              <Select
+                label={`Régimen de «${name}»`}
+                value={label}
+                disabled={busy}
+                onChange={(event) => onChange({ ...draft, [name]: event.target.value })}
+                fieldClassName="min-w-48"
+              >
+                {TENURE_LABELS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </Select>
+              <Button
+                variant="secondary"
+                icon={X}
+                aria-label={`Quitar «${name}»`}
+                disabled={busy}
+                onClick={() => onChange(Object.fromEntries(rows.filter(([other]) => other !== name)))}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <Input label="Forma de adquisición" value={alias} error={addError ?? undefined} onChange={(event) => setAlias(event.target.value)} fieldClassName="min-w-56" />
+        <Select label="Régimen" value={regime} onChange={(event) => setRegime(event.target.value)} fieldClassName="min-w-48">
+          {TENURE_LABELS.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
+        </Select>
+        <Button
+          variant="outline"
+          icon={Plus}
+          disabled={busy || tenureAliasError(draft, alias) !== null}
+          onClick={() => {
+            onChange({ ...draft, [alias.trim()]: regime });
+            setAlias("");
+          }}
+        >
+          Añadir
+        </Button>
+      </div>
+      <SaveBar dirty={tenureAliasesChanged(saved, draft)} busy={busy} onSave={onSave} onDiscard={onDiscard} />
+      <ErrorNotice message={error} />
+    </section>
+  );
+}
+
 export function Fold({ title, count, open, children }: { title: string; count: number; open: boolean; children: ReactNode }) {
   return (
     <details open={open || undefined} className="group rounded-md border border-borde">
@@ -409,6 +503,7 @@ export function NormalizationLive() {
   const devUser = currentUser?.email;
   const [markers, setMarkers] = useState<Section<string[]> | null>(null);
   const [separators, setSeparators] = useState<Section<ConcatenationSeparators> | null>(null);
+  const [tenure, setTenure] = useState<Section<TenureAliases> | null>(null);
   const [aliases, setAliases] = useState<AcronymAlias[]>([]);
   const [collections, setCollections] = useState<CollectionOption[]>([]);
   const [aliasState, setAliasState] = useState<{ fieldError: string | null; error: string | null; impact: NormalizationImpact | null }>({
@@ -418,16 +513,22 @@ export function NormalizationLive() {
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"markers" | "separators" | "aliases" | null>(null);
+  const [busy, setBusy] = useState<"markers" | "separators" | "tenure" | "aliases" | null>(null);
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchSetting("absence_markers", devUser), fetchSetting("concatenation_separators", devUser), fetchAliases(devUser), fetchCollections(devUser)]).then(
-      ([markerResult, separatorResult, aliasResult, collectionResult]) => {
+    Promise.all([
+      fetchSetting("absence_markers", devUser),
+      fetchSetting("concatenation_separators", devUser),
+      fetchAliases(devUser),
+      fetchCollections(devUser),
+      fetchSetting("tenure_aliases", devUser),
+    ]).then(
+      ([markerResult, separatorResult, aliasResult, collectionResult, tenureResult]) => {
         if (!active) return;
         let failure: string | null = null;
-        for (const result of [markerResult, separatorResult, aliasResult, collectionResult]) {
+        for (const result of [markerResult, separatorResult, aliasResult, collectionResult, tenureResult]) {
           if (result.status !== "ok") {
             failure = result.message;
             break;
@@ -441,6 +542,10 @@ export function NormalizationLive() {
         if (separatorResult.status === "ok") {
           const value = separatorsValue(separatorResult.value.value);
           setSeparators({ saved: value, draft: value, isDefault: separatorResult.value.is_default, error: null, impact: null });
+        }
+        if (tenureResult.status === "ok") {
+          const value = tenureAliasesValue(tenureResult.value.value);
+          setTenure({ saved: value, draft: value, isDefault: tenureResult.value.is_default, error: null, impact: null });
         }
         if (aliasResult.status === "ok") setAliases(aliasResult.value);
         if (collectionResult.status === "ok") setCollections(collectionResult.value);
@@ -468,6 +573,16 @@ export function NormalizationLive() {
     setBusy(null);
     if (result.status !== "ok") return setSeparators({ ...separators, error: impactFrom(result) ? null : result.message, impact: impactFrom(result) });
     setMessage("Separadores guardados: se aplican en adelante a las celdas con varios códigos.");
+    setReload((n) => n + 1);
+  }
+
+  async function saveTenure() {
+    if (!tenure) return;
+    setBusy("tenure");
+    const result = await saveSetting("tenure_aliases", tenure.draft, devUser);
+    setBusy(null);
+    if (result.status !== "ok") return setTenure({ ...tenure, error: result.message });
+    setMessage("Correspondencias guardadas: se aplican en adelante al validar las importaciones.");
     setReload((n) => n + 1);
   }
 
@@ -534,6 +649,21 @@ export function NormalizationLive() {
             onChange={(draft) => setSeparators({ ...separators, draft, error: null, impact: null })}
             onSave={saveSeparators}
             onDiscard={() => setSeparators({ ...separators, draft: separators.saved, error: null, impact: null })}
+          />
+        </Fold>
+      )}
+      {tenure && (
+        <Fold
+          title="Forma de adquisición → régimen"
+          count={Object.keys(tenure.draft).length}
+          open={tenureAliasesChanged(tenure.saved, tenure.draft) || tenure.error !== null}
+        >
+          <TenureAliasesEditor
+            {...tenure}
+            busy={busy === "tenure"}
+            onChange={(draft) => setTenure({ ...tenure, draft, error: null })}
+            onSave={saveTenure}
+            onDiscard={() => setTenure({ ...tenure, draft: tenure.saved, error: null })}
           />
         </Fold>
       )}
