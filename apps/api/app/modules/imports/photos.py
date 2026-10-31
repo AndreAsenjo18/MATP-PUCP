@@ -31,7 +31,14 @@ from sqlalchemy.orm import Session
 from app.core.errors import DomainError
 from app.modules.identification.models import NormalizationRule
 from app.modules.identification.params import session_params
-from app.modules.imports.models import ImportBatch, ImportPhoto, ImportPhotoStatus, ImportRow
+from app.modules.imports.catalog_photos import match_catalog_batch
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportBatchKind,
+    ImportPhoto,
+    ImportPhotoStatus,
+    ImportRow,
+)
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import PhotoMatchStatus as M
 from app.modules.imports.photo_matching import (
@@ -40,12 +47,18 @@ from app.modules.imports.photo_matching import (
     compile_camera_patterns,
     match_photos,
 )
+from app.modules.imports.state import batch_kind
 
 logger = logging.getLogger(__name__)
 
 #: States in which proposals can change: while validating (the stage runs from MAPPED) and during
-#: the preview. An approved or applied batch keeps the proposals it was approved with.
+#: the preview. An approved or applied batch keeps the proposals it was approved with. A ``PHOTOS``
+#: batch has no validation: its photos are matched from the upload (importacion-fotos-a-catalogo).
 MATCHING_STATES = frozenset({S.MAPPED, S.VALIDATED, S.IN_PREVIEW})
+MATCHING_STATES_BY_KIND = {
+    ImportBatchKind.SPREADSHEET: MATCHING_STATES,
+    ImportBatchKind.PHOTOS: frozenset({S.UPLOADED, S.IN_PREVIEW}),
+}
 AUTOMATIC = frozenset({M.MATCHED, M.AMBIGUOUS, M.UNMATCHED})
 
 PHOTO_MATCHING_FAILED = (
@@ -89,10 +102,23 @@ def match_batch_photos(
     """Store the proposed row of every verified, not manual photo of ``batch``.
 
     Returns how many photos were matched (0 when the batch is not validated yet or no longer
-    admits changes). Any failure is raised as ``PhotoMatchingFailed`` with a clear message.
+    admits changes). Any failure is raised as ``PhotoMatchingFailed`` with a clear message. The
+    photos of a ``PHOTOS`` batch are matched with the pieces of the catalogue instead
+    (``catalog_photos.match_catalog_batch``).
     """
-    if batch.status not in MATCHING_STATES:
+    kind = batch_kind(batch)
+    if batch.status not in MATCHING_STATES_BY_KIND[kind]:
         return 0
+    if kind is ImportBatchKind.PHOTOS:
+        try:
+            return match_catalog_batch(session, batch, rules)
+        except DomainError:
+            raise
+        except Exception as exc:
+            logger.exception("Falló el emparejamiento de fotos del lote %s", batch.id)
+            raise PhotoMatchingFailed(
+                PHOTO_MATCHING_FAILED.format(error=type(exc).__name__)
+            ) from exc
     try:
         rows = batch_rows(session, batch.id)
         if not rows:
@@ -148,6 +174,9 @@ _CLEARED = {
     "row_id": None,
     "candidate_row_ids": None,
     "sort_key": None,
+    "piece_id": None,
+    "candidate_piece_ids": None,
+    "match_reason": None,
 }
 
 

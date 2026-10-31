@@ -169,7 +169,7 @@ def is_camera_name(base: str, extra: Sequence[re.Pattern[str]] = ()) -> bool:
     return any(pattern.fullmatch(base) for pattern in (*_BUILTIN_CAMERA, *extra))
 
 
-def _normalized(rule: NormalizationRule, text: str) -> str | None:
+def normalized_code(rule: NormalizationRule, text: str) -> str | None:
     result = normalize(rule, text)
     if result.status is NormalizationStatus.NORMALIZED and result.normalized:
         return result.normalized
@@ -182,11 +182,11 @@ def code_keys(
     """Keys ``(type, normalized value)`` of ``text`` under the rule of every identifier type."""
     keys = set()
     for type_code, rule in rules.items():
-        if value := _normalized(rule, text):
+        if value := normalized_code(rule, text):
             keys.add((type_code, value))
     if match := _TYPE_PREFIX_RE.match(text):
         type_code = _PREFIX_TYPES[match.group(1).replace(".", "").upper()]
-        if type_code in rules and (value := _normalized(rules[type_code], match.group(2))):
+        if type_code in rules and (value := normalized_code(rules[type_code], match.group(2))):
             keys.add((type_code, value))
     if text.isdigit() and int(text) > 0:  # [SUPUESTO S1]
         keys.add((COLLECTION_NUMBER, str(int(text))))
