@@ -51,7 +51,7 @@ Alternativa descartada: un modelo de lote propio para RIA-04. Duplica la lógica
 
 ### D5. Criterio de «sin descripción» y de metadatos suficientes
 
-Una pieza entra al lote si su descripción está vacía. Hay metadatos suficientes si, además de la denominación, tiene al menos dos de: categoría, materiales o técnicas, época y procedencia [SUPUESTO M3]. Con `AI_PROVIDER=mock`, el borrador es un texto determinista construido con esos campos.
+Una pieza entra al lote si su descripción está vacía. Hay metadatos suficientes si, además de la denominación, tiene al menos dos de: categoría, materiales o técnicas, época y procedencia [SUPUESTO AA3]. Con `AI_PROVIDER=mock`, el borrador es un texto determinista construido con esos campos.
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
 - [Paquetes grandes llenan el disco temporal de la VM] → límite de 200 piezas, un paquete activo por usuario y borrado del temporal al subirlo; el límite es configurable.
 - [Coste o latencia de la IA real en lotes] → límite de 50 piezas, procesamiento secuencial y proveedor `mock` por defecto (RNF-008).
 - [Dos changes de IA creando el modelo de lote a la vez] → D4: dueño único en la célula de IA; el segundo change reutiliza.
-- [RIA-04 podría no entrar en la fase 1] → el lote se implementa detrás de la misma configuración que habilite RIA-04; mientras la contraparte no lo confirme (M4), la ruta sigue como stub.
+- [RIA-04 podría no entrar en la fase 1] → el lote se implementa detrás de la misma configuración que habilite RIA-04; mientras la contraparte no lo confirme (C9), la ruta sigue como stub.
 
 ## Migration Plan
 
@@ -87,7 +87,7 @@ sequenceDiagram
 
 ## Open Questions
 
-- M1: tamaño máximo de un paquete de fotos y de un lote de IA.
-- M2: caducidad de los paquetes de descarga.
-- M3: qué metadatos bastan para generar una descripción preliminar.
-- M4: si RIA-04 entra en la fase 1 (ya marcado «por validar» en `ia-asistiva`).
+- AA1: tamaño máximo de un paquete de fotos y de un lote de IA.
+- AA2: caducidad de los paquetes de descarga.
+- AA3: qué metadatos bastan para generar una descripción preliminar.
+- C9: si RIA-04 entra en la fase 1 (ya marcado «por validar» en `ia-asistiva`; no se duplica en la sección AA).

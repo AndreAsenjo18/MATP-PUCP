@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Descripciones preliminares por lote como sugerencias pendientes
-El sistema SHALL permitir a un usuario con permiso de solicitar IA pedir descripciones preliminares para un conjunto de hasta 50 piezas sin descripción [SUPUESTO M1], procesadas en segundo plano con progreso consultable, y MUST guardar cada borrador como una sugerencia pendiente de la pieza, sin escribir nunca en la ficha hasta que un usuario autorizado la apruebe. (RIA-04, RN-009, RNF-008)
+El sistema SHALL permitir a un usuario con permiso de solicitar IA pedir descripciones preliminares para un conjunto de hasta 50 piezas sin descripción [SUPUESTO AA1], procesadas en segundo plano con progreso consultable, y MUST guardar cada borrador como una sugerencia pendiente de la pieza, sin escribir nunca en la ficha hasta que un usuario autorizado la apruebe. (RIA-04, RN-009, RNF-008)
 
 #### Scenario: Lote de piezas sin descripción
 - **WHEN** un Gestor de colecciones solicita descripciones preliminares para 40 piezas sin descripción
