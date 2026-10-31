@@ -357,6 +357,16 @@ Detalle en `docs/despliegue/demo-calidad.md`, `data/fixtures/lote_demo/LEEME.md`
 |---|---|---|---|---|
 | Z1 | ¿Una pieza puede registrarse directamente en un mueble o un depósito, o siempre en un nivel o contenedor? | [SUPUESTO] Siempre en un lugar final (el que no tiene otros dentro): «Mover a» solo ofrece esos. La API sigue aceptando cualquier destino activo que no sea una sede; si el museo guarda piezas en muebles sin niveles definidos, basta crearles un nivel en Administración o relajar la regla en la interfaz. | Vista de depósito (movimientos y lote) | Media |
 
+## AA. Supuestos de las descargas masivas y el enriquecimiento por lote (change `descargas-masivas-y-enriquecimiento-lote`, 2026-10-31)
+
+El alcance de RIA-04 (descripción preliminar) en la fase 1 es la pregunta **C9** y no se duplica aquí.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| AA1 | ¿Cuántas piezas puede tener, como máximo, un paquete de descarga de fotos y un lote de descripciones preliminares de la IA? | **[SUPUESTO]** 200 piezas por paquete de fotos y 50 por lote de IA, configurables; por encima se responde 422 con el máximo | multimedia (RF-013, RNF-005), ia-asistiva (RIA-04, RNF-008) | B |
+| AA2 | ¿Cuánto tiempo queda disponible un paquete de fotos antes de caducar? | **[SUPUESTO]** Como las exportaciones (Q2): 24 horas, configurable; después el enlace ya no sirve y el registro del trabajo se conserva | multimedia (RF-013, RNF-005) | B |
+| AA3 | ¿Qué datos de una pieza bastan para que la IA proponga una descripción preliminar? | **[SUPUESTO]** Además de la denominación, al menos dos de: categoría, materiales o técnicas, época y procedencia; sin ellos la pieza se omite con el motivo «metadatos insuficientes» | ia-asistiva (RIA-04) | B |
+
 ## AF. Reunión de demo del MVP (2026-10-31) y archivo fotográfico
 
 Respuestas obtenidas el 2026-10-31: L1, L5 y B2 (ver sus filas). **No se preguntaron** y pasan a la reunión presencial del viernes 2026-11-06: B6/E2 (datos sensibles), A2/A4 (formato del código I y del RN), A7/Z1 (piezas sueltas en un mueble o cajas en el piso), A3 (lista de colecciones y comodatos) y B7 (permisos por rol).
