@@ -141,12 +141,16 @@ def effective_restriction(
 ) -> EffectiveRestriction:
     """The restriction that applies to a photo (fotografias-multiples-por-pieza 2.5; RN-008).
 
-    Its own restriction first, otherwise the default one of the collection of its piece. The
-    piece has no restriction of its own: a loan for use copies «No publicar» to each photo when
-    the photo is registered, so it shows up as the photo's own.
+    Precedence: the photo's own restriction, then the piece's, then the default one of its
+    collection. The piece has no column of its own: its default is derived from the tenure, so a
+    piece in loan for use means «No publicar» (RN-008). That also covers the photos registered
+    before the piece became a loan for use, which carry no restriction of their own; the photos
+    registered while it already was one carry it as their own.
     """
     if asset.usage_restriction_term_id is not None:
         return EffectiveRestriction(asset.usage_restriction_term_id, "foto")
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        return EffectiveRestriction(comodato_restriction_term_id(session), "pieza")
     if piece.collection_id is not None:
         collection = session.get(Collection, piece.collection_id)
         if collection is not None and collection.default_usage_restriction_term_id is not None:

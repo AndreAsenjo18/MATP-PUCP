@@ -55,7 +55,8 @@ class MediaAssetOut(ORMModel):
     usage_restriction: TermRef | None = Field(description="Restricción de uso (RF-014, RN-008).")
     effective_restriction: TermRef | None = Field(
         None,
-        description="Restricción que se aplica: la propia o, si no tiene, la de su colección.",
+        description="Restricción que se aplica: la propia, la de la pieza (en comodato, «No "
+        "publicar») o la de su colección, en ese orden.",
     )
     restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
         default="ninguna", description="De dónde viene la restricción efectiva (RN-008)."
