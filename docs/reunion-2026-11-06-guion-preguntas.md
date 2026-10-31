@@ -9,13 +9,13 @@ Esta vez se muestra la versión con los cambios pedidos el 31 de octubre, así q
 | Tiempo | Bloque | Quién | Preguntas |
 |---|---|---|---|
 | 0:00 – 0:05 | Bienvenida: qué cambió desde el 31 de octubre | Sergio | — |
-| 0:05 – 0:35 | Turno 1: Fotografías, Importación, Ficha, Búsqueda (datos sensibles) | Sergio | 8 (4 prioritarias) |
+| 0:05 – 0:35 | Turno 1: Fotografías, Importación, Ficha, Búsqueda (datos sensibles) | Sergio | 9 (5 prioritarias) |
 | 0:35 – 1:05 | Turno 2: Búsqueda y depósito, Registro manual, Reportes, Administración | André | 9 (4 prioritarias) |
 | 1:05 – 1:15 | Cierre: compromisos y materiales con fecha | Ambos | — |
 
 **Si el tiempo no alcanza, las 6 imprescindibles:**
 
-1. Qué significa el primer número de `175-3554` y si hay una lista foto → pieza (Sergio) [AF1, AF3]
+1. Fotos: qué es el primer número de `053-3269`, de qué colección son «FOTOS ELA» y «FD», y si hay una lista foto → pieza (Sergio) [AF1, AF2, AF3]
 2. Formato del código I y RN de 5 dígitos (Sergio) [A2, A4]
 3. Quién ve los datos sensibles (Sergio) [B6/E2]
 4. Búsqueda y depósito juntos: ¿les sirve? (André)
@@ -28,15 +28,19 @@ Esta vez se muestra la versión con los cambios pedidos el 31 de octubre, así q
 
 ### Fotografías (archivo del Drive)
 
-**1. PRIORITARIA · Fotografías › nombres de archivo [AF1]**
-Señale: una carpeta de ejemplo con nombres `175-3554.jpg` (con fotos sintéticas, no las del museo).
-Pregunte: «En su Drive hay fotos que se llaman así. ¿Qué es el primer número: el número de la ficha, el correlativo de una colección, el orden de la sesión de fotos?»
-*Si identifica la pieza, preguntar de qué tipo de código es (I, colección, otro) y si vale para todas las carpetas.*
+**1. PRIORITARIA · Fotografías › nombres de archivo [AF1, AF6]**
+Señale: una carpeta de ejemplo `FOTOS 051-114` con nombres `053-3269.jpg` (fotos sintéticas, no las del museo) y la sugerencia «Usar la plantilla {n}-{*}».
+Pregunte: «En su Drive, dentro de la carpeta "FOTOS 051-114", las fotos se llaman 051-…, 052-… ¿Ese primer número es el correlativo de la pieza en su colección? ¿Y la "x" que tienen algunas al final?»
 Respuesta:
 
-**2. Fotografías › carpetas [AF2]**
-Señale: el árbol de carpetas del lote, con «FD», «FD QUE FALTAN» y «CARPETA 1…5».
-Pregunte: «¿Qué significa "FD"? ¿Cada "CARPETA" corresponde a una colección?»
+**2. PRIORITARIA · Fotografías › carpetas [AF2]**
+Señale: el árbol de carpetas con «FOTOS ELA», «FD», «FD QUE FALTAN» y «CARPETA 1…5», marcadas «sin colección».
+Pregunte: «¿De qué colección son estas carpetas? ¿Qué significa "ELA" y "FD"?»
+Respuesta:
+
+**2b. Fotografías › número solo [AF5]**
+Señale: una carpeta «Fotos Coleccion <nombre>» con `1.JPG`, `2.JPG`… emparejadas con la colección propuesta.
+Pregunte: «En estas carpetas las fotos se llaman 1, 2, 3… ¿Es el número de la pieza en la colección? Si una pieza tiene dos fotos, ¿cómo se llama la segunda?»
 Respuesta:
 
 **3. PRIORITARIA · Fotografías › lista de correspondencias [AF3]**

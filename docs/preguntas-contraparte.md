@@ -365,7 +365,9 @@ Pedidos del museo en la misma reunión: la importación sirve para cargar el his
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
-| AF1 | En los archivos `175-3554.jpg` y `001-3460.JPG`, ¿qué significa el primer número (número de ficha, correlativo de una colección, orden de la sesión de fotos)? | **[SUPUESTO]** No identifica la pieza: el nombre se trata como de cámara y la foto se asigna a mano | importacion-datos (RF-046) | A |
-| AF2 | ¿Qué significa la carpeta «FD» («FD QUE FALTAN»)? ¿Las carpetas «CARPETA 1…5» corresponden a colecciones? | **[SUPUESTO]** Carpetas sin colección como pista | importacion-datos (RF-046) | B |
+| AF1 | En los archivos `053-3269.jpg` (dentro de la carpeta `FOTOS 051-114`), ¿el primer número es el correlativo de la pieza en su colección? | **[SUPUESTO]** Probablemente sí, porque los números caen dentro del rango de la carpeta. En modo automático se trata como nombre de cámara; el sistema sugiere la plantilla `{n}-{*}` y el usuario la acepta | importacion-datos (RF-046) | A |
+| AF2 | ¿A qué colección corresponden las carpetas «FOTOS ELA», «FD» («FD QUE FALTAN») y «CARPETA 1…5»? | **[SUPUESTO]** Carpetas sin colección como pista; el usuario la elige a mano | importacion-datos (RF-046) | A |
 | AF3 | ¿Existe una lista (Excel, Access, ficha) que relacione cada archivo de foto con su pieza? | **[SUPUESTO]** No existe; si existe, se carga como lista de correspondencias | importacion-datos (RF-046) | A |
 | AF4 | En el Drive hay fotos en baja resolución y su copia en alta (carpeta «ALTAS»). ¿Se necesitan las versiones de baja resolución? | **[SUPUESTO]** Basta la de mayor resolución; la otra se descarta (sin borrar el registro) | importacion-datos (RF-046), multimedia (RNF-003) | B |
+| AF5 | En las carpetas de colección con archivos `1.JPG`, `2.JPG`…, ¿el número es el correlativo de la pieza en esa colección? ¿Cómo se nombra la segunda foto de una pieza? | **[SUPUESTO]** Sí: con la colección de la carpeta como pista, `12.JPG` va a la pieza con correlativo 12 | importacion-datos (RF-046) | A |
+| AF6 | ¿Qué indica la «x» al final de algunos nombres (`059-3225 x.jpg`)? | **[SUPUESTO]** Una marca de trabajo sin significado para el catálogo; la plantilla la ignora | importacion-datos (RF-046) | C |
