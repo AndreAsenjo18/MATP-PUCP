@@ -88,11 +88,13 @@ En una columna con destino **Términos: …** aparece **Correspondencias con el 
 
 Un valor sin término ni correspondencia **no crea términos nuevos**: se conserva como texto en los datos de origen de la fila.
 
-> Por ahora, los términos reconocidos se ven solo en la vista previa: al aplicar la carga, el texto de la columna se guarda en los datos de origen y la ficha no recibe todavía esos términos.
+> Por ahora, los términos reconocidos se ven solo en la vista previa: al aplicar la carga, el texto de la columna se guarda en los datos de origen y la ficha no recibe todavía esos términos. La excepción es la **forma de adquisición**: el término reconocido sí llega a la ficha, y también sirve para deducir el régimen (ver «Régimen para las filas que no lo traen»).
 
 ### Régimen para las filas que no lo traen
 
 El **Régimen para las filas que no lo traen** (Propiedad, Comodato o Préstamo temporal) se aplica solo a las filas de **este lote** que no traen régimen. Elegirlo no cambia el formato; debajo se indica qué valor trae el formato, si trae alguno.
+
+Antes de usar ese valor, el sistema mira la **forma de adquisición** de la fila, si el formato la lleva a «Formas de adquisición»: «Cesión de uso» y «Custodia» dan Comodato, y «Donación» o «Compra», Propiedad. La tabla completa se edita en **Administración › Importación › Lectura de códigos › Forma de adquisición → régimen**. Una fila que trae régimen propio lo conserva; si su forma de adquisición dice otra cosa, la revisión la marca con un aviso amarillo.
 
 Si el archivo no tiene columna de régimen y no elige ningún valor, las filas saldrán con el error «Falta el régimen de tenencia.». En ese caso la revisión muestra un aviso para asignarlo a todas de una vez (ver «Filas sin régimen de tenencia»).
 

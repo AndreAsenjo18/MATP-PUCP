@@ -7,9 +7,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.enums import TENURE_REGIME_LABELS
 from app.api.refs import EX_DATETIME
+from app.modules.catalog.enums import TenureRegime
 
-NormalizationSettingKey = Literal["absence_markers", "concatenation_separators"]
+NormalizationSettingKey = Literal["absence_markers", "concatenation_separators", "tenure_aliases"]
+# ``tenure_aliases``: acquisition method -> regime label (ajustes-lectura-importacion).
+TenureAliases = dict[str, str]
 
 
 class ConcatenationSeparators(BaseModel):
@@ -38,9 +42,11 @@ class NormalizationSettingOut(BaseModel):
     )
 
     key: NormalizationSettingKey
-    value: list[str] | ConcatenationSeparators = Field(
+    value: list[str] | ConcatenationSeparators | TenureAliases = Field(
         description="`absence_markers`: lista de marcadores (se comparan sin espacios ni "
-        "mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan."
+        "mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. "
+        "`tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o "
+        "Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae."
     )
     is_default: bool = Field(
         description="true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8]."
@@ -53,7 +59,7 @@ class NormalizationSettingUpdate(BaseModel):
         json_schema_extra={"examples": [{"value": ["", "-", "S/N", "S/C", "NO REGISTRA"]}]}
     )
 
-    value: list[str] | ConcatenationSeparators
+    value: list[str] | ConcatenationSeparators | TenureAliases
 
 
 class AcronymAliasCreate(BaseModel):
@@ -79,5 +85,11 @@ class AcronymAliasOut(BaseModel):
     created_at: datetime
 
 
-def setting_value(value: Any) -> list[str] | ConcatenationSeparators:
+def setting_value(key: str, value: Any) -> list[str] | ConcatenationSeparators | TenureAliases:
+    if key == "tenure_aliases":  # stored with the regime codes, shown with the contract labels
+        return {
+            alias: TENURE_REGIME_LABELS[TenureRegime[code]]
+            for alias, code in value.items()
+            if code in TenureRegime.__members__
+        }
     return ConcatenationSeparators.model_validate(value) if isinstance(value, dict) else value

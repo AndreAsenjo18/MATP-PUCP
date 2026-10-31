@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.enums import TENURE_REGIME_LABELS
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Term, Vocabulary
 from app.modules.collections.service import find_collection_by_code
@@ -62,6 +63,10 @@ IDENTIFIER_TARGET = "identifier"
 PAYLOAD_TARGET = "payload"
 # ``target_field: "terms:<VOCABULARIO>"`` in ``ColumnMapping`` (design D1).
 TERMS_TARGET = "terms"
+# The acquisition method is the one ``terms`` column that fills a record field: its matched term
+# becomes ``Piece.acquisition_method_term_id`` (change ajustes-lectura-importacion, task 1.1).
+ACQUISITION_VOCABULARY = "ACQUISITION_METHOD"
+ACQUISITION_TARGET = f"{TERMS_TARGET}:{ACQUISITION_VOCABULARY}"
 
 # Record fields a column can fill, as named in the API contract.
 FIELD_TARGETS: dict[str, str] = {
@@ -91,14 +96,26 @@ def _fold(text: str) -> str:
     return " ".join("".join(c for c in folded if not unicodedata.combining(c)).split())
 
 
-# Spanish labels of the contract and the system codes [SUPUESTO: values of the real files].
-TENURE_ALIASES: dict[str, TenureRegime] = {
+# Spanish labels of the contract and the system codes: always a regime, whatever the current
+# correspondences say.
+CONTRACT_TENURE_LABELS: dict[str, TenureRegime] = {
     **{_fold(regime.value): regime for regime in TenureRegime},
-    "propiedad": TenureRegime.OWNED,
-    "propio": TenureRegime.OWNED,
-    "comodato": TenureRegime.LOAN_FOR_USE,
-    "prestamo temporal": TenureRegime.TEMPORARY_LOAN,
+    **{_fold(label): regime for regime, label in TENURE_REGIME_LABELS.items()},
 }
+# The regime chosen for a whole batch (``defaults``) is a closed choice: the contract labels and
+# ``propio``. Acquisition methods (``Custodia``) only stand for a regime in a row, through the
+# administrable ``tenure_aliases`` (ajustes-lectura-importacion, design D1, D2).
+TENURE_ALIASES: dict[str, TenureRegime] = {**CONTRACT_TENURE_LABELS, "propio": TenureRegime.OWNED}
+
+
+def tenure_from_text(text: str, params: NormalizationParams) -> TenureRegime | None:
+    """The regime a tenure label or an acquisition method stands for: a label of the contract,
+    else the current ``tenure_aliases``; ``None`` when there is no correspondence."""
+    key = _fold(text)
+    if key in CONTRACT_TENURE_LABELS:
+        return CONTRACT_TENURE_LABELS[key]
+    code = params.tenure_aliases.get(key)
+    return TenureRegime.__members__.get(code) if code else None
 
 
 @dataclass(frozen=True)
@@ -518,6 +535,12 @@ class MappedRow:
         default_factory=dict, compare=False, repr=False
     )
     term_matches: dict[str, TermMatches] = field(default_factory=dict, compare=False, repr=False)
+    # Code of the ``ACQUISITION_METHOD`` term matched by the row, if any (stored).
+    acquisition_method: str | None = None
+    # Text of the acquisition method column, to deduce the regime (preview only).
+    acquisition_text: str | None = field(default=None, compare=False, repr=False)
+    # Findings to review that do not block the row (stored in ``mapped_data``).
+    warnings: list[RowError] = field(default_factory=list)
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -546,6 +569,10 @@ class MappedRow:
         }
         if self.defaulted:
             data["defaulted"] = list(self.defaulted)
+        if self.acquisition_method:
+            data["acquisition_method"] = self.acquisition_method
+        if self.warnings:
+            data["warnings"] = [warning.as_json() for warning in self.warnings]
         return data
 
     @classmethod
@@ -569,6 +596,11 @@ class MappedRow:
             collection_id=uuid.UUID(collection_id) if collection_id else None,
             tenure_regime=TenureRegime(tenure) if tenure else None,
             defaulted=list(data.get("defaulted") or []),  # absent in rows stored before
+            acquisition_method=data.get("acquisition_method"),
+            warnings=[
+                RowError(item["code"], item["message"], item.get("field"))
+                for item in data.get("warnings") or []
+            ],
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -870,21 +902,7 @@ def apply_mapping(
     if mapped.fields.get("denomination") is None and denomination_default:
         mapped.fields["denomination"] = denomination_default
         mapped.defaulted.append("denomination")
-    tenure = mapped.fields.get("tenure_regime")
-    if not tenure and plan.defaults.get("tenure_regime"):
-        tenure = plan.defaults["tenure_regime"]
-        mapped.defaulted.append("tenure_regime")
-    if tenure is not None:
-        mapped.tenure_regime = TENURE_ALIASES.get(_fold(tenure))
-        if mapped.tenure_regime is None:
-            mapped.errors.append(
-                RowError(
-                    "invalid_tenure_regime",
-                    f"«{tenure}» no es un régimen de tenencia (Propiedad, Comodato o "
-                    "Préstamo Temporal).",
-                    "tenure_regime",
-                )
-            )
+    _resolve_tenure(mapped, plan, ctx)
     collection = mapped.fields.get("collection")
     if not collection and plan.defaults.get("collection"):
         collection = plan.defaults["collection"]
@@ -900,6 +918,58 @@ def apply_mapping(
                 )
             )
     return mapped
+
+
+def _resolve_tenure(mapped: MappedRow, plan: "_Plan", ctx: MappingContext) -> None:
+    """Regime of the row (ajustes-lectura-importacion, design D2): the explicit one, else the
+    one its acquisition method stands for, else the default of the mapping. An explicit regime
+    that the acquisition method contradicts is kept with a warning."""
+    params = ctx.params
+    explicit = mapped.fields.get("tenure_regime")
+    acquisition = mapped.acquisition_text
+    deduced = tenure_from_text(acquisition, params) if acquisition else None
+    if explicit:
+        mapped.tenure_regime = tenure_from_text(str(explicit), params)
+        if mapped.tenure_regime is None:
+            mapped.errors.append(_invalid_tenure(str(explicit)))
+        elif deduced is not None and deduced != mapped.tenure_regime:
+            mapped.warnings.append(
+                RowError(
+                    "acquisition_regime_mismatch",
+                    f"La forma de adquisición «{acquisition}» indica "
+                    f"{TENURE_REGIME_LABELS[deduced]}, pero la fila dice "
+                    f"{TENURE_REGIME_LABELS[mapped.tenure_regime]}: revise el régimen.",
+                    "tenure_regime",
+                )
+            )
+        return
+    if deduced is not None:
+        mapped.tenure_regime = deduced
+        return
+    tenure = plan.defaults.get("tenure_regime")
+    if tenure:
+        mapped.defaulted.append("tenure_regime")
+        mapped.tenure_regime = TENURE_ALIASES.get(_fold(tenure))
+        if mapped.tenure_regime is None:
+            mapped.errors.append(_invalid_tenure(tenure))
+        return
+    if acquisition:
+        mapped.errors.append(
+            RowError(
+                "acquisition_without_regime",
+                f"No se puede deducir el régimen de «{acquisition}»: agregue la correspondencia "
+                "en Administración › Lectura de códigos o elija un régimen para el lote.",
+                "tenure_regime",
+            )
+        )
+
+
+def _invalid_tenure(text: str) -> RowError:
+    return RowError(
+        "invalid_tenure_regime",
+        f"«{text}» no es un régimen de tenencia (Propiedad, Comodato o Préstamo Temporal).",
+        "tenure_regime",
+    )
 
 
 def _map_value(
@@ -938,7 +1008,13 @@ def _map_value(
             for part in _parts(value):
                 mapped.identifiers += _identifiers(_text(part), legacy, ctx)
     elif isinstance(target, TermsTarget):
-        mapped.term_matches[column.source] = _match_terms(target.vocabulary, value, ctx)
+        matches = _match_terms(target.vocabulary, value, ctx)
+        mapped.term_matches[column.source] = matches
+        if target.vocabulary == ACQUISITION_VOCABULARY:
+            if matches.matched:
+                mapped.acquisition_method = mapped.acquisition_method or matches.matched[0][1]
+            texts = [_text(part) for part in _parts(value)]
+            mapped.acquisition_text = mapped.acquisition_text or next(filter(None, texts), None)
 
 
 def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:

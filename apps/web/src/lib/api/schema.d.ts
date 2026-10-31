@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 18cef6fb1bfbdea4a0c7c2fda28914f48cdd5d97043f39ccd6c87ddb18c8e10a
+ * openapi-sha256: 1f8f4a3d98d2f51f5a64ee276bff69582f86d56d3228b29abb1ac267bc73f33b
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1184,7 +1184,7 @@ export interface paths {
         };
         /**
          * Parámetro de normalización vigente (RN-010)
-         * @description Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.
+         * @description Marcadores de ausencia (`absence_markers`), separadores de códigos concatenados (`concatenation_separators`) o correspondencias forma de adquisición → régimen (`tenure_aliases`); sin valor guardado, el del código.
          */
         get: operations["getNormalizationSetting"];
         /**
@@ -5273,14 +5273,16 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "absence_markers" | "concatenation_separators";
+            key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             /** Updated At */
             updated_at: string | null;
             /**
              * Value
-             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.
+             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. `tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae.
              */
-            value: string[] | components["schemas"]["ConcatenationSeparators"];
+            value: string[] | components["schemas"]["ConcatenationSeparators"] | {
+                [key: string]: string;
+            };
         };
         /**
          * NormalizationSettingUpdate
@@ -5296,7 +5298,9 @@ export interface components {
          */
         NormalizationSettingUpdate: {
             /** Value */
-            value: string[] | components["schemas"]["ConcatenationSeparators"];
+            value: string[] | components["schemas"]["ConcatenationSeparators"] | {
+                [key: string]: string;
+            };
         };
         /**
          * NormalizationStatus
@@ -11928,7 +11932,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             };
             cookie?: never;
         };
@@ -11977,7 +11981,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             };
             cookie?: never;
         };

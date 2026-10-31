@@ -158,6 +158,17 @@ Son los caracteres que separan varios códigos escritos en una misma celda («I-
 - En **Marcadores que no se separan** están los textos que se mantienen enteros aunque lleven un separador (S/N, S/C).
 - Pulse **Guardar cambios** o **Descartar**.
 
+### Forma de adquisición → régimen
+
+Al importar, si una fila no dice su **régimen de tenencia** pero sí su **forma de adquisición**, el sistema deduce el régimen con esta tabla. Por ejemplo, «Cesión de uso» y «Custodia» se importan como **Comodato** (respuesta del museo, 31 de octubre de 2026), y «Donación» o «Compra» como **Propiedad**.
+
+> **[SUPUESTO]** Que Donación, Compra, Legado y Transferencia interna sean siempre Propiedad está por confirmar con el museo.
+
+1. Para agregar una forma de adquisición, escríbala en **Forma de adquisición**, elija el **Régimen** y pulse **Añadir**. Para cambiar el régimen de una existente, elíjalo en su lista; para quitarla, use su ✕.
+2. Pulse **Guardar cambios** o **Descartar**.
+
+Las formas de adquisición se comparan sin tildes, mayúsculas ni espacios de más: «Cesión de Uso» y «cesion de uso» son la misma. Si una fila trae régimen **y** forma de adquisición y no coinciden, se conserva el régimen de la fila y la revisión la marca con un aviso amarillo para revisarla. Si la forma de adquisición no está en la tabla y el lote no tiene régimen elegido, la fila sale con el error «No se puede deducir el régimen…»: agréguela aquí y vuelva a validar el lote.
+
 ### Siglas históricas de colección
 
 Una sigla histórica es otra sigla con la que se escribió una colección en registros antiguos. Una vez registrada, el sistema la reconoce como la sigla actual: por ejemplo, con «REP» → colección LRM, el código «REP 12» se entiende como «LRM 12» en la búsqueda, en la ficha y en la importación.
