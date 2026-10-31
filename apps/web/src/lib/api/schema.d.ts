@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 671eba9ff4127bc9e4df275a46a6ec87eff9baa516fb8ef5fc717c43f64debef
+ * openapi-sha256: b9df8f72260a859ce065cef1f20609d5609131ff93d5fd2c9ce63b1f041c8713
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2545,7 +2545,7 @@ export interface components {
         BatchEnrichRequest: {
             /**
              * Piece Ids
-             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             * @description Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -2681,7 +2681,7 @@ export interface components {
         BulkDownloadRequest: {
             /**
              * Piece Ids
-             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             * @description Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };

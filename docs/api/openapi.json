@@ -1161,12 +1161,11 @@
         ],
         "properties": {
           "piece_ids": {
-            "description": "Piezas sin descripción [SUPUESTO M1: máximo 50].",
+            "description": "Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.",
             "items": {
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 50,
             "minItems": 1,
             "title": "Piece Ids",
             "type": "array"
@@ -1437,12 +1436,11 @@
         ],
         "properties": {
           "piece_ids": {
-            "description": "Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+            "description": "Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.",
             "items": {
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 200,
             "minItems": 1,
             "title": "Piece Ids",
             "type": "array"

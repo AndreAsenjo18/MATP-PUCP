@@ -15,6 +15,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.batch_limits import ensure_batch_size
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import PHOTO_VIEW_TYPE_LABELS, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
@@ -203,12 +204,24 @@ def upload_media_asset(
     )
 
 
+def bulk_download_body(request: Request, body: BulkDownloadRequest) -> BulkDownloadRequest:
+    """The package within ``MEDIA_BULK_DOWNLOAD_MAX_PIECES`` (task 1.2) [SUPUESTO AA1].
+
+    A dependency, so the stub stays a stub: the size is checked before the route is reached.
+    """
+    limit = request.app.state.settings.media_bulk_download_max_pieces
+    ensure_batch_size(len(body.piece_ids), limit, "Un paquete de fotos")
+    return body
+
+
 @router.post(
     "/media/bulk-download",
     response_model=BulkDownloadJob,
     summary="Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
     **stub(CHANGE_BULK),
 )
-def bulk_download_media(body: BulkDownloadRequest, user: Exporter) -> BulkDownloadJob:
+def bulk_download_media(
+    user: Exporter, body: Annotated[BulkDownloadRequest, Depends(bulk_download_body)]
+) -> BulkDownloadJob:
     """Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera."""
     raise not_implemented(CHANGE_BULK, BulkDownloadJob)

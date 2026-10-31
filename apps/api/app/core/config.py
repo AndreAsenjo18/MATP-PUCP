@@ -123,6 +123,10 @@ class Settings(BaseSettings):
     # photos of abandoned batches, or discarded ones, keep their files.
     import_max_photos: int = Field(5_000, ge=1)
     import_photo_retention_days: int = Field(30, ge=1)
+    # Bulk operations (descargas-masivas-y-enriquecimiento-lote, D1) [SUPUESTO AA1]: pieces per
+    # photo package and per AI batch of preliminary descriptions.
+    media_bulk_download_max_pieces: int = Field(200, ge=1)
+    ai_batch_enrich_max_pieces: int = Field(50, ge=1)
 
     @property
     def cors_origin_list(self) -> list[str]:
