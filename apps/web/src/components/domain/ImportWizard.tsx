@@ -22,30 +22,31 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import {
-  PROGRESS_STEPS,
-  TENURE_DEFAULT_OPTIONS,
   acceptBlocker,
   actionLabel,
+  type ApprovalSummary,
   batchStateText,
   candidatePieces,
   conflictingRows,
   fieldAction,
-  fieldLabel,
-  needsResolution,
-  plainMessage,
-  progressText,
-  stageFraction,
-  summarySentence,
-  validationHint,
-  type ApprovalSummary,
   type FieldAction,
+  fieldLabel,
   type ImportBatch,
   type ImportImage,
   type ImportLog,
   type ImportRow,
+  needsResolution,
+  plainMessage,
+  PROGRESS_STEPS,
+  progressText,
   type RevertConflict,
   type RowClassification,
   type RowDecisionInput,
+  rowWarnings,
+  stageFraction,
+  summarySentence,
+  TENURE_DEFAULT_OPTIONS,
+  validationHint,
 } from "@/lib/data/imports";
 
 export function ImportSteps({ current, complete = false }: { current: number; complete?: boolean }) {
@@ -216,6 +217,7 @@ export function ImportRowCard({
     .filter(isRecordLike)
     .map((error) => ({ message: plainMessage(String(error.message ?? "")), hint: validationHint(error.code)?.hint ?? null }))
     .filter((error) => error.message);
+  const warnings = rowWarnings(row);
   const blockerId = `fila-${row.id}-bloqueo`;
   const dataEntries = Object.entries(row.raw_data).filter(([key]) => !key.startsWith("__"));
 
@@ -248,6 +250,13 @@ export function ImportRowCard({
               <span className="font-medium">{error.message}</span>
               {error.hint && <span className="block text-tinta">{error.hint}</span>}
             </li>
+          ))}
+        </ul>
+      )}
+      {warnings.length > 0 && (
+        <ul className="flex flex-col gap-1.5 rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto" aria-label="Advertencias de la fila">
+          {warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
           ))}
         </ul>
       )}

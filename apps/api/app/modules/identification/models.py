@@ -109,6 +109,8 @@ class PieceIdentifier(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base
 
 ABSENCE_MARKERS_KEY = "absence_markers"
 CONCATENATION_SEPARATORS_KEY = "concatenation_separators"
+# Folded acquisition label -> tenure regime code (ajustes-lectura-importacion, design D1).
+TENURE_ALIASES_KEY = "tenure_aliases"
 
 
 class NormalizationSetting(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):

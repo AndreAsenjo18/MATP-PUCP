@@ -150,6 +150,30 @@ def split_regex(separators: tuple[str, ...], unsplit_markers: tuple[str, ...]) -
 _SPLIT_RE = split_regex(DEFAULT_SEPARATORS, DEFAULT_UNSPLIT_MARKERS)
 
 
+def fold_label(text: str) -> str:
+    """How a label is compared: lowercase, without accents, inner whitespace collapsed."""
+    folded = unicodedata.normalize("NFKD", text.strip().casefold())
+    return " ".join("".join(c for c in folded if not unicodedata.combining(c)).split())
+
+
+# Acquisition method (or tenure label) -> tenure regime code, used when importing a row without
+# an explicit regime (change ajustes-lectura-importacion, design D1). «Cesión de uso» and
+# «Custodia» are comodato (museum's answer to L5, 2026-10-31); the owned ones are [SUPUESTO].
+# Migration 0018 copies these values into ``normalization_setting``.
+DEFAULT_TENURE_ALIASES: Mapping[str, str] = {
+    "propiedad": "OWNED",
+    "propio": "OWNED",
+    "donacion": "OWNED",
+    "compra": "OWNED",
+    "legado": "OWNED",
+    "transferencia interna": "OWNED",
+    "comodato": "LOAN_FOR_USE",
+    "cesion de uso": "LOAN_FOR_USE",
+    "custodia": "LOAN_FOR_USE",
+    "prestamo temporal": "TEMPORARY_LOAN",
+}
+
+
 @dataclass(frozen=True)
 class NormalizationParams:
     """Current values of the normalization parameters (design D5).
@@ -165,6 +189,8 @@ class NormalizationParams:
     unsplit_markers: tuple[str, ...] = DEFAULT_UNSPLIT_MARKERS
     acronym_aliases: Mapping[str, str] = field(default_factory=dict)
     alias_collection_ids: Mapping[str, uuid.UUID] = field(default_factory=dict)
+    # Folded label -> tenure regime code (``fold_label`` keys).
+    tenure_aliases: Mapping[str, str] = field(default_factory=lambda: dict(DEFAULT_TENURE_ALIASES))
 
     @staticmethod
     def marker_key(marker: str) -> str:

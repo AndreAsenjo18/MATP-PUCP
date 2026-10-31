@@ -485,6 +485,15 @@ const FIELD_LABELS: Record<string, string> = Object.fromEntries(
   ],
 );
 
+/** Advertencias de una fila que no impiden aceptarla (p. ej. régimen que contradice la forma de adquisición). */
+export function rowWarnings(row: { mapped_data?: unknown }): string[] {
+  const data = isRecord(row.mapped_data) ? row.mapped_data : null;
+  const warnings = data && Array.isArray(data.warnings) ? data.warnings : [];
+  return warnings
+    .map((warning) => (isRecord(warning) && typeof warning.message === "string" ? plainMessage(warning.message) : ""))
+    .filter(Boolean);
+}
+
 /** «provenance» → «Procedencia»; un campo desconocido se muestra tal cual. */
 export function fieldLabel(field: string): string {
   return FIELD_LABELS[field] ?? field;

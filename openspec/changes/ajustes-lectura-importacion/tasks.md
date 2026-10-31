@@ -1,8 +1,8 @@
 ## 1. Régimen desde la forma de adquisición
 
 - [x] 1.1 Verificar con una prueba que una columna mapeada a `terms:ACQUISITION_METHOD` llena `Piece.acquisition_method_term_id` al aplicar; si no, completarlo en `imports/apply.py` (Req: Régimen deducido de la forma de adquisición)
-- [ ] 1.2 Migración de datos con `tenure_aliases` en `normalization_setting` y lectura en `NormalizationParams`, con `TENURE_ALIASES` como respaldo; pruebas de migración y de lectura (Req: Régimen deducido…; D1)
-- [ ] 1.3 Deducción en `imports/mapping.py` según D2 (explícito, deducido con término, por defecto, error) y advertencia de discrepancia; pruebas de los cinco escenarios del requirement (Req: Régimen deducido…)
+- [x] 1.2 Migración de datos con `tenure_aliases` en `normalization_setting` y lectura en `NormalizationParams`, con `TENURE_ALIASES` como respaldo; pruebas de migración y de lectura (Req: Régimen deducido…; D1)
+- [x] 1.3 Deducción en `imports/mapping.py` según D2 (explícito, deducido con término, por defecto, error) y advertencia de discrepancia; pruebas de los cinco escenarios del requirement (Req: Régimen deducido…)
 - [ ] 1.4 Validación al guardar correspondencias (`PUT` de parámetros de normalización) y auditoría; pruebas: régimen inexistente 422, cambio auditado (Req: Régimen deducido… — escenario «Correspondencia editada por el Administrador»)
 - [ ] 1.5 Seed: «Cesión de uso» y «Custodia» en `ACQUISITION_METHOD` (`app/seed/reference.py`); prueba de seed idempotente (Req: Régimen deducido…)
 - [ ] 1.6 Sección «Forma de adquisición → régimen» en Administración › Lectura de códigos (tabla editable); prueba de componente (Req: Régimen deducido…; RNF-010)
