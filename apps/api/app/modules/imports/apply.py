@@ -300,13 +300,30 @@ def _delete_uploads_after_commit(
     event.listen(session, "after_commit", on_commit, once=True)
 
 
+def _replaced(session: Session, photos: Sequence[ImportPhoto]) -> dict[uuid.UUID, list[str]]:
+    """Paths of the lower resolution versions discarded in favour of each photo (D6)."""
+    replaced: dict[uuid.UUID, list[str]] = {}
+    ids = [photo.id for photo in photos]
+    if not ids:
+        return replaced
+    for kept, path in session.execute(
+        select(ImportPhoto.same_as_photo_id, ImportPhoto.relative_path)
+        .where(ImportPhoto.same_as_photo_id.in_(ids), ImportPhoto.status == P.DISCARDED)
+        .order_by(ImportPhoto.relative_path)
+    ):
+        replaced.setdefault(kept, []).append(path)
+    return replaced
+
+
 def _register_photos(
     session: Session,
     piece: Piece,
     photos: Sequence[ImportPhoto],
     view_type: uuid.UUID | None,
     displays: dict[uuid.UUID, StoredCopy],
+    batch_name: str | None = None,
 ) -> None:
+    replaced = _replaced(session, photos)
     for photo in photos:
         asset = register_from_import(
             session,
@@ -315,6 +332,8 @@ def _register_photos(
             storage_key=upload_key(photo),
             view_type_term_id=view_type,
             display=displays.get(photo.id),
+            batch_name=batch_name,
+            replaced_lower_resolution=replaced.get(photo.id, ()),
         )
         photo.status = P.APPLIED
         photo.media_asset_id = asset.id
@@ -390,7 +409,9 @@ def apply_batch(
                     )
                 )
                 session.flush()
-                _register_photos(session, piece, photos.get(row.id, ()), view_type, displays)
+                _register_photos(
+                    session, piece, photos.get(row.id, ()), view_type, displays, batch.file_name
+                )
             except DomainError as exc:
                 raise ApplyFailed(
                     f"Fila {row.source_row_number}: {exc.message} No se aplicó ninguna fila.",
@@ -464,7 +485,7 @@ def _apply_photo_batch(
                     details={"piece_id": str(piece_id), "rule": "piece_not_available"},
                 )
             try:
-                _register_photos(session, piece, photos, view_type, displays)
+                _register_photos(session, piece, photos, view_type, displays, batch.file_name)
             except DomainError as exc:
                 raise ApplyFailed(
                     f"Foto «{photos[0].relative_path}»: {exc.message} No se aplicó nada del lote.",

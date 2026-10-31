@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 46e7415ee61f89457140717e3c59918abb4c8e369e1d0ccfa60996eaf297449d
+ * openapi-sha256: 4c80a5b6d8366a3535d0e746898c3f80684698004f491faf5885a9d0c9fcdc3c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -5222,6 +5222,8 @@ export interface components {
              * Format: uuid
              */
             piece_id: string;
+            /** @description Procedencia de la foto; no se puede editar (RF-046, RN-005). */
+            provenance?: components["schemas"]["MediaProvenance"] | null;
             /** Restriction Note */
             restriction_note: string | null;
             /** Size Bytes */
@@ -5253,6 +5255,35 @@ export interface components {
             usage_restriction_term_id?: string | null;
             /** View Type Term Id */
             view_type_term_id?: string | null;
+        };
+        /**
+         * MediaProvenance
+         * @description Where a photo came from, read only (spec multimedia, «Procedencia visible de las
+         *     fotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005).
+         */
+        MediaProvenance: {
+            /** Import Batch Id */
+            import_batch_id?: string | null;
+            /** Import Batch Name */
+            import_batch_name?: string | null;
+            /** Original Filename */
+            original_filename?: string | null;
+            /**
+             * Relative Path
+             * @description Carpeta y nombre con que se subió.
+             */
+            relative_path?: string | null;
+            /**
+             * Replaced Lower Resolution
+             * @description Rutas de las versiones de menor resolución que se descartaron en su lugar.
+             */
+            replaced_lower_resolution?: string[];
+            /**
+             * Source
+             * @description `import`: aplicada desde un lote de importación; `manual`: subida desde la ficha.
+             * @enum {string}
+             */
+            source: "import" | "manual";
         };
         /**
          * MergedFrom

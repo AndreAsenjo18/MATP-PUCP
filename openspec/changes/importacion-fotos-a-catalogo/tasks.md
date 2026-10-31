@@ -42,7 +42,7 @@
 
 - [x] 6.1 `apply_batch` para `PHOTOS`: fotos por pieza en orden, verificación `HEAD`, mismo `change_set`; pruebas: aplicar y revertir sin tocar fotos anteriores, fotos sin asignar no se aplican, objeto faltante → `FAILED_APPLY` (Req: Lote de solo fotografías…; D9)
 - [x] 6.2 Aviso previo a aprobar (sin asignar, repetidas sin confirmar, colecciones pendientes de confirmar, `partial_codes`) en el resumen del lote; prueba de conteos (Req: Lote de solo fotografías… — escenario «Foto sin pieza al aprobar»)
-- [ ] 6.3 `extra_metadata` con `import_batch_name` y `replaced_lower_resolution`; `provenance` de solo lectura en la galería; pruebas: foto de lote, foto subida a mano, `PATCH` que intenta cambiarla (Req: Procedencia visible de las fotografías importadas)
+- [x] 6.3 `extra_metadata` con `import_batch_name` y `replaced_lower_resolution`; `provenance` de solo lectura en la galería; pruebas: foto de lote, foto subida a mano, `PATCH` que intenta cambiarla (Req: Procedencia visible de las fotografías importadas)
 
 ## 7. Frontend (`apps/web`)
 
@@ -50,7 +50,7 @@
 - [x] 7.2 Entrada «Importar fotografías al catálogo» y paso 1 «Subir carpeta» reutilizando `lib/data/importPhotos.ts`; prueba de componente (Req: Lote de solo fotografías…)
 - [x] 7.3 Paso 2 «Cómo se leen los nombres»: árbol de carpetas, forma de lectura, editor de plantilla con chips, colección pista y vista previa en vivo; pruebas de componente (Req: Forma de lectura…; Req: Colección de la carpeta…)
 - [x] 7.4 Paso 3 «Revisar y aprobar»: cuadrícula con filtros, selección múltiple (Mayús + clic, toda la carpeta), «Asignar a pieza…» con `/search`, panel lateral de comparación y aviso de aprobación; pruebas de componente y de teclado (Req: Asignación manual…; RNF-010)
-- [ ] 7.5 Procedencia en la galería de la ficha; prueba de componente (Req: Procedencia visible…)
+- [x] 7.5 Procedencia en la galería de la ficha; prueba de componente (Req: Procedencia visible…)
 
 ## 8. Cierre del change
 

@@ -39,3 +39,24 @@ export function restrictionLabel(asset: Pick<PieceMedia, "usage_restriction" | "
   if (!restriction || restriction.code === "SIN_RESTRICCION") return null;
   return asset.restriction_note ? `${restriction.label}: ${asset.restriction_note}` : restriction.label;
 }
+
+/**
+ * Procedencia de la foto, de solo lectura (change `importacion-fotos-a-catalogo`, tarea 7.5; spec
+ * multimedia, «Procedencia visible de las fotografías importadas»): la ruta y el lote de una foto
+ * importada, y la versión de menor resolución que reemplazó; o que se subió desde la ficha.
+ */
+export function provenanceText(asset: Pick<PieceMedia, "provenance" | "original_filename">): string | null {
+  const provenance = asset.provenance;
+  if (!provenance) return null;
+  if (provenance.source === "manual") {
+    const name = provenance.original_filename ?? asset.original_filename;
+    return name ? `${name} · subida desde la ficha` : "Subida desde la ficha";
+  }
+  const parts = [
+    provenance.relative_path ?? provenance.original_filename ?? asset.original_filename,
+    provenance.import_batch_name ? `lote «${provenance.import_batch_name}»` : "lote de importación",
+  ];
+  const replaced = provenance.replaced_lower_resolution ?? [];
+  if (replaced.length > 0) parts.push(`reemplazó a la versión de menor resolución ${replaced.join(", ")}`);
+  return parts.filter(Boolean).join(" · ");
+}

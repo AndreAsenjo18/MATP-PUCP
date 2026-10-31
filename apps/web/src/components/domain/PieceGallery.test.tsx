@@ -111,3 +111,36 @@ describe("capa de datos de la galería", () => {
     expect(await fetchPieceMedia(PIECE)).toEqual({ status: "error", message: "No se pudieron cargar las fotografías. Intente nuevamente." });
   });
 });
+
+describe("procedencia de la foto (importacion-fotos-a-catalogo, tarea 7.5)", () => {
+  it("una foto del archivo muestra su ruta, su lote y la versión que reemplazó", () => {
+    const imported = photo("alta", {
+      is_primary: true,
+      provenance: {
+        source: "import",
+        original_filename: "82LF4169 copy.jpg",
+        relative_path: "FOTOS/ALTAS/82LF4169 copy.jpg",
+        import_batch_id: "01920000-0000-7000-8000-000000000912",
+        import_batch_name: "Lote 12 sintético",
+        replaced_lower_resolution: ["FOTOS/82LF4169.jpg"],
+      },
+    });
+
+    const text = visibleText(render(<PieceGalleryView media={[imported]} pieceTitle="Toro sintético" selectedId={null} onSelect={() => {}} />));
+
+    expect(text).toContain(
+      "Procedencia: FOTOS/ALTAS/82LF4169 copy.jpg · lote «Lote 12 sintético» · reemplazó a la versión de menor resolución FOTOS/82LF4169.jpg",
+    );
+  });
+
+  it("una foto subida a mano lo dice, y sin procedencia no se muestra nada", () => {
+    const manual = photo("frente", { is_primary: true, provenance: { source: "manual", original_filename: "frente.jpg", replaced_lower_resolution: [] } });
+
+    expect(visibleText(render(<PieceGalleryView media={[manual]} pieceTitle="Toro" selectedId={null} onSelect={() => {}} />))).toContain(
+      "Procedencia: frente.jpg · subida desde la ficha",
+    );
+    expect(visibleText(render(<PieceGalleryView media={[photo("x", { is_primary: true })]} pieceTitle="Toro" selectedId={null} onSelect={() => {}} />))).not.toContain(
+      "Procedencia",
+    );
+  });
+});

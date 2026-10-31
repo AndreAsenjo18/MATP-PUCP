@@ -27,6 +27,7 @@ from app.modules.catalog.queries import get_piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import BulkDownloadJob, BulkDownloadRequest, MediaAssetOut
+from app.modules.media.service import provenance_of
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Multimedia"])
 
@@ -200,6 +201,7 @@ def upload_media_asset(
         restriction_note=asset.restriction_note,
         download_url=None,
         created_at=asset.created_at,
+        provenance=provenance_of(asset),
     )
 
 

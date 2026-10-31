@@ -6667,6 +6667,17 @@
             "title": "Piece Id",
             "type": "string"
           },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Procedencia de la foto; no se puede editar (RF-046, RN-005)."
+          },
           "restriction_note": {
             "anyOf": [
               {
@@ -6825,6 +6836,79 @@
           }
         },
         "title": "MediaAssetUpdate",
+        "type": "object"
+      },
+      "MediaProvenance": {
+        "description": "Where a photo came from, read only (spec multimedia, «Procedencia visible de las\nfotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005).",
+        "properties": {
+          "import_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Batch Id"
+          },
+          "import_batch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Batch Name"
+          },
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename"
+          },
+          "relative_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Carpeta y nombre con que se subió.",
+            "title": "Relative Path"
+          },
+          "replaced_lower_resolution": {
+            "description": "Rutas de las versiones de menor resolución que se descartaron en su lugar.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Replaced Lower Resolution",
+            "type": "array"
+          },
+          "source": {
+            "description": "`import`: aplicada desde un lote de importación; `manual`: subida desde la ficha.",
+            "enum": [
+              "import",
+              "manual"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "MediaProvenance",
         "type": "object"
       },
       "MergedFrom": {
