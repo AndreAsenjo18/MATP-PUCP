@@ -24,6 +24,7 @@ from app.modules.identification.normalization import canonical
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
     TERMS_TARGET,
+    ColumnSpecV1,
     FieldTarget,
     IdentifiersTarget,
     IdentifierTarget,
@@ -209,14 +210,56 @@ def update_template(
     return template
 
 
+def column_keys(column: ColumnSpecV1) -> list[str]:
+    """``header_key`` of the source and the aliases of a template column, in order."""
+    keys = [header_key(column.source)]
+    for alias in column.aliases or ():
+        if (key := header_key(alias)) and key not in keys:
+            keys.append(key)
+    return keys
+
+
+def resolve_columns(spec: MappingSpecV1, headers: Sequence[str]) -> MappingSpecV1:
+    """A template spec linked to a file (change formatos-reales-importacion, design D1): each
+    column takes the first file header that matches its source or an alias; an optional column
+    the file lacks is left out. Other missing columns stay, so validation reports them."""
+    by_key: dict[str, str] = {}
+    for header in headers:
+        by_key.setdefault(header_key(header), header)
+    columns = []
+    taken: set[str] = set()
+    for column in spec.columns:
+        found = next(
+            (
+                by_key[key]
+                for key in column_keys(column)
+                if key in by_key and by_key[key] not in taken
+            ),
+            None,
+        )
+        if found is None:
+            if not column.optional:
+                columns.append(column)
+            continue
+        taken.add(found)
+        linked = {"source": found, "aliases": None, "optional": None}
+        columns.append(column.model_copy(update=linked))
+    return spec.model_copy(update={"columns": columns})
+
+
 def batch_spec(
-    session: Session, template_id: uuid.UUID, defaults: Mapping[str, str] | None = None
+    session: Session,
+    template_id: uuid.UUID,
+    defaults: Mapping[str, str] | None = None,
+    headers: Sequence[str] | None = None,
 ) -> MappingSpec:
     """Phase 2 of design D1: the active template as the v1 mapping of a batch, with the
-    defaults of the request over its own."""
+    defaults of the request over its own, linked to the headers of the file when given."""
     template = get_template(session, template_id)
     try:
         spec = with_defaults(read_mapping(template.mapping), defaults or {})
+        if headers is not None:
+            spec = resolve_columns(spec, headers)
     except MappingConversionError as exc:
         raise ValidationFailed(
             exc.message,
@@ -272,6 +315,31 @@ def similarity(template_keys: set[str], file_keys: set[str]) -> float:
     return 0.5 * jaccard + 0.5 * sum(best) / len(best)
 
 
+def aliased(template: ImportMappingTemplate) -> set[str]:
+    """Every header key a template column answers to: sources and aliases."""
+    return {key for column in read_mapping(template.mapping).columns for key in column_keys(column)}
+
+
+def _template_view(
+    columns: Sequence[ColumnSpecV1], file_headers: Mapping[str, str]
+) -> tuple[dict[str, str], set[str]]:
+    """The template headers to score against a file and the file keys as the template sees
+    them (design D1): a file header that matches an alias counts as the column's source, and an
+    optional column the file lacks does not count against the template."""
+    template_headers: dict[str, str] = {}
+    file_keys = set(file_headers)
+    for column in columns:
+        keys = column_keys(column)
+        present = next((key for key in keys if key in file_headers), None)
+        if present is None and column.optional:
+            continue
+        template_headers.setdefault(keys[0], column.source)
+        if present is not None:
+            file_keys.discard(present)
+            file_keys.add(keys[0])
+    return template_headers, file_keys
+
+
 def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggestion]:
     """Up to ``SUGGEST_LIMIT`` active templates scoring at least ``SUGGEST_THRESHOLD``, best
     first. A template's headers are the source columns of its mapping [SUPUESTO T1]; the same
@@ -283,17 +351,21 @@ def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggesti
         if template.header_signature == signature:
             suggestions.append(Suggestion(template, 1.0, [], []))
             continue
-        template_headers = _by_key(
-            [column.source for column in read_mapping(template.mapping).columns]
+        template_headers, file_keys = _template_view(
+            read_mapping(template.mapping).columns, file_headers
         )
-        score = similarity(set(template_headers), set(file_headers))
+        score = similarity(set(template_headers), file_keys)
         if score >= SUGGEST_THRESHOLD:
             suggestions.append(
                 Suggestion(
                     template,
                     round(score, 4),
-                    [name for key, name in template_headers.items() if key not in file_headers],
-                    [name for key, name in file_headers.items() if key not in template_headers],
+                    [name for key, name in template_headers.items() if key not in file_keys],
+                    [
+                        name
+                        for key, name in file_headers.items()
+                        if key not in template_headers and key not in aliased(template)
+                    ],
                 )
             )
     suggestions.sort(key=lambda item: (-item.score, header_key(item.template.name)))

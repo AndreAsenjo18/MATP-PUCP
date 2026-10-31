@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from app.api.enums import TENURE_REGIME_LABELS
 from app.modules.catalog.enums import TenureRegime
-from app.modules.collections.models import Term, Vocabulary
+from app.modules.collections.models import Collection, Term, Vocabulary
 from app.modules.collections.service import find_collection_by_code
 from app.modules.identification.models import (
     IdentifierType,
@@ -89,6 +89,12 @@ DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
 DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
 PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"})
+
+
+def _collection_name_key(name: str) -> str:
+    """A collection name as the files write it: without accents, case nor «Colección»."""
+    words = [word for word in _fold(name).split() if word not in ("coleccion", "colecciones")]
+    return " ".join(words)
 
 
 def _fold(text: str) -> str:
@@ -225,6 +231,13 @@ class ColumnSpecV1(_Strict):
     target: ColumnTarget
     transforms: list[str] = Field(default_factory=list)
     value_map: dict[str, str] | None = None
+    # Other names of the same column in variants of a format, compared with ``header_key``
+    # (change formatos-reales-importacion, design D1). A template applied to a file links the
+    # column to the first file header that matches ``source`` or an alias.
+    aliases: list[str] | None = None
+    # A template column a variant may lack: applying the template to a file without it leaves
+    # it out instead of rejecting the mapping (``unknown_column``).
+    optional: bool | None = None
 
     @model_validator(mode="after")
     def _known_transforms(self) -> "ColumnSpecV1":
@@ -456,6 +469,7 @@ class MappingContext:
             code for code, _rule, active in rows if not active
         )
         self._collections: dict[str, uuid.UUID | None] = {}
+        self._names: dict[str, list[uuid.UUID]] | None = None
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
@@ -465,11 +479,28 @@ class MappingContext:
         return session_params(self._session)
 
     def collection_id(self, code: str) -> uuid.UUID | None:
+        """The collection of an acronym (``MMZ``, a historical one) or, as the museum files write
+        it, of its name without accents nor the word «Colección» (formatos-reales-importacion,
+        design D2); only a single match counts."""
         key = _fold(code)
         if key not in self._collections:
             found = find_collection_by_code(self._session, code)
-            self._collections[key] = found.id if found is not None else None
+            self._collections[key] = (
+                found.id if found is not None else self._collection_by_name(code)
+            )
         return self._collections[key]
+
+    def _collection_by_name(self, name: str) -> uuid.UUID | None:
+        if self._names is None:
+            self._names = {}
+            for collection_id, collection_name in self._session.execute(
+                select(Collection.id, Collection.name).where(Collection.deleted_at.is_(None))
+            ):
+                self._names.setdefault(_collection_name_key(collection_name), []).append(
+                    collection_id
+                )
+        found = self._names.get(_collection_name_key(name), [])
+        return found[0] if len(found) == 1 else None
 
     def vocabulary_terms(self, code: str) -> "dict[str, VocabularyTerm] | None":
         """Terms of a vocabulary by code (active and inactive); None if it does not exist."""

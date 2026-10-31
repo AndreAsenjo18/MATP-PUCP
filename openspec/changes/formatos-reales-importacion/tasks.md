@@ -13,8 +13,8 @@
 
 ## 3. Plantillas reales
 
-- [ ] 3.1 `aliases` en `ColumnSpecV1`, enlace por alias al aplicar y puntaje de sugerencia con alias; pruebas: variante de 46 columnas, columna sin mapear a datos de origen, archivo de otro formato sin sugerencia (Req: Plantillas de los formatos reales del museo con variantes)
-- [ ] 3.2 Plantillas «BD estandarizada 2025» y «Ficha de catalogación RN» en `app/seed/import_templates.py` según D2, retirando las ilustrativas; prueba de seed idempotente y de sugerencia con coincidencia completa sobre el fixture (Req: Plantillas…)
+- [x] 3.1 `aliases` en `ColumnSpecV1`, enlace por alias al aplicar y puntaje de sugerencia con alias; pruebas: variante de 46 columnas, columna sin mapear a datos de origen, archivo de otro formato sin sugerencia (Req: Plantillas de los formatos reales del museo con variantes)
+- [x] 3.2 Plantillas «BD estandarizada 2025» y «Ficha de catalogación RN» en `app/seed/import_templates.py` según D2, retirando las ilustrativas; prueba de seed idempotente y de sugerencia con coincidencia completa sobre el fixture (Req: Plantillas…)
 
 ## 4. Normalización de códigos
 

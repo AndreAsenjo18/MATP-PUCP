@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.core.db import make_session_factory
+from app.core.models_base import new_uuid
 from app.models import (
     AiSuggestion,
     AppUser,
@@ -34,7 +35,11 @@ from app.modules.imports.mapping import (
 from app.modules.imports.templates import header_signature
 from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
 from app.seed.fixtures import HEADERS, write_synthetic_workbook
-from app.seed.import_templates import PREDEFINED_TEMPLATES
+from app.seed.import_templates import (
+    ILLUSTRATIVE_NAMES,
+    PREDEFINED_TEMPLATES,
+    sync_predefined_templates,
+)
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 
 ALL = {INCLUDE_DELETED: True}
@@ -287,24 +292,28 @@ def test_seed_has_a_template_that_recognizes_the_demo_batch(seeded: tuple[Sessio
     )
 
 
-def test_seed_has_one_predefined_template_per_source_the_museum_names(
+def test_seed_has_the_templates_of_the_real_formats_of_the_museum(
     seeded: tuple[Session, Any],
 ) -> None:
-    """Change rediseno-ux-administracion: Administration shows more formats than the sábana ones,
-    each an illustrative [SUPUESTO] v1 template whose mapping is valid for its own headers."""
+    """Change formatos-reales-importacion, task 3.2 (design D2): the two real formats replace the
+    illustrative ones; each mapping is valid for its own headers and maps the denomination."""
     session, _summary = seeded
     stored = {
-        template.name: template for template in session.scalars(select(ImportMappingTemplate)).all()
+        template.name: template
+        for template in session.scalars(
+            select(ImportMappingTemplate).where(ImportMappingTemplate.deleted_at.is_(None))
+        ).all()
     }
 
-    assert len(PREDEFINED_TEMPLATES) == 5
-    assert len({template.name for template in PREDEFINED_TEMPLATES}) == 5
-    assert len({template.source_name for template in PREDEFINED_TEMPLATES}) == 5
+    assert [template.name for template in PREDEFINED_TEMPLATES] == [
+        "BD estandarizada 2025",
+        "Ficha de catalogación RN",
+    ]
+    assert not set(ILLUSTRATIVE_NAMES) & set(stored)
     for predefined in PREDEFINED_TEMPLATES:
         template = stored[predefined.name]
         spec = read_mapping(template.mapping)
 
-        assert "[SUPUESTO]" in (template.description or "")
         assert template.source_name == predefined.source_name
         assert template.header_signature == header_signature(predefined.headers)
         assert isinstance(spec, MappingSpecV1)
@@ -316,8 +325,42 @@ def test_seed_has_one_predefined_template_per_source_the_museum_names(
         )
 
 
+def test_syncing_the_templates_retires_the_illustrative_ones_and_is_idempotent(
+    session: Session, act_as: Any
+) -> None:
+    """An installation seeded before keeps its illustrative templates until ``python -m app.seed
+    --templates``: they are retired logically (RN-005) and the real ones created, once."""
+    with act_as("ADMIN"):
+        session.add(
+            ImportMappingTemplate(
+                id=new_uuid(),
+                name=ILLUSTRATIVE_NAMES[0],
+                source_name="Libro de inventario (sintético)",
+                header_signature="x",
+                mapping={"version": 1, "columns": []},
+            )
+        )
+        session.commit()
+        first = sync_predefined_templates(session)
+        session.commit()
+        second = sync_predefined_templates(session)
+        session.commit()
+
+    assert first == (
+        ["BD estandarizada 2025", "Ficha de catalogación RN"],
+        [ILLUSTRATIVE_NAMES[0]],
+    )
+    assert second == ([], [])
+    retired = session.scalar(
+        select(ImportMappingTemplate)
+        .where(ImportMappingTemplate.name == ILLUSTRATIVE_NAMES[0])
+        .execution_options(**{INCLUDE_DELETED: True})
+    )
+    assert retired is not None and retired.deleted_at is not None
+
+
 def test_the_predefined_templates_do_not_look_alike_so_detection_is_unambiguous() -> None:
-    """A file with the headers of one of the five formats must not reach the suggestion threshold
+    """A file with the headers of one of the formats must not reach the suggestion threshold
     (0.6) of any other format: the wizard applies the best match without asking. (The sábana and
     demo batch formats already share most columns; the wizard picks the best of those.)"""
     from app.modules.imports.templates import SUGGEST_THRESHOLD, header_key, similarity

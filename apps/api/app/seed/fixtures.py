@@ -16,6 +16,7 @@ from openpyxl.drawing.image import Image as XlImage
 
 from app.seed.demo_batch import write_demo_batch
 from app.seed.images import placeholder_photo
+from app.seed.real_formats import write_real_formats
 
 HEADERS = [
     "N°",
@@ -194,4 +195,6 @@ def write_all_fixtures(directory: Path, *, random_seed: int = 20260917) -> list[
         write_latin1_csv(directory),
         # Demo batch with its photo folder (importacion-masiva-fotografias 7.1).
         *write_demo_batch(directory / "lote_demo"),
+        # Real headers with invented values (formatos-reales-importacion 1.2).
+        *write_real_formats(directory / "formatos_reales"),
     ]
