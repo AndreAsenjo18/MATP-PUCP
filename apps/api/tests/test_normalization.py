@@ -12,6 +12,7 @@ from app.modules.identification.normalization import (
     FORMAT_I_NUMBER_ONLY,
     FORMAT_I_PREFIXED,
     FORMAT_INC_4,
+    FORMAT_INC_5,
     FORMAT_INC_6,
     TYPE_COLLECTION,
     TYPE_INC_RN,
@@ -174,6 +175,9 @@ def test_normalize_acronym(raw: str | None, expected: str | None) -> None:
         ("RN 12.345-6", "123456", FORMAT_INC_6),
         ("N° 004521", "004521", FORMAT_INC_6),
         ("0045", "0045", FORMAT_INC_4),
+        ("RN 12345", "12345", FORMAT_INC_5),
+        ("12345", "12345", FORMAT_INC_5),
+        ("INC 12.345", "12345", FORMAT_INC_5),
     ],
 )
 def test_inc_code_formats(raw: str, normalized: str, detected: str) -> None:
@@ -182,12 +186,21 @@ def test_inc_code_formats(raw: str, normalized: str, detected: str) -> None:
     assert result.detected_format == detected
 
 
-@pytest.mark.parametrize("raw", ["???", "12345", "123", "1234567", "INC ABC"])
+@pytest.mark.parametrize("raw", ["???", "RN 123", "123", "1234567", "INC ABC"])
 def test_unparseable_inc_code_is_kept_for_review(raw: str) -> None:
     result = normalize_inc_code(raw)
     assert result.status is NormalizationStatus.UNPARSEABLE
     assert result.normalized is None
     assert result.original == raw
+
+
+def test_five_digit_inc_code_is_not_padded_to_six() -> None:
+    """Escenario «Cinco dígitos no se confunden con seis» (ajustes-lectura-importacion)."""
+    five = normalize_inc_code("RN 12345")
+    six = normalize_inc_code("RN 012345")
+    assert (five.normalized, five.detected_format) == ("12345", FORMAT_INC_5)
+    assert (six.normalized, six.detected_format) == ("012345", FORMAT_INC_6)
+    assert five.normalized != six.normalized
 
 
 # --- N6 generic ---------------------------------------------------------------------------

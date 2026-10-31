@@ -480,6 +480,7 @@ const FIELD_LABELS: Record<string, string> = Object.fromEntries(
     ["lender_name", "Comodante"],
     ["loan_agreement_ref", "Contrato de comodato"],
     ["temporary_inventory_number", "Inventario temporal"],
+    ["acquisition_method", "Forma de adquisición"],
     ["identifiers", "Códigos"],
   ],
 );

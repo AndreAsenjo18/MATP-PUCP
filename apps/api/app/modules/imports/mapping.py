@@ -62,6 +62,10 @@ IDENTIFIER_TARGET = "identifier"
 PAYLOAD_TARGET = "payload"
 # ``target_field: "terms:<VOCABULARIO>"`` in ``ColumnMapping`` (design D1).
 TERMS_TARGET = "terms"
+# The acquisition method is the one ``terms`` column that fills a record field: its matched term
+# becomes ``Piece.acquisition_method_term_id`` (change ajustes-lectura-importacion, task 1.1).
+ACQUISITION_VOCABULARY = "ACQUISITION_METHOD"
+ACQUISITION_TARGET = f"{TERMS_TARGET}:{ACQUISITION_VOCABULARY}"
 
 # Record fields a column can fill, as named in the API contract.
 FIELD_TARGETS: dict[str, str] = {
@@ -518,6 +522,8 @@ class MappedRow:
         default_factory=dict, compare=False, repr=False
     )
     term_matches: dict[str, TermMatches] = field(default_factory=dict, compare=False, repr=False)
+    # Code of the ``ACQUISITION_METHOD`` term matched by the row, if any (stored).
+    acquisition_method: str | None = None
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -546,6 +552,8 @@ class MappedRow:
         }
         if self.defaulted:
             data["defaulted"] = list(self.defaulted)
+        if self.acquisition_method:
+            data["acquisition_method"] = self.acquisition_method
         return data
 
     @classmethod
@@ -569,6 +577,7 @@ class MappedRow:
             collection_id=uuid.UUID(collection_id) if collection_id else None,
             tenure_regime=TenureRegime(tenure) if tenure else None,
             defaulted=list(data.get("defaulted") or []),  # absent in rows stored before
+            acquisition_method=data.get("acquisition_method"),
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -938,7 +947,10 @@ def _map_value(
             for part in _parts(value):
                 mapped.identifiers += _identifiers(_text(part), legacy, ctx)
     elif isinstance(target, TermsTarget):
-        mapped.term_matches[column.source] = _match_terms(target.vocabulary, value, ctx)
+        matches = _match_terms(target.vocabulary, value, ctx)
+        mapped.term_matches[column.source] = matches
+        if target.vocabulary == ACQUISITION_VOCABULARY and matches.matched:
+            mapped.acquisition_method = mapped.acquisition_method or matches.matched[0][1]
 
 
 def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:
