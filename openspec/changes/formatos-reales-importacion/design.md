@@ -1,6 +1,6 @@
 ## Context
 
-- Revisión de los 61 Excel del museo (2026-10-31), hecha localmente con la ingesta y el normalizador del sistema; solo se miraron estructura y conteos, sin copiar valores. Los archivos tienen datos personales y quedan fuera del repositorio.
+- Revisión de los 61 Excel del museo (2026-10-31), hecha localmente con la ingesta y el normalizador del sistema. El museo autorizó usarlos en desarrollo, pruebas y demos; viven en `data/real/`, fuera de git, porque el repositorio es público y tienen datos personales de propietarios (ADR-019).
 - `ingest.py` ya detecta el encabezado (fila 1 o 2), propaga celdas combinadas y genera nombres para encabezados vacíos («Columna J»). Lee todos los archivos sin errores; el más grande tiene 4 380 filas (`IMPORT_MAX_ROWS = 20 000`).
 - `mapping.py`: cada columna va a un destino (campo, identificador, identificadores mezclados, términos o datos de origen). Dos columnas al mismo campo dan `duplicate_target`. `FIELD_TARGETS` no tiene `entry_date` ni la forma de adquisición. `_text()` ya convierte `1234.0` en `1234` antes de normalizar.
 - `templates.py`: sugerencia de plantilla por similitud de cabeceras (`suggest_templates`). Las plantillas sembradas (`app/seed/import_templates.py`) son ilustrativas.
@@ -86,9 +86,9 @@ La ficha RN sigue el mismo criterio. Diferencias: `Código  INC` → `INC_RN`; `
 - En el asistente, al elegir hoja, las hojas cuyo nombre empieza por «Errores» se ofrecen como «hoja de observaciones». Un lote de ese tipo (`import_batch.kind = OBSERVATIONS`, junto a `PHOTOS` de `importacion-fotos-a-catalogo`; el que llegue primero crea la columna `kind`) solo empareja filas con piezas existentes por sus códigos y, al aplicar, añade a `notes` el texto de las columnas de error con la fuente.
 - Si `importacion-fotos-a-catalogo` aún no creó `kind`, esta decisión la crea con el mismo diseño.
 
-### D9. Verificación con los archivos reales sin subirlos
+### D9. Verificación con los archivos reales (`data/real/`)
 
-`scripts/check_real_excels.py <carpeta>` corre ingesta + sugerencia de plantilla + mapeo + normalización sobre cada hoja. Imprime una tabla de conteos por archivo: filas, columnas sin mapear, identificadores por estado, advertencias y filas omitidas. Nunca imprime valores, no se ejecuta en CI y lee la carpeta indicada por argumento. Es la prueba de aceptación del change: la meta es menos de 2 % de identificadores no normalizables, sin contar los casos pendientes de respuesta del museo (FR4, FR5).
+`scripts/check_real_excels.py <carpeta>` (por defecto `data/real/`) corre ingesta + sugerencia de plantilla + mapeo + normalización sobre cada hoja. Imprime una tabla de conteos por archivo: filas, columnas sin mapear, identificadores por estado, advertencias y filas omitidas. Con `--examples` muestra hasta 5 códigos no normalizables por columna (los códigos no son datos personales), nunca otras columnas. No se ejecuta en CI. Es la prueba de aceptación del change: la meta es menos de 2 % de identificadores no normalizables, sin contar los casos pendientes de respuesta del museo (FR4, FR5).
 
 ## Risks / Trade-offs
 

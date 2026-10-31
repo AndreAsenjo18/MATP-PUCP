@@ -2,8 +2,8 @@
 
 ## 1. Verificación con archivos reales y fixture
 
-- [ ] 1.1 `scripts/check_real_excels.py` (D9): ingesta + sugerencia + mapeo + normalización por hoja, solo conteos; correrlo sobre la carpeta del museo y guardar la línea base en el PR (sin valores) (Req: todos)
-- [ ] 1.2 Fixture sintético `data/fixtures/formatos_reales/`: un archivo por familia y variante (44, 46, 27 columnas; ficha RN con grupos combinados y sin combinar; hoja con encabezado repetido; hoja «Errores pendientes») con los encabezados reales y valores inventados que reproducen los problemas (RN de 5 dígitos, `No presenta`, `ELA 12 CEL`, `AMM-IN-V-0001`, números sin sigla, notas en la columna del código I); prueba de que el fixture se ingiere (Req: todos; RNF-014)
+- [ ] 1.1 `scripts/check_real_excels.py` (D9): ingesta + sugerencia + mapeo + normalización por hoja; correrlo sobre `data/real/` y guardar la línea base de conteos en el PR (Req: todos)
+- [ ] 1.2 `data/real/` en `.gitignore` y ADR-019 aceptado; fixture mínimo para CI en `data/fixtures/formatos_reales/` con los encabezados reales y valores inventados (un archivo por familia y variante: 44, 46, 27 columnas; ficha RN con grupos combinados y sin combinar; encabezado repetido; hoja «Errores pendientes»; RN de 5 dígitos, `No presenta`, `ELA 12 CEL`, `AMM-IN-V-0001`, números sin sigla, notas en la columna del código I); prueba de que se ingiere (Req: todos; RNF-014, ADR-019)
 - [ ] 1.3 Preguntas FR1–FR6 en `docs/preguntas-contraparte.md` y al guion del 2026-11-06 (Req: Formas reales de código de colección)
 
 ## 2. Ingesta

@@ -1,6 +1,6 @@
 ## Why
 
-La importación tiene que cargar el histórico real del museo, y hasta ahora se probó con archivos sintéticos y plantillas ilustrativas ([SUPUESTO A1] en `app/seed/import_templates.py`). Se revisaron los 61 Excel entregados por el museo (fuera del repositorio, porque tienen datos personales de propietarios), solo en su estructura y con conteos, pasándolos por la ingesta y el normalizador actuales. La ingesta los lee todos sin errores, pero el resultado no sirve tal cual:
+La importación tiene que cargar el histórico real del museo, y hasta ahora se probó con archivos sintéticos y plantillas ilustrativas ([SUPUESTO A1] en `app/seed/import_templates.py`). Se revisaron los 61 Excel entregados por el museo, cuyo uso autorizó para desarrollo, pruebas y demos (ADR-019), pasándolos por la ingesta y el normalizador actuales. La ingesta los lee todos sin errores, pero el resultado no sirve tal cual:
 
 **Dos familias de formato, con 10 variantes de encabezados:**
 
@@ -53,7 +53,7 @@ Además, el mapeo actual no permite llevar **varias columnas a un mismo campo** 
 - **Depende de**: `plantillas-mapeo-y-normalizacion` e `importacion-pipeline-reconciliacion` (archivados), `ajustes-lectura-importacion` (RN de 5 dígitos, forma de adquisición).
 - **Afecta**: `apps/api/app/modules/imports/` (`ingest.py`, `mapping.py`, `transforms.py`, `templates.py`), `apps/api/app/modules/identification/normalization.py`, `apps/api/app/seed/import_templates.py` (plantillas reales), migración de datos para las marcas de vacío, asistente de importación en `apps/web` (columnas combinadas en el paso de mapeo), `docs/manual-usuario/`, `docs/preguntas-contraparte.md`.
 - **Contrato**: el formato de mapeo admite varias fuentes por columna (`sources`) y los destinos `entry_date` y `acquisition_method`; se registran como ampliaciones en `docs/api/mapeo-endpoints-v1.md`.
-- **Pruebas**: con un fixture **sintético** que reproduce las dos familias y sus variantes (encabezados reales, valores inventados). Además, un script local (`scripts/check_real_excels.py`, fuera de CI) que pasa los archivos reales por la ingesta y el mapeo, y reporta solo conteos.
+- **Pruebas**: con los **Excel reales** del museo en `data/real/` (fuera de git, ADR-019) mediante `scripts/check_real_excels.py`, que es la prueba de aceptación, y en las demos. En CI, un fixture mínimo con los encabezados reales y valores inventados, para que corra sin los archivos reales. Las fotos siguen siendo sintéticas.
 - **Fuera de este change**:
   - normalizar los vocabularios sucios (930 materiales y 135 tipos de bien distintos): siguen la correspondencia con vocabularios existente y, más adelante, `ia-sugerencia-terminos`;
   - Word y Access;
