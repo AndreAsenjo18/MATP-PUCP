@@ -18253,6 +18253,87 @@
         "x-status": "stub"
       }
     },
+    "/api/v1/media/bulk-download/{job_id}": {
+      "get": {
+        "description": "Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el `POST` responde el estado del trabajo y el ZIP se descarga después con un enlace de corta duración, que esta operación entrega cuando el paquete está listo.",
+        "operationId": "getBulkDownload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDownloadJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotImplementedResponse"
+                }
+              }
+            },
+            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-change": "descargas-masivas-y-enriquecimiento-lote",
+        "x-status": "stub"
+      }
+    },
     "/api/v1/media/upload": {
       "post": {
         "operationId": "uploadMediaAsset",

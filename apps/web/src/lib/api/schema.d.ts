@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: b9df8f72260a859ce065cef1f20609d5609131ff93d5fd2c9ce63b1f041c8713
+ * openapi-sha256: 858fd084db209bbfeb5341e73deb58ecb168a557e9529d437264252855602d4d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1095,6 +1095,26 @@ export interface paths {
          * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
          */
         post: operations["bulkDownloadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/bulk-download/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el `POST` responde el estado del trabajo y el ZIP se descarga después con un enlace de corta duración, que esta operación entrega cuando el paquete está listo.
+         */
+        get: operations["getBulkDownload"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11619,6 +11639,64 @@ export interface operations {
                 "application/json": components["schemas"]["BulkDownloadRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    getBulkDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

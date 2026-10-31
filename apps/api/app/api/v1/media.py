@@ -225,3 +225,17 @@ def bulk_download_media(
 ) -> BulkDownloadJob:
     """Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera."""
     raise not_implemented(CHANGE_BULK, BulkDownloadJob)
+
+
+@router.get(
+    "/media/bulk-download/{job_id}",
+    response_model=BulkDownloadJob,
+    summary="Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)",
+    description="Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): "
+    "el `POST` responde el estado del trabajo y el ZIP se descarga después con un enlace de corta "
+    "duración, que esta operación entrega cuando el paquete está listo.",
+    **stub(CHANGE_BULK),
+)
+def get_bulk_download(job_id: uuid.UUID, user: Exporter) -> BulkDownloadJob:
+    """Solo quien pidió el paquete puede consultarlo; caducado, se conserva el registro."""
+    raise not_implemented(CHANGE_BULK, BulkDownloadJob)
