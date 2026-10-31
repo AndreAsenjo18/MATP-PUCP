@@ -5,4 +5,4 @@
 ## 2. Cierre
 
 - [x] 2.1 `npm run test:web`, `npm run lint:web` y `openspec validate marcar-campos-obligatorios --strict` en verde.
-- [ ] 2.2 `openspec archive marcar-campos-obligatorios -y` tras aprobar el PR.
+- [x] 2.2 `openspec archive marcar-campos-obligatorios -y` tras aprobar el PR.
