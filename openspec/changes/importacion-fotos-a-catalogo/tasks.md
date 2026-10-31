@@ -46,10 +46,10 @@
 
 ## 7. Frontend (`apps/web`)
 
-- [ ] 7.1 Capa de datos (mock/live) para lotes de fotos: crear lote, carpetas, vista previa de lectura, guardar regla, lista de correspondencias, decisiones; pruebas Vitest (Req: todos)
-- [ ] 7.2 Entrada «Importar fotografías al catálogo» y paso 1 «Subir carpeta» reutilizando `lib/data/importPhotos.ts`; prueba de componente (Req: Lote de solo fotografías…)
-- [ ] 7.3 Paso 2 «Cómo se leen los nombres»: árbol de carpetas, forma de lectura, editor de plantilla con chips, colección pista y vista previa en vivo; pruebas de componente (Req: Forma de lectura…; Req: Colección de la carpeta…)
-- [ ] 7.4 Paso 3 «Revisar y aprobar»: cuadrícula con filtros, selección múltiple (Mayús + clic, toda la carpeta), «Asignar a pieza…» con `/search`, panel lateral de comparación y aviso de aprobación; pruebas de componente y de teclado (Req: Asignación manual…; RNF-010)
+- [x] 7.1 Capa de datos (mock/live) para lotes de fotos: crear lote, carpetas, vista previa de lectura, guardar regla, lista de correspondencias, decisiones; pruebas Vitest (Req: todos)
+- [x] 7.2 Entrada «Importar fotografías al catálogo» y paso 1 «Subir carpeta» reutilizando `lib/data/importPhotos.ts`; prueba de componente (Req: Lote de solo fotografías…)
+- [x] 7.3 Paso 2 «Cómo se leen los nombres»: árbol de carpetas, forma de lectura, editor de plantilla con chips, colección pista y vista previa en vivo; pruebas de componente (Req: Forma de lectura…; Req: Colección de la carpeta…)
+- [x] 7.4 Paso 3 «Revisar y aprobar»: cuadrícula con filtros, selección múltiple (Mayús + clic, toda la carpeta), «Asignar a pieza…» con `/search`, panel lateral de comparación y aviso de aprobación; pruebas de componente y de teclado (Req: Asignación manual…; RNF-010)
 - [ ] 7.5 Procedencia en la galería de la ficha; prueba de componente (Req: Procedencia visible…)
 
 ## 8. Cierre del change

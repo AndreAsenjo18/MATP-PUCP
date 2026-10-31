@@ -36,6 +36,7 @@ export const IMPORT_TEMPLATES: MappingTemplateOut[] = [
 export const IMPORT_BATCHES: ImportBatchOut[] = [
   {
     id: ids.importBatch(1),
+    kind: "SPREADSHEET",
     file_name: "sabana_sintetica_v1.xlsx",
     file_sha256: "sha256-sintetico-batch-1",
     source_name: "Sábana consultoría 2024/25 (sintética)",
@@ -57,6 +58,7 @@ export const IMPORT_BATCHES: ImportBatchOut[] = [
   },
   {
     id: ids.importBatch(2),
+    kind: "SPREADSHEET",
     file_name: "sabana_deposito_2_2026.xlsx",
     file_sha256: "sha256-sintetico-batch-2",
     source_name: "Inventario depósito 2 (sintético)",

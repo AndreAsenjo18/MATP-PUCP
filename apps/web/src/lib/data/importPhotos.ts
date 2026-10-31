@@ -38,9 +38,11 @@ const SYSTEM_FILES = new Set(["thumbs.db", "desktop.ini", ".ds_store"]);
 
 /** Estados en los que el lote admite fotos y el panel se muestra (Validación y Previsualización). */
 const PHOTO_STATES = new Set<ImportBatch["status"]>(["MAPPED", "VALIDATED", "IN_PREVIEW"]);
+/** Un lote de solo fotos no tiene mapeo ni validación (`importacion-fotos-a-catalogo`, D1). */
+const PHOTO_BATCH_STATES = new Set<ImportBatch["status"]>(["UPLOADED", "IN_PREVIEW"]);
 
-export function acceptsPhotos(batch: Pick<ImportBatch, "status">): boolean {
-  return PHOTO_STATES.has(batch.status);
+export function acceptsPhotos(batch: Pick<ImportBatch, "status"> & { kind?: ImportBatch["kind"] }): boolean {
+  return (batch.kind === "PHOTOS" ? PHOTO_BATCH_STATES : PHOTO_STATES).has(batch.status);
 }
 
 // ---------------------------------------------------------------------------------------------
