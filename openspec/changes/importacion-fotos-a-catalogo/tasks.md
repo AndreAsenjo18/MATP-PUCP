@@ -2,7 +2,7 @@
 
 ## 1. Requisitos, preguntas y modelo
 
-- [ ] 1.1 Añadir RF-046 («Carga masiva de fotografías a piezas existentes», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` (confirmar con André que el número está libre) y comprobar que AF1–AF6 estén en `docs/preguntas-contraparte.md` con su supuesto (entraron con la rama `docs/feedback-reunion-31-oct`); `openspec validate importacion-fotos-a-catalogo --strict` en verde (Req: todos)
+- [x] 1.1 Añadir RF-046 («Carga masiva de fotografías a piezas existentes», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` (confirmar con André que el número está libre) y comprobar que AF1–AF6 estén en `docs/preguntas-contraparte.md` con su supuesto (entraron con la rama `docs/feedback-reunion-31-oct`); `openspec validate importacion-fotos-a-catalogo --strict` en verde (Req: todos)
 - [ ] 1.2 Migración aditiva: `import_batch.kind` (default `SPREADSHEET`) y `photo_reading`; en `import_photo`, `piece_id`, `candidate_piece_ids`, `match_reason`, `width_px`, `height_px`, `perceptual_hash`, `same_as_photo_id` y `CHECK` fila o pieza; valores `TEMPLATE` y `LIST` en `photo_match_source`; `photo_camera_patterns` en `normalization_setting`. Pruebas: `tests/test_migrations.py`, una sola cabeza y `test_cross_cutting_rules.py` en verde (Req: Lote de solo fotografías…; D1, D2)
 - [ ] 1.3 Variable `IMPORT_PHOTO_SIMILARITY_BITS` en `Settings` y `.env.example`; prueba de documentación de variables en verde (Req: Detección de la misma foto…)
 

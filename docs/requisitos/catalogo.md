@@ -54,8 +54,11 @@
 | RF-029 | Extracción de fotos incrustadas en Excel con revisión manual | Should | importacion-datos |
 | RF-030 | Detección de duplicados por similitud con cola de revisión humana | Must | calidad-datos |
 | RF-045 | Carga masiva de fotografías asociada a la importación | Must | importacion-datos |
+| RF-046 | Carga masiva de fotografías a piezas existentes | Must | importacion-datos |
 
 > RF-045 no está en el Expediente original: lo pidió el museo en la validación del prototipo v3 (2026-10) y lo cubre el change `importacion-masiva-fotografias`. Debe incorporarse al Expediente.
+>
+> RF-046 tampoco está en el Expediente original: lo pidió el museo en la reunión del 2026-10-31, al mostrar su archivo fotográfico en Drive, y lo cubre el change `importacion-fotos-a-catalogo`. Debe incorporarse al Expediente.
 
 ## 4. Consulta y reportes
 
