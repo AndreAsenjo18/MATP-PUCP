@@ -79,6 +79,7 @@ La ficha RN sigue el mismo criterio. Diferencias: `Código  INC` → `INC_RN`; `
 ### D7. Encabezados de grupo y filas repetidas (`ingest.py`)
 
 - Si la fila del encabezado es la 2 o posterior, se lee también la fila de arriba. Una celda vacía del encabezado toma `<grupo> (k)`, donde el grupo es el último texto no vacío de la fila de arriba a su izquierda dentro del mismo bloque y k es la posición dentro del grupo. «Columna J» solo queda cuando no hay grupo.
+- *Hallazgo al implementar (2026-10-31)*: en las fichas reales el nombre del grupo está en la misma fila del encabezado (fila 2, «Procedencia» en I con J y K vacías o combinadas) y la fila 3 trae los subencabezados del grupo («Largo (cm)», «Ancho (cm)»…; «Prefectura», «Ciudad», «Isla»). Esa fila 3 entraba como dato. Se trata como segunda línea del encabezado: las celdas vacías del grupo toman `<grupo> (k)` cuando tienen un subencabezado debajo o un nombre de grupo arriba, y la fila de subencabezados se omite y se cuenta junto con las filas repetidas. Los nombres no dependen de los subencabezados, que cambian entre fichas.
 - Fila repetida: se normalizan sus valores con `header_key` y se comparan con el encabezado; ≥ 80 % de las celdas no vacías iguales [SUPUESTO] → se omite y se cuenta en `IngestResult.skipped_header_rows`.
 
 ### D8. Hojas de errores como observaciones

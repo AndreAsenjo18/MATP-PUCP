@@ -24,6 +24,17 @@ APPLIED_STATUSES = frozenset({S.APPLIED, S.REVERTED})
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
+def _header_rows_text(numbers: Any) -> str | None:
+    """«1 fila omitida por repetir el encabezado (fila 105)» (formatos-reales-importacion, D7)."""
+    if not numbers:
+        return None
+    rows = ", ".join(str(number) for number in numbers[:20]) + (" …" if len(numbers) > 20 else "")
+    count = len(numbers)
+    noun = "fila omitida" if count == 1 else "filas omitidas"
+    where = "fila" if count == 1 else "filas"
+    return f"{count} {noun} por repetir el encabezado ({where} {rows})"
+
+
 def _user_name(session: Session, user_id: uuid.UUID | None) -> str | None:
     if user_id is None:
         return None
@@ -83,6 +94,9 @@ def build_log(session: Session, batch: ImportBatch) -> dict[str, Any]:
             if has_rows
             else {},
             "skipped_empty_rows": raw.get("skipped_empty_rows") if has_rows else None,
+            "skipped_header_rows": _header_rows_text(raw.get("skipped_header_row_numbers"))
+            if has_rows
+            else None,
         },
         "applied_rows": (
             int(raw.get("APPLIED_CREATED", 0)) + int(raw.get("APPLIED_UPDATED", 0))
@@ -105,6 +119,7 @@ _SUMMARY_LABELS = (
     ("approved_by", "Aprobado por"),
     ("approved_at", "Fecha de aprobación"),
     ("skipped_empty_rows", "Filas vacías omitidas"),
+    ("skipped_header_rows", "Filas omitidas por repetir el encabezado"),
 )
 _ROW_HEADERS = ("Fila", "Clasificación", "Decisión", "Acción", "Motivo", "Pieza")
 

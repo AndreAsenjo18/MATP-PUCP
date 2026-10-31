@@ -173,6 +173,8 @@ def store_ingested_rows(
     counts.update(
         rows=total,
         skipped_empty_rows=result.skipped_empty_rows,
+        skipped_header_rows=len(result.skipped_header_rows),
+        skipped_header_row_numbers=result.skipped_header_rows,
         headers=result.headers,
         sheet_names=result.sheet_names,
     )
