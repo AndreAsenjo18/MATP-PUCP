@@ -12,6 +12,7 @@ flush that writes a parameter or an alias drops the copy, so the next call sees 
 """
 
 import logging
+import re
 import uuid
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -23,6 +24,7 @@ from app.modules.collections.models import Collection
 from app.modules.identification.models import (
     ABSENCE_MARKERS_KEY,
     CONCATENATION_SEPARATORS_KEY,
+    PHOTO_CAMERA_PATTERNS_KEY,
     TENURE_ALIASES_KEY,
     CollectionAcronymAlias,
     NormalizationSetting,
@@ -42,6 +44,14 @@ def _strings(value: Any) -> list[str] | None:
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return value
     return None
+
+
+def _valid_pattern(pattern: str) -> bool:
+    try:
+        re.compile(pattern)
+    except re.error:
+        return False
+    return True
 
 
 def params_from_rows(
@@ -84,6 +94,15 @@ def params_from_rows(
             logger.warning(
                 "Valor ilegible de %s: se usan los valores de código.", TENURE_ALIASES_KEY
             )
+    camera_patterns: tuple[str, ...] = ()
+    if PHOTO_CAMERA_PATTERNS_KEY in settings:
+        patterns = _strings(settings[PHOTO_CAMERA_PATTERNS_KEY])
+        if patterns is None or not all(_valid_pattern(pattern) for pattern in patterns):
+            logger.warning(
+                "Valor ilegible de %s: no se usan patrones adicionales.", PHOTO_CAMERA_PATTERNS_KEY
+            )
+        else:
+            camera_patterns = tuple(patterns)
     acronym_aliases: dict[str, str] = {}
     alias_collection_ids: dict[str, uuid.UUID] = {}
     for alias, collection_id, acronym in aliases:
@@ -97,6 +116,7 @@ def params_from_rows(
         acronym_aliases=acronym_aliases,
         alias_collection_ids=alias_collection_ids,
         tenure_aliases=tenure_aliases,
+        photo_camera_patterns=camera_patterns,
     )
 
 

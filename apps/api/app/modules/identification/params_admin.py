@@ -18,6 +18,7 @@ After a change is saved, ``session_params`` reloads (a flush that writes a param
 """
 
 import dataclasses
+import re
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ from app.modules.collections.models import Collection
 from app.modules.identification.models import (
     ABSENCE_MARKERS_KEY,
     CONCATENATION_SEPARATORS_KEY,
+    PHOTO_CAMERA_PATTERNS_KEY,
     TENURE_ALIASES_KEY,
     CollectionAcronymAlias,
     IdentifierType,
@@ -54,7 +56,16 @@ from app.modules.identification.normalization import (
 )
 from app.modules.identification.params import load_params, params_from_rows
 
-SETTING_KEYS = (ABSENCE_MARKERS_KEY, CONCATENATION_SEPARATORS_KEY, TENURE_ALIASES_KEY)
+SETTING_KEYS = (
+    ABSENCE_MARKERS_KEY,
+    CONCATENATION_SEPARATORS_KEY,
+    TENURE_ALIASES_KEY,
+    PHOTO_CAMERA_PATTERNS_KEY,
+)
+#: Longest camera name pattern an administrator may store (importacion-fotos-a-catalogo, D3).
+MAX_CAMERA_PATTERN_LENGTH = 200
+#: Keys that change how photo names are read, not any stored identifier: no impact to check.
+_NO_IMPACT_KEYS = frozenset({TENURE_ALIASES_KEY, PHOTO_CAMERA_PATTERNS_KEY})
 # Regime codes by contract label or code, folded (``tenure_aliases`` values).
 _REGIMES = {
     **{fold_label(regime.value): regime.value for regime in TenureRegime},
@@ -73,6 +84,8 @@ def default_value(key: str) -> Any:
         return sorted(DEFAULT_PARAMS.absence_markers)
     if key == TENURE_ALIASES_KEY:
         return dict(DEFAULT_PARAMS.tenure_aliases)
+    if key == PHOTO_CAMERA_PATTERNS_KEY:
+        return list(DEFAULT_PARAMS.photo_camera_patterns)
     return {
         "separators": list(DEFAULT_PARAMS.separators),
         "unsplit_markers": list(DEFAULT_PARAMS.unsplit_markers),
@@ -111,6 +124,8 @@ def clean_value(key: str, value: Any) -> Any:
         return list(dict.fromkeys(markers))
     if key == TENURE_ALIASES_KEY:
         return _clean_tenure_aliases(value)
+    if key == PHOTO_CAMERA_PATTERNS_KEY:
+        return _clean_camera_patterns(value)
     if not isinstance(value, dict) or not isinstance(value.get("separators"), list):
         raise _invalid("Indique los separadores como «separators» (lista de textos).")
     separators = value["separators"]
@@ -128,6 +143,26 @@ def clean_value(key: str, value: Any) -> Any:
         "separators": list(dict.fromkeys(separators)),
         "unsplit_markers": list(dict.fromkeys(item.strip() for item in unsplit if item.strip())),
     }
+
+
+def _clean_camera_patterns(value: Any) -> list[str]:
+    """Regular expressions of camera file names (importacion-fotos-a-catalogo, design D3): each
+    must compile and be at most ``MAX_CAMERA_PATTERN_LENGTH`` characters; 422 otherwise."""
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise _invalid("Los patrones de nombres de cámara son una lista de textos.")
+    patterns = [item.strip() for item in value if item.strip()]
+    for pattern in patterns:
+        if len(pattern) > MAX_CAMERA_PATTERN_LENGTH:
+            raise _invalid(
+                f"El patrón «{pattern[:40]}…» supera los {MAX_CAMERA_PATTERN_LENGTH} caracteres."
+            )
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise _invalid(
+                f"El patrón «{pattern}» no es una expresión regular válida: {exc}."
+            ) from exc
+    return list(dict.fromkeys(patterns))
 
 
 def _clean_tenure_aliases(value: Any) -> dict[str, str]:
@@ -285,6 +320,8 @@ def _with_setting(current: NormalizationParams, key: str, value: Any) -> Normali
     parsed = params_from_rows({key: value})
     if key == TENURE_ALIASES_KEY:
         return dataclasses.replace(current, tenure_aliases=parsed.tenure_aliases)
+    if key == PHOTO_CAMERA_PATTERNS_KEY:
+        return dataclasses.replace(current, photo_camera_patterns=parsed.photo_camera_patterns)
     if key == ABSENCE_MARKERS_KEY:
         return dataclasses.replace(current, absence_markers=parsed.absence_markers)
     return dataclasses.replace(
@@ -297,7 +334,7 @@ def save_setting(session: Session, key: str, value: Any) -> NormalizationSetting
     require_audit_context(session)
     cleaned = clean_value(key, value)
     current = load_params(session)
-    if key != TENURE_ALIASES_KEY:  # the correspondences change no stored identifier
+    if key not in _NO_IMPACT_KEYS:  # these change no stored identifier
         ensure_no_impact(session, current, _with_setting(current, key, cleaned))
     setting = get_setting(session, key)
     if setting is None:

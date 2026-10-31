@@ -71,8 +71,9 @@ def _alias_out(session: Session, alias: CollectionAcronymAlias) -> AcronymAliasO
     response_model=NormalizationSettingOut,
     summary="Parámetro de normalización vigente (RN-010)",
     description="Marcadores de ausencia (`absence_markers`), separadores de códigos "
-    "concatenados (`concatenation_separators`) o correspondencias forma de adquisición → "
-    "régimen (`tenure_aliases`); sin valor guardado, el del código.",
+    "concatenados (`concatenation_separators`), correspondencias forma de adquisición → "
+    "régimen (`tenure_aliases`) o patrones de nombres de cámara de las fotos "
+    "(`photo_camera_patterns`); sin valor guardado, el del código.",
     **implemented(),
 )
 def get_normalization_setting(

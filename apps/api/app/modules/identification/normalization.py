@@ -191,6 +191,8 @@ class NormalizationParams:
     alias_collection_ids: Mapping[str, uuid.UUID] = field(default_factory=dict)
     # Folded label -> tenure regime code (``fold_label`` keys).
     tenure_aliases: Mapping[str, str] = field(default_factory=lambda: dict(DEFAULT_TENURE_ALIASES))
+    # Extra camera name patterns, already validated (``photo_camera_patterns``).
+    photo_camera_patterns: tuple[str, ...] = ()
 
     @staticmethod
     def marker_key(marker: str) -> str:

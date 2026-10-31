@@ -30,10 +30,16 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import DomainError
 from app.modules.identification.models import NormalizationRule
+from app.modules.identification.params import session_params
 from app.modules.imports.models import ImportBatch, ImportPhoto, ImportPhotoStatus, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import PhotoMatchStatus as M
-from app.modules.imports.photo_matching import BatchPhoto, BatchRow, match_photos
+from app.modules.imports.photo_matching import (
+    BatchPhoto,
+    BatchRow,
+    compile_camera_patterns,
+    match_photos,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +113,10 @@ def match_batch_photos(
             if photo.match_status is M.MANUAL and photo.row_id and photo.sort_key:
                 after_manual[photo.row_id] = max(after_manual.get(photo.row_id, 0), photo.sort_key)
         proposals = match_photos(
-            [BatchPhoto(photo.id, photo.relative_path) for photo in automatic], rows, rules
+            [BatchPhoto(photo.id, photo.relative_path) for photo in automatic],
+            rows,
+            rules,
+            compile_camera_patterns(session_params(session).photo_camera_patterns),
         )
         for photo, proposal in zip(automatic, proposals, strict=True):
             values: dict[str, Any] = {
