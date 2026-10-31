@@ -122,10 +122,6 @@ class AiSuggestionRejection(BaseModel):
     reason: str = Field(min_length=3, description="Motivo obligatorio (RN-009).")
 
 
-# Limit of an AI batch: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
-MAX_AI_BATCH_PIECES = 50
-
-
 class BatchEnrichRequest(BaseModel):
     """Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04)."""
 
@@ -133,8 +129,8 @@ class BatchEnrichRequest(BaseModel):
 
     piece_ids: list[uuid.UUID] = Field(
         min_length=1,
-        max_length=MAX_AI_BATCH_PIECES,
-        description="Piezas sin descripción [SUPUESTO M1: máximo 50].",
+        description="Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por "
+        "defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.",
     )
 
 

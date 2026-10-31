@@ -65,6 +65,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/collections/{}"),
     ("patch", "/collections/{}"),
     ("get", "/exports/full"),
+    ("get", "/media/bulk-download/{}"),
     ("get", "/exports/jobs"),
     ("get", "/exports/jobs/{}"),
     ("get", "/exports/jobs/{}/download-url"),

@@ -241,10 +241,6 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
-MAX_BULK_DOWNLOAD_PIECES = 200
-
-
 class BulkDownloadRequest(BaseModel):
     """Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote)."""
 
@@ -252,8 +248,9 @@ class BulkDownloadRequest(BaseModel):
 
     piece_ids: list[uuid.UUID] = Field(
         min_length=1,
-        max_length=MAX_BULK_DOWNLOAD_PIECES,
-        description="Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+        description="Piezas cuyas fotografías se empaquetan; como máximo "
+        "`MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 "
+        "`batch_too_large`.",
     )
 
 
