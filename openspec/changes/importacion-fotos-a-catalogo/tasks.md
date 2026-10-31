@@ -54,7 +54,7 @@
 
 ## 8. Cierre del change
 
-- [ ] 8.1 Fixture sintético en `data/fixtures/fotos_catalogo/` que reproduce la estructura del Drive con datos inventados: carpetas por sigla y por «coleccionista», subcarpetas de rango, las seis formas F1–F6 (incluida miniatura + `ALTAS/… copy.jpg` y un sufijo ` x`) y una lista de correspondencias; prueba de extremo a extremo del lote `PHOTOS` en SQLite (Req: todos; RNF-014)
+- [x] 8.1 Fixture sintético en `data/fixtures/fotos_catalogo/` que reproduce la estructura del Drive con datos inventados: carpetas por sigla y por «coleccionista», subcarpetas de rango, las seis formas F1–F6 (incluida miniatura + `ALTAS/… copy.jpg` y un sufijo ` x`) y una lista de correspondencias; prueba de extremo a extremo del lote `PHOTOS` en SQLite (Req: todos; RNF-014)
 - [ ] 8.2 Verificación en contenedores contra PostgreSQL y MinIO (`npm run dev`, `migrate`, `seed`, `npm run test:api:pg`): migración, subida real, aplicación y reversión de un lote de fotos; registrar en el PR el tiempo de emparejamiento contra 10 000 piezas sintéticas (requiere Docker)
 - [ ] 8.3 OpenAPI: operaciones nuevas registradas como añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` y la prueba de conformidad en verde
 - [ ] 8.4 Manual de usuario: sección «Importar el archivo fotográfico» en `docs/manual-usuario/` (descargar de Drive y descomprimir, formas de lectura, plantillas con ejemplos, lista de correspondencias, versiones de menor resolución)
