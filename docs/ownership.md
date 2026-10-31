@@ -50,6 +50,22 @@ Notas:
 
 Changes de arranque aún abiertos (a cargo del Arquitecto con apoyo de Plataforma): `setup-monorepo-base`, `modelo-datos-nucleo`, `contratos-api-borrador` (pendientes de verificación con Docker) y `maqueta-ui-navegable` (completo, pendiente de PR). Deben archivarse en ese orden antes de archivar cualquier change del backlog que añada requirements a `plataforma`.
 
+## Changes de la reunión con el museo del 2026-10-31
+
+Desde el 2026-10-25 solo programan Sergio Chumbimuni y Germán Asenjo; el resto del equipo apoya con QA, demos, documentación y despliegue. Estos changes salen de los pedidos y respuestas de esa reunión (`docs/reunion-2026-10-31-impacto-preguntas.md`) y tienen un responsable directo, no una célula. Cada uno tiene su issue en GitHub con la lista de tareas.
+
+| Change | Capacidades | Responsable | Depende de | Orden sugerido |
+|---|---|---|---|---|
+| `formatos-reales-importacion` | importacion-datos, identificacion-piezas | Sergio Chumbimuni | `ajustes-lectura-importacion` (RN de 5 dígitos) | 1 (para la demo del 2026-11-06: secciones 1–4) |
+| `importacion-masiva-fotografias` (activo) | importacion-datos, multimedia | Sergio Chumbimuni | — | 1 (fotos junto con el Excel: tarea 6.2 para la demo) |
+| `importacion-fotos-a-catalogo` | importacion-datos, multimedia | Sergio Chumbimuni | `importacion-masiva-fotografias` (**bloqueante**) | 2 (para la demo solo 3.1, 3.9 y 4.1, aplicadas también al lote con Excel; el lote de solo fotos va después del 2026-11-06) |
+| `ajustes-lectura-importacion` | importacion-datos, identificacion-piezas | Sergio Chumbimuni | — | 1 (pequeño; respuesta L5 y RN de 5 dígitos; requisito de `formatos-reales-importacion`) |
+| `fusion-busqueda-deposito` | busqueda-reportes, ubicacion-movimientos | Germán Asenjo | — | 1 |
+| `reportes-por-atributo` | busqueda-reportes | Germán Asenjo | `reportes-inventario` (activo) | 2 (amplía el enumerado `ReportType`: avisar al Líder) |
+| `crud-manual-completo` | colecciones-vocabularios, ubicacion-movimientos, catalogo-piezas | Germán Asenjo | `fusion-busqueda-deposito` (sección 3: árbol de ubicaciones) | 2 |
+
+Plan de la semana y tareas del resto del equipo: documento «Plan de la semana · 31 oct – 6 nov» (compartido por el grupo).
+
 ## Reglas de coordinación entre células
 
 1. **Specs delta solo con `ADDED`**: todos los changes del backlog agregan requirements con nombres únicos; ninguno modifica requirements vigentes, para poder archivarse en cualquier orden. Un `MODIFIED` exige avisar a la célula dueña de la capacidad.
