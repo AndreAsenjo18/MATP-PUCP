@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la ficha estandarizada de cada pieza del MATP, su régimen de tenencia y las reglas asociadas, la representación de época, la preservación de datos de origen, los conjuntos y la validación en tiempo real del ingreso manual.
-
 ## Requirements
-
 ### Requirement: Régimen de tenencia
 El sistema MUST registrar para cada pieza un régimen de tenencia obligatorio con los valores propiedad, comodato/consignación y préstamo temporal, y SHALL aplicar las reglas de cada régimen: la PUCP figura siempre como única propietaria legal de las piezas en propiedad y el museo como localización; las piezas en comodato no reciben código I; las piezas en préstamo temporal no forman parte del inventario permanente. (RF-005, RN-003, RN-004, RN-006)
 
@@ -124,3 +122,19 @@ El sistema MUST validar los datos del formulario de ingreso y edición de piezas
 #### Scenario: Validación del servidor ante cliente omitido
 - **WHEN** una petición llega al servidor con datos que incumplen las reglas (por ejemplo, código I en pieza en comodato) sin pasar por el formulario
 - **THEN** el servidor rechaza la operación con los mismos mensajes de validación
+
+### Requirement: Campos obligatorios marcados en el formulario de pieza
+El formulario de registro y edición de pieza MUST marcar con un asterisco (`*`) junto a su etiqueta cada campo editable que el sistema exige para guardar (denominación y, al registrar, régimen de tenencia), y MUST mostrar al inicio del formulario una leyenda en texto que explique que los campos con `*` son obligatorios y el resto puede completarse después. Los campos opcionales MUST NOT llevar asterisco, y los controles obligatorios SHALL declarar `aria-required` para no depender solo del símbolo. (RF-006, RNF-010)
+
+#### Scenario: Registrar una pieza
+- **WHEN** una persona con permiso de registrar piezas abre el formulario de alta
+- **THEN** ve «Denominación *» y «Régimen de tenencia *», y la leyenda que explica el asterisco
+
+#### Scenario: Editar una pieza
+- **WHEN** la persona abre el formulario de edición de una pieza
+- **THEN** «Denominación» lleva `*` y el régimen de tenencia se muestra como dato de solo lectura, sin asterisco
+
+#### Scenario: Campos opcionales sin marca
+- **WHEN** se muestra el formulario
+- **THEN** campos como «Colección», «Categoría» o «Descripción» no llevan asterisco
+
