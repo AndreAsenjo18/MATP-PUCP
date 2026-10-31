@@ -41,10 +41,18 @@ from app.api.stubs import (
 from app.core import jobs
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
-from app.modules.audit.context import require_audit_context
+from app.modules.audit.context import AuditContext, require_audit_context, set_audit_context
+from app.modules.audit.models import AuditOrigin
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.candidates import enrich_matches
+from app.modules.imports.catalog_photo_matching import FolderRule
+from app.modules.imports.catalog_photos import (
+    folders_overview,
+    reading_preview,
+    save_reading,
+    upload_correspondences,
+)
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
@@ -71,7 +79,7 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
-from app.modules.imports.photo_review import assign_photos, photos_query
+from app.modules.imports.photo_review import OPERATION_LABELS, decide_photos, photos_query
 from app.modules.imports.photo_review import summary as photo_summary
 from app.modules.imports.photo_review import thumbnail_url as photo_thumbnail_url
 from app.modules.imports.photo_upload import (
@@ -85,6 +93,9 @@ from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
+    CorrespondenceLineOut,
+    CorrespondencesOut,
+    FolderRuleRequest,
     ImageAssociateRequest,
     ImportBatchOut,
     ImportBatchSummary,
@@ -102,12 +113,17 @@ from app.modules.imports.schemas import (
     PhotoBatchCreate,
     PhotoCompleteOut,
     PhotoCompleteRequest,
+    PhotoDecisionLogEntry,
     PhotoDecisionOut,
     PhotoDecisionRequest,
+    PhotoFolderOut,
+    PhotoFoldersOut,
+    PhotoReadingRule,
     PhotoStateOut,
     PhotoUploadItemOut,
     PhotoUploadUrlsOut,
     PhotoUploadUrlsRequest,
+    ReadingPreviewOut,
     RevertRequest,
     RowDecisionRequest,
     TemplateDryRunOut,
@@ -123,7 +139,7 @@ from app.modules.imports.service import (
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import STATUS_LABELS, require_kind
+from app.modules.imports.state import STATUS_LABELS, lock_batch, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 
@@ -619,6 +635,9 @@ def get_import_log(
         applied_rows=log["applied_rows"],
         rejected_rows=log["rejected_rows"],
         entries=[ImportLogEntry.model_validate(entry) for entry in log["entries"]],
+        photo_decisions=[
+            PhotoDecisionLogEntry.model_validate(item) for item in log["photo_decisions"]
+        ],
         download_url=f"/api/v1/imports/{batch.id}/log?format=xlsx",
     )
 
@@ -734,9 +753,10 @@ def complete_import_photo_uploads(
     response_model=Page[ImportPhotoOut],
     responses=NOT_FOUND,
     summary="Fotografías del lote: bandeja con filtros y miniaturas",
-    description="Fotos del lote con su fila propuesta o asignada, ordenadas por fila y posición, "
-    "con la miniatura firmada de las verificadas. Se filtran por estado, propuesta o fila "
-    "(`importacion-masiva-fotografias`, diseño D4).",
+    description="Fotos del lote con su fila o pieza propuesta o asignada, ordenadas por destino y "
+    "posición, con la miniatura firmada de las verificadas y el motivo de las propuestas que no "
+    "son directas. Se filtran por estado, propuesta, fila, pieza o carpeta "
+    "(`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).",
     **implemented(),
 )
 def list_import_photos(
@@ -748,10 +768,19 @@ def list_import_photos(
     photo_status: Annotated[ImportPhotoStatus | None, Query(alias="status")] = None,
     match_status: Annotated[PhotoMatchStatus | None, Query()] = None,
     row_id: Annotated[uuid.UUID | None, Query()] = None,
+    piece_id: Annotated[uuid.UUID | None, Query(description="Pieza propuesta o asignada.")] = None,
+    folder: Annotated[
+        str | None, Query(max_length=1000, description="Carpeta y sus subcarpetas (`a/b`).")
+    ] = None,
 ) -> Page[ImportPhotoOut]:
     get_batch(session, batch_id)
     statement = photos_query(
-        batch_id, status=photo_status, match_status=match_status, row_id=row_id
+        batch_id,
+        status=photo_status,
+        match_status=match_status,
+        row_id=row_id,
+        piece_id=piece_id,
+        folder=folder,
     )
     photos, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
@@ -788,11 +817,14 @@ def summarize_import_photos(
         **NOT_FOUND,
         409: {"model": ErrorResponse, "description": "El lote ya no admite cambios en sus fotos."},
     },
-    summary="Fotografías del lote: asignar fotos a una fila",
-    description="`assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, "
-    "en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya "
-    "no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al "
-    "catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).",
+    summary="Fotografías del lote: decidir sobre fotos (asignar, quitar, descartar…)",
+    description="`assign` a una fila del lote (lote con Excel) o a una pieza no retirada (lote "
+    "de solo fotografías), en el orden enviado y después de su última foto; `unassign`, "
+    "`discard`, `restore`, `confirm_duplicate` y `reorder`. El emparejamiento automático ya no "
+    "cambia las fotos decididas y cada decisión queda en la bitácora del lote con su autor. Una "
+    "fila de otro lote, una fila en un lote de solo fotos, una pieza retirada o una foto sin "
+    "verificar responde 422. Nada llega al catálogo hasta aprobar el lote "
+    "(`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).",
     **implemented(),
 )
 def decide_import_photos(
@@ -802,8 +834,10 @@ def decide_import_photos(
     session: SessionDep,
     user: Preparer,
 ) -> PhotoDecisionOut:
-    writer(session, user)
-    photos = assign_photos(session, batch_id, body.photo_ids, body.row_id)
+    _photo_writer(session, user, batch_id, f"Fotos del lote: {OPERATION_LABELS[body.op]}")
+    photos = decide_photos(
+        session, batch_id, body.op, body.photo_ids, row_id=body.row_id, piece_id=body.piece_id
+    )
     session.commit()
     storage: ObjectStorage = request.app.state.storage
     ttl = request.app.state.settings.media_url_ttl_seconds
@@ -814,6 +848,170 @@ def decide_import_photos(
             for photo in photos
         ],
     )
+
+
+def _photo_writer(session: Session, user: CurrentUser, batch_id: uuid.UUID, reason: str) -> None:
+    """A person's decision on the photos of a batch, audited with the batch as ``origin_ref``:
+    the batch log lists them (importacion-fotos-a-catalogo, task 4.1)."""
+    set_audit_context(
+        session,
+        AuditContext(
+            origin=AuditOrigin.MANUAL, user_id=user.id, origin_ref=str(batch_id), reason=reason
+        ),
+    )
+
+
+def _photo_batch(session: Session, batch_id: uuid.UUID) -> ImportBatch:
+    batch = get_batch(session, batch_id)
+    require_kind(batch, ImportBatchKind.PHOTOS)
+    return batch
+
+
+def _folder_rule(rule: PhotoReadingRule) -> FolderRule:
+    return FolderRule(
+        mode=rule.mode,
+        template=rule.template,
+        collection_id=rule.collection_id,
+        collection_set="collection_id" in rule.model_fields_set,
+    )
+
+
+def _folders_out(session: Session, batch: ImportBatch) -> PhotoFoldersOut:
+    reading = PhotoReadingRule.model_validate(
+        (batch.photo_reading or {}).get("default") or {"mode": "auto"}
+    )
+    return PhotoFoldersOut(
+        batch_id=batch.id,
+        default_rule=reading,
+        folders=[
+            PhotoFolderOut.model_validate(folder) for folder in folders_overview(session, batch)
+        ],
+    )
+
+
+@router.get(
+    "/imports/{batch_id}/photos/folders",
+    response_model=PhotoFoldersOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Fotografías del lote: carpetas con su forma de lectura y su colección",
+    description="Árbol de carpetas de un lote de solo fotografías con sus conteos por propuesta, "
+    "el rango si es una carpeta de rango, la colección propuesta o confirmada, la regla de "
+    "lectura vigente (y de qué carpeta la hereda) y la plantilla sugerida por la forma de sus "
+    "nombres (`importacion-fotos-a-catalogo`, diseño D4, D5 y D11).",
+    **implemented(),
+)
+def list_import_photo_folders(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> PhotoFoldersOut:
+    return _folders_out(session, _photo_batch(session, batch_id))
+
+
+INVALID_TEMPLATE = {
+    422: {
+        "model": ErrorResponse,
+        "description": "`invalid_photo_template`: la plantilla tiene un tipo que no existe, no "
+        "identifica nada o usa `{n}` sin colección; `details` trae el motivo y los tipos válidos.",
+    }
+}
+
+
+@router.post(
+    "/imports/{batch_id}/photos/reading-preview",
+    response_model=ReadingPreviewOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT, **INVALID_TEMPLATE},
+    summary="Fotografías del lote: vista previa de cómo se leen los nombres de una carpeta",
+    description="Lee hasta 20 nombres de la carpeta con la regla enviada (nombre → códigos → "
+    "pieza o motivo) y cuenta los que no siguen la plantilla, sin guardar nada "
+    "(`importacion-fotos-a-catalogo`, diseño D4).",
+    **implemented(),
+)
+def preview_import_photo_reading(
+    batch_id: uuid.UUID, body: FolderRuleRequest, session: SessionDep, user: Preparer
+) -> ReadingPreviewOut:
+    batch = _photo_batch(session, batch_id)
+    return ReadingPreviewOut.model_validate(
+        reading_preview(session, batch, body.folder, _folder_rule(body.rule))
+    )
+
+
+@router.put(
+    "/imports/{batch_id}/photos/reading",
+    response_model=PhotoFoldersOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT, **INVALID_TEMPLATE},
+    summary="Fotografías del lote: guardar la forma de lectura de una carpeta",
+    description="Guarda la regla de la carpeta (vacía = todo el lote), que vale también para sus "
+    "subcarpetas sin regla propia, y vuelve a emparejar solo las fotos automáticas de esa "
+    "carpeta: las asignadas a mano y las descartadas no cambian. Una plantilla inválida "
+    "responde 422 y la carpeta conserva su regla (`importacion-fotos-a-catalogo`, diseño D4).",
+    **implemented(),
+)
+def save_import_photo_reading(
+    batch_id: uuid.UUID, body: FolderRuleRequest, session: SessionDep, user: Preparer
+) -> PhotoFoldersOut:
+    batch = _reviewable_photo_batch(session, user, batch_id, "forma de lectura")
+    save_reading(session, batch, body.folder, _folder_rule(body.rule))
+    session.commit()
+    return _folders_out(session, batch)
+
+
+def _reviewable_photo_batch(
+    session: Session, user: CurrentUser, batch_id: uuid.UUID, what: str
+) -> ImportBatch:
+    """The locked ``PHOTOS`` batch, while its photos can still change (D4, D7)."""
+    _photo_batch(session, batch_id)
+    _photo_writer(session, user, batch_id, f"Fotos del lote: {what}")
+    batch = lock_batch(session, batch_id)
+    if batch.status not in {ImportBatchStatus.UPLOADED, ImportBatchStatus.IN_PREVIEW}:
+        raise ConflictError(
+            f"El lote está en «{STATUS_LABELS[batch.status]}»: ya no se cambia su lectura.",
+            code="batch_not_reviewable",
+            details={"current_status": batch.status.value},
+        )
+    return batch
+
+
+@router.post(
+    "/imports/{batch_id}/photos/correspondences",
+    response_model=CorrespondencesOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Fotografías del lote: subir una lista de correspondencias archivo → código",
+    description="CSV o Excel con las columnas `archivo` (nombre o ruta) y `codigo`, y `tipo` "
+    "opcional. Propone la pieza de cada foto nombrada con prioridad sobre el nombre, sin tocar "
+    "las asignaciones manuales, y la guarda en el lote para las lecturas siguientes. Las líneas "
+    "sin foto, sin pieza o ambiguas (nombre repetido en varias carpetas) se informan con su "
+    "motivo sin detener las demás (`importacion-fotos-a-catalogo`, diseño D7).",
+    **implemented(),
+)
+def upload_import_photo_correspondences(
+    request: Request,
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    file: Annotated[UploadFile, File(description="Lista .csv o .xlsx.")],
+) -> CorrespondencesOut:
+    content = _read_upload(file, request.app.state.settings.import_max_bytes)
+    batch = _reviewable_photo_batch(session, user, batch_id, "lista de correspondencias")
+    results = upload_correspondences(session, batch, file.filename or "lista.csv", content)
+    session.commit()
+    counts = {key: sum(r.result == key for r in results) for key in CORRESPONDENCE_RESULTS}
+    return CorrespondencesOut(
+        batch_id=batch_id,
+        **counts,
+        lines=[
+            CorrespondenceLineOut(
+                line=r.line.number,
+                file=r.line.file,
+                code=r.line.code,
+                result=r.result,  # type: ignore[arg-type]
+                reason=r.reason,
+                photo_ids=list(r.photo_ids),
+            )
+            for r in results
+        ],
+    )
+
+
+CORRESPONDENCE_RESULTS = ("applied", "no_photo", "no_piece", "ambiguous")
 
 
 @router.post(

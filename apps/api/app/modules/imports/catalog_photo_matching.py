@@ -655,6 +655,24 @@ def _proposal(
     return CatalogProposal(photo_id, PhotoMatchStatus.MATCHED, source, piece_id, reason=reason)
 
 
+def pieces_for_code(
+    code: str,
+    index: CatalogIndex,
+    *,
+    type_code: str | None = None,
+    rules: Mapping[str, NormalizationRule] = DEFAULT_RULES,
+) -> set[uuid.UUID]:
+    """Pieces of one code of the correspondences list (D7): normalized with its type when it
+    has one, otherwise read as in automatic mode, with the protections of D3 (a number alone
+    finds nothing: there is no collection to compare it with)."""
+    if type_code is not None:
+        rule = rules.get(type_code)
+        value = normalized_code(rule, code) if rule is not None else None
+        return index.targets_for_keys([(type_code, value)]) if value else set()
+    found = _by_level(read_name(code, is_file=False, rules=rules), index, None, allow_numbers=True)
+    return found.pieces if found is not None else set()
+
+
 def _closest_range(folders: Sequence[str], infos: Mapping[str, FolderInfo]) -> FolderRange | None:
     for depth in range(len(folders), 0, -1):
         info = infos.get(folder_path(folders[:depth]))

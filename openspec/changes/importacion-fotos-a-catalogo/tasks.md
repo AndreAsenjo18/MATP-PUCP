@@ -27,11 +27,11 @@
 
 ## 4. API de lectura, bandeja y lista
 
-- [ ] 4.1 `PATCH /imports/{batch_id}/photos` con destino genérico: `assign` (fila o pieza), `unassign`, `discard`, `restore`, `confirm_duplicate`, `reorder`, con entrada en la bitácora del lote; pruebas: asignación múltiple a pieza, pieza retirada 422, fila en lote `PHOTOS` 422, restaurar descartada (Req: Asignación manual de fotos a piezas existentes)
-- [ ] 4.2 Repetida en la pieza por SHA-256 al proponer o asignar; prueba del escenario «Foto que ya está en la pieza» (Req: Lote de solo fotografías…)
-- [ ] 4.3 `GET /imports/{batch_id}/photos/folders`, filtros `folder` y `piece_id` en el listado y `match_reason` en la respuesta; pruebas de conteos por carpeta (Req: Asignación manual…; Req: Forma de lectura…)
-- [ ] 4.4 `POST …/photos/reading-preview` (20 nombres, sin guardar) y `PUT …/photos/reading` (guarda y reempareja la carpeta); pruebas: vista previa no persiste, reemparejar respeta manuales (Req: Forma de lectura…)
-- [ ] 4.5 `POST …/photos/correspondences` (CSV y XLSX, encabezados `archivo`, `codigo`, `tipo`), prioridad sobre el nombre, guardado en `photo_reading`; pruebas: asigna foto de cámara, líneas sin foto o sin pieza, nombre repetido en dos carpetas (Req: Lista de correspondencias…; D7)
+- [x] 4.1 `PATCH /imports/{batch_id}/photos` con destino genérico: `assign` (fila o pieza), `unassign`, `discard`, `restore`, `confirm_duplicate`, `reorder`, con entrada en la bitácora del lote; pruebas: asignación múltiple a pieza, pieza retirada 422, fila en lote `PHOTOS` 422, restaurar descartada (Req: Asignación manual de fotos a piezas existentes)
+- [x] 4.2 Repetida en la pieza por SHA-256 al proponer o asignar; prueba del escenario «Foto que ya está en la pieza» (Req: Lote de solo fotografías…)
+- [x] 4.3 `GET /imports/{batch_id}/photos/folders`, filtros `folder` y `piece_id` en el listado y `match_reason` en la respuesta; pruebas de conteos por carpeta (Req: Asignación manual…; Req: Forma de lectura…)
+- [x] 4.4 `POST …/photos/reading-preview` (20 nombres, sin guardar) y `PUT …/photos/reading` (guarda y reempareja la carpeta); pruebas: vista previa no persiste, reemparejar respeta manuales (Req: Forma de lectura…)
+- [x] 4.5 `POST …/photos/correspondences` (CSV y XLSX, encabezados `archivo`, `codigo`, `tipo`), prioridad sobre el nombre, guardado en `photo_reading`; pruebas: asigna foto de cámara, líneas sin foto o sin pieza, nombre repetido en dos carpetas (Req: Lista de correspondencias…; D7)
 
 ## 5. Misma foto en distinta resolución
 

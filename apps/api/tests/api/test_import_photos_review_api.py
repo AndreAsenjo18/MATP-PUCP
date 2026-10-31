@@ -185,7 +185,7 @@ def test_photos_are_assigned_only_to_rows_of_their_batch(pipeline: Pipeline, sto
     )
     unknown = pipeline.client.patch(
         f"{BASE}/{lot.batch_id}/photos",
-        json={"op": "discard", "photo_ids": [loose], "row_id": str(uuid.uuid4())},
+        json={"op": "merge", "photo_ids": [loose], "row_id": str(uuid.uuid4())},
     )
     viewer = assign(
         pipeline, lot.batch_id, [loose], row_ids(pipeline, lot.batch_id)[2], role="INTERNAL_VIEWER"
@@ -194,7 +194,7 @@ def test_photos_are_assigned_only_to_rows_of_their_batch(pipeline: Pipeline, sto
     assert foreign_row.status_code == 422 and foreign_row.json()["code"] == "row_not_in_batch"
     assert foreign_photo.status_code == 422 and foreign_photo.json()["code"] == "photo_not_in_batch"
     assert unverified.status_code == 422 and unverified.json()["code"] == "photo_not_verified"
-    assert unknown.status_code == 422  # only assign exists for now
+    assert unknown.status_code == 422  # not an operation of the tray
     assert viewer.status_code == 403
     assert tray(pipeline, lot.batch_id, match_status="UNMATCHED")["total"] == 2  # nothing changed
 
