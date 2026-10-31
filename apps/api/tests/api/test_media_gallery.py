@@ -24,6 +24,8 @@ from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
+from app.modules.catalog.models import Piece
+from app.modules.catalog.service import change_tenure
 from app.modules.collections.models import Collection
 from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
@@ -109,8 +111,9 @@ def test_the_download_url_is_a_get_with_the_purpose_and_the_short_ttl(
     _delete(seeded_api, piece_id)
 
 
-def _restricted_collection(seeded_api: SeededApi) -> str:
-    """A collection whose photos default to «No publicar» [SUPUESTO B2: illustrative]."""
+def _restricted_collection(seeded_api: SeededApi, *, restricted: bool = True) -> str:
+    """A collection whose photos default to «No publicar» [SUPUESTO B2: illustrative], or one
+    with no default restriction at all."""
     with seeded_api.session() as session:
         admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
         assert admin is not None
@@ -122,7 +125,9 @@ def _restricted_collection(seeded_api: SeededApi) -> str:
                 acronym=acronym,
                 acronym_normalized=acronym,
                 default_tenure_regime=TenureRegime.OWNED,
-                default_usage_restriction_term_id=comodato_restriction_term_id(session),
+                default_usage_restriction_term_id=comodato_restriction_term_id(session)
+                if restricted
+                else None,
             )
             session.add(collection)
             session.commit()
@@ -171,6 +176,42 @@ def test_the_409_of_a_loan_for_use_names_its_agreement(
         "Acuerdo sintético 07-2026",
     )
     assert "Acuerdo sintético 07-2026" in response.json()["message"]
+    _delete(seeded_api, piece_id)
+
+
+def test_a_piece_that_becomes_a_loan_for_use_restricts_its_earlier_photos(
+    seeded_api: SeededApi,
+    fake_storage: dict,  # noqa: F811
+) -> None:
+    """The photo was registered while the piece was owned, so it has no restriction of its own,
+    and its collection has no default: the loan for use of the piece restricts it (RN-008)."""
+    piece_id = _new_piece(
+        seeded_api, collection_id=_restricted_collection(seeded_api, restricted=False)
+    )
+    photo = _register(seeded_api, fake_storage, piece_id, 140)
+    assert (photo["usage_restriction"], photo["restriction_origin"]) == (None, "ninguna")
+    with seeded_api.session() as session:
+        admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
+        assert admin is not None
+        with audit_context(session, AuditContext(origin=AuditOrigin.MANUAL, user_id=admin.id)):
+            piece = session.get(Piece, uuid.UUID(piece_id))
+            assert piece is not None
+            change_tenure(session, piece, TenureRegime.LOAN_FOR_USE, "Pasa a comodato (sintético)")
+            session.commit()
+
+    (listed,) = seeded_api.client.get(f"/api/v1/pieces/{piece_id}/media", headers=H).json()
+    external = _download_url(seeded_api.client, piece_id, photo["id"], "external", as_user(MANAGER))
+    internal = _download_url(seeded_api.client, piece_id, photo["id"], "internal", H)
+
+    assert listed["usage_restriction"] is None
+    assert (listed["effective_restriction"]["code"], listed["restriction_origin"]) == (
+        "NO_PUBLICAR",
+        "pieza",
+    )
+    assert external.status_code == 409, external.text
+    assert external.json()["details"]["origin"] == "pieza"
+    assert internal.status_code == 200, internal.text
+    assert internal.json()["restriction_origin"] == "pieza"
     _delete(seeded_api, piece_id)
 
 

@@ -930,7 +930,8 @@ def reorder_media(
     },
     summary="Obtener URL prefirmada para descargar una foto",
     description="URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción "
-    "efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).",
+    "efectiva de la foto: la propia, la de la pieza (en comodato, «No publicar») o la de su "
+    "colección, en ese orden (RN-008).",
     tags=["Multimedia"],
     **implemented(),
 )

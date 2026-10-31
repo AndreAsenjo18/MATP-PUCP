@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 784ec2f6bde355c436bcfe818c27bd0f55bc443008d8a9b8b22752193c9874ac
+ * openapi-sha256: 29b83d1e92811dcbc46d811b87d490e041e16c58b6389268bd3557f57e3a0c82
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1365,7 +1365,7 @@ export interface paths {
         };
         /**
          * Obtener URL prefirmada para descargar una foto
-         * @description URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).
+         * @description URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden (RN-008).
          */
         get: operations["getMediaDownloadUrl"];
         put?: never;
@@ -4812,7 +4812,7 @@ export interface components {
              * @description En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.
              */
             download_url?: string | null;
-            /** @description Restricción que se aplica: la propia o, si no tiene, la de su colección. */
+            /** @description Restricción que se aplica: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden. */
             effective_restriction?: components["schemas"]["TermRef"] | null;
             /** Height Px */
             height_px: number | null;

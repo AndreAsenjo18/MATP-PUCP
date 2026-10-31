@@ -6138,7 +6138,7 @@
                 "type": "null"
               }
             ],
-            "description": "Restricción que se aplica: la propia o, si no tiene, la de su colección."
+            "description": "Restricción que se aplica: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden."
           },
           "height_px": {
             "anyOf": [
@@ -20309,7 +20309,7 @@
     },
     "/api/v1/pieces/{piece_id}/media/{media_id}/download-url": {
       "get": {
-        "description": "URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).",
+        "description": "URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden (RN-008).",
         "operationId": "getMediaDownloadUrl",
         "parameters": [
           {
