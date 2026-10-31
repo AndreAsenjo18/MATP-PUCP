@@ -36,9 +36,16 @@ flowchart TD
 
 Las reglas de comodato (RN-003, RN-008) se aplican después sobre el régimen resultante, sin cambios.
 
+Decisiones tomadas al implementar (tareas 1.1 y 1.3):
+
+- **Advertencias que no bloquean**: `MappedRow.warnings` se guarda en `mapped_data["warnings"]` (la API ya devuelve `mapped_data`, así que no cambia el contrato) y la revisión de la importación las muestra en amarillo. La primera es `acquisition_regime_mismatch`.
+- **El régimen por defecto del lote sigue siendo una elección cerrada** (etiquetas del contrato y «propio»): una forma de adquisición como «Custodia» solo da un régimen dentro de una fila, mediante `tenure_aliases`. Las etiquetas del contrato se reconocen siempre, aunque el Administrador las quite de la tabla.
+- **La forma de adquisición llega a la ficha**: una columna `terms:ACQUISITION_METHOD` guarda el código del término en `mapped_data["acquisition_method"]`; al aplicar se resuelve a `acquisition_method_term_id` y, en una fila de actualización, aparece como el cambio «Forma de adquisición».
+- **Sin error duplicado**: si una fila ya tiene un error del régimen (inválido o no deducible), la clasificación no agrega además «Falta el régimen de tenencia».
+
 ### D3. RN de 5 dígitos
 
-`FORMAT_INC_5 = "INC_5_DIGITOS"`, una rama más en `normalize_inc_code`. No se rellena con ceros. Los identificadores ya registrados como «no normalizables» con 5 dígitos se recuperan desde «Tipos de código» con la vista previa y confirmación existentes (sin migración automática, RN-005).
+`FORMAT_INC_5 = "INC_5_DIGITOS"`, una rama más en `normalize_inc_code`. No se rellena con ceros. Los identificadores ya registrados como «no normalizables» con 5 dígitos se recuperan desde «Tipos de código» con la vista previa y confirmación existentes (sin migración automática, RN-005). Para eso, confirmar la vista previa con la **misma** regla y un `confirm_token` válido también recalcula (antes solo lo hacía un cambio de regla; decisión tomada al implementar la tarea 2.2).
 
 ## Risks / Trade-offs
 
@@ -47,5 +54,5 @@ Las reglas de comodato (RN-003, RN-008) se aplican después sobre el régimen re
 
 ## Migration Plan
 
-1. Migración de datos: fila `tenure_aliases` en `normalization_setting`; `downgrade` la retira lógicamente.
-2. Seed: términos «Cesión de uso» y «Custodia» en «Formas de adquisición».
+1. Migración de datos `0018_tenure_aliases`: fila `tenure_aliases` en `normalization_setting` (se respeta una fila activa existente) y términos «Cesión de uso» y «Custodia» en «Formas de adquisición» de las instalaciones ya sembradas. `downgrade` quita solo la fila que insertó y conserva los términos, que las piezas pueden estar usando.
+2. Seed: los mismos términos para las instalaciones nuevas.

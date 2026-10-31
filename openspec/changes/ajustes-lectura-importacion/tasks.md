@@ -14,6 +14,6 @@
 
 ## 3. Cierre
 
-- [ ] 3.1 Actualizar L5 y A4 en `docs/preguntas-contraparte.md` y la sección de Lectura de códigos del manual de usuario
+- [x] 3.1 Actualizar L5 y A4 en `docs/preguntas-contraparte.md` y la sección de Lectura de códigos del manual de usuario
 - [ ] 3.2 Verificación en PostgreSQL (`npm run test:api:pg`) de la migración de datos
-- [ ] 3.3 `npm run openapi:check` (no debe haber cambios de contrato), `npm test`, `npm run lint` y `openspec validate ajustes-lectura-importacion --strict` en verde; tras aprobar el PR, `openspec archive ajustes-lectura-importacion -y`
+- [ ] 3.3 `npm run openapi:check` (el único cambio es la clave `tenure_aliases` de `/normalization-settings/{key}`, una operación añadida; registrado en `docs/api/mapeo-endpoints-v1.md`), `npm test`, `npm run lint` y `openspec validate ajustes-lectura-importacion --strict` en verde; tras aprobar el PR, `openspec archive ajustes-lectura-importacion -y`
