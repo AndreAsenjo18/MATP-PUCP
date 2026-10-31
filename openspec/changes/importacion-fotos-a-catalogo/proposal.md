@@ -2,7 +2,7 @@
 
 En la reunión del 2026-10-31 el MATP mostró cómo guarda hoy su archivo fotográfico: un Drive con **una carpeta por colección** (nombrada por la sigla o por el nombre del coleccionista), a veces dividida en **subcarpetas por rango de correlativos**, con miles de imágenes de piezas que **ya estarán en el catálogo** después de importar las sábanas históricas. `importacion-masiva-fotografias` solo carga fotos **junto con un Excel** y las empareja con las filas de ese lote; su diseño deja fuera, a propósito, la carga de fotos a piezas existentes. Sin este change, el archivo fotográfico solo podría subirse foto por foto desde cada ficha.
 
-Se revisaron 19 capturas de carpetas, **solo en su estructura**. No se copian al repositorio porque muestran nombres de personas (RNF-014). En la tabla, los ejemplos son sintéticos y equivalentes a los reales:
+Se revisaron 19 capturas de carpetas, guardadas con autorización del museo en `docs/capturas de pantalla de carpetas con fotos/`. En la tabla, los ejemplos son sintéticos y equivalentes a los reales:
 
 | # | Forma | Ejemplo sintético | Colecciones vistas | ¿Trae código? |
 |---|---|---|---|---|

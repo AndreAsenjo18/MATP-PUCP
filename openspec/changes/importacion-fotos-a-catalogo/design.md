@@ -2,7 +2,7 @@
 
 - `importacion-masiva-fotografias` (activo) ya tiene: tabla `import_photo` con `relative_path`, `original_filename`, huella SHA-256, estado y propuesta de fila (`row_id`, `match_status`, `match_source`, `candidate_row_ids`, `sort_key`); subida reanudable por tandas con URL prefirmadas; verificación y derivados en el worker (`photo_verification.py`); el lector de nombres `photo_matching.read_name`; la ejecución del emparejamiento `photos.match_batch_photos`; la bandeja (`photo_review.py`, solo `assign` por ahora); y la aplicación (`apply._photos_to_apply` → `media.service.register_from_import`), que ya guarda `relative_path` en `media_asset.extra_metadata`.
 - Todo eso está atado a **filas** de un lote con Excel. El lote (`import_batch`) exige `file_name` y recorre `UPLOADED → MAPPED → VALIDATED → IN_PREVIEW → APPROVED → APPLIED`.
-- **Estructura del archivo fotográfico del museo** (capturas de Drive del 2026-10-31, revisadas solo en su estructura; no se copian al repositorio porque muestran nombres de personas, RNF-014):
+- **Estructura del archivo fotográfico del museo** (capturas de Drive del 2026-10-31, guardadas con autorización del museo en `docs/capturas de pantalla de carpetas con fotos/`):
   - Una carpeta por colección, nombrada «Fotos Coleccion <sigla o nombre del coleccionista>», a veces dividida en subcarpetas por rango de correlativos (`<SIGLA> 001-100`, `<SIGLA> 001 - 100`, `FOTOS 051-114`).
   - Seis formas de nombre de archivo (F1–F6 de la propuesta):
     - F1: `<SIGLA> <n> - PUCP <n> (k).JPG`, en 6 colecciones;
