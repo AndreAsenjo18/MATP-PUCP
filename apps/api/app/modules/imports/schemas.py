@@ -15,6 +15,7 @@ from app.api.pagination import Page
 from app.api.refs import EX_BATCH_ID, EX_DATETIME, EX_PIECE_ID, EX_USER_ID
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportBatchStatus,
     ImportImage,
     ImportImageStatus,
@@ -77,6 +78,11 @@ class ImportBatchOut(BaseModel):
     )
 
     id: uuid.UUID
+    kind: ImportBatchKind = Field(
+        ImportBatchKind.SPREADSHEET,
+        description="`SPREADSHEET`: lote con Excel. `PHOTOS`: solo fotografías para piezas ya "
+        "registradas, sin mapeo, validación ni filas (RF-046).",
+    )
     source_name: str
     file_name: str
     file_sha256: str | None
@@ -111,6 +117,7 @@ class ImportBatchOut(BaseModel):
         raw = batch.counts or {}
         return cls(
             id=batch.id,
+            kind=batch.kind or ImportBatchKind.SPREADSHEET,
             source_name=batch.source_name,
             file_name=batch.file_name,
             file_sha256=batch.file_sha256,
@@ -136,6 +143,20 @@ class ImportBatchOut(BaseModel):
             approval_summary=ApprovalSummaryOut(**approval) if approval else None,
             created_at=batch.created_at,
         )
+
+
+class PhotoBatchCreate(BaseModel):
+    """Body of ``POST /imports/photo-batches`` (importacion-fotos-a-catalogo, D1)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"name": "Archivo fotográfico — colección ABC"}]}
+    )
+
+    name: str = Field(
+        min_length=1,
+        max_length=300,
+        description="Nombre del lote, para reconocerlo en la lista de lotes y en la bitácora.",
+    )
 
 
 class ImportBatchCounters(BaseModel):

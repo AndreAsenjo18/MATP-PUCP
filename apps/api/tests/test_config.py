@@ -72,6 +72,7 @@ PHOTO_IMPORT_VARIABLES = [
     "MEDIA_KEEP_ORIGINALS",
     "IMPORT_PHOTO_RETENTION_DAYS",
     "MEDIA_QUOTA_BYTES",
+    "IMPORT_PHOTO_SIMILARITY_BITS",
 ]
 
 
@@ -86,16 +87,19 @@ def test_photo_import_settings_defaults_and_overrides(clean_env: pytest.MonkeyPa
     assert defaults.media_keep_originals is True
     assert defaults.import_photo_retention_days == 30
     assert defaults.media_quota_bytes is None
+    assert defaults.import_photo_similarity_bits == 4
 
     clean_env.setenv("MEDIA_QUOTA_BYTES", "")  # as written in .env.example: no quota warning
     assert load_settings().media_quota_bytes is None
     clean_env.setenv("MEDIA_KEEP_ORIGINALS", "false")
     clean_env.setenv("MEDIA_QUOTA_BYTES", "8000000000")
     clean_env.setenv("IMPORT_MAX_PHOTOS", "2000")
+    clean_env.setenv("IMPORT_PHOTO_SIMILARITY_BITS", "2")
     overridden = load_settings()
     assert overridden.media_keep_originals is False
     assert overridden.media_quota_bytes == 8_000_000_000
     assert overridden.import_max_photos == 2_000
+    assert overridden.import_photo_similarity_bits == 2
 
 
 def test_photo_quota_must_be_positive(clean_env: pytest.MonkeyPatch) -> None:

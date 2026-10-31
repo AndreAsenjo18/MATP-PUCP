@@ -99,6 +99,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/imports/{}/photos/summary"),
     ("patch", "/imports/{}/photos"),
     ("post", "/imports/{}/photos/upload-urls"),
+    # Lote de solo fotografías (change importacion-fotos-a-catalogo, diseño D1).
+    ("post", "/imports/photo-batches"),
     ("put", "/imports/{}/mapping"),
     ("patch", "/imports/{}/rows/{}"),
     ("post", "/imports/{}/validate"),

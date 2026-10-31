@@ -61,6 +61,7 @@ from app.modules.imports.mapping import (
 )
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportBatchStatus,
     ImportImage,
     ImportMappingTemplate,
@@ -98,6 +99,7 @@ from app.modules.imports.schemas import (
     MappingTemplateCreate,
     MappingTemplateOut,
     MappingTemplateUpdate,
+    PhotoBatchCreate,
     PhotoCompleteOut,
     PhotoCompleteRequest,
     PhotoDecisionOut,
@@ -116,11 +118,12 @@ from app.modules.imports.schemas import (
 )
 from app.modules.imports.service import (
     create_batch,
+    create_photo_batch,
     ingest_stage,
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import STATUS_LABELS
+from app.modules.imports.state import STATUS_LABELS, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 
@@ -152,6 +155,22 @@ def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
     if batch is None or batch.deleted_at is not None:
         raise NotFound("El lote de importación no existe.", code="batch_not_found")
     return batch
+
+
+def get_spreadsheet_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
+    """The batch of an Excel-only operation (mapping, validation, rows, embedded images): a
+    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1)."""
+    batch = get_batch(session, batch_id)
+    require_kind(batch, ImportBatchKind.SPREADSHEET)
+    return batch
+
+
+KIND_CONFLICT = {
+    409: {
+        "model": ErrorResponse,
+        "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote.",
+    }
+}
 
 
 def batch_out(session: SessionDep, batch: ImportBatch) -> ImportBatchOut:
@@ -252,6 +271,26 @@ def upload_import_batch(
     return ImportBatchSummary.from_batch(batch)
 
 
+@router.post(
+    "/imports/photo-batches",
+    response_model=ImportBatchOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear un lote de solo fotografías para piezas existentes",
+    description="Crea un lote sin Excel cuyas fotos se emparejan con las piezas ya registradas "
+    "por sus identificadores vigentes (RF-046). Las fotos se suben con las mismas operaciones "
+    "de `/imports/{batch_id}/photos/…`; las operaciones de Excel (mapeo, validación, filas) "
+    "responden 409 `batch_kind_mismatch` en este lote (`importacion-fotos-a-catalogo`, D1).",
+    **implemented(),
+)
+def create_import_photo_batch(
+    body: PhotoBatchCreate, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    writer(session, user)
+    batch = create_photo_batch(session, name=body.name, uploaded_by_id=user.id)
+    session.commit()
+    return ImportBatchOut.from_batch(batch)
+
+
 @router.get(
     "/imports",
     response_model=Page[ImportBatchOut],
@@ -344,7 +383,7 @@ def _mapping_spec(body: MappingRequest, session: Session | None = None) -> Mappi
 @router.put(
     "/imports/{batch_id}/mapping",
     response_model=ImportBatchOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="2. Mapeo: asignar columnas (o aplicar una plantilla)",
     description="Asigna cada columna a un campo de la ficha, a un tipo de identificador o a "
     "los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). "
@@ -361,6 +400,7 @@ def set_import_mapping(
     session: SessionDep,
     user: Preparer,
 ) -> ImportBatchOut:
+    get_spreadsheet_batch(session, batch_id)
     spec = _mapping_spec(body, session)
     writer(session, user)
     batch = set_mapping(
@@ -381,7 +421,7 @@ def set_import_mapping(
     "/imports/{batch_id}/validate",
     response_model=ValidationSummary,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="3-4. Normalizar, validar y hacer matching multi-código",
     description="Lanza la validación en segundo plano y responde de inmediato; al terminar, el "
     "lote queda en previsualización con los conteos por clasificación (RF-026).",
@@ -394,7 +434,7 @@ def validate_import(
     session: SessionDep,
     user: Preparer,
 ) -> ValidationSummary:
-    get_batch(session, batch_id)
+    get_spreadsheet_batch(session, batch_id)
     batch = launch_stage(
         session,
         background_tasks,
@@ -417,7 +457,7 @@ def validate_import(
 @router.get(
     "/imports/{batch_id}/diffs",
     response_model=ImportDiffsPage,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="5. Previsualización con diff y clasificación de filas",
     description="Filas del lote con su clasificación, coincidencias, errores, diff campo a "
     "campo, la acción que hará la aplicación y sus imágenes, más las reglas y umbrales usados "
@@ -433,7 +473,7 @@ def get_import_batch_diffs(
     classification: RowClassification | None = None,
     only_errors: bool = False,
 ) -> ImportDiffsPage:
-    batch = get_batch(session, batch_id)
+    batch = get_spreadsheet_batch(session, batch_id)
     if batch.status not in PREVIEW_STATUSES:
         raise ConflictError(
             f"El lote está en estado «{STATUS_LABELS[batch.status]}»: valídelo para ver la "
@@ -474,7 +514,7 @@ def get_import_batch_diffs(
 @router.patch(
     "/imports/{batch_id}/rows/{row_id}",
     response_model=ImportRowOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="Decidir sobre una fila (aceptar, excluir o rechazar con motivo)",
     description="Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del "
     "diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino "
@@ -489,6 +529,7 @@ def decide_import_row(
     session: SessionDep,
     user: Preparer,
 ) -> ImportRowOut:
+    get_spreadsheet_batch(session, batch_id)
     writer(session, user)
     row = decide_row(
         session,
@@ -585,7 +626,7 @@ def get_import_log(
 @router.post(
     "/imports/{batch_id}/images/{image_id}/associate",
     response_model=ImportImageOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="Asociar una imagen extraída del Excel a una pieza (RF-029)",
     description="Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con "
     "referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 "
@@ -602,7 +643,7 @@ def associate_import_image(
     user: MediaUploader,
 ) -> ImportImageOut:
     storage: ObjectStorage = request.app.state.storage
-    batch = get_batch(session, batch_id)
+    batch = get_spreadsheet_batch(session, batch_id)
     asset = associate_image(
         session,
         storage,

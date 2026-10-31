@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 9367acddaf75c9f989d7d2c7c08af7135992fbdac2de03a198bf5ad67f723c5e
+ * openapi-sha256: cefe886d2a4bee317122ec0c0720a5ddf2c47a66ecb219b26496c50550319950
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -947,6 +947,26 @@ export interface paths {
          * @description Lanza la validación en segundo plano y responde de inmediato; al terminar, el lote queda en previsualización con los conteos por clasificación (RF-026).
          */
         post: operations["validateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/photo-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear un lote de solo fotografías para piezas existentes
+         * @description Crea un lote sin Excel cuyas fotos se emparejan con las piezas ya registradas por sus identificadores vigentes (RF-046). Las fotos se suben con las mismas operaciones de `/imports/{batch_id}/photos/…`; las operaciones de Excel (mapeo, validación, filas) responden 409 `batch_kind_mismatch` en este lote (`importacion-fotos-a-catalogo`, D1).
+         */
+        post: operations["createImportPhotoBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3920,6 +3940,15 @@ export interface components {
             updates: number;
         };
         /**
+         * ImportBatchKind
+         * @description What a batch loads (change importacion-fotos-a-catalogo, D1).
+         *
+         *     ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
+         *     photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+         * @enum {string}
+         */
+        ImportBatchKind: "SPREADSHEET" | "PHOTOS";
+        /**
          * ImportBatchOut
          * @example {
          *       "approval_summary": {
@@ -3993,6 +4022,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * @description `SPREADSHEET`: lote con Excel. `PHOTOS`: solo fotografías para piezas ya registradas, sin mapeo, validación ni filas (RF-046).
+             * @default SPREADSHEET
+             */
+            kind: components["schemas"]["ImportBatchKind"];
             /**
              * Mapping
              * @description Mapeo de columnas confirmado.
@@ -5577,6 +5611,20 @@ export interface components {
             /** Description */
             description: string;
         };
+        /**
+         * PhotoBatchCreate
+         * @description Body of ``POST /imports/photo-batches`` (importacion-fotos-a-catalogo, D1).
+         * @example {
+         *       "name": "Archivo fotográfico — colección ABC"
+         *     }
+         */
+        PhotoBatchCreate: {
+            /**
+             * Name
+             * @description Nombre del lote, para reconocerlo en la lista de lotes y en la bitácora.
+             */
+            name: string;
+        };
         /** PhotoCompleteOut */
         PhotoCompleteOut: {
             /**
@@ -5660,7 +5708,7 @@ export interface components {
          * @description Path that proposed the row (D3): file name, folder, mapped column, person or workbook.
          * @enum {string}
          */
-        PhotoMatchSource: "FILENAME" | "FOLDER" | "COLUMN" | "MANUAL" | "EMBEDDED";
+        PhotoMatchSource: "FILENAME" | "FOLDER" | "COLUMN" | "MANUAL" | "EMBEDDED" | "TEMPLATE" | "LIST";
         /**
          * PhotoMatchStatus
          * @description Proposed row of a photo (D3): never applied to the catalogue without batch approval.
@@ -10308,6 +10356,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -10364,6 +10421,15 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10488,6 +10554,15 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10966,6 +11041,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -11017,6 +11101,66 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createImportPhotoBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

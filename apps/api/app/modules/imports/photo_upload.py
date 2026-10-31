@@ -29,14 +29,19 @@ from app.core.errors import ConflictError, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
 from app.modules.imports.models import ImportBatch, ImportPhoto
-from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
-from app.modules.imports.state import STATUS_LABELS, lock_batch
+from app.modules.imports.state import (
+    PHOTO_STATES_BY_KIND,
+    STATUS_LABELS,
+    batch_kind,
+    lock_batch,
+)
 
 #: Files per call (design D2: groups of up to 100).
 MAX_FILES_PER_CALL = 100
-#: A batch admits photos while it is prepared, until it is approved (design D2).
-PHOTO_STATES = frozenset({S.UPLOADED, S.MAPPED, S.VALIDATED, S.IN_PREVIEW})
+#: A batch admits photos while it is prepared, until it is approved (design D2); the states
+#: depend on the kind of batch (``state.PHOTO_STATES_BY_KIND``). Union of both kinds.
+PHOTO_STATES = frozenset().union(*PHOTO_STATES_BY_KIND.values())
 #: Photos that do not count towards ``IMPORT_MAX_PHOTOS``: a rejected one can be uploaded again.
 UNCOUNTED = frozenset({P.REJECTED, P.DISCARDED})
 
@@ -91,7 +96,7 @@ def upload_key(photo: ImportPhoto) -> str:
 def admitting_batch(session: Session, batch_id: uuid.UUID) -> ImportBatch:
     """The locked batch, if it still admits photos; ``409`` otherwise."""
     batch = lock_batch(session, batch_id)
-    if batch.status not in PHOTO_STATES:
+    if batch.status not in PHOTO_STATES_BY_KIND[batch_kind(batch)]:
         raise ConflictError(
             f"El lote está en «{STATUS_LABELS[batch.status]}» y no admite fotos: se agregan "
             "mientras el lote se prepara, antes de aprobarlo.",

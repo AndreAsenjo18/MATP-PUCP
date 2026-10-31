@@ -50,6 +50,7 @@ from app.modules.imports.mapping import (
 )
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportImage,
     ImportRow,
     RowClassification,
@@ -130,6 +131,25 @@ def create_batch(
     session.flush()
     if failure is not None:
         transition(session, batch.id, S.FAILED_INGESTION, reason=failure.message)
+    return batch
+
+
+def create_photo_batch(session: Session, *, name: str, uploaded_by_id: uuid.UUID) -> ImportBatch:
+    """A batch of photos only, for pieces already in the catalogue (importacion-fotos-a-catalogo,
+    D1): no workbook, so ``file_name`` keeps the name the user gives it and there is no file."""
+    name = name.strip()
+    batch = ImportBatch(
+        id=new_uuid(),
+        kind=ImportBatchKind.PHOTOS,
+        source_name=name[:200],
+        file_name=name[:300],
+        status=S.UPLOADED,
+        uploaded_by_id=uploaded_by_id,
+        stage_timestamps={S.UPLOADED.value: utcnow().isoformat()},
+        counts={},
+    )
+    session.add(batch)
+    session.flush()
     return batch
 
 

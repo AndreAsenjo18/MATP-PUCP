@@ -35,12 +35,12 @@ from app.core.storage import ObjectStorage
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.imports.mapping import MappingContext
-from app.modules.imports.models import ImportBatch, ImportPhoto
+from app.modules.imports.models import ImportBatch, ImportBatchKind, ImportPhoto
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.imports.photo_upload import PHOTO_STATES, upload_key
 from app.modules.imports.photos import PhotoMatchingFailed, match_batch_photos
-from app.modules.imports.state import lock_batch
+from app.modules.imports.state import batch_kind, lock_batch, transition
 from app.modules.media import derivatives
 from app.modules.media.service import verify_image
 
@@ -122,6 +122,21 @@ def _match(session: Session, batch: ImportBatch) -> None:
         session.expire_all()
 
 
+def _to_preview_when_ready(session: Session, batch: ImportBatch) -> None:
+    """A ``PHOTOS`` batch has no validation: it reaches the preview once no photo waits for its
+    verification and the matching of the verified ones ran (importacion-fotos-a-catalogo, D1).
+    Photos uploaded later (a resumed upload) are still admitted and matched in the preview."""
+    if batch_kind(batch) is not ImportBatchKind.PHOTOS or batch.status is not S.UPLOADED:
+        return
+    waiting = session.scalar(
+        select(ImportPhoto.id)
+        .where(ImportPhoto.batch_id == batch.id, ImportPhoto.status == P.UPLOADED)
+        .limit(1)
+    )
+    if waiting is None:
+        transition(session, batch.id, S.IN_PREVIEW)
+
+
 def _verify_group(
     session: Session,
     storage: ObjectStorage,
@@ -175,6 +190,7 @@ def _verify_group(
         session.flush()
         if any(problem is None for problem in outcomes.values()):
             _match(session, batch)
+        _to_preview_when_ready(session, batch)
     session.commit()
     return written
 

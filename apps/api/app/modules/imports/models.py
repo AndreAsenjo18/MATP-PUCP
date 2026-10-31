@@ -5,7 +5,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.models_base import (
@@ -29,6 +39,17 @@ class ImportBatchStatus(enum.StrEnum):
     FAILED_APPLY = "FAILED_APPLY"
     ABANDONED = "ABANDONED"
     REVERTED = "REVERTED"
+
+
+class ImportBatchKind(enum.StrEnum):
+    """What a batch loads (change importacion-fotos-a-catalogo, D1).
+
+    ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
+    photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+    """
+
+    SPREADSHEET = "SPREADSHEET"
+    PHOTOS = "PHOTOS"
 
 
 class RowClassification(enum.StrEnum):
@@ -61,6 +82,12 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "import_batch"
 
     source_name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[ImportBatchKind] = mapped_column(
+        str_enum(ImportBatchKind, "import_batch_kind"),
+        default=ImportBatchKind.SPREADSHEET,
+        server_default=ImportBatchKind.SPREADSHEET.value,
+    )
+    # Workbook name, or the name the user gives to a ``PHOTOS`` batch.
     file_name: Mapped[str] = mapped_column(String(300))
     file_storage_key: Mapped[str | None] = mapped_column(String(500))
     file_sha256: Mapped[str | None] = mapped_column(String(64))
@@ -85,6 +112,9 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     mapping: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
     # Change set of the application: every catalog change of the batch shares it (design D6, D7).
     change_set_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # How the file names of a ``PHOTOS`` batch are read (importacion-fotos-a-catalogo, D4, D7):
+    # ``{"default": rule, "folders": {path: rule}, "correspondences": [...]}``.
+    photo_reading: Mapped[dict[str, Any] | None] = mapped_column(JsonType)
 
 
 class ImportRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -173,6 +203,9 @@ class PhotoMatchSource(enum.StrEnum):
     COLUMN = "COLUMN"
     MANUAL = "MANUAL"
     EMBEDDED = "EMBEDDED"
+    # ``PHOTOS`` batches (importacion-fotos-a-catalogo, D3, D4, D7): a folder template or a list.
+    TEMPLATE = "TEMPLATE"
+    LIST = "LIST"
 
 
 class ImportPhoto(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -215,5 +248,20 @@ class ImportPhoto(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     duplicate_of_existing: Mapped[bool] = mapped_column(Boolean, default=False)
     duplicate_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     media_asset_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("media_asset.id"))
+    # ``PHOTOS`` batches (importacion-fotos-a-catalogo, D2): proposed or assigned piece, the
+    # candidates of an ambiguous photo and why the match is not plain (``discrepant_codes``…).
+    piece_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("piece.id"))
+    candidate_piece_ids: Mapped[list[Any] | None] = mapped_column(JsonType)
+    match_reason: Mapped[str | None] = mapped_column(String(60))
+    # Size and 64-bit dHash (hex) to find the same photo in another resolution (D6).
+    width_px: Mapped[int | None] = mapped_column()
+    height_px: Mapped[int | None] = mapped_column()
+    perceptual_hash: Mapped[str | None] = mapped_column(String(16))
+    # Photo kept when this one was discarded as a lower resolution version of it (D6).
+    same_as_photo_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_photo.id"))
 
-    __table_args__ = (UniqueConstraint("batch_id", "content_sha256"),)
+    __table_args__ = (
+        UniqueConstraint("batch_id", "content_sha256"),
+        # A photo goes to a row of its batch or to a piece of the catalogue, never both (D2).
+        CheckConstraint("row_id IS NULL OR piece_id IS NULL", name="row_or_piece"),
+    )

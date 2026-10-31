@@ -4167,6 +4167,15 @@
         "title": "ImportBatchCounters",
         "type": "object"
       },
+      "ImportBatchKind": {
+        "description": "What a batch loads (change importacion-fotos-a-catalogo, D1).\n\n``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only\nphotos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.",
+        "enum": [
+          "SPREADSHEET",
+          "PHOTOS"
+        ],
+        "title": "ImportBatchKind",
+        "type": "string"
+      },
       "ImportBatchOut": {
         "examples": [
           {
@@ -4300,6 +4309,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ImportBatchKind",
+            "default": "SPREADSHEET",
+            "description": "`SPREADSHEET`: lote con Excel. `PHOTOS`: solo fotografías para piezas ya registradas, sin mapeo, validación ni filas (RF-046)."
           },
           "mapping": {
             "anyOf": [
@@ -7755,6 +7769,28 @@
         "title": "PermissionOut",
         "type": "object"
       },
+      "PhotoBatchCreate": {
+        "description": "Body of ``POST /imports/photo-batches`` (importacion-fotos-a-catalogo, D1).",
+        "examples": [
+          {
+            "name": "Archivo fotográfico — colección ABC"
+          }
+        ],
+        "properties": {
+          "name": {
+            "description": "Nombre del lote, para reconocerlo en la lista de lotes y en la bitácora.",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PhotoBatchCreate",
+        "type": "object"
+      },
       "PhotoCompleteOut": {
         "properties": {
           "batch_id": {
@@ -7906,7 +7942,9 @@
           "FOLDER",
           "COLUMN",
           "MANUAL",
-          "EMBEDDED"
+          "EMBEDDED",
+          "TEMPLATE",
+          "LIST"
         ],
         "title": "PhotoMatchSource",
         "type": "string"
@@ -15991,6 +16029,74 @@
         "x-status": "implemented"
       }
     },
+    "/api/v1/imports/photo-batches": {
+      "post": {
+        "description": "Crea un lote sin Excel cuyas fotos se emparejan con las piezas ya registradas por sus identificadores vigentes (RF-046). Las fotos se suben con las mismas operaciones de `/imports/{batch_id}/photos/…`; las operaciones de Excel (mapeo, validación, filas) responden 409 `batch_kind_mismatch` en este lote (`importacion-fotos-a-catalogo`, D1).",
+        "operationId": "createImportPhotoBatch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Crear un lote de solo fotografías para piezas existentes",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
     "/api/v1/imports/upload": {
       "post": {
         "description": "Guarda el archivo original sin modificarlo y lo lee en segundo plano; el avance se consulta en `GET /imports/{batch_id}`. Un formato no admitido o un archivo con más de IMPORT_MAX_ROWS filas deja el lote «fallido en ingesta» con el motivo.",
@@ -16338,6 +16444,16 @@
             },
             "description": "El lote no existe o fue eliminado."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -16437,6 +16553,16 @@
               }
             },
             "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
           },
           "422": {
             "content": {
@@ -16621,6 +16747,16 @@
               }
             },
             "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
           },
           "422": {
             "content": {
@@ -17355,6 +17491,16 @@
             },
             "description": "El lote no existe o fue eliminado."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -17434,6 +17580,16 @@
               }
             },
             "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
           },
           "422": {
             "content": {

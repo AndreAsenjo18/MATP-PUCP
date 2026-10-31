@@ -3,14 +3,14 @@
 ## 1. Requisitos, preguntas y modelo
 
 - [x] 1.1 Añadir RF-046 («Carga masiva de fotografías a piezas existentes», *Must*, importacion-datos) a `docs/requisitos/catalogo.md` (confirmar con André que el número está libre) y comprobar que AF1–AF6 estén en `docs/preguntas-contraparte.md` con su supuesto (entraron con la rama `docs/feedback-reunion-31-oct`); `openspec validate importacion-fotos-a-catalogo --strict` en verde (Req: todos)
-- [ ] 1.2 Migración aditiva: `import_batch.kind` (default `SPREADSHEET`) y `photo_reading`; en `import_photo`, `piece_id`, `candidate_piece_ids`, `match_reason`, `width_px`, `height_px`, `perceptual_hash`, `same_as_photo_id` y `CHECK` fila o pieza; valores `TEMPLATE` y `LIST` en `photo_match_source`; `photo_camera_patterns` en `normalization_setting`. Pruebas: `tests/test_migrations.py`, una sola cabeza y `test_cross_cutting_rules.py` en verde (Req: Lote de solo fotografías…; D1, D2)
-- [ ] 1.3 Variable `IMPORT_PHOTO_SIMILARITY_BITS` en `Settings` y `.env.example`; prueba de documentación de variables en verde (Req: Detección de la misma foto…)
+- [x] 1.2 Migración aditiva: `import_batch.kind` (default `SPREADSHEET`) y `photo_reading`; en `import_photo`, `piece_id`, `candidate_piece_ids`, `match_reason`, `width_px`, `height_px`, `perceptual_hash`, `same_as_photo_id` y `CHECK` fila o pieza; valores `TEMPLATE` y `LIST` en `photo_match_source`; `photo_camera_patterns` en `normalization_setting`. Pruebas: `tests/test_migrations.py`, una sola cabeza y `test_cross_cutting_rules.py` en verde (Req: Lote de solo fotografías…; D1, D2)
+- [x] 1.3 Variable `IMPORT_PHOTO_SIMILARITY_BITS` en `Settings` y `.env.example`; prueba de documentación de variables en verde (Req: Detección de la misma foto…)
 
 ## 2. Lote de solo fotos
 
-- [ ] 2.1 Transiciones por `kind` en `imports/state.py` (`PHOTOS`: `UPLOADED → IN_PREVIEW → APPROVED → APPLIED → REVERTED`, abandono y `FAILED_APPLY`) y `PHOTO_STATES` por tipo; pruebas de transiciones válidas e inválidas de ambos tipos (Req: Lote de solo fotografías…; D1)
-- [ ] 2.2 `POST /imports/photo-batches` (permiso `imports.prepare`) y `409 batch_kind_mismatch` en las operaciones de Excel sobre un lote `PHOTOS`; pruebas: creación, mapeo rechazado, Consulta interna 403 (Req: Lote de solo fotografías…)
-- [ ] 2.3 Paso a `IN_PREVIEW` cuando no quedan fotos pendientes de verificar y el emparejamiento terminó; prueba con tanda reanudada (Req: Lote de solo fotografías…)
+- [x] 2.1 Transiciones por `kind` en `imports/state.py` (`PHOTOS`: `UPLOADED → IN_PREVIEW → APPROVED → APPLIED → REVERTED`, abandono y `FAILED_APPLY`) y `PHOTO_STATES` por tipo; pruebas de transiciones válidas e inválidas de ambos tipos (Req: Lote de solo fotografías…; D1)
+- [x] 2.2 `POST /imports/photo-batches` (permiso `imports.prepare`) y `409 batch_kind_mismatch` en las operaciones de Excel sobre un lote `PHOTOS`; pruebas: creación, mapeo rechazado, Consulta interna 403 (Req: Lote de solo fotografías…)
+- [x] 2.3 Paso a `IN_PREVIEW` cuando no quedan fotos pendientes de verificar y el emparejamiento terminó; prueba con tanda reanudada (Req: Lote de solo fotografías…)
 
 ## 3. Lectura y emparejamiento con el catálogo
 
