@@ -1,6 +1,6 @@
 ## 1. Contrato y supuestos
 
-- [ ] 1.1 Registrar las preguntas AA1 a AA3 (tamaño de lote, caducidad del paquete, metadatos suficientes) en una sección nueva «AA» de `docs/preguntas-contraparte.md` con su supuesto vigente, y remitir el alcance de RIA-04 a la pregunta C9 sin duplicarla; verificar los enlaces desde `design.md` (Req: Descarga masiva de fotografías por paquete; Descripciones preliminares por lote como sugerencias pendientes)
+- [x] 1.1 Registrar las preguntas AA1 a AA3 (tamaño de lote, caducidad del paquete, metadatos suficientes) en una sección nueva «AA» de `docs/preguntas-contraparte.md` con su supuesto vigente, y remitir el alcance de RIA-04 a la pregunta C9 sin duplicarla; verificar los enlaces desde `design.md` (Req: Descarga masiva de fotografías por paquete; Descripciones preliminares por lote como sugerencias pendientes)
 - [ ] 1.2 Hacer configurables los límites de 200 y 50 piezas de `BulkDownloadRequest` y `BatchEnrichRequest` (los esquemas de D1 ya existen desde los stubs de la tarea 5.2 de `alinear-api-endpoints-v1`); pruebas de validación (lista vacía y lote demasiado grande, 422) (Req: Descarga masiva de fotografías por paquete; Descripciones preliminares por lote como sugerencias pendientes; RF-013, RIA-04)
 - [ ] 1.3 Declarar `GET /media/bulk-download/{job_id}` como operación añadida en `docs/api/mapeo-endpoints-v1.md` y en `ANADIDOS` de `test_contract_conformance.py`; prueba de conformidad en verde (Req: Descarga masiva de fotografías por paquete; RNF-009)
 
