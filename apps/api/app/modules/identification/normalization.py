@@ -76,6 +76,9 @@ ABSENCE_MARKERS = frozenset(
         "SINCÓDIGO",
         "SINNUMERO",
         "SINNÚMERO",
+        # Real files of the museum (formatos-reales-importacion, D5; migration 0020).
+        "NOPRESENTA",
+        "NOREGISTRA",
     }
 )
 
