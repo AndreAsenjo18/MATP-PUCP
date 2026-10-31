@@ -135,6 +135,7 @@ def test_cesion_de_uso_is_imported_as_loan_for_use(
     )
 
     assert row.tenure_regime is TenureRegime.LOAN_FOR_USE
+    assert row.acquisition_method == "CESION_USO"
     errors = classify_errors(row)
     assert "loan_for_use_with_inventory_code" in errors
 

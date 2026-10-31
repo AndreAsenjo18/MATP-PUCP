@@ -26,14 +26,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.enums import TENURE_REGIME_LABELS
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import new_uuid
 from app.modules.audit.context import require_audit_context
 from app.modules.audit.soft_delete import soft_delete
+from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection
 from app.modules.identification.models import (
     ABSENCE_MARKERS_KEY,
     CONCATENATION_SEPARATORS_KEY,
+    TENURE_ALIASES_KEY,
     CollectionAcronymAlias,
     IdentifierType,
     NormalizationRule,
@@ -44,13 +47,19 @@ from app.modules.identification.normalization import (
     DEFAULT_PARAMS,
     DEFAULT_RULES,
     NormalizationParams,
+    fold_label,
     normalize,
     normalize_acronym,
     split_compound,
 )
 from app.modules.identification.params import load_params, params_from_rows
 
-SETTING_KEYS = (ABSENCE_MARKERS_KEY, CONCATENATION_SEPARATORS_KEY)
+SETTING_KEYS = (ABSENCE_MARKERS_KEY, CONCATENATION_SEPARATORS_KEY, TENURE_ALIASES_KEY)
+# Regime codes by contract label or code, folded (``tenure_aliases`` values).
+_REGIMES = {
+    **{fold_label(regime.value): regime.value for regime in TenureRegime},
+    **{fold_label(label): regime.value for regime, label in TENURE_REGIME_LABELS.items()},
+}
 IMPACT_EXAMPLES = 5
 PREVIEW_CHANGE = "colecciones-y-vocabularios-admin"
 
@@ -62,6 +71,8 @@ def default_value(key: str) -> Any:
     """The value of the code for a key, in the stored form."""
     if key == ABSENCE_MARKERS_KEY:
         return sorted(DEFAULT_PARAMS.absence_markers)
+    if key == TENURE_ALIASES_KEY:
+        return dict(DEFAULT_PARAMS.tenure_aliases)
     return {
         "separators": list(DEFAULT_PARAMS.separators),
         "unsplit_markers": list(DEFAULT_PARAMS.unsplit_markers),
@@ -98,6 +109,8 @@ def clean_value(key: str, value: Any) -> Any:
             raise _invalid("Los marcadores de ausencia son una lista de textos.")
         markers = [item.strip() for item in value]
         return list(dict.fromkeys(markers))
+    if key == TENURE_ALIASES_KEY:
+        return _clean_tenure_aliases(value)
     if not isinstance(value, dict) or not isinstance(value.get("separators"), list):
         raise _invalid("Indique los separadores como «separators» (lista de textos).")
     separators = value["separators"]
@@ -115,6 +128,25 @@ def clean_value(key: str, value: Any) -> Any:
         "separators": list(dict.fromkeys(separators)),
         "unsplit_markers": list(dict.fromkeys(item.strip() for item in unsplit if item.strip())),
     }
+
+
+def _clean_tenure_aliases(value: Any) -> dict[str, str]:
+    """``{forma de adquisición: régimen}`` with folded keys and regime codes (ajustes-lectura-
+    importacion, design D1); a regime that does not exist is a 422 with the valid ones."""
+    if not isinstance(value, dict):
+        raise _invalid("Las correspondencias son pares «forma de adquisición: régimen».")
+    cleaned: dict[str, str] = {}
+    for alias, regime in value.items():
+        if not isinstance(alias, str) or not alias.strip():
+            raise _invalid("Cada correspondencia necesita una forma de adquisición.")
+        code = _REGIMES.get(fold_label(regime)) if isinstance(regime, str) else None
+        if code is None:
+            raise _invalid(
+                f"«{regime}» no es un régimen de tenencia: use Propiedad, Comodato o "
+                "Préstamo Temporal."
+            )
+        cleaned[fold_label(alias)] = code
+    return cleaned
 
 
 # --- impacto en los identificadores guardados ---------------------------------------------------
@@ -251,6 +283,8 @@ def ensure_no_impact(
 
 def _with_setting(current: NormalizationParams, key: str, value: Any) -> NormalizationParams:
     parsed = params_from_rows({key: value})
+    if key == TENURE_ALIASES_KEY:
+        return dataclasses.replace(current, tenure_aliases=parsed.tenure_aliases)
     if key == ABSENCE_MARKERS_KEY:
         return dataclasses.replace(current, absence_markers=parsed.absence_markers)
     return dataclasses.replace(
@@ -263,7 +297,8 @@ def save_setting(session: Session, key: str, value: Any) -> NormalizationSetting
     require_audit_context(session)
     cleaned = clean_value(key, value)
     current = load_params(session)
-    ensure_no_impact(session, current, _with_setting(current, key, cleaned))
+    if key != TENURE_ALIASES_KEY:  # the correspondences change no stored identifier
+        ensure_no_impact(session, current, _with_setting(current, key, cleaned))
     setting = get_setting(session, key)
     if setting is None:
         setting = NormalizationSetting(id=new_uuid(), key=key, value=cleaned)
