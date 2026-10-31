@@ -371,3 +371,16 @@ Pedidos del museo en la misma reunión: la importación sirve para cargar el his
 | AF4 | En el Drive hay fotos en baja resolución y su copia en alta (carpeta «ALTAS»). ¿Se necesitan las versiones de baja resolución? | **[SUPUESTO]** Basta la de mayor resolución; la otra se descarta (sin borrar el registro) | importacion-datos (RF-046), multimedia (RNF-003) | B |
 | AF5 | En las carpetas de colección con archivos `1.JPG`, `2.JPG`…, ¿el número es el correlativo de la pieza en esa colección? ¿Cómo se nombra la segunda foto de una pieza? | **[SUPUESTO]** Sí: con la colección de la carpeta como pista, `12.JPG` va a la pieza con correlativo 12 | importacion-datos (RF-046) | A |
 | AF6 | ¿Qué indica la «x» al final de algunos nombres (`059-3225 x.jpg`)? | **[SUPUESTO]** Una marca de trabajo sin significado para el catálogo; la plantilla la ignora | importacion-datos (RF-046) | C |
+
+## FR. Formatos reales de los Excel del museo (2026-10-31)
+
+Revisión de los 61 Excel entregados por el museo con la ingesta y el normalizador del sistema (change `formatos-reales-importacion`; uso autorizado, ADR-019). Se preguntan en la reunión del 2026-11-06.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| FR1 | En «Código de la colección» hay valores como `ELA 123 CEL`. ¿Qué significan la sigla `ELA` y el sufijo `CEL`? | **[SUPUESTO]** El sufijo es parte del código: `ELA 12 CEL` es distinto de `ELA 12` | identificacion-piezas (RF-023) | A |
+| FR2 | ¿`AMM-IN-V-0195` y `AMM-OT-R-0073` son el código de colección de la colección Alicia Maguiña (Indumentaria, Reconocimientos)? | **[SUPUESTO]** Sí: sigla compuesta `AMM-IN-V` y correlativo; aunque esté en la columna del código I se lee como código de colección | identificacion-piezas (RF-023), importacion-datos | A |
+| FR3 | Un número sin sigla en «Código de la colección» (`104`), ¿es el correlativo dentro de la colección de la fila? | **[SUPUESTO]** Sí: se completa con la sigla de la colección de la fila y la previsualización lo marca para revisarlo | identificacion-piezas (RF-023) | A |
+| FR4 | En las fichas AJB, ¿qué son `D-1` y `VI-1.2` en la columna «Código INC»? | Sin supuesto: se conservan como «otro código» | importacion-datos | B |
+| FR5 | ¿Qué es `#RN 0000097322` (10 dígitos) en la columna «Código INC»? | Sin supuesto: se conserva como «otro código» | importacion-datos | B |
+| FR6 | Si una pieza está en el inventario general y en el archivo de su colección con datos distintos, ¿cuál manda? | **[SUPUESTO]** El archivo de la colección, que es el más completo: se carga primero y el inventario general sale como actualizaciones o posibles duplicados para revisar | importacion-datos (RF-024, RF-025) | A |
