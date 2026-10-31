@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 858fd084db209bbfeb5341e73deb58ecb168a557e9529d437264252855602d4d
+ * openapi-sha256: 18cef6fb1bfbdea4a0c7c2fda28914f48cdd5d97043f39ccd6c87ddb18c8e10a
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1121,6 +1121,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media/storage-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estimación del volumen fotográfico
+         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         */
+        get: operations["getMediaStorageEstimate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/upload": {
         parameters: {
             query?: never;
@@ -1416,7 +1436,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obtener URL prefirmada para descargar una foto */
+        /**
+         * Obtener URL prefirmada para descargar una foto
+         * @description URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia o, si no tiene, la de su colección (RN-008).
+         */
         get: operations["getMediaDownloadUrl"];
         put?: never;
         post?: never;
@@ -1506,23 +1529,6 @@ export interface paths {
         };
         /** Datos de origen sin mapeo (payload, solo lectura) */
         get: operations["listSourceRecords"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/pieces/media/storage-estimate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Estimación del volumen fotográfico */
-        get: operations["getMediaStorageEstimate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3265,25 +3271,6 @@ export interface components {
             value: number;
         };
         /**
-         * DownloadUrlRequest
-         * @description Request for download URL with purpose.
-         * @example {
-         *       "purpose": "internal"
-         *     }
-         * @example {
-         *       "purpose": "external"
-         *     }
-         */
-        DownloadUrlRequest: {
-            /**
-             * Purpose
-             * @description Uso previsto: internal (visualización) o external (descarga).
-             * @default internal
-             * @enum {string}
-             */
-            purpose: "internal" | "external";
-        };
-        /**
          * DownloadUrlResponse
          * @description Response with pre-signed download URL.
          * @example {
@@ -5015,6 +5002,8 @@ export interface components {
              * @description En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.
              */
             download_url?: string | null;
+            /** @description Restricción que se aplica: la propia o, si no tiene, la de su colección. */
+            effective_restriction?: components["schemas"]["TermRef"] | null;
             /** Height Px */
             height_px: number | null;
             /**
@@ -5035,6 +5024,13 @@ export interface components {
             piece_id: string;
             /** Restriction Note */
             restriction_note: string | null;
+            /**
+             * Restriction Origin
+             * @description De dónde viene la restricción efectiva (RN-008).
+             * @default ninguna
+             * @enum {string}
+             */
+            restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
             /** Size Bytes */
             size_bytes: number;
             /** Sort Order */
@@ -11745,6 +11741,57 @@ export interface operations {
             };
         };
     };
+    getMediaStorageEstimate: {
+        parameters: {
+            query?: {
+                mb_per_photo?: number | null;
+                photos_per_piece?: number | null;
+                pieces?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageEstimateResponse"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     uploadMediaAsset: {
         parameters: {
             query?: never;
@@ -13216,7 +13263,10 @@ export interface operations {
     };
     getMediaDownloadUrl: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Uso previsto: `internal` (verla en la ficha) o `external` (descarga). */
+                purpose?: "internal" | "external";
+            };
             header?: never;
             path: {
                 media_id: string;
@@ -13224,11 +13274,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DownloadUrlRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -13250,6 +13296,24 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `usage_restricted`: la restricción efectiva bloquea la descarga externa; `details` trae la restricción, su origen y el acuerdo de comodato. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13537,57 +13601,6 @@ export interface operations {
             };
             /** @description La pieza no existe o fue eliminada. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getMediaStorageEstimate: {
-        parameters: {
-            query?: {
-                mb_per_photo?: number | null;
-                photos_per_piece?: number | null;
-                pieces?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StorageEstimateResponse"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

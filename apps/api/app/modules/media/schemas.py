@@ -53,6 +53,13 @@ class MediaAssetOut(ORMModel):
     photographer: str | None
     taken_on: date | None
     usage_restriction: TermRef | None = Field(description="Restricción de uso (RF-014, RN-008).")
+    effective_restriction: TermRef | None = Field(
+        None,
+        description="Restricción que se aplica: la propia o, si no tiene, la de su colección.",
+    )
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+        default="ninguna", description="De dónde viene la restricción efectiva (RN-008)."
+    )
     restriction_note: str | None
     download_url: str | None = Field(
         None,
@@ -129,24 +136,6 @@ class MediaAssetUpdate(BaseModel):
     is_primary: bool | None = None
     usage_restriction_term_id: uuid.UUID | None = None
     restriction_note: str | None = None
-
-
-class DownloadUrlRequest(BaseModel):
-    """Request for download URL with purpose."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {"purpose": "internal"},
-                {"purpose": "external"},
-            ]
-        }
-    )
-
-    purpose: Literal["internal", "external"] = Field(
-        default="internal",
-        description="Uso previsto: internal (visualización) o external (descarga).",
-    )
 
 
 class DownloadUrlResponse(BaseModel):

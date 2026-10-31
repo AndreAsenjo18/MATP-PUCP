@@ -21,6 +21,8 @@ function photo(id: string, overrides: Partial<PieceMedia> = {}): PieceMedia {
     photographer: null,
     taken_on: null,
     usage_restriction: null,
+    effective_restriction: null,
+    restriction_origin: "ninguna",
     restriction_note: null,
     download_url: `https://media.test/${id}/display.webp?firma`,
     thumbnail_url: `https://media.test/${id}/thumb.webp?firma`,
