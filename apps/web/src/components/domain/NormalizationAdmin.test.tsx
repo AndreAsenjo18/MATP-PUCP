@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AcronymAlias, NormalizationImpact } from "@/lib/data/normalization-admin";
 import { render, visibleText } from "@/test/render";
 
-import { AliasesEditor, MarkersEditor, NormalizationImpactNotice, SeparatorsEditor } from "./NormalizationAdmin";
+import { AliasesEditor, MarkersEditor, NormalizationImpactNotice, SeparatorsEditor, TenureAliasesEditor } from "./NormalizationAdmin";
 
 // Datos sintéticos (RNF-014); «NO REGISTRA» y «REP» son ilustrativos [SUPUESTO A5, A3].
 
@@ -161,5 +161,36 @@ describe("siglas históricas", () => {
     expect(text).toContain("La sigla «REP» ya es un alias de la colección LRM.");
     expect(html).toMatch(/aria-invalid="true"/);
     expect(text).toContain("No se guardó nada.");
+  });
+});
+
+describe("forma de adquisición → régimen (ajustes-lectura-importacion)", () => {
+  const saved = { "cesion de uso": "Comodato", donacion: "Propiedad" };
+
+  function tenure(extra: Partial<Parameters<typeof TenureAliasesEditor>[0]> = {}): string {
+    return render(
+      <TenureAliasesEditor saved={saved} draft={saved} isDefault busy={false} error={null} onChange={noop} onSave={noop} onDiscard={noop} {...extra} />,
+    );
+  }
+
+  it("muestra cada forma de adquisición con su régimen y deja quitarla", () => {
+    const html = tenure();
+    const text = visibleText(html);
+    expect(text).toContain("cesion de uso");
+    expect(html).toContain('aria-label="Quitar «donacion»"');
+    expect(html).toContain("Régimen de «cesion de uso»");
+    expect(button(html, "Guardar cambios")).toContain('disabled=""');
+  });
+
+  it("con una correspondencia nueva deja guardar", () => {
+    const html = tenure({ isDefault: false, draft: { ...saved, deposito: "Comodato" } });
+    const text = visibleText(html);
+    expect(text).toContain("Personalizado");
+    expect(text).toContain("deposito");
+    expect(button(html, "Guardar cambios")).not.toContain('disabled=""');
+  });
+
+  it("muestra el error del servidor", () => {
+    expect(visibleText(tenure({ error: "«Arriendo» no es un régimen de tenencia." }))).toContain("«Arriendo» no es un régimen de tenencia.");
   });
 });

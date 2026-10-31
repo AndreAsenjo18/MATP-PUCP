@@ -5,7 +5,7 @@
 - [x] 1.3 Deducción en `imports/mapping.py` según D2 (explícito, deducido con término, por defecto, error) y advertencia de discrepancia; pruebas de los cinco escenarios del requirement (Req: Régimen deducido…)
 - [x] 1.4 Validación al guardar correspondencias (`PUT` de parámetros de normalización) y auditoría; pruebas: régimen inexistente 422, cambio auditado (Req: Régimen deducido… — escenario «Correspondencia editada por el Administrador»)
 - [x] 1.5 Seed: «Cesión de uso» y «Custodia» en `ACQUISITION_METHOD` (`app/seed/reference.py`); prueba de seed idempotente (Req: Régimen deducido…)
-- [ ] 1.6 Sección «Forma de adquisición → régimen» en Administración › Lectura de códigos (tabla editable); prueba de componente (Req: Régimen deducido…; RNF-010)
+- [x] 1.6 Sección «Forma de adquisición → régimen» en Administración › Lectura de códigos (tabla editable); prueba de componente (Req: Régimen deducido…; RNF-010)
 
 ## 2. RN de 5 dígitos
 

@@ -20,6 +20,9 @@ export type NormalizationSetting = ApiSchemas["NormalizationSettingOut"];
 export type ConcatenationSeparators = ApiSchemas["ConcatenationSeparators"];
 export type AcronymAlias = ApiSchemas["AcronymAliasOut"];
 export type SettingKey = NormalizationSetting["key"];
+/** Forma de adquisición → régimen (etiqueta del contrato), `tenure_aliases` (ajustes-lectura-importacion). */
+export type TenureAliases = Record<string, string>;
+export const TENURE_LABELS = ["Propiedad", "Comodato", "Préstamo Temporal"] as const;
 
 export interface CollectionOption {
   id: string;
@@ -115,7 +118,30 @@ export function hasChanges(saved: readonly string[], draft: readonly string[]): 
 }
 
 export function separatorsValue(value: NormalizationSetting["value"]): ConcatenationSeparators {
-  return Array.isArray(value) ? { separators: value, unsplit_markers: [] } : value;
+  if (Array.isArray(value)) return { separators: value, unsplit_markers: [] };
+  return "separators" in value && Array.isArray(value.separators) ? (value as ConcatenationSeparators) : { separators: [], unsplit_markers: [] };
+}
+
+export function tenureAliasesValue(value: NormalizationSetting["value"]): TenureAliases {
+  if (Array.isArray(value) || "separators" in value) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
+/** Como el servidor compara una forma de adquisición: minúsculas, sin tildes ni espacios de más. */
+export function aliasKey(text: string): string {
+  return text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().split(/\s+/).join(" ");
+}
+
+export function tenureAliasError(aliases: TenureAliases, alias: string): string | null {
+  const key = aliasKey(alias);
+  if (!key) return "Escriba la forma de adquisición.";
+  if (Object.keys(aliases).some((existing) => aliasKey(existing) === key)) return "Esa forma de adquisición ya tiene un régimen.";
+  return null;
+}
+
+export function tenureAliasesChanged(saved: TenureAliases, draft: TenureAliases): boolean {
+  const entries = (aliases: TenureAliases) => JSON.stringify(Object.entries(aliases).sort(([a], [b]) => a.localeCompare(b)));
+  return entries(saved) !== entries(draft);
 }
 
 export function markersValue(value: NormalizationSetting["value"]): string[] {
@@ -185,7 +211,7 @@ export async function fetchSetting(key: SettingKey, devUser?: string): Promise<I
 /** `PUT /normalization-settings/{key}`: 409 `normalization_change_requires_preview` si alteraría códigos registrados. */
 export async function saveSetting(
   key: SettingKey,
-  value: string[] | ConcatenationSeparators,
+  value: string[] | ConcatenationSeparators | TenureAliases,
   devUser?: string,
 ): Promise<ImportResult<NormalizationSetting>> {
   return call(
