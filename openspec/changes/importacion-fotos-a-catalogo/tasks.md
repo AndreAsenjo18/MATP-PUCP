@@ -35,8 +35,8 @@
 
 ## 5. Misma foto en distinta resolución
 
-- [ ] 5.1 dHash de 64 bits con Pillow, `width_px` y `height_px` en `photo_verification`; prueba unitaria: misma imagen reescalada da distancia ≤ 4 y dos imágenes sintéticas distintas > 4 (Req: Detección de la misma foto…; D6)
-- [ ] 5.2 Agrupación por lote con pre-filtro por buckets, conservación de la mayor resolución, `DISCARDED` con motivo y `same_as_photo_id`, traspaso de asignación manual; cálculo al vuelo para fotos sin hash; pruebas de los tres escenarios del requirement (Req: Detección de la misma foto…)
+- [x] 5.1 dHash de 64 bits con Pillow, `width_px` y `height_px` en `photo_verification`; prueba unitaria: misma imagen reescalada da distancia ≤ 4 y dos imágenes sintéticas distintas > 4 (Req: Detección de la misma foto…; D6)
+- [x] 5.2 Agrupación por lote con pre-filtro por buckets, conservación de la mayor resolución, `DISCARDED` con motivo y `same_as_photo_id`, traspaso de asignación manual; cálculo al vuelo para fotos sin hash; pruebas de los tres escenarios del requirement (Req: Detección de la misma foto…)
 
 ## 6. Aplicación y procedencia
 

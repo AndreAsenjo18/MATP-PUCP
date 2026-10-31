@@ -19,7 +19,7 @@ from app.modules.imports.models import ImportBatch, ImportPhoto
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.media.models import MediaAsset
 from tests.api.conftest import Pipeline
-from tests.api.photo_batch_support import collection, media, photo_batch, piece
+from tests.api.photo_batch_support import collection, media, pattern_jpeg, photo_batch, piece
 from tests.api.test_import_decisions_api import confirm, summary
 from tests.api.test_import_photos_api import _drain, _jpeg, _send, _verifiable
 from tests.api.test_import_pipeline_api import BASE, get_batch
@@ -53,7 +53,7 @@ def lot(pipeline: Pipeline, storage: Any, acronym: str) -> dict[str, Any]:
     batch_id = photo_batch(pipeline, f"Archivo fotográfico {acronym}")
     folder = f"Fotos {acronym}"
     sent = {
-        name: _send(pipeline, batch_id, f"{folder}/{name}", _jpeg(40 + i, 30 + i))
+        name: _send(pipeline, batch_id, f"{folder}/{name}", pattern_jpeg(int(pucp) * 10 + i))
         for i, name in enumerate(
             [
                 f"{acronym} 001 - PUCP {pucp} (1).JPG",

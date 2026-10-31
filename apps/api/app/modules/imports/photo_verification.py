@@ -38,6 +38,8 @@ from app.modules.imports.mapping import MappingContext
 from app.modules.imports.models import ImportBatch, ImportBatchKind, ImportPhoto
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
+from app.modules.imports.perceptual import dhash_bytes
+from app.modules.imports.photo_resolutions import discard_lower_resolutions
 from app.modules.imports.photo_upload import PHOTO_STATES, upload_key
 from app.modules.imports.photos import PhotoMatchingFailed, match_batch_photos
 from app.modules.imports.state import batch_kind, lock_batch, transition
@@ -54,6 +56,8 @@ CHUNK = 20
 #: the queue; they are verified but no longer matched (``photos.MATCHING_STATES``).
 VERIFIED_STATES = PHOTO_STATES | {S.APPROVED, S.FAILED_APPLY}
 VERIFIER = "verificación de fotos del lote"
+#: ``IMPORT_PHOTO_SIMILARITY_BITS`` by default (importacion-fotos-a-catalogo, D6) [SUPUESTO].
+DEFAULT_SIMILARITY_BITS = 4
 UNEXPECTED = "No se pudo verificar la foto; vuelva a soltar la carpeta o avise al equipo."
 #: The storage did not answer: the photo stays in the queue for the next drain.
 STORAGE_ERRORS = (BotoCoreError, ClientError, ConnectionError)
@@ -64,8 +68,22 @@ def _stage_running(batch: ImportBatch) -> bool:
     return started is not None and not jobs.is_stale(batch.heartbeat_at or started)
 
 
+#: Width, height and dHash of a verified photo (importacion-fotos-a-catalogo, D6).
+Measures = tuple[int, int, str | None]
+
+
 def rejection(storage: ObjectStorage, photo: ImportPhoto, max_bytes: int) -> str | None:
     """Why ``photo`` is rejected, or None once its derivatives are written.
+
+    A storage that does not answer raises one of ``STORAGE_ERRORS``.
+    """
+    return check_photo(storage, photo, max_bytes)[0]
+
+
+def check_photo(
+    storage: ObjectStorage, photo: ImportPhoto, max_bytes: int
+) -> tuple[str | None, Measures | None]:
+    """``rejection`` plus, for a verified photo, its size and perceptual hash (task 5.1).
 
     A storage that does not answer raises one of ``STORAGE_ERRORS``.
     """
@@ -73,28 +91,36 @@ def rejection(storage: ObjectStorage, photo: ImportPhoto, max_bytes: int) -> str
     try:
         size = storage.head(key).get("content_length")
     except FileNotFoundError:
-        return "El archivo no llegó al almacenamiento; vuelva a soltar la carpeta para subirlo."
+        missing = "El archivo no llegó al almacenamiento; vuelva a soltar la carpeta para subirlo."
+        return missing, None
     if size is not None and size > max_bytes:
-        return f"El archivo supera el tamaño máximo de {max_bytes // (1024 * 1024)} MB."
+        return f"El archivo supera el tamaño máximo de {max_bytes // (1024 * 1024)} MB.", None
     data = b"".join(storage.stream(key))
     if len(data) != photo.size_bytes:
-        return f"El archivo subido pesa {len(data)} bytes y se declararon {photo.size_bytes}."
+        return f"El archivo subido pesa {len(data)} bytes y se declararon {photo.size_bytes}.", None
     if hashlib.sha256(data).hexdigest() != photo.content_sha256:
-        return "La huella SHA-256 del archivo subido no coincide con la declarada."
+        return "La huella SHA-256 del archivo subido no coincide con la declarada.", None
     try:
         image = verify_image(data)
     except ValidationFailed as exc:
-        return exc.message
+        return exc.message, None
     if image.content_type != photo.content_type:
-        return f"El archivo es {image.content_type} y se declaró {photo.content_type}."
+        return f"El archivo es {image.content_type} y se declaró {photo.content_type}.", None
     try:
         derivatives.store_derivatives(storage, photo.storage_prefix, data)
     except STORAGE_ERRORS:
         raise
     except (OSError, ValueError, Image.DecompressionBombError):
         # Without its display copy the photo is never available (spec multimedia, D6).
-        return "No se pudo procesar la imagen: no se generaron su miniatura ni su versión liviana."
-    return None
+        return (
+            "No se pudo procesar la imagen: no se generaron su miniatura ni su versión liviana.",
+            None,
+        )
+    try:
+        perceptual, _, _ = dhash_bytes(data)
+    except (OSError, ValueError, Image.DecompressionBombError):
+        perceptual = None  # the photo stays valid; it is only left out of the grouping
+    return None, (image.width, image.height, perceptual)
 
 
 def _queued(session: Session, held: set[uuid.UUID], limit: int) -> list[ImportPhoto]:
@@ -144,15 +170,19 @@ def _verify_group(
     photos: Sequence[ImportPhoto],
     max_bytes: int,
     held: set[uuid.UUID],
+    similarity_bits: int = DEFAULT_SIMILARITY_BITS,
 ) -> int:
     batch = session.get(ImportBatch, batch_id)
     if batch is None or _stage_running(batch):
         held.update(photo.id for photo in photos)
         return 0
     outcomes: dict[uuid.UUID, str | None] = {}
+    measures: dict[uuid.UUID, Measures] = {}
     for photo in photos:  # reading the files takes long: nothing is locked meanwhile
         try:
-            outcomes[photo.id] = rejection(storage, photo, max_bytes)
+            outcomes[photo.id], measured = check_photo(storage, photo, max_bytes)
+            if measured is not None:
+                measures[photo.id] = measured
         except STORAGE_ERRORS:
             logger.warning("El almacenamiento no respondió al verificar la foto %s", photo.id)
             held.add(photo.id)
@@ -186,9 +216,13 @@ def _verify_group(
             problem = outcomes[photo.id]
             photo.status = P.VERIFIED if problem is None else P.REJECTED
             photo.rejection_reason = problem
+            if photo.id in measures:
+                photo.width_px, photo.height_px, photo.perceptual_hash = measures[photo.id]
             written += 1
         session.flush()
         if any(problem is None for problem in outcomes.values()):
+            if batch.status in PHOTO_STATES:  # an approved batch keeps what it was approved with
+                discard_lower_resolutions(session, storage, batch, similarity_bits)
             _match(session, batch)
         _to_preview_when_ready(session, batch)
     session.commit()
@@ -196,7 +230,12 @@ def _verify_group(
 
 
 def verify_uploaded_photos(
-    factory: jobs.SessionFactory, storage: ObjectStorage, *, max_bytes: int, chunk: int = CHUNK
+    factory: jobs.SessionFactory,
+    storage: ObjectStorage,
+    *,
+    max_bytes: int,
+    chunk: int = CHUNK,
+    similarity_bits: int = DEFAULT_SIMILARITY_BITS,
 ) -> int:
     """Drain of the ``import-photos`` worker: verify every queued photo; returns how many."""
     done = 0
@@ -210,13 +249,20 @@ def verify_uploaded_photos(
             for photo in photos:
                 groups.setdefault(photo.batch_id, []).append(photo)
             for batch_id, group in groups.items():
-                done += _verify_group(session, storage, batch_id, group, max_bytes, held)
+                done += _verify_group(
+                    session, storage, batch_id, group, max_bytes, held, similarity_bits
+                )
 
 
 def register_photo_jobs(storage: ObjectStorage, settings: Settings) -> None:
     """Register the queue of uploaded photos (``app.core.jobs``); called by ``create_app``."""
 
     def drain(factory: jobs.SessionFactory) -> int:
-        return verify_uploaded_photos(factory, storage, max_bytes=settings.media_max_bytes)
+        return verify_uploaded_photos(
+            factory,
+            storage,
+            max_bytes=settings.media_max_bytes,
+            similarity_bits=settings.import_photo_similarity_bits,
+        )
 
     jobs.register_worker(QUEUE, drain, interval=30.0)

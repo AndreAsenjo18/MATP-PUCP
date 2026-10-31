@@ -7,11 +7,14 @@ and decided through the API. Synthetic data only (RNF-014).
 """
 
 import hashlib
+import io
+import random
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -144,3 +147,16 @@ def decide(pipeline: Pipeline, batch_id: str, op: str, photo_ids: list[str], **t
         f"{BASE}/{batch_id}/photos",
         json={"op": op, "photo_ids": photo_ids, **{k: str(v) for k, v in target.items()}},
     )
+
+
+def pattern_jpeg(seed: int, width: int = 90, height: int = 80) -> bytes:
+    """A synthetic photo of its own: random blocks from ``seed``, scaled to the size given. Two
+    seeds give images with different perceptual hashes; one seed in two sizes, the same one."""
+    rng = random.Random(seed)
+    small = Image.new("L", (9, 8))
+    small.putdata([rng.randrange(256) for _ in range(72)])
+    output = io.BytesIO()
+    small.resize((width, height), Image.Resampling.NEAREST).convert("RGB").save(
+        output, format="JPEG", quality=95
+    )
+    return output.getvalue()
