@@ -17,12 +17,18 @@ which must exist, and ``upload.<ext>`` is deleted only once the transaction has 
 
 The stage runs in one transaction (``worker.run_stage``): the first domain error rolls back
 every row and the batch goes to ``FAILED_APPLY`` with the row and the rule that failed.
+
+A ``PHOTOS`` batch has no rows (change importacion-fotos-a-catalogo, task 6.1; design D9): its
+verified photos with a piece, and not repeated on it unless a person confirmed them, are
+registered on their pieces in their order, after the photos each piece already had, with the same
+``HEAD`` check, transaction and change set, so the same rollback reverts them. Photos without a
+piece stay in the batch, not applied; no piece is created.
 """
 
 import hashlib
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from sqlalchemy import event, select, update
@@ -44,11 +50,11 @@ from app.modules.imports.mapping import (
     PIECE_FIELDS,
     MappedRow,
 )
-from app.modules.imports.models import ImportBatch, ImportPhoto, ImportRow
+from app.modules.imports.models import ImportBatch, ImportBatchKind, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.imports.photo_upload import upload_key
-from app.modules.imports.state import transition
+from app.modules.imports.state import batch_kind, transition
 from app.modules.imports.worker import Progress, StageWork
 from app.modules.media.service import StoredCopy, register_from_import, unspecified_view_type_id
 
@@ -190,12 +196,18 @@ def display_key(photo: ImportPhoto) -> str:
     return f"{photo.storage_prefix}display.webp"
 
 
-def _missing(number: int, photo: ImportPhoto, what: str, rule: str) -> ApplyFailed:
+#: Where a photo goes, for the message of a missing object: ``("Fila 12", {details})``.
+Placement = Callable[[ImportPhoto], tuple[str, dict[str, Any]]]
+
+
+def _missing(
+    where: str, extra: dict[str, Any], photo: ImportPhoto, what: str, rule: str
+) -> ApplyFailed:
     return ApplyFailed(
-        f"Fila {number}: {what} «{photo.relative_path}» no está en el "
-        "almacenamiento. No se aplicó ninguna fila.",
+        f"{where}: {what} «{photo.relative_path}» no está en el "
+        "almacenamiento. No se aplicó nada del lote.",
         details={
-            "source_row_number": number,
+            **extra,
             "photo_id": str(photo.id),
             "relative_path": photo.relative_path,
             "rule": rule,
@@ -203,13 +215,28 @@ def _missing(number: int, photo: ImportPhoto, what: str, rule: str) -> ApplyFail
     )
 
 
+def _row_placement(rows: Sequence[ImportRow]) -> Placement:
+    numbers = {row.id: row.source_row_number for row in rows}
+
+    def placement(photo: ImportPhoto) -> tuple[str, dict[str, Any]]:
+        number = numbers[photo.row_id]  # type: ignore[index]
+        return f"Fila {number}", {"source_row_number": number}
+
+    return placement
+
+
+def _piece_placement(photo: ImportPhoto) -> tuple[str, dict[str, Any]]:
+    return "Foto del lote", {"piece_id": str(photo.piece_id)}
+
+
 def _check_photo_objects(
     storage: ObjectStorage | None,
-    rows: Sequence[ImportRow],
+    placement: Placement,
     photos: dict[uuid.UUID, list[ImportPhoto]],
     progress: Progress | None,
     *,
     keep_originals: bool = True,
+    total: int = 0,
 ) -> dict[uuid.UUID, StoredCopy]:
     """``HEAD`` of every photo to apply, before anything is written (D5).
 
@@ -218,22 +245,22 @@ def _check_photo_objects(
     """
     if storage is None:  # every caller with photos passes the storage of the app
         raise RuntimeError("Applying photos needs the object storage.")
-    numbers = {row.id: row.source_row_number for row in rows}
     pending = [photo for row_photos in photos.values() for photo in row_photos]
     displays: dict[uuid.UUID, StoredCopy] = {}
     for checked, photo in enumerate(pending, start=1):
-        number = numbers[photo.row_id]  # type: ignore[index]
+        where, extra = placement(photo)
         try:
             storage.head(upload_key(photo))
         except FileNotFoundError:
-            raise _missing(number, photo, "la foto", "photo_object_missing") from None
+            raise _missing(where, extra, photo, "la foto", "photo_object_missing") from None
         if not keep_originals:
             key = display_key(photo)
             try:
                 storage.head(key)
             except FileNotFoundError:
                 raise _missing(
-                    number,
+                    where,
+                    extra,
                     photo,
                     "la versión de visualización de la foto",
                     "photo_derivative_missing",
@@ -243,7 +270,7 @@ def _check_photo_objects(
                 key, "image/webp", len(data), hashlib.sha256(data).hexdigest()
             )
         if progress is not None and checked % HEAD_HEARTBEAT_EVERY == 0:
-            progress.advance(0, total=len(rows), force=True)
+            progress.advance(0, total=total, force=True)
     return displays
 
 
@@ -308,6 +335,9 @@ def apply_batch(
     ``storage`` is needed only when the batch has photos to apply; ``keep_originals`` is
     ``MEDIA_KEEP_ORIGINALS`` (D6).
     """
+    if batch_kind(batch) is ImportBatchKind.PHOTOS:
+        _apply_photo_batch(session, batch, progress, storage, keep_originals=keep_originals)
+        return
     rows = session.scalars(
         select(ImportRow)
         .where(ImportRow.batch_id == batch.id)
@@ -318,7 +348,12 @@ def apply_batch(
     displays: dict[uuid.UUID, StoredCopy] = {}
     if photos:
         displays = _check_photo_objects(
-            storage, rows, photos, progress, keep_originals=keep_originals
+            storage,
+            _row_placement(rows),
+            photos,
+            progress,
+            keep_originals=keep_originals,
+            total=len(rows),
         )
         # Before any write of the batch: the term, if created, keeps a change set of its own.
         view_type = unspecified_view_type_id(session)
@@ -374,6 +409,80 @@ def apply_batch(
     transition(session, batch.id, S.APPLIED)
     if displays and storage is not None:
         uploads = [upload_key(photo) for row_photos in photos.values() for photo in row_photos]
+        _delete_uploads_after_commit(session, storage, uploads)
+
+
+def photos_by_piece(session: Session, batch: ImportBatch) -> dict[uuid.UUID, list[ImportPhoto]]:
+    """The photos a ``PHOTOS`` batch applies, by piece and in their order (D9): verified, with a
+    piece, and not repeated on it unless a person confirmed them."""
+    by_piece: dict[uuid.UUID, list[ImportPhoto]] = {}
+    for photo in session.scalars(
+        select(ImportPhoto).where(
+            ImportPhoto.batch_id == batch.id,
+            ImportPhoto.status == P.VERIFIED,
+            ImportPhoto.piece_id.is_not(None),
+        )
+    ):
+        if photo.duplicate_of_existing and not photo.duplicate_confirmed:
+            continue
+        by_piece.setdefault(photo.piece_id, []).append(photo)  # type: ignore[arg-type]
+    for photos in by_piece.values():
+        photos.sort(key=lambda photo: (photo.sort_key is None, photo.sort_key or 0, photo.id))
+    return by_piece
+
+
+def _apply_photo_batch(
+    session: Session,
+    batch: ImportBatch,
+    progress: Progress | None,
+    storage: ObjectStorage | None,
+    *,
+    keep_originals: bool,
+) -> None:
+    """Register the photos of a ``PHOTOS`` batch on their pieces (D9); raises on the first
+    error, with nothing written."""
+    by_piece = photos_by_piece(session, batch)
+    if not by_piece:
+        raise ApplyFailed(
+            "El lote no tiene fotos asignadas a una pieza: no hay nada que aplicar.",
+            details={"rule": "nothing_to_apply"},
+        )
+    total = len(by_piece)
+    displays = _check_photo_objects(
+        storage, _piece_placement, by_piece, progress, keep_originals=keep_originals, total=total
+    )
+    view_type = unspecified_view_type_id(session)
+    change_set_id = batch.change_set_id or new_uuid()
+    applied = 0
+    with refined_context(session, change_set_id=change_set_id):
+        for done, (piece_id, photos) in enumerate(by_piece.items(), start=1):
+            piece = session.get(Piece, piece_id)
+            if piece is None or piece.deleted_at is not None or piece.merged_into_id is not None:
+                raise ApplyFailed(
+                    f"La pieza de «{photos[0].relative_path}» fue retirada después de "
+                    "asignarle la foto: asígnela a otra pieza. No se aplicó nada del lote.",
+                    details={"piece_id": str(piece_id), "rule": "piece_not_available"},
+                )
+            try:
+                _register_photos(session, piece, photos, view_type, displays)
+            except DomainError as exc:
+                raise ApplyFailed(
+                    f"Foto «{photos[0].relative_path}»: {exc.message} No se aplicó nada del lote.",
+                    details={"piece_id": str(piece_id), "rule": exc.code},
+                ) from exc
+            applied += len(photos)
+            if progress is not None:
+                progress.advance(done, total=total)
+    batch.change_set_id = change_set_id
+    batch.counts = {
+        **(batch.counts or {}),
+        "APPLIED_PHOTOS": applied,
+        "APPLIED_PIECES": len(by_piece),
+    }
+    session.flush()
+    transition(session, batch.id, S.APPLIED)
+    if displays and storage is not None:
+        uploads = [upload_key(photo) for photos in by_piece.values() for photo in photos]
         _delete_uploads_after_commit(session, storage, uploads)
 
 

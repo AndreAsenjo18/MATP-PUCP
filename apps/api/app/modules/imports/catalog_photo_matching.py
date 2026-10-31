@@ -625,7 +625,8 @@ def _proposal(
         reason = BARE_NUMBER if found.bare_number else None
         return CatalogProposal(photo_id, PhotoMatchStatus.UNMATCHED, reason=reason)
     candidates = tuple(sorted(pieces, key=str))
-    if len(set(found.per_code)) > 1:  # two codes of the name point to different pieces
+    common = frozenset.intersection(*found.per_code)
+    if not common:  # the codes of the name have no piece in common
         return CatalogProposal(
             photo_id,
             PhotoMatchStatus.AMBIGUOUS,
@@ -633,6 +634,8 @@ def _proposal(
             candidate_piece_ids=candidates,
             reason=DISCREPANT_CODES,
         )
+    # Every code agrees on these pieces: «ABC 1» on one, a PUCP code repeated on two of them.
+    pieces, candidates = set(common), tuple(sorted(common, key=str))
     hint = info.collection_id if info is not None else None
     if hint is not None:
         inside = {piece for piece in pieces if index.collection_of.get(piece) == hint}

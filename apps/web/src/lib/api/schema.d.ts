@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: edf90648bb2c3a3999262a2160aefc68b44207aac110aef738c848c79c242547
+ * openapi-sha256: 46e7415ee61f89457140717e3c59918abb4c8e369e1d0ccfa60996eaf297449d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2374,6 +2374,8 @@ export interface components {
              * @description Filas que crearán una pieza nueva.
              */
             create: number;
+            /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
+            photos?: components["schemas"]["PhotoApprovalOut"] | null;
             /**
              * Skip
              * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).
@@ -5783,6 +5785,52 @@ export interface components {
             code: string;
             /** Description */
             description: string;
+        };
+        /**
+         * PhotoApprovalOut
+         * @description Warning before approving a photo-only batch (RF-046; importacion-fotos-a-catalogo, 6.2).
+         */
+        PhotoApprovalOut: {
+            /**
+             * Collections Pending
+             * @description Carpetas cuya colección propuesta nadie confirmó.
+             */
+            collections_pending: number;
+            /**
+             * Duplicates Pending
+             * @description Fotos que ya están en su pieza y nadie confirmó: no se aplican.
+             */
+            duplicates_pending: number;
+            /**
+             * Out Of Range
+             * @description Propuestas fuera del rango de su carpeta.
+             */
+            out_of_range: number;
+            /**
+             * Partial Codes
+             * @description Propuestas con un código que no existe.
+             */
+            partial_codes: number;
+            /**
+             * Pieces
+             * @description Piezas que recibirán fotos.
+             */
+            pieces: number;
+            /**
+             * To Apply
+             * @description Fotos que se aplicarán.
+             */
+            to_apply: number;
+            /**
+             * Unassigned
+             * @description Fotos verificadas sin pieza: quedan sin aplicar.
+             */
+            unassigned: number;
+            /**
+             * Uploading
+             * @description Fotos que todavía se suben o verifican.
+             */
+            uploading: number;
         };
         /**
          * PhotoBatchCreate

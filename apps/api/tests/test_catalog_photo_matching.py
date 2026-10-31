@@ -226,6 +226,20 @@ def test_forms_f1_and_f2_are_read_alone(name: str, expected: str) -> None:
     assert proposal.status is Status.MATCHED and proposal.piece_id == pid(expected)
 
 
+def test_codes_that_agree_on_one_piece_are_not_discrepant() -> None:
+    index = CatalogIndex(
+        [
+            piece("one", ABC, (TYPE_COLLECTION, "ABC 31"), (TYPE_PUCP, "4444")),
+            piece("two", XYZ, (TYPE_PUCP, "4444")),  # the same PUCP code on another piece
+        ]
+    )
+    photo = CatalogPhoto(uuid.uuid4(), "ABC 031 - PUCP 4444.jpg")
+
+    (proposal,) = match_catalog_photos([photo], index, {}, valid_types=TYPES)
+
+    assert proposal.status is Status.MATCHED and proposal.piece_id == pid_of("one")
+
+
 def test_discrepant_codes_in_automatic_mode() -> None:
     (proposal,) = match("ABC 002 - PUCP 1299.JPG").values()
 

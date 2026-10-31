@@ -40,8 +40,8 @@
 
 ## 6. Aplicación y procedencia
 
-- [ ] 6.1 `apply_batch` para `PHOTOS`: fotos por pieza en orden, verificación `HEAD`, mismo `change_set`; pruebas: aplicar y revertir sin tocar fotos anteriores, fotos sin asignar no se aplican, objeto faltante → `FAILED_APPLY` (Req: Lote de solo fotografías…; D9)
-- [ ] 6.2 Aviso previo a aprobar (sin asignar, repetidas sin confirmar, colecciones pendientes de confirmar, `partial_codes`) en el resumen del lote; prueba de conteos (Req: Lote de solo fotografías… — escenario «Foto sin pieza al aprobar»)
+- [x] 6.1 `apply_batch` para `PHOTOS`: fotos por pieza en orden, verificación `HEAD`, mismo `change_set`; pruebas: aplicar y revertir sin tocar fotos anteriores, fotos sin asignar no se aplican, objeto faltante → `FAILED_APPLY` (Req: Lote de solo fotografías…; D9)
+- [x] 6.2 Aviso previo a aprobar (sin asignar, repetidas sin confirmar, colecciones pendientes de confirmar, `partial_codes`) en el resumen del lote; prueba de conteos (Req: Lote de solo fotografías… — escenario «Foto sin pieza al aprobar»)
 - [ ] 6.3 `extra_metadata` con `import_batch_name` y `replaced_lower_resolution`; `provenance` de solo lectura en la galería; pruebas: foto de lote, foto subida a mano, `PATCH` que intenta cambiarla (Req: Procedencia visible de las fotografías importadas)
 
 ## 7. Frontend (`apps/web`)

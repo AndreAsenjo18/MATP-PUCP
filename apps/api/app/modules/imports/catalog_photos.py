@@ -481,3 +481,57 @@ def upload_correspondences(
     ]
     match_catalog_batch(session, batch, rules)
     return results
+
+
+# --- aviso previo a aprobar (tarea 6.2; D9) -------------------------------------------------------
+
+
+def photo_approval_counts(session: Session, batch: ImportBatch) -> dict[str, int]:
+    """What approving a ``PHOTOS`` batch would apply now and what it would leave out (spec «Foto
+    sin pieza al aprobar»): photos to apply and their pieces, verified photos without a piece,
+    repeated ones a person did not confirm, photos still uploading, the folders whose collection
+    nobody confirmed and the proposals with a warning (``partial_codes``, ``out_of_range``)."""
+    counts = {
+        "to_apply": 0,
+        "pieces": 0,
+        "unassigned": 0,
+        "duplicates_pending": 0,
+        "uploading": 0,
+        "partial_codes": 0,
+        "out_of_range": 0,
+        "collections_pending": 0,
+    }
+    pieces: set[uuid.UUID] = set()
+    for status, piece_id, duplicate, confirmed, reason in session.execute(
+        select(
+            ImportPhoto.status,
+            ImportPhoto.piece_id,
+            ImportPhoto.duplicate_of_existing,
+            ImportPhoto.duplicate_confirmed,
+            ImportPhoto.match_reason,
+        ).where(ImportPhoto.batch_id == batch.id)
+    ):
+        if status in (ImportPhotoStatus.PENDING_UPLOAD, ImportPhotoStatus.UPLOADED):
+            counts["uploading"] += 1
+        if status is not ImportPhotoStatus.VERIFIED:
+            continue
+        if piece_id is None:
+            counts["unassigned"] += 1
+            continue
+        if duplicate and not confirmed:
+            counts["duplicates_pending"] += 1
+            continue
+        counts["to_apply"] += 1
+        pieces.add(piece_id)
+        if reason in ("partial_codes", "out_of_range"):
+            counts[reason] += 1
+    counts["pieces"] = len(pieces)
+    infos = batch_folders(session, batch)
+    for path, info in infos.items():
+        parent = infos.get(path.rsplit("/", 1)[0]) if "/" in path else None
+        inherited = parent is not None and parent.proposed_collection_id == (
+            info.proposed_collection_id
+        )
+        if info.collection_pending and not inherited:
+            counts["collections_pending"] += 1
+    return counts

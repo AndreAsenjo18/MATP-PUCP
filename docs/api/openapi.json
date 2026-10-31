@@ -568,6 +568,17 @@
             "title": "Create",
             "type": "integer"
           },
+          "photos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoApprovalOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
+          },
           "skip": {
             "description": "Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).",
             "title": "Skip",
@@ -8000,6 +8011,63 @@
           "description"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PhotoApprovalOut": {
+        "description": "Warning before approving a photo-only batch (RF-046; importacion-fotos-a-catalogo, 6.2).",
+        "properties": {
+          "collections_pending": {
+            "description": "Carpetas cuya colección propuesta nadie confirmó.",
+            "title": "Collections Pending",
+            "type": "integer"
+          },
+          "duplicates_pending": {
+            "description": "Fotos que ya están en su pieza y nadie confirmó: no se aplican.",
+            "title": "Duplicates Pending",
+            "type": "integer"
+          },
+          "out_of_range": {
+            "description": "Propuestas fuera del rango de su carpeta.",
+            "title": "Out Of Range",
+            "type": "integer"
+          },
+          "partial_codes": {
+            "description": "Propuestas con un código que no existe.",
+            "title": "Partial Codes",
+            "type": "integer"
+          },
+          "pieces": {
+            "description": "Piezas que recibirán fotos.",
+            "title": "Pieces",
+            "type": "integer"
+          },
+          "to_apply": {
+            "description": "Fotos que se aplicarán.",
+            "title": "To Apply",
+            "type": "integer"
+          },
+          "unassigned": {
+            "description": "Fotos verificadas sin pieza: quedan sin aplicar.",
+            "title": "Unassigned",
+            "type": "integer"
+          },
+          "uploading": {
+            "description": "Fotos que todavía se suben o verifican.",
+            "title": "Uploading",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "to_apply",
+          "pieces",
+          "unassigned",
+          "duplicates_pending",
+          "uploading",
+          "partial_codes",
+          "out_of_range",
+          "collections_pending"
+        ],
+        "title": "PhotoApprovalOut",
         "type": "object"
       },
       "PhotoBatchCreate": {

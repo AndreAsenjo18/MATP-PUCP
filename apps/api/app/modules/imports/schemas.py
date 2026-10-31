@@ -35,6 +35,23 @@ _COUNTS = {"rows": 120, "NEW": 70, "UPDATE": 35, "POSSIBLE_DUPLICATE": 10, "CONF
 _SUMMARY = {"create": 70, "update": 35, "skip": 15, "summary_token": "0" * 32}
 
 
+class PhotoApprovalOut(BaseModel):
+    """Warning before approving a photo-only batch (RF-046; importacion-fotos-a-catalogo, 6.2)."""
+
+    to_apply: int = Field(description="Fotos que se aplicarán.")
+    pieces: int = Field(description="Piezas que recibirán fotos.")
+    unassigned: int = Field(description="Fotos verificadas sin pieza: quedan sin aplicar.")
+    duplicates_pending: int = Field(
+        description="Fotos que ya están en su pieza y nadie confirmó: no se aplican."
+    )
+    uploading: int = Field(description="Fotos que todavía se suben o verifican.")
+    partial_codes: int = Field(description="Propuestas con un código que no existe.")
+    out_of_range: int = Field(description="Propuestas fuera del rango de su carpeta.")
+    collections_pending: int = Field(
+        description="Carpetas cuya colección propuesta nadie confirmó."
+    )
+
+
 class ApprovalSummaryOut(BaseModel):
     """What applying the batch would do now; approve with its ``summary_token`` (D6)."""
 
@@ -44,6 +61,9 @@ class ApprovalSummaryOut(BaseModel):
         description="Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver)."
     )
     summary_token: str = Field(description="Huella del resumen; se envía al aprobar.")
+    photos: PhotoApprovalOut | None = Field(
+        None, description="Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
+    )
 
 
 class ImportBatchOut(BaseModel):

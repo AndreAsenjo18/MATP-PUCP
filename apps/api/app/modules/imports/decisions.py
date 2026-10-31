@@ -18,6 +18,7 @@ approving with a token that no longer matches is rejected with ``409 summary_cha
 import enum
 import hashlib
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -28,11 +29,18 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
+from app.modules.imports.catalog_photos import photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
-from app.modules.imports.models import ImportBatch, ImportRow, RowClassification, RowDecision
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportBatchKind,
+    ImportRow,
+    RowClassification,
+    RowDecision,
+)
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.service import ensure_idle, field_diff
-from app.modules.imports.state import ensure_transition, lock_batch, transition
+from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
 
 FieldAction = Literal["accept", "exclude"]
 RESOLVABLE = frozenset({RowClassification.CONFLICT, RowClassification.POSSIBLE_DUPLICATE})
@@ -90,18 +98,32 @@ class ApprovalSummary:
     create: int
     update: int
     skip: int
+    # A ``PHOTOS`` batch (importacion-fotos-a-catalogo, task 6.2): what it applies and leaves out.
+    photos: Mapping[str, int] | None = None
 
     @property
     def token(self) -> str:
-        return hashlib.sha256(f"{self.create}:{self.update}:{self.skip}".encode()).hexdigest()[:32]
+        text = f"{self.create}:{self.update}:{self.skip}"
+        if self.photos is not None:
+            text += ":" + ",".join(f"{key}={value}" for key, value in sorted(self.photos.items()))
+        return hashlib.sha256(text.encode()).hexdigest()[:32]
+
+    @property
+    def nothing_to_apply(self) -> bool:
+        if self.photos is not None:
+            return self.photos.get("to_apply", 0) == 0
+        return self.create + self.update == 0
 
     def as_json(self) -> dict[str, Any]:
-        return {
+        value: dict[str, Any] = {
             "create": self.create,
             "update": self.update,
             "skip": self.skip,
             "summary_token": self.token,
         }
+        if self.photos is not None:
+            value["photos"] = dict(self.photos)
+        return value
 
 
 # Columns ``row_action`` reads: the summary never loads the raw or mapped data of the rows.
@@ -117,6 +139,9 @@ ACTION_COLUMNS = (
 
 
 def approval_summary(session: Session, batch_id: uuid.UUID) -> ApprovalSummary:
+    batch = session.get(ImportBatch, batch_id)
+    if batch is not None and batch_kind(batch) is ImportBatchKind.PHOTOS:
+        return ApprovalSummary(0, 0, 0, photo_approval_counts(session, batch))
     counts = dict.fromkeys(RowAction, 0)
     for row in session.execute(select(*ACTION_COLUMNS).where(ImportRow.batch_id == batch_id)):
         counts[row_action(row)[0]] += 1  # type: ignore[arg-type]  # a Row with the same names
@@ -303,8 +328,13 @@ def check_summary(session: Session, batch_id: uuid.UUID, summary_token: str) -> 
             code="summary_changed",
             details={"summary": summary.as_json()},
         )
-    if summary.create + summary.update == 0:
-        raise ValidationFailed("El lote no tiene filas para aplicar.", code="nothing_to_apply")
+    if summary.nothing_to_apply:
+        message = (
+            "El lote no tiene fotos asignadas a una pieza para aplicar."
+            if summary.photos is not None
+            else "El lote no tiene filas para aplicar."
+        )
+        raise ValidationFailed(message, code="nothing_to_apply")
     return summary
 
 
