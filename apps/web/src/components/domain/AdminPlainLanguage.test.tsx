@@ -10,7 +10,7 @@ import { ADMIN_SECTIONS, AdminNav, AdminToolbar, FormDialog, SectionHeader, visi
 import { LocationTreeView } from "./LocationsAdmin";
 import { Fold, MarkersEditor, SeparatorsEditor } from "./NormalizationAdmin";
 import { TemplateAdminList } from "./MappingTemplatesAdmin";
-import { CollectionsList, IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
+import { CollectionsList, IdentifierTypesTable, RulePreviewPanel, TermLabelFields, TermList } from "./VocabulariesAdmin";
 import { PermissionPackageCard, PermissionSaveBar, RoleButtons, UsersTable } from "./UsersAdmin";
 
 // Spec plataforma — Administración: ningún texto que lee la persona cita requisitos (RF-, RN-, RNF-, RIA-).
@@ -75,7 +75,7 @@ describe("lenguaje llano en Administración", () => {
     permisos: visibleText(render(<RoleButtons roles={ROLES} value="ADMIN" onChange={noop} />)) + visibleText(render(<PermissionPackageCard pkg={PACKAGE} working={[]} onTogglePermission={noop} onTogglePackage={noop} />)),
     guardar: visibleText(render(<PermissionSaveBar diff={{ added: ["imports.prepare"], removed: [] }} reason="" onReason={noop} onSave={noop} />)),
     colecciones: visibleText(render(<CollectionsList shown={[COLLECTION]} all={[COLLECTION]} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} />)),
-    listas: visibleText(render(<TermList terms={[TERM]} busy={false} onToggle={noop} />)),
+    listas: visibleText(render(<TermList terms={[TERM]} busy={false} onToggle={noop} />)) + visibleText(render(<TermLabelFields terms={[TERM]} form={{ termId: TERM.id, label: TERM.label }} onChange={noop} />)),
     tipos: visibleText(render(<IdentifierTypesTable types={[TYPE]} selected={null} onSelect={noop} />)),
     impacto: visibleText(render(<RulePreviewPanel type={TYPE} preview={PREVIEW} busy={false} onConfirm={noop} onCancel={noop} />)),
     ubicaciones: visibleText(render(<LocationTreeView nodes={[NODE]} onDeactivate={noop} />)),

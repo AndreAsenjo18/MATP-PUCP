@@ -15,7 +15,7 @@
 
 ### D1. Componente común `AdminList`
 
-Tabla con buscador, «Agregar», acciones por fila («Editar», «Retirar» o «Desactivar»), filtro «Ver retiradas» con «Restaurar», y un `AdminDialog` común (título, campos, errores junto al campo, motivo obligatorio al retirar). Se usa en Colecciones y Listas de valores; Ubicaciones conserva su árbol pero usa el mismo diálogo.
+Tabla con buscador, «Agregar», acciones por fila («Editar», «Retirar» o «Desactivar»), filtro «Ver retiradas» con «Restaurar», y un `AdminDialog` común (título, campos, errores junto al campo, motivo obligatorio al retirar). Se usa en Colecciones. Listas de valores conserva sus etiquetas, que `rediseno-ux-administracion` exige «sin un botón por término», y corrige una etiqueta con «Corregir etiqueta» en la barra, en el mismo diálogo (decidido al aplicar 2.3); Ubicaciones conserva su árbol pero usa el mismo diálogo.
 
 ### D2. Restauración de colecciones
 

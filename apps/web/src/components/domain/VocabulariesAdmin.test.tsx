@@ -4,7 +4,17 @@ import { NO_COLLECTION_FILTERS, type CollectionItem, type IdentifierType, type N
 import { render, visibleText } from "@/test/render";
 
 import { ConservationForm, ConservationHistory } from "./ConservationPanel";
-import { CollectionFormFields, CollectionsList, IdentifierTypesTable, RulePreviewPanel, TermList, type CollectionForm } from "./VocabulariesAdmin";
+import {
+  CollectionFormFields,
+  CollectionsList,
+  IdentifierTypesTable,
+  RulePreviewPanel,
+  TermActions,
+  TermLabelFields,
+  TermList,
+  termsByLabel,
+  type CollectionForm,
+} from "./VocabulariesAdmin";
 
 // Datos sintéticos (RNF-014).
 
@@ -81,6 +91,49 @@ describe("términos de una lista de valores", () => {
 
   it("no cita requisitos", () => {
     expect(visibleText(render(<TermList terms={[term()]} busy={false} onToggle={noop} />))).not.toMatch(/(RF|RN)-0/);
+  });
+});
+
+describe("corregir la etiqueta de un término (crud-manual-completo 2.3)", () => {
+  const terms = [
+    term({ id: "t-2", code: "MADERA", label: "Madera" }),
+    term({ id: "t-1", code: "CERAMICA", label: "Ceramica" }),
+    term({ id: "t-3", code: "LANA", label: "Lana", is_active: false }),
+  ];
+
+  it("se abre desde la barra y no añade un botón por término", () => {
+    const bar = render(<TermActions canFixLabel onFixLabel={noop} onNewList={noop} />);
+    expect(visibleText(bar)).toContain("Corregir etiqueta");
+    expect(visibleText(bar)).toContain("Nueva lista");
+    expect(bar.match(/<button/g)).toHaveLength(2);
+    const chips = render(<TermList terms={terms} busy={false} onToggle={noop} />);
+    expect(chips.match(/<button/g)).toHaveLength(terms.length);
+  });
+
+  it("una lista sin términos no tiene nada que corregir", () => {
+    const button = render(<TermActions canFixLabel={false} onFixLabel={noop} onNewList={noop} />).match(/<button[^>]*>(?:(?!<\/button>).)*Corregir etiqueta/)?.[0];
+    expect(button).toContain("disabled");
+  });
+
+  it("ofrece los términos por orden alfabético, también los desactivados, y lo dice", () => {
+    expect(termsByLabel(terms).map((item) => item.label)).toEqual(["Ceramica", "Lana", "Madera"]);
+    expect(terms[0]?.label).toBe("Madera");
+    const text = visibleText(render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Ceramica" }} onChange={noop} />));
+    expect(text).toContain("Lana (desactivado)");
+    expect(text).not.toContain("Madera (desactivado)");
+  });
+
+  it("explica que las fichas muestran la etiqueta nueva y que el código no cambia", () => {
+    const text = visibleText(render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Cerámica" }} onChange={noop} />));
+    expect(text).toContain("Las fichas que usan este término mostrarán la etiqueta nueva.");
+    expect(text).toContain("Su código estable no cambia.");
+  });
+
+  it("muestra junto al campo la sugerencia cuando la etiqueta está repetida", () => {
+    const repeated = "Ya existe el término «Madera» en esta lista; desactive uno de los dos o use otra etiqueta.";
+    const html = render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Madera" }} error={repeated} onChange={noop} />);
+    expect(visibleText(html)).toContain(repeated);
+    expect(html).toContain('aria-invalid="true"');
   });
 });
 

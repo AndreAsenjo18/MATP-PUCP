@@ -9,7 +9,8 @@
  * - Colecciones: listado filtrable (búsqueda, estado y tipo) con las subcolecciones distinguidas;
  *   editar, retirar con motivo, ver retiradas y restaurar (Administrador) (`crud-manual-completo` 2.2).
  * - Listas de valores (los vocabularios): las opciones que se eligen al llenar una ficha; sus
- *   términos son etiquetas que se activan o desactivan (nunca se borran).
+ *   términos son etiquetas que se activan o desactivan (nunca se borran), y «Corregir etiqueta» en la
+ *   barra arregla una errata sin perder el término (`crud-manual-completo` 2.3).
  * - Tipos de código (los tipos de identificador): candado en los tipos del sistema, alta, cambio de
  *   etiqueta y cambio de regla en dos pasos: vista previa del impacto en lenguaje claro y
  *   confirmación ligada a ella (`confirm_token`); con colisiones no se puede confirmar.
@@ -52,8 +53,10 @@ import {
   retireCollection,
   setTermActive,
   suggestCode,
+  termLabelError,
   updateCollection,
   updateIdentifierType,
+  updateTermLabel,
   type CollectionFilters,
   type CollectionItem,
   type IdentifierType,
@@ -107,6 +110,71 @@ export function TermList({ terms, busy, onToggle }: { terms: VocabularyTerm[]; b
       </ul>
       <p className="text-xs text-gris-texto">Verde: se ofrece en las fichas. Gris tachado: desactivado. Pulse una etiqueta para cambiarla.</p>
     </div>
+  );
+}
+
+export interface TermLabelForm {
+  termId: string;
+  label: string;
+}
+
+/** Los términos por orden alfabético, para encontrarlos en el selector. */
+export function termsByLabel(terms: readonly VocabularyTerm[]): VocabularyTerm[] {
+  return [...terms].sort((a, b) => a.label.localeCompare(b.label, "es"));
+}
+
+/** Barra de acciones de la lista. Corregir una etiqueta está aquí porque las etiquetas se pulsan para activarlas. */
+export function TermActions({ canFixLabel, onFixLabel, onNewList }: { canFixLabel: boolean; onFixLabel: () => void; onNewList: () => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" variant="outline" icon={Pencil} disabled={!canFixLabel} onClick={onFixLabel}>
+        Corregir etiqueta
+      </Button>
+      <Button size="sm" variant="outline" icon={Plus} onClick={onNewList}>
+        Nueva lista
+      </Button>
+    </div>
+  );
+}
+
+/** Campos de «Corregir etiqueta»: elegir un término propone su etiqueta actual para retocarla. */
+export function TermLabelFields({
+  terms,
+  form,
+  error,
+  onChange,
+}: {
+  terms: readonly VocabularyTerm[];
+  form: TermLabelForm;
+  error?: string | null;
+  onChange: (form: TermLabelForm) => void;
+}) {
+  const options = termsByLabel(terms);
+  return (
+    <>
+      <Select
+        label="Término"
+        value={form.termId}
+        onChange={(event) => {
+          const term = options.find((item) => item.id === event.target.value);
+          if (term) onChange({ termId: term.id, label: term.label });
+        }}
+      >
+        {options.map((term) => (
+          <option key={term.id} value={term.id}>
+            {term.label}
+            {term.is_active ? "" : " (desactivado)"}
+          </option>
+        ))}
+      </Select>
+      <Input
+        label="Etiqueta nueva"
+        value={form.label}
+        error={error}
+        hint="Las fichas que usan este término mostrarán la etiqueta nueva. Su código estable no cambia."
+        onChange={(event) => onChange({ ...form, label: event.target.value })}
+      />
+    </>
   );
 }
 
@@ -653,6 +721,9 @@ export function VocabulariesLive() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [newVocabulary, setNewVocabulary] = useState({ name: "", code: "" });
+  const [labelForm, setLabelForm] = useState<TermLabelForm | null>(null);
+  const [labelError, setLabelError] = useState<string | null>(null);
+  const [labelDialogError, setLabelDialogError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -725,6 +796,32 @@ export function VocabulariesLive() {
     await Promise.all([loadTerms(selected), loadVocabularies()]);
   }
 
+  function openLabelForm() {
+    const first = termsByLabel(terms)[0];
+    if (!first) return;
+    setLabelError(null);
+    setLabelDialogError(null);
+    setLabelForm({ termId: first.id, label: first.label });
+  }
+
+  async function handleFixLabel(): Promise<boolean> {
+    if (!labelForm) return false;
+    const term = terms.find((item) => item.id === labelForm.termId);
+    const invalid = termLabelError(term?.label, labelForm.label);
+    setLabelError(invalid);
+    setLabelDialogError(null);
+    if (invalid) return false;
+    const result = await updateTermLabel(selected, labelForm.termId, labelForm.label, devUser);
+    if (result.status !== "ok") {
+      if (result.status === "rejected" && result.code === "duplicate_term") setLabelError(result.message);
+      else setLabelDialogError(result.message);
+      return false;
+    }
+    done(`Etiqueta corregida: «${term?.label}» ahora es «${result.value.label}». Las fichas que usan este término muestran la etiqueta nueva.`);
+    await loadTerms(selected);
+    return true;
+  }
+
   async function handleCreateVocabulary(): Promise<boolean> {
     const code = newVocabulary.code || suggestCode(newVocabulary.name);
     const invalid = codeError(code, { min: 2 });
@@ -757,11 +854,7 @@ export function VocabulariesLive() {
       />
       <AdminToolbar
         label="Lista y términos"
-        action={
-          <Button size="sm" variant="outline" icon={Plus} onClick={() => setDialogOpen(true)}>
-            Nueva lista
-          </Button>
-        }
+        action={<TermActions canFixLabel={terms.length > 0} onFixLabel={openLabelForm} onNewList={() => setDialogOpen(true)} />}
       >
         <Select label="Lista" value={selected} onChange={(event) => setSelected(event.target.value)} fieldClassName="w-64">
           {vocabularies.map((vocabulary) => (
@@ -778,6 +871,17 @@ export function VocabulariesLive() {
       {termLabel.trim() && <p className="text-xs text-gris-texto">Código estable: {suggestCode(termLabel) || "—"}</p>}
       <Notice message={message} error={error} />
       <TermList terms={terms} busy={busy} onToggle={handleToggle} />
+      <FormDialog
+        open={labelForm !== null}
+        title="Corregir etiqueta"
+        description="Para corregir una errata sin perder el término."
+        submitLabel="Guardar etiqueta"
+        error={labelDialogError}
+        onClose={() => setLabelForm(null)}
+        onSubmit={handleFixLabel}
+      >
+        {labelForm && <TermLabelFields terms={terms} form={labelForm} error={labelError} onChange={setLabelForm} />}
+      </FormDialog>
       <FormDialog
         open={dialogOpen}
         title="Nueva lista de valores"

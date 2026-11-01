@@ -33,7 +33,6 @@ export const ADMIN_ERROR_MESSAGES: Record<string, string> = {
   ...IMPORT_ERROR_MESSAGES,
   vocabulary_exists: "Ya existe una lista con ese código.",
   identifier_type_exists: "Ya existe un tipo de código con ese código.",
-  duplicate_term: "Ya existe un término con ese código o esa etiqueta en la lista.",
   term_in_use: "El término está en uso: desactívelo en lugar de eliminarlo.",
   system_identifier_type: "Es un tipo de código del sistema: solo se pueden cambiar su etiqueta, descripción y orden.",
   normalization_change_requires_preview: "Los identificadores cambiaron después de la vista previa: vuelva a revisar el impacto antes de confirmar.",
@@ -139,6 +138,30 @@ export async function setTermActive(vocabularyCode: string, termId: string, isAc
       client(devUser).PATCH("/api/v1/vocabularies/{vocabulary_code}/terms/{term_id}", {
         params: { path: { vocabulary_code: vocabularyCode, term_id: termId } },
         body: { is_active: isActive },
+      }),
+    ADMIN_ERROR_MESSAGES,
+  );
+}
+
+/** Por qué no se puede guardar la etiqueta corregida (mismo tope que la API), o `null`. */
+export function termLabelError(current: string | undefined, label: string): string | null {
+  const next = label.trim();
+  if (!next) return "Escriba la etiqueta nueva.";
+  if (next.length > 200) return "La etiqueta admite como máximo 200 caracteres.";
+  if (next === current) return "La etiqueta nueva es igual a la actual.";
+  return null;
+}
+
+/**
+ * Corrige la etiqueta de un término: conserva su identidad, así que las fichas que lo usan muestran la
+ * nueva. Una etiqueta repetida vuelve con la sugerencia de la API (`crud-manual-completo` 2.3).
+ */
+export async function updateTermLabel(vocabularyCode: string, termId: string, label: string, devUser?: string): Promise<ImportResult<VocabularyTerm>> {
+  return call(
+    () =>
+      client(devUser).PATCH("/api/v1/vocabularies/{vocabulary_code}/terms/{term_id}", {
+        params: { path: { vocabulary_code: vocabularyCode, term_id: termId } },
+        body: { label: label.trim() },
       }),
     ADMIN_ERROR_MESSAGES,
   );
