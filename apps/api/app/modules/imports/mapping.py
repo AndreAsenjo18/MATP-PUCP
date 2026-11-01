@@ -21,6 +21,7 @@ that reads ``MappingSpec`` (``field_diff``, ``validate_stage``, ``decisions``) w
 ``as_json`` stores the v1 form and ``apply_mapping``/``validate_mapping`` follow v1 rules.
 """
 
+import re
 import unicodedata
 import uuid
 from collections.abc import Mapping, Sequence
@@ -42,6 +43,7 @@ from app.modules.identification.models import (
     NormalizationStatus,
 )
 from app.modules.identification.normalization import (
+    TYPE_COLLECTION,
     TYPE_OTHER,
     NormalizationParams,
     is_absence_marker,
@@ -470,6 +472,7 @@ class MappingContext:
         )
         self._collections: dict[str, uuid.UUID | None] = {}
         self._names: dict[str, list[uuid.UUID]] | None = None
+        self._acronyms: dict[uuid.UUID, str | None] = {}
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
@@ -489,6 +492,14 @@ class MappingContext:
                 found.id if found is not None else self._collection_by_name(code)
             )
         return self._collections[key]
+
+    def collection_acronym(self, collection_id: uuid.UUID) -> str | None:
+        """Normalized acronym of a collection (``MMZ``), or None if it has none."""
+        if collection_id not in self._acronyms:
+            self._acronyms[collection_id] = self._session.scalar(
+                select(Collection.acronym_normalized).where(Collection.id == collection_id)
+            )
+        return self._acronyms[collection_id]
 
     def _collection_by_name(self, name: str) -> uuid.UUID | None:
         if self._names is None:
@@ -948,7 +959,91 @@ def apply_mapping(
                     "collection",
                 )
             )
+    _complete_collection_numbers(mapped, ctx)
+    _notes_from_code_columns(mapped)
     return mapped
+
+
+#: Words a value of a code column must exceed to be read as a note, not a code [SUPUESTO].
+NOTE_MIN_WORDS = 4
+NOTE_PREFIX = "[Importación] "
+
+
+def _notes_from_code_columns(mapped: MappedRow) -> None:
+    """A text in a code column that is not a code («número de inventario mal asignado,
+    revisar») is proposed as an observation of the piece instead of an identifier (spec
+    identificacion-piezas, «Marcas de vacío y texto que no es un código»; design D5)."""
+    kept: list[RowIdentifier] = []
+    notes: list[str] = []
+    for identifier in mapped.identifiers:
+        text = identifier.original_value.strip()
+        if (
+            identifier.status is NormalizationStatus.UNPARSEABLE
+            and not identifier.is_absent
+            and len(text.split()) >= NOTE_MIN_WORDS
+        ):
+            notes.append(text)
+        else:
+            kept.append(identifier)
+    if not notes:
+        return
+    mapped.identifiers = kept
+    current = mapped.fields.get("notes")
+    added = "\n".join(f"{NOTE_PREFIX}{note}" for note in notes)
+    mapped.fields["notes"] = f"{current}\n{added}" if current else added
+    for note in notes:
+        mapped.warnings.append(
+            RowError(
+                "text_as_observation",
+                f"«{note}» no es un código: se propone como observación de la pieza.",
+                "notes",
+            )
+        )
+
+
+_BARE_NUMBER_RE = re.compile(r"^\d+(?:[.\-]\d+)*$")
+
+
+def _complete_collection_numbers(mapped: MappedRow, ctx: MappingContext) -> None:
+    """A number without acronym in a collection code column (``45``) takes the acronym of the
+    collection of the row (``MMZ 45``) [SUPUESTO FR3], with a warning to review it; without a
+    collection it stays unparseable with ``number_without_acronym`` (formatos-reales-importacion,
+    design D5)."""
+    acronym = ctx.collection_acronym(mapped.collection_id) if mapped.collection_id else None
+    for index, identifier in enumerate(mapped.identifiers):
+        value = identifier.original_value.strip()
+        if (
+            identifier.type_code != TYPE_COLLECTION
+            or identifier.is_absent
+            or identifier.status is not NormalizationStatus.UNPARSEABLE
+            or not _BARE_NUMBER_RE.match(value)
+        ):
+            continue
+        if acronym:
+            completed = RowIdentifier.from_raw(
+                TYPE_COLLECTION,
+                f"{acronym} {value}",
+                ctx.identifier_rules.get(TYPE_COLLECTION),
+                params=ctx.params,
+            )
+            mapped.identifiers[index] = completed
+            mapped.warnings.append(
+                RowError(
+                    "acronym_from_row",
+                    f"El código de colección «{value}» no tiene sigla: se tomó {acronym} de la "
+                    f"colección de la fila ({completed.normalized_value}). Revíselo.",
+                    "identifiers",
+                )
+            )
+        else:
+            mapped.warnings.append(
+                RowError(
+                    "number_without_acronym",
+                    f"El código de colección «{value}» es un número sin sigla ni colección: "
+                    "queda como no normalizable.",
+                    "identifiers",
+                )
+            )
 
 
 def _resolve_tenure(mapped: MappedRow, plan: "_Plan", ctx: MappingContext) -> None:
@@ -1082,7 +1177,14 @@ def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> 
             )
         ]
     identifiers: list[RowIdentifier] = []
-    for proposal in propose_identifiers(value, column.identifier_type, params=params):
+    proposals = propose_identifiers(value, column.identifier_type, params=params)
+    if len(value.split()) >= NOTE_MIN_WORDS and all(
+        proposal.result.status is NormalizationStatus.UNPARSEABLE for proposal in proposals
+    ):
+        # A note with commas is not several codes: kept whole, it becomes an observation.
+        type_code = column.identifier_type or TYPE_OTHER
+        return [RowIdentifier(type_code, value, None, NormalizationStatus.UNPARSEABLE)]
+    for proposal in proposals:
         type_code = proposal.type_code or TYPE_OTHER
         identifiers.append(
             RowIdentifier.from_raw(

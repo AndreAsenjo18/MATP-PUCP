@@ -91,9 +91,12 @@ FORMAT_INC_5 = "INC_5_DIGITOS"
 FORMAT_INC_6 = "INC_6_DIGITOS"
 
 _INVENTORY_RE = re.compile(r"^(I)?\s*[-.:#_]?\s*(\d+)$")
+# Acronym (``MMZ``, ``M.M.Z.``) or compound acronym with hyphens (``AMM-IN-V`` [SUPUESTO FR2]),
+# correlative, components (``40.1``) and a suffix of letters after a space (``ELA 12 CEL``
+# [SUPUESTO FR1]); change formatos-reales-importacion, design D5.
 _COLLECTION_RE = re.compile(
-    r"^(?P<acronym>[A-Z](?:[\s.]*[A-Z])*)[\s.\-_:#]*(?P<number>\d+)"
-    r"(?P<suffix>(?:\s*[.\-]\s*[0-9A-Z]+)*)$"
+    r"^(?P<acronym>[A-Z](?:[\s.]*[A-Z])*(?:-[A-Z]+)*)[\s.\-_:#]*(?P<number>\d+)"
+    r"(?P<suffix>(?:\s*[.\-]\s*[0-9A-Z]+)*)(?:\s*(?P<letters>[A-Z]{2,5}))?$"
 )
 _INC_PREFIX_RE = re.compile(r"^(?:INC|R\.?\s*N\.?|N\s*[°º.]?)?\s*[-:#°º.]?\s*(?P<body>[\d\s.\-]+)$")
 _GENERIC_SEPARATORS_RE = re.compile(r"\s*([-/.])\s*")
@@ -293,6 +296,9 @@ def normalize_collection_code(
     detected = FORMAT_COLLECTION
     if suffix_parts:
         normalized += "".join(f".{part.lstrip('0') or '0'}" for part in suffix_parts)
+        detected = FORMAT_COLLECTION_SUFFIX
+    if match.group("letters"):
+        normalized += f" {match.group('letters')}"
         detected = FORMAT_COLLECTION_SUFFIX
     return NormalizationResult(raw, normalized, NormalizationStatus.NORMALIZED, detected)
 

@@ -51,11 +51,11 @@ DEFAULT_FOLDER = Path(__file__).resolve().parents[1] / "data" / "real"
 CODE_COLUMNS: dict[str, tuple[str, bool]] = {
     header_key("N° Inventario MATP (I)"): ("I", True),
     header_key("Código de la colección"): ("COLECCION", True),
-    header_key("N° Inscripción Registro Nacional"): ("INC_RN", False),
+    header_key("N° Inscripción Registro Nacional"): ("INC_RN", True),
     header_key("Código de propietario (RN*)"): ("PROPIETARIO", False),
     header_key("Código de propietario"): ("PROPIETARIO", False),
     header_key("Código PUCP"): ("PUCP", False),
-    header_key("Código  INC"): ("INC_RN", False),
+    header_key("Código  INC"): ("INC_RN", True),
     header_key("Otros códigos"): ("OTRO", True),
 }
 COLLECTION_COLUMNS = {header_key("Nombre de la Colección"), header_key("Colección")}

@@ -19,9 +19,9 @@
 ## 4. Normalización de códigos
 
 - [x] 4.1 Marcas de vacío «No presenta», «No registra», «Sin código»/«Sin codigo» en `ABSENCE_MARKERS` y migración de datos en `normalization_setting`; pruebas (Req: Marcas de vacío y texto que no es un código)
-- [ ] 4.2 Regla `COLLECTION` con sigla compuesta y sufijo, y `detect_type` que las prefiere a `I`; pruebas de los escenarios «Sigla compuesta…», «Sufijo…» y «Componente de un juego» (Req: Formas reales de código de colección)
-- [ ] 4.3 Número sin sigla completado con la colección de la fila (`acronym_from_row`) y motivo `number_without_acronym`; pruebas (Req: Formas reales… — escenarios «Número sin sigla…»)
-- [ ] 4.4 Texto que no es código → observación (`notes` con prefijo al aplicar); prueba (Req: Marcas de vacío… — escenario «Nota en la columna del código I»)
+- [x] 4.2 Regla `COLLECTION` con sigla compuesta y sufijo, y `detect_type` que las prefiere a `I`; pruebas de los escenarios «Sigla compuesta…», «Sufijo…» y «Componente de un juego» (Req: Formas reales de código de colección)
+- [x] 4.3 Número sin sigla completado con la colección de la fila (`acronym_from_row`) y motivo `number_without_acronym`; pruebas (Req: Formas reales… — escenarios «Número sin sigla…»)
+- [x] 4.4 Texto que no es código → observación (`notes` con prefijo al aplicar); prueba (Req: Marcas de vacío… — escenario «Nota en la columna del código I»)
 
 ## 5. Mapeo
 
