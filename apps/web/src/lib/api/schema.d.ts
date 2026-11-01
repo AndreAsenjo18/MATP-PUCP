@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 946d5b91e6359d4786d4bc812535c43ccb3e4bbf2699436ce61900070a91a29c
+ * openapi-sha256: e43be2e05e1c76e607afa0386bd0abac4ed8ab8af7073c9a43d37f2a266ba787
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1092,7 +1092,7 @@ export interface paths {
         put?: never;
         /**
          * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
-         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         * @description Responde `200` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
          */
         post: operations["bulkDownloadMedia"];
         delete?: never;
@@ -1110,7 +1110,7 @@ export interface paths {
         };
         /**
          * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
-         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el `POST` responde el estado del trabajo y el ZIP se descarga después con un enlace de corta duración, que esta operación entrega cuando el paquete está listo.
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Solo lo consulta quien lo pidió.
          */
         get: operations["getBulkDownload"];
         put?: never;
@@ -11667,8 +11667,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description `bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11676,13 +11676,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
-            501: {
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11716,8 +11716,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description El rol no tiene el permiso requerido. */
+            /** @description El rol no tiene el permiso requerido o el paquete lo pidió otra persona. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe ese paquete. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva. */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11732,15 +11750,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

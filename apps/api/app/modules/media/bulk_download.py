@@ -13,7 +13,7 @@ import tempfile
 import uuid
 import zipfile
 from collections.abc import Iterable
-from datetime import timedelta
+from datetime import UTC, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -86,6 +86,16 @@ def bulk_download_of(session: Session, job_id: uuid.UUID, user_id: uuid.UUID) ->
     if job.requested_by_id != user_id:
         raise PermissionDenied("Solo quien pidió el paquete de fotos puede consultarlo.")
     return job
+
+
+def is_expired(job: MediaBulkDownload) -> bool:
+    """Its ZIP is past ``expires_at`` (SQLite gives naive datetimes, read as UTC)."""
+    if job.expires_at is None:
+        return False
+    expires = job.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    return expires <= utcnow()
 
 
 def fail_interrupted(factory: SessionFactory) -> int:
