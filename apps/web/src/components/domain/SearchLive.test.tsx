@@ -4,7 +4,7 @@ import { EMPTY_FILTERS, activeChips, type ExportJob, type SearchHit, type Search
 import { EMPTY_SELECTION, toggleSelected } from "@/lib/data/selection";
 import { render, visibleText } from "@/test/render";
 
-import { SearchFiltersPanel, type SearchOptions } from "./SearchFilters";
+import { FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "./SearchFilters";
 import { ActiveFilterChips, ExportColumnsPicker, ExportJobsList, SearchResults } from "./SearchLive";
 
 // Datos sintéticos (RNF-014).
@@ -131,6 +131,13 @@ describe("resultados de la búsqueda", () => {
     expect(text).toContain("Quitar la selección");
   });
 
+  it("en tableta las tarjetas son compactas y la casilla es grande", () => {
+    const html = render(<SearchResults page={page({ items: [hit()] })} selection={EMPTY_SELECTION} onSelectionChange={noop} />);
+    expect(html).toMatch(/<a[^>]*class="[^"]*p-3 lg:p-4/);
+    expect(html).toMatch(/type="checkbox"[^>]*class="[^"]*size-7[^"]*lg:size-6/);
+    expect(html).toContain("size-14 lg:size-20");
+  });
+
   it("muestra cuándo se vio la pieza solo si el resultado trae la fecha (dato restringido)", () => {
     const seen = visibleText(render(<SearchResults page={page({ items: [hit({ last_seen_at: new Date().toISOString() })] })} />));
     expect(seen).toContain("Sede Central › Depósito 2 · visto hoy");
@@ -201,6 +208,25 @@ describe("filtros", () => {
     expect(withAuthor).toContain('<details open="">');
     const onlyMain = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, denomination: "mate", description: "asa" }} options={OPTIONS} onChange={noop} onClear={noop} />);
     expect(onlyMain).toContain("<details>");
+  });
+
+  it("en tableta los filtros se abren con un botón que dice cuántos hay activos", () => {
+    const closed = render(
+      <FiltersDrawer open={false} onToggle={noop} activeCount={2}>
+        <p>Panel</p>
+      </FiltersDrawer>,
+    );
+    expect(closed).toContain('aria-expanded="false"');
+    expect(visibleText(closed)).toContain("Filtros (2 activos)");
+    expect(closed).toContain('class="hidden lg:block"');
+    const open = render(
+      <FiltersDrawer open onToggle={noop} activeCount={0}>
+        <p>Panel</p>
+      </FiltersDrawer>,
+    );
+    expect(open).toContain('class="block lg:block"');
+    expect(visibleText(open)).toContain("Ocultar los filtros");
+    expect(visibleText(open)).not.toContain("activos");
   });
 
   it("muestra un chip que se puede quitar por cada filtro activo", () => {

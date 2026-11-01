@@ -55,7 +55,13 @@ export function SelectionBar({
   const pieces = `${count} pieza${count === 1 ? "" : "s"}`;
 
   return (
-    <Card as="section" aria-label="Acciones con las piezas seleccionadas" className="flex flex-col gap-3">
+    // En tableta, fija abajo y a todo el ancho, con botones táctiles; desde lg, en su lugar (design D4).
+    <Card
+      as="section"
+      aria-label="Acciones con las piezas seleccionadas"
+      padded={false}
+      className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-3 rounded-none p-4 shadow-lg lg:static lg:z-auto lg:rounded-lg lg:shadow-sm"
+    >
       {feedback &&
         (feedback.kind === "ok" ? (
           <p role="status" className="flex items-center gap-2 rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
@@ -70,10 +76,10 @@ export function SelectionBar({
       {count > 0 && stage === "idle" && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-tinta">{pieces} seleccionada{count === 1 ? "" : "s"}</span>
-          <Button variant="secondary" icon={ClipboardCheck} disabled={busy} onClick={onVerify}>
+          <Button variant="secondary" size="touch" icon={ClipboardCheck} disabled={busy} onClick={onVerify}>
             Verificar
           </Button>
-          <Button icon={Truck} disabled={busy} onClick={() => setStage("choose")}>
+          <Button size="touch" icon={Truck} disabled={busy} onClick={() => setStage("choose")}>
             Mover a…
           </Button>
         </div>
@@ -83,10 +89,10 @@ export function SelectionBar({
           <DestinationPicker options={destinations} value={destination} onChange={setDestination} label={`Mover ${pieces} a`} />
           <Input label="Motivo (opcional)" value={reason} onChange={(event) => setReason(event.target.value)} />
           <div className="flex flex-wrap gap-2">
-            <Button disabled={!destination} onClick={() => setStage("confirm")}>
+            <Button size="touch" disabled={!destination} onClick={() => setStage("confirm")}>
               Revisar el traslado
             </Button>
-            <Button variant="secondary" onClick={() => setStage("idle")}>
+            <Button variant="secondary" size="touch" onClick={() => setStage("idle")}>
               Cancelar
             </Button>
           </div>
@@ -107,6 +113,7 @@ export function SelectionBar({
           </ul>
           <div className="flex flex-wrap gap-2">
             <Button
+              size="touch"
               icon={Truck}
               disabled={busy}
               onClick={() => {
@@ -116,7 +123,7 @@ export function SelectionBar({
             >
               Confirmar el traslado
             </Button>
-            <Button variant="secondary" onClick={() => setStage("choose")}>
+            <Button variant="secondary" size="touch" onClick={() => setStage("choose")}>
               Volver
             </Button>
           </div>

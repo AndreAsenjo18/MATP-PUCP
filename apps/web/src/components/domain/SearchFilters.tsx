@@ -6,14 +6,15 @@
  * resto en «Más filtros», que se abre solo cuando alguno de esos filtros está activo (un enlace, una
  * sugerencia) y nunca se cierra solo.
  */
-import { Eraser } from "lucide-react";
-import { useState } from "react";
+import { Eraser, SlidersHorizontal } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { cn } from "@/lib/cn";
 import type { LocationNode } from "@/lib/data/locations";
 import type { TermOption } from "@/lib/data/pieces";
 import { TENURE_REGIMES, secondaryFiltersActive, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
@@ -61,6 +62,31 @@ function OptionSelect({
         </option>
       ))}
     </Select>
+  );
+}
+
+/** En tableta los filtros se abren con un botón, para dejar la pantalla a los resultados (design D4). */
+export function FiltersDrawer({
+  open,
+  onToggle,
+  activeCount,
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  activeCount: number;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Button variant="secondary" size="touch" icon={SlidersHorizontal} aria-expanded={open} aria-controls="search-filters" className="lg:hidden" onClick={onToggle}>
+        {open ? "Ocultar los filtros" : "Filtros"}
+        {activeCount > 0 && ` (${activeCount} activo${activeCount === 1 ? "" : "s"})`}
+      </Button>
+      <div id="search-filters" className={cn(open ? "block" : "hidden", "lg:block")}>
+        {children}
+      </div>
+    </div>
   );
 }
 

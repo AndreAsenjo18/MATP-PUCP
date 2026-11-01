@@ -94,3 +94,12 @@ describe("barra de acciones de la selección", () => {
     expect(error).toContain('role="alert"');
   });
 });
+
+describe("barra de acciones en tableta (fusion-busqueda-deposito 3.4)", () => {
+  it("va fija abajo y a todo el ancho por debajo de lg, con botones táctiles", () => {
+    const html = render(<SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} />);
+    const section = html.match(/<section[^>]*>/)?.[0] ?? "";
+    for (const token of ["fixed", "inset-x-0", "bottom-0", "lg:static"]) expect(section).toContain(token);
+    expect(html.match(/<button[^>]*class="[^"]*min-h-11[^"]*md:min-h-9/g)).toHaveLength(2);
+  });
+});

@@ -12,12 +12,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
-import { EMPTY_OPTIONS, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
+import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
 import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
+import { cn } from "@/lib/cn";
 import {
   LOCATION_ERROR_MESSAGES,
   batchMovePieces,
@@ -215,6 +216,7 @@ export function SearchResults({
             {page.items.map((hit) => {
               const card = (
                 <PieceCard
+                  compact
                   {...pieceCardProps(hit.piece)}
                   thumbnailUrl={hit.thumbnail_url}
                   matchReason={matchReasonText(hit)}
@@ -230,7 +232,7 @@ export function SearchResults({
                     checked={selection.has(hit.piece.id)}
                     onChange={() => onSelectionChange(toggleSelected(selection, hit))}
                     aria-label={`Seleccionar ${hit.piece.denomination}`}
-                    className="mt-4 size-6 shrink-0 accent-terracota"
+                    className="mt-3 size-7 shrink-0 accent-terracota lg:mt-4 lg:size-6"
                   />
                   <div className="min-w-0 flex-1">{card}</div>
                 </div>
@@ -521,6 +523,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [feedback, setFeedback] = useState<SelectionFeedback | null>(null);
   // Sube al verificar o mover, para que los resultados muestren la ubicación nueva (3.2).
   const [reloadKey, setReloadKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -633,9 +636,12 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <SearchFiltersPanel filters={filters} options={options} onChange={update} onClear={() => setFilters(EMPTY_FILTERS)} />
+        <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
+          <SearchFiltersPanel filters={filters} options={options} onChange={update} onClear={() => setFilters(EMPTY_FILTERS)} />
+        </FiltersDrawer>
 
-        <section className="flex flex-col gap-4" aria-label="Resultados">
+        {/* En tableta la barra de la selección va fija abajo: el final de la lista queda a la vista. */}
+        <section className={cn("flex flex-col gap-4", canMove && (selection.size > 0 || feedback) && "pb-48 lg:pb-0")} aria-label="Resultados">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-base text-gris-texto" aria-live="polite">
               <strong className="text-tinta">{result?.total ?? 0}</strong> resultado{result?.total === 1 ? "" : "s"}

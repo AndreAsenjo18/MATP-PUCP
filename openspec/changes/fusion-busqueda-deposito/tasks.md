@@ -15,7 +15,7 @@
 - [x] 3.1 Selección múltiple en resultados (una, varias, toda la página; conservada entre páginas) solo con permiso de movimientos; pruebas con y sin permiso (Req: Verificar y mover… — escenario «Usuario sin permiso de movimientos»)
 - [x] 3.2 `SelectionBar` con «Verificar» y «Mover a» (reutiliza `DestinationPicker` y `POST /movements/batch`), confirmación con la lista y el destino, y actualización de resultados; pruebas de mover varias, verificar una y destino no final (Req: Verificar y mover…)
 - [x] 3.3 Ruta de ubicación y «visto hace N días» en cada resultado para quien puede ver la ubicación; prueba con el dato restringido (Req: Verificar y mover…; RF-041)
-- [ ] 3.4 Diseño de tableta (tarjetas compactas, barra fija abajo, filtros en panel); prueba de componente a ancho angosto (Req: Verificar y mover…; RNF-001)
+- [x] 3.4 Diseño de tableta (tarjetas compactas, barra fija abajo, filtros en panel); prueba de componente a ancho angosto (Req: Verificar y mover…; RNF-001)
 
 ## 4. Navegación y cierre
 
