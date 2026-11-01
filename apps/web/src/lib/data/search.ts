@@ -131,6 +131,13 @@ export function filtersToSearchParams(filters: SearchFilters): URLSearchParams {
   return new URLSearchParams(Object.entries(apiFilters(filters)).map(([key, value]) => [key, String(value)]));
 }
 
+/** Adónde lleva un enlace a la antigua vista de depósito: a la búsqueda, con su ubicación si la trae. */
+export function depositoRedirectTarget(params: { get(name: string): string | null }): string {
+  const locationId = params.get(API_KEYS.locationId)?.trim();
+  if (!locationId) return "/busqueda";
+  return `/busqueda?${filtersToSearchParams({ ...EMPTY_FILTERS, locationId }).toString()}`;
+}
+
 function booleanParam(value: string | null): boolean | null {
   return value === "true" ? true : value === "false" ? false : null;
 }

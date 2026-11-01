@@ -6,7 +6,7 @@
  * quitar, qué coincidió por resultado, sugerencias sin resultados, miniatura de la foto
  * principal, exportación con selección de columnas, «Mis exportaciones» y exportación completa.
  */
-import { Download, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "lucide-react";
+import { Download, FileSpreadsheet, MapPin, Plus, RefreshCw, SearchX, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -524,6 +524,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   // Sube al verificar o mover, para que los resultados muestren la ubicación nueva (3.2).
   const [reloadKey, setReloadKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Cada «Ver por ubicación» vuelve a montar el panel con «Más filtros» abierto (design D3).
+  const [locationRevealKey, setLocationRevealKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -631,13 +633,20 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
         <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
         <p className="text-base text-gris-texto">
           Busque por cualquier código —vigente o histórico, con o sin formato (&quot;I 236&quot;, &quot;M.M.Z. 015&quot;, &quot;mmz 15&quot;)— o por
-          denominación, autor, procedencia, material o época, sin preocuparse por mayúsculas ni tildes.
+          denominación, autor, procedencia, material, época o descripción, sin preocuparse por mayúsculas ni tildes.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
-          <SearchFiltersPanel filters={filters} options={options} onChange={update} onClear={() => setFilters(EMPTY_FILTERS)} />
+          <SearchFiltersPanel
+            key={locationRevealKey}
+            filters={filters}
+            options={options}
+            onChange={update}
+            onClear={() => setFilters(EMPTY_FILTERS)}
+            openMore={locationRevealKey > 0}
+          />
         </FiltersDrawer>
 
         {/* En tableta la barra de la selección va fija abajo: el final de la lista queda a la vista. */}
@@ -646,6 +655,16 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             <p className="text-base text-gris-texto" aria-live="polite">
               <strong className="text-tinta">{result?.total ?? 0}</strong> resultado{result?.total === 1 ? "" : "s"}
             </p>
+            <Button
+              variant="outline"
+              icon={MapPin}
+              onClick={() => {
+                setFiltersOpen(true);
+                setLocationRevealKey((key) => key + 1);
+              }}
+            >
+              Ver por ubicación
+            </Button>
             <Link href="/piezas/nueva" className={buttonClassName({})}>
               <Plus size={18} aria-hidden="true" />
               Nueva pieza

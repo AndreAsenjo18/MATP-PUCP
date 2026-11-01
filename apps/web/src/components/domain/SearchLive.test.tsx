@@ -208,6 +208,9 @@ describe("filtros", () => {
     expect(withAuthor).toContain('<details open="">');
     const onlyMain = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, denomination: "mate", description: "asa" }} options={OPTIONS} onChange={noop} onClear={noop} />);
     expect(onlyMain).toContain("<details>");
+    // «Ver por ubicación» (design D3) abre «Más filtros», donde está el árbol de ubicaciones.
+    const byLocation = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={OPTIONS} onChange={noop} onClear={noop} openMore />);
+    expect(byLocation).toContain('<details open="">');
   });
 
   it("en tableta los filtros se abren con un botón que dice cuántos hay activos", () => {

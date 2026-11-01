@@ -95,14 +95,17 @@ export function SearchFiltersPanel({
   options,
   onChange,
   onClear,
+  openMore = false,
 }: {
   filters: SearchFilters;
   options: SearchOptions;
   onChange: (next: Partial<SearchFilters>) => void;
   onClear: () => void;
+  /** Abre «Más filtros» desde el inicio: el acceso «Ver por ubicación» (design D3). */
+  openMore?: boolean;
 }) {
   const secondary = secondaryFiltersActive(filters);
-  const [moreOpen, setMoreOpen] = useState(secondary);
+  const [moreOpen, setMoreOpen] = useState(secondary || openMore);
   // Se abre al llegar un filtro secundario; ajustar el estado al renderizar evita un efecto.
   const [wasSecondary, setWasSecondary] = useState(secondary);
   if (secondary !== wasSecondary) {

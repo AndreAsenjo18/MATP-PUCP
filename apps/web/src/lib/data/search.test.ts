@@ -5,6 +5,7 @@ import {
   activeChips,
   apiFilters,
   canDownload,
+  depositoRedirectTarget,
   exportResults,
   fetchExportDownloadUrl,
   fetchSearch,
@@ -125,6 +126,12 @@ describe("filtros de la pantalla", () => {
     });
     const odd = filtersFromSearchParams(new URLSearchParams("tenure_regime=Robado&epoch_start_year=hacia%201900&has_alerts=quizas&location_id=%20&otro=1"));
     expect(odd).toEqual(EMPTY_FILTERS);
+  });
+
+  it("un enlace a la antigua vista de depósito lleva a la búsqueda con su ubicación (4.1)", () => {
+    expect(depositoRedirectTarget(new URLSearchParams(""))).toBe("/busqueda");
+    expect(depositoRedirectTarget(new URLSearchParams("location_id=loc-d2"))).toBe("/busqueda?location_id=loc-d2");
+    expect(depositoRedirectTarget(new URLSearchParams("location_id=%20&q=retablo"))).toBe("/busqueda");
   });
 
   it("solo los filtros de «Más filtros» lo abren solo", () => {
