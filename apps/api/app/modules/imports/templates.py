@@ -23,7 +23,9 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.identification.normalization import canonical
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
+    MEASURES_TARGET,
     TERMS_TARGET,
+    ColumnSpecV1,
     FieldTarget,
     IdentifiersTarget,
     IdentifierTarget,
@@ -31,6 +33,8 @@ from app.modules.imports.mapping import (
     MappingConversionError,
     MappingSpec,
     MappingSpecV1,
+    MeasuresTarget,
+    SourcePayloadTarget,
     TermsTarget,
     from_column_mappings,
     read_mapping,
@@ -98,8 +102,12 @@ def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
         target = column.target
         identifier_type: str | None = None
         split_compound = False
-        if isinstance(target, FieldTarget):
-            target_field: str | None = target.name
+        magnitudes: list[str] | None = None
+        if isinstance(target, MeasuresTarget):
+            target_field: str | None = MEASURES_TARGET
+            magnitudes = list(target.magnitudes)
+        elif isinstance(target, FieldTarget):
+            target_field = target.name
         elif isinstance(target, IdentifierTarget):
             target_field, identifier_type = IDENTIFIER_TARGET, target.type
         elif isinstance(target, IdentifiersTarget):
@@ -117,6 +125,17 @@ def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
                 split_compound=split_compound,
                 transforms=list(column.transforms),
                 value_map=column.value_map,
+                source_columns=list(column.sources) if column.sources else None,
+                join=column.join,
+                measure_magnitudes=magnitudes,
+                aliases=list(column.aliases) if column.aliases else None,
+                optional=column.optional or None,
+                sensitive=(target.sensitive or None)
+                if isinstance(target, SourcePayloadTarget)
+                else None,
+                lender_for_loans=(target.lender_for_loans or None)
+                if isinstance(target, SourcePayloadTarget)
+                else None,
             )
         )
     return result
@@ -209,14 +228,81 @@ def update_template(
     return template
 
 
+def column_keys(column: ColumnSpecV1) -> list[str]:
+    """``header_key`` of the source and the aliases of a template column, in order."""
+    keys = [header_key(column.source)]
+    for alias in column.aliases or ():
+        if (key := header_key(alias)) and key not in keys:
+            keys.append(key)
+    return keys
+
+
+def resolve_columns(spec: MappingSpecV1, headers: Sequence[str]) -> MappingSpecV1:
+    """A template spec linked to a file (change formatos-reales-importacion, design D1): each
+    column takes the first file header that matches its source or an alias; an optional column
+    the file lacks is left out. Other missing columns stay, so validation reports them."""
+    by_key: dict[str, str] = {}
+    for header in headers:
+        by_key.setdefault(header_key(header), header)
+    columns = []
+    taken: set[str] = set()
+    for column in spec.columns:
+        if column.sources:  # several columns: each one by its own name (design D3)
+            present = [by_key[k] for name in column.sources if (k := header_key(name)) in by_key]
+            if not present and column.optional:
+                continue
+            if present:
+                taken.update(present)
+                linked_many = {
+                    "source": present[0],
+                    "sources": present,
+                    "aliases": None,
+                    "optional": None,
+                }
+                if isinstance(column.target, MeasuresTarget):
+                    magnitudes = [
+                        magnitude
+                        for magnitude, name in zip(
+                            column.target.magnitudes, column.sources, strict=False
+                        )
+                        if header_key(name) in by_key
+                    ]
+                    linked_many["target"] = MeasuresTarget(magnitudes=magnitudes)
+                columns.append(column.model_copy(update=linked_many))
+            else:
+                columns.append(column)
+            continue
+        found = next(
+            (
+                by_key[key]
+                for key in column_keys(column)
+                if key in by_key and by_key[key] not in taken
+            ),
+            None,
+        )
+        if found is None:
+            if not column.optional:
+                columns.append(column)
+            continue
+        taken.add(found)
+        linked = {"source": found, "aliases": None, "optional": None}
+        columns.append(column.model_copy(update=linked))
+    return spec.model_copy(update={"columns": columns})
+
+
 def batch_spec(
-    session: Session, template_id: uuid.UUID, defaults: Mapping[str, str] | None = None
+    session: Session,
+    template_id: uuid.UUID,
+    defaults: Mapping[str, str] | None = None,
+    headers: Sequence[str] | None = None,
 ) -> MappingSpec:
     """Phase 2 of design D1: the active template as the v1 mapping of a batch, with the
-    defaults of the request over its own."""
+    defaults of the request over its own, linked to the headers of the file when given."""
     template = get_template(session, template_id)
     try:
         spec = with_defaults(read_mapping(template.mapping), defaults or {})
+        if headers is not None:
+            spec = resolve_columns(spec, headers)
     except MappingConversionError as exc:
         raise ValidationFailed(
             exc.message,
@@ -272,6 +358,42 @@ def similarity(template_keys: set[str], file_keys: set[str]) -> float:
     return 0.5 * jaccard + 0.5 * sum(best) / len(best)
 
 
+def aliased(template: ImportMappingTemplate) -> set[str]:
+    """Every header key a template column answers to: sources and aliases."""
+    keys = set()
+    for column in read_mapping(template.mapping).columns:
+        keys.update(column_keys(column))
+        keys.update(header_key(name) for name in column.sources or ())
+    return keys
+
+
+def _template_view(
+    columns: Sequence[ColumnSpecV1], file_headers: Mapping[str, str]
+) -> tuple[dict[str, str], set[str]]:
+    """The template headers to score against a file and the file keys as the template sees
+    them (design D1): a file header that matches an alias counts as the column's source, and an
+    optional column the file lacks does not count against the template."""
+    template_headers: dict[str, str] = {}
+    file_keys = set(file_headers)
+    for column in columns:
+        if column.sources:
+            keys_of = [header_key(name) for name in column.sources]
+            if column.optional and not any(key in file_headers for key in keys_of):
+                continue
+            for key, name in zip(keys_of, column.sources, strict=True):
+                template_headers.setdefault(key, name)
+            continue
+        keys = column_keys(column)
+        present = next((key for key in keys if key in file_headers), None)
+        if present is None and column.optional:
+            continue
+        template_headers.setdefault(keys[0], column.source)
+        if present is not None:
+            file_keys.discard(present)
+            file_keys.add(keys[0])
+    return template_headers, file_keys
+
+
 def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggestion]:
     """Up to ``SUGGEST_LIMIT`` active templates scoring at least ``SUGGEST_THRESHOLD``, best
     first. A template's headers are the source columns of its mapping [SUPUESTO T1]; the same
@@ -283,17 +405,21 @@ def suggest_templates(session: Session, headers: Sequence[str]) -> list[Suggesti
         if template.header_signature == signature:
             suggestions.append(Suggestion(template, 1.0, [], []))
             continue
-        template_headers = _by_key(
-            [column.source for column in read_mapping(template.mapping).columns]
+        template_headers, file_keys = _template_view(
+            read_mapping(template.mapping).columns, file_headers
         )
-        score = similarity(set(template_headers), set(file_headers))
+        score = similarity(set(template_headers), file_keys)
         if score >= SUGGEST_THRESHOLD:
             suggestions.append(
                 Suggestion(
                     template,
                     round(score, 4),
-                    [name for key, name in template_headers.items() if key not in file_headers],
-                    [name for key, name in file_headers.items() if key not in template_headers],
+                    [name for key, name in template_headers.items() if key not in file_keys],
+                    [
+                        name
+                        for key, name in file_headers.items()
+                        if key not in template_headers and key not in aliased(template)
+                    ],
                 )
             )
     suggestions.sort(key=lambda item: (-item.score, header_key(item.template.name)))
