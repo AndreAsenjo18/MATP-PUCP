@@ -1,7 +1,7 @@
 """Photo packages of several pieces (``media_bulk_download``).
 
-Revision ID: 0019_media_bulk_download
-Revises: 0018_tenure_aliases
+Revision ID: 0020_media_bulk_download
+Revises: 0019_photo_batches
 Create Date: 2026-10-31
 
 Change de OpenSpec: descargas-masivas-y-enriquecimiento-lote (tarea 2.1; design D1 and D2).
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0019_media_bulk_download"
-down_revision: str | None = "0018_tenure_aliases"
+revision: str = "0020_media_bulk_download"
+down_revision: str | None = "0019_photo_batches"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
