@@ -317,7 +317,7 @@ def test_seed_has_the_templates_of_the_real_formats_of_the_museum(
         assert template.source_name == predefined.source_name
         assert template.header_signature == header_signature(predefined.headers)
         assert isinstance(spec, MappingSpecV1)
-        assert [column.source for column in spec.columns] == predefined.headers
+        assert [name for column in spec.columns for name in column.inputs] == predefined.headers
         assert validate_mapping(spec, predefined.headers, MappingContext(session)) == []
         assert any(
             column.target.kind == "field" and column.target.name == "denomination"

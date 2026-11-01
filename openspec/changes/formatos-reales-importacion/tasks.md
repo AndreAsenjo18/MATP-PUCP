@@ -25,9 +25,9 @@
 
 ## 5. Mapeo
 
-- [ ] 5.1 `sources` + `join` en `ColumnSpecV1` sin `duplicate_target`; prueba de procedencia en tres columnas (Req: Varias columnas en un mismo campo)
-- [ ] 5.2 Destino `measures` con unidades y texto, advertencia para valores no numéricos; pruebas de los escenarios del requirement (Req: Varias columnas…)
-- [ ] 5.3 Destinos `entry_date` y `acquisition_method` con deducción de régimen; pruebas de los escenarios del requirement (Req: Fecha de ingreso y forma de adquisición desde la importación)
+- [x] 5.1 `sources` + `join` en `ColumnSpecV1` sin `duplicate_target`; prueba de procedencia en tres columnas (Req: Varias columnas en un mismo campo)
+- [x] 5.2 Destino `measures` con unidades y texto, advertencia para valores no numéricos; pruebas de los escenarios del requirement (Req: Varias columnas…)
+- [x] 5.3 Destinos `entry_date` y `acquisition_method` con deducción de régimen; pruebas de los escenarios del requirement (Req: Fecha de ingreso y forma de adquisición desde la importación)
 
 ## 6. Datos sensibles y hojas de errores
 

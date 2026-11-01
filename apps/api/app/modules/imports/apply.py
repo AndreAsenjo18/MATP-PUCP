@@ -23,6 +23,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Sequence
+from datetime import date
 from typing import Any
 
 from sqlalchemy import event, select, update
@@ -101,10 +102,21 @@ def _acquisition_term_id(session: Session, code: str | None) -> uuid.UUID | None
     )
 
 
+def _field_value(name: str, value: Any) -> Any:
+    """Mapped values are text; the entry date is stored as a date (formatos-reales, D4)."""
+    if name == "entry_date" and isinstance(value, str):
+        return date.fromisoformat(value)
+    return value
+
+
 def _create(session: Session, batch: ImportBatch, mapped: MappedRow) -> Piece:
     fields: dict[str, Any] = {
-        name: mapped.fields[name] for name in CREATE_FIELDS if mapped.fields.get(name) is not None
+        name: _field_value(name, mapped.fields[name])
+        for name in CREATE_FIELDS
+        if mapped.fields.get(name) is not None
     }
+    if mapped.dimensions:  # separate measure columns (formatos-reales-importacion, D3)
+        fields["dimensions"] = mapped.dimensions
     if mapped.collection_id is not None:
         fields["collection_id"] = mapped.collection_id
     if (term_id := _acquisition_term_id(session, mapped.acquisition_method)) is not None:
@@ -144,7 +156,7 @@ def _update(session: Session, batch: ImportBatch, row: ImportRow, mapped: Mapped
         elif name == "acquisition_method":
             changes["acquisition_method_term_id"] = _acquisition_term_id(session, incoming)
         else:
-            changes[name] = incoming
+            changes[name] = _field_value(name, incoming)
     if tenure is not None:
         change_tenure(
             session,

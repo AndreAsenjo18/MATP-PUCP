@@ -80,6 +80,7 @@ FIELD_TARGETS: dict[str, str] = {
     "provenance": "Procedencia",
     "epoch_original_text": "Época (texto original)",
     "dimensions_text": "Medidas (texto)",
+    "entry_date": "Fecha de ingreso",
     "notes": "Observaciones",
     "recorded_by": "Registrador",
     "lender_name": "Comodante",
@@ -222,8 +223,22 @@ class SourcePayloadTarget(_Strict):
     kind: Literal["source_payload"] = "source_payload"
 
 
+class MeasuresTarget(_Strict):
+    """Separate measure columns (``Alto (cm)``, ``Peso (gr)``…) into the structured dimensions
+    of the piece and their text (formatos-reales-importacion, design D3): ``magnitudes[i]`` is
+    the magnitude of ``sources[i]``; ``peso`` is in grams, the rest in centimetres."""
+
+    kind: Literal["measures"] = "measures"
+    magnitudes: list[str]
+
+
 ColumnTarget = Annotated[
-    FieldTarget | IdentifierTarget | IdentifiersTarget | TermsTarget | SourcePayloadTarget,
+    FieldTarget
+    | IdentifierTarget
+    | IdentifiersTarget
+    | TermsTarget
+    | SourcePayloadTarget
+    | MeasuresTarget,
     Field(discriminator="kind"),
 ]
 
@@ -240,6 +255,16 @@ class ColumnSpecV1(_Strict):
     # A template column a variant may lack: applying the template to a file without it leaves
     # it out instead of rejecting the mapping (``unknown_column``).
     optional: bool | None = None
+    # Several columns into one target, in order (design D3): ``source`` names the column, the
+    # values come from ``sources``; a text field joins the non-empty ones with ``join``. Their
+    # original values stay in the source data (RF-008).
+    sources: list[str] | None = None
+    join: str | None = None
+
+    @property
+    def inputs(self) -> list[str]:
+        """The file columns this column reads."""
+        return list(self.sources) if self.sources else [self.source]
 
     @model_validator(mode="after")
     def _known_transforms(self) -> "ColumnSpecV1":
@@ -293,6 +318,8 @@ def _v0_projection(column: ColumnSpecV1) -> ColumnSpec:
         return ColumnSpec(column.source, IDENTIFIER_TARGET, target.default_type, True)
     if isinstance(target, TermsTarget):
         return ColumnSpec(column.source, f"{TERMS_TARGET}:{target.vocabulary}")
+    if isinstance(target, MeasuresTarget):
+        return ColumnSpec(column.source, "dimensions_text")
     return ColumnSpec(column.source, PAYLOAD_TARGET)
 
 
@@ -583,6 +610,8 @@ class MappedRow:
     acquisition_text: str | None = field(default=None, compare=False, repr=False)
     # Findings to review that do not block the row (stored in ``mapped_data``).
     warnings: list[RowError] = field(default_factory=list)
+    # Structured dimensions from separate measure columns (formatos-reales-importacion, D3).
+    dimensions: list[dict[str, Any]] | None = None
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -615,6 +644,8 @@ class MappedRow:
             data["acquisition_method"] = self.acquisition_method
         if self.warnings:
             data["warnings"] = [warning.as_json() for warning in self.warnings]
+        if self.dimensions:
+            data["dimensions"] = self.dimensions
         return data
 
     @classmethod
@@ -643,6 +674,7 @@ class MappedRow:
                 RowError(item["code"], item["message"], item.get("field"))
                 for item in data.get("warnings") or []
             ],
+            dimensions=data.get("dimensions"),
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -720,12 +752,33 @@ def validate_mapping(
     seen_sources: set[str] = set()
     scalar_targets: dict[str, str] = {}
     for source, column in plan.columns:
-        if source not in known:
-            errors.append(
-                MappingError(
-                    "unknown_column", f"La columna «{source}» no está en el archivo.", source
+        inputs = column.inputs if isinstance(column, ColumnSpecV1) else [source]
+        for name in inputs:
+            if name not in known:
+                errors.append(
+                    MappingError(
+                        "unknown_column", f"La columna «{name}» no está en el archivo.", name
+                    )
                 )
-            )
+        if isinstance(column, ColumnSpecV1) and isinstance(column.target, MeasuresTarget):
+            if len(column.target.magnitudes) != len(inputs):
+                errors.append(
+                    MappingError(
+                        "invalid_measures",
+                        f"Las medidas de «{source}» necesitan una magnitud por columna.",
+                        source,
+                    )
+                )
+            if "dimensions_text" in scalar_targets:
+                errors.append(
+                    MappingError(
+                        "duplicate_target",
+                        f"«{FIELD_TARGETS['dimensions_text']}» ya se toma de la columna "
+                        f"«{scalar_targets['dimensions_text']}».",
+                        source,
+                    )
+                )
+            scalar_targets["dimensions_text"] = source
         if source in seen_sources:
             errors.append(
                 MappingError(
@@ -911,9 +964,19 @@ def apply_mapping(
     plan = ctx.plan(spec)
     columns = [column for _source, column in plan.columns if isinstance(column, ColumnSpecV1)]
     mapped = MappedRow()
-    mapped_sources = {column.source for column in columns if column.target.kind in MAPPED_KINDS}
+    # Columns read together and the entry date keep their original values in the source data.
+    mapped_sources = {
+        column.source
+        for column in columns
+        if column.target.kind in MAPPED_KINDS
+        and not column.sources
+        and not (isinstance(column.target, FieldTarget) and column.target.name == "entry_date")
+    }
     for column in columns:
-        raw = raw_row.get(column.source)
+        if isinstance(column.target, MeasuresTarget):
+            _map_measures(mapped, column, raw_row)
+            continue
+        raw = raw_row.get(column.source) if not column.sources else _joined(column, raw_row)
         value, is_absent = raw, False
         if column.transforms:
             transformed = run_transforms(
@@ -1107,6 +1170,9 @@ def _map_value(
     ctx: MappingContext,
 ) -> None:
     target = column.target
+    if isinstance(target, FieldTarget) and target.name == "entry_date":
+        _map_entry_date(mapped, column, value)
+        return
     if isinstance(target, FieldTarget):
         if target.name not in FIELD_TARGETS:
             return
@@ -1141,6 +1207,105 @@ def _map_value(
                 mapped.acquisition_method = mapped.acquisition_method or matches.matched[0][1]
             texts = [_text(part) for part in _parts(value)]
             mapped.acquisition_text = mapped.acquisition_text or next(filter(None, texts), None)
+
+
+def _joined(column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> str | None:
+    """The non-empty values of ``column.sources``, in order, joined with ``column.join``."""
+    texts = [text for name in column.inputs if (text := _text(raw_row.get(name))) is not None]
+    return (column.join if column.join is not None else ", ").join(texts) or None
+
+
+#: Unit of each magnitude of a ``measures`` column (design D3) [SUPUESTO].
+MEASURE_UNITS = {"peso": "g"}
+_DECIMAL_RE = re.compile(r"^\d+(?:[.,]\d+)?$")
+
+
+def _measure_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value) if value >= 0 else None
+    text = _text(value)
+    if text is None or not _DECIMAL_RE.match(text):
+        return None
+    return float(text.replace(",", "."))
+
+
+def _shown(number: float) -> str:
+    """``15.5`` → «15,5»; ``23.0`` → «23»."""
+    return f"{number:g}".replace(".", ",")
+
+
+def _map_measures(mapped: MappedRow, column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> None:
+    """Separate measure columns → structured dimensions and their text (design D3). A value that
+    is not a number is kept in the text with a warning; the row is not rejected."""
+    assert isinstance(column.target, MeasuresTarget)
+    texts: list[str] = []
+    dimensions: list[dict[str, Any]] = []
+    for magnitude, name in zip(column.target.magnitudes, column.inputs, strict=False):
+        raw = raw_row.get(name)
+        if _text(raw) is None:
+            continue
+        label = magnitude.capitalize()
+        unit = MEASURE_UNITS.get(magnitude, "cm")
+        number = _measure_number(raw)
+        if number is None:
+            texts.append(f"{label} {_text(raw)}")
+            mapped.warnings.append(
+                RowError(
+                    "measure_not_number",
+                    f"{label} no es un número («{_text(raw)}»): se conserva en el texto de "
+                    "medidas.",
+                    "dimensions_text",
+                )
+            )
+            continue
+        texts.append(f"{label} {_shown(number)} {unit}")
+        dimensions.append({"dimension": magnitude, "value": number, "unit": unit})
+    if texts:
+        mapped.fields["dimensions_text"] = "; ".join(texts)
+    if dimensions:
+        mapped.dimensions = dimensions
+
+
+_YEAR_RE = re.compile(r"^\d{4}$")
+_DAY_FIRST_RE = re.compile(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$")
+_ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$")
+
+
+def _map_entry_date(mapped: MappedRow, column: ColumnSpecV1, value: Any) -> None:
+    """Date of entry to the collection (design D4): an Excel date, ``dd/mm/aaaa`` or
+    ``aaaa-mm-dd``. A year alone or text that is not a date leaves it empty with a warning; the
+    original stays in the source data."""
+    if isinstance(value, datetime):
+        mapped.fields["entry_date"] = value.date().isoformat()
+        return
+    if isinstance(value, date):
+        mapped.fields["entry_date"] = value.isoformat()
+        return
+    text = _text(value)
+    if text is None:
+        return
+    parsed: date | None = None
+    try:
+        if match := _DAY_FIRST_RE.match(text):
+            parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        elif match := _ISO_RE.match(text):
+            parsed = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        mapped.fields["entry_date"] = parsed.isoformat()
+        return
+    if _YEAR_RE.match(text):
+        message = f"Fecha de ingreso: solo año: {text}. La ficha no guarda fechas parciales."
+        code = "entry_date_year_only"
+    else:
+        message = (
+            f"Fecha de ingreso no interpretable: «{text}». Se conserva en los datos de origen."
+        )
+        code = "entry_date_unreadable"
+    mapped.warnings.append(RowError(code, message, "entry_date"))
 
 
 def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:

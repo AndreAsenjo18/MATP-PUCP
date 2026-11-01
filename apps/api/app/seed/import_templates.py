@@ -38,6 +38,10 @@ def terms(vocabulary: str) -> dict[str, Any]:
     return {"kind": "terms", "vocabulary": vocabulary}
 
 
+def measures(*magnitudes: str) -> dict[str, Any]:
+    return {"kind": "measures", "magnitudes": list(magnitudes)}
+
+
 CODE_TRANSFORMS = ["trim", "absence_markers", "split_concatenated"]
 TEXT = ["trim"]
 
@@ -49,9 +53,20 @@ class TemplateColumn:
     transforms: list[str] = field(default_factory=list)
     aliases: tuple[str, ...] = ()
     required: bool = False
+    # Several columns into one target, joined with ``join`` (design D3).
+    sources: tuple[str, ...] = ()
+    join: str | None = None
+
+    @property
+    def headers(self) -> list[str]:
+        return list(self.sources) if self.sources else [self.source]
 
     def as_json(self) -> dict[str, Any]:
         entry: dict[str, Any] = {"source": self.source, "target": self.target}
+        if self.sources:
+            entry["sources"] = list(self.sources)
+        if self.join is not None:
+            entry["join"] = self.join
         if self.transforms:
             entry["transforms"] = list(self.transforms)
         if self.aliases:
@@ -80,7 +95,7 @@ class PredefinedTemplate:
 
     @property
     def headers(self) -> list[str]:
-        return [item.source for item in self.columns]
+        return [header for item in self.columns for header in item.headers]
 
     def mapping(self) -> dict[str, Any]:
         return {"version": 1, "columns": [item.as_json() for item in self.columns]}
@@ -109,7 +124,7 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Otros códigos", codes("OTRO"), CODE_TRANSFORMS),
         column("Nombre de la Colección", target("collection"), TEXT),
         column("Forma de Adquisición", terms("ACQUISITION_METHOD"), TEXT),
-        column("Fecha de ingreso a la colección"),
+        column("Fecha de ingreso a la colección", target("entry_date")),
         column("Autor / Atribuido / Firmado", target("author"), TEXT, "Autor / Atribuido"),
         column("Procedencia (Ciudad, País, Continente)", target("provenance"), TEXT),
         column("Época / Año", target("epoch_original_text"), TEXT),
@@ -124,11 +139,11 @@ BD_ESTANDARIZADA = PredefinedTemplate(
             required=True,
         ),
         column("Material", terms("MATERIAL"), TEXT),
-        column("Alto (cm)"),
-        column("Ancho (cm)"),
-        column("Espesor (cm)"),
-        column("Diámetro (cm)"),
-        column("Peso (gr)"),
+        TemplateColumn(
+            "Alto (cm)",
+            measures("alto", "ancho", "espesor", "diámetro", "peso"),
+            sources=("Alto (cm)", "Ancho (cm)", "Espesor (cm)", "Diámetro (cm)", "Peso (gr)"),
+        ),
         column("Técnica de manufactura", terms("TECHNIQUE"), TEXT),
         column("Técnica de acabado"),
         column("Técnica de decoración"),
@@ -177,9 +192,13 @@ FICHA_RN = PredefinedTemplate(
         ),
         column("Autor/ Atribución", target("author"), TEXT),
         column("País / Continente"),
-        column("Procedencia", target("provenance"), TEXT),
-        column("Procedencia (2)"),
-        column("Procedencia (3)"),
+        TemplateColumn(
+            "Procedencia",
+            target("provenance"),
+            TEXT,
+            sources=("Procedencia", "Procedencia (2)", "Procedencia (3)"),
+            join=", ",
+        ),
         column("Época / Año", target("epoch_original_text"), TEXT),
         column("Descripción del bien", target("description"), TEXT),
         column("Material", terms("MATERIAL"), TEXT),
@@ -187,10 +206,13 @@ FICHA_RN = PredefinedTemplate(
         column("Técnica de acabado"),
         column("Técnica de decoración"),
         column("Descripcion de decoración", PAYLOAD, None, "Decoración"),
-        column("Dimensiones"),
-        column("Dimensiones (2)"),
-        column("Dimensiones (3)"),
-        column("Dimensiones (4)"),
+        TemplateColumn(
+            "Dimensiones",
+            target("dimensions_text"),
+            TEXT,
+            sources=("Dimensiones", "Dimensiones (2)", "Dimensiones (3)", "Dimensiones (4)"),
+            join="; ",
+        ),
         column("Estado de conservación (bueno, regular, malo)", terms("CONSERVATION_STATUS"), TEXT),
         column("Estado de integridad (completo, incompleto, fragmentado)"),
         column("Detalle de conservación (deterioros)"),

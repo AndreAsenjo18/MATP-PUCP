@@ -32,6 +32,7 @@ from app.modules.imports.mapping import (
     MappingConversionError,
     MappingSpec,
     MappingSpecV1,
+    MeasuresTarget,
     TermsTarget,
     from_column_mappings,
     read_mapping,
@@ -229,6 +230,31 @@ def resolve_columns(spec: MappingSpecV1, headers: Sequence[str]) -> MappingSpecV
     columns = []
     taken: set[str] = set()
     for column in spec.columns:
+        if column.sources:  # several columns: each one by its own name (design D3)
+            present = [by_key[k] for name in column.sources if (k := header_key(name)) in by_key]
+            if not present and column.optional:
+                continue
+            if present:
+                taken.update(present)
+                linked_many = {
+                    "source": present[0],
+                    "sources": present,
+                    "aliases": None,
+                    "optional": None,
+                }
+                if isinstance(column.target, MeasuresTarget):
+                    magnitudes = [
+                        magnitude
+                        for magnitude, name in zip(
+                            column.target.magnitudes, column.sources, strict=False
+                        )
+                        if header_key(name) in by_key
+                    ]
+                    linked_many["target"] = MeasuresTarget(magnitudes=magnitudes)
+                columns.append(column.model_copy(update=linked_many))
+            else:
+                columns.append(column)
+            continue
         found = next(
             (
                 by_key[key]
@@ -317,7 +343,11 @@ def similarity(template_keys: set[str], file_keys: set[str]) -> float:
 
 def aliased(template: ImportMappingTemplate) -> set[str]:
     """Every header key a template column answers to: sources and aliases."""
-    return {key for column in read_mapping(template.mapping).columns for key in column_keys(column)}
+    keys = set()
+    for column in read_mapping(template.mapping).columns:
+        keys.update(column_keys(column))
+        keys.update(header_key(name) for name in column.sources or ())
+    return keys
 
 
 def _template_view(
@@ -329,6 +359,13 @@ def _template_view(
     template_headers: dict[str, str] = {}
     file_keys = set(file_headers)
     for column in columns:
+        if column.sources:
+            keys_of = [header_key(name) for name in column.sources]
+            if column.optional and not any(key in file_headers for key in keys_of):
+                continue
+            for key, name in zip(keys_of, column.sources, strict=True):
+                template_headers.setdefault(key, name)
+            continue
         keys = column_keys(column)
         present = next((key for key in keys if key in file_headers), None)
         if present is None and column.optional:

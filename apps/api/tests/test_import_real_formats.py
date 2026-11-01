@@ -124,7 +124,10 @@ def test_a_variant_with_fewer_columns_leaves_the_optional_ones_out(
     spec = resolve_columns(read_mapping(BD_ESTANDARIZADA.mapping()), result.headers)
 
     assert validate_mapping(spec, result.headers, MappingContext(session)) == []
-    assert len(spec.columns) == 26  # «Técnica de acabado/decoración» stays as source data
+    # 27 file columns: «Técnica de acabado/decoración» stays as source data and the five
+    # measures are one column.
+    assert sum(len(column.inputs) for column in spec.columns) == 26
+    assert len(spec.columns) == 22
 
 
 def test_a_template_still_rejects_a_file_without_its_required_columns(
