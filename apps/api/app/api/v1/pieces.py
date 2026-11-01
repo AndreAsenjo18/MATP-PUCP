@@ -53,7 +53,7 @@ from app.modules.catalog.schemas import (
     PieceValidationResult,
     SourceRecordOut,
 )
-from app.modules.collections.models import Collection, Term
+from app.modules.collections.models import Term
 from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import TYPE_INVENTORY, propose_identifiers
 from app.modules.identification.params import session_params
@@ -80,19 +80,17 @@ from app.modules.locations.service import move_piece as move_piece_service
 from app.modules.media import derivatives
 from app.modules.media.models import MediaAsset
 from app.modules.media.schemas import (
-    DownloadUrlRequest,
     DownloadUrlResponse,
     MediaAssetCreate,
     MediaAssetOut,
     MediaAssetUpdate,
-    StorageEstimateRequest,
-    StorageEstimateResponse,
     UploadUrlRequest,
     UploadUrlResponse,
 )
 from app.modules.media.service import (
     EXTENSION_BY_FORMAT,
     comodato_restriction_term_id,
+    effective_restriction,
     gallery_urls,
     provenance_of,
     verify_image_stream,
@@ -816,6 +814,53 @@ def correct_inventory_code(
 
 
 # -------------------------------------------------------------------------- media
+def _media_out(
+    session: Session,
+    piece: Piece,
+    asset: MediaAsset,
+    *,
+    urls: tuple[str | None, str | None] = (None, None),
+) -> MediaAssetOut:
+    """A photo of the gallery with its own and its effective restriction (fotografias 2.5).
+
+    ``urls`` are the signed thumbnail and display copy (``gallery_urls``), only in the list.
+    """
+
+    def term_ref(term_id: uuid.UUID | None) -> TermRef | None:
+        term = (
+            session.get(Term, term_id, execution_options={INCLUDE_DELETED: True})
+            if term_id
+            else None
+        )
+        return TermRef.model_validate(term) if term is not None else None
+
+    restriction = effective_restriction(session, asset, piece)
+    view_type = term_ref(asset.view_type_term_id)
+    return MediaAssetOut(
+        id=asset.id,
+        piece_id=asset.piece_id,
+        original_filename=asset.original_filename,
+        content_type=asset.content_type,
+        size_bytes=asset.size_bytes,
+        content_sha256=asset.content_sha256,
+        width_px=asset.width_px,
+        height_px=asset.height_px,
+        view_type=translate_view_term(view_type) if view_type else None,
+        sort_order=asset.sort_order,
+        is_primary=asset.is_primary,
+        photographer=asset.photographer,
+        taken_on=asset.taken_on,
+        usage_restriction=term_ref(asset.usage_restriction_term_id),
+        effective_restriction=term_ref(restriction.term_id),
+        restriction_origin=restriction.origin,
+        restriction_note=asset.restriction_note,
+        download_url=urls[1],
+        thumbnail_url=urls[0],
+        created_at=asset.created_at,
+        provenance=provenance_of(asset),
+    )
+
+
 @router.get(
     "/{piece_id}/media",
     response_model=list[MediaAssetOut],
@@ -827,7 +872,7 @@ def correct_inventory_code(
 def list_piece_media(
     request: Request, piece_id: uuid.UUID, session: SessionDep, user: Reader
 ) -> list[MediaAssetOut]:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     assets = list(
         session.scalars(
             select(MediaAsset)
@@ -835,41 +880,10 @@ def list_piece_media(
             .order_by(MediaAsset.sort_order, MediaAsset.created_at)
         )
     )
-    reader = CatalogReader(session, Viewer(user.permissions))
-    terms = reader.terms(
-        term_id
-        for asset in assets
-        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
-    )
     storage = request.app.state.storage
     ttl = request.app.state.settings.media_url_ttl_seconds
-    urls = {asset.id: gallery_urls(storage, asset, ttl) for asset in assets}
     return [
-        MediaAssetOut(
-            id=asset.id,
-            piece_id=asset.piece_id,
-            original_filename=asset.original_filename,
-            content_type=asset.content_type,
-            size_bytes=asset.size_bytes,
-            content_sha256=asset.content_sha256,
-            width_px=asset.width_px,
-            height_px=asset.height_px,
-            view_type=translate_view_term(TermRef.model_validate(terms[asset.view_type_term_id]))
-            if asset.view_type_term_id in terms
-            else None,
-            sort_order=asset.sort_order,
-            is_primary=asset.is_primary,
-            photographer=asset.photographer,
-            taken_on=asset.taken_on,
-            usage_restriction=TermRef.model_validate(terms[asset.usage_restriction_term_id])
-            if asset.usage_restriction_term_id in terms
-            else None,
-            restriction_note=asset.restriction_note,
-            download_url=urls[asset.id][1],
-            thumbnail_url=urls[asset.id][0],
-            created_at=asset.created_at,
-            provenance=provenance_of(asset),
-        )
+        _media_out(session, piece, asset, urls=gallery_urls(storage, asset, ttl))
         for asset in assets
     ]
 
@@ -1039,43 +1053,7 @@ def register_media(
 
     background_tasks.add_task(_generate_derivatives)
 
-    # 9. Respuesta MediaAssetOut (mapeo igual que list_piece_media)
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for term_id in (body.view_type_term_id, restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    view_term = terms.get(body.view_type_term_id)
-    restriction_term = terms.get(restriction_term_id) if restriction_term_id else None
-    return MediaAssetOut(
-        id=asset.id,
-        piece_id=asset.piece_id,
-        original_filename=asset.original_filename,
-        content_type=asset.content_type,
-        size_bytes=asset.size_bytes,
-        content_sha256=asset.content_sha256,
-        width_px=asset.width_px,
-        height_px=asset.height_px,
-        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
-        sort_order=asset.sort_order,
-        is_primary=asset.is_primary,
-        photographer=asset.photographer,
-        taken_on=asset.taken_on,
-        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
-        restriction_note=asset.restriction_note,
-        download_url=None,
-        created_at=asset.created_at,
-        provenance=provenance_of(asset),
-    )
+    return _media_out(session, piece, asset)
 
 
 @router.patch(
@@ -1092,7 +1070,7 @@ def update_media(
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> MediaAssetOut:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     asset = session.get(MediaAsset, media_id)
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
@@ -1125,45 +1103,7 @@ def update_media(
     writer(session, user)
     session.commit()
 
-    # Respuesta
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for term_id in (asset.view_type_term_id, asset.usage_restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    view_term = terms.get(asset.view_type_term_id)
-    restriction_term = (
-        terms.get(asset.usage_restriction_term_id) if asset.usage_restriction_term_id else None
-    )
-    return MediaAssetOut(
-        id=asset.id,
-        piece_id=asset.piece_id,
-        original_filename=asset.original_filename,
-        content_type=asset.content_type,
-        size_bytes=asset.size_bytes,
-        content_sha256=asset.content_sha256,
-        width_px=asset.width_px,
-        height_px=asset.height_px,
-        view_type=translate_view_term(TermRef.model_validate(view_term)) if view_term else None,
-        sort_order=asset.sort_order,
-        is_primary=asset.is_primary,
-        photographer=asset.photographer,
-        taken_on=asset.taken_on,
-        usage_restriction=TermRef.model_validate(restriction_term) if restriction_term else None,
-        restriction_note=asset.restriction_note,
-        download_url=None,
-        created_at=asset.created_at,
-        provenance=provenance_of(asset),
-    )
+    return _media_out(session, piece, asset)
 
 
 @router.put(
@@ -1179,7 +1119,7 @@ def reorder_media(
     session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("media.upload"))],
 ) -> list[MediaAssetOut]:
-    get_piece(session, piece_id)
+    piece = get_piece(session, piece_id)
     # Obtener todas las fotos activas de la pieza
     assets = list(
         session.scalars(
@@ -1202,55 +1142,24 @@ def reorder_media(
         asset.sort_order = idx
     writer(session, user)
     session.commit()
-    # Respuesta ordenada
-    terms = {
-        term.id: term
-        for term in session.scalars(
-            select(Term).where(
-                Term.id.in_(
-                    [
-                        term_id
-                        for a in assets
-                        for term_id in (a.view_type_term_id, a.usage_restriction_term_id)
-                        if term_id
-                    ]
-                )
-            )
-        )
-    }
-    return [
-        MediaAssetOut(
-            id=a.id,
-            piece_id=a.piece_id,
-            original_filename=a.original_filename,
-            content_type=a.content_type,
-            size_bytes=a.size_bytes,
-            content_sha256=a.content_sha256,
-            width_px=a.width_px,
-            height_px=a.height_px,
-            view_type=translate_view_term(TermRef.model_validate(terms[a.view_type_term_id]))
-            if a.view_type_term_id and a.view_type_term_id in terms
-            else None,
-            sort_order=a.sort_order,
-            is_primary=a.is_primary,
-            photographer=a.photographer,
-            taken_on=a.taken_on,
-            usage_restriction=TermRef.model_validate(terms[a.usage_restriction_term_id])
-            if a.usage_restriction_term_id and a.usage_restriction_term_id in terms
-            else None,
-            restriction_note=a.restriction_note,
-            download_url=None,
-            created_at=a.created_at,
-            provenance=provenance_of(a),
-        )
-        for a in sorted(assets, key=lambda x: x.sort_order)
-    ]
+    return [_media_out(session, piece, a) for a in sorted(assets, key=lambda x: x.sort_order)]
 
 
 @router.get(
     "/{piece_id}/media/{media_id}/download-url",
     response_model=DownloadUrlResponse,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`usage_restricted`: la restricción efectiva bloquea la descarga "
+            "externa; `details` trae la restricción, su origen y el acuerdo de comodato.",
+        },
+    },
     summary="Obtener URL prefirmada para descargar una foto",
+    description="URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción "
+    "efectiva de la foto: la propia, la de la pieza (en comodato, «No publicar») o la de su "
+    "colección, en ese orden (RN-008).",
     tags=["Multimedia"],
     **implemented(),
 )
@@ -1260,141 +1169,43 @@ def get_media_download_url(
     user: Annotated[CurrentUser, Depends(require_permission("pieces.read"))],
     piece_id: uuid.UUID,
     media_id: uuid.UUID,
-    body: DownloadUrlRequest,
+    purpose: Annotated[
+        Literal["internal", "external"],
+        Query(description="Uso previsto: `internal` (verla en la ficha) o `external` (descarga)."),
+    ] = "internal",
 ) -> DownloadUrlResponse:
     piece = get_piece(session, piece_id)
     asset = session.get(MediaAsset, media_id)
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
 
-    # Calcular restricción efectiva: foto > pieza > colección (comodato)
-    effective_restriction_term_id: uuid.UUID | None = None
-    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = "ninguna"
+    restriction = effective_restriction(session, asset, piece)
+    term = session.get(Term, restriction.term_id) if restriction.term_id else None
+    if (
+        purpose == "external"
+        and term is not None
+        and (term.extra or {}).get("blocks_external_download")
+    ):
+        agreement = piece.loan_agreement_ref
+        raise BusinessRuleViolation(
+            f"Descarga externa bloqueada por la restricción «{term.label}» "
+            f"(origen: {restriction.origin})"
+            + (f", del acuerdo {agreement}." if agreement else ".")
+            + " La foto se puede ver en la ficha (RN-008).",
+            code="usage_restricted",
+            details={
+                "restriction": term.code,
+                "origin": restriction.origin,
+                "loan_agreement_ref": agreement,
+            },
+        )
 
-    if asset.usage_restriction_term_id is not None:
-        effective_restriction_term_id = asset.usage_restriction_term_id
-        restriction_origin = "foto"
-    elif piece.usage_restriction_term_id is not None:
-        effective_restriction_term_id = piece.usage_restriction_term_id
-        restriction_origin = "pieza"
-    elif piece.collection_id is not None:
-        collection = session.get(Collection, piece.collection_id)
-        if collection and collection.default_usage_restriction_term_id is not None:
-            effective_restriction_term_id = collection.default_usage_restriction_term_id
-            restriction_origin = "colección"
-
-    # Validar propósito y restricción
-    if body.purpose == "external" and effective_restriction_term_id is not None:
-        term = session.get(Term, effective_restriction_term_id)
-        if term and term.extra and term.extra.get("blocks_external_download") is True:
-            raise ValidationFailed(
-                "Descarga externa bloqueada por restricción "
-                f"'{term.label}' (origen: {restriction_origin}).",
-                code="usage_restricted",
-                details={"restriction": term.code, "origin": restriction_origin},
-            )
-
-    # Generar URL prefirmada
     ttl = request.app.state.settings.media_url_ttl_seconds
-    presigned = request.app.state.storage.presign_get(asset.storage_key, ttl)
-
-    # Respuesta
-    terms = {
-        term.id: term
-        for term in session.scalars(select(Term).where(Term.id == effective_restriction_term_id))
-    }
-    effective_restriction = (
-        TermRef.model_validate(terms[effective_restriction_term_id])
-        if effective_restriction_term_id and effective_restriction_term_id in terms
-        else None
-    )
-
     return DownloadUrlResponse(
-        download_url=presigned["url"],
+        download_url=request.app.state.storage.presign_get(asset.storage_key, ttl),
         expires_at=datetime.now(UTC) + timedelta(seconds=ttl),
-        effective_restriction=effective_restriction,
-        restriction_origin=restriction_origin,
-    )
-
-
-@router.get(
-    "/media/storage-estimate",
-    response_model=StorageEstimateResponse,
-    summary="Estimación del volumen fotográfico",
-    tags=["Multimedia"],
-    **implemented(),
-)
-def get_media_storage_estimate(
-    request: Request,
-    session: SessionDep,
-    user: Annotated[CurrentUser, Depends(require_permission("reports.view"))],
-    query: Annotated[StorageEstimateRequest, Depends()],
-) -> StorageEstimateResponse:
-    # Current volume from database
-    from app.modules.media.models import MediaAsset
-
-    originals_stats = session.execute(
-        select(
-            func.coalesce(func.sum(MediaAsset.size_bytes), 0),
-            func.count(MediaAsset.id),
-        ).where(MediaAsset.deleted_at.is_(None))
-    ).first()
-    total_originals_bytes, photo_count = originals_stats or (0, 0)
-
-    # Estimate derivatives: thumb (~20KB) + display (~300KB) per photo
-    estimated_derivatives_per_photo = 320 * 1024  # ~320KB (thumb 20KB + display 300KB)
-    estimated_derivatives_bytes = photo_count * estimated_derivatives_per_photo
-
-    current_volume_bytes = total_originals_bytes + estimated_derivatives_bytes
-    current_originals_bytes = total_originals_bytes
-    current_derivatives_bytes = estimated_derivatives_bytes
-
-    avg_photos_per_piece = (
-        photo_count / session.scalar(select(func.count()).where(MediaAsset.deleted_at.is_(None)))
-        if photo_count > 0
-        else None
-    )
-    avg_mb_per_photo = (
-        (total_originals_bytes / photo_count / 1024 / 1024) if photo_count > 0 else None
-    )
-
-    # Build projection if parameters provided
-    projection = None
-    has_projection_params = (
-        query.pieces is not None
-        or query.photos_per_piece is not None
-        or query.mb_per_photo is not None
-    )
-    if has_projection_params:
-        pieces = query.pieces or 0
-        photos_per_piece = query.photos_per_piece or (avg_photos_per_piece or 0)
-        mb_per_photo = query.mb_per_photo or (avg_mb_per_photo or 0)
-
-        if pieces < 0 or photos_per_piece < 0 or mb_per_photo < 0:
-            raise ValidationFailed(
-                "Los parámetros no pueden ser negativos.",
-                code="invalid_storage_estimate_params",
-            )
-
-        projected_originals = pieces * photos_per_piece * mb_per_photo * 1024 * 1024
-        projected_derivatives = pieces * photos_per_piece * 320 * 1024  # 320KB per photo
-
-        projection = {
-            "pieces": pieces,
-            "photos_per_piece": photos_per_piece,
-            "mb_per_photo": mb_per_photo,
-            "projected_originals_bytes": int(projected_originals),
-            "projected_derivatives_bytes": int(projected_derivatives),
-            "projected_total_bytes": int(projected_originals + projected_derivatives),
-        }
-
-    return StorageEstimateResponse(
-        current_volume_bytes=current_volume_bytes,
-        current_originals_bytes=current_originals_bytes,
-        current_derivatives_bytes=current_derivatives_bytes,
-        avg_photos_per_piece=avg_photos_per_piece,
-        avg_mb_per_photo=avg_mb_per_photo,
-        projection=projection,
+        effective_restriction=TermRef.model_validate(term) if term is not None else None,
+        restriction_origin=restriction.origin,
     )
 
 
@@ -1417,27 +1228,19 @@ def retire_media(
     if asset is None or asset.piece_id != piece_id or asset.deleted_at is not None:
         raise NotFound("La foto no existe en esta pieza.")
 
+    # The audit context first: every flush from here on (the query below too) is audited.
+    writer(session, user, reason)
     was_primary = asset.is_primary
-    asset.deleted_at = datetime.now(UTC)
-    asset.deletion_reason = reason
-    asset.deleted_by_id = user.id
     asset.is_primary = False
-
-    # Si era la principal, la siguiente en orden pasa a ser principal
-    if was_primary:
+    soft_delete(session, asset, reason)  # kept and audited with its reason (RN-005)
+    if was_primary:  # the next one in order becomes the primary photo
         next_asset = session.scalar(
             select(MediaAsset)
-            .where(
-                MediaAsset.piece_id == piece_id,
-                MediaAsset.deleted_at.is_(None),
-                MediaAsset.id != media_id,
-            )
+            .where(MediaAsset.piece_id == piece_id, MediaAsset.id != media_id)
             .order_by(MediaAsset.sort_order, MediaAsset.created_at)
         )
         if next_asset:
             next_asset.is_primary = True
-
-    writer(session, user)
     session.commit()
 
 

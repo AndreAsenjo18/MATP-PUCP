@@ -621,6 +621,9 @@ function photo(n: number, pieceId: string, title: string, viewCode: string, opts
     content_sha256: "sha256-sintetico-" + n,
     download_url: placeholderPhotoDataUrl(title, view.label),
     usage_restriction: opts.usage_restriction ?? termRef("USAGE_RESTRICTION", "SIN_RESTRICCION"),
+    // Las fotos sintéticas tienen restricción propia: la efectiva es esa, con origen «foto».
+    effective_restriction: opts.usage_restriction ?? termRef("USAGE_RESTRICTION", "SIN_RESTRICCION"),
+    restriction_origin: "foto",
     restriction_note: opts.restriction_note ?? null,
     photographer: "Equipo MATP (sintético)",
     taken_on: opts.taken_on ?? "2026-01-15",
