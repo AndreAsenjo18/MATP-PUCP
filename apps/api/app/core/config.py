@@ -127,6 +127,8 @@ class Settings(BaseSettings):
     # photo package and per AI batch of preliminary descriptions.
     media_bulk_download_max_pieces: int = Field(200, ge=1)
     ai_batch_enrich_max_pieces: int = Field(50, ge=1)
+    # Hours a photo package keeps its ZIP before it expires (D1) [SUPUESTO AA2].
+    media_bulk_download_ttl_hours: int = Field(24, ge=1)
 
     @property
     def cors_origin_list(self) -> list[str]:
