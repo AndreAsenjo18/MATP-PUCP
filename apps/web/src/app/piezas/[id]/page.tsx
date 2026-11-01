@@ -24,9 +24,9 @@
  * (`merged_into`, `merged_from`). En modo `live`, una pieza que no está en los fixtures se lee de la
  * API (`LiveFichaContent`: datos generales, identificadores y enlaces de fusión).
  */
-import { ArrowRight, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
+import { ArrowRight, CopyPlus, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
 
 import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
@@ -60,6 +60,7 @@ import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import type { ApiSchemas } from "@/lib/api/client";
+import { offerPieceCopy, similarPieceCopy } from "@/lib/forms/piece-copy";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { toEntryView } from "@/lib/data/audit";
@@ -81,6 +82,23 @@ import {
 import { IDENTIFIER_TYPES } from "@/lib/fixtures/reference-data";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
+
+/** Abre el alta con los datos descriptivos de esta pieza; la copia no pasa por la URL (`crud-manual-completo` D4). */
+function RegisterSimilarButton({ piece }: { piece: PieceDetail }) {
+  const router = useRouter();
+  return (
+    <Button
+      variant="outline"
+      icon={CopyPlus}
+      onClick={() => {
+        offerPieceCopy(similarPieceCopy(piece));
+        router.push("/piezas/nueva");
+      }}
+    >
+      Registrar a partir de esta pieza
+    </Button>
+  );
+}
 type MovementOut = ApiSchemas["MovementOut"];
 
 const TABS = [
@@ -146,6 +164,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                   Editar ficha
                 </Link>
               )}
+              {hasPermission("pieces.create") && <RegisterSimilarButton piece={piece} />}
               {hasPermission("pieces.delete") && (
                 <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
                   Eliminar pieza
@@ -293,12 +312,15 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
         piece={piece}
         alerts={alerts}
         actions={
-          hasPermission("pieces.update") && (
+          (hasPermission("pieces.update") || hasPermission("pieces.create")) && (
             <div className="flex flex-wrap items-center gap-2">
-              <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
-                <Pencil size={18} aria-hidden="true" />
-                Editar ficha
-              </Link>
+              {hasPermission("pieces.update") && (
+                <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
+                  <Pencil size={18} aria-hidden="true" />
+                  Editar ficha
+                </Link>
+              )}
+              {hasPermission("pieces.create") && <RegisterSimilarButton piece={piece} />}
             </div>
           )
         }

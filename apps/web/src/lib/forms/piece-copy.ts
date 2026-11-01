@@ -6,7 +6,9 @@
  * solo los campos que nombran las listas de aquí abajo. La pieza nueva recibe su propio identificador
  * interno al guardarse.
  */
-import { EMPTY_PIECE_FORM, type PieceFormValues } from "./piece-form";
+import type { ApiSchemas } from "@/lib/api/client";
+
+import { EMPTY_PIECE_FORM, toFormValues, type PieceFormValues } from "./piece-form";
 import type { PieceFormField } from "./piece-issues";
 
 /** Lo que suele repetirse entre piezas de un mismo ingreso, como las de una donación. */
@@ -14,6 +16,25 @@ const REPEATABLE_FIELDS = ["tenure_regime", "collection_id", "acquisition_method
 
 /** Solo tienen sentido con régimen Comodato. */
 const LOAN_FIELDS = ["lender_name", "loan_agreement_ref"] as const satisfies readonly PieceFormField[];
+
+/**
+ * Lo repetible más lo que describe a la pieza. Quedan fuera la disponibilidad y el estado de
+ * conservación, que dicen cómo está esa pieza en concreto. D4 nombra también las técnicas, pero la
+ * ficha aún no las escribe.
+ */
+const DESCRIPTIVE_FIELDS = [
+  ...REPEATABLE_FIELDS,
+  "denomination",
+  "category_id",
+  "object_type_term_id",
+  "description",
+  "author",
+  "provenance",
+  "period_text",
+  "dimensions_text",
+  "material_term_ids",
+  "notes",
+] as const satisfies readonly PieceFormField[];
 
 export interface PieceCopy {
   /** De dónde salen los datos, para el aviso: «Datos copiados de …». */
@@ -39,4 +60,31 @@ function withLoanFields(from: PieceFormValues, names: readonly PieceFormField[])
 /** «Guardar y registrar otra»: los datos repetibles de la pieza recién guardada; lo demás, vacío. */
 export function repeatableCopy(saved: PieceFormValues): PieceCopy {
   return copyFields(saved, "la pieza anterior", withLoanFields(saved, REPEATABLE_FIELDS));
+}
+
+/**
+ * «Registrar a partir de esta pieza»: parte de la ficha tal como la ve el rol, así que un dato
+ * restringido llega vacío y no se copia.
+ */
+export function similarPieceCopy(piece: ApiSchemas["PieceDetail"]): PieceCopy {
+  const from = toFormValues(piece);
+  return copyFields(from, `«${piece.denomination}»`, withLoanFields(from, DESCRIPTIVE_FIELDS));
+}
+
+/**
+ * La copia que espera el alta. Vive en la memoria de la pestaña: no pasa por la URL ni por el
+ * almacenamiento del navegador, y se pierde al recargar.
+ */
+let pendingCopy: PieceCopy | null = null;
+
+export function offerPieceCopy(copy: PieceCopy): void {
+  pendingCopy = copy;
+}
+
+export function pendingPieceCopy(): PieceCopy | null {
+  return pendingCopy;
+}
+
+export function clearPieceCopy(): void {
+  pendingCopy = null;
 }

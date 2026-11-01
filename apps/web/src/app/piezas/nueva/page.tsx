@@ -9,7 +9,8 @@
  *   la maqueta no tiene altas), por eso se confirma en la misma pantalla y no se abre la ficha.
  *
  * «Guardar y registrar otra» (`crud-manual-completo` D4) se queda aquí: guarda y vuelve a montar el
- * formulario con los datos repetibles, sin pasarlos por la URL.
+ * formulario con los datos repetibles, sin pasarlos por la URL. «Registrar a partir de esta pieza»
+ * llega desde la ficha con sus datos descriptivos, esperando en `pendingPieceCopy`.
  */
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +23,7 @@ import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
 import { getApiMode } from "@/lib/data/mode";
 import { createPiece } from "@/lib/data/pieces";
-import { repeatableCopy, type PieceCopy } from "@/lib/forms/piece-copy";
+import { clearPieceCopy, pendingPieceCopy, repeatableCopy, type PieceCopy } from "@/lib/forms/piece-copy";
 import { EMPTY_PIECE_FORM, toCreateInput, type PieceFormValues } from "@/lib/forms/piece-form";
 
 function NewPieceContent() {
@@ -30,8 +31,11 @@ function NewPieceContent() {
   const { hasPermission } = useSession();
   // Cada alta seguida es un formulario nuevo: `formKey` lo vuelve a montar.
   const [formKey, setFormKey] = useState(0);
-  const [copy, setCopy] = useState<PieceCopy | null>(null);
+  const [copy, setCopy] = useState<PieceCopy | null>(() => pendingPieceCopy());
   const [lastSaved, setLastSaved] = useState<{ name: string; href: string | null } | null>(null);
+
+  // Ya en el estado de esta pantalla: volver a entrar más tarde abre un alta vacía.
+  useEffect(() => clearPieceCopy(), []);
 
   useEffect(() => {
     if (formKey > 0) document.getElementById("denomination")?.focus();
