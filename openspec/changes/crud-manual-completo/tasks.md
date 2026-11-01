@@ -22,6 +22,6 @@
 
 ## 5. Cierre
 
-- [ ] 5.1 OpenAPI (si hubo operaciones nuevas): registrarlas como añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
+- [x] 5.1 OpenAPI (si hubo operaciones nuevas): registrarlas como añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
 - [ ] 5.2 Manual de usuario: «Registrar a mano después de la carga histórica» en `docs/manual-usuario/` (piezas seguidas, colecciones, listas de valores, lugares)
 - [ ] 5.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate crud-manual-completo --strict` en verde; tras aprobar el PR, `openspec archive crud-manual-completo -y`

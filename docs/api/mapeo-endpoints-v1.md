@@ -10,7 +10,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
-| 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1) |
+| 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1). Una colección retirada o inexistente responde `422 collection_not_available` (`crud-manual-completo`, tarea 4.3) |
 | 2 | `GET /pieces` · `listPieces` (`page`, `limit`) | `RF-014` → Pendiente¹ | `GET /pieces` (implementado, cursor + filtros) | Pendiente: paginación `page`/`limit` (tarea 4.1) |
 | 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById`. Campo añadido `version` (concurrencia optimista, `ficha-pieza-crud` D2) |
 | 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`). Cabecera `If-Match` con la `version` (`ficha-pieza-crud` D2). Campos añadidos al cuerpo `tenure_change_reason` y `supporting_document_ref`: el motivo y el documento de respaldo del cambio de régimen, que quedan en la auditoría y no en la ficha (`ficha-pieza-crud` D4) |
@@ -20,7 +20,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 8 | `GET /categories` · `listCategories` | `RF-007` → RF-011 | `GET /vocabularies/categoria/terms` | Hecho: `GET /categories` sobre el vocabulario CATEGORY |
 | 9 | `POST /categories` · `createCategory` | `RF-040` → RF-011 | `POST /vocabularies/{code}/terms` | Hecho: `POST /categories` |
 | 10 | `GET /conservation-states` · `listConservationStates` | `RF-008` → RF-012 | `GET /vocabularies/estado-conservacion/terms` | Hecho: `GET /conservation-states` |
-| 11 | `GET /locations/tree` · `getLocationsTree` | `RF-016` → RF-016, RF-041 | `GET /locations` (plano, implementado) | Hecho: `GET /locations/tree` con `LocationNode` |
+| 11 | `GET /locations/tree` · `getLocationsTree` | `RF-016` → RF-016, RF-041 | `GET /locations` (plano, implementado) | Hecho: `GET /locations/tree` con `LocationNode`. Campo añadido `allowed_child_types`: los tipos que admite cada lugar, para proponer el tipo al agregar uno (`crud-manual-completo`, tarea 1.3, diseño D3) |
 | 12 | `POST /pieces/{id}/move` · `movePiece` | `RF-017` → RF-017 | `POST /pieces/{piece_id}/movements` (stub) | Hecho: `POST /pieces/{id}/move` |
 | 13 | `GET /pieces/{id}/location-history` · `getPieceLocationHistory` | `RF-018` → RF-017 | `GET /pieces/{piece_id}/movements` (implementado) | Hecho: `GET /pieces/{id}/location-history` |
 | 14 | `POST /imports/upload` · `uploadImportBatch` | `RF-021/022` → RF-021 | `POST /imports` (stub) | Hecho: `POST /imports/upload` |
@@ -42,7 +42,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 23 | `GET /pieces/{id}/children` · `getPieceChildren` | `RF-011` → RF-009 | no existe (se resuelve con filtro) | Hecho: `GET /pieces/{id}/children` |
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |
 | 25 | `POST /locations` · `createLocation` | `RF-019` → RF-016 | igual (stub) | Hecho: ruta ya conforme |
-| 26 | `PUT /locations/{id}` · `updateLocation` | `RF-020` → RF-016 | `PATCH /locations/{location_id}` (stub) | Hecho: `PUT /locations/{id}` |
+| 26 | `PUT /locations/{id}` · `updateLocation` | `RF-020` → RF-016 | `PATCH /locations/{location_id}` (stub) | Hecho: `PUT /locations/{id}`. Desactivar un lugar con piezas o con lugares activos dentro responde `409 location_in_use` con los conteos (`crud-manual-completo`, tarea 1.3, diseño D3) |
 | 27 | `GET /locations/{id}/pieces` · `getPiecesInLocation` | `RF-025` → RF-034, RF-016 | no existe (filtro en `/pieces`) | Hecho: `GET /locations/{id}/pieces` (stub) |
 | 28 | `GET /imports` · `listImportBatches` | `RF-026` → Pendiente² | igual (stub) | Hecho: `listImportBatches` |
 | 29 | `POST /imports/{batch_id}/rollback` · `rollbackImportBatch` | `RF-027` → RNF-007 | `POST /imports/{batch_id}/revert` (stub) | Hecho: `POST /imports/{batch_id}/rollback` |
