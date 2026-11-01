@@ -28,9 +28,28 @@ _MEDIA_EXAMPLE = {
     "taken_on": "2025-03-10",
     "usage_restriction": None,
     "restriction_note": None,
-    "download_url": None,
+    "download_url": "http://localhost:9000/matp-media/pieces/.../display.webp?X-Amz-Signature=...",
+    "thumbnail_url": "http://localhost:9000/matp-media/pieces/.../thumb.webp?X-Amz-Signature=...",
     "created_at": EX_DATETIME,
 }
+
+
+class MediaProvenance(BaseModel):
+    """Where a photo came from, read only (spec multimedia, «Procedencia visible de las
+    fotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005)."""
+
+    source: Literal["import", "manual"] = Field(
+        description="`import`: aplicada desde un lote de importación; `manual`: subida desde la "
+        "ficha."
+    )
+    original_filename: str | None = None
+    relative_path: str | None = Field(None, description="Carpeta y nombre con que se subió.")
+    import_batch_id: uuid.UUID | None = None
+    import_batch_name: str | None = None
+    replaced_lower_resolution: list[str] = Field(
+        default_factory=list,
+        description="Rutas de las versiones de menor resolución que se descartaron en su lugar.",
+    )
 
 
 class MediaAssetOut(ORMModel):
@@ -55,9 +74,19 @@ class MediaAssetOut(ORMModel):
     restriction_note: str | None
     download_url: str | None = Field(
         None,
-        description="URL prefirmada temporal; null hasta fotografias-multiples-por-pieza.",
+        description="En el listado de la galería, URL prefirmada temporal de la copia de "
+        "visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa "
+        "va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.",
+    )
+    thumbnail_url: str | None = Field(
+        None,
+        description="En el listado de la galería, URL prefirmada temporal de la miniatura "
+        "(`thumb.webp`, 320 px).",
     )
     created_at: datetime
+    provenance: MediaProvenance | None = Field(
+        None, description="Procedencia de la foto; no se puede editar (RF-046, RN-005)."
+    )
 
 
 class UploadUrlRequest(BaseModel):
@@ -233,7 +262,7 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_BULK_DOWNLOAD_PIECES = 200
 
 

@@ -122,7 +122,7 @@ class AiSuggestionRejection(BaseModel):
     reason: str = Field(min_length=3, description="Motivo obligatorio (RN-009).")
 
 
-# Limit of an AI batch: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+# Limit of an AI batch: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_AI_BATCH_PIECES = 50
 
 

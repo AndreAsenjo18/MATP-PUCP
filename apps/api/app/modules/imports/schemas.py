@@ -15,12 +15,15 @@ from app.api.pagination import Page
 from app.api.refs import EX_BATCH_ID, EX_DATETIME, EX_PIECE_ID, EX_USER_ID
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportBatchStatus,
     ImportImage,
     ImportImageStatus,
     ImportPhoto,
     ImportPhotoStatus,
     ImportRow,
+    PhotoMatchSource,
+    PhotoMatchStatus,
     RowClassification,
     RowDecision,
 )
@@ -32,6 +35,23 @@ _COUNTS = {"rows": 120, "NEW": 70, "UPDATE": 35, "POSSIBLE_DUPLICATE": 10, "CONF
 _SUMMARY = {"create": 70, "update": 35, "skip": 15, "summary_token": "0" * 32}
 
 
+class PhotoApprovalOut(BaseModel):
+    """Warning before approving a photo-only batch (RF-046; importacion-fotos-a-catalogo, 6.2)."""
+
+    to_apply: int = Field(description="Fotos que se aplicarán.")
+    pieces: int = Field(description="Piezas que recibirán fotos.")
+    unassigned: int = Field(description="Fotos verificadas sin pieza: quedan sin aplicar.")
+    duplicates_pending: int = Field(
+        description="Fotos que ya están en su pieza y nadie confirmó: no se aplican."
+    )
+    uploading: int = Field(description="Fotos que todavía se suben o verifican.")
+    partial_codes: int = Field(description="Propuestas con un código que no existe.")
+    out_of_range: int = Field(description="Propuestas fuera del rango de su carpeta.")
+    collections_pending: int = Field(
+        description="Carpetas cuya colección propuesta nadie confirmó."
+    )
+
+
 class ApprovalSummaryOut(BaseModel):
     """What applying the batch would do now; approve with its ``summary_token`` (D6)."""
 
@@ -41,6 +61,9 @@ class ApprovalSummaryOut(BaseModel):
         description="Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver)."
     )
     summary_token: str = Field(description="Huella del resumen; se envía al aprobar.")
+    photos: PhotoApprovalOut | None = Field(
+        None, description="Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
+    )
 
 
 class ImportBatchOut(BaseModel):
@@ -75,6 +98,11 @@ class ImportBatchOut(BaseModel):
     )
 
     id: uuid.UUID
+    kind: ImportBatchKind = Field(
+        ImportBatchKind.SPREADSHEET,
+        description="`SPREADSHEET`: lote con Excel. `PHOTOS`: solo fotografías para piezas ya "
+        "registradas, sin mapeo, validación ni filas (RF-046).",
+    )
     source_name: str
     file_name: str
     file_sha256: str | None
@@ -109,6 +137,7 @@ class ImportBatchOut(BaseModel):
         raw = batch.counts or {}
         return cls(
             id=batch.id,
+            kind=batch.kind or ImportBatchKind.SPREADSHEET,
             source_name=batch.source_name,
             file_name=batch.file_name,
             file_sha256=batch.file_sha256,
@@ -134,6 +163,20 @@ class ImportBatchOut(BaseModel):
             approval_summary=ApprovalSummaryOut(**approval) if approval else None,
             created_at=batch.created_at,
         )
+
+
+class PhotoBatchCreate(BaseModel):
+    """Body of ``POST /imports/photo-batches`` (importacion-fotos-a-catalogo, D1)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"name": "Archivo fotográfico — colección ABC"}]}
+    )
+
+    name: str = Field(
+        min_length=1,
+        max_length=300,
+        description="Nombre del lote, para reconocerlo en la lista de lotes y en la bitácora.",
+    )
 
 
 class ImportBatchCounters(BaseModel):
@@ -396,6 +439,7 @@ class ImportRowOut(BaseModel):
         *,
         action: str | None = None,
         images: list[ImportImageOut] | None = None,
+        matches: list[dict[str, Any]] | None = None,
     ) -> "ImportRowOut":
         return cls(
             id=row.id,
@@ -406,7 +450,7 @@ class ImportRowOut(BaseModel):
             classification=row.classification,
             has_validation_errors=row.has_validation_errors,
             validation_errors=row.validation_errors or [],
-            matches=row.matches or [],
+            matches=matches if matches is not None else row.matches or [],
             diff=[
                 FieldDiff(
                     field=name,
@@ -513,6 +557,13 @@ class ImportLogEntry(BaseModel):
     target_piece_id: uuid.UUID | None
 
 
+class PhotoDecisionLogEntry(BaseModel):
+    at: datetime
+    user: str | None
+    operation: str | None
+    photos: int
+
+
 class ImportLog(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -547,6 +598,11 @@ class ImportLog(BaseModel):
     )
     entries: list[ImportLogEntry] = Field(
         description="Filas no aplicadas con su motivo y filas resueltas por una persona."
+    )
+    photo_decisions: list[PhotoDecisionLogEntry] = Field(
+        default_factory=list,
+        description="Decisiones de una persona sobre las fotos del lote: quién, cuándo, qué y "
+        "sobre cuántas fotos (RF-028, RF-046).",
     )
     download_url: str | None = Field(None, description="La misma bitácora en Excel.")
 
@@ -834,3 +890,252 @@ class TemplateDryRunOut(BaseModel):
     sampled_rows: int = Field(description="Filas de la muestra: hasta 200 [SUPUESTO T3].")
     missing_columns: list[str] = Field(description="Columnas de la plantilla ausentes del lote.")
     columns: list[DryRunColumn]
+
+
+class ImportPhotoOut(BaseModel):
+    """A photo of the batch in the tray, with its proposed row (design D4)."""
+
+    id: uuid.UUID
+    relative_path: str
+    original_filename: str
+    size_bytes: int
+    status: ImportPhotoStatus
+    rejection_reason: str | None = None
+    match_status: PhotoMatchStatus | None = Field(
+        None, description="null: sin propuesta todavía (subiéndose o lote sin validar)."
+    )
+    match_source: PhotoMatchSource | None = None
+    row_id: uuid.UUID | None = Field(None, description="Fila propuesta o asignada.")
+    candidate_row_ids: list[uuid.UUID] | None = Field(
+        None, description="Filas posibles de una foto ambigua; nunca se elige una por adivinanza."
+    )
+    sort_key: int | None = Field(None, description="Orden de la foto dentro de su fila o pieza.")
+    piece_id: uuid.UUID | None = Field(
+        None, description="Pieza propuesta o asignada (lote de solo fotografías, RF-046)."
+    )
+    candidate_piece_ids: list[uuid.UUID] | None = Field(
+        None,
+        description="Piezas posibles de una foto ambigua, o la pieza de otra colección "
+        "(`other_collection`); nunca se elige una por adivinanza.",
+    )
+    match_reason: str | None = Field(
+        None,
+        description="Por qué la propuesta no es directa: `discrepant_codes`, `camera_name`, "
+        "`template_mismatch`, `bare_number_without_collection`, `other_collection`, "
+        "`duplicate_name`, `partial_codes` u `out_of_range`.",
+    )
+    width_px: int | None = None
+    height_px: int | None = None
+    same_as_photo_id: uuid.UUID | None = Field(
+        None, description="Foto conservada cuando esta se descartó por ser otra resolución."
+    )
+    duplicate_of_existing: bool = False
+    duplicate_confirmed: bool = False
+    thumbnail_url: str | None = Field(
+        None, description="URL prefirmada temporal de la miniatura; solo de fotos verificadas."
+    )
+
+    @classmethod
+    def from_photo(cls, photo: ImportPhoto, thumbnail_url: str | None = None) -> "ImportPhotoOut":
+        return cls(
+            id=photo.id,
+            relative_path=photo.relative_path,
+            original_filename=photo.original_filename,
+            size_bytes=photo.size_bytes,
+            status=photo.status,
+            rejection_reason=photo.rejection_reason,
+            match_status=photo.match_status,
+            match_source=photo.match_source,
+            row_id=photo.row_id,
+            candidate_row_ids=[uuid.UUID(str(row)) for row in photo.candidate_row_ids or []]
+            or None,
+            sort_key=photo.sort_key,
+            piece_id=photo.piece_id,
+            candidate_piece_ids=[uuid.UUID(str(p)) for p in photo.candidate_piece_ids or []]
+            or None,
+            match_reason=photo.match_reason,
+            width_px=photo.width_px,
+            height_px=photo.height_px,
+            same_as_photo_id=photo.same_as_photo_id,
+            duplicate_of_existing=photo.duplicate_of_existing,
+            duplicate_confirmed=photo.duplicate_confirmed,
+            thumbnail_url=thumbnail_url,
+        )
+
+
+class ImportPhotoSummary(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "batch_id": EX_BATCH_ID,
+                    "total": 80,
+                    "by_status": {"VERIFIED": 76, "REJECTED": 2, "UPLOADED": 2},
+                    "by_match_status": {"MATCHED": 62, "AMBIGUOUS": 3, "UNMATCHED": 11, "NONE": 4},
+                    "duplicates": 0,
+                }
+            ]
+        }
+    )
+
+    batch_id: uuid.UUID
+    total: int
+    by_status: dict[str, int] = Field(description="Fotos por estado (todos los estados).")
+    by_match_status: dict[str, int] = Field(
+        description="Fotos por propuesta; `NONE`: sin propuesta todavía."
+    )
+    duplicates: int = Field(
+        description="Fotos que ya están en la pieza destino y esperan confirmación."
+    )
+
+
+class PhotoDecisionRequest(BaseModel):
+    """A decision of a person on photos of the batch (design D4; importacion-fotos-a-catalogo,
+    D8): with a row in a batch with Excel, with a piece in a photo-only batch."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "op": "assign",
+                    "photo_ids": ["01920000-0000-7000-8000-000000000701"],
+                    "row_id": "01920000-0000-7000-8000-000000000611",
+                }
+            ]
+        }
+    )
+
+    op: Literal["assign", "unassign", "discard", "restore", "confirm_duplicate", "reorder"] = Field(
+        description="`assign`: a `row_id` o `piece_id`, después de su última foto. "
+        "`unassign`: sin fila ni pieza. `discard`: fuera del lote. `restore`: una descartada "
+        "vuelve sin asignar. `confirm_duplicate`: una foto que ya está en su pieza se aplica "
+        "igual. `reorder`: orden de las fotos de `row_id` o `piece_id`, en el orden enviado. "
+        "El emparejamiento automático ya no cambia las fotos decididas."
+    )
+    photo_ids: list[uuid.UUID] = Field(min_length=1, max_length=500)
+    row_id: uuid.UUID | None = Field(None, description="Fila del mismo lote (lote con Excel).")
+    piece_id: uuid.UUID | None = Field(
+        None, description="Pieza del catálogo, no retirada (lote de solo fotografías)."
+    )
+
+
+class PhotoDecisionOut(BaseModel):
+    batch_id: uuid.UUID
+    photos: list[ImportPhotoOut]
+
+
+# --- Lectura de nombres por carpeta (importacion-fotos-a-catalogo, D4, D5, D7, D11) --------------
+
+
+class PhotoReadingRule(BaseModel):
+    """How the file names of a folder are read (D4)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "mode": "template",
+                    "template": "{n}-{*}",
+                    "collection_id": "01920000-0000-7000-8000-000000000201",
+                }
+            ]
+        }
+    )
+
+    mode: Literal["auto", "camera", "template"] = Field(
+        "auto",
+        description="`auto`: se buscan códigos en el nombre. `camera`: no se busca código. "
+        "`template`: el nombre se lee con `template`.",
+    )
+    template: str | None = Field(
+        None,
+        max_length=200,
+        description="Plantilla con `{<tipo de identificador>}`, `{n}` (correlativo de la "
+        "colección) y `{*}` (parte que se ignora), p. ej. `{COLECCION} {n} - PUCP {PUCP}`.",
+    )
+    collection_id: uuid.UUID | None = Field(
+        None,
+        description="Colección de la carpeta como pista. Ausente: rige la propuesta; `null` "
+        "explícito: sin colección.",
+    )
+
+
+class FolderRuleRequest(BaseModel):
+    folder: str = Field(
+        "", max_length=1000, description="Ruta de la carpeta (`a/b`); vacía = todo el lote."
+    )
+    rule: PhotoReadingRule
+
+
+class FolderCollectionOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class TemplateSuggestionOut(BaseModel):
+    shape: str = Field(description="Forma de los nombres: dígitos → 9, letras → A.")
+    template: str | None = Field(description="Plantilla sugerida; null = se leen solas.")
+    matching: int
+    total: int
+
+
+class PhotoFolderOut(BaseModel):
+    path: str
+    name: str
+    depth: int
+    photos: int = Field(description="Fotos de la carpeta y sus subcarpetas.")
+    by_match_status: dict[str, int] = Field(description="Conteos por propuesta (`NONE`: sin).")
+    range: list[int] | None = Field(None, description="`[desde, hasta]` de una carpeta de rango.")
+    proposed_collection: FolderCollectionOut | None = None
+    collection: FolderCollectionOut | None = Field(
+        None, description="Colección pista vigente: la confirmada o la propuesta."
+    )
+    collection_pending: bool = Field(
+        description="La colección es una propuesta que nadie confirmó todavía (D5)."
+    )
+    rule: PhotoReadingRule
+    rule_from: str | None = Field(
+        None, description="Carpeta de la que hereda la regla; null = regla del lote."
+    )
+    suggestion: TemplateSuggestionOut | None = None
+
+
+class PhotoFoldersOut(BaseModel):
+    batch_id: uuid.UUID
+    default_rule: PhotoReadingRule
+    folders: list[PhotoFolderOut]
+
+
+class ReadingPreviewItem(BaseModel):
+    photo_id: uuid.UUID
+    relative_path: str
+    codes: list[str] = Field(description="Códigos que se leyeron en el nombre.")
+    match_status: PhotoMatchStatus
+    piece_id: uuid.UUID | None = None
+    candidate_piece_ids: list[uuid.UUID] = Field(default_factory=list)
+    match_reason: str | None = None
+
+
+class ReadingPreviewOut(BaseModel):
+    folder: str
+    total: int = Field(description="Fotos verificadas de la carpeta.")
+    not_fitting: int = Field(description="Nombres que no siguen la plantilla.")
+    items: list[ReadingPreviewItem] = Field(description="Hasta 20 nombres de muestra.")
+
+
+class CorrespondenceLineOut(BaseModel):
+    line: int
+    file: str
+    code: str
+    result: Literal["applied", "no_photo", "no_piece", "ambiguous"]
+    reason: str | None = None
+    photo_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class CorrespondencesOut(BaseModel):
+    batch_id: uuid.UUID
+    applied: int
+    no_photo: int
+    no_piece: int
+    ambiguous: int
+    lines: list[CorrespondenceLineOut]

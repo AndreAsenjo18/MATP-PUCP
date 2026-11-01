@@ -439,6 +439,7 @@ class CatalogReader:
             media_count=self.media_counts([piece.id]).get(piece.id, 0),
             created_at=piece.created_at,
             updated_at=piece.updated_at,
+            version=piece.version,
             masked_fields=masked,
             **sensitive_values,
         )

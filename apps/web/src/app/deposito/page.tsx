@@ -1,42 +1,69 @@
 "use client";
 
 /**
- * Pantalla 11 — Vista móvil de depósito (RNF-001): buscar por código, ver fotos y ubicación,
- * registrar movimiento o verificación física. Diseño de una sola columna, botones grandes,
- * pensado para un teléfono de ~360 px de ancho usado de pie en el depósito.
+ * Pantalla 11 — Vista de depósito (RNF-001): buscar por código o nombre, ver ubicación,
+ * registrar movimiento o verificación física. Una columna con controles táctiles en celular (se usa
+ * de pie, en el depósito) y dos columnas compactas desde `lg` (change `rediseno-ux-deposito`).
  */
-import { ArrowLeft, ArrowRight, CircleCheck, MapPin, ShieldCheck, Truck } from "lucide-react";
-import Link from "next/link";
+import { CircleCheck, ShieldCheck, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  DepositoLayout,
+  DestinationPicker,
+  PieceResult,
+  PiecePanel,
+} from "@/components/domain/DepositoParts";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
-import { Card, cardClassName } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { createApiClient, type ApiSchemas } from "@/lib/api/client";
 import { useSession } from "@/lib/auth/session";
 import {
   batchMovePieces,
   fetchLocationsTree,
+  finalLocations,
+  finalLocationsFromList,
   LOCATION_ERROR_MESSAGES,
   locationPathLabel,
   movePiece,
   newIdempotencyKey,
+  type DestinationOption,
   type LocationFailure,
-  type LocationNode,
 } from "@/lib/data/locations";
 import { apiBaseUrl, getApiMode } from "@/lib/data/mode";
 import { useMockStore } from "@/lib/data/mock-store";
-import { getPieceMedia, listPieces, LOCATIONS, locationPath } from "@/lib/fixtures";
+import { getPieceMedia, listPieces, LOCATIONS } from "@/lib/fixtures";
+
+const NO_PERMISSION = "Su rol no tiene permiso para registrar movimientos desde el depósito. Cambie de rol desde la cabecera para probarlo.";
+const SEARCH_HINT = "Busque por código o nombre para verificar o mover una pieza.";
+
+function Confirmation({ children }: { children: string }) {
+  return (
+    <p role="status" className="flex items-center gap-2 rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito lg:text-sm">
+      <CircleCheck size={18} aria-hidden="true" />
+      {children}
+    </p>
+  );
+}
+
+function ErrorNotice({ children }: { children: string }) {
+  return <p role="alert" className="rounded-md bg-carmin-peligro/10 px-3 py-2 text-base text-carmin-texto lg:text-sm">{children}</p>;
+}
+
+function NoResults() {
+  return <p className="text-base text-gris-texto lg:text-sm">Sin resultados.</p>;
+}
 
 function DepositoContent() {
   const { hasPermission, currentUser, currentRole } = useSession();
   const store = useMockStore();
   const [q, setQ] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [targetLocationId, setTargetLocationId] = useState(LOCATIONS[0]?.id ?? "");
+  const destinations = useMemo(() => finalLocationsFromList(LOCATIONS), []);
+  const [targetLocationId, setTargetLocationId] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
   const results = useMemo(() => (q.trim() ? listPieces({ q, pageSize: 8 }).items : []), [q]);
@@ -45,141 +72,105 @@ function DepositoContent() {
   const actor = currentUser?.full_name ?? currentRole?.name ?? "Persona sintética";
 
   if (!hasPermission("movements.register")) {
-    return <PermissionNotice>Su rol no tiene permiso para registrar movimientos desde el depósito. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>{NO_PERMISSION}</PermissionNotice>;
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <header>
-        <h1 className="text-2xl font-bold text-tinta">Vista de depósito</h1>
-        <p className="text-base text-gris-texto">Busque por código para verificar o mover una pieza.</p>
-      </header>
-
+  const search = (
+    <>
       <Input
-        label="Código de la pieza"
+        label="Buscar pieza"
+        type="search"
         value={q}
-        onChange={(event) => {
-          setQ(event.target.value);
-          setSelectedId(null);
-          setConfirmation(null);
-        }}
+        onChange={(event) => setQ(event.target.value)}
         placeholder="p. ej. I-0236"
-        className="p-4 text-lg"
+        className="p-3 lg:p-2 lg:text-sm"
+        autoComplete="off"
         autoFocus
       />
-
-      {!selected && (
-        <ul className="flex flex-col gap-2">
-          {results.map((piece) => (
-            <li key={piece.id}>
-              <button type="button" onClick={() => setSelectedId(piece.id)} className={cardClassName({ interactive: true, className: "w-full text-left" })}>
-                <p className="text-lg font-semibold text-tinta">{piece.denomination}</p>
-                <p className="text-base text-gris-texto">
-                  <span className="font-mono font-bold text-terracota">{piece.code_i ?? "Sin código I"}</span> · {piece.location_label ?? "Sin ubicación"}
-                </p>
-              </button>
-            </li>
-          ))}
-          {q.trim() && results.length === 0 && <p className="text-base text-gris-texto">Sin resultados.</p>}
-        </ul>
-      )}
-
-      {selected && (
-        <Card className="flex flex-col gap-4">
-          <button type="button" onClick={() => setSelectedId(null)} className="flex min-h-11 items-center gap-1 self-start text-base text-gris-texto underline hover:text-terracota">
-            <ArrowLeft size={18} aria-hidden="true" />
-            Buscar otra pieza
-          </button>
-          <h2 className="text-xl font-bold text-tinta">{selected.denomination}</h2>
-          {media[0] && (
-            // eslint-disable-next-line @next/next/no-img-element -- foto sintética en data: URI
-            <img src={media[0].download_url ?? undefined} alt={selected.denomination} className="aspect-[4/3] w-full rounded-md object-cover" />
-          )}
-          <p className="flex items-start gap-2 text-lg text-tinta">
-            <MapPin size={20} aria-hidden="true" className="mt-1 shrink-0 text-terracota" />
-            <span>
-              Ubicación actual: <strong>{selected.location.path.length > 0 ? selected.location.path.map((l) => l.name).join(" / ") : "Sin ubicación"}</strong>
-            </span>
-          </p>
-          <Link href={`/piezas/${selected.id}`} className="inline-flex items-center gap-1 text-base text-terracota underline">
-            Ver ficha completa
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-
-          <div className="flex flex-col gap-2 border-t border-borde pt-4">
-            <Button
-              size="lg"
-              icon={ShieldCheck}
-              onClick={() => {
-                store.registerMovement(
-                  selected.id,
-                  selected.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "Sede" },
-                  "VERIFICATION",
-                  "Verificación física desde vista de depósito.",
-                  actor,
-                  currentUser?.id ?? "",
-                );
-                setConfirmation("Verificación física registrada.");
+      <ul className="flex flex-col gap-2">
+        {results.map((piece) => (
+          <li key={piece.id}>
+            <PieceResult
+              name={piece.denomination}
+              code={piece.code_i}
+              location={piece.location_label}
+              active={piece.id === selectedId}
+              onSelect={() => {
+                setSelectedId(piece.id);
+                setConfirmation(null);
               }}
-            >
-              Registrar verificación física
-            </Button>
-
-            <Select label="Mover a" value={targetLocationId} onChange={(event) => setTargetLocationId(event.target.value)} className="p-3 text-lg">
-              {LOCATIONS.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {locationPath(location.id).map((l) => l.name).join(" / ")}
-                </option>
-              ))}
-            </Select>
-            <Button
-              variant="outline"
-              size="lg"
-              icon={Truck}
-              onClick={() => {
-                const location = LOCATIONS.find((l) => l.id === targetLocationId);
-                if (!location) return;
-                store.registerMovement(
-                  selected.id,
-                  { id: location.id, code: location.code, name: location.name, level: location.level },
-                  "MOVE",
-                  "Movimiento desde vista de depósito.",
-                  actor,
-                  currentUser?.id ?? "",
-                );
-                setConfirmation("Movimiento registrado.");
-              }}
-            >
-              Registrar movimiento
-            </Button>
-            {confirmation && (
-              <p role="status" className="flex items-center gap-2 rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
-                <CircleCheck size={18} aria-hidden="true" />
-                {confirmation}
-              </p>
-            )}
-          </div>
-        </Card>
-      )}
-    </div>
+            />
+          </li>
+        ))}
+      </ul>
+      {q.trim() && results.length === 0 && <NoResults />}
+    </>
   );
+
+  const detail = selected ? (
+    <PiecePanel
+      name={selected.denomination}
+      code={selected.code_i}
+      location={selected.location.path.length > 0 ? selected.location.path.map((l) => l.name).join(" › ") : "Sin ubicación"}
+      href={`/piezas/${selected.id}`}
+      photo={media[0]?.download_url ? { src: media[0].download_url, alt: selected.denomination } : undefined}
+      onBack={() => setSelectedId(null)}
+      verify={
+        <Button
+          size="touch"
+          icon={ShieldCheck}
+          onClick={() => {
+            store.registerMovement(
+              selected.id,
+              selected.location.path.at(-1) ?? { id: "", code: "", name: "sin ubicación", level: "Sede" },
+              "VERIFICATION",
+              "Verificación física desde vista de depósito.",
+              actor,
+              currentUser?.id ?? "",
+            );
+            setConfirmation("Verificación física registrada.");
+          }}
+        >
+          Registrar verificación
+        </Button>
+      }
+      move={
+        <>
+          <DestinationPicker options={destinations} value={targetLocationId} onChange={setTargetLocationId} />
+          <Button
+            variant="outline"
+            size="touch"
+            icon={Truck}
+            className="self-start"
+            disabled={!targetLocationId}
+            onClick={() => {
+              const location = LOCATIONS.find((l) => l.id === targetLocationId);
+              if (!location) return;
+              store.registerMovement(
+                selected.id,
+                { id: location.id, code: location.code, name: location.name, level: location.level },
+                "MOVE",
+                "Movimiento desde vista de depósito.",
+                actor,
+                currentUser?.id ?? "",
+              );
+              setConfirmation("Movimiento registrado.");
+            }}
+          >
+            Registrar movimiento
+          </Button>
+        </>
+      }
+      feedback={confirmation ? <Confirmation>{confirmation}</Confirmation> : undefined}
+    />
+  ) : null;
+
+  return <DepositoLayout title="Vista de depósito" subtitle={SEARCH_HINT} search={search} detail={detail} />;
 }
 
 // ------------------------------------------------------------------------------------- modo live
 type PieceSummary = ApiSchemas["PieceSummary"];
 type PieceDetail = ApiSchemas["PieceDetail"];
-
-interface FlatLocation {
-  id: string;
-  label: string;
-}
-
-function flattenTree(nodes: LocationNode[], prefix: string[] = []): FlatLocation[] {
-  return nodes.flatMap((node) => {
-    const path = [...prefix, node.name];
-    return [{ id: node.id, label: path.join(" › ") }, ...flattenTree(node.children ?? [], path)];
-  });
-}
 
 interface BatchItem {
   pieceId: string;
@@ -193,7 +184,7 @@ function DepositoLive() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PieceSummary[]>([]);
   const [selected, setSelected] = useState<PieceDetail | null>(null);
-  const [destinations, setDestinations] = useState<FlatLocation[]>([]);
+  const [destinations, setDestinations] = useState<DestinationOption[]>([]);
   const [targetLocationId, setTargetLocationId] = useState("");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -203,7 +194,7 @@ function DepositoLive() {
 
   useEffect(() => {
     fetchLocationsTree(devUser).then((result) => {
-      if (result.status === "ok") setDestinations(flattenTree(result.value));
+      if (result.status === "ok") setDestinations(finalLocations(result.value));
     });
   }, [devUser]);
 
@@ -247,11 +238,13 @@ function DepositoLive() {
   async function handleVerify() {
     if (!selected) return;
     setBusy(true);
+    setError(null);
+    setMessage(null);
     const result = await movePiece(selected.id, { movement_type: "VERIFICATION" }, devUser);
     setBusy(false);
     if (result.status === "ok") {
-      setMessage("Verificación física registrada.");
       await loadDetail(selected.id);
+      setMessage("Verificación física registrada.");
     } else {
       setError(describeFailure(result));
     }
@@ -260,6 +253,8 @@ function DepositoLive() {
   async function handleMove() {
     if (!selected || !targetLocationId) return;
     setBusy(true);
+    setError(null);
+    setMessage(null);
     const result = await movePiece(
       selected.id,
       {
@@ -272,8 +267,8 @@ function DepositoLive() {
     );
     setBusy(false);
     if (result.status === "ok") {
-      setMessage("Movimiento registrado.");
       await loadDetail(selected.id);
+      setMessage("Movimiento registrado.");
     } else {
       setError(describeFailure(result));
     }
@@ -281,6 +276,7 @@ function DepositoLive() {
 
   function addToBatch() {
     if (!selected || batch.some((item) => item.pieceId === selected.id)) return;
+    setError(null);
     setBatch((current) => [
       ...current,
       { pieceId: selected.id, label: selected.denomination, expectedFromLocationId: selected.location.location_id },
@@ -291,6 +287,8 @@ function DepositoLive() {
   async function sendBatch() {
     if (!targetLocationId || batch.length === 0) return;
     setBusy(true);
+    setError(null);
+    setMessage(null);
     const result = await batchMovePieces(
       {
         movement_type: "MOVE",
@@ -316,122 +314,99 @@ function DepositoLive() {
     }
   }
 
-  const actor = currentUser?.full_name ?? "Persona de depósito";
-
   if (!hasPermission("movements.register")) {
-    return <PermissionNotice>Su rol no tiene permiso para registrar movimientos desde el depósito. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>{NO_PERMISSION}</PermissionNotice>;
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <header>
-        <h1 className="text-2xl font-bold text-tinta">Vista de depósito</h1>
-        <p className="text-base text-gris-texto">
-          Busque por código o denominación para verificar o mover una pieza. Conectado a la API ({actor}).
-        </p>
-      </header>
-
+  const search = (
+    <>
       <Input
         label="Buscar pieza"
+        type="search"
         value={q}
-        onChange={(event) => {
-          setQ(event.target.value);
-          setSelected(null);
-          setMessage(null);
-          setError(null);
-        }}
+        onChange={(event) => setQ(event.target.value)}
         placeholder="p. ej. I-0236"
-        className="p-4 text-lg"
+        className="p-3 lg:p-2 lg:text-sm"
+        autoComplete="off"
         autoFocus
       />
+      <ul className="flex flex-col gap-2">
+        {displayedResults.map((piece) => (
+          <li key={piece.id}>
+            <PieceResult
+              name={piece.denomination}
+              code={piece.code_i}
+              location={piece.location_label}
+              active={piece.id === selected?.id}
+              onSelect={() => loadDetail(piece.id)}
+            />
+          </li>
+        ))}
+      </ul>
+      {trimmedQuery && displayedResults.length === 0 && <NoResults />}
+      {!selected && error && <ErrorNotice>{error}</ErrorNotice>}
+    </>
+  );
 
-      {!selected && (
-        <ul className="flex flex-col gap-2">
-          {displayedResults.map((piece) => (
-            <li key={piece.id}>
-              <button type="button" onClick={() => loadDetail(piece.id)} className={cardClassName({ interactive: true, className: "w-full text-left" })}>
-                <p className="text-lg font-semibold text-tinta">{piece.denomination}</p>
-                <p className="text-base text-gris-texto">
-                  <span className="font-mono font-bold text-terracota">{piece.code_i ?? "Sin código I"}</span> · {piece.location_label ?? "Sin ubicación"}
-                </p>
-              </button>
-            </li>
-          ))}
-          {trimmedQuery && displayedResults.length === 0 && <p className="text-base text-gris-texto">Sin resultados.</p>}
-        </ul>
-      )}
-
-      {selected && (
-        <Card className="flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => {
-              setSelected(null);
-              setError(null);
-            }}
-            className="flex min-h-11 items-center gap-1 self-start text-base text-gris-texto underline hover:text-terracota"
-          >
-            <ArrowLeft size={18} aria-hidden="true" />
-            Buscar otra pieza
-          </button>
-          <h2 className="text-xl font-bold text-tinta">{selected.denomination}</h2>
-          <p className="flex items-start gap-2 text-lg text-tinta">
-            <MapPin size={20} aria-hidden="true" className="mt-1 shrink-0 text-terracota" />
-            <span>
-              Ubicación actual: <strong>{selected.location.path.length > 0 ? locationPathLabel(selected.location.path) : "Sin ubicación"}</strong>
-            </span>
-          </p>
-          <Link href={`/piezas/${selected.id}`} className="inline-flex items-center gap-1 text-base text-terracota underline">
-            Ver ficha completa
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-
-          <div className="flex flex-col gap-2 border-t border-borde pt-4">
-            <Button size="lg" icon={ShieldCheck} disabled={busy} onClick={handleVerify}>
-              Registrar verificación física
-            </Button>
-
-            <Select label="Mover a" value={targetLocationId} onChange={(event) => setTargetLocationId(event.target.value)} className="p-3 text-lg">
-              <option value="">Seleccione un destino…</option>
-              {destinations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.label}
-                </option>
-              ))}
-            </Select>
-            <Input label="Motivo (opcional)" value={reason} onChange={(event) => setReason(event.target.value)} />
-            <Button variant="outline" size="lg" icon={Truck} disabled={busy || !targetLocationId} onClick={handleMove}>
+  const detail = selected ? (
+    <PiecePanel
+      name={selected.denomination}
+      code={selected.code_i}
+      location={selected.location.path.length > 0 ? locationPathLabel(selected.location.path) : "Sin ubicación"}
+      href={`/piezas/${selected.id}`}
+      onBack={() => {
+        setSelected(null);
+        setError(null);
+        setMessage(null);
+      }}
+      verify={
+        <Button size="touch" icon={ShieldCheck} disabled={busy} onClick={handleVerify}>
+          Registrar verificación
+        </Button>
+      }
+      move={
+        <>
+          <DestinationPicker options={destinations} value={targetLocationId} onChange={setTargetLocationId} />
+          <Input label="Motivo (opcional)" value={reason} onChange={(event) => setReason(event.target.value)} className="p-3 lg:p-2 lg:text-sm" />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="touch" icon={Truck} disabled={busy || !targetLocationId} onClick={handleMove}>
               Registrar movimiento
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={addToBatch}>
+            <Button variant="secondary" size="touch" disabled={busy} onClick={addToBatch}>
               Agregar al lote ({batch.length})
             </Button>
-            {message && (
-              <p role="status" className="flex items-center gap-2 rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
-                <CircleCheck size={18} aria-hidden="true" />
-                {message}
-              </p>
-            )}
-            {error && <p className="rounded-md bg-carmin-peligro/10 px-3 py-2 text-base text-carmin-texto">{error}</p>}
           </div>
-        </Card>
-      )}
+        </>
+      }
+      feedback={
+        <>
+          {message && <Confirmation>{message}</Confirmation>}
+          {error && <ErrorNotice>{error}</ErrorNotice>}
+        </>
+      }
+    />
+  ) : null;
 
-      {batch.length > 0 && (
-        <Card className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-tinta">Lote pendiente ({batch.length} pieza(s))</h2>
-          <ul className="list-disc pl-5 text-base text-tinta">
-            {batch.map((item) => (
-              <li key={item.pieceId}>{item.label}</li>
-            ))}
-          </ul>
-          <Button size="lg" icon={Truck} disabled={busy || !targetLocationId} onClick={sendBatch}>
-            Enviar lote al destino seleccionado
-          </Button>
-        </Card>
-      )}
-    </div>
+  const pending = batch.length > 0 && (
+    <Card className="flex flex-col gap-3 lg:p-5">
+      <h2 className="text-lg font-semibold text-tinta lg:text-base">Lote pendiente ({batch.length} pieza{batch.length === 1 ? "" : "s"})</h2>
+      <ul className="flex flex-wrap gap-2">
+        {batch.map((item) => (
+          <li key={item.pieceId} className="rounded-md bg-crema px-2 py-1 text-sm font-medium text-tinta">
+            {item.label}
+          </li>
+        ))}
+      </ul>
+      {!selected && message && <Confirmation>{message}</Confirmation>}
+      {!selected && error && <ErrorNotice>{error}</ErrorNotice>}
+      {selected === null && <DestinationPicker options={destinations} value={targetLocationId} onChange={setTargetLocationId} label="Destino del lote" />}
+      <Button size="touch" icon={Truck} className="self-start" disabled={busy || !targetLocationId} onClick={sendBatch}>
+        Enviar lote al destino elegido
+      </Button>
+    </Card>
   );
+
+  return <DepositoLayout title="Vista de depósito" subtitle={SEARCH_HINT} search={search} detail={detail} extra={pending || undefined} />;
 }
 
 export default function DepositoPage() {

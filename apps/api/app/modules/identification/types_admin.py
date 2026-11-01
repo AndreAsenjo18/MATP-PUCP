@@ -356,7 +356,9 @@ def update_identifier_type(
         identifier_type.description = changes["description"]
     recalculated = 0
     rule = changes.get("normalization_rule")
-    if rule is not None and rule != identifier_type.normalization_rule:
+    # The same rule with a confirm token recalculates too: the rule's code may have changed since
+    # the identifiers were stored (a 5-digit RN, ajustes-lectura-importacion, design D3).
+    if rule is not None and (rule != identifier_type.normalization_rule or confirm_token):
         recalculated = _change_rule(session, identifier_type, rule, confirm_token)
     session.flush()
     return recalculated

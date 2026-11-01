@@ -473,7 +473,7 @@ def test_log_of_an_applied_batch_lists_the_rows_not_applied(
     assert set(reasons) == {4, 5, 6, 7}
     assert reasons[4] == "Códigos de dos piezas"
     assert reasons[5].startswith("Conflicto sin resolver")
-    assert "RN-003" in reasons[7]
+    assert "comodato" in reasons[7]
     assert log["download_url"] == f"/api/v1/imports/{applied.id}/log?format=xlsx"
 
 

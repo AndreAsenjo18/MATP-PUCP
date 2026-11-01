@@ -10,17 +10,23 @@ import {
   COMPARISON_ROWS,
   DEFAULT_FILTERS,
   DuplicateCandidateCard,
+  DistinctDialog,
   DuplicateFilters,
   MERGE_LOADING_NOTE,
+  PostponeDialog,
+  QueuePager,
   MERGE_UNAVAILABLE_NOTE,
   SCAN_STARTING_TEXT,
   ScanPanel,
+  SimilarityMeter,
   canBeResolved,
+  comparisonRowState,
   jobProgressText,
   markedRows,
   mergeUnavailableReason,
   signalLabel,
   signalValueLines,
+  similarityLevel,
 } from "./DuplicateReview";
 import { qualityJobStatus } from "./status-intents";
 
@@ -107,13 +113,16 @@ describe("DuplicateCandidateCard", () => {
       <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
     );
     const text = visibleText(html);
-    expect(text).toContain("Similitud 93 %");
+    expect(text).toContain("93 %");
+    expect(text).toContain("similitud alta");
     expect(text).toContain("Pieza A: Toro de Pucará");
     expect(text).toContain("Pieza B: Toro de Pucará (3 cuernos)");
     for (const row of COMPARISON_ROWS) expect(text).toContain(row.label);
-    expect(html.match(/data-mark="match"/g)).toHaveLength(3); // denominación, colección y otros códigos
-    expect(text).toContain("Coincide");
-    expect(text).toContain("Identificador COLLECTION igual · similitud 100 %");
+    // Las filas que motivan la sospecha (denominación, colección y otros códigos) son «igual».
+    expect(html.match(/data-mark="match"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(text).toContain("igual");
+    expect(text).toContain("Identificador COLLECTION igual 100 %"); // etiqueta de la señal, junto a la similitud
+    expect(text).toContain("Identificador COLLECTION igual · similitud 100 %"); // detalle plegado
     expect(text).toContain("Normalizado MMZ-015: A «M.M.Z. 015» · B «mmz 15»");
     expect(html).toContain(`href="/piezas/${ids.piece(1)}"`);
   });
@@ -177,7 +186,8 @@ describe("DuplicateCandidateCard", () => {
         />,
       ),
     );
-    expect(text).toContain("Códigos I distintos: fusión bloqueada (RN-002)");
+    expect(text).toContain("Códigos I distintos: no se puede fusionar");
+    expect(text).not.toMatch(/\b(RF|RN|RNF|RIA)-\d+/);
     expect(text).toContain("Pospuesto hasta el");
     expect(text).toContain("Motivo registrado: Esperar ficha física");
   });
@@ -237,5 +247,113 @@ describe("filtros y detección completa", () => {
     const idle = visibleText(render(<ScanPanel job={null} error="Sin conexión." starting={false} canScan onStart={noop} />));
     expect(idle).toContain("Buscar duplicados");
     expect(idle).toContain("Sin conexión.");
+  });
+});
+
+describe("similitud destacada", () => {
+  it("clasifica la similitud en alta, media y baja con esos umbrales", () => {
+    expect(similarityLevel(0.93)).toBe("high");
+    expect(similarityLevel(0.85)).toBe("high");
+    expect(similarityLevel(0.84)).toBe("medium");
+    expect(similarityLevel(0.7)).toBe("medium");
+    expect(similarityLevel(0.69)).toBe("low");
+  });
+
+  it("muestra el porcentaje en cifra grande y el nivel en palabras, no solo en color", () => {
+    const html = render(<SimilarityMeter score={0.6} />);
+    expect(visibleText(html)).toBe("60 % similitud baja");
+    expect(html).toContain("text-3xl");
+    expect(html).toContain("conic-gradient");
+    expect(visibleText(render(<SimilarityMeter score={0.8714} />))).toBe("87 % similitud alta");
+  });
+});
+
+describe("comparación campo por campo", () => {
+  it("distingue igual, distinto, conflicto y vacío, ignorando mayúsculas, tildes y puntuación", () => {
+    expect(comparisonRowState("Iglesia de Quinua", "IGLESIA DE QUINUA")).toBe("same");
+    expect(comparisonRowState("COLECCION L R M 18", "COLECCION L.R.M. 018", "match")).toBe("same"); // señal de coincidencia
+    expect(comparisonRowState("Puno", "Cusco")).toBe("different");
+    expect(comparisonRowState("I-134", "Sin código I".replace("Sin código I", ""))).toBe("different");
+    expect(comparisonRowState("I-134", "I-200", "conflict")).toBe("conflict");
+    expect(comparisonRowState("", "—".replace("—", ""))).toBe("empty");
+    expect(comparisonRowState("Sin registrar", "")).toBe("empty");
+  });
+
+  it("la tabla pone el campo al centro (A | campo | B), con color, palabra e icono en cada fila marcada", () => {
+    const pieceA = getPieceDetail(ids.piece(1));
+    const pieceB = getPieceDetail(ids.piece(2));
+    const html = render(
+      <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
+    );
+    expect(html).toContain('role="table"');
+    expect(html).toContain("sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)]");
+    expect(html).toContain("text-center");
+    expect(html).toMatch(/data-mark="different"[^>]*bg-ambar-bg|bg-ambar-bg[^>]*data-mark="different"/);
+    const text = visibleText(html);
+    expect(text).toContain("distinto");
+    expect(html).toContain("text-verde-exito"); // las filas iguales usan el verde
+  });
+
+  it("un par con códigos I distintos marca esa fila en rojo con la palabra «conflicto»", () => {
+    const pieceA = getPieceDetail(ids.piece(1));
+    const html = render(
+      <DuplicateCandidateCard
+        candidate={candidate({ blocking_conflict: true, matched_fields: [{ signal: "inventory_code_conflict", field: "identifier:I", similarity: 0 }] })}
+        pieceA={pieceA}
+        pieceB={getPieceDetail(ids.piece(7))}
+        piecesLoading={false}
+        canResolve
+        onMerge={noop}
+        onDistinct={noop}
+        onPostpone={noop}
+      />,
+    );
+    expect(html).toMatch(/data-mark="conflict"[^>]*bg-carmin-bg|bg-carmin-bg[^>]*data-mark="conflict"/);
+    expect(visibleText(html)).toContain("conflicto");
+  });
+});
+
+describe("paginación de la cola", () => {
+  it("muestra anterior, siguiente y la página actual, y se oculta con una sola página", () => {
+    const html = render(<QueuePager page={2} pageCount={3} label="Páginas de la cola, arriba" onPage={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Página 2 de 3");
+    expect(text).toContain("Anterior");
+    expect(text).toContain("Siguiente");
+    expect(html).toContain('aria-label="Páginas de la cola, arriba"');
+    expect(html).not.toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*(Anterior|Siguiente)/);
+    expect(render(<QueuePager page={1} pageCount={1} label="x" onPage={noop} />)).toBe("");
+  });
+
+  it("deshabilita anterior en la primera página y siguiente en la última", () => {
+    const first = render(<QueuePager page={1} pageCount={2} label="x" onPage={noop} />);
+    expect(first).toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Anterior/);
+    expect(first).not.toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Siguiente/);
+    const last = render(<QueuePager page={2} pageCount={2} label="x" onPage={noop} />);
+    expect(last).toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Siguiente/);
+  });
+});
+
+describe("lenguaje llano en la cola de duplicados", () => {
+  const requirement = /\b(RF-0\d{2}|RNF-0\d{2}|RN-0\d{2}|RIA-0\d)\b/;
+
+  it("ni la tarjeta, ni los diálogos, ni el panel de detección, ni los avisos citan requisitos", () => {
+    const pieceA = getPieceDetail(ids.piece(1));
+    const blocked = candidate({ blocking_conflict: true });
+    const texts = [
+      render(<DuplicateCandidateCard candidate={blocked} pieceA={pieceA} pieceB={getPieceDetail(ids.piece(7))} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
+      render(<DistinctDialog open={false} onClose={noop} onSubmit={async () => ({ ok: true })} />),
+      render(<PostponeDialog open={false} today={new Date("2026-10-27T12:00:00Z")} onClose={noop} onSubmit={async () => ({ ok: true })} />),
+      render(<ScanPanel job={null} error={null} starting={false} canScan onStart={noop} />),
+      render(<DuplicateFilters value={DEFAULT_FILTERS} collections={[]} onChange={noop} />),
+    ].map(visibleText);
+    for (const text of texts) expect(text).not.toMatch(requirement);
+  });
+
+  it("los diálogos de resolución son breves", () => {
+    const distinct = visibleText(render(<DistinctDialog open={false} onClose={noop} onSubmit={async () => ({ ok: true })} />));
+    expect(distinct).toContain("Son piezas distintas aunque se parezcan.");
+    const postpone = visibleText(render(<PostponeDialog open={false} today={new Date("2026-10-27T12:00:00Z")} onClose={noop} onSubmit={async () => ({ ok: true })} />));
+    expect(postpone).toContain("máximo 180 días");
   });
 });

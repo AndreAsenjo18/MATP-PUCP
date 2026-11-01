@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { ROLES } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
-import { isActive, mobileMenuReducer, NAV_ITEMS, visibleNavItems } from "./navigation";
+import { memoryStorage } from "@/test/memory-storage";
+
+import { isActive, mobileMenuReducer, NAV_ITEMS, readSidebarCollapsed, SIDEBAR_STORAGE_KEY, visibleNavItems, writeSidebarCollapsed } from "./navigation";
+import { MobileAccount } from "./MobileAccount";
 import { PermissionNotice } from "./PermissionNotice";
 import { Sidebar } from "./Sidebar";
 
@@ -73,10 +76,68 @@ describe("Sidebar", () => {
   });
 });
 
+describe("Sidebar contraída", () => {
+  it("deja solo los iconos, con el nombre de cada sección como ayuda y para el lector de pantalla", () => {
+    const html = render(<Sidebar items={NAV_ITEMS.slice(0, 3)} pathname="/busqueda" collapsed />);
+    expect(html.match(/title="(Inicio|Búsqueda|Importación)"/g)).toHaveLength(3);
+    expect(html.match(/class="sr-only"/g)).toHaveLength(3);
+    expect(html).toContain("justify-center");
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+  });
+
+  it("expandida no repite el nombre como ayuda ni lo oculta", () => {
+    const html = render(<Sidebar items={NAV_ITEMS.slice(0, 3)} pathname="/busqueda" />);
+    expect(html).not.toContain("title=");
+    expect(html).not.toContain("sr-only");
+  });
+});
+
+describe("preferencia de la barra lateral", () => {
+  it("empieza expandida y recuerda lo que se guardó", () => {
+    const storage = memoryStorage();
+    expect(readSidebarCollapsed(storage)).toBe(false);
+    writeSidebarCollapsed(storage, true);
+    expect(storage.getItem(SIDEBAR_STORAGE_KEY)).toBe("collapsed");
+    expect(readSidebarCollapsed(storage)).toBe(true);
+    writeSidebarCollapsed(storage, false);
+    expect(readSidebarCollapsed(storage)).toBe(false);
+  });
+
+  it("si el almacenamiento no está disponible o falla, la barra queda expandida y no hay error", () => {
+    const blocked = {
+      getItem: () => {
+        throw new Error("bloqueado");
+      },
+      setItem: () => {
+        throw new Error("bloqueado");
+      },
+    };
+    expect(readSidebarCollapsed(null)).toBe(false);
+    expect(readSidebarCollapsed(blocked)).toBe(false);
+    expect(() => writeSidebarCollapsed(blocked, true)).not.toThrow();
+    expect(() => writeSidebarCollapsed(null, true)).not.toThrow();
+  });
+});
+
 describe("PermissionNotice", () => {
   it("muestra el texto por defecto con colores de advertencia accesibles", () => {
     const html = render(<PermissionNotice />);
     expect(html).toContain("text-ambar-texto");
     expect(visibleText(html)).toMatch(/Su rol actual no tiene permiso/);
+  });
+});
+
+describe("MobileAccount", () => {
+  it("muestra nombre, rol y el botón de cierre de sesión a todo el ancho", () => {
+    const html = render(<MobileAccount name="Ana García" role="Administrador" logoutLabel="Cerrar sesión" onLogout={() => {}} />);
+    expect(visibleText(html)).toContain("Ana García");
+    expect(visibleText(html)).toContain("Administrador");
+    expect(visibleText(html)).toContain("Cerrar sesión");
+    expect(html).toContain("w-full");
+    expect(html).toContain("min-h-11");
+  });
+
+  it("usa «Cambiar de rol» en modo demostración", () => {
+    expect(visibleText(render(<MobileAccount logoutLabel="Cambiar de rol" onLogout={() => {}} />))).toContain("Cambiar de rol");
   });
 });
