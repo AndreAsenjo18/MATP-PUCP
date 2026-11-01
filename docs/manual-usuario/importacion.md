@@ -212,6 +212,20 @@ Ninguna imagen se asocia sola. **Después de aplicar el lote**:
 
 La imagen queda como foto de la pieza, con referencia al lote. En una pieza en comodato hereda la restricción «No publicar».
 
+## 8. Cargar las hojas de errores de la consultoría
+
+Los Excel de la consultoría 2024/25 traen hojas «Errores identificados» y «Errores pendientes» con problemas de piezas que ya están en el inventario. **No se cargan como piezas**: se cargan como **observaciones** de las piezas que nombran.
+
+1. Cargue antes las piezas (el inventario o los archivos por colección).
+2. Suba el libro y, en **Opciones avanzadas**, elija la hoja «Errores…».
+3. Queda marcada la opción **Cargar esta hoja como observaciones de piezas ya registradas**.
+4. Indique la columna de los códigos (código I o de colección). Las demás columnas forman el texto de la observación.
+5. Valide y revise las filas:
+   - Una fila cuya pieza se encontró muestra el cambio en **Observaciones**: la nota actual y la nota con la observación agregada al final, con su fuente, por ejemplo «[Consultoría 2024/25 — errores pendientes] Error identificado: código repetido».
+   - Una fila cuyos códigos no están en el catálogo sale con el error **Pieza no encontrada** y no se aplica.
+   - Si los códigos de la fila son de dos piezas, elija a cuál corresponde. Una observación nunca se marca como pieza nueva.
+6. Apruebe la carga. Las notas que ya tenía cada pieza no se borran; la observación se agrega al final. La bitácora lista cada fila no encontrada con sus códigos.
+
 ## Revertir un lote aplicado
 
 Solo el **Administrador** puede revertir un lote aplicado. En el asistente, abra el lote aplicado, pulse **Revertir lote** al final de la pantalla y escriba el motivo. Al revertirlo:
