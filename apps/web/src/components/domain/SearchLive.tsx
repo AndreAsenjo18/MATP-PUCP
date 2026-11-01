@@ -25,6 +25,7 @@ import {
   finalLocations,
   movePiece,
   newIdempotencyKey,
+  seenAgoText,
   type LocationFailure,
 } from "@/lib/data/locations";
 import { fetchPieceCatalogs } from "@/lib/data/pieces";
@@ -212,7 +213,14 @@ export function SearchResults({
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {page.items.map((hit) => {
-              const card = <PieceCard {...pieceCardProps(hit.piece)} thumbnailUrl={hit.thumbnail_url} matchReason={matchReasonText(hit)} />;
+              const card = (
+                <PieceCard
+                  {...pieceCardProps(hit.piece)}
+                  thumbnailUrl={hit.thumbnail_url}
+                  matchReason={matchReasonText(hit)}
+                  seenText={hit.last_seen_at ? seenAgoText(hit.last_seen_at) : null}
+                />
+              );
               if (!selection || !onSelectionChange) return <div key={hit.piece.id}>{card}</div>;
               // La casilla va al lado de la tarjeta, que es un enlace a la ficha.
               return (

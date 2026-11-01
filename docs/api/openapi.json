@@ -11357,6 +11357,19 @@
           }
         ],
         "properties": {
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Último movimiento o verificación de la pieza («visto hace N días»), con la misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).",
+            "title": "Last Seen At"
+          },
           "location_id": {
             "anyOf": [
               {

@@ -26,6 +26,8 @@ export interface PieceCardProps {
   thumbnailUrl?: string | null;
   /** Qué coincidió con la búsqueda, en lenguaje claro (RF-031). */
   matchReason?: string | null;
+  /** «visto hace N días», solo para quien puede ver la ubicación (fusion-busqueda-deposito 3.3). */
+  seenText?: string | null;
 }
 
 /** Props de la tarjeta a partir del resumen de pieza del contrato de la API. */
@@ -53,6 +55,7 @@ export function PieceCard({
   hasPhoto,
   thumbnailUrl,
   matchReason,
+  seenText,
 }: PieceCardProps) {
   // «Sin foto» se muestra en el pie de la tarjeta; no se repite como badge.
   const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
@@ -86,6 +89,7 @@ export function PieceCard({
         <span className="flex items-center gap-1">
           <MapPin size={16} aria-hidden="true" className="text-terracota" />
           {locationLabel ?? "Sin ubicación"}
+          {seenText && <span className="text-gris-texto"> · {seenText}</span>}
         </span>
         {!hasPhoto && (
           <span className="flex items-center gap-1 font-medium text-ambar-texto" title="Requiere fotografía">

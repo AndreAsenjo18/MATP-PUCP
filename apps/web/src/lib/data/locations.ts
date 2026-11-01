@@ -150,6 +150,21 @@ export function newIdempotencyKey(): string {
 
 export type LocationRef = ApiSchemas["LocationRef"];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Cuándo se vio la pieza en su lugar por última vez, en días de calendario: «visto hoy», «visto ayer»
+ * o «visto hace N días» (fusion-busqueda-deposito 3.3).
+ */
+export function seenAgoText(lastSeenAt: string, now: Date = new Date()): string {
+  const seen = new Date(lastSeenAt);
+  const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.max(0, Math.round((startOf(now) - startOf(seen)) / DAY_MS));
+  if (days === 0) return "visto hoy";
+  if (days === 1) return "visto ayer";
+  return `visto hace ${days} días`;
+}
+
 /** Ruta completa de una ubicación como texto, p. ej. «Sede › Depósito 1 › Rack A». */
 export function locationPathLabel(path: readonly Pick<LocationRef, "name">[]): string {
   return path.map((node) => node.name).join(" › ");

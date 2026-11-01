@@ -131,6 +131,14 @@ describe("resultados de la búsqueda", () => {
     expect(text).toContain("Quitar la selección");
   });
 
+  it("muestra cuándo se vio la pieza solo si el resultado trae la fecha (dato restringido)", () => {
+    const seen = visibleText(render(<SearchResults page={page({ items: [hit({ last_seen_at: new Date().toISOString() })] })} />));
+    expect(seen).toContain("Sede Central › Depósito 2 · visto hoy");
+    const restricted = visibleText(render(<SearchResults page={page({ items: [hit()] })} />));
+    expect(restricted).toContain("Sede Central › Depósito 2");
+    expect(restricted).not.toContain("visto");
+  });
+
   it("sin permiso de movimientos los resultados no tienen casillas", () => {
     const html = render(<SearchResults page={page({ items: [hit()], total: 1 })} />);
     expect(html).not.toContain('type="checkbox"');

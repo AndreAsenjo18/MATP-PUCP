@@ -11,6 +11,7 @@ import {
   locationPathLabel,
   movePiece,
   newIdempotencyKey,
+  seenAgoText,
   updateLocation,
   type LocationNode,
 } from "./locations";
@@ -248,5 +249,18 @@ describe("destinos finales", () => {
     expect(filterDestinations(finals, "DEPOSITO 2").map((item) => item.id)).toEqual(["d2"]);
     expect(filterDestinations(finals, "  ")).toHaveLength(4);
     expect(filterDestinations(finals, "inexistente")).toEqual([]);
+  });
+});
+
+describe("cuándo se vio la pieza (fusion-busqueda-deposito 3.3)", () => {
+  const now = new Date(2026, 10, 1, 9, 30);
+  it("cuenta días de calendario: hoy, ayer o hace N días", () => {
+    expect(seenAgoText(new Date(2026, 10, 1, 0, 5).toISOString(), now)).toBe("visto hoy");
+    expect(seenAgoText(new Date(2026, 9, 31, 23, 50).toISOString(), now)).toBe("visto ayer");
+    expect(seenAgoText(new Date(2026, 9, 20, 12, 0).toISOString(), now)).toBe("visto hace 12 días");
+  });
+
+  it("una fecha posterior por un reloj adelantado se lee como hoy", () => {
+    expect(seenAgoText(new Date(2026, 10, 2, 8, 0).toISOString(), now)).toBe("visto hoy");
   });
 });

@@ -6,6 +6,7 @@ Synthetic data only (RNF-014).
 """
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 
@@ -15,7 +16,7 @@ from app.modules.catalog.service import create_piece
 from app.modules.locations.models import Location, LocationLevel
 from app.modules.locations.service import create_location, move_piece
 from app.modules.users.models import AppUser
-from tests.api.conftest import ADMIN, STORAGE, LoginAs, SeededApi, as_user
+from tests.api.conftest import ADMIN, STORAGE, VIEWER, LoginAs, SeededApi, as_user
 
 
 def _located_hits(page: dict) -> list[dict]:
@@ -123,3 +124,49 @@ def test_moving_hits_in_one_batch_with_the_location_they_showed(seeded_api: Seed
             headers=as_user(ADMIN),
         )
         assert deleted.status_code == 204, deleted.text
+
+
+def test_a_verification_from_the_search_makes_the_hit_seen_today(seeded_api: SeededApi) -> None:
+    """Escenario «Verificar una pieza desde la búsqueda» (3.2 and 3.3): the last time seen is the
+    verification, for whoever sees the location; nothing for whoever does not."""
+    client, storage = seeded_api.client, as_user(STORAGE)
+    place = next(
+        hit["location_id"]
+        for hit in client.get("/api/v1/search", params={"limit": 50}, headers=storage).json()[
+            "items"
+        ]
+        if hit.get("location_id")
+    )
+    piece_id = client.post(
+        "/api/v1/pieces",
+        json={"denomination": "Faja verificada (sintética)", "tenure_regime": "Propiedad"},
+        headers=as_user(ADMIN),
+    ).json()["id"]
+    params = {"denomination": "Faja verificada (sintética)"}
+
+    def hit_of(headers: dict[str, str]) -> dict:
+        page = client.get("/api/v1/search", params=params, headers=headers).json()
+        return next(hit for hit in page["items"] if hit["piece"]["id"] == piece_id)
+
+    assert hit_of(storage).get("last_seen_at") is None  # never placed nor verified
+    placed = client.post(
+        f"/api/v1/pieces/{piece_id}/move",
+        json={"movement_type": "MOVE", "to_location_id": place},
+        headers=storage,
+    )
+    assert placed.status_code in (200, 201), placed.text
+    verified = client.post(
+        f"/api/v1/pieces/{piece_id}/move", json={"movement_type": "VERIFICATION"}, headers=storage
+    )
+    assert verified.status_code in (200, 201), verified.text
+
+    seen = datetime.fromisoformat(hit_of(storage)["last_seen_at"])
+    assert seen == datetime.fromisoformat(verified.json()["occurred_at"])
+    assert seen >= datetime.fromisoformat(placed.json()["occurred_at"])
+    assert "last_seen_at" not in hit_of(as_user(VIEWER))
+    deleted = client.delete(
+        f"/api/v1/pieces/{piece_id}",
+        params={"reason": "Limpieza de prueba"},
+        headers=as_user(ADMIN),
+    )
+    assert deleted.status_code == 204, deleted.text

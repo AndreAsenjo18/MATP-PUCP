@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: f59cd347551de369aab33293c3930ba074d7ec1e97b13289b60105d7d6f9bbe7
+ * openapi-sha256: 0f75ed657e68824cdf0ae6226d220b828415c4e8590d41f7dfd1c0da8ed5e9ab
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -7277,6 +7277,11 @@ export interface components {
          *     }
          */
         SearchHit: {
+            /**
+             * Last Seen At
+             * @description Último movimiento o verificación de la pieza («visto hace N días»), con la misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).
+             */
+            last_seen_at?: string | null;
             /**
              * Location Id
              * @description Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).
