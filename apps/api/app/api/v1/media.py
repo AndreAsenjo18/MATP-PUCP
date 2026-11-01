@@ -34,6 +34,7 @@ from app.modules.media.schemas import (
     StorageEstimateRequest,
     StorageEstimateResponse,
 )
+from app.modules.media.service import provenance_of
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Multimedia"])
 
@@ -207,6 +208,7 @@ def upload_media_asset(
         restriction_note=asset.restriction_note,
         download_url=None,
         created_at=asset.created_at,
+        provenance=provenance_of(asset),
     )
 
 

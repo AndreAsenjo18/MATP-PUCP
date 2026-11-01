@@ -92,6 +92,7 @@ from app.modules.media.service import (
     comodato_restriction_term_id,
     effective_restriction,
     gallery_urls,
+    provenance_of,
     verify_image_stream,
 )
 from app.modules.quality.completeness import (
@@ -856,6 +857,7 @@ def _media_out(
         download_url=urls[1],
         thumbnail_url=urls[0],
         created_at=asset.created_at,
+        provenance=provenance_of(asset),
     )
 
 
