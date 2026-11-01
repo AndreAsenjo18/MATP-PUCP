@@ -42,7 +42,7 @@ def test_no_presenta_in_the_inventory_column_is_no_code_i() -> None:
 def test_the_migration_adds_the_markers_and_keeps_the_administrators_list(
     migrated: Engine,  # noqa: F811
 ) -> None:
-    _migrate(migrated, "0018_tenure_aliases", down=True)
+    _migrate(migrated, "0019_photo_batches", down=True)
     with migrated.begin() as connection:
         connection.execute(
             text("UPDATE normalization_setting SET value = :value WHERE key = 'absence_markers'"),
@@ -52,5 +52,5 @@ def test_the_migration_adds_the_markers_and_keeps_the_administrators_list(
 
     assert _settings(migrated)["absence_markers"] == ["S/N", "S/R", "NOPRESENTA", "NOREGISTRA"]
 
-    _migrate(migrated, "0018_tenure_aliases", down=True)
+    _migrate(migrated, "0019_photo_batches", down=True)
     assert _settings(migrated)["absence_markers"] == ["S/N", "S/R"]

@@ -1,7 +1,7 @@
 """Absence markers of the museum's real files: «No presenta» and «No registra».
 
 Revision ID: 0020_real_absence_markers
-Revises: 0018_tenure_aliases
+Revises: 0019_photo_batches
 Create Date: 2026-10-31
 
 Change de OpenSpec: formatos-reales-importacion (tarea 4.1, design D5). Data only: the active
@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from alembic import context, op
 
 revision: str = "0020_real_absence_markers"
-down_revision: str | None = "0018_tenure_aliases"
+down_revision: str | None = "0019_photo_batches"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
