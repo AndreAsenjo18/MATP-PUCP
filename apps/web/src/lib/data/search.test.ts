@@ -9,6 +9,8 @@ import {
   fetchExportDownloadUrl,
   fetchSearch,
   filterOfSuggestion,
+  filtersFromSearchParams,
+  filtersToSearchParams,
   hasPendingJobs,
   jobStatusLabel,
   matchReasonText,
@@ -93,6 +95,36 @@ describe("filtros de la pantalla", () => {
     ]);
     expect(suggestionText("remove_filter:denomination")).toBe("Quite el filtro «Denominación».");
     expect(filterOfSuggestion("remove_filter:description")).toBe("description");
+  });
+
+  it("los filtros viajan en la dirección con los nombres de la API y vuelven iguales", () => {
+    const filters = {
+      ...EMPTY_FILTERS,
+      q: "mmz 15",
+      denomination: "mate",
+      materialId: "mat-madera",
+      locationId: "loc-d2",
+      tenureRegime: "Préstamo Temporal" as const,
+      hasInventoryCode: false,
+      epochStartYear: -200,
+      hasAlerts: true,
+    };
+    const params = filtersToSearchParams(filters);
+    expect(params.get("denomination")).toBe("mate");
+    expect(params.get("location_id")).toBe("loc-d2");
+    expect(params.has("description")).toBe(false);
+    expect(filtersFromSearchParams(params)).toEqual(filters);
+    expect(filtersToSearchParams(EMPTY_FILTERS).toString()).toBe("");
+  });
+
+  it("lee los enlaces del tablero e ignora los valores que no entiende", () => {
+    expect(filtersFromSearchParams(new URLSearchParams("incompleteOnly=1&hasInventoryCode=false"))).toEqual({
+      ...EMPTY_FILTERS,
+      hasAlerts: true,
+      hasInventoryCode: false,
+    });
+    const odd = filtersFromSearchParams(new URLSearchParams("tenure_regime=Robado&epoch_start_year=hacia%201900&has_alerts=quizas&location_id=%20&otro=1"));
+    expect(odd).toEqual(EMPTY_FILTERS);
   });
 
   it("solo los filtros de «Más filtros» lo abren solo", () => {

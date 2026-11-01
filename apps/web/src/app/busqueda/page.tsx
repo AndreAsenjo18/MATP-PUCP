@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { getApiMode } from "@/lib/data/mode";
-import { EMPTY_FILTERS } from "@/lib/data/search";
+import { filtersFromSearchParams } from "@/lib/data/search";
 import { alertsForPiece, COLLECTIONS, getPieceDetail, listPieces, termsByVocabulary } from "@/lib/fixtures";
 import Link from "next/link";
 
@@ -184,21 +184,8 @@ function FilterSelect({
 function BusquedaSwitch() {
   const searchParams = useSearchParams();
   if (getApiMode() !== "live") return <BusquedaContent />;
-  // Enlaces que llegan del tablero de inicio:
-  const incompleteOnly = searchParams.get("incompleteOnly") === "1";
-  const hasInvParam = searchParams.get("hasInventoryCode");
-  const hasInventoryCode =
-    hasInvParam === "false" ? false : hasInvParam === "true" ? true : null;
-
-  return (
-    <SearchLive
-      initialFilters={{
-        ...EMPTY_FILTERS,
-        hasAlerts: incompleteOnly ? true : null,
-        hasInventoryCode,
-      }}
-    />
-  );
+  // Los filtros de la dirección (enlaces compartidos, volver atrás y los del tablero de inicio).
+  return <SearchLive initialFilters={filtersFromSearchParams(searchParams)} />;
 }
 
 export default function BusquedaPage() {

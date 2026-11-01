@@ -19,6 +19,7 @@ export type TenureRegimeLabel = NonNullable<SearchQuery["tenure_regime"]>;
 export type AlertCode = NonNullable<SearchQuery["alert_code"]>;
 
 export const SEARCH_PAGE_SIZE = 20;
+export const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 /** Filtros de la pantalla. `null`/vacío = filtro inactivo. */
 export interface SearchFilters {
@@ -120,6 +121,42 @@ export function apiFilters(filters: SearchFilters): Record<string, string | numb
   return result;
 }
 
+const ID_FILTER_KEYS = ["collectionId", "categoryId", "materialId", "conservationStateId", "locationId"] as const;
+
+/**
+ * Los filtros en la dirección de la página, con los nombres de la API (`?denomination=mate&location_id=…`),
+ * para compartir o volver a una búsqueda (fusion-busqueda-deposito 2.3).
+ */
+export function filtersToSearchParams(filters: SearchFilters): URLSearchParams {
+  return new URLSearchParams(Object.entries(apiFilters(filters)).map(([key, value]) => [key, String(value)]));
+}
+
+function booleanParam(value: string | null): boolean | null {
+  return value === "true" ? true : value === "false" ? false : null;
+}
+
+function yearParam(value: string | null): number | null {
+  if (value === null || !/^-?\d+$/.test(value.trim())) return null;
+  return Number(value.trim());
+}
+
+/**
+ * Los filtros de una dirección de la búsqueda; lo que no se reconoce se ignora. También lee los enlaces
+ * del tablero de inicio (`incompleteOnly=1`, `hasInventoryCode=false`).
+ */
+export function filtersFromSearchParams(params: { get(name: string): string | null }): SearchFilters {
+  const filters: SearchFilters = { ...EMPTY_FILTERS };
+  for (const key of TEXT_FILTER_KEYS) filters[key] = params.get(API_KEYS[key])?.trim() ?? "";
+  for (const key of ID_FILTER_KEYS) filters[key] = params.get(API_KEYS[key])?.trim() || null;
+  const tenure = params.get(API_KEYS.tenureRegime);
+  filters.tenureRegime = TENURE_REGIMES.find((label) => label === tenure) ?? null;
+  filters.hasInventoryCode = booleanParam(params.get(API_KEYS.hasInventoryCode) ?? params.get("hasInventoryCode"));
+  filters.hasAlerts = booleanParam(params.get(API_KEYS.hasAlerts)) ?? (params.get("incompleteOnly") === "1" ? true : null);
+  filters.epochStartYear = yearParam(params.get(API_KEYS.epochStartYear));
+  filters.epochEndYear = yearParam(params.get(API_KEYS.epochEndYear));
+  return filters;
+}
+
 export interface FilterChip {
   key: keyof SearchFilters;
   label: string;
@@ -135,7 +172,7 @@ export function activeChips(filters: SearchFilters, names: Record<string, string
   const add = (key: keyof SearchFilters, value: string) => chips.push({ key, label: FILTER_LABELS[key], value });
   if (filters.q.trim()) add("q", `«${filters.q.trim()}»`);
   if (filters.denomination.trim()) add("denomination", `«${filters.denomination.trim()}»`);
-  for (const key of ["collectionId", "categoryId", "materialId", "conservationStateId", "locationId"] as const) {
+  for (const key of ID_FILTER_KEYS) {
     const id = filters[key];
     if (id) add(key, names[id] ?? "(seleccionada)");
   }

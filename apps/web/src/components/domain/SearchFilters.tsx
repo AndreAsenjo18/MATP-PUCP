@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import type { LocationNode } from "@/lib/data/locations";
 import type { TermOption } from "@/lib/data/pieces";
-import { secondaryFiltersActive, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
+import { TENURE_REGIMES, secondaryFiltersActive, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
 
 export interface SearchOptions {
   collections: TermOption[];
@@ -30,7 +30,6 @@ export interface SearchOptions {
 }
 
 export const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [], locationTree: [] };
-const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 function toBoolean(value: string): boolean | null {
   return value === "" ? null : value === "true";

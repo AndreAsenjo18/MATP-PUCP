@@ -89,6 +89,32 @@ describe("resultados de la búsqueda", () => {
     expect(html.match(/<button/g)).toHaveLength(1);
   });
 
+  it("sin resultados ofrece quitar los filtros uno por uno, aunque la API no sugiera nada", () => {
+    const chips = activeChips({ ...EMPTY_FILTERS, denomination: "xyz" });
+    const html = render(<SearchResults page={page({ items: [], total: 0 })} chips={chips} onRemoveChip={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("No se encontraron piezas con estos filtros.");
+    expect(text).toContain("Quite el filtro Denominación: «xyz».");
+    expect(html).toContain('aria-label="Quitar filtros uno por uno"');
+  });
+
+  it("con filtros aplicados no repite las sugerencias de quitar un filtro y conserva los consejos", () => {
+    const chips = activeChips({ ...EMPTY_FILTERS, q: "I 0236", materialId: "mat-madera", tenureRegime: "Comodato" }, { "mat-madera": "Madera" });
+    const html = render(
+      <SearchResults
+        page={page({ items: [], total: 0, suggestions: ["remove_filter:material_id", "check_code_format"] })}
+        chips={chips}
+        onRemoveChip={noop}
+        onSuggestion={noop}
+      />,
+    );
+    const text = visibleText(html);
+    expect(html.match(/<button/g)).toHaveLength(3);
+    expect(text).toContain("Quite el filtro Material: Madera.");
+    expect(text).not.toContain("Quite el filtro «Material».");
+    expect(text).toContain("Revise cómo escribió el código");
+  });
+
   it("avisa de las piezas con época solo en texto y pagina", () => {
     const text = visibleText(render(<SearchResults page={page({ total: 45, excluded_uninterpreted_period: 3 })} onPage={noop} />));
     expect(text).toContain("3 piezas cumplen los demás filtros, pero su época solo está escrita como texto");

@@ -26,6 +26,7 @@ import {
   SEARCH_PAGE_SIZE,
   TEXT_FILTER_KEYS,
   activeChips,
+  filtersToSearchParams,
   canDownload,
   exportResults,
   fetchExportDownloadUrl,
@@ -83,11 +84,19 @@ export function SearchResults({
   page,
   onPage,
   onSuggestion,
+  chips = [],
+  onRemoveChip,
 }: {
   page: SearchPage;
   onPage?: (page: number) => void;
   onSuggestion?: (suggestion: string) => void;
+  /** Filtros aplicados: sin resultados se ofrece quitarlos uno por uno (fusion-busqueda-deposito 2.3). */
+  chips?: FilterChip[];
+  onRemoveChip?: (key: FilterChip["key"]) => void;
 }) {
+  // Los filtros que se pueden quitar ya están en `chips`; de las sugerencias quedan las demás.
+  const removable = onRemoveChip ? chips : [];
+  const suggestions = (page.suggestions ?? []).filter((suggestion) => !(removable.length > 0 && filterOfSuggestion(suggestion)));
   const pages = Math.max(1, Math.ceil(page.total / Math.max(1, page.limit)));
   const excluded = page.excluded_uninterpreted_period ?? 0;
   return (
@@ -102,9 +111,20 @@ export function SearchResults({
         <Card className="flex flex-col items-center gap-2 border-dashed text-center text-base text-gris-texto">
           <SearchX size={24} aria-hidden="true" />
           No se encontraron piezas con estos filtros.
-          {(page.suggestions ?? []).length > 0 && (
+          {removable.length > 0 && onRemoveChip && (
+            <ul className="flex flex-col gap-1 text-left text-sm text-tinta" aria-label="Quitar filtros uno por uno">
+              {removable.map((chip) => (
+                <li key={chip.key}>
+                  <button type="button" onClick={() => onRemoveChip(chip.key)} className="text-terracota underline">
+                    Quite el filtro {chip.label}: {chip.value}.
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {suggestions.length > 0 && (
             <ul className="flex flex-col gap-1 text-left text-sm text-tinta">
-              {(page.suggestions ?? []).map((suggestion) => (
+              {suggestions.map((suggestion) => (
                 <li key={suggestion}>
                   {filterOfSuggestion(suggestion) && onSuggestion ? (
                     <button type="button" onClick={() => onSuggestion(suggestion)} className="text-terracota underline">
@@ -449,6 +469,13 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     };
   }, [query, page, devUser]);
 
+  // Los filtros aplicados viajan en la dirección, sin sumar una entrada al historial por cada tecla (2.3).
+  useEffect(() => {
+    const search = filtersToSearchParams(query).toString();
+    const url = search ? `${window.location.pathname}?${search}` : window.location.pathname;
+    if (url !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", url);
+  }, [query]);
+
   const names = useMemo(() => optionNames(options), [options]);
   const chips = activeChips(query, names);
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
@@ -487,6 +514,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             <SearchResults
               page={result}
               onPage={setPage}
+              chips={chips}
+              onRemoveChip={remove}
               onSuggestion={(suggestion) => {
                 const key = filterOfSuggestion(suggestion);
                 if (key) remove(key);
