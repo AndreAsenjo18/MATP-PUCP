@@ -6,6 +6,7 @@ the level where it goes. Design D3. Synthetic data only (RNF-014).
 """
 
 import uuid
+from collections.abc import Iterator
 
 import pytest
 from sqlalchemy import select
@@ -20,7 +21,7 @@ from tests.api.conftest import ADMIN, SeededApi, as_user
 
 
 @pytest.fixture(scope="module")
-def depot(seeded_api: SeededApi) -> dict[str, str]:
+def depot(seeded_api: SeededApi) -> Iterator[dict[str, str]]:
     """Depósito › Estante B (with a piece in its Nivel 1) and Estante D (an empty Nivel 1)."""
     session = seeded_api.session()
     admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
@@ -55,8 +56,16 @@ def depot(seeded_api: SeededApi) -> dict[str, str]:
         "shelf_d": shelf_d.id,
         "level_d": level_d.id,
     }
+    piece_id = str(piece.id)
     session.close()
-    return {key: str(value) for key, value in ids.items()}
+    yield {key: str(value) for key, value in ids.items()}
+    # The seeded database is shared: the active total must not move.
+    deleted = seeded_api.client.delete(
+        f"/api/v1/pieces/{piece_id}",
+        params={"reason": "Limpieza de prueba"},
+        headers=as_user(ADMIN),
+    )
+    assert deleted.status_code == 204, deleted.text
 
 
 def _nodes(tree: list[dict]) -> dict[str, dict]:

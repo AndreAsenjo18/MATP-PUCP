@@ -14,7 +14,7 @@ from app.models import AuditLog, Term
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditAction, AuditOrigin
 from app.modules.catalog.models import PieceMaterial
-from tests.api.conftest import SeededApi
+from tests.api.conftest import ADMIN, SeededApi, as_user
 
 MATERIALS = "/api/v1/vocabularies/MATERIAL/terms"
 
@@ -65,6 +65,12 @@ def test_fixing_a_typo_shows_in_every_sheet_and_is_audited(seeded_api: SeededApi
         )
     assert entry is not None
     assert (entry.old_value, entry.new_value) == ("Ceramica (sintética)", "Cerámica (sintética)")
+    deleted = seeded_api.client.delete(  # the shared database keeps its active total
+        f"/api/v1/pieces/{piece.json()['id']}",
+        params={"reason": "Limpieza de prueba"},
+        headers=as_user(ADMIN),
+    )
+    assert deleted.status_code == 204, deleted.text
 
 
 def test_a_label_already_active_in_the_list_is_rejected(seeded_api: SeededApi) -> None:
