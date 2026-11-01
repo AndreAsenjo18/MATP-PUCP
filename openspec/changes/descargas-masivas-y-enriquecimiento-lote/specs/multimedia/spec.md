@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Descarga masiva de fotografías por paquete
-El sistema SHALL permitir a un usuario con permiso de descarga de fotografías solicitar un paquete ZIP con las fotos de un conjunto de hasta 200 piezas [SUPUESTO M1], generado en segundo plano con un identificador de trabajo, consultable por su solicitante y descargable mediante un enlace de corta duración hasta su caducidad [SUPUESTO M2]. El sistema MUST limitar a un paquete en preparación por usuario. (RF-013, RNF-005)
+El sistema SHALL permitir a un usuario con permiso de descarga de fotografías solicitar un paquete ZIP con las fotos de un conjunto de hasta 200 piezas [SUPUESTO AA1], generado en segundo plano con un identificador de trabajo, consultable por su solicitante y descargable mediante un enlace de corta duración hasta su caducidad [SUPUESTO AA2]. El sistema MUST limitar a un paquete en preparación por usuario. (RF-013, RNF-005)
 
 #### Scenario: Paquete de un grupo de piezas
 - **WHEN** un Gestor de colecciones solicita el paquete de fotos de 30 piezas
