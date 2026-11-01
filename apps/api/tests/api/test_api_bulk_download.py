@@ -50,7 +50,7 @@ def test_a_package_answers_its_job_and_then_its_link(
     _delete(seeded_api, piece_id)
 
 
-def test_another_person_cannot_see_the_package(
+def test_another_person_cannot_see_the_package_but_an_administrator_can(
     seeded_api: SeededApi,
     fake_storage: dict,  # noqa: F811
 ) -> None:
@@ -62,7 +62,8 @@ def test_another_person_cannot_see_the_package(
     admin = seeded_api.client.get(f"{BULK}/{job['id']}", headers=as_user(ADMIN))
     missing = seeded_api.client.get(f"{BULK}/{uuid.uuid4()}", headers=H_MANAGER)
 
-    assert (other.status_code, admin.status_code, missing.status_code) == (403, 403, 404)
+    assert (other.status_code, admin.status_code, missing.status_code) == (403, 200, 404)
+    assert admin.json()["id"] == job["id"]
 
 
 def test_an_expired_package_is_410_and_keeps_its_record(

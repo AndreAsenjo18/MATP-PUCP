@@ -3,7 +3,7 @@
 Design D1: asking for a package creates a job and answers its state; the ZIP is built in the
 background over ``app/core/jobs.py`` (ADR-010), one package in preparation per person, and is
 served later through a short-lived link until the package expires [SUPUESTO AA2]. Only the
-person who asked for a package can see it.
+person who asked for a package, or an administrator, can see it.
 """
 
 import logging
@@ -79,13 +79,18 @@ def create_bulk_download(
     return job
 
 
-def bulk_download_of(session: Session, job_id: uuid.UUID, user_id: uuid.UUID) -> MediaBulkDownload:
-    """The package, only for the person who asked for it (404 if missing, 403 otherwise)."""
+def bulk_download_of(
+    session: Session, job_id: uuid.UUID, user_id: uuid.UUID, *, sees_every_package: bool = False
+) -> MediaBulkDownload:
+    """The package for the person who asked for it, or for an administrator (404 if missing,
+    403 otherwise)."""
     job = session.get(MediaBulkDownload, job_id)
     if job is None:
         raise NotFound("No existe ese paquete de fotos.")
-    if job.requested_by_id != user_id:
-        raise PermissionDenied("Solo quien pidió el paquete de fotos puede consultarlo.")
+    if job.requested_by_id != user_id and not sees_every_package:
+        raise PermissionDenied(
+            "Solo quien pidió el paquete de fotos o un administrador puede consultarlo."
+        )
     return job
 
 

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 038d9d1e2f200acea50a57cdfe9e082444f47ae17aa9f128aa523c73ad516eb2
+ * openapi-sha256: 1da0b8696a18f4c7c02e2ef0cfce468efe0847e9fa88e051c07744e4242f4b7f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1210,7 +1210,7 @@ export interface paths {
         };
         /**
          * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
-         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Solo lo consulta quien lo pidió.
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).
          */
         get: operations["getBulkDownload"];
         put?: never;
@@ -12551,7 +12551,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description El rol no tiene el permiso requerido o el paquete lo pidió otra persona. */
+            /** @description El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador. */
             403: {
                 headers: {
                     [name: string]: unknown;

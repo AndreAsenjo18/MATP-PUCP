@@ -240,6 +240,11 @@ def bulk_download_body(request: Request, body: BulkDownloadRequest) -> BulkDownl
     return body
 
 
+def _sees_every_package(user: CurrentUser) -> bool:
+    """The rule of the exports (``GET /exports/{id}``): the admin role or ``exports.full``."""
+    return "admin" in {role.lower() for role in user.roles} or "exports.full" in user.permissions
+
+
 def _bulk_download_out(request: Request, job: MediaBulkDownload) -> BulkDownloadJob:
     """The state of a package; once READY, a short-lived link to its ZIP (D1)."""
     url = None
@@ -302,8 +307,8 @@ def bulk_download_media(
     responses={
         403: {
             "model": ErrorResponse,
-            "description": "El rol no tiene el permiso requerido o el paquete lo pidió otra "
-            "persona.",
+            "description": "El rol no tiene el permiso requerido, o el paquete lo pidió otra "
+            "persona y quien consulta no es administrador.",
         },
         404: {"model": ErrorResponse, "description": "No existe ese paquete."},
         410: {
@@ -316,13 +321,14 @@ def bulk_download_media(
     description="Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): "
     "el estado del paquete y, cuando está listo, un enlace de corta duración "
     "(`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca "
-    "(`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Solo lo consulta quien lo pidió.",
+    "(`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol "
+    "`ADMIN` o permiso `exports.full`, como las exportaciones).",
     **implemented(),
 )
 def get_bulk_download(
     job_id: uuid.UUID, request: Request, session: SessionDep, user: Exporter
 ) -> BulkDownloadJob:
-    job = bulk_download_of(session, job_id, user.id)
+    job = bulk_download_of(session, job_id, user.id, sees_every_package=_sees_every_package(user))
     if job.status is BulkDownloadStatus.READY and job.storage_key and is_expired(job):
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
