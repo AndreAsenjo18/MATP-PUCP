@@ -386,3 +386,15 @@ describe("rowWarnings", () => {
     expect(rowWarnings({ mapped_data: null })).toEqual([]);
   });
 });
+
+describe("filas omitidas por repetir el encabezado (formatos-reales-importacion, tarea 7.1)", () => {
+  it("avisa cuántas filas no se cargaron", async () => {
+    const { skippedHeaderRowsNotice } = await import("./imports");
+    expect(skippedHeaderRowsNotice({ counts: { skipped_header_rows: 2 } } as never)).toBe(
+      "2 filas no se cargaron porque repetían el encabezado; quedan en la bitácora del lote.",
+    );
+    expect(skippedHeaderRowsNotice({ counts: { skipped_header_rows: 1 } } as never)).toContain("1 fila no se cargó");
+    expect(skippedHeaderRowsNotice({ counts: {} } as never)).toBeNull();
+    expect(skippedHeaderRowsNotice(null)).toBeNull();
+  });
+});
