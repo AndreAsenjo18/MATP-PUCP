@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { fetchLocationsTree } from "@/lib/data/locations";
 import { fetchPieceCatalogs } from "@/lib/data/pieces";
+import { EMPTY_SELECTION, pageSelectionState, setPageSelected, toggleSelected, type Selection } from "@/lib/data/selection";
 import {
   DEFAULT_EXPORT_COLUMNS,
   EMPTY_FILTERS,
@@ -44,6 +45,7 @@ import {
   type ExportJob,
   type FilterChip,
   type SearchFilters,
+  type SearchHit,
   type SearchPage,
 } from "@/lib/data/search";
 
@@ -80,12 +82,49 @@ export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; on
   );
 }
 
+/** «Seleccionar toda la página» y cuántas piezas hay elegidas, también de otras páginas. */
+function PageSelection({
+  pieces,
+  selection,
+  onSelectionChange,
+}: {
+  pieces: SearchHit["piece"][];
+  selection: Selection;
+  onSelectionChange: (next: Selection) => void;
+}) {
+  const state = pageSelectionState(selection, pieces);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-tinta">
+      <label className="flex min-h-11 items-center gap-2">
+        <input
+          type="checkbox"
+          checked={state === "all"}
+          aria-checked={state === "some" ? "mixed" : state === "all"}
+          onChange={() => onSelectionChange(setPageSelected(selection, pieces, state !== "all"))}
+          className="size-6 accent-terracota"
+        />
+        Seleccionar toda la página
+      </label>
+      {selection.size > 0 && (
+        <span className="flex items-center gap-2" aria-live="polite">
+          {selection.size} pieza{selection.size === 1 ? "" : "s"} seleccionada{selection.size === 1 ? "" : "s"}
+          <Button variant="outline" size="sm" onClick={() => onSelectionChange(EMPTY_SELECTION)}>
+            Quitar la selección
+          </Button>
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function SearchResults({
   page,
   onPage,
   onSuggestion,
   chips = [],
   onRemoveChip,
+  selection,
+  onSelectionChange,
 }: {
   page: SearchPage;
   onPage?: (page: number) => void;
@@ -93,6 +132,12 @@ export function SearchResults({
   /** Filtros aplicados: sin resultados se ofrece quitarlos uno por uno (fusion-busqueda-deposito 2.3). */
   chips?: FilterChip[];
   onRemoveChip?: (key: FilterChip["key"]) => void;
+  /**
+   * Piezas elegidas para verificar o mover (fusion-busqueda-deposito 3.1). Sin ella no hay casillas:
+   * solo se pasa a quien tiene el permiso de registrar movimientos.
+   */
+  selection?: Selection;
+  onSelectionChange?: (next: Selection) => void;
 }) {
   // Los filtros que se pueden quitar ya están en `chips`; de las sugerencias quedan las demás.
   const removable = onRemoveChip ? chips : [];
@@ -139,11 +184,30 @@ export function SearchResults({
           )}
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {page.items.map((hit) => (
-            <PieceCard key={hit.piece.id} {...pieceCardProps(hit.piece)} thumbnailUrl={hit.thumbnail_url} matchReason={matchReasonText(hit)} />
-          ))}
-        </div>
+        <>
+          {selection && onSelectionChange && (
+            <PageSelection pieces={page.items.map((hit) => hit.piece)} selection={selection} onSelectionChange={onSelectionChange} />
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {page.items.map((hit) => {
+              const card = <PieceCard {...pieceCardProps(hit.piece)} thumbnailUrl={hit.thumbnail_url} matchReason={matchReasonText(hit)} />;
+              if (!selection || !onSelectionChange) return <div key={hit.piece.id}>{card}</div>;
+              // La casilla va al lado de la tarjeta, que es un enlace a la ficha.
+              return (
+                <div key={hit.piece.id} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selection.has(hit.piece.id)}
+                    onChange={() => onSelectionChange(toggleSelected(selection, hit.piece))}
+                    aria-label={`Seleccionar ${hit.piece.denomination}`}
+                    className="mt-4 size-6 shrink-0 accent-terracota"
+                  />
+                  <div className="min-w-0 flex-1">{card}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
       {page.total > page.limit && onPage && (
         <div className="flex items-center justify-between gap-3">
@@ -420,6 +484,9 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [jobsKey, setJobsKey] = useState(0);
   const canExport = hasPermission("exports.run");
+  // Verificar y mover desde los resultados: solo con el permiso de la antigua vista de depósito (3.1).
+  const canMove = hasPermission("movements.register");
+  const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
 
   useEffect(() => {
     let active = true;
@@ -516,6 +583,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
               onPage={setPage}
               chips={chips}
               onRemoveChip={remove}
+              {...(canMove ? { selection, onSelectionChange: setSelection } : {})}
               onSuggestion={(suggestion) => {
                 const key = filterOfSuggestion(suggestion);
                 if (key) remove(key);

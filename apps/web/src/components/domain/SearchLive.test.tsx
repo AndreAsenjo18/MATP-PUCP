@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { EMPTY_FILTERS, activeChips, type ExportJob, type SearchHit, type SearchPage } from "@/lib/data/search";
+import { EMPTY_SELECTION, toggleSelected } from "@/lib/data/selection";
 import { render, visibleText } from "@/test/render";
 
 import { SearchFiltersPanel, type SearchOptions } from "./SearchFilters";
@@ -113,6 +114,27 @@ describe("resultados de la búsqueda", () => {
     expect(text).toContain("Quite el filtro Material: Madera.");
     expect(text).not.toContain("Quite el filtro «Material».");
     expect(text).toContain("Revise cómo escribió el código");
+  });
+
+  it("con permiso de movimientos cada resultado tiene su casilla y se elige la página entera", () => {
+    const second = hit({}, { id: "p-2", denomination: "Mate burilado (sintético)" });
+    const fromOtherPage = hit({}, { id: "p-9", denomination: "Manta (sintética)" }).piece;
+    const selection = toggleSelected(toggleSelected(EMPTY_SELECTION, second.piece), fromOtherPage);
+    const html = render(<SearchResults page={page({ items: [hit(), second], total: 2 })} selection={selection} onSelectionChange={noop} />);
+    expect(html.match(/type="checkbox"/g)).toHaveLength(3);
+    expect(html).toContain('aria-label="Seleccionar Retablo de San Marcos (sintético)"');
+    expect(html.match(/checked=""/g)).toHaveLength(1);
+    expect(html).toContain('aria-checked="mixed"');
+    const text = visibleText(html);
+    expect(text).toContain("Seleccionar toda la página");
+    expect(text).toContain("2 piezas seleccionadas");
+    expect(text).toContain("Quitar la selección");
+  });
+
+  it("sin permiso de movimientos los resultados no tienen casillas", () => {
+    const html = render(<SearchResults page={page({ items: [hit()], total: 1 })} />);
+    expect(html).not.toContain('type="checkbox"');
+    expect(visibleText(html)).not.toContain("Seleccionar toda la página");
   });
 
   it("avisa de las piezas con época solo en texto y pagina", () => {
