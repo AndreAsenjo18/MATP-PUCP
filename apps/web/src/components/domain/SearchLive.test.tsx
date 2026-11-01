@@ -44,7 +44,15 @@ const OPTIONS: SearchOptions = {
   categories: [{ id: "cat-ret", label: "Retablo" }],
   materials: [{ id: "mat-madera", label: "Madera" }],
   conservationStates: [{ id: "est-bueno", label: "Bueno" }],
-  locations: [{ id: "loc-d2", label: "Depósito 2 (Depósito)" }],
+  locations: [{ id: "loc-d2", label: "Sede Central (ficticia) › Depósito 2" }],
+  locationTree: [
+    {
+      id: "sede-1",
+      name: "Sede Central (ficticia)",
+      level_type: "Sede",
+      children: [{ id: "loc-d2", name: "Depósito 2", level_type: "Depósito", children: [] }],
+    },
+  ],
 };
 
 describe("resultados de la búsqueda", () => {
@@ -105,7 +113,9 @@ describe("filtros", () => {
     ]) {
       expect(text).toContain(label);
     }
-    expect(text).toContain("Depósito 2 (Depósito)");
+    // La ubicación se elige en el árbol (fusion-busqueda-deposito 2.2), abierto desde la sede.
+    expect(text).toContain("Depósito 2");
+    expect(text).toContain("Al elegir un lugar se incluye todo lo que contiene.");
   });
 
   it("muestra un chip que se puede quitar por cada filtro activo", () => {

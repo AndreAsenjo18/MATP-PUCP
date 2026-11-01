@@ -229,3 +229,47 @@ export function filterDestinations(items: readonly DestinationOption[], query: s
   if (!needle) return [...items];
   return items.filter((item) => foldName(item.label).includes(needle));
 }
+
+/** El camino desde la sede hasta el lugar `id`, o `null` si no está en el árbol. */
+export function locationTrail(nodes: readonly LocationNode[], id: string): LocationNode[] | null {
+  for (const node of nodes) {
+    if (node.id === id) return [node];
+    const below = locationTrail(node.children ?? [], id);
+    if (below) return [node, ...below];
+  }
+  return null;
+}
+
+/** Una fila visible del selector de ubicaciones en árbol. */
+export interface LocationTreeRow {
+  node: LocationNode;
+  depth: number;
+  /** Nombres desde la sede hasta este lugar. */
+  path: string[];
+  hasChildren: boolean;
+  expanded: boolean;
+}
+
+/**
+ * Filas visibles del selector de ubicaciones (`fusion-busqueda-deposito`, tarea 2.2): sin búsqueda,
+ * las ramas abiertas en `expanded`; con búsqueda, los lugares cuyo nombre la contiene con sus
+ * ascendientes como contexto, todo abierto.
+ */
+export function locationTreeRows(
+  nodes: readonly LocationNode[],
+  { query = "", expanded = new Set<string>() }: { query?: string; expanded?: ReadonlySet<string> } = {},
+): LocationTreeRow[] {
+  const searching = foldName(query) !== "";
+  const rows: LocationTreeRow[] = [];
+  const walk = (list: readonly LocationNode[], depth: number, prefix: readonly string[]) => {
+    for (const node of list) {
+      const children = node.children ?? [];
+      const path = [...prefix, node.name];
+      const open = children.length > 0 && (searching || expanded.has(node.id));
+      rows.push({ node, depth, path, hasChildren: children.length > 0, expanded: open });
+      if (open) walk(children, depth + 1, path);
+    }
+  };
+  walk(searching ? filterLocationTree(nodes, { query, level: "" }) : nodes, 0, []);
+  return rows;
+}

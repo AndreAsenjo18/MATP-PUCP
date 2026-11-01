@@ -7,7 +7,7 @@
 ## 2. Filtros (`apps/web`)
 
 - [ ] 2.1 Dividir `SearchLive.tsx`: `SearchFilters` con los cinco filtros principales y «Más filtros» (que se abre solo con un filtro secundario activo); añadir Autor y Procedencia, que ya acepta la API; pruebas de componente (Req: Filtros priorizados en la búsqueda)
-- [ ] 2.2 `LocationTreeSelect` (árbol con búsqueda e «incluye lo que contiene») en lugar de la lista de ubicaciones; prueba de componente (Req: Verificar y mover desde los resultados…)
+- [x] 2.2 `LocationTreeSelect` (árbol con búsqueda e «incluye lo que contiene») en lugar de la lista de ubicaciones; prueba de componente (Req: Verificar y mover desde los resultados…)
 - [ ] 2.3 Filtros en la dirección de la página (lectura y escritura) y mensaje sin resultados con quitar filtros uno por uno; pruebas (Req: Filtros priorizados… — escenarios «Enlace con un filtro secundario» y «Denominación sin resultados»)
 
 ## 3. Acciones del depósito en la búsqueda

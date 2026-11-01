@@ -10,13 +10,15 @@ import { Download, Eraser, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
+import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
-import { fetchLocations } from "@/lib/data/locations";
+import { fetchLocationsTree, type LocationNode } from "@/lib/data/locations";
 import { fetchPieceCatalogs, type TermOption } from "@/lib/data/pieces";
 import {
   DEFAULT_EXPORT_COLUMNS,
@@ -57,14 +59,18 @@ export interface SearchOptions {
   categories: TermOption[];
   materials: TermOption[];
   conservationStates: TermOption[];
+  /** Cada ubicación con su ruta completa, para el nombre del filtro activo. */
   locations: TermOption[];
+  /** El árbol del filtro de ubicación (`LocationTreeSelect`, fusion-busqueda-deposito 2.2). */
+  locationTree: LocationNode[];
 }
 
-const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [] };
+const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [], locationTree: [] };
 const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 function optionNames(options: SearchOptions): Record<string, string> {
-  return Object.fromEntries(Object.values(options).flatMap((list: TermOption[]) => list.map((option) => [option.id, option.label])));
+  const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
+  return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
 }
 
 function toBoolean(value: string): boolean | null {
@@ -131,7 +137,12 @@ export function SearchFiltersPanel({
         options={options.conservationStates}
         onChange={(conservationStateId) => onChange({ conservationStateId })}
       />
-      <OptionSelect label="Ubicación (con lo que contiene)" value={filters.locationId} options={options.locations} onChange={(locationId) => onChange({ locationId })} />
+      <LocationTreeSelect
+        label="Ubicación (con lo que contiene)"
+        nodes={options.locationTree}
+        value={filters.locationId}
+        onChange={(locationId) => onChange({ locationId })}
+      />
       <Select
         label="Régimen de tenencia"
         value={filters.tenureRegime ?? ""}
@@ -528,14 +539,16 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchPieceCatalogs(), fetchLocations({}, devUser)]).then(([catalogs, locations]) => {
+    Promise.all([fetchPieceCatalogs(), fetchLocationsTree(devUser)]).then(([catalogs, locations]) => {
       if (!active) return;
+      const tree = locations.status === "ok" ? locations.value : [];
       setOptions({
         collections: catalogs.status === "ok" ? catalogs.catalogs.collections : [],
         categories: catalogs.status === "ok" ? catalogs.catalogs.categories : [],
         materials: catalogs.status === "ok" ? catalogs.catalogs.materials : [],
         conservationStates: catalogs.status === "ok" ? catalogs.catalogs.conservationStates : [],
-        locations: locations.status === "ok" ? locations.value.map((location) => ({ id: location.id, label: `${location.name} (${location.level})` })) : [],
+        locations: flattenLocationTree(tree),
+        locationTree: tree,
       });
     });
     return () => {
