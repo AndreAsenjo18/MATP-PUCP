@@ -7,7 +7,6 @@ import {
   filterDestinations,
   filterLocationTree,
   finalLocations,
-  finalLocationsFromList,
   locationPathLabel,
   movePiece,
   newIdempotencyKey,
@@ -231,16 +230,6 @@ describe("destinos finales", () => {
 
   it("un árbol vacío no tiene lugares finales", () => {
     expect(finalLocations([])).toEqual([]);
-  });
-
-  it("finalLocationsFromList da lo mismo para una lista plana y omite lo inactivo", () => {
-    const list = [
-      { id: "s", name: "Sede", level: "Sede", parent_id: null },
-      { id: "d", name: "Depósito", level: "Depósito", parent_id: "s" },
-      { id: "n", name: "Nivel 1", level: "Nivel", parent_id: "d" },
-      { id: "x", name: "Nivel viejo", level: "Nivel", parent_id: "d", is_active: false },
-    ];
-    expect(finalLocationsFromList(list)).toEqual([{ id: "n", label: "Sede › Depósito › Nivel 1", level: "Nivel" }]);
   });
 
   it("filterDestinations busca en cualquier parte de la ruta sin acentos ni mayúsculas", () => {

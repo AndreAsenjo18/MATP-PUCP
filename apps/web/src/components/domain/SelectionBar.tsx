@@ -9,7 +9,7 @@
 import { CircleCheck, ClipboardCheck, Truck } from "lucide-react";
 import { useState } from "react";
 
-import { DestinationPicker } from "@/components/domain/DepositoParts";
+import { DestinationPicker } from "@/components/domain/DestinationPicker";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";

@@ -209,7 +209,7 @@ export interface DestinationOption {
 
 /**
  * Lugares finales del árbol (los que no tienen otros dentro), con la ruta completa como etiqueta.
- * El selector «Mover a» de Depósito solo ofrece estos: una pieza queda en un nivel o un contenedor,
+ * «Mover a» en la búsqueda solo ofrece estos: una pieza queda en un nivel o un contenedor,
  * no en una sede o un mueble con niveles. La API acepta cualquier destino activo que no sea sede;
  * la restricción es de interfaz (`rediseno-ux-deposito`, D1).
  */
@@ -219,23 +219,6 @@ export function finalLocations(nodes: readonly LocationNode[], prefix: readonly 
     const children = node.children ?? [];
     return children.length === 0 ? [{ id: node.id, label: path.join(" › "), level: node.level_type }] : finalLocations(children, path);
   });
-}
-
-/** Lo mismo que `finalLocations` para una lista plana con `parent_id` (datos de demostración). */
-export function finalLocationsFromList(
-  locations: readonly { id: string; name: string; level: string; parent_id?: string | null; is_active?: boolean }[],
-): DestinationOption[] {
-  const active = locations.filter((location) => location.is_active !== false);
-  const byId = new Map(active.map((location) => [location.id, location]));
-  const parents = new Set(active.map((location) => location.parent_id).filter((id): id is string => !!id));
-  const pathOf = (id: string): string[] => {
-    const location = byId.get(id);
-    if (!location) return [];
-    return [...(location.parent_id ? pathOf(location.parent_id) : []), location.name];
-  };
-  return active
-    .filter((location) => !parents.has(location.id))
-    .map((location) => ({ id: location.id, label: pathOf(location.id).join(" › "), level: location.level }));
 }
 
 /** Destinos cuya ruta contiene la búsqueda, sin distinguir mayúsculas ni acentos. */
