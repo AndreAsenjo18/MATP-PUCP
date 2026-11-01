@@ -13,13 +13,14 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from app.core.db import make_session_factory
 from app.core.errors import ConflictError
 from app.core.models_base import new_uuid, utcnow
 from app.models import AppUser
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece, TenureRegime
 from app.modules.catalog.service import change_tenure, create_piece
 from app.modules.media import bulk_download
@@ -307,3 +308,41 @@ def test_deleted_photos_and_pieces_stay_out_of_the_package(
 
     assert (built.included_photos, built.omitted) == (1, [])
     assert [name.rsplit("/", 1)[1] for name in _entries(lot.storage, built)] == ["01 frontal.jpg"]
+
+
+# ---------------------------------------------------------------- task 2.4: the audit
+def test_the_package_is_audited_with_its_pieces_and_its_photos(
+    session: Session, engine: Engine, users: dict[str, AppUser], lot
+) -> None:  # type: ignore[no-untyped-def]
+    built = _run(session, engine, lot.job, lot.storage)
+
+    (entry,) = session.scalars(
+        select(AuditLog).where(
+            AuditLog.entity_id == built.id, AuditLog.action == AuditAction.EXPORT
+        )
+    ).all()
+    assert entry.entity_type == "media_bulk_download"
+    manager = users["COLLECTIONS_MANAGER"]
+    assert (entry.origin, entry.user_id, entry.actor_label) == (
+        AuditOrigin.MANUAL,
+        manager.id,
+        manager.email,
+    )
+    assert entry.new_value["piece_ids"] == [str(lot.owned.id), str(lot.lent.id)]
+    assert (entry.new_value["included_photos"], entry.new_value["omitted_photos"]) == (2, 1)
+    assert entry.new_value["omitted"][0]["restriction"] == "NO_PUBLICAR"
+    assert "2 fotos incluidas y 1 omitidas" in (entry.reason or "")
+
+
+def test_a_failed_package_leaves_no_download_entry(session: Session, engine: Engine, lot) -> None:  # type: ignore[no-untyped-def]
+    broken = Broken()
+    broken.objects = lot.storage.objects
+
+    built = _run(session, engine, lot.job, broken)
+
+    assert built.status is S.FAILED
+    assert not session.scalars(
+        select(AuditLog).where(
+            AuditLog.entity_id == built.id, AuditLog.action == AuditAction.EXPORT
+        )
+    ).all()

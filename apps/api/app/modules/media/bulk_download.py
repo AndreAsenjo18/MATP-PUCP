@@ -24,12 +24,13 @@ from app.core.jobs import Heartbeat, SessionFactory, is_stale, register_recovery
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
 from app.modules.audit.context import AuditContext, audit_context
-from app.modules.audit.models import AuditOrigin
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.collections.models import Term
 from app.modules.media.models import BulkDownloadStatus as S
 from app.modules.media.models import MediaAsset, MediaBulkDownload
 from app.modules.media.service import effective_restriction
+from app.modules.users.models import AppUser
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ def fail_interrupted(factory: SessionFactory) -> int:
     return len(jobs)
 
 
-# ---------------------------------------------------------------- task 2.2: the worker
+# ----------------------------------------------------------------------------- the worker
 def _temporary_zip() -> Path:
     """An empty temporary file for the ZIP; the worker always deletes it."""
     handle, name = tempfile.mkstemp(prefix="matp-fotos-", suffix=".zip")
@@ -213,7 +214,36 @@ def _build(
     job.expires_at = utcnow() + timedelta(hours=ttl_hours) if key else None
     job.status = S.READY
     job.heartbeat_at = None
+    _audit(session, job)
     session.commit()
+
+
+# ----------------------------------------------------------------------------- the audit
+def _audit(session: Session, job: MediaBulkDownload) -> None:
+    """One ``EXPORT`` entry per package built, as the exports do (RN-005): who asked for it, the
+    pieces requested and the photos included and left out with their restriction."""
+    requester = session.get(AppUser, job.requested_by_id)
+    session.add(
+        AuditLog(
+            change_set_id=new_uuid(),
+            entity_type=MediaBulkDownload.__tablename__,
+            entity_id=job.id,
+            field=None,
+            old_value=None,
+            new_value={
+                "piece_ids": job.piece_ids,
+                "included_photos": job.included_photos,
+                "omitted_photos": len(job.omitted),
+                "omitted": job.omitted,
+            },
+            action=AuditAction.EXPORT,
+            origin=AuditOrigin.MANUAL,
+            user_id=job.requested_by_id,
+            actor_label=requester.email if requester else ACTOR,
+            reason=f"Paquete de fotos de {len(job.piece_ids)} piezas: {job.included_photos} "
+            f"fotos incluidas y {len(job.omitted)} omitidas por su restricción",
+        )
+    )
 
 
 def build_bulk_download(
