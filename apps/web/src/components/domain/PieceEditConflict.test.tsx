@@ -169,10 +169,10 @@ describe("computeConflictChanges", () => {
     expect(changes.map((change) => change.label)).toEqual(CONFLICT_FIELDS.map(({ label }) => label));
   });
 
-  it("cubre todos los campos que el editor permite modificar (el régimen y el código I no)", () => {
+  it("cubre todos los campos que el editor permite modificar (el régimen, el código I y el registrador no)", () => {
     const covered = CONFLICT_FIELDS.map(({ field }) => field as string).sort();
     const editable = Object.keys(EMPTY_PIECE_FORM)
-      .filter((field) => field !== "tenure_regime" && field !== "code_i")
+      .filter((field) => field !== "tenure_regime" && field !== "code_i" && field !== "recorded_by")
       .sort();
 
     expect(covered).toEqual(editable);

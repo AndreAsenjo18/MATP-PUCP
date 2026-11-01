@@ -188,6 +188,7 @@ describe("borradores de la primera versión (siete campos)", () => {
       period_text: "",
       acquisition_method_term_id: "",
       entry_date: "",
+      recorded_by: "",
       material_term_ids: [],
       conservation_state_id: "",
     });

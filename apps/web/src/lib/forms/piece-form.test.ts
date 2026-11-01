@@ -33,6 +33,7 @@ describe("pieceFormSchema", () => {
         "description",
         "author",
         "provenance",
+        "recorded_by",
         "period_text",
         "acquisition_method_term_id",
         "entry_date",
