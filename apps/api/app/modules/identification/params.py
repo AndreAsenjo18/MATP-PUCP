@@ -23,10 +23,15 @@ from app.modules.collections.models import Collection
 from app.modules.identification.models import (
     ABSENCE_MARKERS_KEY,
     CONCATENATION_SEPARATORS_KEY,
+    TENURE_ALIASES_KEY,
     CollectionAcronymAlias,
     NormalizationSetting,
 )
-from app.modules.identification.normalization import DEFAULT_PARAMS, NormalizationParams
+from app.modules.identification.normalization import (
+    DEFAULT_PARAMS,
+    NormalizationParams,
+    fold_label,
+)
 
 logger = logging.getLogger("matp.normalization")
 
@@ -68,6 +73,17 @@ def params_from_rows(
             )
         else:
             separators, unsplit_markers = tuple(found), tuple(unsplit)
+    tenure_aliases = DEFAULT_PARAMS.tenure_aliases
+    if TENURE_ALIASES_KEY in settings:
+        value = settings[TENURE_ALIASES_KEY]
+        if isinstance(value, dict) and all(
+            isinstance(k, str) and k.strip() and isinstance(v, str) for k, v in value.items()
+        ):
+            tenure_aliases = {fold_label(k): v for k, v in value.items()}
+        else:
+            logger.warning(
+                "Valor ilegible de %s: se usan los valores de código.", TENURE_ALIASES_KEY
+            )
     acronym_aliases: dict[str, str] = {}
     alias_collection_ids: dict[str, uuid.UUID] = {}
     for alias, collection_id, acronym in aliases:
@@ -80,6 +96,7 @@ def params_from_rows(
         unsplit_markers=unsplit_markers,
         acronym_aliases=acronym_aliases,
         alias_collection_ids=alias_collection_ids,
+        tenure_aliases=tenure_aliases,
     )
 
 

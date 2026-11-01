@@ -35,9 +35,15 @@ from app.modules.audit.context import refined_context
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.service import change_tenure, create_piece, update_piece
+from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.service import add_identifier
 from app.modules.imports.decisions import RowAction, field_actions, row_action
-from app.modules.imports.mapping import IDENTIFIER_TARGET, PIECE_FIELDS, MappedRow
+from app.modules.imports.mapping import (
+    ACQUISITION_VOCABULARY,
+    IDENTIFIER_TARGET,
+    PIECE_FIELDS,
+    MappedRow,
+)
 from app.modules.imports.models import ImportBatch, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
@@ -80,12 +86,29 @@ def _new_identifiers(mapped: MappedRow) -> list[tuple[str, str]]:
     ]
 
 
+def _acquisition_term_id(session: Session, code: str | None) -> uuid.UUID | None:
+    """Id of the ``ACQUISITION_METHOD`` term with ``code`` (matched when the row was mapped)."""
+    if not code:
+        return None
+    return session.scalar(
+        select(Term.id)
+        .join(Vocabulary, Term.vocabulary_id == Vocabulary.id)
+        .where(
+            Vocabulary.code == ACQUISITION_VOCABULARY,
+            Term.code == code,
+            Term.deleted_at.is_(None),
+        )
+    )
+
+
 def _create(session: Session, batch: ImportBatch, mapped: MappedRow) -> Piece:
     fields: dict[str, Any] = {
         name: mapped.fields[name] for name in CREATE_FIELDS if mapped.fields.get(name) is not None
     }
     if mapped.collection_id is not None:
         fields["collection_id"] = mapped.collection_id
+    if (term_id := _acquisition_term_id(session, mapped.acquisition_method)) is not None:
+        fields["acquisition_method_term_id"] = term_id
     piece = create_piece(
         session,
         denomination=mapped.fields.get("denomination"),
@@ -118,6 +141,8 @@ def _update(session: Session, batch: ImportBatch, row: ImportRow, mapped: Mapped
             tenure = TenureRegime(incoming) if incoming else None
         elif name == "collection_id":
             changes[name] = uuid.UUID(incoming) if incoming else None
+        elif name == "acquisition_method":
+            changes["acquisition_method_term_id"] = _acquisition_term_id(session, incoming)
         else:
             changes[name] = incoming
     if tenure is not None:

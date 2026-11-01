@@ -4,7 +4,7 @@ import hashlib
 import io
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, UnidentifiedImageError
@@ -18,7 +18,7 @@ from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
-from app.modules.collections.models import Term, Vocabulary, VocabularyCode
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.media.models import MediaAsset
 
 if TYPE_CHECKING:
@@ -125,6 +125,37 @@ def verify_image_stream(
 
     verified = verify_image(data)
     return verified.sha256, verified.width, verified.height, verified.content_type
+
+
+RestrictionOrigin = Literal["foto", "pieza", "colección", "ninguna"]
+
+
+@dataclass(frozen=True)
+class EffectiveRestriction:
+    term_id: uuid.UUID | None
+    origin: RestrictionOrigin
+
+
+def effective_restriction(
+    session: Session, asset: MediaAsset, piece: "Piece"
+) -> EffectiveRestriction:
+    """The restriction that applies to a photo (fotografias-multiples-por-pieza 2.5; RN-008).
+
+    Precedence: the photo's own restriction, then the piece's, then the default one of its
+    collection. The piece has no column of its own: its default is derived from the tenure, so a
+    piece in loan for use means «No publicar» (RN-008). That also covers the photos registered
+    before the piece became a loan for use, which carry no restriction of their own; the photos
+    registered while it already was one carry it as their own.
+    """
+    if asset.usage_restriction_term_id is not None:
+        return EffectiveRestriction(asset.usage_restriction_term_id, "foto")
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        return EffectiveRestriction(comodato_restriction_term_id(session), "pieza")
+    if piece.collection_id is not None:
+        collection = session.get(Collection, piece.collection_id)
+        if collection is not None and collection.default_usage_restriction_term_id is not None:
+            return EffectiveRestriction(collection.default_usage_restriction_term_id, "colección")
+    return EffectiveRestriction(None, "ninguna")
 
 
 def comodato_restriction_term_id(session: Session) -> uuid.UUID:

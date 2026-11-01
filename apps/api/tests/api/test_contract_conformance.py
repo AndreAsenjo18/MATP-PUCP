@@ -118,7 +118,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("patch", "/pieces/{}/media/{}"),
     ("put", "/pieces/{}/media/order"),
     ("get", "/pieces/{}/media/{}/download-url"),
-    ("get", "/pieces/media/storage-estimate"),
+    ("get", "/media/storage-estimate"),
     ("post", "/pieces/{}/restore"),
     # Historial de conservación (change colecciones-y-vocabularios-admin, diseño D3).
     ("get", "/pieces/{}/conservation-assessments"),
