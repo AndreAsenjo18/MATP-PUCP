@@ -91,7 +91,7 @@ A un **Depósito** se le puede asignar un tipo: depósito, sala de exhibición, 
 
 ### Desactivar un lugar
 
-Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
+Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) o con otros lugares activos dentro **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar y cuántos lugares hay que desactivar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
 
 ### Reubicar un mueble o contenedor completo
 
@@ -225,12 +225,19 @@ En **Administración › Catálogo › Colecciones** está la lista de coleccion
 
 El sistema no acepta una sigla que ya tiene otra colección.
 
+Para **corregir una colección**, pulse **Editar** en su fila y cambie el nombre, la sigla, el régimen por defecto o la colección madre. Si cambia una sigla, el sistema ofrece guardar la anterior como sigla histórica, para que los Excel antiguos y las fotos la sigan reconociendo. Cada cambio queda en la auditoría.
+
+Para **retirar una colección**, pulse **Retirar** en su fila y escriba el motivo. Deja de ofrecerse en las fichas y en la importación, pero no se borra. Si todavía tiene piezas o subcolecciones, el sistema dice cuántas: reasígnelas primero.
+
+Pulse **Ver retiradas** para ver las colecciones retiradas. Solo el **Administrador** puede restaurarlas, con **Restaurar**.
+
 ### Listas de valores (vocabularios)
 
 Una **lista de valores** son las opciones que se eligen al llenar una ficha: materiales, técnicas, estados de conservación, categorías… En **Administración › Catálogo › Listas de valores** se elige la lista en el selector (dice cuántos términos tiene) y sus términos se ven como **etiquetas**: **verdes** las que se ofrecen en las fichas y **grises y tachadas** las desactivadas.
 
 - **Agregar un término:** escriba la etiqueta en **Nuevo término** (arriba) y pulse **Agregar**. El sistema propone el código estable a partir de la etiqueta («Arte plumario» → ARTE_PLUMARIO).
 - **Desactivar un término:** pulse su etiqueta. Deja de ofrecerse en las fichas nuevas, pero las fichas que ya lo usan lo conservan. Nunca se borra; pulsarla otra vez lo devuelve.
+- **Corregir una errata:** pulse **Corregir etiqueta** (arriba), elija el **Término** y escriba la **Etiqueta nueva**. El término es el mismo, así que todas las fichas que lo usan muestran la etiqueta nueva, y su código estable no cambia. Si ya existe otro término con esa etiqueta, el sistema lo dice y sugiere desactivar uno de los dos o usar otra etiqueta.
 - **Crear una lista:** pulse **Nueva lista**, escriba el **Nombre**; el **Código estable** se propone solo y no cambia después.
 
 Para cargar una lista completa (por ejemplo, la lista oficial de categorías cuando llegue), el equipo técnico usa la **precarga desde archivo**: primero muestra qué términos crearía o actualizaría sin escribir nada, y al aplicarla nunca desactiva los términos que no están en el archivo.
