@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.batch_limits import ensure_batch_size
 from app.api.deps import (
     CurrentUser,
     SessionDep,
@@ -695,6 +696,16 @@ def validate_data_quality(body: AiSuggestionCreate, user: AiRequester) -> AiSugg
     raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
 
 
+def batch_enrich_body(request: Request, body: BatchEnrichRequest) -> BatchEnrichRequest:
+    """The batch within ``AI_BATCH_ENRICH_MAX_PIECES`` (task 1.2) [SUPUESTO AA1].
+
+    A dependency, so the stub stays a stub: the size is checked before the route is reached.
+    """
+    limit = request.app.state.settings.ai_batch_enrich_max_pieces
+    ensure_batch_size(len(body.piece_ids), limit, "Un lote de descripciones")
+    return body
+
+
 @router.post(
     "/ai/batch-enrich",
     response_model=AiBatchOut,
@@ -702,6 +713,8 @@ def validate_data_quality(body: AiSuggestionCreate, user: AiRequester) -> AiSugg
     tags=["IA asistiva"],
     **stub(CHANGE_BULK),
 )
-def batch_ai_enrichment(body: BatchEnrichRequest, user: AiRequester) -> AiBatchOut:
+def batch_ai_enrichment(
+    user: AiRequester, body: Annotated[BatchEnrichRequest, Depends(batch_enrich_body)]
+) -> AiBatchOut:
     """Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación."""
     raise not_implemented(CHANGE_BULK, AiBatchOut)

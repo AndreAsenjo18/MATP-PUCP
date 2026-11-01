@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     # Hamming distance between two 64-bit dHash below which two photos of a batch are proposed as
     # the same photo in another resolution (importacion-fotos-a-catalogo, D6) [SUPUESTO].
     import_photo_similarity_bits: int = Field(4, ge=0, le=64)
+    # Bulk operations (descargas-masivas-y-enriquecimiento-lote, D1) [SUPUESTO AA1]: pieces per
+    # photo package and per AI batch of preliminary descriptions.
+    media_bulk_download_max_pieces: int = Field(200, ge=1)
+    ai_batch_enrich_max_pieces: int = Field(50, ge=1)
 
     @property
     def cors_origin_list(self) -> list[str]:
