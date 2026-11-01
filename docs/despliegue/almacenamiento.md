@@ -13,6 +13,16 @@ La firma incluye el **host y la ruta exactos**. Por eso:
 - En la VM, el almacenamiento tiene su propio subdominio `media.<dominio>` y el proxy lo reenvía **sin tocar el host ni la ruta** (`deploy/vm/Caddyfile`). Publicarlo bajo una ruta del dominio principal (por ejemplo `/media-store/`) obligaría a reescribir la ruta y **invalidaría todas las firmas**.
 - `S3_PUBLIC_ENDPOINT_URL` debe ser exactamente la dirección que verá el navegador (`https://media.<dominio>`), y `S3_ENDPOINT_URL` la interna (`http://storage:9000`).
 
+## Fotos de las cargas masivas y cuota
+
+Las fotos que se suben con un lote de importación van por URL prefirmada directo al almacenamiento, en tandas de hasta 100 (change `importacion-masiva-fotografias`). Tres variables controlan el espacio que ocupan:
+
+- `MEDIA_KEEP_ORIGINALS`: con `true` (por defecto) se conserva el archivo original además de la miniatura y la copia de visualización. Con `false`, la foto queda en su copia de visualización (`display.webp`) y el original se borra después de aplicar el lote. Ocupa mucho menos, pero el original no se recupera.
+- `IMPORT_PHOTO_RETENTION_DAYS` (30): días que se guardan los archivos de las fotos de lotes abandonados o descartadas antes de que `python -m app.imports.purge_photos` los borre. Nunca toca fotos aplicadas ni de lotes vigentes.
+- `MEDIA_QUOTA_BYTES`: el umbral de la cuota de fotos. Al superarlo, el resumen del lote avisa antes de aprobar. Vacío = sin aviso, hasta conocer la cuota de la PUCP [SUPUESTO L2].
+
+`GET /media/storage-estimate` estima el volumen con los promedios reales de las fotos ya registradas.
+
 ## CORS
 
 El navegador solo deja que la web (`https://<dominio>`) suba a `media.<dominio>` si el almacenamiento lo permite explícitamente.
