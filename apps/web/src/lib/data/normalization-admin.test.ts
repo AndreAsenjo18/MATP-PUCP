@@ -10,6 +10,10 @@ import {
   fetchCollections,
   fetchSetting,
   hasChanges,
+  aliasKey,
+  tenureAliasError,
+  tenureAliasesChanged,
+  tenureAliasesValue,
   impactFrom,
   impactReasonLabel,
   markerError,
@@ -197,5 +201,29 @@ describe("modo live", () => {
         { id: "c-2", name: "Retablos", acronym: "RA" },
       ],
     });
+  });
+});
+
+describe("correspondencias forma de adquisición → régimen", () => {
+  it("compara como el servidor: sin tildes, mayúsculas ni espacios de más", () => {
+    expect(aliasKey("  Cesión   de Uso ")).toBe("cesion de uso");
+  });
+
+  it("rechaza una forma vacía o repetida", () => {
+    const aliases = { "cesion de uso": "Comodato" };
+    expect(tenureAliasError(aliases, "  ")).toBe("Escriba la forma de adquisición.");
+    expect(tenureAliasError(aliases, "Cesión de uso")).toBe("Esa forma de adquisición ya tiene un régimen.");
+    expect(tenureAliasError(aliases, "Depósito")).toBeNull();
+  });
+
+  it("detecta cambios sin importar el orden", () => {
+    expect(tenureAliasesChanged({ a: "Comodato", b: "Propiedad" }, { b: "Propiedad", a: "Comodato" })).toBe(false);
+    expect(tenureAliasesChanged({ a: "Comodato" }, { a: "Propiedad" })).toBe(true);
+  });
+
+  it("lee solo un objeto de textos", () => {
+    expect(tenureAliasesValue({ custodia: "Comodato" })).toEqual({ custodia: "Comodato" });
+    expect(tenureAliasesValue(["S/N"])).toEqual({});
+    expect(tenureAliasesValue({ separators: ["/"], unsplit_markers: [] })).toEqual({});
   });
 });

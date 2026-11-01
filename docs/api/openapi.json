@@ -7014,7 +7014,8 @@
           "key": {
             "enum": [
               "absence_markers",
-              "concatenation_separators"
+              "concatenation_separators",
+              "tenure_aliases"
             ],
             "title": "Key",
             "type": "string"
@@ -7041,9 +7042,15 @@
               },
               {
                 "$ref": "#/components/schemas/ConcatenationSeparators"
+              },
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
               }
             ],
-            "description": "`absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.",
+            "description": "`absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. `tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae.",
             "title": "Value"
           }
         },
@@ -7079,6 +7086,12 @@
               },
               {
                 "$ref": "#/components/schemas/ConcatenationSeparators"
+              },
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
               }
             ],
             "title": "Value"
@@ -18518,7 +18531,7 @@
     },
     "/api/v1/normalization-settings/{key}": {
       "get": {
-        "description": "Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.",
+        "description": "Marcadores de ausencia (`absence_markers`), separadores de códigos concatenados (`concatenation_separators`) o correspondencias forma de adquisición → régimen (`tenure_aliases`); sin valor guardado, el del código.",
         "operationId": "getNormalizationSetting",
         "parameters": [
           {
@@ -18528,7 +18541,8 @@
             "schema": {
               "enum": [
                 "absence_markers",
-                "concatenation_separators"
+                "concatenation_separators",
+                "tenure_aliases"
               ],
               "title": "Key",
               "type": "string"
@@ -18599,7 +18613,8 @@
             "schema": {
               "enum": [
                 "absence_markers",
-                "concatenation_separators"
+                "concatenation_separators",
+                "tenure_aliases"
               ],
               "title": "Key",
               "type": "string"
