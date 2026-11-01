@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 9367acddaf75c9f989d7d2c7c08af7135992fbdac2de03a198bf5ad67f723c5e
+ * openapi-sha256: 4c80a5b6d8366a3535d0e746898c3f80684698004f491faf5885a9d0c9fcdc3c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -821,7 +821,7 @@ export interface paths {
         };
         /**
          * Fotografías del lote: bandeja con filtros y miniaturas
-         * @description Fotos del lote con su fila propuesta o asignada, ordenadas por fila y posición, con la miniatura firmada de las verificadas. Se filtran por estado, propuesta o fila (`importacion-masiva-fotografias`, diseño D4).
+         * @description Fotos del lote con su fila o pieza propuesta o asignada, ordenadas por destino y posición, con la miniatura firmada de las verificadas y el motivo de las propuestas que no son directas. Se filtran por estado, propuesta, fila, pieza o carpeta (`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).
          */
         get: operations["listImportPhotos"];
         put?: never;
@@ -830,8 +830,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Fotografías del lote: asignar fotos a una fila
-         * @description `assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).
+         * Fotografías del lote: decidir sobre fotos (asignar, quitar, descartar…)
+         * @description `assign` a una fila del lote (lote con Excel) o a una pieza no retirada (lote de solo fotografías), en el orden enviado y después de su última foto; `unassign`, `discard`, `restore`, `confirm_duplicate` y `reorder`. El emparejamiento automático ya no cambia las fotos decididas y cada decisión queda en la bitácora del lote con su autor. Una fila de otro lote, una fila en un lote de solo fotos, una pieza retirada o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).
          */
         patch: operations["decideImportPhotos"];
         trace?: never;
@@ -850,6 +850,86 @@ export interface paths {
          * @description Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).
          */
         post: operations["completeImportPhotoUploads"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/correspondences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fotografías del lote: subir una lista de correspondencias archivo → código
+         * @description CSV o Excel con las columnas `archivo` (nombre o ruta) y `codigo`, y `tipo` opcional. Propone la pieza de cada foto nombrada con prioridad sobre el nombre, sin tocar las asignaciones manuales, y la guarda en el lote para las lecturas siguientes. Las líneas sin foto, sin pieza o ambiguas (nombre repetido en varias carpetas) se informan con su motivo sin detener las demás (`importacion-fotos-a-catalogo`, diseño D7).
+         */
+        post: operations["uploadImportPhotoCorrespondences"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fotografías del lote: carpetas con su forma de lectura y su colección
+         * @description Árbol de carpetas de un lote de solo fotografías con sus conteos por propuesta, el rango si es una carpeta de rango, la colección propuesta o confirmada, la regla de lectura vigente (y de qué carpeta la hereda) y la plantilla sugerida por la forma de sus nombres (`importacion-fotos-a-catalogo`, diseño D4, D5 y D11).
+         */
+        get: operations["listImportPhotoFolders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Fotografías del lote: guardar la forma de lectura de una carpeta
+         * @description Guarda la regla de la carpeta (vacía = todo el lote), que vale también para sus subcarpetas sin regla propia, y vuelve a emparejar solo las fotos automáticas de esa carpeta: las asignadas a mano y las descartadas no cambian. Una plantilla inválida responde 422 y la carpeta conserva su regla (`importacion-fotos-a-catalogo`, diseño D4).
+         */
+        put: operations["saveImportPhotoReading"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/reading-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fotografías del lote: vista previa de cómo se leen los nombres de una carpeta
+         * @description Lee hasta 20 nombres de la carpeta con la regla enviada (nombre → códigos → pieza o motivo) y cuenta los que no siguen la plantilla, sin guardar nada (`importacion-fotos-a-catalogo`, diseño D4).
+         */
+        post: operations["previewImportPhotoReading"];
         delete?: never;
         options?: never;
         head?: never;
@@ -947,6 +1027,26 @@ export interface paths {
          * @description Lanza la validación en segundo plano y responde de inmediato; al terminar, el lote queda en previsualización con los conteos por clasificación (RF-026).
          */
         post: operations["validateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/photo-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear un lote de solo fotografías para piezas existentes
+         * @description Crea un lote sin Excel cuyas fotos se emparejan con las piezas ya registradas por sus identificadores vigentes (RF-046). Las fotos se suben con las mismas operaciones de `/imports/{batch_id}/photos/…`; las operaciones de Excel (mapeo, validación, filas) responden 409 `batch_kind_mismatch` en este lote (`importacion-fotos-a-catalogo`, D1).
+         */
+        post: operations["createImportPhotoBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1144,7 +1244,7 @@ export interface paths {
         };
         /**
          * Parámetro de normalización vigente (RN-010)
-         * @description Marcadores de ausencia (`absence_markers`), separadores de códigos concatenados (`concatenation_separators`) o correspondencias forma de adquisición → régimen (`tenure_aliases`); sin valor guardado, el del código.
+         * @description Marcadores de ausencia (`absence_markers`), separadores de códigos concatenados (`concatenation_separators`), correspondencias forma de adquisición → régimen (`tenure_aliases`) o patrones de nombres de cámara de las fotos (`photo_camera_patterns`); sin valor guardado, el del código.
          */
         get: operations["getNormalizationSetting"];
         /**
@@ -2274,6 +2374,8 @@ export interface components {
              * @description Filas que crearán una pieza nueva.
              */
             create: number;
+            /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
+            photos?: components["schemas"]["PhotoApprovalOut"] | null;
             /**
              * Skip
              * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).
@@ -2612,6 +2714,14 @@ export interface components {
             /**
              * File
              * @description Archivo .xlsx o .csv de origen.
+             */
+            file: string;
+        };
+        /** Body_uploadImportPhotoCorrespondences */
+        Body_uploadImportPhotoCorrespondences: {
+            /**
+             * File
+             * @description Lista .csv o .xlsx.
              */
             file: string;
         };
@@ -3199,6 +3309,42 @@ export interface components {
             piece_id: string;
             status: components["schemas"]["TermRef"];
         };
+        /** CorrespondenceLineOut */
+        CorrespondenceLineOut: {
+            /** Code */
+            code: string;
+            /** File */
+            file: string;
+            /** Line */
+            line: number;
+            /** Photo Ids */
+            photo_ids?: string[];
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "applied" | "no_photo" | "no_piece" | "ambiguous";
+        };
+        /** CorrespondencesOut */
+        CorrespondencesOut: {
+            /** Ambiguous */
+            ambiguous: number;
+            /** Applied */
+            applied: number;
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Lines */
+            lines: components["schemas"]["CorrespondenceLineOut"][];
+            /** No Photo */
+            no_photo: number;
+            /** No Piece */
+            no_piece: number;
+        };
         /**
          * DashboardHistory
          * @example {
@@ -3682,6 +3828,26 @@ export interface components {
              */
             severity: "error" | "warning";
         };
+        /** FolderCollectionOut */
+        FolderCollectionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** FolderRuleRequest */
+        FolderRuleRequest: {
+            /**
+             * Folder
+             * @description Ruta de la carpeta (`a/b`); vacía = todo el lote.
+             * @default
+             */
+            folder: string;
+            rule: components["schemas"]["PhotoReadingRule"];
+        };
         /** HealthResponse */
         HealthResponse: {
             backup: components["schemas"]["BackupStatus"];
@@ -3920,6 +4086,15 @@ export interface components {
             updates: number;
         };
         /**
+         * ImportBatchKind
+         * @description What a batch loads (change importacion-fotos-a-catalogo, D1).
+         *
+         *     ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
+         *     photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+         * @enum {string}
+         */
+        ImportBatchKind: "SPREADSHEET" | "PHOTOS";
+        /**
          * ImportBatchOut
          * @example {
          *       "approval_summary": {
@@ -3993,6 +4168,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * @description `SPREADSHEET`: lote con Excel. `PHOTOS`: solo fotografías para piezas ya registradas, sin mapeo, validación ni filas (RF-046).
+             * @default SPREADSHEET
+             */
+            kind: components["schemas"]["ImportBatchKind"];
             /**
              * Mapping
              * @description Mapeo de columnas confirmado.
@@ -4189,6 +4369,11 @@ export interface components {
              */
             entries: components["schemas"]["ImportLogEntry"][];
             /**
+             * Photo Decisions
+             * @description Decisiones de una persona sobre las fotos del lote: quién, cuándo, qué y sobre cuántas fotos (RF-028, RF-046).
+             */
+            photo_decisions?: components["schemas"]["PhotoDecisionLogEntry"][];
+            /**
              * Rejected Rows
              * @description Filas no aplicadas; null si el lote no llegó a leer filas.
              */
@@ -4220,6 +4405,11 @@ export interface components {
          */
         ImportPhotoOut: {
             /**
+             * Candidate Piece Ids
+             * @description Piezas posibles de una foto ambigua, o la pieza de otra colección (`other_collection`); nunca se elige una por adivinanza.
+             */
+            candidate_piece_ids?: string[] | null;
+            /**
              * Candidate Row Ids
              * @description Filas posibles de una foto ambigua; nunca se elige una por adivinanza.
              */
@@ -4234,16 +4424,28 @@ export interface components {
              * @default false
              */
             duplicate_of_existing: boolean;
+            /** Height Px */
+            height_px?: number | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /**
+             * Match Reason
+             * @description Por qué la propuesta no es directa: `discrepant_codes`, `camera_name`, `template_mismatch`, `bare_number_without_collection`, `other_collection`, `duplicate_name`, `partial_codes` u `out_of_range`.
+             */
+            match_reason?: string | null;
             match_source?: components["schemas"]["PhotoMatchSource"] | null;
             /** @description null: sin propuesta todavía (subiéndose o lote sin validar). */
             match_status?: components["schemas"]["PhotoMatchStatus"] | null;
             /** Original Filename */
             original_filename: string;
+            /**
+             * Piece Id
+             * @description Pieza propuesta o asignada (lote de solo fotografías, RF-046).
+             */
+            piece_id?: string | null;
             /** Rejection Reason */
             rejection_reason?: string | null;
             /** Relative Path */
@@ -4253,11 +4455,16 @@ export interface components {
              * @description Fila propuesta o asignada.
              */
             row_id?: string | null;
+            /**
+             * Same As Photo Id
+             * @description Foto conservada cuando esta se descartó por ser otra resolución.
+             */
+            same_as_photo_id?: string | null;
             /** Size Bytes */
             size_bytes: number;
             /**
              * Sort Key
-             * @description Orden de la foto dentro de su fila.
+             * @description Orden de la foto dentro de su fila o pieza.
              */
             sort_key?: number | null;
             status: components["schemas"]["ImportPhotoStatus"];
@@ -4266,6 +4473,8 @@ export interface components {
              * @description URL prefirmada temporal de la miniatura; solo de fotos verificadas.
              */
             thumbnail_url?: string | null;
+            /** Width Px */
+            width_px?: number | null;
         };
         /**
          * ImportPhotoStatus
@@ -5013,6 +5222,8 @@ export interface components {
              * Format: uuid
              */
             piece_id: string;
+            /** @description Procedencia de la foto; no se puede editar (RF-046, RN-005). */
+            provenance?: components["schemas"]["MediaProvenance"] | null;
             /** Restriction Note */
             restriction_note: string | null;
             /** Size Bytes */
@@ -5044,6 +5255,35 @@ export interface components {
             usage_restriction_term_id?: string | null;
             /** View Type Term Id */
             view_type_term_id?: string | null;
+        };
+        /**
+         * MediaProvenance
+         * @description Where a photo came from, read only (spec multimedia, «Procedencia visible de las
+         *     fotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005).
+         */
+        MediaProvenance: {
+            /** Import Batch Id */
+            import_batch_id?: string | null;
+            /** Import Batch Name */
+            import_batch_name?: string | null;
+            /** Original Filename */
+            original_filename?: string | null;
+            /**
+             * Relative Path
+             * @description Carpeta y nombre con que se subió.
+             */
+            relative_path?: string | null;
+            /**
+             * Replaced Lower Resolution
+             * @description Rutas de las versiones de menor resolución que se descartaron en su lugar.
+             */
+            replaced_lower_resolution?: string[];
+            /**
+             * Source
+             * @description `import`: aplicada desde un lote de importación; `manual`: subida desde la ficha.
+             * @enum {string}
+             */
+            source: "import" | "manual";
         };
         /**
          * MergedFrom
@@ -5257,12 +5497,12 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
+            key: "absence_markers" | "concatenation_separators" | "tenure_aliases" | "photo_camera_patterns";
             /** Updated At */
             updated_at: string | null;
             /**
              * Value
-             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. `tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae.
+             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. `tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae. `photo_camera_patterns`: expresiones regulares de nombres de cámara, que no traen código, además de `IMG_…`, `DSC_…`, `NNN-NNNN` y `NNLLNNNN` (RF-046).
              */
             value: string[] | components["schemas"]["ConcatenationSeparators"] | {
                 [key: string]: string;
@@ -5577,6 +5817,66 @@ export interface components {
             /** Description */
             description: string;
         };
+        /**
+         * PhotoApprovalOut
+         * @description Warning before approving a photo-only batch (RF-046; importacion-fotos-a-catalogo, 6.2).
+         */
+        PhotoApprovalOut: {
+            /**
+             * Collections Pending
+             * @description Carpetas cuya colección propuesta nadie confirmó.
+             */
+            collections_pending: number;
+            /**
+             * Duplicates Pending
+             * @description Fotos que ya están en su pieza y nadie confirmó: no se aplican.
+             */
+            duplicates_pending: number;
+            /**
+             * Out Of Range
+             * @description Propuestas fuera del rango de su carpeta.
+             */
+            out_of_range: number;
+            /**
+             * Partial Codes
+             * @description Propuestas con un código que no existe.
+             */
+            partial_codes: number;
+            /**
+             * Pieces
+             * @description Piezas que recibirán fotos.
+             */
+            pieces: number;
+            /**
+             * To Apply
+             * @description Fotos que se aplicarán.
+             */
+            to_apply: number;
+            /**
+             * Unassigned
+             * @description Fotos verificadas sin pieza: quedan sin aplicar.
+             */
+            unassigned: number;
+            /**
+             * Uploading
+             * @description Fotos que todavía se suben o verifican.
+             */
+            uploading: number;
+        };
+        /**
+         * PhotoBatchCreate
+         * @description Body of ``POST /imports/photo-batches`` (importacion-fotos-a-catalogo, D1).
+         * @example {
+         *       "name": "Archivo fotográfico — colección ABC"
+         *     }
+         */
+        PhotoBatchCreate: {
+            /**
+             * Name
+             * @description Nombre del lote, para reconocerlo en la lista de lotes y en la bitácora.
+             */
+            name: string;
+        };
         /** PhotoCompleteOut */
         PhotoCompleteOut: {
             /**
@@ -5595,6 +5895,20 @@ export interface components {
              */
             photo_ids: string[];
         };
+        /** PhotoDecisionLogEntry */
+        PhotoDecisionLogEntry: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Operation */
+            operation: string | null;
+            /** Photos */
+            photos: number;
+            /** User */
+            user: string | null;
+        };
         /** PhotoDecisionOut */
         PhotoDecisionOut: {
             /**
@@ -5607,10 +5921,8 @@ export interface components {
         };
         /**
          * PhotoDecisionRequest
-         * @description A decision of a person on photos of the batch (design D4).
-         *
-         *     Only ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and
-         *     ``reorder`` come later.
+         * @description A decision of a person on photos of the batch (design D4; importacion-fotos-a-catalogo,
+         *     D8): with a row in a batch with Excel, with a piece in a photo-only batch.
          * @example {
          *       "op": "assign",
          *       "photo_ids": [
@@ -5622,18 +5934,22 @@ export interface components {
         PhotoDecisionRequest: {
             /**
              * Op
-             * @description `assign`: las fotos quedan asignadas a mano a `row_id`, después de su última foto; el emparejamiento ya no las cambia.
-             * @constant
+             * @description `assign`: a `row_id` o `piece_id`, después de su última foto. `unassign`: sin fila ni pieza. `discard`: fuera del lote. `restore`: una descartada vuelve sin asignar. `confirm_duplicate`: una foto que ya está en su pieza se aplica igual. `reorder`: orden de las fotos de `row_id` o `piece_id`, en el orden enviado. El emparejamiento automático ya no cambia las fotos decididas.
+             * @enum {string}
              */
-            op: "assign";
+            op: "assign" | "unassign" | "discard" | "restore" | "confirm_duplicate" | "reorder";
             /** Photo Ids */
             photo_ids: string[];
             /**
-             * Row Id
-             * Format: uuid
-             * @description Fila del mismo lote.
+             * Piece Id
+             * @description Pieza del catálogo, no retirada (lote de solo fotografías).
              */
-            row_id: string;
+            piece_id?: string | null;
+            /**
+             * Row Id
+             * @description Fila del mismo lote (lote con Excel).
+             */
+            row_id?: string | null;
         };
         /** PhotoFileIn */
         PhotoFileIn: {
@@ -5655,18 +5971,98 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
         };
+        /** PhotoFolderOut */
+        PhotoFolderOut: {
+            /**
+             * By Match Status
+             * @description Conteos por propuesta (`NONE`: sin).
+             */
+            by_match_status: {
+                [key: string]: number;
+            };
+            /** @description Colección pista vigente: la confirmada o la propuesta. */
+            collection?: components["schemas"]["FolderCollectionOut"] | null;
+            /**
+             * Collection Pending
+             * @description La colección es una propuesta que nadie confirmó todavía (D5).
+             */
+            collection_pending: boolean;
+            /** Depth */
+            depth: number;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /**
+             * Photos
+             * @description Fotos de la carpeta y sus subcarpetas.
+             */
+            photos: number;
+            proposed_collection?: components["schemas"]["FolderCollectionOut"] | null;
+            /**
+             * Range
+             * @description `[desde, hasta]` de una carpeta de rango.
+             */
+            range?: number[] | null;
+            rule: components["schemas"]["PhotoReadingRule"];
+            /**
+             * Rule From
+             * @description Carpeta de la que hereda la regla; null = regla del lote.
+             */
+            rule_from?: string | null;
+            suggestion?: components["schemas"]["TemplateSuggestionOut"] | null;
+        };
+        /** PhotoFoldersOut */
+        PhotoFoldersOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            default_rule: components["schemas"]["PhotoReadingRule"];
+            /** Folders */
+            folders: components["schemas"]["PhotoFolderOut"][];
+        };
         /**
          * PhotoMatchSource
          * @description Path that proposed the row (D3): file name, folder, mapped column, person or workbook.
          * @enum {string}
          */
-        PhotoMatchSource: "FILENAME" | "FOLDER" | "COLUMN" | "MANUAL" | "EMBEDDED";
+        PhotoMatchSource: "FILENAME" | "FOLDER" | "COLUMN" | "MANUAL" | "EMBEDDED" | "TEMPLATE" | "LIST";
         /**
          * PhotoMatchStatus
          * @description Proposed row of a photo (D3): never applied to the catalogue without batch approval.
          * @enum {string}
          */
         PhotoMatchStatus: "MATCHED" | "AMBIGUOUS" | "UNMATCHED" | "MANUAL";
+        /**
+         * PhotoReadingRule
+         * @description How the file names of a folder are read (D4).
+         * @example {
+         *       "collection_id": "01920000-0000-7000-8000-000000000201",
+         *       "mode": "template",
+         *       "template": "{n}-{*}"
+         *     }
+         */
+        PhotoReadingRule: {
+            /**
+             * Collection Id
+             * @description Colección de la carpeta como pista. Ausente: rige la propuesta; `null` explícito: sin colección.
+             */
+            collection_id?: string | null;
+            /**
+             * Mode
+             * @description `auto`: se buscan códigos en el nombre. `camera`: no se busca código. `template`: el nombre se lee con `template`.
+             * @default auto
+             * @enum {string}
+             */
+            mode: "auto" | "camera" | "template";
+            /**
+             * Template
+             * @description Plantilla con `{<tipo de identificador>}`, `{n}` (correlativo de la colección) y `{*}` (parte que se ignora), p. ej. `{COLECCION} {n} - PUCP {PUCP}`.
+             */
+            template?: string | null;
+        };
         /** PhotoStateOut */
         PhotoStateOut: {
             /**
@@ -6336,6 +6732,48 @@ export interface components {
          * @enum {string}
          */
         QualityJobType: "FULL_SCAN";
+        /** ReadingPreviewItem */
+        ReadingPreviewItem: {
+            /** Candidate Piece Ids */
+            candidate_piece_ids?: string[];
+            /**
+             * Codes
+             * @description Códigos que se leyeron en el nombre.
+             */
+            codes: string[];
+            /** Match Reason */
+            match_reason?: string | null;
+            match_status: components["schemas"]["PhotoMatchStatus"];
+            /**
+             * Photo Id
+             * Format: uuid
+             */
+            photo_id: string;
+            /** Piece Id */
+            piece_id?: string | null;
+            /** Relative Path */
+            relative_path: string;
+        };
+        /** ReadingPreviewOut */
+        ReadingPreviewOut: {
+            /** Folder */
+            folder: string;
+            /**
+             * Items
+             * @description Hasta 20 nombres de muestra.
+             */
+            items: components["schemas"]["ReadingPreviewItem"][];
+            /**
+             * Not Fitting
+             * @description Nombres que no siguen la plantilla.
+             */
+            not_fitting: number;
+            /**
+             * Total
+             * @description Fotos verificadas de la carpeta.
+             */
+            total: number;
+        };
         /** RecalculatedIdentifierOut */
         RecalculatedIdentifierOut: {
             /**
@@ -7199,6 +7637,23 @@ export interface components {
              */
             score: number;
             template: components["schemas"]["MappingTemplateOut"];
+        };
+        /** TemplateSuggestionOut */
+        TemplateSuggestionOut: {
+            /** Matching */
+            matching: number;
+            /**
+             * Shape
+             * @description Forma de los nombres: dígitos → 9, letras → A.
+             */
+            shape: string;
+            /**
+             * Template
+             * @description Plantilla sugerida; null = se leen solas.
+             */
+            template: string | null;
+            /** Total */
+            total: number;
         };
         /** TemplateSuggestRequest */
         TemplateSuggestRequest: {
@@ -10308,6 +10763,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -10364,6 +10828,15 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10495,6 +10968,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -10509,11 +10991,15 @@ export interface operations {
     listImportPhotos: {
         parameters: {
             query?: {
+                /** @description Carpeta y sus subcarpetas (`a/b`). */
+                folder?: string | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 match_status?: components["schemas"]["PhotoMatchStatus"] | null;
                 /** @description Número de página (desde 1). */
                 page?: number;
+                /** @description Pieza propuesta o asignada. */
+                piece_id?: string | null;
                 row_id?: string | null;
                 status?: components["schemas"]["ImportPhotoStatus"] | null;
             };
@@ -10704,6 +11190,286 @@ export interface operations {
                 };
             };
             /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    uploadImportPhotoCorrespondences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploadImportPhotoCorrespondences"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondencesOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listImportPhotoFolders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoFoldersOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveImportPhotoReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoFoldersOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `invalid_photo_template`: la plantilla tiene un tipo que no existe, no identifica nada o usa `{n}` sin colección; `details` trae el motivo y los tipos válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewImportPhotoReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingPreviewOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `invalid_photo_template`: la plantilla tiene un tipo que no existe, no identifica nada o usa `{n}` sin colección; `details` trae el motivo y los tipos válidos. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -10966,6 +11732,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -11017,6 +11792,66 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createImportPhotoBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11807,7 +12642,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases" | "photo_camera_patterns";
             };
             cookie?: never;
         };
@@ -11856,7 +12691,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases" | "photo_camera_patterns";
             };
             cookie?: never;
         };

@@ -3,6 +3,7 @@
 import hashlib
 import io
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -198,6 +199,21 @@ class StoredCopy:
     content_sha256: str
 
 
+def provenance_of(asset: MediaAsset) -> dict[str, Any]:
+    """Where the photo came from, from ``extra_metadata`` (importacion-fotos-a-catalogo, 6.3)."""
+    metadata = asset.extra_metadata or {}
+    if not metadata.get("import_batch_id"):
+        return {"source": "manual", "original_filename": asset.original_filename}
+    return {
+        "source": "import",
+        "original_filename": asset.original_filename,
+        "relative_path": metadata.get("relative_path"),
+        "import_batch_id": metadata.get("import_batch_id"),
+        "import_batch_name": metadata.get("import_batch_name"),
+        "replaced_lower_resolution": list(metadata.get("replaced_lower_resolution") or []),
+    }
+
+
 def register_from_import(
     session: Session,
     piece: "Piece",
@@ -206,6 +222,8 @@ def register_from_import(
     storage_key: str,
     view_type_term_id: uuid.UUID | None,
     display: StoredCopy | None = None,
+    batch_name: str | None = None,
+    replaced_lower_resolution: Sequence[str] = (),
 ) -> MediaAsset:
     """Register a photo of an applied import batch on ``piece`` (importacion-masiva-fotografias,
     task 5.1; design D5).
@@ -220,6 +238,9 @@ def register_from_import(
     With ``display`` (``MEDIA_KEEP_ORIGINALS=false``, design D6) the asset points to the display
     copy and describes it; the size and fingerprint of the original received stay in
     ``extra_metadata.original``.
+
+    The batch name and the paths of the lower resolution versions discarded in its place
+    (importacion-fotos-a-catalogo, task 6.3; design D6, D9) complete its provenance.
     """
     max_order = session.scalar(
         select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece.id)
@@ -230,6 +251,10 @@ def register_from_import(
         "import_photo_id": str(photo.id),
         "relative_path": photo.relative_path,
     }
+    if batch_name:
+        metadata["import_batch_name"] = batch_name
+    if replaced_lower_resolution:
+        metadata["replaced_lower_resolution"] = list(replaced_lower_resolution)
     if display is not None:
         metadata["original"] = {
             "content_type": photo.content_type,

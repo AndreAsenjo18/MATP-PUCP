@@ -94,6 +94,7 @@ from app.modules.media.service import (
     EXTENSION_BY_FORMAT,
     comodato_restriction_term_id,
     gallery_urls,
+    provenance_of,
     verify_image_stream,
 )
 from app.modules.quality.completeness import (
@@ -867,6 +868,7 @@ def list_piece_media(
             download_url=urls[asset.id][1],
             thumbnail_url=urls[asset.id][0],
             created_at=asset.created_at,
+            provenance=provenance_of(asset),
         )
         for asset in assets
     ]
@@ -1072,6 +1074,7 @@ def register_media(
         restriction_note=asset.restriction_note,
         download_url=None,
         created_at=asset.created_at,
+        provenance=provenance_of(asset),
     )
 
 
@@ -1159,6 +1162,7 @@ def update_media(
         restriction_note=asset.restriction_note,
         download_url=None,
         created_at=asset.created_at,
+        provenance=provenance_of(asset),
     )
 
 
@@ -1237,6 +1241,7 @@ def reorder_media(
             restriction_note=a.restriction_note,
             download_url=None,
             created_at=a.created_at,
+            provenance=provenance_of(a),
         )
         for a in sorted(assets, key=lambda x: x.sort_order)
     ]

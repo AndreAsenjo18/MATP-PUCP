@@ -12,9 +12,15 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFound
 from app.core.models_base import new_uuid
-from app.modules.imports.models import ImportBatch
+from app.modules.imports.models import ImportBatch, ImportBatchKind
 from app.modules.imports.models import ImportBatchStatus as S
-from app.modules.imports.state import TRANSITIONS, allowed_transitions, transition
+from app.modules.imports.state import (
+    PHOTO_STATES_BY_KIND,
+    PHOTO_TRANSITIONS,
+    TRANSITIONS,
+    allowed_transitions,
+    transition,
+)
 from tests.conftest import ActAs
 
 NewBatch = Callable[..., ImportBatch]
@@ -122,3 +128,81 @@ def test_stage_timestamps_accumulate(session: Session, act_as: ActAs, new_batch:
 def test_unknown_batch(session: Session) -> None:
     with pytest.raises(NotFound):
         transition(session, new_uuid(), S.MAPPED)
+
+
+# --- Lote de solo fotografías (importacion-fotos-a-catalogo, tarea 2.1, design D1) ------------
+
+PHOTO_ALLOWED = [
+    (source, target) for source, targets in PHOTO_TRANSITIONS.items() for target in targets
+]
+PHOTO_FORBIDDEN = [
+    (source, target) for source, target in product(S, S) if target not in PHOTO_TRANSITIONS[source]
+]
+
+
+@pytest.fixture
+def new_photo_batch(session: Session, act_as: ActAs) -> NewBatch:
+    def factory(status: S) -> ImportBatch:
+        with act_as("CATALOGUER"):
+            batch = ImportBatch(
+                id=new_uuid(),
+                source_name="Archivo fotográfico",
+                file_name="Fotos colección ABC",
+                kind=ImportBatchKind.PHOTOS,
+                status=status,
+            )
+            session.add(batch)
+            session.commit()
+        return batch
+
+    return factory
+
+
+def test_photo_batch_path_has_no_mapping_nor_validation() -> None:
+    assert set(PHOTO_TRANSITIONS) == set(S)
+    reachable = {target for targets in PHOTO_TRANSITIONS.values() for target in targets}
+    assert {S.MAPPED, S.VALIDATED, S.FAILED_INGESTION}.isdisjoint(reachable)
+    assert PHOTO_STATES_BY_KIND[ImportBatchKind.PHOTOS] == {S.UPLOADED, S.IN_PREVIEW}
+
+
+@pytest.mark.parametrize(("source", "target"), PHOTO_ALLOWED)
+def test_photo_batch_allowed_transitions(
+    session: Session, act_as: ActAs, new_photo_batch: NewBatch, source: S, target: S
+) -> None:
+    batch = new_photo_batch(source)
+
+    with act_as("COLLECTIONS_MANAGER"):
+        moved = transition(session, batch.id, target)
+        session.commit()
+
+    assert moved.status == target
+
+
+@pytest.mark.parametrize(("source", "target"), PHOTO_FORBIDDEN)
+def test_photo_batch_forbidden_transitions(
+    session: Session, act_as: ActAs, new_photo_batch: NewBatch, source: S, target: S
+) -> None:
+    batch = new_photo_batch(source)
+
+    with act_as("COLLECTIONS_MANAGER"), pytest.raises(ConflictError) as error:
+        transition(session, batch.id, target)
+
+    assert error.value.code == "invalid_batch_transition"
+    assert error.value.details["allowed"] == [  # type: ignore[index]
+        status.value for status in allowed_transitions(source, ImportBatchKind.PHOTOS)
+    ]
+    session.rollback()
+
+
+def test_mapping_a_photo_batch_explains_its_actions(
+    session: Session, act_as: ActAs, new_photo_batch: NewBatch
+) -> None:
+    batch = new_photo_batch(S.UPLOADED)
+
+    with act_as("COLLECTIONS_MANAGER"), pytest.raises(ConflictError) as error:
+        transition(session, batch.id, S.MAPPED)
+
+    assert error.value.message == (
+        "No se puede mapear columnas un lote en estado «subido». "
+        "Acciones posibles: revisar la previsualización, abandonar."
+    )

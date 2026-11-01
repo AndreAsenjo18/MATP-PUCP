@@ -8,6 +8,7 @@ El asistente de importación carga en el catálogo las piezas de una hoja de cá
 - Solo la **Gestora de colecciones** y el **Administrador** pueden **aprobarla**.
 - **Nada llega al catálogo hasta que se aprueba.** Mientras tanto, el lote es una propuesta que se puede revisar, corregir o abandonar.
 - El archivo original se guarda sin cambios y cada decisión queda en la **bitácora** del lote, con su usuario y la fecha.
+- ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Use **Importar fotografías al catálogo**: ver [Importar el archivo fotográfico](importacion-fotos.md).
 
 ## 1. Preparar el archivo
 

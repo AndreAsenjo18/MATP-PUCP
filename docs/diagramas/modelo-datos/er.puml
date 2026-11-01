@@ -297,6 +297,7 @@ entity IMPORT_BATCH {
   * id : uuid <<PK>>
   --
   * source_name : varchar(200)
+  * kind : varchar(40)
   * file_name : varchar(300)
     file_storage_key : varchar(500)
     file_sha256 : varchar(64)
@@ -314,6 +315,7 @@ entity IMPORT_BATCH {
     heartbeat_at : timestamptz
     mapping : jsonb
     change_set_id : uuid
+    photo_reading : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -372,6 +374,13 @@ entity IMPORT_PHOTO {
   * duplicate_of_existing : boolean
   * duplicate_confirmed : boolean
     media_asset_id : uuid <<FK>>
+    piece_id : uuid <<FK>>
+    candidate_piece_ids : jsonb
+    match_reason : varchar(60)
+    width_px : integer
+    height_px : integer
+    perceptual_hash : varchar(16)
+    same_as_photo_id : uuid <<FK>>
   ..
   <i>+ timestamps</i>
 }
@@ -687,6 +696,8 @@ MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
 IMPORT_BATCH ||--o{ IMPORT_PHOTO : "fotos del lote"
 IMPORT_ROW |o--o{ IMPORT_PHOTO : "propuesta para"
 MEDIA_ASSET |o--o{ IMPORT_PHOTO : "aplicada como"
+PIECE |o--o{ IMPORT_PHOTO : "piece_id"
+IMPORT_PHOTO |o--o{ IMPORT_PHOTO : "same_as_photo_id"
 
 note as N1
   <b>Convenciones</b>
