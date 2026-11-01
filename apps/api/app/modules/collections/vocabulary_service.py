@@ -106,26 +106,48 @@ def create_term(
     return term
 
 
+def _same_label(session: Session, term: Term, label: str, *, only_active: bool) -> Term | None:
+    """Another term of the same list with that label, without case."""
+    statement = select(Term).where(
+        Term.vocabulary_id == term.vocabulary_id,
+        Term.id != term.id,
+        func.lower(Term.label) == label.strip().lower(),
+    )
+    if only_active:
+        statement = statement.where(Term.is_active.is_(True))
+    return session.scalar(statement)
+
+
+def _duplicate_label(duplicate: Term) -> ValidationFailed:
+    advice = (
+        "desactive uno de los dos o use otra etiqueta."
+        if duplicate.is_active
+        else "está desactivado: reactívelo en lugar de repetirlo, o use otra etiqueta."
+    )
+    return ValidationFailed(
+        f"Ya existe el término «{duplicate.label}» en esta lista; {advice}",
+        code="duplicate_term",
+        details={"term_id": str(duplicate.id), "is_active": duplicate.is_active},
+    )
+
+
 def update_term(session: Session, term: Term, changes: dict[str, object]) -> None:
+    """Edit a term. Its identity stays, so every sheet that uses it shows the new label; two active
+    terms of a list never share a label (crud-manual-completo 1.2)."""
     require_audit_context(session)
     if "label" in changes:
         label = changes["label"]
         if not isinstance(label, str) or not label.strip():
             raise ValidationFailed("La etiqueta del término es obligatoria.", code="label_required")
-        duplicate = session.scalar(
-            select(Term).where(
-                Term.vocabulary_id == term.vocabulary_id,
-                Term.id != term.id,
-                func.lower(Term.label) == label.strip().lower(),
-            )
-        )
+        duplicate = _same_label(session, term, label, only_active=False)
         if duplicate is not None:
-            raise ValidationFailed(
-                f"Ya existe otro término con la etiqueta '{duplicate.label}'.",
-                code="duplicate_term",
-                details={"term_id": str(duplicate.id)},
-            )
+            raise _duplicate_label(duplicate)
         term.label = label.strip()
+    elif changes.get("is_active") is True and not term.is_active:
+        # Reactivating must not leave two active terms with the same label.
+        duplicate = _same_label(session, term, term.label, only_active=True)
+        if duplicate is not None:
+            raise _duplicate_label(duplicate)
     for key in ("description", "sort_order", "is_active", "external_uri"):
         if key in changes and changes[key] is not None:
             setattr(term, key, changes[key])
