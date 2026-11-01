@@ -38,9 +38,11 @@ const SYSTEM_FILES = new Set(["thumbs.db", "desktop.ini", ".ds_store"]);
 
 /** Estados en los que el lote admite fotos y el panel se muestra (Validación y Previsualización). */
 const PHOTO_STATES = new Set<ImportBatch["status"]>(["MAPPED", "VALIDATED", "IN_PREVIEW"]);
+/** Un lote de solo fotos no tiene mapeo ni validación (`importacion-fotos-a-catalogo`, D1). */
+const PHOTO_BATCH_STATES = new Set<ImportBatch["status"]>(["UPLOADED", "IN_PREVIEW"]);
 
-export function acceptsPhotos(batch: Pick<ImportBatch, "status">): boolean {
-  return PHOTO_STATES.has(batch.status);
+export function acceptsPhotos(batch: Pick<ImportBatch, "status"> & { kind?: ImportBatch["kind"] }): boolean {
+  return (batch.kind === "PHOTOS" ? PHOTO_BATCH_STATES : PHOTO_STATES).has(batch.status);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -387,4 +389,70 @@ export function overallProgress(progress: PhotoProgress[]): { percent: number; d
 /** Hay fotos que reanudar: pendientes, fallidas o interrumpidas a mitad de subida. */
 export function canResume(progress: PhotoProgress[]): boolean {
   return progress.some((item) => ["pending", "failed", "uploading", "hashing"].includes(item.status));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Bandeja: fotos ambiguas o sin emparejar y su asignación a una fila (tareas 4.1 y 4.2, diseño D4)
+// ---------------------------------------------------------------------------------------------
+
+export type TrayPhoto = ApiSchemas["ImportPhotoOut"];
+
+/** Fotos que pide revisar la bandeja mínima: las que no tienen una fila propuesta. */
+export const TRAY_MATCH_STATUSES = ["AMBIGUOUS", "UNMATCHED"] as const;
+/** Páginas de 100 que la bandeja y el índice de filas leen como máximo (lotes de la demo). */
+const MAX_PAGES = 20;
+
+export interface TrayRow {
+  id: string;
+  number: number;
+  label: string;
+}
+
+/** Fotos ambiguas y sin emparejar del lote, verificadas, con su miniatura firmada. */
+export async function fetchTrayPhotos(batchId: string, devUser?: string): Promise<ImportResult<TrayPhoto[]>> {
+  const photos: TrayPhoto[] = [];
+  for (const matchStatus of TRAY_MATCH_STATUSES) {
+    for (let page = 1; page <= MAX_PAGES; page += 1) {
+      const result = await call(() =>
+        client(devUser).GET("/api/v1/imports/{batch_id}/photos", {
+          params: { path: { batch_id: batchId }, query: { match_status: matchStatus, status: "VERIFIED", page, limit: 100 } },
+        }),
+      );
+      if (result.status !== "ok") return result;
+      photos.push(...result.value.items);
+      if (page * result.value.page_size >= result.value.total) break;
+    }
+  }
+  return { status: "ok", value: photos };
+}
+
+/** Número de fila del Excel → fila del lote, para asignar escribiendo el número que ve la persona. */
+export async function fetchTrayRows(batchId: string, devUser?: string): Promise<ImportResult<TrayRow[]>> {
+  const rows: TrayRow[] = [];
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const result = await call(() =>
+      client(devUser).GET("/api/v1/imports/{batch_id}/diffs", {
+        params: { path: { batch_id: batchId }, query: { page, page_size: 100 } },
+      }),
+    );
+    if (result.status !== "ok") return result;
+    for (const row of result.value.items) {
+      const fields = (row.mapped_data as { fields?: Record<string, unknown> } | null)?.fields;
+      const denomination = typeof fields?.denomination === "string" ? fields.denomination : null;
+      rows.push({ id: row.id, number: row.source_row_number, label: denomination ? `Fila ${row.source_row_number}: ${denomination}` : `Fila ${row.source_row_number}` });
+    }
+    if (page * result.value.page_size >= result.value.total) break;
+  }
+  return { status: "ok", value: rows };
+}
+
+/** `PATCH /imports/{batch_id}/photos` con `assign`: las fotos quedan asignadas a mano a la fila. */
+export async function assignPhotos(batchId: string, photoIds: string[], rowId: string, devUser?: string): Promise<ImportResult<TrayPhoto[]>> {
+  const result = await call(() =>
+    client(devUser).PATCH("/api/v1/imports/{batch_id}/photos", {
+      params: { path: { batch_id: batchId } },
+      body: { op: "assign", photo_ids: photoIds, row_id: rowId },
+    }),
+  );
+  return result.status === "ok" ? { status: "ok", value: result.value.photos } : result;
 }

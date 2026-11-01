@@ -7,7 +7,7 @@ rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 
 import logging
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import (
@@ -21,12 +21,19 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
-from app.api.pagination import Page, PageParams, page_params, paginate
+from app.api.pagination import (
+    LimitPageParams,
+    Page,
+    PageParams,
+    limit_page_params,
+    page_params,
+    paginate,
+)
 from app.api.stubs import (
     CHANGE_TEMPLATES,
     implemented,
@@ -35,9 +42,18 @@ from app.core import jobs
 from app.core.config import Settings
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
-from app.modules.audit.context import require_audit_context
+from app.modules.audit.context import AuditContext, require_audit_context, set_audit_context
+from app.modules.audit.models import AuditOrigin
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
+from app.modules.imports.candidates import enrich_matches
+from app.modules.imports.catalog_photo_matching import FolderRule
+from app.modules.imports.catalog_photos import (
+    folders_overview,
+    reading_preview,
+    save_reading,
+    upload_correspondences,
+)
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
@@ -54,14 +70,20 @@ from app.modules.imports.mapping import (
 )
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportBatchStatus,
     ImportImage,
     ImportMappingTemplate,
+    ImportPhotoStatus,
     ImportRow,
+    PhotoMatchStatus,
     RowClassification,
     RowDecision,
 )
 from app.modules.imports.photo_quota import photo_quota_warning
+from app.modules.imports.photo_review import OPERATION_LABELS, decide_photos, photos_query
+from app.modules.imports.photo_review import summary as photo_summary
+from app.modules.imports.photo_review import thumbnail_url as photo_thumbnail_url
 from app.modules.imports.photo_upload import (
     DeclaredPhoto,
     PhotoLimits,
@@ -73,6 +95,9 @@ from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     ClassificationRule,
+    CorrespondenceLineOut,
+    CorrespondencesOut,
+    FolderRuleRequest,
     ImageAssociateRequest,
     ImportBatchOut,
     ImportBatchSummary,
@@ -80,17 +105,27 @@ from app.modules.imports.schemas import (
     ImportImageOut,
     ImportLog,
     ImportLogEntry,
+    ImportPhotoOut,
+    ImportPhotoSummary,
     ImportRowOut,
     MappingRequest,
     MappingTemplateCreate,
     MappingTemplateOut,
     MappingTemplateUpdate,
+    PhotoBatchCreate,
     PhotoCompleteOut,
     PhotoCompleteRequest,
+    PhotoDecisionLogEntry,
+    PhotoDecisionOut,
+    PhotoDecisionRequest,
+    PhotoFolderOut,
+    PhotoFoldersOut,
+    PhotoReadingRule,
     PhotoStateOut,
     PhotoUploadItemOut,
     PhotoUploadUrlsOut,
     PhotoUploadUrlsRequest,
+    ReadingPreviewOut,
     RevertRequest,
     RowDecisionRequest,
     TemplateDryRunOut,
@@ -101,11 +136,12 @@ from app.modules.imports.schemas import (
 )
 from app.modules.imports.service import (
     create_batch,
+    create_photo_batch,
     ingest_stage,
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import STATUS_LABELS
+from app.modules.imports.state import STATUS_LABELS, lock_batch, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 
@@ -139,6 +175,22 @@ def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
     return batch
 
 
+def get_spreadsheet_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
+    """The batch of an Excel-only operation (mapping, validation, rows, embedded images): a
+    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1)."""
+    batch = get_batch(session, batch_id)
+    require_kind(batch, ImportBatchKind.SPREADSHEET)
+    return batch
+
+
+KIND_CONFLICT = {
+    409: {
+        "model": ErrorResponse,
+        "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote.",
+    }
+}
+
+
 def batch_out(
     session: SessionDep, batch: ImportBatch, settings: Settings | None = None
 ) -> ImportBatchOut:
@@ -154,7 +206,16 @@ def batch_out(
             quota_bytes=settings.media_quota_bytes,
             keep_originals=settings.media_keep_originals,
         )
-    return ImportBatchOut.from_batch(batch, approval)
+    out = ImportBatchOut.from_batch(batch, approval)
+    if batch.status in APPROVABLE_STATUSES:
+        # Rows a person already decided: validating again recalculates every row and drops them.
+        decided = session.scalar(
+            select(func.count())
+            .select_from(ImportRow)
+            .where(ImportRow.batch_id == batch.id, ImportRow.decision != RowDecision.PENDING)
+        )
+        out.counts = {**(out.counts or {}), "DECIDED": int(decided or 0)}
+    return out
 
 
 def _preview_url(storage: ObjectStorage, image: ImportImage) -> str | None:
@@ -174,8 +235,14 @@ def _generate_derivatives(
         logger.exception("No se generaron los derivados de la foto %s", asset_id)
 
 
-def _row_out(row: ImportRow, images: list[ImportImageOut] | None = None) -> ImportRowOut:
-    return ImportRowOut.from_row(row, action=row_action(row)[0].value, images=images)
+def _row_out(
+    row: ImportRow,
+    images: list[ImportImageOut] | None = None,
+    matches: list[dict[str, Any]] | None = None,
+) -> ImportRowOut:
+    return ImportRowOut.from_row(
+        row, action=row_action(row)[0].value, images=images, matches=matches
+    )
 
 
 def _read_upload(file: UploadFile, max_bytes: int) -> bytes:
@@ -229,6 +296,26 @@ def upload_import_batch(
             user.id,
         )
     return ImportBatchSummary.from_batch(batch)
+
+
+@router.post(
+    "/imports/photo-batches",
+    response_model=ImportBatchOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear un lote de solo fotografías para piezas existentes",
+    description="Crea un lote sin Excel cuyas fotos se emparejan con las piezas ya registradas "
+    "por sus identificadores vigentes (RF-046). Las fotos se suben con las mismas operaciones "
+    "de `/imports/{batch_id}/photos/…`; las operaciones de Excel (mapeo, validación, filas) "
+    "responden 409 `batch_kind_mismatch` en este lote (`importacion-fotos-a-catalogo`, D1).",
+    **implemented(),
+)
+def create_import_photo_batch(
+    body: PhotoBatchCreate, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    writer(session, user)
+    batch = create_photo_batch(session, name=body.name, uploaded_by_id=user.id)
+    session.commit()
+    return ImportBatchOut.from_batch(batch)
 
 
 @router.get(
@@ -325,7 +412,7 @@ def _mapping_spec(body: MappingRequest, session: Session | None = None) -> Mappi
 @router.put(
     "/imports/{batch_id}/mapping",
     response_model=ImportBatchOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="2. Mapeo: asignar columnas (o aplicar una plantilla)",
     description="Asigna cada columna a un campo de la ficha, a un tipo de identificador o a "
     "los datos de origen; las columnas no listadas quedan como datos de origen (RF-008). "
@@ -342,6 +429,7 @@ def set_import_mapping(
     session: SessionDep,
     user: Preparer,
 ) -> ImportBatchOut:
+    get_spreadsheet_batch(session, batch_id)
     spec = _mapping_spec(body, session)
     writer(session, user)
     batch = set_mapping(
@@ -362,7 +450,7 @@ def set_import_mapping(
     "/imports/{batch_id}/validate",
     response_model=ValidationSummary,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="3-4. Normalizar, validar y hacer matching multi-código",
     description="Lanza la validación en segundo plano y responde de inmediato; al terminar, el "
     "lote queda en previsualización con los conteos por clasificación (RF-026).",
@@ -375,7 +463,7 @@ def validate_import(
     session: SessionDep,
     user: Preparer,
 ) -> ValidationSummary:
-    get_batch(session, batch_id)
+    get_spreadsheet_batch(session, batch_id)
     batch = launch_stage(
         session,
         background_tasks,
@@ -398,7 +486,7 @@ def validate_import(
 @router.get(
     "/imports/{batch_id}/diffs",
     response_model=ImportDiffsPage,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="5. Previsualización con diff y clasificación de filas",
     description="Filas del lote con su clasificación, coincidencias, errores, diff campo a "
     "campo, la acción que hará la aplicación y sus imágenes, más las reglas y umbrales usados "
@@ -414,7 +502,7 @@ def get_import_batch_diffs(
     classification: RowClassification | None = None,
     only_errors: bool = False,
 ) -> ImportDiffsPage:
-    batch = get_batch(session, batch_id)
+    batch = get_spreadsheet_batch(session, batch_id)
     if batch.status not in PREVIEW_STATUSES:
         raise ConflictError(
             f"El lote está en estado «{STATUS_LABELS[batch.status]}»: valídelo para ver la "
@@ -433,13 +521,14 @@ def get_import_batch_diffs(
         statement = statement.where(ImportRow.has_validation_errors.is_(True))
     rows, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
+    candidates = enrich_matches(session, rows)
     images: dict[uuid.UUID | None, list[ImportImageOut]] = {}
     for image in batch_images(session, batch.id):
         images.setdefault(image.import_row_id, []).append(
             ImportImageOut.from_image(image, _preview_url(storage, image))
         )
     return ImportDiffsPage(
-        items=[_row_out(row, images.get(row.id)) for row in rows],
+        items=[_row_out(row, images.get(row.id), candidates.get(row.id)) for row in rows],
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -454,7 +543,7 @@ def get_import_batch_diffs(
 @router.patch(
     "/imports/{batch_id}/rows/{row_id}",
     response_model=ImportRowOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="Decidir sobre una fila (aceptar, excluir o rechazar con motivo)",
     description="Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del "
     "diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino "
@@ -469,6 +558,7 @@ def decide_import_row(
     session: SessionDep,
     user: Preparer,
 ) -> ImportRowOut:
+    get_spreadsheet_batch(session, batch_id)
     writer(session, user)
     row = decide_row(
         session,
@@ -482,7 +572,7 @@ def decide_import_row(
         field_decisions=dict(body.field_decisions),
     )
     session.commit()
-    return _row_out(row)
+    return _row_out(row, matches=enrich_matches(session, [row])[row.id])
 
 
 @router.post(
@@ -513,7 +603,10 @@ def confirm_import_batch(
         request.app.state.session_factory,
         batch_id,
         Stage.APPLY,
-        apply_stage(request.app.state.storage),
+        apply_stage(
+            request.app.state.storage,
+            keep_originals=request.app.state.settings.media_keep_originals,
+        ),
         user.id,
     )
     return ImportBatchOut.from_batch(batch)
@@ -555,6 +648,9 @@ def get_import_log(
         applied_rows=log["applied_rows"],
         rejected_rows=log["rejected_rows"],
         entries=[ImportLogEntry.model_validate(entry) for entry in log["entries"]],
+        photo_decisions=[
+            PhotoDecisionLogEntry.model_validate(item) for item in log["photo_decisions"]
+        ],
         download_url=f"/api/v1/imports/{batch.id}/log?format=xlsx",
     )
 
@@ -562,7 +658,7 @@ def get_import_log(
 @router.post(
     "/imports/{batch_id}/images/{image_id}/associate",
     response_model=ImportImageOut,
-    responses=NOT_FOUND,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
     summary="Asociar una imagen extraída del Excel a una pieza (RF-029)",
     description="Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con "
     "referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 "
@@ -579,7 +675,7 @@ def associate_import_image(
     user: MediaUploader,
 ) -> ImportImageOut:
     storage: ObjectStorage = request.app.state.storage
-    batch = get_batch(session, batch_id)
+    batch = get_spreadsheet_batch(session, batch_id)
     asset = associate_image(
         session,
         storage,
@@ -663,6 +759,272 @@ def complete_import_photo_uploads(
     return PhotoCompleteOut(
         batch_id=batch_id, photos=[PhotoStateOut.from_photo(photo) for photo in photos]
     )
+
+
+@router.get(
+    "/imports/{batch_id}/photos",
+    response_model=Page[ImportPhotoOut],
+    responses=NOT_FOUND,
+    summary="Fotografías del lote: bandeja con filtros y miniaturas",
+    description="Fotos del lote con su fila o pieza propuesta o asignada, ordenadas por destino y "
+    "posición, con la miniatura firmada de las verificadas y el motivo de las propuestas que no "
+    "son directas. Se filtran por estado, propuesta, fila, pieza o carpeta "
+    "(`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).",
+    **implemented(),
+)
+def list_import_photos(
+    request: Request,
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    params: Annotated[LimitPageParams, Depends(limit_page_params)],
+    photo_status: Annotated[ImportPhotoStatus | None, Query(alias="status")] = None,
+    match_status: Annotated[PhotoMatchStatus | None, Query()] = None,
+    row_id: Annotated[uuid.UUID | None, Query()] = None,
+    piece_id: Annotated[uuid.UUID | None, Query(description="Pieza propuesta o asignada.")] = None,
+    folder: Annotated[
+        str | None, Query(max_length=1000, description="Carpeta y sus subcarpetas (`a/b`).")
+    ] = None,
+) -> Page[ImportPhotoOut]:
+    get_batch(session, batch_id)
+    statement = photos_query(
+        batch_id,
+        status=photo_status,
+        match_status=match_status,
+        row_id=row_id,
+        piece_id=piece_id,
+        folder=folder,
+    )
+    photos, total = paginate(session, statement, params)
+    storage: ObjectStorage = request.app.state.storage
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    return Page(
+        items=[
+            ImportPhotoOut.from_photo(photo, photo_thumbnail_url(storage, photo, ttl))
+            for photo in photos
+        ],
+        total=total,
+        page=params.page,
+        page_size=params.limit,
+    )
+
+
+@router.get(
+    "/imports/{batch_id}/photos/summary",
+    response_model=ImportPhotoSummary,
+    responses=NOT_FOUND,
+    summary="Fotografías del lote: conteos por estado y propuesta",
+    **implemented(),
+)
+def summarize_import_photos(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> ImportPhotoSummary:
+    get_batch(session, batch_id)
+    return ImportPhotoSummary(batch_id=batch_id, **photo_summary(session, batch_id))
+
+
+@router.patch(
+    "/imports/{batch_id}/photos",
+    response_model=PhotoDecisionOut,
+    responses={
+        **NOT_FOUND,
+        409: {"model": ErrorResponse, "description": "El lote ya no admite cambios en sus fotos."},
+    },
+    summary="Fotografías del lote: decidir sobre fotos (asignar, quitar, descartar…)",
+    description="`assign` a una fila del lote (lote con Excel) o a una pieza no retirada (lote "
+    "de solo fotografías), en el orden enviado y después de su última foto; `unassign`, "
+    "`discard`, `restore`, `confirm_duplicate` y `reorder`. El emparejamiento automático ya no "
+    "cambia las fotos decididas y cada decisión queda en la bitácora del lote con su autor. Una "
+    "fila de otro lote, una fila en un lote de solo fotos, una pieza retirada o una foto sin "
+    "verificar responde 422. Nada llega al catálogo hasta aprobar el lote "
+    "(`importacion-masiva-fotografias`, diseño D4; `importacion-fotos-a-catalogo`, diseño D8).",
+    **implemented(),
+)
+def decide_import_photos(
+    request: Request,
+    batch_id: uuid.UUID,
+    body: PhotoDecisionRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> PhotoDecisionOut:
+    _photo_writer(session, user, batch_id, f"Fotos del lote: {OPERATION_LABELS[body.op]}")
+    photos = decide_photos(
+        session, batch_id, body.op, body.photo_ids, row_id=body.row_id, piece_id=body.piece_id
+    )
+    session.commit()
+    storage: ObjectStorage = request.app.state.storage
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    return PhotoDecisionOut(
+        batch_id=batch_id,
+        photos=[
+            ImportPhotoOut.from_photo(photo, photo_thumbnail_url(storage, photo, ttl))
+            for photo in photos
+        ],
+    )
+
+
+def _photo_writer(session: Session, user: CurrentUser, batch_id: uuid.UUID, reason: str) -> None:
+    """A person's decision on the photos of a batch, audited with the batch as ``origin_ref``:
+    the batch log lists them (importacion-fotos-a-catalogo, task 4.1)."""
+    set_audit_context(
+        session,
+        AuditContext(
+            origin=AuditOrigin.MANUAL, user_id=user.id, origin_ref=str(batch_id), reason=reason
+        ),
+    )
+
+
+def _photo_batch(session: Session, batch_id: uuid.UUID) -> ImportBatch:
+    batch = get_batch(session, batch_id)
+    require_kind(batch, ImportBatchKind.PHOTOS)
+    return batch
+
+
+def _folder_rule(rule: PhotoReadingRule) -> FolderRule:
+    return FolderRule(
+        mode=rule.mode,
+        template=rule.template,
+        collection_id=rule.collection_id,
+        collection_set="collection_id" in rule.model_fields_set,
+    )
+
+
+def _folders_out(session: Session, batch: ImportBatch) -> PhotoFoldersOut:
+    reading = PhotoReadingRule.model_validate(
+        (batch.photo_reading or {}).get("default") or {"mode": "auto"}
+    )
+    return PhotoFoldersOut(
+        batch_id=batch.id,
+        default_rule=reading,
+        folders=[
+            PhotoFolderOut.model_validate(folder) for folder in folders_overview(session, batch)
+        ],
+    )
+
+
+@router.get(
+    "/imports/{batch_id}/photos/folders",
+    response_model=PhotoFoldersOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Fotografías del lote: carpetas con su forma de lectura y su colección",
+    description="Árbol de carpetas de un lote de solo fotografías con sus conteos por propuesta, "
+    "el rango si es una carpeta de rango, la colección propuesta o confirmada, la regla de "
+    "lectura vigente (y de qué carpeta la hereda) y la plantilla sugerida por la forma de sus "
+    "nombres (`importacion-fotos-a-catalogo`, diseño D4, D5 y D11).",
+    **implemented(),
+)
+def list_import_photo_folders(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> PhotoFoldersOut:
+    return _folders_out(session, _photo_batch(session, batch_id))
+
+
+INVALID_TEMPLATE = {
+    422: {
+        "model": ErrorResponse,
+        "description": "`invalid_photo_template`: la plantilla tiene un tipo que no existe, no "
+        "identifica nada o usa `{n}` sin colección; `details` trae el motivo y los tipos válidos.",
+    }
+}
+
+
+@router.post(
+    "/imports/{batch_id}/photos/reading-preview",
+    response_model=ReadingPreviewOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT, **INVALID_TEMPLATE},
+    summary="Fotografías del lote: vista previa de cómo se leen los nombres de una carpeta",
+    description="Lee hasta 20 nombres de la carpeta con la regla enviada (nombre → códigos → "
+    "pieza o motivo) y cuenta los que no siguen la plantilla, sin guardar nada "
+    "(`importacion-fotos-a-catalogo`, diseño D4).",
+    **implemented(),
+)
+def preview_import_photo_reading(
+    batch_id: uuid.UUID, body: FolderRuleRequest, session: SessionDep, user: Preparer
+) -> ReadingPreviewOut:
+    batch = _photo_batch(session, batch_id)
+    return ReadingPreviewOut.model_validate(
+        reading_preview(session, batch, body.folder, _folder_rule(body.rule))
+    )
+
+
+@router.put(
+    "/imports/{batch_id}/photos/reading",
+    response_model=PhotoFoldersOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT, **INVALID_TEMPLATE},
+    summary="Fotografías del lote: guardar la forma de lectura de una carpeta",
+    description="Guarda la regla de la carpeta (vacía = todo el lote), que vale también para sus "
+    "subcarpetas sin regla propia, y vuelve a emparejar solo las fotos automáticas de esa "
+    "carpeta: las asignadas a mano y las descartadas no cambian. Una plantilla inválida "
+    "responde 422 y la carpeta conserva su regla (`importacion-fotos-a-catalogo`, diseño D4).",
+    **implemented(),
+)
+def save_import_photo_reading(
+    batch_id: uuid.UUID, body: FolderRuleRequest, session: SessionDep, user: Preparer
+) -> PhotoFoldersOut:
+    batch = _reviewable_photo_batch(session, user, batch_id, "forma de lectura")
+    save_reading(session, batch, body.folder, _folder_rule(body.rule))
+    session.commit()
+    return _folders_out(session, batch)
+
+
+def _reviewable_photo_batch(
+    session: Session, user: CurrentUser, batch_id: uuid.UUID, what: str
+) -> ImportBatch:
+    """The locked ``PHOTOS`` batch, while its photos can still change (D4, D7)."""
+    _photo_batch(session, batch_id)
+    _photo_writer(session, user, batch_id, f"Fotos del lote: {what}")
+    batch = lock_batch(session, batch_id)
+    if batch.status not in {ImportBatchStatus.UPLOADED, ImportBatchStatus.IN_PREVIEW}:
+        raise ConflictError(
+            f"El lote está en «{STATUS_LABELS[batch.status]}»: ya no se cambia su lectura.",
+            code="batch_not_reviewable",
+            details={"current_status": batch.status.value},
+        )
+    return batch
+
+
+@router.post(
+    "/imports/{batch_id}/photos/correspondences",
+    response_model=CorrespondencesOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Fotografías del lote: subir una lista de correspondencias archivo → código",
+    description="CSV o Excel con las columnas `archivo` (nombre o ruta) y `codigo`, y `tipo` "
+    "opcional. Propone la pieza de cada foto nombrada con prioridad sobre el nombre, sin tocar "
+    "las asignaciones manuales, y la guarda en el lote para las lecturas siguientes. Las líneas "
+    "sin foto, sin pieza o ambiguas (nombre repetido en varias carpetas) se informan con su "
+    "motivo sin detener las demás (`importacion-fotos-a-catalogo`, diseño D7).",
+    **implemented(),
+)
+def upload_import_photo_correspondences(
+    request: Request,
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    file: Annotated[UploadFile, File(description="Lista .csv o .xlsx.")],
+) -> CorrespondencesOut:
+    content = _read_upload(file, request.app.state.settings.import_max_bytes)
+    batch = _reviewable_photo_batch(session, user, batch_id, "lista de correspondencias")
+    results = upload_correspondences(session, batch, file.filename or "lista.csv", content)
+    session.commit()
+    counts = {key: sum(r.result == key for r in results) for key in CORRESPONDENCE_RESULTS}
+    return CorrespondencesOut(
+        batch_id=batch_id,
+        **counts,
+        lines=[
+            CorrespondenceLineOut(
+                line=r.line.number,
+                file=r.line.file,
+                code=r.line.code,
+                result=r.result,  # type: ignore[arg-type]
+                reason=r.reason,
+                photo_ids=list(r.photo_ids),
+            )
+            for r in results
+        ],
+    )
+
+
+CORRESPONDENCE_RESULTS = ("applied", "no_photo", "no_piece", "ambiguous")
 
 
 @router.post(

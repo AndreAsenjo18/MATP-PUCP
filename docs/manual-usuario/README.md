@@ -11,11 +11,12 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
 | Depósito: vista móvil, movimientos y verificaciones | `deposito.md` | `ubicacion-jerarquica-y-movimientos` | escrita |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |
+| Importar el archivo fotográfico a piezas existentes | `importacion-fotos.md` | `importacion-fotos-a-catalogo` | escrita |
 | Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | escrita |
 | Búsqueda y exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion` | pendiente |
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | hecho (sin valorización) |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | hecho |
-| Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | pendiente |
+| Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | parcial: la pantalla de ejemplos de demostración (fuera del MVP, `rediseno-ux-sugerencias-ia`); falta el uso con un proveedor real |
 | Administración: usuarios, permisos, colecciones, vocabularios, ubicaciones, parámetros, respaldos | `administracion.md` | varios (ver cada change) | parcial: «Copias de seguridad del sistema» (`despliegue-vm-y-respaldos`), «Usuarios y permisos» (`autenticacion-y-matriz-permisos`), «Ubicaciones» (`ubicacion-jerarquica-y-movimientos`) «Versión del sistema y actualizaciones» (`pipeline-despliegue-ambientes`) y «Colecciones, vocabularios y tipos de identificador» (`colecciones-y-vocabularios-admin`) |
 
 ## Cómo moverse por el sistema

@@ -3,7 +3,7 @@
 /**
  * Diálogo de revisión de una fila de importación en conflicto o posible duplicado (docs/system-design.md
  * §4; `ModalImportacion` en el documento del equipo): compara el valor actual del catálogo con el de la
- * fila y registra la decisión humana aceptar / excluir / rechazar (RF-026, RF-028, RN-005). La regla de
+ * fila y registra la decisión humana aceptar / dejar fuera / rechazar (RF-026, RF-028, RN-005). La regla de
  * decisión es la función pura `resolveConflictDecision`.
  */
 import { Ban, Check, MinusCircle, X } from "lucide-react";
@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
+import { fieldLabel, plainMessage } from "@/lib/data/imports";
 
 import { importClassificationStatus } from "./status-intents";
 import { StatusBadge } from "./StatusBadges";
@@ -19,7 +20,7 @@ import { StatusBadge } from "./StatusBadges";
 type ImportRow = ApiSchemas["ImportRowOut"];
 export type ConflictDecision = Exclude<ApiSchemas["RowDecision"], "PENDING">;
 
-export const DEFAULT_EXCLUSION_REASON = "Excluida manualmente en la previsualización.";
+export const DEFAULT_EXCLUSION_REASON = "Dejada fuera manualmente en la previsualización.";
 
 export type ConflictResolution = { ok: true; decision: ConflictDecision; reason: string | null } | { ok: false; error: string };
 
@@ -84,7 +85,7 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
         setError(null);
         onClose();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40"
+      className="m-auto w-[calc(100%-2rem)] max-w-3xl rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40"
     >
       <div className="flex flex-col gap-4 p-6">
         <div className="flex items-start justify-between gap-3">
@@ -111,7 +112,7 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
               <tbody>
                 {row.diff.map((d) => (
                   <tr key={d.field} className="border-t border-borde">
-                    <td className="py-1 pr-4 font-medium">{d.field}</td>
+                    <td className="py-1 pr-4 font-medium">{fieldLabel(d.field)}</td>
                     <td className="py-1 pr-4">{display(d.current_value)}</td>
                     <td className="py-1 pr-4 font-medium text-terracota-dark">{display(d.incoming_value)}</td>
                   </tr>
@@ -125,13 +126,14 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
 
         {row.validation_errors.length > 0 && (
           <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
-            {row.validation_errors.map((e) => (e as { message?: string }).message ?? JSON.stringify(e)).join("; ")}
+            {row.validation_errors.map((e) => plainMessage((e as { message?: string }).message ?? JSON.stringify(e))).join("; ")}
           </p>
         )}
 
         <Textarea
           label="Motivo (obligatorio para rechazar)"
-          rows={2}
+          hint="Al rechazar, el motivo queda en la bitácora. Al dejar la fila fuera no hace falta."
+          rows={3}
           value={reason}
           error={error ?? undefined}
           onChange={(event) => {
@@ -145,7 +147,7 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
             Aceptar fila
           </Button>
           <Button variant="secondary" icon={MinusCircle} onClick={() => decide("EXCLUDED")}>
-            Excluir
+            Dejar fuera
           </Button>
           <Button variant="danger" icon={Ban} onClick={() => decide("REJECTED")}>
             Rechazar

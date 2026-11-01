@@ -280,9 +280,9 @@ def test_revert_touching_an_inventory_code_without_the_procedure_returns_403(
         headers=as_user(MANAGER),
     )
     assert response.status_code == 403
-    body = response.json()
-    assert body["code"] == "admin_required"
-    assert "Administrador" in body["message"]
+    # Desde ficha-pieza-crud 1.4 el Gestor ya no tiene el permiso de corrección; el rol que
+    # falta aunque se tenga el permiso lo cubre tests/test_audit_revert.py.
+    assert response.json()["details"]["permissions"] == ["identifiers.correct_inventory_code"]
 
 
 def test_revert_without_the_origin_permission_returns_403(api: RevertApi) -> None:

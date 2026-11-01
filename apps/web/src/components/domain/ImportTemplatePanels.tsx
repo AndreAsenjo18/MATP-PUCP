@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Plantillas de mapeo en el paso «Mapeo» del asistente (change `plantillas-mapeo-y-normalizacion`,
- * tarea 4.1A; spec importacion-datos: RF-022, RF-023, RNF-010).
+ * Formatos (plantillas de mapeo) en el asistente (changes `plantillas-mapeo-y-normalizacion`,
+ * tarea 4.1A, y `rediseno-ux-importacion`; spec importacion-datos: RF-022, RF-023, RNF-010).
  *
  * Componentes de presentación, como los de `ImportWizard.tsx`: reciben los datos y avisan de cada
  * acción; `LiveImportWizard` hace las llamadas.
  *
- * - `TemplatePicker`: plantillas sugeridas por las cabeceras del archivo, lista completa y
- *   «Empezar desde cero».
+ * - `FormatProblemPanel`: cuando el formato no se aplicó solo (ninguna plantilla reconoce el
+ *   archivo, la elegida no encaja o se quiere cambiar), ofrece otro formato o «Ajustar columnas».
  * - `DryRunPanel`: vista previa de normalización por columna (design D4), plegable por columna.
  *   Con `association` (4.1C), cada valor sin término ofrece «Asociar a término», que añade la
  *   correspondencia al borrador; con `stale`, avisa que el borrador cambió desde el cálculo.
@@ -24,7 +24,6 @@ import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import {
   columnNeedsAttention,
-  otherTemplates,
   previewValue,
   scoreLabel,
   statusCounts,
@@ -38,76 +37,95 @@ import {
 } from "@/lib/data/import-templates";
 import { termLabel, termsVocabulary, type TermOption } from "@/lib/data/mapping-editor";
 
-export function TemplatePicker({
+/** Por qué el formato no se pudo aplicar solo (el asistente se detiene antes de validar). */
+export type FormatIssue =
+  | { kind: "unrecognized" }
+  | { kind: "missing"; template: MappingTemplate; missing: string[] }
+  | { kind: "failed"; template: MappingTemplate; message: string }
+  | { kind: "change"; current: MappingTemplate | null };
+
+/**
+ * Se muestra cuando el formato no se aplicó solo: ninguna plantilla reconoce el archivo, la
+ * elegida no encaja o el mapeo fue rechazado. Ofrece otro formato o «Ajustar columnas».
+ */
+export function FormatProblemPanel({
+  issue,
   suggestions,
   templates,
   loading,
+  busy,
   error,
+  decided = 0,
+  onCancel,
   onUse,
-  onStartFromScratch,
+  onAdjust,
 }: {
+  issue: FormatIssue;
   suggestions: TemplateSuggestion[] | null;
   templates: MappingTemplate[] | null;
   loading: boolean;
+  busy: boolean;
   error: string | null;
+  /** Filas con una decisión ya tomada: al cambiar de formato se descartan. */
+  decided?: number;
+  /** Solo al cambiar de formato: volver a la revisión sin cambiar nada. */
+  onCancel?: () => void;
   onUse: (template: MappingTemplate) => void;
-  onStartFromScratch: () => void;
+  onAdjust: (template: MappingTemplate | null) => void;
 }) {
-  const [chosenId, setChosenId] = useState("");
-  const others = otherTemplates(templates ?? [], suggestions ?? []);
-  const chosen = others.find((template) => template.id === chosenId);
+  const scores = new Map((suggestions ?? []).map((suggestion) => [suggestion.template.id, suggestion.score]));
+  const ranked = [...(templates ?? [])].sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) || a.name.localeCompare(b.name));
+  const excluded = issue.kind === "missing" || issue.kind === "failed" ? issue.template.id : issue.kind === "change" ? issue.current?.id : undefined;
+  const others = ranked.filter((template) => template.id !== excluded);
   return (
     <Card as="section" className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-tinta">Mapeo de columnas</h2>
-      <p className="text-base text-gris-texto">
-        Use una plantilla guardada para este tipo de archivo o empiece desde cero. Antes de validar puede ver cómo quedará cada columna.
-      </p>
-      <ErrorNotice message={error} />
-      <div className="flex flex-col gap-2">
-        <h3 className="text-base font-semibold text-tinta">Plantillas que coinciden con las cabeceras del archivo</h3>
-        {loading && <p className="text-base text-gris-texto">Buscando plantillas…</p>}
-        {!loading && suggestions?.length === 0 && <p className="text-base text-gris-texto">Ninguna plantilla coincide con estas cabeceras.</p>}
-        {!loading && suggestions && suggestions.length > 0 && (
-          <ul className="flex flex-col gap-2">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-borde p-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="font-medium text-tinta">
-                    {suggestion.template.name} <span className="text-sm font-normal text-gris-texto">· coincidencia {scoreLabel(suggestion.score)}</span>
-                  </p>
-                  {suggestion.missing_columns.length > 0 && (
-                    <p className="text-sm text-carmin-texto">Faltan en el archivo: {suggestion.missing_columns.join(", ")}</p>
-                  )}
-                  {suggestion.new_columns.length > 0 && (
-                    <p className="text-sm text-gris-texto">Columnas nuevas (irán a los datos de origen): {suggestion.new_columns.join(", ")}</p>
-                  )}
-                </div>
-                <Button variant="primary" icon={Layers} onClick={() => onUse(suggestion.template)}>
-                  Usar
-                </Button>
-              </li>
-            ))}
-          </ul>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold text-tinta">
+          {issue.kind === "unrecognized" ? "No reconocemos el formato de este archivo" : issue.kind === "change" ? "Cambiar el formato" : "Este formato no encaja con el archivo"}
+        </h2>
+        {issue.kind === "unrecognized" && <p className="text-base text-gris-texto">Elija uno de los formatos guardados o ajuste las columnas a mano.</p>}
+        {issue.kind === "missing" && (
+          <p className="text-base text-gris-texto">
+            Al formato «{issue.template.name}» le faltan estas columnas: <strong className="text-tinta">{issue.missing.join(", ")}</strong>.
+          </p>
+        )}
+        {issue.kind === "failed" && <p className="text-base text-gris-texto">{issue.message}</p>}
+        {issue.kind === "change" && <p className="text-base text-gris-texto">El archivo se leerá de nuevo con el formato que elija y se validará otra vez.</p>}
+        {issue.kind === "change" && decided > 0 && (
+          <p className="rounded-md bg-ambar-bg p-3 text-sm font-medium text-ambar-texto">
+            {decided === 1 ? "La decisión que ya tomó se pierde" : `Las ${decided.toLocaleString("es-PE")} decisiones que ya tomó se pierden`}: las filas se recalculan.
+          </p>
         )}
       </div>
+      <ErrorNotice message={error} />
+      {loading && <p className="text-base text-gris-texto">Buscando formatos…</p>}
       {others.length > 0 && (
-        <div className="flex flex-wrap items-end gap-3">
-          <Select label="Otra plantilla guardada" value={chosenId} onChange={(event) => setChosenId(event.target.value)} fieldClassName="min-w-64">
-            <option value="">Elija una plantilla</option>
-            {others.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </Select>
-          <Button variant="outline" icon={Layers} disabled={!chosen} onClick={() => chosen && onUse(chosen)}>
-            Usar esta plantilla
-          </Button>
-        </div>
+        <ul className="flex flex-col gap-2" aria-label="Formatos guardados">
+          {others.map((template) => (
+            <li key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-borde p-3">
+              <div className="flex min-w-0 flex-col">
+                <p className="font-medium text-tinta">
+                  {template.name}
+                  {scores.has(template.id) && <span className="text-sm font-normal text-gris-texto"> · se parece {scoreLabel(scores.get(template.id) ?? 0)}</span>}
+                </p>
+                {template.description && <p className="text-sm text-gris-texto">{template.description}</p>}
+              </div>
+              <Button variant="outline" icon={Layers} disabled={busy} onClick={() => onUse(template)}>
+                Usar este formato
+              </Button>
+            </li>
+          ))}
+        </ul>
       )}
-      <Button variant="secondary" icon={FilePlus2} className="self-start" onClick={onStartFromScratch}>
-        Empezar desde cero
+      {!loading && others.length === 0 && <p className="text-base text-gris-texto">No hay otros formatos guardados.</p>}
+      <Button variant={others.length === 0 ? "primary" : "secondary"} icon={FilePlus2} className="self-start" disabled={busy} onClick={() => onAdjust(issue.kind === "missing" || issue.kind === "failed" ? issue.template : null)}>
+        Ajustar columnas
       </Button>
+      {issue.kind === "change" && onCancel && (
+        <Button variant="secondary" className="self-start" disabled={busy} onClick={onCancel}>
+          Volver a la revisión
+        </Button>
+      )}
     </Card>
   );
 }

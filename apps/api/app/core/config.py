@@ -123,6 +123,9 @@ class Settings(BaseSettings):
     # photos of abandoned batches, or discarded ones, keep their files.
     import_max_photos: int = Field(5_000, ge=1)
     import_photo_retention_days: int = Field(30, ge=1)
+    # Hamming distance between two 64-bit dHash below which two photos of a batch are proposed as
+    # the same photo in another resolution (importacion-fotos-a-catalogo, D6) [SUPUESTO].
+    import_photo_similarity_bits: int = Field(4, ge=0, le=64)
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -141,7 +141,7 @@ export function mergedSheet(surviving: PieceDetail, absorbed: PieceDetail, choic
 // ---------------------------------------------------------------------------------------------
 
 export const EMPTY_VALUE = "Sin registrar";
-export const RESTRICTED_VALUE = "Restringido para su rol (RF-041)";
+export const RESTRICTED_VALUE = "Restringido para su rol";
 
 function text(value: string | null | undefined): string {
   return value?.trim() ? value.trim() : EMPTY_VALUE;
@@ -289,7 +289,7 @@ export function mergeBlock(
   if (pieceA && pieceB && pieceA.tenure_regime !== pieceB.tenure_regime) {
     return {
       code: "merge_blocked_tenure",
-      message: `Las piezas tienen regímenes de tenencia distintos (${pieceA.tenure_regime} y ${pieceB.tenure_regime}). Primero corrija el régimen de una de ellas desde su ficha; mientras tanto no se pueden fusionar.`,
+      message: `Las piezas tienen regímenes de tenencia distintos (${pieceA.tenure_regime} y ${pieceB.tenure_regime}). Primero corrija el régimen de una de ellas desde su ficha.`,
     };
   }
   const codesDiffer = pieceA && pieceB ? Boolean(pieceA.code_i && pieceB.code_i && pieceA.code_i !== pieceB.code_i) : candidate.blocking_conflict;
@@ -297,7 +297,7 @@ export function mergeBlock(
     const codes = pieceA?.code_i && pieceB?.code_i ? ` (${pieceA.code_i} y ${pieceB.code_i})` : "";
     return {
       code: "merge_blocked_inventory_code",
-      message: `Las dos piezas tienen códigos I vigentes distintos${codes}. Un código I nunca cambia de pieza (RN-002): corrija primero el código I con el procedimiento auditado; mientras tanto no se pueden fusionar.`,
+      message: `Las dos piezas tienen códigos I vigentes distintos${codes}. Un código I nunca cambia de pieza: corrija primero el código I con el procedimiento auditado.`,
     };
   }
   return null;
@@ -322,7 +322,7 @@ export function survivorRestriction(candidateId: string, pieceA: SurvivorCandida
   const required = requiredSurvivorId(pieceA, pieceB);
   if (!required || required === candidateId) return null;
   const holder = required === pieceA.id ? pieceA : pieceB;
-  return `Solo «${holder.denomination}» tiene código I vigente (${holder.code_i}): debe conservarse esa pieza, porque un código I nunca cambia de pieza (RN-002).`;
+  return `Solo «${holder.denomination}» tiene código I vigente (${holder.code_i}): debe conservarse esa pieza, porque un código I nunca cambia de pieza.`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -361,7 +361,7 @@ export function materialFates(surviving: PieceDetail, absorbed: PieceDetail): { 
 
 /** Motivo mínimo que exige la API (`merge_reason_required`). */
 export const MERGE_REASON_MIN_LENGTH = 3;
-export const MERGE_REASON_REQUIRED = "Indique el motivo de la fusión (al menos 3 caracteres): quedará registrado en la auditoría (RN-005).";
+export const MERGE_REASON_REQUIRED = "Indique el motivo de la fusión (al menos 3 caracteres): queda en la auditoría.";
 
 export function mergeReasonError(note: string): string | null {
   return note.trim().length >= MERGE_REASON_MIN_LENGTH ? null : MERGE_REASON_REQUIRED;
