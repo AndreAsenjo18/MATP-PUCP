@@ -15,6 +15,7 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.catalog.schemas import FieldIssue
 from app.modules.catalog.tenure import audit_reason, check_transition, legal_owner_for
+from app.modules.collections.models import Collection
 from app.modules.identification.models import NormalizationStatus
 from app.modules.identification.normalization import TYPE_INVENTORY, TYPE_OTHER, is_absence_marker
 from app.modules.identification.normalization import normalize as normalize_value
@@ -109,6 +110,7 @@ def validate_piece_payload(
     epoch_end_year: int | None = None,
     dimensions: list[Any] | None = None,
     parent_piece_id: uuid.UUID | None = None,
+    collection_id: uuid.UUID | None = None,
     piece: Piece | None = None,
 ) -> list[FieldIssue]:
     """Rules of the sheet in a single source (design D1).
@@ -126,6 +128,7 @@ def validate_piece_payload(
         epoch_end_year=epoch_end_year,
         dimensions=dimensions,
         parent_piece_id=parent_piece_id,
+        collection_id=collection_id,
         piece=piece,
     )
     return [finding.issue for finding in findings]
@@ -141,6 +144,7 @@ def _collect_findings(
     epoch_end_year: int | None,
     dimensions: list[Any] | None,
     parent_piece_id: uuid.UUID | None,
+    collection_id: uuid.UUID | None = None,
     piece: Piece | None = None,
 ) -> list[_Finding]:
     """Collects the issues of the sheet instead of raising them (design D1)."""
@@ -186,6 +190,7 @@ def _collect_findings(
             )
         )
     findings.extend(_inventory_code_findings(session, code_i, piece))
+    findings.extend(_collection_findings(session, collection_id, piece))
     if (
         parent_piece_id is not None
         and piece is not None
@@ -204,6 +209,33 @@ def _collect_findings(
             )
         )
     return findings
+
+
+def _collection_findings(
+    session: Session, collection_id: uuid.UUID | None, piece: Piece | None
+) -> list[_Finding]:
+    """A sheet cannot enter a retired collection, even one retired with the form open.
+
+    Retiring refuses a collection that still groups pieces, so letting one in would break that
+    rule (crud-manual-completo 4.3). A sheet that already has the collection keeps it.
+    """
+    if collection_id is None or (piece is not None and piece.collection_id == collection_id):
+        return []
+    collection = session.get(Collection, collection_id)
+    if collection is not None and collection.deleted_at is None:
+        return []
+    message = "La colección elegida no existe o fue retirada: elija otra."
+    return [
+        _Finding(
+            issue=FieldIssue(
+                field="collection_id",
+                code="collection_not_available",
+                message=message,
+                severity="error",
+            ),
+            error=ValidationFailed(message, code="collection_not_available"),
+        )
+    ]
 
 
 def _inventory_code_findings(
@@ -316,6 +348,7 @@ def create_piece(
             epoch_end_year=fields.get("epoch_end_year"),
             dimensions=fields.get("dimensions"),
             parent_piece_id=fields.get("parent_piece_id"),
+            collection_id=fields.get("collection_id"),
         )
     )
     owner = legal_owner_for(tenure_regime, legal_owner)
@@ -430,6 +463,7 @@ def update_piece(
             epoch_end_year=changes.get("epoch_end_year", piece.epoch_end_year),
             dimensions=changes.get("dimensions") if "dimensions" in changes else None,
             parent_piece_id=changes.get("parent_piece_id", piece.parent_piece_id),
+            collection_id=changes.get("collection_id", piece.collection_id),
             piece=piece,
         )
     )

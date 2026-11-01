@@ -177,19 +177,44 @@ def update_location(
         _relocate_node(session, location, new_parent_id, confirm_affected_count)
 
     if is_active is False and location.is_active:
-        affected = count_active_pieces(session, hierarchy.subtree_ids(session, location.id))
-        if affected > 0:
-            raise ConflictError(
-                f"Debe reubicar {affected} pieza(s) antes de desactivar esta ubicación.",
-                code="location_not_empty",
-                details={"affected_pieces": affected},
-            )
+        _assert_not_in_use(session, location)
         location.is_active = False
     elif is_active is True:
         location.is_active = True
 
     session.flush()
     return location
+
+
+def _assert_not_in_use(session: Session, location: Location) -> None:
+    """A place with pieces, or with active places inside, is not deactivated (crud-manual-completo
+    D3): the same rule from Administración and from the tree of the search."""
+    subtree = hierarchy.subtree_ids(session, location.id)
+    pieces = count_active_pieces(session, subtree)
+    places = (
+        session.scalar(
+            select(func.count())
+            .select_from(Location)
+            .where(
+                Location.id.in_(subtree - {location.id}),
+                Location.is_active.is_(True),
+                Location.deleted_at.is_(None),
+            )
+        )
+        or 0
+    )
+    if pieces == 0 and places == 0:
+        return
+    steps = []
+    if pieces:
+        steps.append(f"reubicar {pieces} pieza{'' if pieces == 1 else 's'}")
+    if places:
+        steps.append(f"desactivar {places} lugar{'' if places == 1 else 'es'} que contiene")
+    raise ConflictError(
+        f"Debe {' y '.join(steps)} antes de desactivar esta ubicación.",
+        code="location_in_use",
+        details={"affected_pieces": pieces, "active_places": places},
+    )
 
 
 def _relocate_node(

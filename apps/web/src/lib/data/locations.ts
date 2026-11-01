@@ -35,7 +35,6 @@ const CONNECTION_MESSAGE = "No se pudo conectar con el servidor. Intente nuevame
 export const LOCATION_ERROR_MESSAGES: Record<string, string> = {
   invalid_location_parent: "Ese nivel no puede ubicarse ahí: revise el padre elegido.",
   duplicate_location_code: "Ya existe una ubicación activa con ese código.",
-  location_not_empty: "Debe reubicar las piezas antes de desactivar esta ubicación.",
   location_cycle: "No se puede ubicar un lugar dentro de uno de sus propios niveles.",
   confirm_affected_count_mismatch: "El número de piezas afectadas cambió: confirme el número actual.",
   space_kind_not_applicable: "El tipo de espacio solo aplica al nivel Depósito.",

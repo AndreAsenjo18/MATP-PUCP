@@ -7,7 +7,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Sección | Archivo | Change que la escribe | Estado |
 |---|---|---|---|
 | Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | escrita |
-| Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | parcial: «Conservación» (`colecciones-y-vocabularios-admin`) |
+| Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación, registro a mano de piezas seguidas | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin`, `crud-manual-completo` | parcial: «Conservación» (`colecciones-y-vocabularios-admin`) y «Registrar a mano después de la carga histórica» (`crud-manual-completo`) |
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
 | Depósito: ahora en la Búsqueda (nota con los enlaces) | `deposito.md` | `ubicacion-jerarquica-y-movimientos`, `fusion-busqueda-deposito` | escrita |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |

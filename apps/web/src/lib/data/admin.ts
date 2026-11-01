@@ -19,6 +19,7 @@ export type NormalizationPreview = ApiSchemas["NormalizationPreviewOut"];
 export type CollectionItem = ApiSchemas["CollectionOut"];
 export type ConservationAssessment = ApiSchemas["ConservationAssessmentOut"];
 export type TenureLabel = ApiSchemas["CollectionCreate"]["default_tenure_regime"];
+export type RetiredCollection = ApiSchemas["TrashEntryOut"];
 
 /** Reglas de normalización implementadas, con su explicación para la pantalla. */
 export const NORMALIZATION_RULES: { value: NormalizationRule; label: string }[] = [
@@ -32,7 +33,6 @@ export const ADMIN_ERROR_MESSAGES: Record<string, string> = {
   ...IMPORT_ERROR_MESSAGES,
   vocabulary_exists: "Ya existe una lista con ese código.",
   identifier_type_exists: "Ya existe un tipo de código con ese código.",
-  duplicate_term: "Ya existe un término con ese código o esa etiqueta en la lista.",
   term_in_use: "El término está en uso: desactívelo en lugar de eliminarlo.",
   system_identifier_type: "Es un tipo de código del sistema: solo se pueden cambiar su etiqueta, descripción y orden.",
   normalization_change_requires_preview: "Los identificadores cambiaron después de la vista previa: vuelva a revisar el impacto antes de confirmar.",
@@ -143,6 +143,30 @@ export async function setTermActive(vocabularyCode: string, termId: string, isAc
   );
 }
 
+/** Por qué no se puede guardar la etiqueta corregida (mismo tope que la API), o `null`. */
+export function termLabelError(current: string | undefined, label: string): string | null {
+  const next = label.trim();
+  if (!next) return "Escriba la etiqueta nueva.";
+  if (next.length > 200) return "La etiqueta admite como máximo 200 caracteres.";
+  if (next === current) return "La etiqueta nueva es igual a la actual.";
+  return null;
+}
+
+/**
+ * Corrige la etiqueta de un término: conserva su identidad, así que las fichas que lo usan muestran la
+ * nueva. Una etiqueta repetida vuelve con la sugerencia de la API (`crud-manual-completo` 2.3).
+ */
+export async function updateTermLabel(vocabularyCode: string, termId: string, label: string, devUser?: string): Promise<ImportResult<VocabularyTerm>> {
+  return call(
+    () =>
+      client(devUser).PATCH("/api/v1/vocabularies/{vocabulary_code}/terms/{term_id}", {
+        params: { path: { vocabulary_code: vocabularyCode, term_id: termId } },
+        body: { label: label.trim() },
+      }),
+    ADMIN_ERROR_MESSAGES,
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // Tipos de identificador
 // ---------------------------------------------------------------------------------------------
@@ -222,6 +246,103 @@ export async function createCollection(
       }),
     ADMIN_ERROR_MESSAGES,
   );
+}
+
+export interface CollectionInput {
+  name: string;
+  acronym: string;
+  tenure: TenureLabel;
+  parentId?: string | null;
+}
+
+/** `PATCH /collections/{id}`: nombre, sigla, colección madre y régimen por defecto (crud-manual-completo 2.2). */
+export async function updateCollection(id: string, input: CollectionInput, devUser?: string): Promise<ImportResult<CollectionItem>> {
+  return call(
+    () =>
+      client(devUser).PATCH("/api/v1/collections/{collection_id}", {
+        params: { path: { collection_id: id } },
+        body: {
+          name: input.name.trim(),
+          acronym: input.acronym.trim() || null,
+          default_tenure_regime: input.tenure,
+          parent_id: input.parentId || null,
+        },
+      }),
+    ADMIN_ERROR_MESSAGES,
+  );
+}
+
+/**
+ * `DELETE /collections/{id}`: retiro lógico con motivo, que se puede restaurar (RN-005). Con piezas o
+ * subcolecciones responde `409 collection_not_empty` con los conteos. La respuesta no tiene cuerpo.
+ */
+export async function retireCollection(id: string, reason: string, devUser?: string): Promise<ImportResult<null>> {
+  const result = await call(
+    async () => {
+      const { error, response } = await client(devUser).DELETE("/api/v1/collections/{collection_id}", {
+        params: { path: { collection_id: id }, query: { reason: reason.trim() } },
+      });
+      return error === undefined && response.ok ? { data: null as unknown as null } : { error };
+    },
+    ADMIN_ERROR_MESSAGES,
+  );
+  return result.status === "ok" ? { status: "ok", value: null } : result;
+}
+
+/** Colecciones retiradas: las de la papelera (`GET /trash?entity_type=collection`). */
+export async function fetchRetiredCollections(devUser?: string): Promise<ImportResult<RetiredCollection[]>> {
+  const result = await call(
+    () => client(devUser).GET("/api/v1/trash", { params: { query: { entity_type: "collection", page_size: 100 } } }),
+    ADMIN_ERROR_MESSAGES,
+  );
+  return result.status === "ok" ? { status: "ok", value: result.value.items } : result;
+}
+
+/** Restaura una colección retirada (`POST /trash/collection/{id}/restore`); solo el Administrador [SUPUESTO Ñ3]. */
+export async function restoreCollection(id: string, reason: string, devUser?: string): Promise<ImportResult<ApiSchemas["TrashRestoreResult"]>> {
+  return call(
+    () =>
+      client(devUser).POST("/api/v1/trash/{entity_type}/{entity_id}/restore", {
+        params: { path: { entity_type: "collection", entity_id: id }, query: { reason } },
+      }),
+    ADMIN_ERROR_MESSAGES,
+  );
+}
+
+/** Guarda la sigla anterior como histórica (`POST /collection-acronym-aliases`): importaciones y fotos la siguen reconociendo. */
+export async function keepAcronymAsHistorical(collectionId: string, alias: string, devUser?: string): Promise<ImportResult<unknown>> {
+  return call(() => client(devUser).POST("/api/v1/collection-acronym-aliases", { body: { collection_id: collectionId, alias } }), ADMIN_ERROR_MESSAGES);
+}
+
+function foldAcronym(value: string | null | undefined): string {
+  return (value ?? "").normalize("NFD").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+/** La sigla anterior que se ofrece guardar como histórica al editar: solo si había una y cambia de verdad. */
+export function previousAcronymToKeep(before: string | null | undefined, after: string): string | null {
+  const previous = (before ?? "").trim();
+  if (!previous || foldAcronym(previous) === foldAcronym(after)) return null;
+  return previous;
+}
+
+/** El retiro impedido en palabras: «La colección tiene 35 piezas activas; reasígnalas antes de retirarla». */
+export function notEmptyMessage(details: Record<string, unknown> | undefined): string {
+  const pieces = Number(details?.pieces ?? 0);
+  const subcollections = Number(details?.subcollections ?? 0);
+  const parts = [
+    pieces > 0 ? plural(pieces, "pieza activa", "piezas activas") : null,
+    subcollections > 0 ? plural(subcollections, "subcolección", "subcolecciones") : null,
+  ].filter(Boolean);
+  if (parts.length === 0) return "La colección todavía agrupa piezas o subcolecciones; reasígnalas antes de retirarla.";
+  return `La colección tiene ${parts.join(" y ")}; reasígnalas antes de retirarla.`;
+}
+
+/** El campo del formulario al que pertenece un error de la API, para mostrarlo a su lado. */
+export function collectionFieldError(failure: { code?: string; message: string }): { field: "name" | "acronym" | "parentId"; message: string } | null {
+  if (failure.code === "duplicate_acronym") return { field: "acronym", message: failure.message };
+  if (failure.code === "name_required") return { field: "name", message: failure.message };
+  if (failure.code === "collection_hierarchy_cycle") return { field: "parentId", message: failure.message };
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------
