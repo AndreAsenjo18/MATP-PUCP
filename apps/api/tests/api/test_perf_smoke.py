@@ -82,3 +82,4 @@ async def test_perf_smoke_1000_pieces(seeded_api: SeededApi) -> None:
     assert "code" in by_type
     assert "text" in by_type
     assert "filters" in by_type
+    assert "description" in by_type
