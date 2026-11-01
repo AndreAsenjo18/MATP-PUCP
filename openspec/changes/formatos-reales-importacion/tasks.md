@@ -36,8 +36,8 @@
 
 ## 7. Interfaz y cierre
 
-- [ ] 7.1 Paso de mapeo: columnas combinadas como chip con sus fuentes, aviso de filas omitidas por encabezado repetido y de sigla tomada de la colección; pruebas de componente (Req: Varias columnas…; Req: Encabezados de grupo…)
-- [ ] 7.2 Correr `scripts/check_real_excels.py` otra vez y registrar en el PR la mejora frente a la línea base de la 1.1 (meta: < 2 % de identificadores no normalizables sin contar FR4 y FR5)
+- [x] 7.1 Paso de mapeo: columnas combinadas como chip con sus fuentes, aviso de filas omitidas por encabezado repetido y de sigla tomada de la colección; pruebas de componente (Req: Varias columnas…; Req: Encabezados de grupo…)
+- [x] 7.2 Correr `scripts/check_real_excels.py` otra vez y registrar en el PR la mejora frente a la línea base de la 1.1 (meta: < 2 % de identificadores no normalizables sin contar FR4 y FR5)
 - [ ] 7.3 Manual de usuario: «Cargar el histórico del museo» (orden de carga, qué hace cada plantilla, qué revisar) en `docs/manual-usuario/`
 - [x] 7.4 OpenAPI (formato de mapeo ampliado) en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client`, `npm run openapi:check`
 - [ ] 7.5 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate formatos-reales-importacion --strict` en verde; tras aprobar el PR, `openspec archive formatos-reales-importacion -y`
