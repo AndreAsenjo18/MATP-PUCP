@@ -3,8 +3,9 @@
 import hashlib
 import io
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, UnidentifiedImageError
@@ -141,12 +142,16 @@ def effective_restriction(
 ) -> EffectiveRestriction:
     """The restriction that applies to a photo (fotografias-multiples-por-pieza 2.5; RN-008).
 
-    Its own restriction first, otherwise the default one of the collection of its piece. The
-    piece has no restriction of its own: a loan for use copies «No publicar» to each photo when
-    the photo is registered, so it shows up as the photo's own.
+    Precedence: the photo's own restriction, then the piece's, then the default one of its
+    collection. The piece has no column of its own: its default is derived from the tenure, so a
+    piece in loan for use means «No publicar» (RN-008). That also covers the photos registered
+    before the piece became a loan for use, which carry no restriction of their own; the photos
+    registered while it already was one carry it as their own.
     """
     if asset.usage_restriction_term_id is not None:
         return EffectiveRestriction(asset.usage_restriction_term_id, "foto")
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        return EffectiveRestriction(comodato_restriction_term_id(session), "pieza")
     if piece.collection_id is not None:
         collection = session.get(Collection, piece.collection_id)
         if collection is not None and collection.default_usage_restriction_term_id is not None:
@@ -215,6 +220,31 @@ def unspecified_view_type_id(session: Session) -> uuid.UUID | None:
     return term.id
 
 
+@dataclass(frozen=True)
+class StoredCopy:
+    """The file a photo keeps when its original is not kept (``display.webp``, D6)."""
+
+    storage_key: str
+    content_type: str
+    size_bytes: int
+    content_sha256: str
+
+
+def provenance_of(asset: MediaAsset) -> dict[str, Any]:
+    """Where the photo came from, from ``extra_metadata`` (importacion-fotos-a-catalogo, 6.3)."""
+    metadata = asset.extra_metadata or {}
+    if not metadata.get("import_batch_id"):
+        return {"source": "manual", "original_filename": asset.original_filename}
+    return {
+        "source": "import",
+        "original_filename": asset.original_filename,
+        "relative_path": metadata.get("relative_path"),
+        "import_batch_id": metadata.get("import_batch_id"),
+        "import_batch_name": metadata.get("import_batch_name"),
+        "replaced_lower_resolution": list(metadata.get("replaced_lower_resolution") or []),
+    }
+
+
 def register_from_import(
     session: Session,
     piece: "Piece",
@@ -222,6 +252,9 @@ def register_from_import(
     *,
     storage_key: str,
     view_type_term_id: uuid.UUID | None,
+    display: StoredCopy | None = None,
+    batch_name: str | None = None,
+    replaced_lower_resolution: Sequence[str] = (),
 ) -> MediaAsset:
     """Register a photo of an applied import batch on ``piece`` (importacion-masiva-fotografias,
     task 5.1; design D5).
@@ -232,29 +265,50 @@ def register_from_import(
     in a new piece the photo with the lowest ``sort_key`` is the primary one when the caller
     registers them in that order. A loan for use inherits «No publicar» (RN-008), as in a manual
     upload. The caller's audit context (the batch and its change set) records the asset.
+
+    With ``display`` (``MEDIA_KEEP_ORIGINALS=false``, design D6) the asset points to the display
+    copy and describes it; the size and fingerprint of the original received stay in
+    ``extra_metadata.original``.
+
+    The batch name and the paths of the lower resolution versions discarded in its place
+    (importacion-fotos-a-catalogo, task 6.3; design D6, D9) complete its provenance.
     """
     max_order = session.scalar(
         select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece.id)
     )
     restricted = piece.tenure_regime == TenureRegime.LOAN_FOR_USE
+    metadata: dict[str, Any] = {
+        "import_batch_id": str(photo.batch_id),
+        "import_photo_id": str(photo.id),
+        "relative_path": photo.relative_path,
+    }
+    if batch_name:
+        metadata["import_batch_name"] = batch_name
+    if replaced_lower_resolution:
+        metadata["replaced_lower_resolution"] = list(replaced_lower_resolution)
+    if display is not None:
+        metadata["original"] = {
+            "content_type": photo.content_type,
+            "size_bytes": photo.size_bytes,
+            "content_sha256": photo.content_sha256,
+        }
+    stored = display or StoredCopy(
+        storage_key, photo.content_type, photo.size_bytes, photo.content_sha256
+    )
     asset = MediaAsset(
         id=new_uuid(),
         piece_id=piece.id,
-        storage_key=storage_key,
+        storage_key=stored.storage_key,
         original_filename=photo.original_filename,
-        content_type=photo.content_type,
-        size_bytes=photo.size_bytes,
-        content_sha256=photo.content_sha256,
+        content_type=stored.content_type,
+        size_bytes=stored.size_bytes,
+        content_sha256=stored.content_sha256,
         view_type_term_id=view_type_term_id,
         sort_order=(max_order + 1) if max_order is not None else 0,
         is_primary=max_order is None,
         usage_restriction_term_id=comodato_restriction_term_id(session) if restricted else None,
         restriction_note=LOAN_RESTRICTION_NOTE if restricted else None,
-        extra_metadata={
-            "import_batch_id": str(photo.batch_id),
-            "import_photo_id": str(photo.id),
-            "relative_path": photo.relative_path,
-        },
+        extra_metadata=metadata,
     )
     session.add(asset)
     session.flush()

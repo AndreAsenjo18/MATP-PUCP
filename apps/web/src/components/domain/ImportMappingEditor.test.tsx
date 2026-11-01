@@ -72,10 +72,10 @@ describe("editor de mapeo: estado del borrador", () => {
   it("sin cambios: lo indica, no ofrece guardar y permite la vista previa", () => {
     const html = editor(UNCHANGED);
     const text = visibleText(html);
-    expect(text).toContain("Mapeo con la plantilla «Plantilla sábana sintética v1»");
+    expect(text).toContain("Ajustar columnas · Plantilla sábana sintética v1");
     expect(text).toContain("Plantilla sin cambios");
-    expect(text).not.toContain("Guardar como plantilla");
-    expect(button(html, "Ver vista previa")).not.toContain('disabled=""');
+    expect(text).not.toContain("Guardar como formato");
+    expect(button(html, "Ver cómo quedará")).not.toContain('disabled=""');
     expect(text).not.toContain("no queda guardado como plantilla");
   });
 
@@ -85,29 +85,29 @@ describe("editor de mapeo: estado del borrador", () => {
     const text = visibleText(html);
     expect(html).toMatch(/<option value="Comodato" selected="">Comodato<\/option>/);
     expect(text).toContain("Plantilla sin cambios");
-    expect(text).toContain("Solo para este lote; no cambia la plantilla, que trae: régimen Propiedad.");
-    expect(text).not.toContain("Guardar como plantilla");
-    expect(button(html, "Ver vista previa")).not.toContain('disabled=""');
-    expect(visibleText(editor(UNCHANGED))).toContain("Solo para este lote; no cambia la plantilla.");
+    expect(text).toContain("Solo para este lote. El formato trae: régimen Propiedad.");
+    expect(text).not.toContain("Guardar como formato");
+    expect(button(html, "Ver cómo quedará")).not.toContain('disabled=""');
+    expect(visibleText(editor(UNCHANGED))).toContain("Solo para este lote.");
   });
 
-  it("modificada: «Guardar como nueva» es la principal, «Guardar cambios» la alternativa, y la vista previa espera", () => {
+  it("modificada: «Guardar como nuevo» es la principal, «Guardar cambios» la alternativa, y la vista previa espera", () => {
     const html = editor(setColumnTarget(UNCHANGED, 0, "description"));
     const text = visibleText(html);
     expect(text).toContain("Plantilla modificada");
-    expect(button(html, "Guardar como nueva")).toContain("bg-terracota");
+    expect(button(html, "Guardar como nuevo")).toContain("bg-terracota");
     expect(button(html, "Guardar cambios en «Plantilla sábana sintética v1»")).toContain("border-terracota");
-    expect(button(html, "Ver vista previa")).toContain('disabled=""');
+    expect(button(html, "Ver cómo quedará")).toContain('disabled=""');
     expect(text).toContain("Guarde la plantilla para ver la vista previa");
     expect(text).toContain("Este mapeo se usará solo en este lote: no queda guardado como plantilla.");
-    expect(button(html, "Usar este mapeo y validar")).not.toContain('disabled=""');
+    expect(button(html, "Validar con estas columnas")).not.toContain('disabled=""');
   });
 
-  it("mapeo nuevo: solo «Guardar como plantilla»", () => {
+  it("mapeo nuevo: solo «Guardar como formato»", () => {
     const text = visibleText(editor(draftFromScratch(BATCH)));
-    expect(text).toContain("Mapeo de columnas");
+    expect(text).toContain("Ajustar columnas");
     expect(text).toContain("Mapeo nuevo sin guardar");
-    expect(text).toContain("Guardar como plantilla");
+    expect(text).toContain("Guardar como formato");
     expect(text).not.toContain("Guardar cambios en");
   });
 
@@ -159,7 +159,7 @@ describe("hoja, fila de cabeceras y destino (antes en MappingPanel)", () => {
     );
     const text = visibleText(html);
     expect(text).toContain("Inventario");
-    expect(text).toContain("Fila de cabeceras");
+    expect(text).toContain("Fila de los títulos");
     expect(html).toMatch(/<option value="denomination" selected="">Denominación<\/option>/);
     expect(text).toContain("Debe indicar la columna de la denominación.");
   });
@@ -201,11 +201,11 @@ describe("guardar como plantilla", () => {
     const html = render(<SaveTemplateForm status="modified" baseName="Plantilla sábana sintética v1" defaultSourceName="Sábana (sintética)" nameError={null} busy={false} onSave={noop} />);
     const text = visibleText(html);
     expect(html).not.toContain("<dialog");
-    expect(text).toContain("Nombre de la plantilla nueva");
+    expect(text).toContain("Nombre del formato nuevo");
     expect(html).toContain('value="Sábana (sintética)"');
-    expect(button(html, "Guardar como nueva")).toContain('disabled=""');
+    expect(button(html, "Guardar como nuevo")).toContain('disabled=""');
     expect(button(html, "Guardar cambios en «Plantilla sábana sintética v1»")).not.toContain('disabled=""');
     expect(text).toContain("Indique un nombre para la plantilla.");
-    expect(text).toContain("los lotes ya procesados conservan el mapeo");
+    expect(text).toContain("los ya procesados no cambian");
   });
 });

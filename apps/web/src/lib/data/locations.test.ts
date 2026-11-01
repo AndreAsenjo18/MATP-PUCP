@@ -4,6 +4,10 @@ import {
   batchMovePieces,
   createLocation,
   fetchLocationsTree,
+  filterDestinations,
+  filterLocationTree,
+  finalLocations,
+  finalLocationsFromList,
   locationPathLabel,
   movePiece,
   newIdempotencyKey,
@@ -145,5 +149,104 @@ describe("newIdempotencyKey", () => {
     const a = newIdempotencyKey();
     const b = newIdempotencyKey();
     expect(a).not.toBe(b);
+  });
+});
+
+describe("filtro del árbol de ubicaciones", () => {
+  const tree = [
+    {
+      id: "s1",
+      name: "Sede Pueblo Libre",
+      level_type: "Sede",
+      children: [
+        {
+          id: "d1",
+          name: "Depósito 1",
+          level_type: "Depósito",
+          children: [
+            { id: "m1", name: "Rack A", level_type: "Mueble", children: [{ id: "c1", name: "Caja 3", level_type: "Contenedor", children: [] }] },
+            { id: "m2", name: "Rack B", level_type: "Mueble", children: [] },
+          ],
+        },
+        { id: "d2", name: "Depósito 2", level_type: "Depósito", children: [] },
+      ],
+    },
+  ] as unknown as LocationNode[];
+  const names = (nodes: LocationNode[]): string[] => nodes.flatMap((node) => [node.name, ...names(node.children ?? [])]);
+
+  it("sin filtros devuelve el árbol entero", () => {
+    expect(names(filterLocationTree(tree, { query: "", level: "" }))).toEqual(names(tree));
+  });
+
+  it("la búsqueda deja las coincidencias con sus ascendientes como contexto", () => {
+    expect(names(filterLocationTree(tree, { query: "rack", level: "" }))).toEqual(["Sede Pueblo Libre", "Depósito 1", "Rack A", "Rack B"]);
+    expect(names(filterLocationTree(tree, { query: "caja", level: "" }))).toEqual(["Sede Pueblo Libre", "Depósito 1", "Rack A", "Caja 3"]);
+  });
+
+  it("filtra por nivel, con las tildes plegadas, y combina con la búsqueda", () => {
+    expect(names(filterLocationTree(tree, { query: "", level: "Depósito" }))).toEqual(["Sede Pueblo Libre", "Depósito 1", "Depósito 2"]);
+    expect(names(filterLocationTree(tree, { query: "deposito 2", level: "Depósito" }))).toEqual(["Sede Pueblo Libre", "Depósito 2"]);
+    expect(filterLocationTree(tree, { query: "rack", level: "Sede" })).toEqual([]);
+  });
+
+  it("no modifica el árbol original", () => {
+    const before = JSON.stringify(tree);
+    filterLocationTree(tree, { query: "rack", level: "" });
+    expect(JSON.stringify(tree)).toBe(before);
+  });
+});
+
+describe("destinos finales", () => {
+  const tree: LocationNode[] = [
+    {
+      id: "s",
+      name: "Sede central",
+      level_type: "Sede",
+      children: [
+        {
+          id: "d1",
+          name: "Depósito 1",
+          level_type: "Depósito",
+          children: [
+            { id: "ra", name: "Rack A", level_type: "Mueble", children: [{ id: "n2", name: "Nivel 2", level_type: "Nivel", children: [{ id: "c1", name: "Caja 01", level_type: "Contenedor", children: [] }] }, { id: "n1", name: "Nivel 1", level_type: "Nivel", children: [] }] },
+            { id: "rb", name: "Rack B", level_type: "Mueble", children: [] },
+          ],
+        },
+        { id: "d2", name: "Depósito 2", level_type: "Depósito", children: [] },
+      ],
+    },
+  ];
+
+  it("finalLocations devuelve solo los nodos sin hijos, con la ruta completa", () => {
+    const finals = finalLocations(tree);
+    expect(finals.map((item) => item.id)).toEqual(["c1", "n1", "rb", "d2"]);
+    expect(finals[0]).toEqual({ id: "c1", label: "Sede central › Depósito 1 › Rack A › Nivel 2 › Caja 01", level: "Contenedor" });
+  });
+
+  it("no ofrece sedes, depósitos ni muebles que contienen otros lugares", () => {
+    const ids = finalLocations(tree).map((item) => item.id);
+    for (const intermediate of ["s", "d1", "ra", "n2"]) expect(ids).not.toContain(intermediate);
+  });
+
+  it("un árbol vacío no tiene lugares finales", () => {
+    expect(finalLocations([])).toEqual([]);
+  });
+
+  it("finalLocationsFromList da lo mismo para una lista plana y omite lo inactivo", () => {
+    const list = [
+      { id: "s", name: "Sede", level: "Sede", parent_id: null },
+      { id: "d", name: "Depósito", level: "Depósito", parent_id: "s" },
+      { id: "n", name: "Nivel 1", level: "Nivel", parent_id: "d" },
+      { id: "x", name: "Nivel viejo", level: "Nivel", parent_id: "d", is_active: false },
+    ];
+    expect(finalLocationsFromList(list)).toEqual([{ id: "n", label: "Sede › Depósito › Nivel 1", level: "Nivel" }]);
+  });
+
+  it("filterDestinations busca en cualquier parte de la ruta sin acentos ni mayúsculas", () => {
+    const finals = finalLocations(tree);
+    expect(filterDestinations(finals, "rack a").map((item) => item.id)).toEqual(["c1", "n1"]);
+    expect(filterDestinations(finals, "DEPOSITO 2").map((item) => item.id)).toEqual(["d2"]);
+    expect(filterDestinations(finals, "  ")).toHaveLength(4);
+    expect(filterDestinations(finals, "inexistente")).toEqual([]);
   });
 });

@@ -101,7 +101,7 @@ function CompletenessDashboard() {
     <>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="Piezas registradas" value={kpis.total_pieces} href="/busqueda" />
-        <KpiCard label="Sin código I" value={alertKpi(kpis, "MISSING_INVENTORY_CODE")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
+        <KpiCard label="Sin código I" value={alertKpi(kpis, "MISSING_INVENTORY_CODE")?.numerator ?? 0} href="/busqueda?hasInventoryCode=false" tone="warning" />
         <KpiCard label="Sin fotografía" value={alertKpi(kpis, "MISSING_PHOTO")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
         <KpiCard label="Sin ubicación" value={alertKpi(kpis, "MISSING_LOCATION")?.numerator ?? 0} href="/busqueda?incompleteOnly=1" tone="warning" />
       </div>

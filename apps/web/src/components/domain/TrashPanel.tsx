@@ -11,7 +11,7 @@
  * sin red, y la restauración se simula durante la sesión.
  *
  * Los permisos los decide la pantalla (que conoce la sesión): abrir la papelera exige
- * `pieces.restore` y restaurar es solo del Administrador (`canRestore`); el servidor vuelve a
+ * `trash.read` y restaurar es solo del Administrador (`canRestore`); el servidor vuelve a
  * comprobarlos (403).
  */
 import { ArrowLeft, TriangleAlert } from "lucide-react";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { initialPieceCatalogs, type PieceUpdateResult } from "@/lib/data/pieces";
+import { initialPieceCatalogs, PRECONDITION_MESSAGE, type PieceUpdateResult } from "@/lib/data/pieces";
 import { draftKey, saveDraft, type DraftStorage } from "@/lib/forms/piece-draft";
 import { EMPTY_PIECE_FORM, type PieceFormValues } from "@/lib/forms/piece-form";
 import { memoryStorage } from "@/test/memory-storage";
@@ -62,6 +62,12 @@ describe("outcomeFromUpdate", () => {
 
     expect(outcomeFromUpdate(immutable, "x")).toEqual({ status: "error", message: "El código I está bloqueado." });
     expect(outcomeFromUpdate(offline, "x")).toEqual({ status: "error", message: "No se pudo conectar con el servidor." });
+  });
+
+  it("el 428 (la ficha abierta no indica su versión) pide recargar antes de guardar", () => {
+    const precondition: PieceUpdateResult = { status: "rejected", code: "precondition_required", message: PRECONDITION_MESSAGE };
+
+    expect(outcomeFromUpdate(precondition, "x")).toEqual({ status: "error", message: PRECONDITION_MESSAGE });
   });
 });
 
@@ -208,6 +214,22 @@ describe("PieceForm: campos de catalogación y tenencia", () => {
 
     expect(html).toMatch(/<select[^>]*id="tenure_regime"/);
     expect(visibleText(html)).not.toContain("Propietario legal");
+  });
+
+  it("marca con asterisco y aria-required solo los campos obligatorios, y explica la marca", () => {
+    const create = renderWithSession(memoryStorage(), CREATE_PROPS);
+    const edit = renderWithSession(memoryStorage(), EDIT_PROPS);
+    const marked = (html: string) =>
+      [...html.matchAll(/<label[^>]*>(.*?)<\/label>/g)].map((m) => visibleText(m[1] ?? "")).filter((l) => l.endsWith("*"));
+
+    expect(marked(create)).toEqual(["Denominación *", "Régimen de tenencia *"]);
+    expect(marked(edit)).toEqual(["Denominación *"]);
+    expect(create).toMatch(/<input[^>]*id="denomination"[^>]*aria-required="true"|<input[^>]*aria-required="true"[^>]*id="denomination"/);
+    expect(create).toMatch(/<select[^>]*id="tenure_regime"[^>]*aria-required="true"|<select[^>]*aria-required="true"[^>]*id="tenure_regime"/);
+    expect(create).not.toMatch(/<select[^>]*id="collection_id"[^>]*aria-required/);
+    for (const html of [create, edit]) {
+      expect(visibleText(html)).toContain("Los campos marcados con * son obligatorios");
+    }
   });
 
   it("comodante y convenio solo aparecen con régimen Comodato", () => {

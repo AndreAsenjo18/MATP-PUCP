@@ -21,6 +21,7 @@ from app.core.errors import (
     DomainError,
     NotFound,
     PermissionDenied,
+    PreconditionRequired,
     TooManyAttempts,
     ValidationFailed,
 )
@@ -84,6 +85,7 @@ STATUS_BY_ERROR: list[tuple[type[DomainError], int]] = [
     (AuthenticationRequired, status.HTTP_401_UNAUTHORIZED),
     (TooManyAttempts, status.HTTP_429_TOO_MANY_REQUESTS),
     (NotFound, status.HTTP_404_NOT_FOUND),
+    (PreconditionRequired, status.HTTP_428_PRECONDITION_REQUIRED),
     (PermissionDenied, status.HTTP_403_FORBIDDEN),
     (ValidationFailed, status.HTTP_422_UNPROCESSABLE_CONTENT),
     (BusinessRuleViolation, status.HTTP_409_CONFLICT),

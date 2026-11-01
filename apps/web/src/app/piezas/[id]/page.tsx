@@ -257,7 +257,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
  * conectan a la API en sus changes.
  */
 function LiveFichaContent({ pieceId }: { pieceId: string }) {
-  const { currentUser } = useSession();
+  const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const key = `${pieceId}|${devUser ?? ""}`;
   const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult } | null>(null);
@@ -292,6 +292,16 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       <PieceSheetHeader
         piece={piece}
         alerts={alerts}
+        actions={
+          hasPermission("pieces.update") && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
+                <Pencil size={18} aria-hidden="true" />
+                Editar ficha
+              </Link>
+            </div>
+          )
+        }
         notices={
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (

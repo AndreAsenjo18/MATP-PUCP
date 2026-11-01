@@ -1,7 +1,7 @@
 ## 1. Configuración y almacenamiento
 
 - [x] 1.1 Añadir a `Settings` y `.env.example` `MEDIA_MAX_BYTES`, `MEDIA_ALLOWED_TYPES`, `MEDIA_URL_TTL_SECONDS`, `MEDIA_UPLOAD_URL_TTL_SECONDS`, `MEDIA_UPLOAD_MODE`; verificar con la prueba existente que exige documentar toda variable (RNF-004)
-- [ ] 1.2 Extender `app/core/storage.py` con `presign_put`, `presign_get`, `head`, `stream`, `copy`, `delete_pending`; pruebas con `moto` o un doble en memoria (evaluar dependencia de test y registrar versión estable) (Req: Subida verificada de fotografías…; Req: Acceso a archivos con autorización de corta duración)
+- [x] 1.2 Extender `app/core/storage.py` con `presign_put`, `presign_get`, `head`, `stream`, `copy`, `delete_pending`; pruebas con `moto` o un doble en memoria (evaluar dependencia de test y registrar versión estable) (Req: Subida verificada de fotografías…; Req: Acceso a archivos con autorización de corta duración)
 - [x] 1.3 Migración aditiva `collection.default_usage_restriction_term_id` y atributo `blocks_external_download` en términos de `USAGE_RESTRICTION`; `tests/test_migrations.py` en verde (Req: Restricción efectiva heredada…)
 
 ## 2. API de fotografías

@@ -10,6 +10,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { cn } from "@/lib/cn";
 
 export interface ConfirmButtonProps {
   label: string;
@@ -23,6 +24,8 @@ export interface ConfirmButtonProps {
   requireReason?: boolean;
   reasonLabel?: string;
   onConfirm: (reason: string) => void;
+  /** Ancho del diálogo: `lg` para los que piden un motivo o muestran más texto. */
+  dialogSize?: "md" | "lg";
   disabled?: boolean;
   className?: string;
 }
@@ -49,6 +52,7 @@ export function ConfirmButton({
   requireReason = false,
   reasonLabel = "Motivo",
   onConfirm,
+  dialogSize = "md",
   disabled,
   className,
 }: ConfirmButtonProps) {
@@ -62,7 +66,7 @@ export function ConfirmButton({
       </Button>
       <dialog
         ref={dialogRef}
-        className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40"
+        className={cn("m-auto w-[calc(100%-2rem)] rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40", dialogSize === "lg" ? "max-w-xl" : "max-w-md")}
         onClose={() => setReason("")}
       >
         <form
@@ -79,7 +83,7 @@ export function ConfirmButton({
           <h2 className="text-lg font-semibold text-tinta">{confirmTitle}</h2>
           <div className="text-base text-gris-texto">{confirmDescription}</div>
           {requireReason && (
-            <Textarea label={reasonLabel} required value={reason} onChange={(event) => setReason(event.target.value)} rows={2} />
+            <Textarea label={reasonLabel} required value={reason} onChange={(event) => setReason(event.target.value)} rows={dialogSize === "lg" ? 4 : 2} />
           )}
           <div className="flex flex-wrap justify-end gap-3">
             <Button variant="secondary" onClick={() => dialogRef.current?.close()}>

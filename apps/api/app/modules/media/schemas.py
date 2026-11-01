@@ -34,6 +34,24 @@ _MEDIA_EXAMPLE = {
 }
 
 
+class MediaProvenance(BaseModel):
+    """Where a photo came from, read only (spec multimedia, «Procedencia visible de las
+    fotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005)."""
+
+    source: Literal["import", "manual"] = Field(
+        description="`import`: aplicada desde un lote de importación; `manual`: subida desde la "
+        "ficha."
+    )
+    original_filename: str | None = None
+    relative_path: str | None = Field(None, description="Carpeta y nombre con que se subió.")
+    import_batch_id: uuid.UUID | None = None
+    import_batch_name: str | None = None
+    replaced_lower_resolution: list[str] = Field(
+        default_factory=list,
+        description="Rutas de las versiones de menor resolución que se descartaron en su lugar.",
+    )
+
+
 class MediaAssetOut(ORMModel):
     model_config = ConfigDict(
         from_attributes=True, json_schema_extra={"examples": [_MEDIA_EXAMPLE]}
@@ -55,7 +73,8 @@ class MediaAssetOut(ORMModel):
     usage_restriction: TermRef | None = Field(description="Restricción de uso (RF-014, RN-008).")
     effective_restriction: TermRef | None = Field(
         None,
-        description="Restricción que se aplica: la propia o, si no tiene, la de su colección.",
+        description="Restricción que se aplica: la propia, la de la pieza (en comodato, «No "
+        "publicar») o la de su colección, en ese orden.",
     )
     restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
         default="ninguna", description="De dónde viene la restricción efectiva (RN-008)."
@@ -73,6 +92,9 @@ class MediaAssetOut(ORMModel):
         "(`thumb.webp`, 320 px).",
     )
     created_at: datetime
+    provenance: MediaProvenance | None = Field(
+        None, description="Procedencia de la foto; no se puede editar (RF-046, RN-005)."
+    )
 
 
 class UploadUrlRequest(BaseModel):
@@ -269,7 +291,7 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_BULK_DOWNLOAD_PIECES = 200
 
 

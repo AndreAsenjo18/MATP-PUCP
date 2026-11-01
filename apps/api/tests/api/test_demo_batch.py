@@ -76,6 +76,6 @@ def test_the_spreadsheet_produces_the_classification_of_the_demo(pipeline: Pipel
         "CONFLICT": 2,
     }
     assert counts["ERRORS"] == 1 and rows[15]["has_validation_errors"]
-    assert "RN-003" in rows[15]["validation_errors"][0]["message"]
+    assert "comodato" in rows[15]["validation_errors"][0]["message"]
     assert rows[17]["classification"] == rows[18]["classification"] == "CONFLICT"
     assert rows[19]["classification"] == rows[20]["classification"] == "UPDATE"
