@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 78852845f6b477b11ad4e055dccbbc111bf359839a6765be6acea1e9810673dc
+ * openapi-sha256: c6491858374b0637d00a058506ef1ca09f50ebe4dcc4a4be8e6989c53ebc13cb
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -4767,6 +4767,11 @@ export interface components {
          *     }
          */
         LocationNode: {
+            /**
+             * Allowed Child Types
+             * @description Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).
+             */
+            allowed_child_types?: string[];
             /** Children */
             children?: components["schemas"]["LocationNode"][];
             /**

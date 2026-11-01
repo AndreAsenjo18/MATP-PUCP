@@ -5743,6 +5743,14 @@
           }
         ],
         "properties": {
+          "allowed_child_types": {
+            "description": "Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Child Types",
+            "type": "array"
+          },
           "children": {
             "items": {
               "$ref": "#/components/schemas/LocationNode"

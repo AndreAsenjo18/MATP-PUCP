@@ -146,7 +146,7 @@ def test_deactivate_container_with_pieces_is_rejected(
         headers=as_user(ADMIN),
     )
     assert res.status_code == 409
-    assert res.json()["code"] == "location_not_empty"
+    assert res.json()["code"] == "location_in_use"
     assert res.json()["details"]["affected_pieces"] == 1
 
 
