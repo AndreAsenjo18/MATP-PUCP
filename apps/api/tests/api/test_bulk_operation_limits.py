@@ -18,7 +18,7 @@ ROUTES = {
     "/api/v1/ai/batch-enrich": ("ai_batch_enrich_max_pieces", 50),
 }
 # What a request within the limit answers: the job of the package, or the stub of the AI batch.
-WITHIN = {"/api/v1/media/bulk-download": 200, "/api/v1/ai/batch-enrich": 501}
+WITHIN = {"/api/v1/media/bulk-download": 202, "/api/v1/ai/batch-enrich": 501}
 
 
 def _ids(count: int) -> list[str]:

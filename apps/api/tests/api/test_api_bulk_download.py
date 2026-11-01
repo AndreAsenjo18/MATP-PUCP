@@ -31,7 +31,7 @@ def test_a_package_answers_its_job_and_then_its_link(
 
     created = seeded_api.client.post(BULK, json={"piece_ids": [piece_id]}, headers=H_MANAGER)
 
-    assert created.status_code == 200, created.text
+    assert created.status_code == 202, created.text
     job = created.json()
     assert (job["status"], job["piece_count"], job["download_url"]) == ("PENDING", 1, None)
     state = seeded_api.client.get(f"{BULK}/{job['id']}", headers=H_MANAGER)
@@ -106,7 +106,7 @@ def test_a_second_package_while_one_is_in_preparation_is_409(
         BULK, json={"piece_ids": [str(uuid.uuid4())]}, headers=H_CATALOGUER
     )
 
-    assert first.status_code == 200
+    assert first.status_code == 202
     assert second.status_code == 409, second.text
     assert second.json()["details"] == {"job_id": first.json()["id"]}
     with seeded_api.session() as session:  # leave nothing in preparation for other tests

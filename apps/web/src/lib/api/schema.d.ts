@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c62ddba1279201127d4961ca3e3d38f31ff87010f94253b1eee1273c95bb9c98
+ * openapi-sha256: 038d9d1e2f200acea50a57cdfe9e082444f47ae17aa9f128aa523c73ad516eb2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1192,7 +1192,7 @@ export interface paths {
         put?: never;
         /**
          * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
-         * @description Responde `200` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
+         * @description Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
          */
         post: operations["bulkDownloadMedia"];
         delete?: never;
@@ -12476,7 +12476,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

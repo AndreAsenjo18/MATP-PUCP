@@ -260,6 +260,7 @@ def _bulk_download_out(request: Request, job: MediaBulkDownload) -> BulkDownload
 @router.post(
     "/media/bulk-download",
     response_model=BulkDownloadJob,
+    status_code=status.HTTP_202_ACCEPTED,
     responses={
         409: {
             "model": ErrorResponse,
@@ -268,7 +269,7 @@ def _bulk_download_out(request: Request, job: MediaBulkDownload) -> BulkDownload
         },
     },
     summary="Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
-    description="Responde `200` con el estado del trabajo (`PENDING`): el paquete se prepara en "
+    description="Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en "
     "segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace "
     "de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el "
     "documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya "
