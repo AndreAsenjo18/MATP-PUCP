@@ -2160,6 +2160,21 @@
       },
       "ColumnMapping": {
         "properties": {
+          "aliases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Otros nombres de la columna en variantes del formato (plantillas).",
+            "title": "Aliases"
+          },
           "identifier_type_code": {
             "anyOf": [
               {
@@ -2171,10 +2186,88 @@
             ],
             "title": "Identifier Type Code"
           },
+          "join": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Separador con que se unen `source_columns` en un campo de texto.",
+            "title": "Join"
+          },
+          "lender_for_loans": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "En una pieza en comodato, el valor es también el comodante.",
+            "title": "Lender For Loans"
+          },
+          "measure_magnitudes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Con `target_field: measures`: la magnitud de cada una de `source_columns` (`alto`, `ancho`, `espesor`, `diámetro`, `peso`); forma las medidas y su texto.",
+            "title": "Measure Magnitudes"
+          },
+          "optional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Una variante del formato puede no traer la columna (plantillas).",
+            "title": "Optional"
+          },
+          "sensitive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Datos de origen con datos personales del propietario: visibles solo con `sensitive.donor_data`.",
+            "title": "Sensitive"
+          },
           "source_column": {
             "description": "Encabezado tal como aparece en el Excel.",
             "title": "Source Column",
             "type": "string"
+          },
+          "source_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Varias columnas para un mismo destino, en orden (la procedencia en tres columnas); el valor de cada una se conserva en los datos de origen.",
+            "title": "Source Columns"
           },
           "split_compound": {
             "default": false,

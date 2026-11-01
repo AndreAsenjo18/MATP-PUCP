@@ -13,6 +13,7 @@ from datetime import date
 from sqlalchemy import select
 
 from app.modules.catalog.models import Piece, PieceSourceRecord
+from app.modules.imports.models import ImportMappingTemplate
 from app.seed.real_formats import FILES
 from tests.api.conftest import Pipeline
 from tests.api.test_import_decisions_api import confirm, summary
@@ -91,3 +92,40 @@ def test_the_owners_data_is_restricted_without_the_donor_data_permission(
     assert export.status_code in (200, 202), export.text
     assert "Propietario sintético" not in export.content.decode("utf-8", errors="ignore")
     assert "Calle Inventada" not in export.content.decode("utf-8", errors="ignore")
+
+
+def test_a_real_template_survives_reading_and_saving_it_through_the_api(
+    pipeline: Pipeline,
+) -> None:
+    """Task 7.4: ``ColumnMapping`` carries the several sources, the measures, the aliases and the
+    sensitive marks, so Administration can show and save a real template without losing them."""
+    client = pipeline.login("ADMIN")
+    templates = client.get("/api/v1/import-templates").json()
+    summary_item = next(item for item in templates if item["name"] == "Ficha de catalogación RN")
+    detail = client.get(f"/api/v1/import-templates/{summary_item['id']}").json()
+    with pipeline.session() as session:
+        before = session.get(ImportMappingTemplate, uuid.UUID(summary_item["id"]))
+        assert before is not None
+        stored_before = before.mapping
+
+    provenance = next(c for c in detail["columns"] if c["source_column"] == "Procedencia")
+    assert provenance["source_columns"] == ["Procedencia", "Procedencia (2)", "Procedencia (3)"]
+    assert provenance["join"] == ", "
+    owner = next(c for c in detail["columns"] if c["source_column"].startswith("Propietario"))
+    assert owner["sensitive"] and owner["lender_for_loans"]
+
+    headers = [
+        name
+        for column in detail["columns"]
+        for name in (column["source_columns"] or [column["source_column"]])
+    ]
+    saved = client.patch(
+        f"/api/v1/import-templates/{summary_item['id']}",
+        json={"headers": headers, "columns": detail["columns"]},
+    )
+
+    assert saved.status_code == 200, saved.text
+    with pipeline.session() as session:
+        after = session.get(ImportMappingTemplate, uuid.UUID(summary_item["id"]))
+        assert after is not None
+        assert after.mapping["columns"] == stored_before["columns"]

@@ -218,6 +218,34 @@ class ColumnMapping(BaseModel):
         None,
         description="Texto de origen → código de término, para la transformación `value_map`.",
     )
+    # Formatos reales del museo (change formatos-reales-importacion, design D1, D3, D6).
+    source_columns: list[str] | None = Field(
+        None,
+        description="Varias columnas para un mismo destino, en orden (la procedencia en tres "
+        "columnas); el valor de cada una se conserva en los datos de origen.",
+    )
+    join: str | None = Field(
+        None, description="Separador con que se unen `source_columns` en un campo de texto."
+    )
+    measure_magnitudes: list[str] | None = Field(
+        None,
+        description="Con `target_field: measures`: la magnitud de cada una de `source_columns` "
+        "(`alto`, `ancho`, `espesor`, `diámetro`, `peso`); forma las medidas y su texto.",
+    )
+    aliases: list[str] | None = Field(
+        None, description="Otros nombres de la columna en variantes del formato (plantillas)."
+    )
+    optional: bool | None = Field(
+        None, description="Una variante del formato puede no traer la columna (plantillas)."
+    )
+    sensitive: bool | None = Field(
+        None,
+        description="Datos de origen con datos personales del propietario: visibles solo con "
+        "`sensitive.donor_data`.",
+    )
+    lender_for_loans: bool | None = Field(
+        None, description="En una pieza en comodato, el valor es también el comodante."
+    )
 
 
 class MappingRequest(BaseModel):

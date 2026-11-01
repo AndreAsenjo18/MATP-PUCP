@@ -311,6 +311,16 @@ class ColumnMappingLike(Protocol):
     split_compound: bool
     transforms: list[str]
     value_map: dict[str, str] | None
+    source_columns: list[str] | None
+    join: str | None
+    measure_magnitudes: list[str] | None
+    aliases: list[str] | None
+    optional: bool | None
+    sensitive: bool | None
+    lender_for_loans: bool | None
+
+
+MEASURES_TARGET = "measures"
 
 
 def _v0_projection(column: ColumnSpecV1) -> ColumnSpec:
@@ -380,7 +390,14 @@ def from_column_mappings(
     for column in columns:
         target = column.target_field or PAYLOAD_TARGET
         column_target: ColumnTarget
-        if target.startswith(f"{TERMS_TARGET}:"):
+        if target == MEASURES_TARGET:
+            column_target = MeasuresTarget(magnitudes=list(column.measure_magnitudes or []))
+        elif target == PAYLOAD_TARGET and (column.sensitive or column.lender_for_loans):
+            column_target = SourcePayloadTarget(
+                sensitive=column.sensitive or None,
+                lender_for_loans=column.lender_for_loans or None,
+            )
+        elif target.startswith(f"{TERMS_TARGET}:"):
             vocabulary = target.split(":", 1)[1]
             if not vocabulary:
                 raise MappingConversionError(
@@ -415,6 +432,10 @@ def from_column_mappings(
                 target=column_target,
                 transforms=transforms,
                 value_map=column.value_map,
+                sources=list(column.source_columns) if column.source_columns else None,
+                join=column.join,
+                aliases=list(column.aliases) if column.aliases else None,
+                optional=column.optional or None,
             )
         )
     return MappingSpecV1(columns=converted, defaults=_defaults_to_codes(defaults or {}))

@@ -23,6 +23,7 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.identification.normalization import canonical
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
+    MEASURES_TARGET,
     TERMS_TARGET,
     ColumnSpecV1,
     FieldTarget,
@@ -33,6 +34,7 @@ from app.modules.imports.mapping import (
     MappingSpec,
     MappingSpecV1,
     MeasuresTarget,
+    SourcePayloadTarget,
     TermsTarget,
     from_column_mappings,
     read_mapping,
@@ -100,8 +102,12 @@ def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
         target = column.target
         identifier_type: str | None = None
         split_compound = False
-        if isinstance(target, FieldTarget):
-            target_field: str | None = target.name
+        magnitudes: list[str] | None = None
+        if isinstance(target, MeasuresTarget):
+            target_field: str | None = MEASURES_TARGET
+            magnitudes = list(target.magnitudes)
+        elif isinstance(target, FieldTarget):
+            target_field = target.name
         elif isinstance(target, IdentifierTarget):
             target_field, identifier_type = IDENTIFIER_TARGET, target.type
         elif isinstance(target, IdentifiersTarget):
@@ -119,6 +125,17 @@ def column_mappings(template: ImportMappingTemplate) -> list[ColumnMapping]:
                 split_compound=split_compound,
                 transforms=list(column.transforms),
                 value_map=column.value_map,
+                source_columns=list(column.sources) if column.sources else None,
+                join=column.join,
+                measure_magnitudes=magnitudes,
+                aliases=list(column.aliases) if column.aliases else None,
+                optional=column.optional or None,
+                sensitive=(target.sensitive or None)
+                if isinstance(target, SourcePayloadTarget)
+                else None,
+                lender_for_loans=(target.lender_for_loans or None)
+                if isinstance(target, SourcePayloadTarget)
+                else None,
             )
         )
     return result
