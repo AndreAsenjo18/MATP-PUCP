@@ -613,6 +613,21 @@ entity EXPORT_JOB {
   ..
   <i>+ timestamps</i>
 }
+entity MEDIA_BULK_DOWNLOAD {
+  * id : uuid <<PK>>
+  --
+  * requested_by_id : uuid <<FK>>
+  * piece_ids : jsonb
+  * status : varchar(40)
+    included_photos : integer
+  * omitted : jsonb
+    storage_key : varchar(500)
+    expires_at : timestamptz
+    error : text
+    heartbeat_at : timestamptz
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
@@ -620,6 +635,7 @@ APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
 APP_USER ||--o{ EXPORT_JOB : "solicita"
 APP_USER |o--o{ IDEMPOTENCY_KEY : "solicita"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
+APP_USER ||--o{ MEDIA_BULK_DOWNLOAD : "solicita"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
 APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
 APP_USER ||--o{ USER_SESSION : "sesiones abiertas"
