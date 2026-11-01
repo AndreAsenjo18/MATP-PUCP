@@ -54,6 +54,8 @@ export interface AdminListProps<T, R> {
   onRetire?: (item: T) => void;
   retireLabel?: string;
   emptyMessage: string;
+  /** Junto al mensaje sin filas, p. ej. «Limpiar filtros». */
+  emptyAction?: ReactNode;
   retired?: AdminRetired<R>;
 }
 
@@ -125,6 +127,7 @@ export function AdminList<T, R = never>({
   onRetire,
   retireLabel = "Retirar",
   emptyMessage,
+  emptyAction,
   retired,
 }: AdminListProps<T, R>) {
   const hasActions = Boolean(onEdit || onRetire);
@@ -149,7 +152,10 @@ export function AdminList<T, R = never>({
         )}
       </AdminToolbar>
       {items.length === 0 ? (
-        <p className="py-2 text-sm text-gris-texto">{emptyMessage}</p>
+        <div className="flex flex-wrap items-center gap-3 py-2 text-sm text-gris-texto">
+          <p>{emptyMessage}</p>
+          {emptyAction}
+        </div>
       ) : (
         <AdminTable
           caption={label}

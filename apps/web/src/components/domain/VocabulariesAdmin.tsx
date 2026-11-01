@@ -6,7 +6,8 @@
  * `rediseno-ux-administracion`). Cada sección lleva sus filtros y su botón «Nuevo …» en una barra
  * sobre el listado, y el alta es un diálogo.
  *
- * - Colecciones: listado filtrable (búsqueda, estado y tipo) con las subcolecciones distinguidas.
+ * - Colecciones: listado filtrable (búsqueda, estado y tipo) con las subcolecciones distinguidas;
+ *   editar, retirar con motivo, ver retiradas y restaurar (Administrador) (`crud-manual-completo` 2.2).
  * - Listas de valores (los vocabularios): las opciones que se eligen al llenar una ficha; sus
  *   términos son etiquetas que se activan o desactivan (nunca se borran).
  * - Tipos de código (los tipos de identificador): candado en los tipos del sistema, alta, cambio de
@@ -16,6 +17,7 @@
 import { Check, EyeOff, Eye, Lock, Pencil, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { AdminList, RetireDialog } from "@/components/domain/AdminList";
 import { AdminToolbar, FormDialog, Notice, SectionHeader } from "@/components/domain/AdminShell";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { Badge } from "@/components/ui/Badge";
@@ -29,26 +31,35 @@ import {
   NORMALIZATION_RULES,
   NO_COLLECTION_FILTERS,
   codeError,
+  collectionFieldError,
   createCollection,
   createIdentifierType,
   createTerm,
   createVocabulary,
   fetchCollectionList,
   fetchIdentifierTypes,
+  fetchRetiredCollections,
   fetchTerms,
   fetchVocabularies,
   filterCollections,
+  keepAcronymAsHistorical,
   lockedRules,
+  notEmptyMessage,
+  previousAcronymToKeep,
   previewRuleChange,
   previewSentence,
+  restoreCollection,
+  retireCollection,
   setTermActive,
   suggestCode,
+  updateCollection,
   updateIdentifierType,
   type CollectionFilters,
   type CollectionItem,
   type IdentifierType,
   type NormalizationPreview,
   type NormalizationRule,
+  type RetiredCollection,
   type TenureLabel,
   type VocabularySummary,
   type VocabularyTerm,
@@ -238,169 +249,392 @@ export function RulePreviewPanel({
 const TENURES: TenureLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 /** Listado compacto: las subcolecciones llevan su etiqueta y el nombre de la colección padre. */
-export function CollectionsTable({ items, all, onClearFilters }: { items: CollectionItem[]; all: CollectionItem[]; onClearFilters?: () => void }) {
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-wrap items-center gap-3 py-3 text-sm text-gris-texto">
-        <p>No hay colecciones con estos filtros.</p>
-        {onClearFilters && (
-          <Button variant="outline" size="sm" onClick={onClearFilters}>
+export interface CollectionForm {
+  name: string;
+  acronym: string;
+  tenure: TenureLabel;
+  parentId: string;
+}
+
+const EMPTY_COLLECTION_FORM: CollectionForm = { name: "", acronym: "", tenure: "Propiedad", parentId: "" };
+type CollectionFieldErrors = Partial<Record<"name" | "acronym" | "parentId", string>>;
+
+/** Los campos del alta y de la edición; los errores van junto a su campo (crud-manual-completo 2.2). */
+export function CollectionFormFields({
+  form,
+  onChange,
+  collections,
+  editingId,
+  previousAcronym,
+  keepPrevious,
+  onKeepPreviousChange,
+  errors = {},
+}: {
+  form: CollectionForm;
+  onChange: (next: Partial<CollectionForm>) => void;
+  collections: readonly CollectionItem[];
+  /** Al editar, la colección no puede ser su propia madre. */
+  editingId?: string;
+  /** La sigla que tenía; si cambia, se ofrece guardarla como histórica. */
+  previousAcronym?: string | null;
+  keepPrevious?: boolean;
+  onKeepPreviousChange?: (keep: boolean) => void;
+  errors?: CollectionFieldErrors;
+}) {
+  const offered = previousAcronymToKeep(previousAcronym, form.acronym);
+  return (
+    <>
+      <Input label="Nombre" value={form.name} error={errors.name} onChange={(event) => onChange({ name: event.target.value })} />
+      <Input label="Sigla" value={form.acronym} placeholder="p. ej. M.M.Z." error={errors.acronym} onChange={(event) => onChange({ acronym: event.target.value })} />
+      {offered && onKeepPreviousChange && (
+        <label className="flex items-start gap-2 text-sm text-tinta">
+          <input type="checkbox" checked={keepPrevious ?? false} onChange={(event) => onKeepPreviousChange(event.target.checked)} className="mt-0.5 size-5 accent-terracota" />
+          <span>
+            Guardar «{offered}» como sigla histórica, para que las importaciones y las fotos con la sigla anterior sigan encontrando la colección.
+          </span>
+        </label>
+      )}
+      <Select label="Régimen por defecto" value={form.tenure} onChange={(event) => onChange({ tenure: event.target.value as TenureLabel })}>
+        {TENURES.map((tenure) => (
+          <option key={tenure} value={tenure}>
+            {tenure}
+          </option>
+        ))}
+      </Select>
+      <Select label="Colección madre" value={form.parentId} error={errors.parentId} onChange={(event) => onChange({ parentId: event.target.value })}>
+        <option value="">Ninguna (colección principal)</option>
+        {collections
+          .filter((collection) => collection.is_active && collection.id !== editingId)
+          .map((collection) => (
+            <option key={collection.id} value={collection.id}>
+              {collection.name}
+            </option>
+          ))}
+      </Select>
+    </>
+  );
+}
+
+function retiredAt(entry: RetiredCollection): string {
+  const when = entry.deleted_at ? new Date(entry.deleted_at).toLocaleDateString("es-PE") : "—";
+  return entry.deleted_by_name ? `${when} · ${entry.deleted_by_name}` : when;
+}
+
+/**
+ * Las colecciones con el patrón común (`AdminList`, crud-manual-completo 2.2): buscador y filtros,
+ * «Nueva colección», «Editar» y «Retirar» por fila para quien las administra, y «Ver retiradas»; solo
+ * el Administrador restaura [SUPUESTO Ñ3].
+ */
+export function CollectionsList({
+  shown,
+  all,
+  filters,
+  onFiltersChange,
+  retired = [],
+  showRetired = false,
+  onToggleRetired,
+  onAdd,
+  onEdit,
+  onRetire,
+  onRestore,
+}: {
+  shown: readonly CollectionItem[];
+  all: readonly CollectionItem[];
+  filters: CollectionFilters;
+  onFiltersChange: (next: CollectionFilters) => void;
+  retired?: readonly RetiredCollection[];
+  showRetired?: boolean;
+  onToggleRetired?: () => void;
+  onAdd?: () => void;
+  onEdit?: (collection: CollectionItem) => void;
+  onRetire?: (collection: CollectionItem) => void;
+  onRestore?: (entry: RetiredCollection) => void;
+}) {
+  const names = new Map(all.map((item) => [item.id, item.name]));
+  const filtered = filters.query || filters.status || filters.kind;
+  return (
+    <AdminList<CollectionItem, RetiredCollection>
+      label="Colecciones"
+      items={shown}
+      rowKey={(collection) => collection.id}
+      rowName={(collection) => collection.name}
+      columns={[
+        {
+          header: "Colección",
+          cell: (collection) => (
+            <span className={cn("flex flex-wrap items-center gap-2", collection.parent_id && "pl-4")}>
+              {collection.name}
+              {collection.parent_id && (
+                <Badge className="px-2 py-0 text-xs" title="Subcolección">
+                  Subcolección de {names.get(collection.parent_id) ?? "otra colección"}
+                </Badge>
+              )}
+            </span>
+          ),
+        },
+        { header: "Sigla", cell: (collection) => <span className="font-mono text-xs text-gris-texto">{collection.acronym ?? "—"}</span> },
+        { header: "Piezas", cell: (collection) => collection.piece_count, align: "right" },
+        {
+          header: "Estado",
+          cell: (collection) =>
+            collection.is_active ? <Badge intent="success" className="px-2 py-0 text-xs">Activa</Badge> : <Badge className="px-2 py-0 text-xs">Inactiva</Badge>,
+        },
+      ]}
+      query={filters.query}
+      onQueryChange={(query) => onFiltersChange({ ...filters, query })}
+      searchPlaceholder="Nombre o sigla"
+      filters={
+        <>
+          <Select label="Estado" value={filters.status} onChange={(event) => onFiltersChange({ ...filters, status: event.target.value as CollectionFilters["status"] })} fieldClassName="w-36">
+            <option value="">Todas</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
+          </Select>
+          <Select label="Tipo" value={filters.kind} onChange={(event) => onFiltersChange({ ...filters, kind: event.target.value as CollectionFilters["kind"] })} fieldClassName="w-44">
+            <option value="">Todas</option>
+            <option value="main">Principales</option>
+            <option value="sub">Subcolecciones</option>
+          </Select>
+        </>
+      }
+      addLabel="Nueva colección"
+      onAdd={onAdd}
+      onEdit={onEdit}
+      onRetire={onRetire}
+      emptyMessage={filtered ? "No hay colecciones con estos filtros." : "Todavía no hay colecciones."}
+      emptyAction={
+        filtered ? (
+          <Button variant="outline" size="sm" onClick={() => onFiltersChange(NO_COLLECTION_FILTERS)}>
             Limpiar filtros
           </Button>
-        )}
-      </div>
-    );
-  }
-  const names = new Map(all.map((item) => [item.id, item.name]));
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs text-gris-texto">
-          <tr>
-            <th className="py-1.5 pr-3 font-medium">Colección</th>
-            <th className="py-1.5 pr-3 font-medium">Sigla</th>
-            <th className="py-1.5 pr-3 text-right font-medium">Piezas</th>
-            <th className="py-1.5 font-medium">Estado</th>
-          </tr>
-        </thead>
-        <tbody className="text-tinta">
-          {items.map((collection) => (
-            <tr key={collection.id} className="border-t border-borde">
-              <td className="py-1.5 pr-3">
-                <span className={cn("flex flex-wrap items-center gap-2", collection.parent_id && "pl-4")}>
-                  {collection.name}
-                  {collection.parent_id && (
-                    <Badge className="px-2 py-0 text-xs" title="Subcolección">
-                      Subcolección de {names.get(collection.parent_id) ?? "otra colección"}
-                    </Badge>
-                  )}
-                </span>
-              </td>
-              <td className="py-1.5 pr-3 font-mono text-xs text-gris-texto">{collection.acronym ?? "—"}</td>
-              <td className="py-1.5 pr-3 text-right">{collection.piece_count}</td>
-              <td className="py-1.5">
-                {collection.is_active ? <Badge intent="success" className="px-2 py-0 text-xs">Activa</Badge> : <Badge className="px-2 py-0 text-xs">Inactiva</Badge>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ) : undefined
+      }
+      retired={
+        onToggleRetired
+          ? {
+              toggleLabel: showRetired ? "Ocultar las retiradas" : "Ver retiradas",
+              shown: showRetired,
+              onToggle: onToggleRetired,
+              items: retired,
+              rowKey: (entry) => entry.entity_id,
+              rowName: (entry) => entry.entity_label,
+              columns: [
+                { header: "Colección", cell: (entry) => entry.entity_label },
+                { header: "Retirada", cell: retiredAt },
+                { header: "Motivo", cell: (entry) => entry.deletion_reason ?? "—" },
+              ],
+              onRestore,
+              emptyMessage: "No hay colecciones retiradas.",
+            }
+          : undefined
+      }
+    />
   );
 }
 
 export function CollectionsLive() {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
+  const canManage = hasPermission("collections.manage");
+  // Solo el Administrador restaura registros eliminados [SUPUESTO Ñ3].
+  const isAdmin = (currentUser?.roles ?? []).includes("ADMIN");
   const [collections, setCollections] = useState<CollectionItem[]>([]);
+  const [retired, setRetired] = useState<RetiredCollection[]>([]);
+  const [showRetired, setShowRetired] = useState(false);
   const [filters, setFilters] = useState<CollectionFilters>(NO_COLLECTION_FILTERS);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", acronym: "", tenure: "Propiedad" as TenureLabel, parentId: "" });
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<CollectionItem | null>(null);
+  const [retiring, setRetiring] = useState<CollectionItem | null>(null);
+  const [form, setForm] = useState<CollectionForm>(EMPTY_COLLECTION_FORM);
+  const [keepPrevious, setKeepPrevious] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<CollectionFieldErrors>({});
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dialogError, setDialogError] = useState<string | null>(null);
-  const canManage = hasPermission("collections.manage");
 
   const reload = useCallback(async () => {
-    const result = await fetchCollectionList(devUser);
-    if (result.status === "ok") setCollections(result.value);
-    else setError(result.message);
-  }, [devUser]);
+    const [active, gone] = await Promise.all([fetchCollectionList(devUser), canManage ? fetchRetiredCollections(devUser) : Promise.resolve(null)]);
+    if (active.status === "ok") setCollections(active.value);
+    else setError(active.message);
+    if (gone?.status === "ok") setRetired(gone.value);
+  }, [devUser, canManage]);
 
   useEffect(() => {
-    let active = true;
-    fetchCollectionList(devUser).then((result) => {
-      if (!active) return;
-      if (result.status === "ok") setCollections(result.value);
-      else setError(result.message);
+    let mounted = true;
+    Promise.all([fetchCollectionList(devUser), canManage ? fetchRetiredCollections(devUser) : Promise.resolve(null)]).then(([active, gone]) => {
+      if (!mounted) return;
+      if (active.status === "ok") setCollections(active.value);
+      else setError(active.message);
+      if (gone?.status === "ok") setRetired(gone.value);
     });
     return () => {
-      active = false;
+      mounted = false;
     };
-  }, [devUser]);
+  }, [devUser, canManage]);
 
   const shown = useMemo(() => filterCollections(collections, filters), [collections, filters]);
 
+  function closeDialogs() {
+    setCreating(false);
+    setEditing(null);
+    setRetiring(null);
+    setFieldErrors({});
+    setDialogError(null);
+  }
+
+  function rejected(result: { status: "rejected"; code: string; message: string } | { status: "unavailable"; message: string }): false {
+    const field = result.status === "rejected" ? collectionFieldError(result) : null;
+    if (field) {
+      setFieldErrors({ [field.field]: field.message });
+      setDialogError(null);
+    } else {
+      setFieldErrors({});
+      setDialogError(result.message);
+    }
+    return false;
+  }
+
   async function handleCreate(): Promise<boolean> {
     if (!form.name.trim()) {
-      setDialogError("Escriba el nombre de la colección.");
+      setFieldErrors({ name: "Escriba el nombre de la colección." });
       return false;
     }
-    const result = await createCollection({ ...form }, devUser);
-    if (result.status !== "ok") {
-      setDialogError(result.message);
-      return false;
-    }
-    setDialogError(null);
+    const result = await createCollection(form, devUser);
+    if (result.status !== "ok") return rejected(result);
+    closeDialogs();
     setError(null);
     setMessage(`Colección «${result.value.name}» creada.`);
-    setForm({ name: "", acronym: "", tenure: "Propiedad", parentId: "" });
+    setForm(EMPTY_COLLECTION_FORM);
     await reload();
     return true;
+  }
+
+  async function handleEdit(): Promise<boolean> {
+    if (!editing) return false;
+    if (!form.name.trim()) {
+      setFieldErrors({ name: "Escriba el nombre de la colección." });
+      return false;
+    }
+    const result = await updateCollection(editing.id, form, devUser);
+    if (result.status !== "ok") return rejected(result);
+    const previous = previousAcronymToKeep(editing.acronym, form.acronym);
+    let kept = "";
+    if (previous && keepPrevious) {
+      const alias = await keepAcronymAsHistorical(editing.id, previous, devUser);
+      kept = alias.status === "ok" ? ` La sigla «${previous}» quedó como histórica.` : ` No se pudo guardar «${previous}» como sigla histórica: ${alias.message}`;
+    }
+    closeDialogs();
+    setError(null);
+    setMessage(`Colección «${result.value.name}» actualizada.${kept}`);
+    await reload();
+    return true;
+  }
+
+  async function handleRetire(reason: string): Promise<boolean> {
+    if (!retiring) return false;
+    const result = await retireCollection(retiring.id, reason, devUser);
+    if (result.status !== "ok") {
+      setDialogError(result.status === "rejected" && result.code === "collection_not_empty" ? notEmptyMessage(result.details) : result.message);
+      return false;
+    }
+    const name = retiring.name;
+    closeDialogs();
+    setError(null);
+    setMessage(`Colección «${name}» retirada. Se puede ver en «Ver retiradas».`);
+    await reload();
+    return true;
+  }
+
+  async function handleRestore(entry: RetiredCollection) {
+    const result = await restoreCollection(entry.entity_id, "Restaurada desde Administración › Colecciones", devUser);
+    if (result.status !== "ok") {
+      setError(result.message);
+      return;
+    }
+    setError(null);
+    setMessage(`Colección «${entry.entity_label}» restaurada.`);
+    await reload();
   }
 
   return (
     <Card as="section" aria-label="Colecciones" className="flex flex-col gap-4">
       <SectionHeader title="Colecciones" description="Las colecciones del museo y sus subcolecciones. La sigla identifica a las piezas de cada una." />
-      <AdminToolbar
-        label="Filtros de colecciones"
-        action={
-          canManage && (
-            <Button size="sm" icon={Plus} onClick={() => setDialogOpen(true)}>
-              Nueva colección
-            </Button>
-          )
-        }
-      >
-        <Input label="Buscar" value={filters.query} placeholder="Nombre o sigla" onChange={(event) => setFilters((c) => ({ ...c, query: event.target.value }))} fieldClassName="w-56" />
-        <Select label="Estado" value={filters.status} onChange={(event) => setFilters((c) => ({ ...c, status: event.target.value as CollectionFilters["status"] }))} fieldClassName="w-36">
-          <option value="">Todas</option>
-          <option value="active">Activas</option>
-          <option value="inactive">Inactivas</option>
-        </Select>
-        <Select label="Tipo" value={filters.kind} onChange={(event) => setFilters((c) => ({ ...c, kind: event.target.value as CollectionFilters["kind"] }))} fieldClassName="w-44">
-          <option value="">Todas</option>
-          <option value="main">Principales</option>
-          <option value="sub">Subcolecciones</option>
-        </Select>
-      </AdminToolbar>
       <p className="text-xs text-gris-texto">
         {shown.length === collections.length ? `${collections.length} colecciones` : `${shown.length} de ${collections.length} colecciones`}
       </p>
       <Notice message={message} error={error} />
-      <CollectionsTable items={shown} all={collections} onClearFilters={() => setFilters(NO_COLLECTION_FILTERS)} />
+      <CollectionsList
+        shown={shown}
+        all={collections}
+        filters={filters}
+        onFiltersChange={setFilters}
+        retired={retired}
+        showRetired={showRetired}
+        onToggleRetired={canManage ? () => setShowRetired((value) => !value) : undefined}
+        onAdd={
+          canManage
+            ? () => {
+                setForm(EMPTY_COLLECTION_FORM);
+                setCreating(true);
+              }
+            : undefined
+        }
+        onEdit={
+          canManage
+            ? (collection) => {
+                setForm({
+                  name: collection.name,
+                  acronym: collection.acronym ?? "",
+                  tenure: collection.default_tenure_regime as TenureLabel,
+                  parentId: collection.parent_id ?? "",
+                });
+                setKeepPrevious(true);
+                setEditing(collection);
+              }
+            : undefined
+        }
+        onRetire={canManage ? setRetiring : undefined}
+        onRestore={isAdmin ? handleRestore : undefined}
+      />
       <FormDialog
-        open={dialogOpen}
+        open={creating}
         title="Nueva colección"
         description="Principal o subcolección de otra."
         submitLabel="Crear colección"
         error={dialogError}
-        onClose={() => {
-          setDialogOpen(false);
-          setDialogError(null);
-        }}
+        onClose={closeDialogs}
         onSubmit={handleCreate}
       >
-        <Input label="Nombre" value={form.name} onChange={(event) => setForm((c) => ({ ...c, name: event.target.value }))} />
-        <Input label="Sigla" value={form.acronym} placeholder="p. ej. M.M.Z." onChange={(event) => setForm((c) => ({ ...c, acronym: event.target.value }))} />
-        <Select label="Régimen por defecto" value={form.tenure} onChange={(event) => setForm((c) => ({ ...c, tenure: event.target.value as TenureLabel }))}>
-          {TENURES.map((tenure) => (
-            <option key={tenure} value={tenure}>
-              {tenure}
-            </option>
-          ))}
-        </Select>
-        <Select label="Colección padre" value={form.parentId} onChange={(event) => setForm((c) => ({ ...c, parentId: event.target.value }))}>
-          <option value="">Ninguna (colección principal)</option>
-          {collections
-            .filter((collection) => collection.is_active)
-            .map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.name}
-              </option>
-            ))}
-        </Select>
+        <CollectionFormFields form={form} onChange={(next) => setForm((current) => ({ ...current, ...next }))} collections={collections} errors={fieldErrors} />
       </FormDialog>
+      <FormDialog
+        open={editing !== null}
+        title={editing ? `Editar «${editing.name}»` : "Editar colección"}
+        description="Los cambios quedan en la auditoría con el valor anterior y el nuevo."
+        submitLabel="Guardar cambios"
+        error={dialogError}
+        onClose={closeDialogs}
+        onSubmit={handleEdit}
+      >
+        <CollectionFormFields
+          form={form}
+          onChange={(next) => setForm((current) => ({ ...current, ...next }))}
+          collections={collections}
+          editingId={editing?.id}
+          previousAcronym={editing?.acronym}
+          keepPrevious={keepPrevious}
+          onKeepPreviousChange={setKeepPrevious}
+          errors={fieldErrors}
+        />
+      </FormDialog>
+      <RetireDialog
+        open={retiring !== null}
+        title={retiring ? `Retirar «${retiring.name}»` : "Retirar colección"}
+        consequence="Deja de ofrecerse en las fichas y en la importación. No se borra: un Administrador puede restaurarla desde «Ver retiradas»."
+        error={dialogError}
+        onClose={closeDialogs}
+        onSubmit={handleRetire}
+      />
     </Card>
   );
 }

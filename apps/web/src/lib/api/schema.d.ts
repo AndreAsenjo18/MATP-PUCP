@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c6491858374b0637d00a058506ef1ca09f50ebe4dcc4a4be8e6989c53ebc13cb
+ * openapi-sha256: 73439a7a76abe791c6624242ef16a76d4aa6cfbf84298c160444afb06c7cad57
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3083,6 +3083,11 @@ export interface components {
         CollectionUpdate: {
             /** Acronym */
             acronym?: string | null;
+            /**
+             * Default Tenure Regime
+             * @description Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).
+             */
+            default_tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             /** Description */
             description?: string | null;
             /** Is Active */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_ERROR_MESSAGES, type CollectionItem, type IdentifierType, type NormalizationPreview, type VocabularyTerm } from "@/lib/data/admin";
+import { ADMIN_ERROR_MESSAGES, NO_COLLECTION_FILTERS, type CollectionItem, type IdentifierType, type NormalizationPreview, type VocabularyTerm } from "@/lib/data/admin";
 import type { MappingTemplate } from "@/lib/data/import-templates";
 import type { LocationNode } from "@/lib/data/locations";
 import type { PackageView, RoleOut, UserOut } from "@/lib/data/users-admin";
@@ -10,7 +10,7 @@ import { ADMIN_SECTIONS, AdminNav, AdminToolbar, FormDialog, SectionHeader, visi
 import { LocationTreeView } from "./LocationsAdmin";
 import { Fold, MarkersEditor, SeparatorsEditor } from "./NormalizationAdmin";
 import { TemplateAdminList } from "./MappingTemplatesAdmin";
-import { CollectionsTable, IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
+import { CollectionsList, IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
 import { PermissionPackageCard, PermissionSaveBar, RoleButtons, UsersTable } from "./UsersAdmin";
 
 // Spec plataforma — Administración: ningún texto que lee la persona cita requisitos (RF-, RN-, RNF-, RIA-).
@@ -74,7 +74,7 @@ describe("lenguaje llano en Administración", () => {
     usuarios: visibleText(render(<UsersTable users={[USER]} roles={ROLES} onToggleActive={noop} onResetPassword={noop} />)),
     permisos: visibleText(render(<RoleButtons roles={ROLES} value="ADMIN" onChange={noop} />)) + visibleText(render(<PermissionPackageCard pkg={PACKAGE} working={[]} onTogglePermission={noop} onTogglePackage={noop} />)),
     guardar: visibleText(render(<PermissionSaveBar diff={{ added: ["imports.prepare"], removed: [] }} reason="" onReason={noop} onSave={noop} />)),
-    colecciones: visibleText(render(<CollectionsTable items={[COLLECTION]} all={[COLLECTION]} />)),
+    colecciones: visibleText(render(<CollectionsList shown={[COLLECTION]} all={[COLLECTION]} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} />)),
     listas: visibleText(render(<TermList terms={[TERM]} busy={false} onToggle={noop} />)),
     tipos: visibleText(render(<IdentifierTypesTable types={[TYPE]} selected={null} onSelect={noop} />)),
     impacto: visibleText(render(<RulePreviewPanel type={TYPE} preview={PREVIEW} busy={false} onConfirm={noop} onCancel={noop} />)),

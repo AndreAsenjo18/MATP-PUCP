@@ -7,7 +7,7 @@
 ## 2. Componentes comunes y administración
 
 - [x] 2.1 `AdminList` y `AdminDialog` (buscador, agregar, editar, retirar con motivo, ver retiradas, restaurar); pruebas de componente y de teclado (D1; RNF-010)
-- [ ] 2.2 Colecciones con `AdminList`: editar, retirar, restaurar y ofrecer la sigla anterior como histórica; `lib/data/admin.ts` (mock/live); pruebas de los cuatro escenarios del requirement (Req: Edición y retiro de colecciones…)
+- [x] 2.2 Colecciones con `AdminList`: editar, retirar, restaurar y ofrecer la sigla anterior como histórica; `lib/data/admin.ts` (mock/live); pruebas de los cuatro escenarios del requirement (Req: Edición y retiro de colecciones…)
 - [ ] 2.3 Listas de valores: editar la etiqueta de un término; pruebas de errata corregida y etiqueta repetida (Req: Edición de términos…)
 
 ## 3. Lugares desde la búsqueda (después de `fusion-busqueda-deposito` 2.2)

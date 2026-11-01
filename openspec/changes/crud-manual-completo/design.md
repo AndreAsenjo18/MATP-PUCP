@@ -19,7 +19,7 @@ Tabla con buscador, «Agregar», acciones por fila («Editar», «Retirar» o «
 
 ### D2. Restauración de colecciones
 
-Si no existe, `POST /collections/{id}/restore` con motivo, que reutiliza `SoftDeleteMixin` y la auditoría, y `GET /collections?include_retired=true`. Existe (tarea 1.1): la papelera ya lista las colecciones retiradas (`GET /trash?entity_type=collection`, para quien administra colecciones) y las restaura (`POST /trash/collection/{id}/restore`), solo el Administrador [SUPUESTO Ñ3], así que no se añade ninguna operación. Al cambiar una sigla, el diálogo ofrece guardarla como sigla histórica (`POST /collection-acronym-aliases`, ya existe), para que las importaciones y el emparejamiento de fotos la sigan reconociendo.
+Si no existe, `POST /collections/{id}/restore` con motivo, que reutiliza `SoftDeleteMixin` y la auditoría, y `GET /collections?include_retired=true`. Existe (tarea 1.1): la papelera ya lista las colecciones retiradas (`GET /trash?entity_type=collection`, para quien administra colecciones) y las restaura (`POST /trash/collection/{id}/restore`), solo el Administrador [SUPUESTO Ñ3], así que no se añade ninguna operación. Al cambiar una sigla, el diálogo ofrece guardarla como sigla histórica (`POST /collection-acronym-aliases`, ya existe), para que las importaciones y el emparejamiento de fotos la sigan reconociendo. El requirement pide editar también el régimen por defecto y `PATCH /collections/{id}` no lo aceptaba: la tarea 2.2 lo añade (`default_tenure_regime`, auditado), sin operación nueva.
 
 ### D3. Lugares desde el árbol de la búsqueda
 

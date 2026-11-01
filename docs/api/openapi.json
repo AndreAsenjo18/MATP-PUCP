@@ -2122,6 +2122,23 @@
             ],
             "title": "Acronym"
           },
+          "default_tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).",
+            "title": "Default Tenure Regime"
+          },
           "description": {
             "anyOf": [
               {
