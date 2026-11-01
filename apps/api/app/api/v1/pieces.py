@@ -145,6 +145,14 @@ def piece_filters(
     has_inventory_code: Annotated[bool | None, Query(description="false = piezas sin I.")] = None,
     author: Annotated[str | None, Query(max_length=200)] = None,
     provenance: Annotated[str | None, Query(max_length=200)] = None,
+    description: Annotated[
+        str | None,
+        Query(
+            max_length=200,
+            description="La descripción contiene este texto, sin distinguir mayúsculas ni tildes "
+            "(fusion-busqueda-deposito D1).",
+        ),
+    ] = None,
     period_text: Annotated[str | None, Query(max_length=200)] = None,
     epoch_start_year: Annotated[int | None, Query(description="Año de inicio de época.")] = None,
     epoch_end_year: Annotated[int | None, Query(description="Año de fin de época.")] = None,
@@ -174,6 +182,7 @@ def piece_filters(
         has_inventory_code=has_inventory_code,
         author=author,
         provenance=provenance,
+        description=description,
         period_text=period_text,
         epoch_start_year=epoch_start_year,
         epoch_end_year=epoch_end_year,

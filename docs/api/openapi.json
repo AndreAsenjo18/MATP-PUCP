@@ -20400,6 +20400,25 @@
             }
           },
           {
+            "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Description"
+            }
+          },
+          {
             "in": "query",
             "name": "period_text",
             "required": false,
@@ -24444,6 +24463,25 @@
                 }
               ],
               "title": "Provenance"
+            }
+          },
+          {
+            "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Description"
             }
           },
           {

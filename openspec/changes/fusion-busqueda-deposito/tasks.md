@@ -1,6 +1,6 @@
 ## 1. API
 
-- [ ] 1.1 Descripción en el texto libre `q` y parámetro `description` en `search/filters.py`, con su filtro activo «Descripción»; pruebas de los escenarios «Palabra que solo está en la descripción», «Filtro de descripción combinado» y «Descripción vacía» (Req: Búsqueda en la descripción de la pieza)
+- [x] 1.1 Descripción en el texto libre `q` y parámetro `description` en `search/filters.py`, con su filtro activo «Descripción»; pruebas de los escenarios «Palabra que solo está en la descripción», «Filtro de descripción combinado» y «Descripción vacía» (Req: Búsqueda en la descripción de la pieza)
 - [ ] 1.2 Peso y `matched_fields: ["description"]` en `search/ranking.py`; prueba de orden frente a denominación (Req: Búsqueda en la descripción… — escenario «Orden frente a coincidencias por denominación»)
 - [ ] 1.3 Prueba de rendimiento existente con 20 000 piezas y descripción; si supera el umbral de RF-038, índice trigram en PostgreSQL con migración aditiva (Req: Búsqueda en la descripción…; RF-038)
 

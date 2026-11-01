@@ -84,6 +84,7 @@ class PieceFilter(BaseModel):
     has_inventory_code: bool | None = None
     author: str | None = None
     provenance: str | None = None
+    description: str | None = None
     period_text: str | None = None
     epoch_start_year: int | None = None
     epoch_end_year: int | None = None
@@ -158,6 +159,9 @@ class PieceFilter(BaseModel):
                     func.immutable_unaccent(
                         func.lower(func.coalesce(Piece.epoch_original_text, ""))
                     ).like(pattern),
+                    func.immutable_unaccent(func.lower(func.coalesce(Piece.description, ""))).like(
+                        pattern
+                    ),
                     exists().where(
                         Term.id == Piece.category_id,
                         func.immutable_unaccent(func.lower(Term.label)).like(pattern),
@@ -257,6 +261,14 @@ class PieceFilter(BaseModel):
         if self.provenance and self.provenance.strip():
             conditions.append(
                 Piece.provenance.ilike(_contains(self.provenance.strip()), escape="\\")
+            )
+
+        if self.description and self.description.strip():
+            # Without case or accents, like the free text; no description never matches.
+            conditions.append(
+                func.immutable_unaccent(func.lower(func.coalesce(Piece.description, ""))).like(
+                    _contains(strip_accents(self.description)), escape="\\"
+                )
             )
 
         if self.period_text and self.period_text.strip():
@@ -495,6 +507,13 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="provenance", label="Procedencia", value_display=self.provenance.strip()
+                )
+            )
+
+        if self.description and self.description.strip():
+            active.append(
+                ActiveFilter(
+                    key="description", label="Descripción", value_display=self.description.strip()
                 )
             )
 
