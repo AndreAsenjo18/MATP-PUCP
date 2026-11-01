@@ -144,6 +144,7 @@ entity PIECE_SOURCE_RECORD <<solo inserción>> {
     source_row_number : integer
   * payload : jsonb
   * recorded_at : timestamptz
+    sensitive_keys : jsonb
 }
 entity MEDIA_ASSET {
   * id : uuid <<PK>>

@@ -70,6 +70,7 @@ import {
   progressStep,
   revertConflicts,
   rollbackImportBatch,
+  skippedHeaderRowsNotice,
   startImportValidation,
   uploadImportFile,
   wizardStep,
@@ -659,6 +660,7 @@ export function LiveImportWizard() {
       {reviewing && diffs && (
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Revise las filas</h2>
+          {skippedHeaderRowsNotice(batch) && <p className="text-sm text-gris-texto">{skippedHeaderRowsNotice(batch)}</p>}
           <details className="text-sm text-gris-texto">
             <summary className="cursor-pointer">Cómo se clasifican las filas</summary>
             <ol className="mt-2 list-decimal pl-5">

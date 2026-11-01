@@ -442,6 +442,11 @@ class SourceRecordOut(ORMModel):
     source_row_number: int | None
     payload: dict[str, Any] = Field(description="Columnas de origen sin mapeo (RF-008).")
     recorded_at: datetime
+    masked_keys: list[str] = Field(
+        default_factory=list,
+        description="Columnas con datos personales del propietario que se muestran como "
+        "«(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).",
+    )
 
 
 class DeletionRequest(BaseModel):
