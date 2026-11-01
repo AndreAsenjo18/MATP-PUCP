@@ -1,6 +1,6 @@
 ## 1. API
 
-- [ ] 1.1 Comprobar si existen la restauración de colecciones y el listado con retiradas; si faltan, `POST /collections/{id}/restore` (con motivo y auditoría) y `include_retired`; pruebas: restaurar, restaurar una activa 409, sin permiso 403 (Req: Edición y retiro de colecciones desde la interfaz)
+- [x] 1.1 Comprobar si existen la restauración de colecciones y el listado con retiradas; si faltan, `POST /collections/{id}/restore` (con motivo y auditoría) y `include_retired`; pruebas: restaurar, restaurar una activa 409, sin permiso 403 (Req: Edición y retiro de colecciones desde la interfaz)
 - [ ] 1.2 Prueba de que `PATCH` de término rechaza una etiqueta repetida en la misma lista y queda auditado; corregir si falla (Req: Edición de términos de las listas de valores)
 - [ ] 1.3 `allowed_child_types` por nodo en el árbol de ubicaciones y `409 location_in_use` (con conteo de piezas y lugares) al desactivar un lugar en uso; pruebas: tipos permitidos de un nivel, desactivar estante con piezas, desactivar lugar vacío (Req: Alta y edición de lugares desde el árbol de ubicaciones; D3)
 
