@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 9367acddaf75c9f989d7d2c7c08af7135992fbdac2de03a198bf5ad67f723c5e
+ * openapi-sha256: 4557bdf913ea8a86f0e92b18728b0929fa6ff2ca049d10e4b2d312d97919445c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -7060,6 +7060,11 @@ export interface components {
             id: string;
             /** Import Batch Id */
             import_batch_id: string | null;
+            /**
+             * Masked Keys
+             * @description Columnas con datos personales del propietario que se muestran como «(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).
+             */
+            masked_keys?: string[];
             /**
              * Payload
              * @description Columnas de origen sin mapeo (RF-008).

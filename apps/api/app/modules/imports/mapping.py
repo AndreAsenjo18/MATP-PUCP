@@ -221,6 +221,11 @@ class TermsTarget(_Strict):
 
 class SourcePayloadTarget(_Strict):
     kind: Literal["source_payload"] = "source_payload"
+    # Personal data of the owner (RNF-014, RF-041; formatos-reales-importacion, design D6): kept
+    # in the source data marked as sensitive, shown only with ``sensitive.donor_data``.
+    sensitive: bool | None = None
+    # For a loan for use, the value is also the lender of the piece (already sensitive).
+    lender_for_loans: bool | None = None
 
 
 class MeasuresTarget(_Strict):
@@ -612,6 +617,8 @@ class MappedRow:
     warnings: list[RowError] = field(default_factory=list)
     # Structured dimensions from separate measure columns (formatos-reales-importacion, D3).
     dimensions: list[dict[str, Any]] | None = None
+    # Source data columns with personal data (design D6), stored with the source record.
+    sensitive_keys: list[str] = field(default_factory=list)
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -646,6 +653,8 @@ class MappedRow:
             data["warnings"] = [warning.as_json() for warning in self.warnings]
         if self.dimensions:
             data["dimensions"] = self.dimensions
+        if self.sensitive_keys:
+            data["sensitive_keys"] = list(self.sensitive_keys)
         return data
 
     @classmethod
@@ -675,6 +684,7 @@ class MappedRow:
                 for item in data.get("warnings") or []
             ],
             dimensions=data.get("dimensions"),
+            sensitive_keys=list(data.get("sensitive_keys") or []),
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -1008,6 +1018,7 @@ def apply_mapping(
         mapped.fields["denomination"] = denomination_default
         mapped.defaulted.append("denomination")
     _resolve_tenure(mapped, plan, ctx)
+    _sensitive_columns(mapped, columns)
     collection = mapped.fields.get("collection")
     if not collection and plan.defaults.get("collection"):
         collection = plan.defaults["collection"]
@@ -1207,6 +1218,25 @@ def _map_value(
                 mapped.acquisition_method = mapped.acquisition_method or matches.matched[0][1]
             texts = [_text(part) for part in _parts(value)]
             mapped.acquisition_text = mapped.acquisition_text or next(filter(None, texts), None)
+
+
+def _sensitive_columns(mapped: MappedRow, columns: Sequence[ColumnSpecV1]) -> None:
+    """Personal data columns with a value are marked sensitive; for a loan for use the owner's
+    name is also the lender of the piece, which is sensitive too (design D6)."""
+    for column in columns:
+        target = column.target
+        if not isinstance(target, SourcePayloadTarget) or not target.sensitive:
+            continue
+        text = _text(mapped.source_payload.get(column.source))
+        if text is None:
+            continue
+        mapped.sensitive_keys.append(column.source)
+        if (
+            target.lender_for_loans
+            and mapped.tenure_regime is TenureRegime.LOAN_FOR_USE
+            and not mapped.fields.get("lender_name")
+        ):
+            mapped.fields["lender_name"] = text
 
 
 def _joined(column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> str | None:

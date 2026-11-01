@@ -18,6 +18,7 @@ from app.modules.imports.mapping import (
     MappingContext,
     MappingSpecV1,
     MeasuresTarget,
+    SourcePayloadTarget,
     TermsTarget,
     apply_mapping,
     validate_mapping,
@@ -151,3 +152,27 @@ def test_the_acquisition_method_deduces_the_regime(
 
     assert mapped.tenure_regime is not None and mapped.tenure_regime.value == regime
     assert mapped.acquisition_method is not None
+
+
+OWNER_SPEC = MappingSpecV1(
+    columns=[
+        *SPEC.columns,
+        ColumnSpecV1(
+            source="Propietario",
+            target=SourcePayloadTarget(sensitive=True, lender_for_loans=True),
+        ),
+    ]
+)
+
+
+def test_a_loan_for_use_takes_the_owner_as_lender(ctx: MappingContext) -> None:
+    """Spec «Datos personales del propietario…», scenario «Comodato con propietario»."""
+    loan_row = row(Forma="Cesión de uso", Propietario="Comodante sintético")
+    loan = apply_mapping(loan_row, OWNER_SPEC, ctx)
+    owned = apply_mapping(row(Forma="Donación", Propietario="Donante sintético"), OWNER_SPEC, ctx)
+
+    assert loan.fields["lender_name"] == "Comodante sintético"
+    assert loan.sensitive_keys == ["Propietario"]
+    assert "lender_name" not in owned.fields
+    assert owned.sensitive_keys == ["Propietario"]
+    assert owned.as_json()["sensitive_keys"] == ["Propietario"]

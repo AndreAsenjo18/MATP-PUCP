@@ -31,7 +31,7 @@
 
 ## 6. Datos sensibles y hojas de errores
 
-- [ ] 6.1 `PieceSourceRecord.sensitive_keys` (migración), `sensitive: true` en `source_payload`, enmascarado en ficha, exportación y reportes; pruebas de los tres escenarios (Req: Datos personales del propietario en la importación; RF-041)
+- [x] 6.1 `PieceSourceRecord.sensitive_keys` (migración), `sensitive: true` en `source_payload`, enmascarado en ficha, exportación y reportes; pruebas de los tres escenarios (Req: Datos personales del propietario en la importación; RF-041)
 - [ ] 6.2 Lote `OBSERVATIONS` para hojas «Errores…»: emparejamiento por códigos, notas con fuente, bitácora de no encontradas; pruebas (Req: Hojas de errores de la consultoría como observaciones)
 
 ## 7. Interfaz y cierre

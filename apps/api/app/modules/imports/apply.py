@@ -364,6 +364,7 @@ def apply_batch(
                         source_file_name=batch.file_name,
                         source_row_number=row.source_row_number,
                         payload=mapped.source_payload,
+                        sensitive_keys=mapped.sensitive_keys or None,
                     )
                 )
                 session.flush()

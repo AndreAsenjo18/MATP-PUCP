@@ -20,6 +20,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 PAYLOAD: dict[str, Any] = {"kind": "source_payload"}
+# Personal data of the owner or the property (RNF-014, RF-041; design D6): source data only,
+# marked sensitive; the owner's name is also the lender of a piece in loan for use.
+SENSITIVE: dict[str, Any] = {"kind": "source_payload", "sensitive": True}
+OWNER: dict[str, Any] = {"kind": "source_payload", "sensitive": True, "lender_for_loans": True}
 
 
 def target(name: str) -> dict[str, Any]:
@@ -160,10 +164,10 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Datos de registro anterior \n(nombre y fecha)"),
         # Personal data of the owner (RNF-014, RF-041): source data only.
         column("Tipo de propietario"),
-        column("Nombre de propietario"),
-        column("Dirección de propietario"),
-        column("Nombre de localización (inmueble)"),
-        column("Dirección de localización (inmueble)"),
+        column("Nombre de propietario", OWNER),
+        column("Dirección de propietario", SENSITIVE),
+        column("Nombre de localización (inmueble)", SENSITIVE),
+        column("Dirección de localización (inmueble)", SENSITIVE),
         column("Ubicación en inmueble"),
         column("Observaciones", target("notes"), TEXT),
     ),
@@ -233,17 +237,20 @@ FICHA_RN = PredefinedTemplate(
         column("Peso del elemento adicional (g)"),
         column("Observaciones", target("notes"), TEXT),
         # Location and personal data of the owner (RNF-014, RF-041): source data only.
-        column("Inmueble"),
+        column("Inmueble", SENSITIVE),
         column(
-            "Domicilio del Inmueble (especificar calle, número, provincia, distrito y departamento)"
+            "Domicilio del Inmueble (especificar calle, número, provincia, distrito y "
+            "departamento)",
+            SENSITIVE,
         ),
         column("Ubicación en el inmueble"),
         column("Situación (Habida-No habida)"),
         column("Referencia"),
-        column("Propietario (persona natural o jurídica)"),
+        column("Propietario (persona natural o jurídica)", OWNER),
         column(
             "Domicilio legal del propietario (especificar calle, número, provincia, distrito y "
-            "departamento)"
+            "departamento)",
+            SENSITIVE,
         ),
         column(
             "Forma de Adquisición (compra, Custodia, Decomiso, Desconocido, Donación, Entrega "

@@ -104,6 +104,7 @@ from app.modules.quality.completeness import (
 )
 from app.modules.quality.schemas import PieceAlert
 from app.modules.search.filters import PieceFilter
+from app.modules.users.sensitive import PERM_DONOR_DATA
 from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -524,7 +525,23 @@ def list_source_records(
         .where(PieceSourceRecord.piece_id == piece_id)
         .order_by(PieceSourceRecord.recorded_at)
     )
-    return [SourceRecordOut.model_validate(row) for row in rows]
+    return [_source_record_out(row, user.can(PERM_DONOR_DATA)) for row in rows]
+
+
+RESTRICTED_VALUE = "(dato restringido)"
+
+
+def _source_record_out(row: PieceSourceRecord, donor_data: bool) -> SourceRecordOut:
+    """The personal data of the owner is shown only with ``sensitive.donor_data`` (RF-041;
+    formatos-reales-importacion, design D6)."""
+    out = SourceRecordOut.model_validate(row)
+    if donor_data or not row.sensitive_keys:
+        return out
+    masked = [key for key in row.sensitive_keys if key in out.payload]
+    payload = {
+        key: RESTRICTED_VALUE if key in masked else value for key, value in out.payload.items()
+    }
+    return out.model_copy(update={"payload": payload, "masked_keys": masked})
 
 
 def _assessments_out(session: Session, piece: Piece) -> list[ConservationAssessmentOut]:
