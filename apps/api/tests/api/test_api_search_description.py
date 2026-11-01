@@ -39,3 +39,15 @@ def test_a_too_long_description_is_rejected(login_as: LoginAs) -> None:
     client = login_as("CATALOGUER")
 
     assert client.get("/api/v1/search", params={"description": "x" * 201}).status_code == 422
+
+
+def test_a_free_text_match_only_in_the_description_is_reported(login_as: LoginAs) -> None:
+    client = login_as("CATALOGUER")
+
+    page = client.get("/api/v1/search", params={"q": "demostracion", "limit": 100}).json()
+
+    only_description = [
+        hit for hit in page["items"] if hit["match_reason"]["fields"] == ["description"]
+    ]
+    assert page["total"] > 0 and only_description
+    assert all("demostr" not in hit["piece"]["denomination"].lower() for hit in only_description)

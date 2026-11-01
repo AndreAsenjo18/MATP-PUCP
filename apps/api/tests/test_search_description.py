@@ -11,17 +11,22 @@ from sqlalchemy.orm import Session
 from app.core.models_base import new_uuid
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceMaterial
+from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.search.filters import PieceFilter
+from app.modules.search.ranking import rank_and_describe_pieces
 from tests.conftest import ActAs
 
 
-def _piece(session: Session, denomination: str, description: str | None = None) -> Piece:
+def _piece(
+    session: Session, denomination: str, description: str | None = None, **fields: object
+) -> Piece:
     piece = Piece(
         id=new_uuid(),
         denomination=denomination,
         description=description,
         tenure_regime=TenureRegime.OWNED,
+        **fields,
     )
     session.add(piece)
     session.flush()
@@ -100,3 +105,50 @@ def test_the_description_filter_ignores_accents_and_treats_wildcards_as_text(
     assert _matching(session, PieceFilter(description="policromia")) == {"Retablo sintético"}
     assert _matching(session, PieceFilter(description="100%")) == {"Mate sintético"}
     assert _matching(session, PieceFilter(description="_")) == set()
+
+
+# ------------------------------------------------------------ task 1.2: the ranking
+def _ranked(session: Session, q: str) -> list[tuple[str, list[str]]]:
+    """The hits of the free text ``q`` in order, with the fields each one matched."""
+    viewer = Viewer(permissions=frozenset({"pieces.read"}))
+    pieces = list(session.scalars(select(Piece).where(PieceFilter(q=q).to_where(session, viewer))))
+    summaries = CatalogReader(session, viewer).summaries(pieces)
+    hits = rank_and_describe_pieces(session, pieces, summaries, q)
+    return [(hit.piece.denomination, hit.match_reason["fields"]) for hit in hits]
+
+
+def test_a_match_only_in_the_description_says_so(session: Session, act_as: ActAs) -> None:
+    with act_as("CATALOGUER"):
+        _piece(session, "Sombrero sintético", "Tejido en paja toquilla, ala ancha.")
+        session.commit()
+
+    assert _ranked(session, "paja toquilla") == [("Sombrero sintético", ["description"])]
+
+
+def test_the_denomination_goes_before_a_match_only_in_the_description(
+    session: Session, act_as: ActAs
+) -> None:
+    with act_as("CATALOGUER"):
+        # Alphabetically the description-only piece comes first: the order is the ranking's.
+        _piece(session, "Calabaza sintética", "Usada como mate para servir bebidas.")
+        _piece(session, "Mate burilado sintético", "Escenas de la vida en el campo.")
+        session.commit()
+
+    assert _ranked(session, "mate") == [
+        ("Mate burilado sintético", ["denomination"]),
+        ("Calabaza sintética", ["description"]),
+    ]
+
+
+def test_a_match_only_in_the_description_weighs_less_than_any_other_text_field(
+    session: Session, act_as: ActAs
+) -> None:
+    with act_as("CATALOGUER"):
+        _piece(session, "Cuenco sintético A", "Decoración de Quinua en el borde.")
+        _piece(session, "Cuenco sintético B", "Sin decoración.", provenance="Quinua, Ayacucho")
+        session.commit()
+
+    assert _ranked(session, "quinua") == [
+        ("Cuenco sintético B", ["provenance"]),
+        ("Cuenco sintético A", ["description"]),
+    ]

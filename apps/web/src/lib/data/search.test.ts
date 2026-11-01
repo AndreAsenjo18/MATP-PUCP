@@ -91,6 +91,9 @@ describe("filtros de la pantalla", () => {
     expect(matchReasonText({ match_reason: { kind: "text", fields: ["denomination", "provenance"] } })).toBe(
       "Coincide en denominación y procedencia",
     );
+    expect(matchReasonText({ match_reason: { kind: "text", fields: ["description"] } })).toBe(
+      "Coincide en la descripción",
+    );
     expect(matchReasonText({ match_reason: null })).toBeNull();
   });
 

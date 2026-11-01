@@ -136,6 +136,8 @@ const FIELD_LABELS: Record<string, string> = {
   category: "categoría",
   conservation_state: "estado de conservación",
   material: "material",
+  // «Coincide en la descripción» (fusion-busqueda-deposito, escenario «Palabra que solo está en la descripción»).
+  description: "la descripción",
 };
 
 function joinSpanish(items: string[]): string {
