@@ -18,7 +18,7 @@
 
 - [ ] 4.1 «Guardar y registrar otra» en el formulario con los campos repetibles de D4 y el aviso de datos copiados; pruebas: donación, comodato copiado (Req: Registro manual continuo de piezas)
 - [x] 4.2 «Registrar a partir de esta pieza» en la ficha, sin identificadores, fotos ni historial; prueba de que la pieza nueva tiene identificador interno propio (Req: Registro manual continuo… — escenario «Registrar a partir de una pieza similar»)
-- [ ] 4.3 Revalidación de colección y términos copiados; prueba con colección retirada (Req: Registro manual continuo… — escenario «Datos copiados que ya no son válidos»)
+- [x] 4.3 Revalidación de colección y términos copiados; prueba con colección retirada (Req: Registro manual continuo… — escenario «Datos copiados que ya no son válidos»)
 
 ## 5. Cierre
 

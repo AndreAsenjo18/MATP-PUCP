@@ -10,7 +10,8 @@
  *
  * «Guardar y registrar otra» (`crud-manual-completo` D4) se queda aquí: guarda y vuelve a montar el
  * formulario con los datos repetibles, sin pasarlos por la URL. «Registrar a partir de esta pieza»
- * llega desde la ficha con sus datos descriptivos, esperando en `pendingPieceCopy`.
+ * llega desde la ficha con sus datos descriptivos, esperando en `pendingPieceCopy`. En ambos casos
+ * lo copiado se comprueba antes de mostrar el formulario (`prepareCopy`).
  */
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +24,7 @@ import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
 import { getApiMode } from "@/lib/data/mode";
 import { createPiece } from "@/lib/data/pieces";
-import { clearPieceCopy, pendingPieceCopy, repeatableCopy, type PieceCopy } from "@/lib/forms/piece-copy";
+import { clearPieceCopy, pendingPieceCopy, prepareCopy, repeatableCopy, type PreparedCopy } from "@/lib/forms/piece-copy";
 import { EMPTY_PIECE_FORM, toCreateInput, type PieceFormValues } from "@/lib/forms/piece-form";
 
 function NewPieceContent() {
@@ -31,11 +32,22 @@ function NewPieceContent() {
   const { hasPermission } = useSession();
   // Cada alta seguida es un formulario nuevo: `formKey` lo vuelve a montar.
   const [formKey, setFormKey] = useState(0);
-  const [copy, setCopy] = useState<PieceCopy | null>(() => pendingPieceCopy());
+  const [pending] = useState(() => pendingPieceCopy());
+  const [prepared, setPrepared] = useState<PreparedCopy | null>(null);
   const [lastSaved, setLastSaved] = useState<{ name: string; href: string | null } | null>(null);
 
-  // Ya en el estado de esta pantalla: volver a entrar más tarde abre un alta vacía.
-  useEffect(() => clearPieceCopy(), []);
+  useEffect(() => {
+    // Ya en el estado de esta pantalla: volver a entrar más tarde abre un alta vacía.
+    clearPieceCopy();
+    if (!pending) return;
+    let active = true;
+    void prepareCopy(pending).then((result) => {
+      if (active) setPrepared(result);
+    });
+    return () => {
+      active = false;
+    };
+  }, [pending]);
 
   useEffect(() => {
     if (formKey > 0) document.getElementById("denomination")?.focus();
@@ -45,8 +57,8 @@ function NewPieceContent() {
     return <PermissionNotice>Su rol no tiene permiso para registrar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
-  function handleRegisterAnother(saved: PieceFormValues) {
-    setCopy(repeatableCopy(saved));
+  async function handleRegisterAnother(saved: PieceFormValues) {
+    setPrepared(await prepareCopy(repeatableCopy(saved)));
     setFormKey((current) => current + 1);
   }
 
@@ -93,15 +105,22 @@ function NewPieceContent() {
         </p>
       )}
 
-      <PieceForm
-        key={formKey}
-        mode="create"
-        initialValues={copy?.values ?? EMPTY_PIECE_FORM}
-        copy={copy}
-        onSave={handleSave}
-        onRegisterAnother={handleRegisterAnother}
-        onCancel={() => router.push("/busqueda")}
-      />
+      {pending && !prepared ? (
+        <p role="status" className="text-base text-gris-texto">
+          Comprobando los datos copiados…
+        </p>
+      ) : (
+        <PieceForm
+          key={formKey}
+          mode="create"
+          initialValues={prepared?.copy.values ?? EMPTY_PIECE_FORM}
+          copy={prepared?.copy}
+          initialCatalogs={prepared?.catalogs}
+          onSave={handleSave}
+          onRegisterAnother={handleRegisterAnother}
+          onCancel={() => router.push("/busqueda")}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { initialPieceCatalogs, PRECONDITION_MESSAGE, type PieceUpdateResult } from "@/lib/data/pieces";
-import { repeatableCopy } from "@/lib/forms/piece-copy";
+import { repeatableCopy, revalidateCopy } from "@/lib/forms/piece-copy";
 import { draftKey, saveDraft, type DraftStorage } from "@/lib/forms/piece-draft";
 import { EMPTY_PIECE_FORM, type PieceFormValues } from "@/lib/forms/piece-form";
 import { memoryStorage } from "@/test/memory-storage";
@@ -313,6 +313,22 @@ describe("PieceForm: registrar piezas seguidas (crud-manual-completo 4.1)", () =
     const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy });
     expect(html).toContain('value="Comodante sintético"');
     expect(html).toMatch(/name="code_i"[^>]*value=""|value=""[^>]*name="code_i"/);
+  });
+
+  it("«Datos copiados que ya no son válidos»: la colección queda vacía y lo dice junto al campo", () => {
+    const copy = revalidateCopy(repeatableCopy(saved), { ...initialPieceCatalogs(), collections: [] });
+    const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, initialCatalogs: { ...initialPieceCatalogs(), collections: [] } });
+    const text = visibleText(html);
+    expect(text).toContain("la colección copiada fue retirada o desactivada");
+    expect(text).toContain("Algunos datos copiados ya no están disponibles");
+    expect(text).not.toContain("Valor actual de la ficha");
+    expect(html).not.toContain('value="col-abc"');
+  });
+
+  it("avisa si no pudo comprobar los datos copiados", () => {
+    const copy = { ...repeatableCopy(saved), unchecked: true };
+    const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy }));
+    expect(text).toContain("el sistema los revisará al guardar");
   });
 
   it("sin datos copiados no hay aviso ni resaltado", () => {

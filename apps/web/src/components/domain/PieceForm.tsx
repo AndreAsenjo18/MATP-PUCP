@@ -88,6 +88,8 @@ export interface PieceFormProps {
   onRegisterAnother?: (saved: PieceFormValues) => Promise<void> | void;
   /** Datos copiados de otra pieza que trae `initialValues`. */
   copy?: PieceCopy | null;
+  /** Listas ya cargadas al comprobar esos datos; sin ellas, el formulario las pide. */
+  initialCatalogs?: PieceFormCatalogs;
   /** Valores actuales de la ficha en el servidor, para «Ver cambios del otro usuario». */
   loadCurrentValues?: () => Promise<PieceFormValues | null>;
   /** Propietario legal de la ficha (solo lectura: el contrato de escritura no lo incluye, RN-006). Solo en edición. */
@@ -334,6 +336,7 @@ export function PieceForm({
   onSave,
   onRegisterAnother,
   copy = null,
+  initialCatalogs,
   loadCurrentValues,
   legalOwner = null,
   maskedFields = [],
@@ -358,7 +361,7 @@ export function PieceForm({
   const [saveMessage, setSaveMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   // Listas de materiales y estados de conservación (en modo mock ya vienen en el primer render).
-  const [catalogs, setCatalogs] = useState<PieceFormCatalogs>(() => initialPieceCatalogs());
+  const [catalogs, setCatalogs] = useState<PieceFormCatalogs>(() => initialCatalogs ?? initialPieceCatalogs());
   const [catalogNote, setCatalogNote] = useState<string | null>(null);
 
   const [conflict, setConflict] = useState<{ message: string } | null>(null);
@@ -370,6 +373,7 @@ export function PieceForm({
   useEffect(() => () => validator.cancel(), [validator]);
 
   useEffect(() => {
+    if (initialCatalogs) return;
     let active = true;
     void fetchPieceCatalogs().then((result) => {
       if (!active) return;
@@ -383,7 +387,7 @@ export function PieceForm({
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialCatalogs]);
 
   // Valida con el servidor cada vez que cambia algún campo (el validador agrupa y cancela).
   // Con un borrador recuperado también se valida al abrir, aunque aún no haya cambios nuevos.
@@ -425,7 +429,9 @@ export function PieceForm({
 
   // Un borrador recuperado ya no son los datos copiados: su aviso explica cómo volver a ellos.
   const showCopy = copy !== null && draft === null;
-  const isCopied = (field: PieceFormField) => showCopy && copy.fields.includes(field) && !dirtyFields[field] && !touchedFields[field];
+  const untouched = (field: PieceFormField) => !dirtyFields[field] && !touchedFields[field];
+  const isCopied = (field: PieceFormField) => showCopy && copy.fields.includes(field) && untouched(field);
+  const droppedNotice = (field: PieceFormField) => (showCopy && untouched(field) ? copy.dropped[field] : undefined);
 
   const saveWith = (intent: SaveIntent) => handleSubmit(async (formValues) => {
     setSaveMessage(null);
@@ -511,9 +517,11 @@ export function PieceForm({
         )}
 
         {showCopy && (
-          <p role="status" className="rounded-lg border border-borde bg-crema p-3 text-base text-tinta">
-            Datos copiados de {copy.source}. Revise que correspondan a esta pieza: los marcados como «Copiado» siguen sin tocar. No se copian códigos, fotos ni historial.
-          </p>
+          <div role="status" className="flex flex-col gap-1 rounded-lg border border-borde bg-crema p-3 text-base text-tinta">
+            <p>Datos copiados de {copy.source}. Revise que correspondan a esta pieza: los marcados como «Copiado» siguen sin tocar. No se copian códigos, fotos ni historial.</p>
+            {Object.keys(copy.dropped).length > 0 && <p>Algunos datos copiados ya no están disponibles y quedaron vacíos: vea el aviso junto a cada campo.</p>}
+            {copy.unchecked && <p>No se pudo comprobar que los datos copiados sigan vigentes: el sistema los revisará al guardar.</p>}
+          </div>
         )}
 
         {conflict && (
@@ -589,11 +597,11 @@ export function PieceForm({
             label="Colección"
             options={catalogs.collections}
             emptyLabel="Sin colección (pieza suelta)"
-            baseHint={catalogNote ?? undefined}
+            baseHint={droppedNotice("collection_id") ?? catalogNote ?? undefined}
             copied={isCopied("collection_id")}
           />
-          <ChoiceControl control={control} grouped={grouped} name="category_id" label="Categoría" options={catalogs.categories} emptyLabel="Sin registrar" copied={isCopied("category_id")} />
-          <ChoiceControl control={control} grouped={grouped} name="object_type_term_id" label="Tipo de bien" options={catalogs.objectTypes} emptyLabel="Sin registrar" copied={isCopied("object_type_term_id")} />
+          <ChoiceControl control={control} grouped={grouped} name="category_id" label="Categoría" options={catalogs.categories} emptyLabel="Sin registrar" baseHint={droppedNotice("category_id")} copied={isCopied("category_id")} />
+          <ChoiceControl control={control} grouped={grouped} name="object_type_term_id" label="Tipo de bien" options={catalogs.objectTypes} emptyLabel="Sin registrar" baseHint={droppedNotice("object_type_term_id")} copied={isCopied("object_type_term_id")} />
           <ChoiceControl control={control} grouped={grouped} name="availability_term_id" label="Disponibilidad" options={catalogs.availabilities} emptyLabel="Sin registrar" />
           {showLender && <TextControl control={control} grouped={grouped} name="lender_name" label="Comodante" copied={isCopied("lender_name")} />}
           {showLoanAgreement && <TextControl control={control} grouped={grouped} name="loan_agreement_ref" label="Convenio de comodato" copied={isCopied("loan_agreement_ref")} />}
@@ -621,6 +629,7 @@ export function PieceForm({
             label="Forma de adquisición"
             options={catalogs.acquisitionMethods}
             emptyLabel="Sin registrar"
+            baseHint={droppedNotice("acquisition_method_term_id")}
             copied={isCopied("acquisition_method_term_id")}
           />
           <TextControl
@@ -641,7 +650,7 @@ export function PieceForm({
             control={control}
             name="material_term_ids"
             render={({ field }) => {
-              const feedback = feedbackFor(grouped, "material_term_ids");
+              const feedback = feedbackFor(grouped, "material_term_ids", undefined, droppedNotice("material_term_ids"));
               return (
                 <CopiedMark copied={isCopied("material_term_ids")}>
                   <fieldset className="flex flex-col gap-2">

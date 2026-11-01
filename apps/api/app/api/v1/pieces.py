@@ -277,6 +277,7 @@ def validate_piece(
             epoch_end_year=body.period.year_to if body.period else None,
             dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
             parent_piece_id=body.parent_piece_id,
+            collection_id=body.collection_id,
             piece=piece,
         )
     finally:

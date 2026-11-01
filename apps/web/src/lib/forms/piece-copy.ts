@@ -7,6 +7,7 @@
  * interno al guardarse.
  */
 import type { ApiSchemas } from "@/lib/api/client";
+import { fetchPieceCatalogs, type PieceFormCatalogs } from "@/lib/data/pieces";
 
 import { EMPTY_PIECE_FORM, toFormValues, type PieceFormValues } from "./piece-form";
 import type { PieceFormField } from "./piece-issues";
@@ -42,6 +43,10 @@ export interface PieceCopy {
   values: PieceFormValues;
   /** Campos que llegaron con dato: se resaltan hasta que la persona los toca. */
   fields: readonly PieceFormField[];
+  /** Lo que se dejó vacío porque ya no se ofrece, con el aviso que va junto al campo. */
+  dropped: Partial<Record<PieceFormField, string>>;
+  /** No se pudieron cargar las listas para comprobarlo: lo revisará el servidor al guardar. */
+  unchecked: boolean;
 }
 
 function hasValue(value: PieceFormValues[PieceFormField]): boolean {
@@ -50,7 +55,7 @@ function hasValue(value: PieceFormValues[PieceFormField]): boolean {
 
 function copyFields(from: PieceFormValues, source: string, names: readonly PieceFormField[]): PieceCopy {
   const picked = Object.fromEntries(names.map((name) => [name, from[name]]));
-  return { source, values: { ...EMPTY_PIECE_FORM, ...picked }, fields: names.filter((name) => hasValue(from[name])) };
+  return { source, values: { ...EMPTY_PIECE_FORM, ...picked }, fields: names.filter((name) => hasValue(from[name])), dropped: {}, unchecked: false };
 }
 
 function withLoanFields(from: PieceFormValues, names: readonly PieceFormField[]): readonly PieceFormField[] {
@@ -69,6 +74,45 @@ export function repeatableCopy(saved: PieceFormValues): PieceCopy {
 export function similarPieceCopy(piece: ApiSchemas["PieceDetail"]): PieceCopy {
   const from = toFormValues(piece);
   return copyFields(from, `«${piece.denomination}»`, withLoanFields(from, DESCRIPTIVE_FIELDS));
+}
+
+/** Cada lista de un solo valor que se copia, y qué decir si lo copiado ya no está en ella. */
+const COPIED_CHOICES = [
+  { field: "collection_id", options: "collections", notice: "Aviso: la colección copiada fue retirada o desactivada. Elija otra o deje la pieza sin colección." },
+  { field: "category_id", options: "categories", notice: "Aviso: la categoría copiada ya no se ofrece. Elija otra." },
+  { field: "object_type_term_id", options: "objectTypes", notice: "Aviso: el tipo de bien copiado ya no se ofrece. Elija otro." },
+  { field: "acquisition_method_term_id", options: "acquisitionMethods", notice: "Aviso: la forma de adquisición copiada ya no se ofrece. Elija otra." },
+] as const;
+
+/** Vacía lo copiado que se retiró o desactivó entre una pieza y la siguiente, y lo dice. */
+export function revalidateCopy(copy: PieceCopy, catalogs: PieceFormCatalogs): PieceCopy {
+  const values = { ...copy.values };
+  const dropped: PieceCopy["dropped"] = {};
+  for (const { field, options, notice } of COPIED_CHOICES) {
+    if (values[field] && !catalogs[options].some((option) => option.id === values[field])) {
+      values[field] = "";
+      dropped[field] = notice;
+    }
+  }
+  const materials = values.material_term_ids.filter((id) => catalogs.materials.some((option) => option.id === id));
+  if (materials.length < values.material_term_ids.length) {
+    values.material_term_ids = materials;
+    dropped.material_term_ids = "Aviso: se quitaron materiales copiados que ya no se ofrecen.";
+  }
+  return { ...copy, values, dropped, fields: copy.fields.filter((field) => hasValue(values[field])) };
+}
+
+export interface PreparedCopy {
+  copy: PieceCopy;
+  /** Las listas ya cargadas al comprobar, para no pedirlas otra vez. */
+  catalogs?: PieceFormCatalogs;
+}
+
+/** Comprueba la colección y los términos copiados antes de mostrar el formulario (design D4). */
+export async function prepareCopy(copy: PieceCopy): Promise<PreparedCopy> {
+  const result = await fetchPieceCatalogs();
+  if (result.status !== "ok") return { copy: { ...copy, unchecked: true } };
+  return { copy: revalidateCopy(copy, result.catalogs), catalogs: result.catalogs };
 }
 
 /**

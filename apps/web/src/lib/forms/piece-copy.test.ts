@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ApiSchemas } from "@/lib/api/client";
 import { maskPieceForRole } from "@/lib/data/masking";
+import { initialPieceCatalogs, type PieceFormCatalogs } from "@/lib/data/pieces";
 import { PIECES, getPieceDetail } from "@/lib/fixtures";
 
-import { clearPieceCopy, offerPieceCopy, pendingPieceCopy, repeatableCopy, similarPieceCopy } from "./piece-copy";
+import { clearPieceCopy, offerPieceCopy, pendingPieceCopy, prepareCopy, repeatableCopy, revalidateCopy, similarPieceCopy } from "./piece-copy";
 import { EMPTY_PIECE_FORM, toCreateInput, type PieceFormValues } from "./piece-form";
 
 // Copiar datos a un alta nueva (crud-manual-completo, design D4). Datos sintéticos (RNF-014).
@@ -153,5 +154,97 @@ describe("la copia que espera el alta", () => {
     expect(pendingPieceCopy()).toBe(copy);
     clearPieceCopy();
     expect(pendingPieceCopy()).toBeNull();
+  });
+});
+
+describe("datos copiados que ya no son válidos", () => {
+  const option = (id: string) => ({ id, label: id });
+  const CATALOGS: PieceFormCatalogs = {
+    collections: [option("col-abc")],
+    categories: [option("cat-1")],
+    objectTypes: [option("obj-1")],
+    acquisitionMethods: [option("don-1")],
+    availabilities: [],
+    materials: [option("mat-1")],
+    conservationStates: [],
+  };
+  const SIMILAR = { ...SAVED, description: "", notes: "" };
+  const descriptive = () => ({ source: "«Mate»", values: SIMILAR, fields: ["collection_id", "category_id", "object_type_term_id", "acquisition_method_term_id", "material_term_ids"] as const, dropped: {}, unchecked: false });
+
+  it("todo vigente: nada cambia ni se avisa", () => {
+    const copy = descriptive();
+    const checked = revalidateCopy(copy, CATALOGS);
+    expect(checked.values).toEqual(copy.values);
+    expect(checked.fields).toEqual(copy.fields);
+    expect(checked.dropped).toEqual({});
+  });
+
+  it("la colección retirada queda vacía, deja de marcarse como copiada y lo dice junto al campo", () => {
+    const checked = revalidateCopy(descriptive(), { ...CATALOGS, collections: [option("otra")] });
+    expect(checked.values.collection_id).toBe("");
+    expect(checked.fields).not.toContain("collection_id");
+    expect(checked.dropped.collection_id).toContain("la colección copiada fue retirada o desactivada");
+    expect(toCreateInput(checked.values).collection_id).toBeNull();
+  });
+
+  it("también los términos que se desactivaron: categoría, tipo de bien y forma de adquisición", () => {
+    const checked = revalidateCopy(descriptive(), { ...CATALOGS, categories: [], objectTypes: [], acquisitionMethods: [] });
+    expect(checked.values).toMatchObject({ category_id: "", object_type_term_id: "", acquisition_method_term_id: "" });
+    expect(Object.keys(checked.dropped).sort()).toEqual(["acquisition_method_term_id", "category_id", "object_type_term_id"]);
+  });
+
+  it("de los materiales se quita solo el que ya no se ofrece", () => {
+    const copy = descriptive();
+    const checked = revalidateCopy({ ...copy, values: { ...SIMILAR, material_term_ids: ["mat-1", "mat-retirado"] } }, CATALOGS);
+    expect(checked.values.material_term_ids).toEqual(["mat-1"]);
+    expect(checked.fields).toContain("material_term_ids");
+    expect(checked.dropped.material_term_ids).toContain("se quitaron materiales");
+  });
+
+  it("un campo vacío no se considera retirado", () => {
+    const empty = { ...descriptive(), values: EMPTY_PIECE_FORM, fields: [] };
+    expect(revalidateCopy(empty, CATALOGS).dropped).toEqual({});
+  });
+
+  it("los datos de la maqueta siguen vigentes en sus propias listas", () => {
+    const catalogs = initialPieceCatalogs();
+    for (const piece of PIECES) {
+      const detail = getPieceDetail(piece.id);
+      if (detail) expect(revalidateCopy(similarPieceCopy(detail), catalogs).dropped).toEqual({});
+    }
+  });
+});
+
+describe("comprobar lo copiado antes de mostrar el formulario", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  function useLive(handler: (path: string) => Response) {
+    vi.stubEnv("NEXT_PUBLIC_API_MODE", "live");
+    vi.stubEnv("API_INTERNAL_URL", "http://api.test");
+    const fetchMock = vi.fn(async (request: Request) => handler(new URL(request.url).pathname));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+  it("una colección retirada ya no viene en la lista, así que se vacía", async () => {
+    useLive((path) => (path.endsWith("/collections") ? json([{ id: "otra", name: "Otra colección", is_active: true }]) : json([])));
+    const { copy, catalogs } = await prepareCopy(repeatableCopy(SAVED));
+    expect(copy.values.collection_id).toBe("");
+    expect(copy.dropped.collection_id).toBeDefined();
+    expect(copy.unchecked).toBe(false);
+    expect(catalogs?.collections.map((item) => item.id)).toEqual(["otra"]);
+  });
+
+  it("si las listas no cargan, conserva los datos y avisa de que no se comprobaron", async () => {
+    useLive(() => json({ code: "error", message: "Falla" }, 500));
+    const { copy, catalogs } = await prepareCopy(repeatableCopy(SAVED));
+    expect(copy.values.collection_id).toBe("col-abc");
+    expect(copy.unchecked).toBe(true);
+    expect(catalogs).toBeUndefined();
   });
 });
