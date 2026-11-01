@@ -3,7 +3,7 @@
 ## 1. Verificación con archivos reales y fixture
 
 - [x] 1.1 `scripts/check_real_excels.py` (D9): ingesta + sugerencia + mapeo + normalización por hoja; correrlo sobre `data/real/` y guardar la línea base de conteos en el PR (Req: todos)
-- [ ] 1.2 `data/real/` en `.gitignore` y ADR-019 aceptado; fixture mínimo para CI en `data/fixtures/formatos_reales/` con los encabezados reales y valores inventados (un archivo por familia y variante: 44, 46, 27 columnas; ficha RN con grupos combinados y sin combinar; encabezado repetido; hoja «Errores pendientes»; RN de 5 dígitos, `No presenta`, `ELA 12 CEL`, `AMM-IN-V-0001`, números sin sigla, notas en la columna del código I); prueba de que se ingiere (Req: todos; RNF-014, ADR-019)
+- [x] 1.2 `data/real/` en `.gitignore` y ADR-019 aceptado; fixture mínimo para CI en `data/fixtures/formatos_reales/` con los encabezados reales y valores inventados (un archivo por familia y variante: 44, 46, 27 columnas; ficha RN con grupos combinados y sin combinar; encabezado repetido; hoja «Errores pendientes»; RN de 5 dígitos, `No presenta`, `ELA 12 CEL`, `AMM-IN-V-0001`, números sin sigla, notas en la columna del código I); prueba de que se ingiere (Req: todos; RNF-014, ADR-019)
 - [x] 1.3 Preguntas FR1–FR6 en `docs/preguntas-contraparte.md` y al guion del 2026-11-06 (Req: Formas reales de código de colección)
 
 ## 2. Ingesta
@@ -40,4 +40,4 @@
 - [x] 7.2 Correr `scripts/check_real_excels.py` otra vez y registrar en el PR la mejora frente a la línea base de la 1.1 (meta: < 2 % de identificadores no normalizables sin contar FR4 y FR5)
 - [x] 7.3 Manual de usuario: «Cargar el histórico del museo» (orden de carga, qué hace cada plantilla, qué revisar) en `docs/manual-usuario/`
 - [x] 7.4 OpenAPI (formato de mapeo ampliado) en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client`, `npm run openapi:check`
-- [ ] 7.5 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate formatos-reales-importacion --strict` en verde; tras aprobar el PR, `openspec archive formatos-reales-importacion -y`
+- [x] 7.5 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate formatos-reales-importacion --strict` en verde; tras aprobar el PR, `openspec archive formatos-reales-importacion -y`
