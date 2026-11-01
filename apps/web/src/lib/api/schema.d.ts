@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7b59aef844d3ff2ee9005596492b020309e5661ee410f2edc011da436fc1d2e4
+ * openapi-sha256: f59cd347551de369aab33293c3930ba074d7ec1e97b13289b60105d7d6f9bbe7
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -7277,6 +7277,11 @@ export interface components {
          *     }
          */
         SearchHit: {
+            /**
+             * Location Id
+             * @description Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).
+             */
+            location_id?: string | null;
             /**
              * Match Reason
              * @description Detalle estructurado de la coincidencia (identificador o campos de texto).

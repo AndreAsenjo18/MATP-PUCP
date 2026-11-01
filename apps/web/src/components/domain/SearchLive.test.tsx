@@ -118,8 +118,8 @@ describe("resultados de la búsqueda", () => {
 
   it("con permiso de movimientos cada resultado tiene su casilla y se elige la página entera", () => {
     const second = hit({}, { id: "p-2", denomination: "Mate burilado (sintético)" });
-    const fromOtherPage = hit({}, { id: "p-9", denomination: "Manta (sintética)" }).piece;
-    const selection = toggleSelected(toggleSelected(EMPTY_SELECTION, second.piece), fromOtherPage);
+    const fromOtherPage = hit({}, { id: "p-9", denomination: "Manta (sintética)" });
+    const selection = toggleSelected(toggleSelected(EMPTY_SELECTION, second), fromOtherPage);
     const html = render(<SearchResults page={page({ items: [hit(), second], total: 2 })} selection={selection} onSelectionChange={noop} />);
     expect(html.match(/type="checkbox"/g)).toHaveLength(3);
     expect(html).toContain('aria-label="Seleccionar Retablo de San Marcos (sintético)"');

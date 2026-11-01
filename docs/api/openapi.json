@@ -11357,6 +11357,19 @@
           }
         ],
         "properties": {
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).",
+            "title": "Location Id"
+          },
           "match_reason": {
             "anyOf": [
               {

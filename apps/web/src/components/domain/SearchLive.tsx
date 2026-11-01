@@ -13,13 +13,30 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
 import { EMPTY_OPTIONS, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
+import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
-import { fetchLocationsTree } from "@/lib/data/locations";
+import {
+  LOCATION_ERROR_MESSAGES,
+  batchMovePieces,
+  fetchLocationsTree,
+  finalLocations,
+  movePiece,
+  newIdempotencyKey,
+  type LocationFailure,
+} from "@/lib/data/locations";
 import { fetchPieceCatalogs } from "@/lib/data/pieces";
-import { EMPTY_SELECTION, pageSelectionState, setPageSelected, toggleSelected, type Selection } from "@/lib/data/selection";
+import {
+  EMPTY_SELECTION,
+  batchMoveRequest,
+  pageSelectionState,
+  setPageSelected,
+  toggleSelected,
+  verificationBody,
+  type Selection,
+} from "@/lib/data/selection";
 import {
   DEFAULT_EXPORT_COLUMNS,
   EMPTY_FILTERS,
@@ -56,6 +73,11 @@ const JOBS_POLL_MS = 3000;
 const PERM_DONOR_DATA = "sensitive.donor_data";
 const PERM_LOAN_TERMS = "sensitive.loan_terms";
 
+function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
+}
+
 function optionNames(options: SearchOptions): Record<string, string> {
   const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
   return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
@@ -84,15 +106,15 @@ export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; on
 
 /** «Seleccionar toda la página» y cuántas piezas hay elegidas, también de otras páginas. */
 function PageSelection({
-  pieces,
+  hits,
   selection,
   onSelectionChange,
 }: {
-  pieces: SearchHit["piece"][];
+  hits: SearchHit[];
   selection: Selection;
   onSelectionChange: (next: Selection) => void;
 }) {
-  const state = pageSelectionState(selection, pieces);
+  const state = pageSelectionState(selection, hits);
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-tinta">
       <label className="flex min-h-11 items-center gap-2">
@@ -100,7 +122,7 @@ function PageSelection({
           type="checkbox"
           checked={state === "all"}
           aria-checked={state === "some" ? "mixed" : state === "all"}
-          onChange={() => onSelectionChange(setPageSelected(selection, pieces, state !== "all"))}
+          onChange={() => onSelectionChange(setPageSelected(selection, hits, state !== "all"))}
           className="size-6 accent-terracota"
         />
         Seleccionar toda la página
@@ -186,7 +208,7 @@ export function SearchResults({
       ) : (
         <>
           {selection && onSelectionChange && (
-            <PageSelection pieces={page.items.map((hit) => hit.piece)} selection={selection} onSelectionChange={onSelectionChange} />
+            <PageSelection hits={page.items} selection={selection} onSelectionChange={onSelectionChange} />
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {page.items.map((hit) => {
@@ -198,7 +220,7 @@ export function SearchResults({
                   <input
                     type="checkbox"
                     checked={selection.has(hit.piece.id)}
-                    onChange={() => onSelectionChange(toggleSelected(selection, hit.piece))}
+                    onChange={() => onSelectionChange(toggleSelected(selection, hit))}
                     aria-label={`Seleccionar ${hit.piece.denomination}`}
                     className="mt-4 size-6 shrink-0 accent-terracota"
                   />
@@ -487,6 +509,10 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   // Verificar y mover desde los resultados: solo con el permiso de la antigua vista de depósito (3.1).
   const canMove = hasPermission("movements.register");
   const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
+  const [acting, setActing] = useState(false);
+  const [feedback, setFeedback] = useState<SelectionFeedback | null>(null);
+  // Sube al verificar o mover, para que los resultados muestren la ubicación nueva (3.2).
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -534,7 +560,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     return () => {
       active = false;
     };
-  }, [query, page, devUser]);
+  }, [query, page, devUser, reloadKey]);
 
   // Los filtros aplicados viajan en la dirección, sin sumar una entrada al historial por cada tecla (2.3).
   useEffect(() => {
@@ -544,6 +570,46 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   }, [query]);
 
   const names = useMemo(() => optionNames(options), [options]);
+  const destinations = useMemo(() => finalLocations(options.locationTree), [options.locationTree]);
+
+  // «Verificar»: una verificación física por pieza elegida, la operación de la antigua vista de depósito.
+  async function verifySelection() {
+    const pieces = [...selection.values()];
+    setActing(true);
+    setFeedback(null);
+    const results = await Promise.all(pieces.map((piece) => movePiece(piece.id, verificationBody(), devUser)));
+    setActing(false);
+    const failed = results.filter((result): result is LocationFailure => result.status !== "ok");
+    setFeedback(
+      failed.length === 0
+        ? { kind: "ok", text: `Verificación física registrada para ${pieces.length} pieza${pieces.length === 1 ? "" : "s"}.` }
+        : { kind: "error", text: `No se verificaron ${failed.length} de ${pieces.length} piezas: ${describeLocationFailure(failed[0])}` },
+    );
+    setReloadKey((key) => key + 1);
+  }
+
+  // «Mover a»: un solo lote, todo o nada, con la ubicación que se vio de cada pieza.
+  async function moveSelection(toLocationId: string, reason: string) {
+    setActing(true);
+    setFeedback(null);
+    const result = await batchMovePieces(batchMoveRequest(selection, toLocationId, reason), newIdempotencyKey(), devUser);
+    setActing(false);
+    if (result.status !== "ok") {
+      setFeedback({ kind: "error", text: describeLocationFailure(result) });
+      return;
+    }
+    const failures = result.value.failures ?? [];
+    if (failures.length > 0) {
+      const detail = failures.map((failure) => `${selection.get(failure.piece_id)?.denomination ?? failure.piece_id}: ${failure.message}`);
+      setFeedback({ kind: "error", text: `No se movió ninguna pieza: ${failures.length} con problemas. ${detail.join(" · ")}` });
+      return;
+    }
+    const moved = (result.value.registered ?? []).length;
+    const label = destinations.find((option) => option.id === toLocationId)?.label ?? "el destino elegido";
+    setFeedback({ kind: "ok", text: `${moved} pieza${moved === 1 ? "" : "s"} movida${moved === 1 ? "" : "s"} a ${label}.` });
+    setSelection(EMPTY_SELECTION);
+    setReloadKey((key) => key + 1);
+  }
   const chips = activeChips(query, names);
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
   const remove = (key: FilterChip["key"]) => setFilters((current) => removeFilter(current, key));
@@ -572,6 +638,16 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             </Link>
           </div>
           <ActiveFilterChips chips={chips} onRemove={remove} />
+          {canMove && (
+            <SelectionBar
+              selection={selection}
+              destinations={destinations}
+              busy={acting}
+              feedback={feedback}
+              onVerify={verifySelection}
+              onMove={moveSelection}
+            />
+          )}
           {error && (
             <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
               {error}

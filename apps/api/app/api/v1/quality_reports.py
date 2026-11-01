@@ -94,6 +94,7 @@ from app.modules.search.schemas import (
     SearchHit,
     SearchResultPage,
 )
+from app.modules.users.sensitive import PERM_EXACT_LOCATION
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
@@ -408,8 +409,17 @@ def search_pieces(
     else:
         hits = [SearchHit(piece=summary, match_type="TITLE") for summary in summaries]
     thumbnails = _thumbnail_urls(session, request, [hit.piece.id for hit in hits])
+    # The exact location only for whoever can see it (RF-041): it checks a move or a verification
+    # made from the results, like the old depósito view (fusion-busqueda-deposito 3.2).
+    exact_locations = (
+        {piece.id: piece.current_location_id for piece in pieces}
+        if viewer.can(PERM_EXACT_LOCATION)
+        else {}
+    )
     for hit in hits:
         hit.thumbnail_url = thumbnails.get(hit.piece.id)
+        if hit.piece.id in exact_locations:
+            hit.location_id = exact_locations[hit.piece.id]
 
     extra_kwargs: dict[str, Any] = {}
     active_other_filters = [f for f in piece_filter.describe() if f.key != "q"]
