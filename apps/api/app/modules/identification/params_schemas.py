@@ -11,7 +11,9 @@ from app.api.enums import TENURE_REGIME_LABELS
 from app.api.refs import EX_DATETIME
 from app.modules.catalog.enums import TenureRegime
 
-NormalizationSettingKey = Literal["absence_markers", "concatenation_separators", "tenure_aliases"]
+NormalizationSettingKey = Literal[
+    "absence_markers", "concatenation_separators", "tenure_aliases", "photo_camera_patterns"
+]
 # ``tenure_aliases``: acquisition method -> regime label (ajustes-lectura-importacion).
 TenureAliases = dict[str, str]
 
@@ -46,7 +48,9 @@ class NormalizationSettingOut(BaseModel):
         description="`absence_markers`: lista de marcadores (se comparan sin espacios ni "
         "mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. "
         "`tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o "
-        "Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae."
+        "Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae. "
+        "`photo_camera_patterns`: expresiones regulares de nombres de cámara, que no traen "
+        "código, además de `IMG_…`, `DSC_…`, `NNN-NNNN` y `NNLLNNNN` (RF-046)."
     )
     is_default: bool = Field(
         description="true = no hay valor guardado y rige el valor del código [SUPUESTO A5, A8]."

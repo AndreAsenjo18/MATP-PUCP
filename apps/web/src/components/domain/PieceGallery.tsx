@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
-import { fetchPieceMedia, initialPhoto, restrictionLabel, type PieceMedia, type PieceMediaResult } from "@/lib/data/media";
+import { fetchPieceMedia, initialPhoto, provenanceText, restrictionLabel, type PieceMedia, type PieceMediaResult } from "@/lib/data/media";
 import { cn } from "@/lib/cn";
 
 const viewLabel = (asset: PieceMedia) => asset.view_type?.label ?? "Vista sin especificar";
@@ -63,6 +63,11 @@ export function PieceGalleryView({ media, pieceTitle, selectedId, onSelect }: Pi
             </Badge>
           )}
         </figcaption>
+        {provenanceText(selected) && (
+          <p className="text-sm text-gris-texto">
+            <span className="font-medium">Procedencia:</span> {provenanceText(selected)}
+          </p>
+        )}
       </figure>
       <ul className="flex flex-wrap gap-2" aria-label="Miniaturas">
         {media.map((asset, index) => (

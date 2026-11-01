@@ -66,6 +66,15 @@ Desde el 2026-10-25 solo programan Sergio Chumbimuni y Germán Asenjo; el resto 
 
 Plan de la semana y tareas del resto del equipo: documento «Plan de la semana · 31 oct – 6 nov» (compartido por el grupo).
 
+## Otros changes activos asignados el 2026-10-31
+
+Changes activos con tareas pendientes que no figuraban en este mapa. Cada uno tiene su issue en GitHub con la lista de tareas.
+
+| Change | Capacidades | Responsable | Depende de | Orden sugerido |
+|---|---|---|---|---|
+| `descargas-masivas-y-enriquecimiento-lote` | multimedia, ia-asistiva | Germán Asenjo | `fotografias-multiples-por-pieza` (**bloqueante** para la sección 2: restricción efectiva, en `fix/media-routes`), `ia-extraccion-texto-libre` (**bloqueante** para la sección 3); coordina con `ia-sugerencia-terminos` (modelo de lote de IA, D4) | 1 (sección 1 ahora) · 2 (sección 2, tras `fix/media-routes`) · 3 (sección 3, tras `ia-extraccion-texto-libre`) — issue #134 |
+| `prestamos-y-exposiciones` (solo archivar) | ubicacion-movimientos | Germán Asenjo | — | Cuando se quiera (tarea 3.5, issue #136); las rutas `/loans` siguen pendientes en #135 |
+
 ## Reglas de coordinación entre células
 
 1. **Specs delta solo con `ADDED`**: todos los changes del backlog agregan requirements con nombres únicos; ninguno modifica requirements vigentes, para poder archivarse en cualquier orden. Un `MODIFIED` exige avisar a la célula dueña de la capacidad.

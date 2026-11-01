@@ -3,8 +3,9 @@
 import hashlib
 import io
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from botocore.exceptions import BotoCoreError, ClientError
 from PIL import Image, UnidentifiedImageError
@@ -18,7 +19,7 @@ from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
-from app.modules.collections.models import Term, Vocabulary, VocabularyCode
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.media.models import MediaAsset
 
 if TYPE_CHECKING:
@@ -127,6 +128,37 @@ def verify_image_stream(
     return verified.sha256, verified.width, verified.height, verified.content_type
 
 
+RestrictionOrigin = Literal["foto", "pieza", "colección", "ninguna"]
+
+
+@dataclass(frozen=True)
+class EffectiveRestriction:
+    term_id: uuid.UUID | None
+    origin: RestrictionOrigin
+
+
+def effective_restriction(
+    session: Session, asset: MediaAsset, piece: "Piece"
+) -> EffectiveRestriction:
+    """The restriction that applies to a photo (fotografias-multiples-por-pieza 2.5; RN-008).
+
+    Precedence: the photo's own restriction, then the piece's, then the default one of its
+    collection. The piece has no column of its own: its default is derived from the tenure, so a
+    piece in loan for use means «No publicar» (RN-008). That also covers the photos registered
+    before the piece became a loan for use, which carry no restriction of their own; the photos
+    registered while it already was one carry it as their own.
+    """
+    if asset.usage_restriction_term_id is not None:
+        return EffectiveRestriction(asset.usage_restriction_term_id, "foto")
+    if piece.tenure_regime == TenureRegime.LOAN_FOR_USE:
+        return EffectiveRestriction(comodato_restriction_term_id(session), "pieza")
+    if piece.collection_id is not None:
+        collection = session.get(Collection, piece.collection_id)
+        if collection is not None and collection.default_usage_restriction_term_id is not None:
+            return EffectiveRestriction(collection.default_usage_restriction_term_id, "colección")
+    return EffectiveRestriction(None, "ninguna")
+
+
 def comodato_restriction_term_id(session: Session) -> uuid.UUID:
     """Restricción de imágenes en comodato (RN-008): hereda `NO_PUBLICAR`."""
     term = session.scalar(
@@ -198,6 +230,21 @@ class StoredCopy:
     content_sha256: str
 
 
+def provenance_of(asset: MediaAsset) -> dict[str, Any]:
+    """Where the photo came from, from ``extra_metadata`` (importacion-fotos-a-catalogo, 6.3)."""
+    metadata = asset.extra_metadata or {}
+    if not metadata.get("import_batch_id"):
+        return {"source": "manual", "original_filename": asset.original_filename}
+    return {
+        "source": "import",
+        "original_filename": asset.original_filename,
+        "relative_path": metadata.get("relative_path"),
+        "import_batch_id": metadata.get("import_batch_id"),
+        "import_batch_name": metadata.get("import_batch_name"),
+        "replaced_lower_resolution": list(metadata.get("replaced_lower_resolution") or []),
+    }
+
+
 def register_from_import(
     session: Session,
     piece: "Piece",
@@ -206,6 +253,8 @@ def register_from_import(
     storage_key: str,
     view_type_term_id: uuid.UUID | None,
     display: StoredCopy | None = None,
+    batch_name: str | None = None,
+    replaced_lower_resolution: Sequence[str] = (),
 ) -> MediaAsset:
     """Register a photo of an applied import batch on ``piece`` (importacion-masiva-fotografias,
     task 5.1; design D5).
@@ -220,6 +269,9 @@ def register_from_import(
     With ``display`` (``MEDIA_KEEP_ORIGINALS=false``, design D6) the asset points to the display
     copy and describes it; the size and fingerprint of the original received stay in
     ``extra_metadata.original``.
+
+    The batch name and the paths of the lower resolution versions discarded in its place
+    (importacion-fotos-a-catalogo, task 6.3; design D6, D9) complete its provenance.
     """
     max_order = session.scalar(
         select(func.max(MediaAsset.sort_order)).where(MediaAsset.piece_id == piece.id)
@@ -230,6 +282,10 @@ def register_from_import(
         "import_photo_id": str(photo.id),
         "relative_path": photo.relative_path,
     }
+    if batch_name:
+        metadata["import_batch_name"] = batch_name
+    if replaced_lower_resolution:
+        metadata["replaced_lower_resolution"] = list(replaced_lower_resolution)
     if display is not None:
         metadata["original"] = {
             "content_type": photo.content_type,
