@@ -23,6 +23,10 @@ export const SEARCH_PAGE_SIZE = 20;
 /** Filtros de la pantalla. `null`/vacío = filtro inactivo. */
 export interface SearchFilters {
   q: string;
+  denomination: string;
+  description: string;
+  author: string;
+  provenance: string;
   collectionId: string | null;
   categoryId: string | null;
   materialId: string | null;
@@ -37,6 +41,10 @@ export interface SearchFilters {
 
 export const EMPTY_FILTERS: SearchFilters = {
   q: "",
+  denomination: "",
+  description: "",
+  author: "",
+  provenance: "",
   collectionId: null,
   categoryId: null,
   materialId: null,
@@ -52,6 +60,10 @@ export const EMPTY_FILTERS: SearchFilters = {
 /** Nombre del filtro en la API (`PieceFilter`) para cada filtro de la pantalla. */
 const API_KEYS: Record<keyof SearchFilters, string> = {
   q: "q",
+  denomination: "denomination",
+  description: "description",
+  author: "author",
+  provenance: "provenance",
   collectionId: "collection_id",
   categoryId: "category_id",
   materialId: "material_id",
@@ -66,6 +78,10 @@ const API_KEYS: Record<keyof SearchFilters, string> = {
 
 export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   q: "Búsqueda",
+  denomination: "Denominación",
+  description: "Descripción",
+  author: "Autor",
+  provenance: "Procedencia",
   collectionId: "Colección",
   categoryId: "Categoría",
   materialId: "Material",
@@ -77,6 +93,20 @@ export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   epochEndYear: "Época hasta",
   hasAlerts: "Completitud",
 };
+
+/** Los cinco filtros que el museo usa más, a la vista; el resto va en «Más filtros» (fusion-busqueda-deposito 2.1). */
+export const MAIN_FILTER_KEYS: readonly (keyof SearchFilters)[] = ["q", "denomination", "categoryId", "materialId", "description"];
+/** Filtros que se escriben: la búsqueda espera a que se deje de teclear. */
+export const TEXT_FILTER_KEYS = ["q", "denomination", "description", "author", "provenance"] as const;
+
+function isActive(value: SearchFilters[keyof SearchFilters]): boolean {
+  return value !== null && !(typeof value === "string" && value.trim() === "");
+}
+
+/** Hay algún filtro activo de «Más filtros»: la sección se abre sola. */
+export function secondaryFiltersActive(filters: SearchFilters): boolean {
+  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).some((key) => !MAIN_FILTER_KEYS.includes(key) && isActive(filters[key]));
+}
 
 /** Filtros activos en el formato de la API: query de `GET /search` y `filters` de la exportación. */
 export function apiFilters(filters: SearchFilters): Record<string, string | number | boolean> {
@@ -104,9 +134,13 @@ export function activeChips(filters: SearchFilters, names: Record<string, string
   const chips: FilterChip[] = [];
   const add = (key: keyof SearchFilters, value: string) => chips.push({ key, label: FILTER_LABELS[key], value });
   if (filters.q.trim()) add("q", `«${filters.q.trim()}»`);
+  if (filters.denomination.trim()) add("denomination", `«${filters.denomination.trim()}»`);
   for (const key of ["collectionId", "categoryId", "materialId", "conservationStateId", "locationId"] as const) {
     const id = filters[key];
     if (id) add(key, names[id] ?? "(seleccionada)");
+  }
+  for (const key of ["description", "author", "provenance"] as const) {
+    if (filters[key].trim()) add(key, `«${filters[key].trim()}»`);
   }
   if (filters.tenureRegime) add("tenureRegime", filters.tenureRegime);
   if (filters.hasInventoryCode !== null) add("hasInventoryCode", filters.hasInventoryCode ? "Con código I" : "Sin código I");

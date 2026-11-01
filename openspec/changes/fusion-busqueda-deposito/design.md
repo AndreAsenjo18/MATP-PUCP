@@ -15,6 +15,7 @@
 ### D1. Descripción en la búsqueda
 
 - En `PieceFilter`: parámetro `description` (contiene, sin tildes con `immutable_unaccent`, como los demás textos) y la descripción dentro de la condición OR del texto libre `q`.
+- El filtro principal «Denominación» también necesita su parámetro: `denomination` (contiene, sin mayúsculas ni tildes), que se combina por AND con los demás. Es el segundo parámetro añadido al contrato, junto a `description` (decidido al aplicar la tarea 2.1).
 - En `ranking.py`: coincidencia solo en la descripción con el peso más bajo de las coincidencias de texto y `matched_fields: ["description"]`.
 - Rendimiento (RF-038): la descripción es el campo de texto más largo. Se mide con la prueba de rendimiento reproducible existente (20 000 piezas sintéticas); si supera el umbral, índice trigram (`pg_trgm`) sobre `unaccent(lower(description))` en PostgreSQL. En SQLite no aplica.
 

@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_FILTERS, activeChips, type ExportJob, type SearchHit, type SearchPage } from "@/lib/data/search";
 import { render, visibleText } from "@/test/render";
 
-import { ActiveFilterChips, ExportColumnsPicker, ExportJobsList, SearchFiltersPanel, SearchResults, type SearchOptions } from "./SearchLive";
+import { SearchFiltersPanel, type SearchOptions } from "./SearchFilters";
+import { ActiveFilterChips, ExportColumnsPicker, ExportJobsList, SearchResults } from "./SearchLive";
 
 // Datos sintéticos (RNF-014).
 
@@ -110,12 +111,40 @@ describe("filtros", () => {
       "Época desde (año)",
       "Época hasta (año)",
       "Completitud de la ficha",
+      "Denominación",
+      "Descripción contiene",
+      "Autor",
+      "Procedencia",
     ]) {
       expect(text).toContain(label);
     }
     // La ubicación se elige en el árbol (fusion-busqueda-deposito 2.2), abierto desde la sede.
     expect(text).toContain("Depósito 2");
     expect(text).toContain("Al elegir un lugar se incluye todo lo que contiene.");
+  });
+
+  it("pone primero los cinco filtros del museo y el resto en «Más filtros», plegado", () => {
+    const html = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={OPTIONS} onChange={noop} onClear={noop} />);
+    const text = visibleText(html);
+    const order = ["Código o texto", "Denominación", "Categoría", "Material", "Descripción contiene", "Más filtros"].map((label) =>
+      text.indexOf(label),
+    );
+    expect(order.every((position) => position >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    for (const secondary of ["Colección (con subcolecciones)", "Ubicación (con lo que contiene)", "Autor", "Procedencia", "Completitud de la ficha"]) {
+      expect(text.indexOf(secondary)).toBeGreaterThan(text.indexOf("Más filtros"));
+    }
+    expect(html).toContain("<details>");
+  });
+
+  it("«Más filtros» aparece abierto cuando llega un filtro secundario, como la ubicación", () => {
+    const withLocation = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, locationId: "loc-d2" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(withLocation).toContain('<details open="">');
+    expect(visibleText(withLocation)).toContain("Sede Central (ficticia) › Depósito 2");
+    const withAuthor = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, author: "Huamán" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(withAuthor).toContain('<details open="">');
+    const onlyMain = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, denomination: "mate", description: "asa" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(onlyMain).toContain("<details>");
   });
 
   it("muestra un chip que se puede quitar por cada filtro activo", () => {

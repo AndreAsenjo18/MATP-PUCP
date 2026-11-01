@@ -13,6 +13,7 @@ import {
   jobStatusLabel,
   matchReasonText,
   removeFilter,
+  secondaryFiltersActive,
   startFullExport,
   suggestionText,
   type SearchFilters,
@@ -79,6 +80,28 @@ describe("filtros de la pantalla", () => {
     const without = removeFilter(FILTERS, "collectionId");
     expect(without.collectionId).toBeNull();
     expect(without.materialId).toBe("mat-madera");
+  });
+
+  it("los filtros de texto nuevos van a la API con su nombre y tienen su chip", () => {
+    const filters = { ...EMPTY_FILTERS, denomination: " mate ", description: "asa", author: "Huamán", provenance: "Ayacucho" };
+    expect(apiFilters(filters)).toEqual({ denomination: "mate", description: "asa", author: "Huamán", provenance: "Ayacucho" });
+    expect(activeChips(filters).map((chip) => `${chip.label}: ${chip.value}`)).toEqual([
+      "Denominación: «mate»",
+      "Descripción: «asa»",
+      "Autor: «Huamán»",
+      "Procedencia: «Ayacucho»",
+    ]);
+    expect(suggestionText("remove_filter:denomination")).toBe("Quite el filtro «Denominación».");
+    expect(filterOfSuggestion("remove_filter:description")).toBe("description");
+  });
+
+  it("solo los filtros de «Más filtros» lo abren solo", () => {
+    expect(secondaryFiltersActive(EMPTY_FILTERS)).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, q: "I-0236", denomination: "mate", categoryId: "c", materialId: "m", description: "asa" })).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, provenance: "  " })).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, locationId: "loc-d2" })).toBe(true);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, hasInventoryCode: false })).toBe(true);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, author: "Huamán" })).toBe(true);
   });
 
   it("explica la coincidencia por código o por campos de texto", () => {

@@ -73,6 +73,7 @@ class PieceFilter(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     q: str | None = None
+    denomination: str | None = None
     collection_id: uuid.UUID | None = None
     collection_code: str | None = None
     without_collection: bool | None = None
@@ -195,6 +196,14 @@ class PieceFilter(BaseModel):
                 or_(
                     identifier_match_condition(needle, params=params),
                     or_(*text_match_clauses),
+                )
+            )
+
+        if self.denomination and self.denomination.strip():
+            # «Denominación» of the main filters: contains, without case or accents (design D1).
+            conditions.append(
+                func.immutable_unaccent(func.lower(Piece.denomination)).like(
+                    _contains(strip_accents(self.denomination)), escape="\\"
                 )
             )
 
@@ -371,6 +380,15 @@ class PieceFilter(BaseModel):
                     key="q",
                     label="Bsqueda",
                     value_display=self.q.strip(),
+                )
+            )
+
+        if self.denomination and self.denomination.strip():
+            active.append(
+                ActiveFilter(
+                    key="denomination",
+                    label="Denominación",
+                    value_display=self.denomination.strip(),
                 )
             )
 

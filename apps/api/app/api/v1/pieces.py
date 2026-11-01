@@ -129,6 +129,14 @@ def piece_filters(
             "ceros) o parte de la denominación (RF-031).",
         ),
     ] = None,
+    denomination: Annotated[
+        str | None,
+        Query(
+            max_length=200,
+            description="La denominación contiene este texto, sin distinguir mayúsculas ni tildes "
+            "(fusion-busqueda-deposito D1).",
+        ),
+    ] = None,
     collection_id: Annotated[uuid.UUID | None, Query(description="Incluye subcolecciones.")] = None,
     without_collection: Annotated[bool | None, Query(description="true = piezas sueltas.")] = None,
     tenure_regime: Annotated[
@@ -172,6 +180,7 @@ def piece_filters(
     )
     return PieceFilter(
         q=q,
+        denomination=denomination,
         collection_id=collection_id,
         without_collection=without_collection,
         tenure_regime=regime,

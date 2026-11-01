@@ -51,3 +51,23 @@ def test_a_free_text_match_only_in_the_description_is_reported(login_as: LoginAs
     ]
     assert page["total"] > 0 and only_description
     assert all("demostr" not in hit["piece"]["denomination"].lower() for hit in only_description)
+
+
+def test_search_filters_by_denomination_and_suggests_removing_it(login_as: LoginAs) -> None:
+    """«Denominación» of the main filters (fusion-busqueda-deposito 2.1), also in GET /pieces."""
+    client = login_as("CATALOGUER")
+    first = client.get("/api/v1/pieces", params={"limit": 1}).json()["items"][0]["denomination"]
+    word = first.split()[0]
+
+    search = client.get(
+        "/api/v1/search", params={"denomination": word.upper(), "limit": 100}
+    ).json()
+    listing = client.get("/api/v1/pieces", params={"denomination": word, "limit": 100}).json()
+    empty = client.get(
+        "/api/v1/search", params={"denomination": "xyz", "tenure_regime": "Comodato"}
+    ).json()
+
+    assert search["total"] == listing["total"] > 0
+    assert all(word.lower() in hit["piece"]["denomination"].lower() for hit in search["items"])
+    assert empty["total"] == 0
+    assert "remove_filter:denomination" in empty["suggestions"]

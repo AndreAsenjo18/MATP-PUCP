@@ -20167,6 +20167,25 @@
             }
           },
           {
+            "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "denomination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Denomination"
+            }
+          },
+          {
             "description": "Incluye subcolecciones.",
             "in": "query",
             "name": "collection_id",
@@ -24230,6 +24249,25 @@
               ],
               "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
               "title": "Q"
+            }
+          },
+          {
+            "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "denomination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Denomination"
             }
           },
           {

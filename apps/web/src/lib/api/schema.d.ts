@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 2b7a71b7f3f223fde15e5e95d9a32beacb4b662961618710d768d2bb5ade1270
+ * openapi-sha256: 7b59aef844d3ff2ee9005596492b020309e5661ee410f2edc011da436fc1d2e4
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -12854,6 +12854,8 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
                 /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
                 description?: string | null;
                 /** @description Año de fin de época. */
@@ -15211,6 +15213,8 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
                 /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
                 description?: string | null;
                 /** @description Año de fin de época. */

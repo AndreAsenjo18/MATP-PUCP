@@ -6,25 +6,25 @@
  * quitar, qué coincidió por resultado, sugerencias sin resultados, miniatura de la foto
  * principal, exportación con selección de columnas, «Mis exportaciones» y exportación completa.
  */
-import { Download, Eraser, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "lucide-react";
+import { Download, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
-import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
+import { EMPTY_OPTIONS, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
-import { fetchLocationsTree, type LocationNode } from "@/lib/data/locations";
-import { fetchPieceCatalogs, type TermOption } from "@/lib/data/pieces";
+import { fetchLocationsTree } from "@/lib/data/locations";
+import { fetchPieceCatalogs } from "@/lib/data/pieces";
 import {
   DEFAULT_EXPORT_COLUMNS,
   EMPTY_FILTERS,
   EXPORT_COLUMNS,
   SEARCH_PAGE_SIZE,
+  TEXT_FILTER_KEYS,
   activeChips,
   canDownload,
   exportResults,
@@ -44,7 +44,6 @@ import {
   type FilterChip,
   type SearchFilters,
   type SearchPage,
-  type TenureRegimeLabel,
 } from "@/lib/data/search";
 
 /** Espera tras la última tecla antes de buscar. */
@@ -54,144 +53,9 @@ const JOBS_POLL_MS = 3000;
 const PERM_DONOR_DATA = "sensitive.donor_data";
 const PERM_LOAN_TERMS = "sensitive.loan_terms";
 
-export interface SearchOptions {
-  collections: TermOption[];
-  categories: TermOption[];
-  materials: TermOption[];
-  conservationStates: TermOption[];
-  /** Cada ubicación con su ruta completa, para el nombre del filtro activo. */
-  locations: TermOption[];
-  /** El árbol del filtro de ubicación (`LocationTreeSelect`, fusion-busqueda-deposito 2.2). */
-  locationTree: LocationNode[];
-}
-
-const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [], locationTree: [] };
-const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
-
 function optionNames(options: SearchOptions): Record<string, string> {
   const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
   return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
-}
-
-function toBoolean(value: string): boolean | null {
-  return value === "" ? null : value === "true";
-}
-
-function toYear(value: string): number | null {
-  if (value.trim() === "") return null;
-  const year = Number(value);
-  return Number.isFinite(year) ? Math.trunc(year) : null;
-}
-
-function OptionSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string | null;
-  options: TermOption[];
-  onChange: (value: string | null) => void;
-}) {
-  return (
-    <Select label={label} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
-      <option value="">Todas</option>
-      {options.map((option) => (
-        <option key={option.id} value={option.id}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
-  );
-}
-
-export function SearchFiltersPanel({
-  filters,
-  options,
-  onChange,
-  onClear,
-}: {
-  filters: SearchFilters;
-  options: SearchOptions;
-  onChange: (next: Partial<SearchFilters>) => void;
-  onClear: () => void;
-}) {
-  return (
-    <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
-      <Input
-        id="q"
-        label="Código o texto"
-        value={filters.q}
-        onChange={(event) => onChange({ q: event.target.value })}
-        placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
-        hint="Sin distinguir mayúsculas ni tildes."
-        className="p-2.5"
-      />
-      <OptionSelect label="Colección (con subcolecciones)" value={filters.collectionId} options={options.collections} onChange={(collectionId) => onChange({ collectionId })} />
-      <OptionSelect label="Categoría" value={filters.categoryId} options={options.categories} onChange={(categoryId) => onChange({ categoryId })} />
-      <OptionSelect label="Material" value={filters.materialId} options={options.materials} onChange={(materialId) => onChange({ materialId })} />
-      <OptionSelect
-        label="Estado de conservación"
-        value={filters.conservationStateId}
-        options={options.conservationStates}
-        onChange={(conservationStateId) => onChange({ conservationStateId })}
-      />
-      <LocationTreeSelect
-        label="Ubicación (con lo que contiene)"
-        nodes={options.locationTree}
-        value={filters.locationId}
-        onChange={(locationId) => onChange({ locationId })}
-      />
-      <Select
-        label="Régimen de tenencia"
-        value={filters.tenureRegime ?? ""}
-        onChange={(event) => onChange({ tenureRegime: (event.target.value || null) as TenureRegimeLabel | null })}
-      >
-        <option value="">Todos</option>
-        {TENURE_REGIMES.map((regime) => (
-          <option key={regime} value={regime}>
-            {regime}
-          </option>
-        ))}
-      </Select>
-      <Select
-        label="Código I"
-        value={filters.hasInventoryCode === null ? "" : String(filters.hasInventoryCode)}
-        onChange={(event) => onChange({ hasInventoryCode: toBoolean(event.target.value) })}
-      >
-        <option value="">Con o sin código I</option>
-        <option value="true">Con código I</option>
-        <option value="false">Sin código I</option>
-      </Select>
-      <div className="grid grid-cols-2 gap-2">
-        <Input
-          label="Época desde (año)"
-          type="number"
-          value={filters.epochStartYear ?? ""}
-          onChange={(event) => onChange({ epochStartYear: toYear(event.target.value) })}
-        />
-        <Input
-          label="Época hasta (año)"
-          type="number"
-          value={filters.epochEndYear ?? ""}
-          onChange={(event) => onChange({ epochEndYear: toYear(event.target.value) })}
-        />
-      </div>
-      <Select
-        label="Completitud de la ficha"
-        value={filters.hasAlerts === null ? "" : String(filters.hasAlerts)}
-        onChange={(event) => onChange({ hasAlerts: toBoolean(event.target.value) })}
-      >
-        <option value="">Todas las piezas</option>
-        <option value="true">Solo piezas incompletas</option>
-        <option value="false">Solo piezas completas</option>
-      </Select>
-      <Button variant="secondary" icon={Eraser} onClick={onClear}>
-        Limpiar filtros
-      </Button>
-    </Card>
-  );
 }
 
 export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; onRemove: (key: FilterChip["key"]) => void }) {
@@ -556,15 +420,16 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     };
   }, [devUser]);
 
-  // El texto espera a que el usuario deje de escribir; los demás filtros se aplican al instante.
+  // Los textos esperan a que el usuario deje de escribir; los demás filtros se aplican al instante.
   useEffect(() => {
-    const delay = filters.q === query.q ? 0 : TYPING_DEBOUNCE_MS;
+    const typing = TEXT_FILTER_KEYS.some((key) => filters[key] !== query[key]);
+    const delay = typing ? TYPING_DEBOUNCE_MS : 0;
     const timer = setTimeout(() => {
       setQuery(filters);
       setPage(1);
     }, delay);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `query.q` solo decide la espera
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- los textos de `query` solo deciden la espera
   }, [filters]);
 
   useEffect(() => {
