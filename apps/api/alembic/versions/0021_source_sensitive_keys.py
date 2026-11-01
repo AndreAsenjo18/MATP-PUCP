@@ -1,6 +1,6 @@
 """Sensitive keys of the source data of a piece (personal data of the owner).
 
-Revision ID: 0021_source_record_sensitive_keys
+Revision ID: 0021_source_sensitive_keys
 Revises: 0020_real_absence_markers
 Create Date: 2026-10-31
 
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0021_source_record_sensitive_keys"
+revision: str = "0021_source_sensitive_keys"
 down_revision: str | None = "0020_real_absence_markers"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

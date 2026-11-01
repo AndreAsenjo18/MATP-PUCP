@@ -58,6 +58,14 @@ def test_migration_history_has_a_single_head() -> None:
     )
 
 
+def test_revision_ids_fit_the_alembic_version_column() -> None:
+    """PostgreSQL stores the revision in alembic_version.version_num, a VARCHAR(32); SQLite
+    does not enforce the length, so a longer id only fails in the PostgreSQL job."""
+    script = ScriptDirectory.from_config(_config("sqlite://"))
+    too_long = [rev.revision for rev in script.walk_revisions() if len(rev.revision) > 32]
+    assert not too_long, f"Revision ids longer than 32 characters: {', '.join(too_long)}"
+
+
 def test_upgrade_creates_every_model_table(migrated) -> None:  # type: ignore[no-untyped-def]
     tables = set(inspect(migrated).get_table_names())
     assert set(Base.metadata.tables) <= tables
