@@ -84,10 +84,12 @@ export interface ImportPhotosViewProps {
   onPick?: (files: FileList) => void;
   onDrop?: (event: DragEvent<HTMLElement>) => void;
   onResume?: () => void;
+  /** Texto de ayuda; por defecto, el del lote con Excel (fotos a sus filas). */
+  intro?: string;
 }
 
 /** Vista sin estado del panel (se prueba como HTML estático, ADR-012). */
-export function ImportPhotosView({ progress, ignored, running, message, error, onPick, onDrop, onResume }: ImportPhotosViewProps) {
+export function ImportPhotosView({ progress, ignored, running, message, error, onPick, onDrop, onResume, intro }: ImportPhotosViewProps) {
   const overall = overallProgress(progress);
   const ignoredText = ignored ? ignoredSentence(ignored) : null;
   // Primero lo que necesita atención: fallidas, rechazadas y en curso.
@@ -98,8 +100,8 @@ export function ImportPhotosView({ progress, ignored, running, message, error, o
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-tinta">Fotografías del lote</h2>
         <p className="text-base text-gris-texto">
-          Opcional. Suelte la carpeta con las fotos de las piezas: cada foto se propone a su fila por el código del nombre del
-          archivo o de la carpeta. Si se corta la conexión, vuelva a soltar la misma carpeta y solo se sube lo que falta.
+          {intro ??
+            "Opcional. Suelte la carpeta con las fotos de las piezas: cada foto se propone a su fila por el código del nombre del archivo o de la carpeta. Si se corta la conexión, vuelva a soltar la misma carpeta y solo se sube lo que falta."}
         </p>
       </div>
       <label
@@ -156,7 +158,18 @@ export function ImportPhotosView({ progress, ignored, running, message, error, o
 }
 
 /** Panel con estado: lista la carpeta, sube y permite reanudar. No se muestra si el lote ya no admite fotos. */
-export function ImportPhotosPanel({ batch, devUser }: { batch: Pick<ImportBatch, "id" | "status">; devUser?: string }) {
+export function ImportPhotosPanel({
+  batch,
+  devUser,
+  intro,
+  onUploaded,
+}: {
+  batch: Pick<ImportBatch, "id" | "status"> & { kind?: ImportBatch["kind"] };
+  devUser?: string;
+  intro?: string;
+  /** Se llama al terminar cada pasada de subida (para refrescar el lote). */
+  onUploaded?: () => void;
+}) {
   const [files, setFiles] = useState<PhotoFile[]>([]);
   const [ignored, setIgnored] = useState<IgnoredFiles | null>(null);
   const [progress, setProgress] = useState<PhotoProgress[]>([]);
@@ -172,13 +185,14 @@ export function ImportPhotosPanel({ batch, devUser }: { batch: Pick<ImportBatch,
       let last = previous;
       const result = await uploadBatchPhotos(batch.id, photos, (next) => setProgress((last = next)), { previous, devUser });
       setRunning(false);
+      onUploaded?.();
       if (result.status === "ok") setMessage(summarySentence(result.value));
       else {
         setError(result.message);
         setMessage(summarySentence(summarize(last)));
       }
     },
-    [batch.id, devUser],
+    [batch.id, devUser, onUploaded],
   );
 
   const start = useCallback(
@@ -199,6 +213,7 @@ export function ImportPhotosPanel({ batch, devUser }: { batch: Pick<ImportBatch,
       running={running}
       message={message}
       error={error}
+      intro={intro}
       onPick={(list) => start(entriesFromInput(list))}
       onDrop={(event) => {
         event.preventDefault();

@@ -111,6 +111,9 @@ ABSENCE_MARKERS_KEY = "absence_markers"
 CONCATENATION_SEPARATORS_KEY = "concatenation_separators"
 # Folded acquisition label -> tenure regime code (ajustes-lectura-importacion, design D1).
 TENURE_ALIASES_KEY = "tenure_aliases"
+# Extra regular expressions of camera file names, which carry no code (importacion-fotos-a-
+# catalogo, design D3); the built-in ones live in ``imports/photo_matching.py``.
+PHOTO_CAMERA_PATTERNS_KEY = "photo_camera_patterns"
 
 
 class NormalizationSetting(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
