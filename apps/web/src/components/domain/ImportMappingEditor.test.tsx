@@ -165,6 +165,38 @@ describe("hoja, fila de cabeceras y destino (antes en MappingPanel)", () => {
   });
 });
 
+describe("hoja de errores como observaciones (formatos-reales-importacion, D8)", () => {
+  it("ofrece cargar una hoja «Errores…» como observaciones y pide la columna de códigos", () => {
+    const batch = { ...BATCH, sheet_names: ["Inventario", "Errores pendientes"], sheet_name: "Errores pendientes" } as ImportBatch;
+    const html = render(
+      <MappingEditor
+        batch={batch}
+        draft={draftFromScratch(batch)}
+        vocabularies={VOCABULARIES}
+        errors={{}}
+        nameError={null}
+        busy={false}
+        saving={false}
+        previewBusy={false}
+        onChange={noop}
+        onSave={noop}
+        onPreview={noop}
+        onApply={noop}
+        onBack={noop}
+      />,
+    );
+    const text = visibleText(html);
+    expect(text).toContain("Cargar esta hoja como observaciones de piezas ya registradas");
+    expect(html).toMatch(/<input type="checkbox"[^>]*checked=""/);
+    expect(text).toContain("Indique la columna de los códigos");
+    expect(text).not.toContain("La denominación es obligatoria");
+  });
+
+  it("no lo ofrece en una hoja de inventario", () => {
+    expect(visibleText(editor(draftFromScratch(BATCH)))).not.toContain("como observaciones");
+  });
+});
+
 describe("fila de columna", () => {
   it("elige el destino con un Select que incluye los vocabularios", () => {
     const html = render(<ColumnMappingRow column={UNCHANGED.columns[1]} options={targetOptions(VOCABULARIES)} error={null} onTarget={noop} onTransforms={noop} />);

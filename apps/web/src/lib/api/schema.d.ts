@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a2d2052abb1267b325f0cd7fca0ddce8a1a17c001bf0cba39bfad62562f2c7ab
+ * openapi-sha256: 704b3d90abf4c79c72c8a938de49374250cbe7151676b6d989cc316e40f809d2
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -4078,9 +4078,12 @@ export interface components {
          *
          *     ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
          *     photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+         *     ``OBSERVATIONS``: a sheet of quality observations («Errores pendientes» of the 2024/25
+         *     consultancy); its rows only add a note to the pieces they identify by their codes and never
+         *     create one (change formatos-reales-importacion, D8).
          * @enum {string}
          */
-        ImportBatchKind: "SPREADSHEET" | "PHOTOS";
+        ImportBatchKind: "SPREADSHEET" | "PHOTOS" | "OBSERVATIONS";
         /**
          * ImportBatchOut
          * @example {
@@ -4963,6 +4966,11 @@ export interface components {
              * @description Otra fila de cabeceras: se vuelve a leer el archivo.
              */
             header_row?: number | null;
+            /**
+             * Observations
+             * @description `true`: la hoja se carga como observaciones de piezas ya registradas, emparejadas por sus códigos; no crea piezas (hojas «Errores…» de la consultoría, `formatos-reales-importacion` D8). `false`: vuelve a cargarla como piezas. Sin valor, el lote conserva su tipo.
+             */
+            observations?: boolean | null;
             /**
              * Save As Template Name
              * @description Aún no disponible: cree la plantilla con `POST /import-templates`.
