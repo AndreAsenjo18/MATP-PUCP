@@ -129,8 +129,19 @@ describe("modo live", () => {
       newIdempotencyKey(),
       DEV_USER,
     );
-    // El cuerpo 409 no tiene `code`/`message` de ErrorResponse, así que cae al mensaje genérico.
-    expect(result.status).toBe("rejected");
+    // Todo o nada: el 409 trae el detalle por pieza, que la barra de la búsqueda muestra (fusion-busqueda-deposito).
+    expect(result).toEqual({
+      status: "ok",
+      value: { registered: [], failures: [{ piece_id: "p1", code: "location_changed", message: "La pieza ya cambió de ubicación." }] },
+    });
+  });
+});
+
+describe("lote rechazado sin detalle por pieza", () => {
+  it("un error sin `failures` sigue siendo un rechazo con su mensaje", async () => {
+    useLive(async () => json(422, { code: "batch_too_large", message: "Demasiadas piezas.", details: {} }));
+    const result = await batchMovePieces({ movement_type: "MOVE", to_location_id: "loc-dest", items: [{ piece_id: "p1" }] }, newIdempotencyKey(), DEV_USER);
+    expect(result).toMatchObject({ status: "rejected", code: "batch_too_large", message: "El lote admite hasta 200 piezas." });
   });
 });
 

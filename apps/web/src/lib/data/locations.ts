@@ -127,19 +127,24 @@ export async function movePiece(pieceId: string, body: MovementCreateInput, devU
 
 /**
  * `POST /movements/batch` (design D3): todo o nada; `idempotencyKey` evita duplicar el lote si
- * el móvil reenvía la misma petición por una conexión lenta (RNF-005).
+ * el móvil reenvía la misma petición por una conexión lenta (RNF-005). Si alguna pieza no se puede
+ * mover, la API responde 409 o 422 con el detalle por pieza: es la respuesta del lote, no un error de
+ * conexión, así que vuelve como `ok` con sus `failures` para decir qué pieza lo impidió.
  */
 export async function batchMovePieces(
   body: BatchMovementRequest,
   idempotencyKey: string,
   devUser?: string,
 ): Promise<LocationResult<BatchMovementResponse>> {
-  return call(() =>
-    client(devUser).POST("/api/v1/movements/batch", {
+  return call(async () => {
+    const response = await client(devUser).POST("/api/v1/movements/batch", {
       params: { header: { "Idempotency-Key": idempotencyKey } },
       body,
-    }),
-  );
+    });
+    const error: unknown = response.error;
+    if (isRecord(error) && Array.isArray(error.failures)) return { data: error as BatchMovementResponse };
+    return response;
+  });
 }
 
 /** Clave de reintento nueva por lote (crypto.randomUUID, disponible en navegadores modernos). */
