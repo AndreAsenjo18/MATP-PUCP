@@ -67,6 +67,18 @@ class IdentifierCreate(BaseModel):
         None, description="Identificador no bloqueado del mismo tipo que pasa a histórico."
     )
     notes: str | None = None
+    confirmed_split: bool = Field(
+        False,
+        description="La persona confirmó la separación de un valor concatenado (RF-023). Sin "
+        "ella, un valor con varios códigos responde 422 `concatenated_identifier` con la "
+        "propuesta y no registra nada (ficha-pieza-crud D5).",
+    )
+    split_from: str | None = Field(
+        None,
+        max_length=500,
+        description="Valor concatenado del que sale este código, tal como estaba escrito; queda "
+        "en el motivo de la auditoría. Solo junto con `confirmed_split`.",
+    )
 
 
 class InventoryCodeCorrection(BaseModel):

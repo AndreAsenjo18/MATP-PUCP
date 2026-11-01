@@ -56,11 +56,57 @@ from app.modules.locations.service import create_location, move_piece
 from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, UserRole
+from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
 from app.seed.fixtures import HEADERS as SABANA_HEADERS
 from app.seed.images import placeholder_photo
+from app.seed.import_templates import PREDEFINED_TEMPLATES
 from app.seed.reference import UNSPECIFIED_VIEW_TYPE, ReferenceData, seed_reference_data
 
 SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
+DEMO_SOURCE_NAME = "Lote de demostración (sintético)"
+# Mapping v1 of the seed template for ``data/fixtures/lote_demo/lote_demo_sabana.xlsx``: with it the
+# import wizard recognizes the demo batch by its headers and the "RÉGIMEN" column reaches the
+# validation (change rediseno-ux-importacion). Illustrative column names [SUPUESTO A1].
+DEMO_BATCH_TEMPLATE_MAPPING: dict[str, object] = {
+    "version": 1,
+    "columns": [
+        {"source": "N°", "target": {"kind": "source_payload"}},
+        {
+            "source": "CÓDIGOS",
+            "target": {"kind": "identifiers", "default_type": None},
+            "transforms": ["trim", "absence_markers", "split_concatenated"],
+        },
+        {
+            "source": "COLECCIÓN",
+            "target": {"kind": "field", "name": "collection"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "RÉGIMEN",
+            "target": {"kind": "field", "name": "tenure_regime"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "DENOMINACIÓN",
+            "target": {"kind": "field", "name": "denomination"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "ÉPOCA",
+            "target": {"kind": "field", "name": "epoch_original_text"},
+            "transforms": ["trim"],
+        },
+        {"source": "MATERIAL", "target": {"kind": "source_payload"}},
+        {"source": "MEDIDAS", "target": {"kind": "source_payload"}},
+        {
+            "source": "PROCEDENCIA",
+            "target": {"kind": "field", "name": "provenance"},
+            "transforms": ["trim"],
+        },
+        {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
+        {"source": "FOTO", "target": {"kind": "source_payload"}},
+    ],
+}
 # Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of
 # plantillas-mapeo-y-normalizacion). Column names are illustrative [SUPUESTO A1]; materials are
 # matched by code or label against the seeded ``MATERIAL`` vocabulary, with no correspondence
@@ -687,6 +733,28 @@ class SyntheticCatalogBuilder:
             "hasta recibir el Excel real (A1).",
         )
         self.session.add(template)
+        self.session.add(
+            ImportMappingTemplate(
+                id=new_uuid(),
+                name="Lote de demostración v1",
+                source_name=DEMO_SOURCE_NAME,
+                header_signature=header_signature(DEMO_BATCH_HEADERS),
+                mapping=MappingSpecV1.model_validate(DEMO_BATCH_TEMPLATE_MAPPING).as_json(),
+                description="[SUPUESTO] Columnas del lote de demostración sintético "
+                "(data/fixtures/lote_demo/).",
+            )
+        )
+        for predefined in PREDEFINED_TEMPLATES:
+            self.session.add(
+                ImportMappingTemplate(
+                    id=new_uuid(),
+                    name=predefined.name,
+                    source_name=predefined.source_name,
+                    header_signature=header_signature(predefined.headers),
+                    mapping=MappingSpecV1.model_validate(predefined.mapping()).as_json(),
+                    description=predefined.description,
+                )
+            )
         self.session.flush()
         batch = ImportBatch(
             id=new_uuid(),

@@ -125,7 +125,7 @@ export function IdentifierAddForm({ pieceId, types, onRegistered }: IdentifierAd
     if (!pending) return { ok: false, message: GENERIC_FAILURE };
     let result: SplitIdentifiersResult;
     try {
-      result = await registerSplitIdentifiers(pieceId, pending.proposals, { source: pending.source });
+      result = await registerSplitIdentifiers(pieceId, pending.proposals, { source: pending.source, splitFrom: pending.originalValue });
     } catch {
       return { ok: false, message: GENERIC_FAILURE };
     }

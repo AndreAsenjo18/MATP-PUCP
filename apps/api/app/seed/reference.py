@@ -100,6 +100,9 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("COMPRA", "Compra"),
             ("TRANSFERENCIA", "Transferencia interna"),
             ("COMODATO", "Comodato"),
+            # The museum's files use them; they are comodato (answer to L5, 2026-10-31).
+            ("CESION_USO", "Cesión de uso"),
+            ("CUSTODIA", "Custodia"),
             ("LEGADO", "Legado"),
             ("DESCONOCIDA", "Desconocida"),
         ],
@@ -186,6 +189,7 @@ PERMISSIONS = {
     "pieces.update": "Editar fichas de piezas",
     "pieces.delete": "Eliminar piezas lógicamente",
     "pieces.restore": "Restaurar piezas eliminadas",
+    "trash.read": "Abrir la papelera de registros eliminados",
     "identifiers.manage": "Registrar identificadores",
     "identifiers.correct_inventory_code": "Corregir código I (procedimiento auditado)",
     "collections.manage": "Administrar colecciones",
@@ -217,8 +221,17 @@ _ALL = set(PERMISSIONS)
 _READ = {"pieces.read", "reports.view"}
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "ADMIN": _ALL,
+    # Restaurar y corregir el código I quedan solo en el Administrador, igual que el servicio
+    # (ficha-pieza-crud 1.4); el Gestor abre la papelera con `trash.read` [SUPUESTO Ñ3, B7].
     "COLLECTIONS_MANAGER": _ALL
-    - {"users.manage", "exports.full", "imports.revert", "quality.completeness_rules.manage"},
+    - {
+        "users.manage",
+        "exports.full",
+        "imports.revert",
+        "quality.completeness_rules.manage",
+        "pieces.restore",
+        "identifiers.correct_inventory_code",
+    },
     "CATALOGUER": _READ
     | {
         "pieces.create",

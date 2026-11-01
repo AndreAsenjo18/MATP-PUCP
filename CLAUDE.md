@@ -45,7 +45,7 @@ Catálogo completo de IDs: `docs/requisitos/catalogo.md` (RF-001..044, RNF-001..
 
 1. Spec primero; trazabilidad con IDs en cada requirement y en cada tarea.
 2. **No inventes datos del museo.** Todo supuesto va como `[SUPUESTO]` y se registra en `docs/preguntas-contraparte.md`.
-3. **Solo datos sintéticos** (Ley 29733, RNF-014). Los fixtures reproducen a propósito los problemas reales.
+3. **Solo datos sintéticos en el repositorio y en CI** (Ley 29733, RNF-014). Los fixtures reproducen a propósito los problemas reales. Los Excel reales del museo se usan con su autorización en pruebas locales y demos, solo desde `data/real/` (ignorada por git); las fotos siguen siendo sintéticas (ADR-019).
 4. Consulta la versión estable vigente de cada dependencia al instalarla; no fijes versiones de memoria.
 5. Decisiones no documentadas (librerías, estructura, auth) → ADR en `docs/adr/` con estado `Propuesto`.
 6. Idioma: specs, UI y docs en **español**; código, identificadores y commits en **inglés** (ver ADR-002). En specs se mantienen en inglés los encabezados estructurales de OpenSpec y las palabras SHALL/MUST/WHEN/THEN.

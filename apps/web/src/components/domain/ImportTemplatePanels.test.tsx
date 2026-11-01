@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MappingTemplate, TemplateDryRun, TemplateSuggestion } from "@/lib/data/import-templates";
 import { render, visibleText } from "@/test/render";
 
-import { DryRunPanel, TemplatePicker } from "./ImportTemplatePanels";
+import { DryRunPanel, FormatProblemPanel } from "./ImportTemplatePanels";
 import { dryRunValueStatus } from "./status-intents";
 
 // Datos sintéticos (RNF-014); cabeceras ilustrativas de la sábana sintética [SUPUESTO A1].
@@ -94,41 +94,69 @@ const DRY_RUN: TemplateDryRun = {
   ],
 };
 
-describe("selector de plantillas (design D3)", () => {
-  it("lista las sugeridas con su puntaje y avisos, la lista completa y «Empezar desde cero»", () => {
+describe("panel de formato (cuando no se aplicó solo)", () => {
+  const props = { loading: false, busy: false, error: null, onUse: noop, onAdjust: noop };
+
+  it("sin reconocer el archivo ofrece los formatos por parecido y «Ajustar columnas»", () => {
     const seed = template();
-    const partial: TemplateSuggestion = { template: template({ id: "tpl-2", name: "Sábana 2023" }), score: 0.72, missing_columns: ["N° INV"], new_columns: ["FOTO"] };
+    const partial: TemplateSuggestion = { template: template({ id: "tpl-2", name: "Sábana 2023" }), score: 0.72, missing_columns: ["N° INV"], new_columns: [] };
     const html = render(
-      <TemplatePicker
-        suggestions={[{ template: seed, score: 1, missing_columns: [], new_columns: [] }, partial]}
-        templates={[seed, partial.template, template({ id: "tpl-3", name: "Inventario 1998" })]}
-        loading={false}
-        error={null}
-        onUse={noop}
-        onStartFromScratch={noop}
-      />,
+      <FormatProblemPanel {...props} issue={{ kind: "unrecognized" }} suggestions={[partial]} templates={[seed, partial.template]} />,
     );
     const text = visibleText(html);
-    expect(text.indexOf("Plantilla sábana sintética v1 · coincidencia 100 %")).toBeLessThan(text.indexOf("Sábana 2023 · coincidencia 72 %"));
-    expect(text).toContain("Faltan en el archivo: N° INV");
-    expect(text).toContain("Columnas nuevas (irán a los datos de origen): FOTO");
-    // La lista completa solo trae las no sugeridas, y «Usar esta plantilla» espera a que se elija una.
-    expect(html).toMatch(/<option value="tpl-3">Inventario 1998<\/option>/);
-    expect(html).not.toMatch(/<option value="tpl-2">/);
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Usar esta plantilla/);
-    expect(text).toContain("Empezar desde cero");
+    expect(text).toContain("No reconocemos el formato de este archivo");
+    expect(text.indexOf("Sábana 2023 · se parece 72 %")).toBeLessThan(text.indexOf("Plantilla sábana sintética v1"));
+    expect(text).toContain("Usar este formato");
+    expect(text).toContain("Ajustar columnas");
   });
 
-  it("sin sugerencias lo dice y deja empezar desde cero", () => {
-    const text = visibleText(render(<TemplatePicker suggestions={[]} templates={[]} loading={false} error={null} onUse={noop} onStartFromScratch={noop} />));
-    expect(text).toContain("Ninguna plantilla coincide con estas cabeceras.");
-    expect(text).not.toContain("Otra plantilla guardada");
-    expect(text).toContain("Empezar desde cero");
+  it("un formato que no encaja nombra las columnas que faltan y no se ofrece a sí mismo", () => {
+    const seed = template();
+    const other = template({ id: "tpl-9", name: "Inventario 1998" });
+    const text = visibleText(
+      render(<FormatProblemPanel {...props} issue={{ kind: "missing", template: seed, missing: ["N° INV", "FOTO"] }} suggestions={[]} templates={[seed, other]} />),
+    );
+    expect(text).toContain("Este formato no encaja con el archivo");
+    expect(text).toContain("N° INV, FOTO");
+    expect(text).toContain("Inventario 1998");
+    expect(text).not.toContain("Plantilla sábana sintética v1 ·");
+    expect(text.match(/Usar este formato/g)).toHaveLength(1);
+  });
+
+  it("sin otros formatos lo dice y deja «Ajustar columnas» como acción principal", () => {
+    const html = render(<FormatProblemPanel {...props} issue={{ kind: "unrecognized" }} suggestions={[]} templates={[]} />);
+    expect(visibleText(html)).toContain("No hay otros formatos guardados.");
+    expect(html).toMatch(/bg-terracota[^"]*"[^>]*>(?:(?!<\/button>)[\s\S])*Ajustar columnas/);
+  });
+
+  it("al cambiar de formato explica que se vuelve a leer y validar, sin ofrecer el actual", () => {
+    const seed = template();
+    const text = visibleText(
+      render(<FormatProblemPanel {...props} issue={{ kind: "change", current: seed }} suggestions={[]} templates={[seed, template({ id: "tpl-3", name: "Inventario 1998" })]} />),
+    );
+    expect(text).toContain("Cambiar el formato");
+    expect(text).toContain("se validará otra vez");
+    expect(text).not.toContain("Plantilla sábana sintética v1");
+    expect(text).toContain("Inventario 1998");
+  });
+
+  it("al cambiar de formato avisa cuántas decisiones se pierden, solo si hay", () => {
+    const seed = template();
+    const change = { kind: "change", current: seed } as const;
+    expect(visibleText(render(<FormatProblemPanel {...props} issue={change} decided={12} suggestions={[]} templates={[seed]} />))).toContain("Las 12 decisiones que ya tomó se pierden");
+    expect(visibleText(render(<FormatProblemPanel {...props} issue={change} decided={0} suggestions={[]} templates={[seed]} />))).not.toContain("se pierden");
+  });
+
+  it("al cambiar de formato deja volver a la revisión; en los demás casos no", () => {
+    const seed = template();
+    const withCancel = visibleText(render(<FormatProblemPanel {...props} issue={{ kind: "change", current: seed }} suggestions={[]} templates={[seed]} onCancel={noop} />));
+    expect(withCancel).toContain("Volver a la revisión");
+    expect(visibleText(render(<FormatProblemPanel {...props} issue={{ kind: "unrecognized" }} suggestions={[]} templates={[seed]} onCancel={noop} />))).not.toContain("Volver a la revisión");
   });
 
   it("mientras busca lo indica", () => {
-    const text = visibleText(render(<TemplatePicker suggestions={null} templates={null} loading error={null} onUse={noop} onStartFromScratch={noop} />));
-    expect(text).toContain("Buscando plantillas…");
+    const text = visibleText(render(<FormatProblemPanel {...props} loading issue={{ kind: "unrecognized" }} suggestions={null} templates={null} />));
+    expect(text).toContain("Buscando formatos…");
   });
 });
 

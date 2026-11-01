@@ -39,7 +39,7 @@ function ImportacionContent() {
   const template = IMPORT_TEMPLATES[0];
 
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas (RF-027). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
   return (
@@ -100,8 +100,8 @@ function ImportacionContent() {
               {template.columns.map((col) => (
                 <tr key={col.source_column} className="border-t border-borde">
                   <td className="py-1 pr-4 text-tinta">{col.source_column}</td>
-                  <td className="py-1 pr-4 text-gris-texto">{col.target_field ?? "(se conserva como dato de origen, RF-008)"}</td>
-                  <td className="py-1 pr-4 text-gris-texto">{col.split_compound ? "Sí (RF-023)" : "—"}</td>
+                  <td className="py-1 pr-4 text-gris-texto">{col.target_field ?? "(se conserva como dato de origen)"}</td>
+                  <td className="py-1 pr-4 text-gris-texto">{col.split_compound ? "Sí" : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -148,7 +148,7 @@ function ImportacionContent() {
             {rows.filter((r) => r.decision === "PENDING").length} aún pendientes de decisión.
           </p>
           {!hasPermission("imports.approve") ? (
-            <PermissionNotice>Su rol puede preparar la carga pero no aprobarla (RF-027). Cambie a Administrador o Gestor de colecciones.</PermissionNotice>
+            <PermissionNotice>Su rol puede preparar la carga pero no aprobarla. Cambie a Administrador o Gestor de colecciones.</PermissionNotice>
           ) : batch.status === "APPLIED" ? (
             <StatusBadge status={{ label: "Carga aplicada", intent: "success" }} />
           ) : (
@@ -161,7 +161,7 @@ function ImportacionContent() {
               confirmDescription={
                 <>
                   Se aplicarán las {rows.filter((r) => r.decision === "ACCEPTED").length} filas aceptadas al catálogo.
-                  Las filas rechazadas quedan en la bitácora, nunca se pierden (RN-005). Esta acción queda auditada
+                  Las filas rechazadas quedan en la bitácora, nunca se pierden. Esta acción queda auditada
                   con su usuario.
                 </>
               }
@@ -257,15 +257,15 @@ function PreviewStep({ rows }: { rows: ReturnType<typeof rowsForBatch> }) {
                 <Button
                   variant="secondary"
                   icon={MinusCircle}
-                  onClick={() => store.decideImportRow(row.id, "EXCLUDED", "Excluida manualmente en la previsualización.", actor, currentUser?.id ?? "")}
+                  onClick={() => store.decideImportRow(row.id, "EXCLUDED", "Dejada fuera manualmente en la previsualización.", actor, currentUser?.id ?? "")}
                 >
-                  Excluir
+                  Dejar fuera
                 </Button>
                 <ConfirmButton
                   label="Rechazar"
                   variant="danger"
                   confirmTitle="Rechazar fila"
-                  confirmDescription="La fila queda registrada como rechazada en la bitácora, con el motivo indicado (RF-028)."
+                  confirmDescription="La fila queda registrada como rechazada en la bitácora, con el motivo indicado."
                   requireReason
                   reasonLabel="Motivo del rechazo"
                   onConfirm={(reason) => store.decideImportRow(row.id, "REJECTED", reason, actor, currentUser?.id ?? "")}
@@ -290,7 +290,7 @@ function PreviewStep({ rows }: { rows: ReturnType<typeof rowsForBatch> }) {
 function LiveImportacion() {
   const { hasPermission } = useSession();
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas (RF-027). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
   return <LiveImportWizard />;
 }

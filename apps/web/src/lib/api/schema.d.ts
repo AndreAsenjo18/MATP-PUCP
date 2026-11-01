@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 29b83d1e92811dcbc46d811b87d490e041e16c58b6389268bd3557f57e3a0c82
+ * openapi-sha256: 80bc431ae89c4c1ab7e59c20a98e840117620db8502eef9fa5499f29ad960bd0
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -812,6 +812,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/imports/{batch_id}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fotografías del lote: bandeja con filtros y miniaturas
+         * @description Fotos del lote con su fila propuesta o asignada, ordenadas por fila y posición, con la miniatura firmada de las verificadas. Se filtran por estado, propuesta o fila (`importacion-masiva-fotografias`, diseño D4).
+         */
+        get: operations["listImportPhotos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Fotografías del lote: asignar fotos a una fila
+         * @description `assign` deja las fotos verificadas asignadas a mano a una fila del mismo lote, en el orden enviado y después de la última foto de la fila; el emparejamiento automático ya no las cambia. Una fila de otro lote o una foto sin verificar responde 422. Nada llega al catálogo hasta aprobar el lote (`importacion-masiva-fotografias`, diseño D4).
+         */
+        patch: operations["decideImportPhotos"];
+        trace?: never;
+    };
     "/api/v1/imports/{batch_id}/photos/complete": {
         parameters: {
             query?: never;
@@ -826,6 +850,23 @@ export interface paths {
          * @description Las fotos pasan a `UPLOADED` y quedan en cola: en segundo plano se verifica el tipo real, el tamaño y la huella SHA-256 de cada archivo y se generan su miniatura y su copia de visualización; la foto queda `VERIFIED` o `REJECTED` con su motivo y se le propone una fila del lote. Repetir la llamada no cambia nada (`importacion-masiva-fotografias`, diseño D2).
          */
         post: operations["completeImportPhotoUploads"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/photos/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fotografías del lote: conteos por estado y propuesta */
+        get: operations["summarizeImportPhotos"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1123,7 +1164,7 @@ export interface paths {
         };
         /**
          * Parámetro de normalización vigente (RN-010)
-         * @description Marcadores de ausencia (`absence_markers`) o separadores de códigos concatenados (`concatenation_separators`); sin valor guardado, el del código.
+         * @description Marcadores de ausencia (`absence_markers`), separadores de códigos concatenados (`concatenation_separators`) o correspondencias forma de adquisición → régimen (`tenure_aliases`); sin valor guardado, el del código.
          */
         get: operations["getNormalizationSetting"];
         /**
@@ -1182,7 +1223,10 @@ export interface paths {
         };
         /** Ficha de una pieza (campos sensibles según rol) */
         get: operations["getPieceById"];
-        /** Editar la ficha (auditoría campo a campo) */
+        /**
+         * Editar la ficha (auditoría campo a campo)
+         * @description Actualización parcial: los campos ausentes no cambian. Exige en `If-Match` la `version` de la ficha que se leyó; guardar sin cambios no audita ni cambia la versión (ficha-pieza-crud, diseño D2 y D3). Un cambio de `tenure_regime` sigue la tabla de transiciones (D4): `tenure_change_reason` y `supporting_document_ref` se exigen donde la tabla lo pide (422) y quedan en el motivo de la auditoría, no en la ficha.
+         */
         put: operations["updatePiece"];
         post?: never;
         /** Eliminar lógicamente una pieza con motivo (RN-005) */
@@ -1219,7 +1263,10 @@ export interface paths {
         /** Listar las piezas componentes de un conjunto (RF-009) */
         get: operations["getPieceChildren"];
         put?: never;
-        /** Asociar una pieza existente como componente de un conjunto (RF-009) */
+        /**
+         * Asociar una pieza existente como componente de un conjunto (RF-009)
+         * @description Responde la pieza componente. El vínculo queda en la auditoría como cambio de `parent_piece_id` de esa pieza; asociarla de nuevo al mismo conjunto no cambia nada. El código derivado del conjunto no se genera todavía [SUPUESTO B8].
+         */
         post: operations["addPieceChild"];
         delete?: never;
         options?: never;
@@ -1258,7 +1305,10 @@ export interface paths {
         /** Identificadores de la pieza (vigentes y, opcionalmente, históricos y dados de baja) */
         get: operations["listPieceIdentifiers"];
         put?: never;
-        /** Registrar un identificador externo (I bloqueado; comodato sin I) */
+        /**
+         * Registrar un identificador externo (I bloqueado; comodato sin I)
+         * @description Detecta los códigos concatenados **antes** de registrar: si el valor reúne varios, responde la propuesta de separación y la persona reenvía cada código por separado con `confirmed_split` y, en `split_from`, el valor original, que queda en el motivo de la auditoría. Nunca se separa solo (RF-023; ficha-pieza-crud, diseño D5).
+         */
         post: operations["addPieceIdentifier"];
         delete?: never;
         options?: never;
@@ -1295,7 +1345,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Corregir un código I con procedimiento auditado (Administrador, RN-002) */
+        /**
+         * Corregir un código I con procedimiento auditado (Administrador, RN-002)
+         * @description En una transacción, el código vigente pasa a no vigente enlazado al nuevo (`replaced_by_id`) y el nuevo queda vigente y bloqueado; la auditoría registra la corrección con su motivo, el usuario y ambos valores (ficha-pieza-crud, diseño D6). El valor anterior sigue en el historial y en la búsqueda. Responde el código nuevo.
+         */
         post: operations["correctInventoryCode"];
         delete?: never;
         options?: never;
@@ -1436,7 +1489,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Restaurar una pieza eliminada (Administrador) */
+        /**
+         * Restaurar una pieza eliminada (Administrador)
+         * @description Aplica la misma comprobación que la papelera (`restore_from_trash`), de modo que el criterio del código I duplicado es uno solo en todo el dominio (RN-002). Solo un Administrador restaura (`admin_required`) y la restauración queda en la auditoría con su motivo (ficha-pieza-crud, diseño D7).
+         */
         post: operations["restorePiece"];
         delete?: never;
         options?: never;
@@ -1470,7 +1526,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validar en tiempo real un formulario de ficha (RF-043) */
+        /**
+         * Validar en tiempo real un formulario de ficha (RF-043)
+         * @description Aplica las mismas reglas que el alta y la edición (`validate_piece_payload`) y responde las incidencias de cada campo; `is_valid` es falso si hay alguna de severidad `error`. Nunca guarda nada: la transacción se revierte siempre (ficha-pieza-crud, diseño D1). Con `piece_id` se valida la edición de esa pieza.
+         */
         post: operations["validatePiece"];
         delete?: never;
         options?: never;
@@ -3645,6 +3704,12 @@ export interface components {
          *     }
          */
         IdentifierCreate: {
+            /**
+             * Confirmed Split
+             * @description La persona confirmó la separación de un valor concatenado (RF-023). Sin ella, un valor con varios códigos responde 422 `concatenated_identifier` con la propuesta y no registra nada (ficha-pieza-crud D5).
+             * @default false
+             */
+            confirmed_split: boolean;
             /** Identifier Type Code */
             identifier_type_code: string;
             /** Notes */
@@ -3656,6 +3721,11 @@ export interface components {
             replaces_identifier_id?: string | null;
             /** Source */
             source?: string | null;
+            /**
+             * Split From
+             * @description Valor concatenado del que sale este código, tal como estaba escrito; queda en el motivo de la auditoría. Solo junto con `confirmed_split`.
+             */
+            split_from?: string | null;
             /** Value */
             value: string;
         };
@@ -4132,11 +4202,111 @@ export interface components {
             target_piece_id: string | null;
         };
         /**
+         * ImportPhotoOut
+         * @description A photo of the batch in the tray, with its proposed row (design D4).
+         */
+        ImportPhotoOut: {
+            /**
+             * Candidate Row Ids
+             * @description Filas posibles de una foto ambigua; nunca se elige una por adivinanza.
+             */
+            candidate_row_ids?: string[] | null;
+            /**
+             * Duplicate Confirmed
+             * @default false
+             */
+            duplicate_confirmed: boolean;
+            /**
+             * Duplicate Of Existing
+             * @default false
+             */
+            duplicate_of_existing: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            match_source?: components["schemas"]["PhotoMatchSource"] | null;
+            /** @description null: sin propuesta todavía (subiéndose o lote sin validar). */
+            match_status?: components["schemas"]["PhotoMatchStatus"] | null;
+            /** Original Filename */
+            original_filename: string;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** Relative Path */
+            relative_path: string;
+            /**
+             * Row Id
+             * @description Fila propuesta o asignada.
+             */
+            row_id?: string | null;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Sort Key
+             * @description Orden de la foto dentro de su fila.
+             */
+            sort_key?: number | null;
+            status: components["schemas"]["ImportPhotoStatus"];
+            /**
+             * Thumbnail Url
+             * @description URL prefirmada temporal de la miniatura; solo de fotos verificadas.
+             */
+            thumbnail_url?: string | null;
+        };
+        /**
          * ImportPhotoStatus
          * @description Lifecycle of a photo added to a batch (change importacion-masiva-fotografias, D1, D2).
          * @enum {string}
          */
         ImportPhotoStatus: "PENDING_UPLOAD" | "UPLOADED" | "VERIFIED" | "REJECTED" | "DISCARDED" | "APPLIED";
+        /**
+         * ImportPhotoSummary
+         * @example {
+         *       "batch_id": "01920000-0000-7000-8000-000000000601",
+         *       "by_match_status": {
+         *         "AMBIGUOUS": 3,
+         *         "MATCHED": 62,
+         *         "NONE": 4,
+         *         "UNMATCHED": 11
+         *       },
+         *       "by_status": {
+         *         "REJECTED": 2,
+         *         "UPLOADED": 2,
+         *         "VERIFIED": 76
+         *       },
+         *       "duplicates": 0,
+         *       "total": 80
+         *     }
+         */
+        ImportPhotoSummary: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /**
+             * By Match Status
+             * @description Fotos por propuesta; `NONE`: sin propuesta todavía.
+             */
+            by_match_status: {
+                [key: string]: number;
+            };
+            /**
+             * By Status
+             * @description Fotos por estado (todos los estados).
+             */
+            by_status: {
+                [key: string]: number;
+            };
+            /**
+             * Duplicates
+             * @description Fotos que ya están en la pieza destino y esperan confirmación.
+             */
+            duplicates: number;
+            /** Total */
+            total: number;
+        };
         /**
          * ImportRowOut
          * @example {
@@ -5083,14 +5253,16 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "absence_markers" | "concatenation_separators";
+            key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             /** Updated At */
             updated_at: string | null;
             /**
              * Value
-             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan.
+             * @description `absence_markers`: lista de marcadores (se comparan sin espacios ni mayúsculas). `concatenation_separators`: separadores y marcadores que no se separan. `tenure_aliases`: forma de adquisición → régimen de tenencia (Propiedad, Comodato o Préstamo Temporal), para deducir el régimen al importar una fila que no lo trae.
              */
-            value: string[] | components["schemas"]["ConcatenationSeparators"];
+            value: string[] | components["schemas"]["ConcatenationSeparators"] | {
+                [key: string]: string;
+            };
         };
         /**
          * NormalizationSettingUpdate
@@ -5106,7 +5278,9 @@ export interface components {
          */
         NormalizationSettingUpdate: {
             /** Value */
-            value: string[] | components["schemas"]["ConcatenationSeparators"];
+            value: string[] | components["schemas"]["ConcatenationSeparators"] | {
+                [key: string]: string;
+            };
         };
         /**
          * NormalizationStatus
@@ -5294,6 +5468,20 @@ export interface components {
              */
             total: number;
         };
+        /** Page[ImportPhotoOut] */
+        Page_ImportPhotoOut_: {
+            /** Items */
+            items: components["schemas"]["ImportPhotoOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
         /** Page[IncompletePiece] */
         Page_IncompletePiece_: {
             /** Items */
@@ -5403,6 +5591,46 @@ export interface components {
              */
             photo_ids: string[];
         };
+        /** PhotoDecisionOut */
+        PhotoDecisionOut: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Photos */
+            photos: components["schemas"]["ImportPhotoOut"][];
+        };
+        /**
+         * PhotoDecisionRequest
+         * @description A decision of a person on photos of the batch (design D4).
+         *
+         *     Only ``assign`` is available: ``unassign``, ``discard``, ``confirm_duplicate`` and
+         *     ``reorder`` come later.
+         * @example {
+         *       "op": "assign",
+         *       "photo_ids": [
+         *         "01920000-0000-7000-8000-000000000701"
+         *       ],
+         *       "row_id": "01920000-0000-7000-8000-000000000611"
+         *     }
+         */
+        PhotoDecisionRequest: {
+            /**
+             * Op
+             * @description `assign`: las fotos quedan asignadas a mano a `row_id`, después de su última foto; el emparejamiento ya no las cambia.
+             * @constant
+             */
+            op: "assign";
+            /** Photo Ids */
+            photo_ids: string[];
+            /**
+             * Row Id
+             * Format: uuid
+             * @description Fila del mismo lote.
+             */
+            row_id: string;
+        };
         /** PhotoFileIn */
         PhotoFileIn: {
             /**
@@ -5423,6 +5651,18 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
         };
+        /**
+         * PhotoMatchSource
+         * @description Path that proposed the row (D3): file name, folder, mapped column, person or workbook.
+         * @enum {string}
+         */
+        PhotoMatchSource: "FILENAME" | "FOLDER" | "COLUMN" | "MANUAL" | "EMBEDDED";
+        /**
+         * PhotoMatchStatus
+         * @description Proposed row of a photo (D3): never applied to the catalogue without batch approval.
+         * @enum {string}
+         */
+        PhotoMatchStatus: "MATCHED" | "AMBIGUOUS" | "UNMATCHED" | "MANUAL";
         /** PhotoStateOut */
         PhotoStateOut: {
             /**
@@ -5688,7 +5928,8 @@ export interface components {
          *       "provenance": "Ayacucho (sintético)",
          *       "recorded_by": "Registrador sintético",
          *       "tenure_regime": "Comodato",
-         *       "updated_at": "2026-09-17T10:30:00Z"
+         *       "updated_at": "2026-09-17T10:30:00Z",
+         *       "version": 3
          *     }
          */
         PieceDetail: {
@@ -5778,6 +6019,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Version
+             * @description Versión de la ficha: se envía en `If-Match` al editarla (control de concurrencia, ficha-pieza-crud D2).
+             */
+            version: number;
         };
         /**
          * PieceLocation
@@ -5983,8 +6229,23 @@ export interface components {
             provenance?: string | null;
             /** Recorded By */
             recorded_by?: string | null;
+            /**
+             * Supporting Document Ref
+             * @description Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            supporting_document_ref?: string | null;
             /** Temporary Inventory Number */
             temporary_inventory_number?: string | null;
+            /**
+             * Tenure Change Reason
+             * @description Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).
+             */
+            tenure_change_reason?: string | null;
+            /**
+             * Tenure Regime
+             * @description Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, RN-004). Omitir para no tocarlo.
+             */
+            tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
         };
         /**
          * PieceValidationResult
@@ -10241,6 +10502,143 @@ export interface operations {
             };
         };
     };
+    listImportPhotos: {
+        parameters: {
+            query?: {
+                /** @description Resultados por página (máx. 100). */
+                limit?: number;
+                match_status?: components["schemas"]["PhotoMatchStatus"] | null;
+                /** @description Número de página (desde 1). */
+                page?: number;
+                row_id?: string | null;
+                status?: components["schemas"]["ImportPhotoStatus"] | null;
+            };
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ImportPhotoOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decideImportPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoDecisionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote ya no admite cambios en sus fotos. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     completeImportPhotoUploads: {
         parameters: {
             query?: never;
@@ -10294,6 +10692,64 @@ export interface operations {
             };
             /** @description El lote ya no admite fotos (está aprobado). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    summarizeImportPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPhotoSummary"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11398,7 +11854,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             };
             cookie?: never;
         };
@@ -11447,7 +11903,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                key: "absence_markers" | "concatenation_separators";
+                key: "absence_markers" | "concatenation_separators" | "tenure_aliases";
             };
             cookie?: never;
         };
@@ -11745,7 +12201,10 @@ export interface operations {
     updatePiece: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description `version` de la ficha leída (ficha-pieza-crud D2). */
+                "If-Match"?: string | null;
+            };
             path: {
                 piece_id: string;
             };
@@ -11793,8 +12252,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `edit_conflict`: la ficha cambió desde que se leyó; `details` trae su versión y sus valores actuales. También las reglas del régimen de tenencia (`tenure_change_with_inventory_code`, `invalid_tenure_transition`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Falta la cabecera `If-Match`. */
+            428: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12012,8 +12489,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12021,13 +12498,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `piece_hierarchy_cycle`: la pieza es el propio conjunto o uno de sus ancestros; `component_already_linked`: ya es componente de otro conjunto (`details.parent_piece_id`). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12255,8 +12741,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12264,13 +12750,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description Reglas del identificador: código I en una pieza que no es de propiedad (`identifier_not_allowed_for_tenure`, RN-003), valor ya asignado a otra pieza o código I ya vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `concatenated_identifier`: el valor reúne varios códigos; `details.proposals` trae uno por código (`identifier_type_code`, `original_value`, `normalized_value`) y no se registra nada. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12389,8 +12884,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza o el identificador no existen. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12398,13 +12893,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `duplicate_identifier` o `identifier_of_deleted_piece`: el valor nuevo ya es el código I de otra pieza, activa o eliminada (`details.piece_id`, A6); `not_current_inventory_code`: el identificador no es el código I vigente. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -12916,6 +13420,7 @@ export interface operations {
     restorePiece: {
         parameters: {
             query?: {
+                /** @description Motivo de la restauración. */
                 reason?: string | null;
             };
             header?: never;
@@ -12953,8 +13458,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Datos no válidos. */
-            422: {
+            /** @description La pieza no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12962,13 +13467,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
+            /** @description `restore_dependency`: el código I vigente de la pieza ya lo tiene otra pieza activa (`details.dependency_entity_id`) o su colección sigue eliminada; `not_deleted`: la pieza no está eliminada. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -13081,15 +13595,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `ficha-pieza-crud`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };

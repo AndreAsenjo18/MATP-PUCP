@@ -14,12 +14,14 @@ export interface SidebarProps {
   onNavigate?: () => void;
   className?: string;
   id?: string;
+  /** Riel de iconos: cada sección conserva su nombre accesible y una ayuda al pasar el cursor. */
+  collapsed?: boolean;
 }
 
-export function Sidebar({ items, pathname, onNavigate, className, id }: SidebarProps) {
+export function Sidebar({ items, pathname, onNavigate, className, id, collapsed = false }: SidebarProps) {
   return (
     <nav id={id} aria-label="Navegación principal" className={cn("bg-tinta text-crema", className)}>
-      <ul className="flex flex-col gap-1 p-3">
+      <ul className={cn("flex flex-col gap-1", collapsed ? "p-2" : "p-3")}>
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
@@ -29,13 +31,15 @@ export function Sidebar({ items, pathname, onNavigate, className, id }: SidebarP
                 href={item.href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
+                title={collapsed ? item.label : undefined}
                 className={cn(
                   "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-base font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema",
+                  collapsed && "justify-center px-0",
                   active ? "bg-crema text-tinta" : "text-crema hover:bg-white/10",
                 )}
               >
                 <Icon size={20} aria-hidden="true" />
-                {item.label}
+                <span className={collapsed ? "sr-only" : undefined}>{item.label}</span>
               </Link>
             </li>
           );

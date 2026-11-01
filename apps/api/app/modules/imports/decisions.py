@@ -57,7 +57,7 @@ def row_action(row: ImportRow) -> tuple[RowAction, str | None]:
     if row.decision == RowDecision.REJECTED:
         return RowAction.SKIP, row.decision_reason or "Rechazada."
     if row.decision == RowDecision.EXCLUDED:
-        return RowAction.SKIP, row.decision_reason or "Excluida en la previsualización."
+        return RowAction.SKIP, row.decision_reason or "Dejada fuera en la previsualización."
     if row.has_validation_errors:
         messages = "; ".join(error.get("message", "") for error in row.validation_errors or [])
         return RowAction.SKIP, f"Errores de validación: {messages}"
@@ -184,7 +184,7 @@ def _resolve_to_piece(
     if current and incoming and not incoming & current:
         raise ValidationFailed(
             "La fila trae un código I distinto del de la pieza elegida; el código I no se "
-            "cambia en una importación (RN-002).",
+            "cambia en una importación.",
             code="inventory_code_mismatch",
             details={"current": sorted(current), "incoming": sorted(incoming)},
         )
@@ -227,7 +227,7 @@ def decide_row(
     reason = reason.strip() if reason and reason.strip() else None
     if decision == RowDecision.REJECTED and reason is None:
         raise ValidationFailed(
-            "Indique el motivo del rechazo: queda en la bitácora del lote (RF-028).",
+            "Indique el motivo del rechazo: queda en la bitácora del lote.",
             code="reason_required",
         )
     if target_piece_id is not None and as_new:

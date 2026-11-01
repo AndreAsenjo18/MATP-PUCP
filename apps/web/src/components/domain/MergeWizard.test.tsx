@@ -6,7 +6,7 @@ import { DUPLICATE_CANDIDATES, getPieceDetail, ids } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
 import { MergeLinks, MergedFromNotice, MergedIntoNotice } from "./MergedPieceLinks";
-import { MergeFieldsStep, MergeSummaryStep, MergeSurvivorStep, MergeWizard, type MergeStep } from "./MergeWizard";
+import { MergeFieldsStep, MergeSummaryStep, MergeSurvivorStep, MergeWizard, PieceCodes, type MergeStep } from "./MergeWizard";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 
@@ -29,7 +29,7 @@ function radio(html: string, value: string): string {
 }
 
 describe("MergeWizard: paso 1, pieza que se conserva", () => {
-  it("propone conservar la pieza con código I y no deja elegir la otra, con el motivo a la vista (RN-002)", () => {
+  it("propone conservar la pieza con código I y no deja elegir la otra, con el motivo a la vista", () => {
     const html = wizard(1);
     const text = visibleText(html);
     expect(text).toContain("Fusionar piezas duplicadas");
@@ -55,7 +55,7 @@ describe("MergeWizard: paso 1, pieza que se conserva", () => {
 
   it.each([
     ["regímenes de tenencia distintos", getPieceDetail(ids.piece(5))!, /regímenes de tenencia distintos \(Propiedad y Comodato\)\. Primero corrija el régimen/],
-    ["códigos I vigentes distintos", getPieceDetail(ids.piece(7))!, /códigos I vigentes distintos \(I-0236 y I-0450\)\. Un código I nunca cambia de pieza \(RN-002\)/],
+    ["códigos I vigentes distintos", getPieceDetail(ids.piece(7))!, /códigos I vigentes distintos \(I-0236 y I-0450\)\. Un código I nunca cambia de pieza:/],
   ])("un par bloqueado por %s solo explica el motivo y se cierra", (_label, other, message) => {
     const html = wizard(1, other);
     const text = visibleText(html);
@@ -76,10 +76,10 @@ describe("MergeWizard: paso 2, valores de la ficha", () => {
     expect(html).not.toContain(">Colección</legend>");
     expect(text).toContain("Puno Pieza A · se conserva");
     expect(text).toContain("Cusco (sintético) Pieza B · se absorbe");
-    expect(text).toContain("Se completan con «Toro de Pucará (3 cuernos)» (la conservada no los tiene)");
+    expect(text).toContain("Se completan con la pieza absorbida (la conservada no los tiene)");
     expect(text).toContain("Autor: «Taller sintético»");
     expect(text).toMatch(/\d+ campos no cambian/);
-    expect(text).toContain("La ubicación actual y la pieza contenedora son siempre las de la conservada.");
+    expect(text).toContain("La ubicación y la pieza contenedora son las de la conservada.");
   });
 
   it("marca la pieza elegida en cada fila y avisa si la época quedaría incoherente", () => {
@@ -93,11 +93,11 @@ describe("MergeWizard: paso 2, valores de la ficha", () => {
     expect(visibleText(html)).toMatch(/La época resultante sería incoherente \(desde 1950 hasta 1920\)/);
   });
 
-  it("sin conflictos lo dice y los campos restringidos no se eligen (RF-041)", () => {
+  it("sin conflictos lo dice y los campos restringidos no se eligen", () => {
     const twin = { ...toro, id: toroB.id, masked_fields: ["lender_name"] };
     const text = visibleText(render(<MergeFieldsStep surviving={toro} absorbed={twin} titles={titles} picks={{}} onPick={noop} />));
     expect(text).toContain("Las dos fichas no tienen valores en conflicto: no hay nada que elegir.");
-    expect(text).toContain("Comodante: restringido para su rol (RF-041)");
+    expect(text).toContain("Comodante: restringido para su rol");
   });
 });
 
@@ -109,20 +109,20 @@ describe("MergeWizard: paso 3, resumen y confirmación", () => {
     expect(text).toContain("Procedencia : «Puno» → «Cusco (sintético)» Elegido");
     expect(text).toContain("Autor : «Sin registrar» → «Taller sintético» Se completa");
     expect(text).toContain("Pasa de «Toro de Pucará (3 cuernos)» a «Toro de Pucará»");
-    expect(text).toContain("Identificador COLLECTION mmz 15 (como no vigente: repite un código de la conservada; no se borra)");
+    expect(text).toContain("Código COLLECTION mmz 15 (como no vigente: ya lo tiene la conservada)");
     expect(text).toContain("2 fotografías.");
-    expect(text).toContain("Sus componentes, sus préstamos (salvo uno en el que ya esté la conservada) y sus sugerencias de IA.");
-    expect(text).toContain("Se queda en «Toro de Pucará (3 cuernos)», que queda fusionada en «Toro de Pucará»");
-    expect(text).toContain("Movimientos, datos de origen y evaluaciones de conservación: no se modifican");
-    expect(text).toContain("se da de baja lógica con el motivo de la fusión: no se borra");
-    expect(text).toContain("Los demás pares de «Toro de Pucará (3 cuernos)» en la cola pasan a «Reemplazado».");
+    expect(text).toContain("Sus componentes, préstamos y sugerencias de IA.");
+    expect(text).toContain("Qué se queda en «Toro de Pucará (3 cuernos)»");
+    expect(text).toContain("Movimientos, datos de origen y evaluaciones de conservación: se consultan desde la ficha de");
+    expect(text).toContain("Se da de baja lógica con el motivo: no se borra");
+    expect(text).toContain("Sus otros pares de la cola pasan a «Reemplazado».");
     expect(text).toContain("Motivo de la fusión (obligatorio)");
   });
 
   it("el código I de la absorbida se queda en ella y el error del motivo se muestra junto al campo", () => {
     const sameCode = { ...toroB, code_i: "I-0236" };
     const html = render(<MergeSummaryStep surviving={sameCode} absorbed={toro} choices={{}} note="" noteError="Indique el motivo." onNoteChange={noop} />);
-    expect(visibleText(html)).toContain("Código I I-0236 / M.M.Z. 015: un código I nunca cambia de pieza (RN-002).");
+    expect(visibleText(html)).toContain("Código I I-0236 / M.M.Z. 015: un código I nunca cambia de pieza.");
     expect(html).toContain('aria-invalid="true"');
     expect(visibleText(html)).toContain("Indique el motivo.");
   });
@@ -162,5 +162,75 @@ describe("enlaces de fusión en la ficha (calidad-datos, «Consulta de la pieza 
   it("una pieza que no participó en una fusión no muestra nada", () => {
     expect(render(<MergeLinks piece={toro} />)).toBe("");
     expect(render(<MergeLinks piece={{ merged_into: null, merged_from: [] }} />)).toBe("");
+  });
+});
+
+function historic(piece: PieceDetail): PieceDetail {
+  const identifier = { id: "id-historico", identifier_type_code: "INC_RN", original_value: "4521", is_current: false } as unknown as PieceDetail["identifiers"][number];
+  return { ...piece, identifiers: [...piece.identifiers, identifier] };
+}
+
+describe("códigos a la vista durante la fusión", () => {
+  it("muestra el código I y los demás códigos de la pieza, con los históricos marcados", () => {
+    const text = visibleText(render(<PieceCodes piece={historic(toro)} />));
+    expect(text).toContain("Código I I-0236");
+    expect(text).toContain("COLLECTION M.M.Z. 015");
+    expect(text).toContain("INC_RN 4521 · histórico");
+  });
+
+  it("una pieza sin ningún código dice «Sin código I» y no pinta una lista vacía", () => {
+    const bare = { ...toro, code_i: null, identifiers: [] };
+    const html = render(<PieceCodes piece={bare} />);
+    expect(visibleText(html)).toBe("Sin código I");
+    expect(html).not.toContain("<ul");
+  });
+
+  it("los tres pasos muestran los códigos de las dos piezas", () => {
+    expect(visibleText(wizard(1))).toContain("Código I I-0236");
+    expect(visibleText(wizard(1))).toContain("COLLECTION M.M.Z. 015");
+    for (const step of [2, 3] as const) {
+      const text = visibleText(wizard(step));
+      expect(text).toContain("Se conserva");
+      expect(text).toContain("Se absorbe");
+      expect(text).toContain("Código I I-0236");
+      expect(text).toContain("Sin código I");
+    }
+  });
+});
+
+describe("diálogo de fusión compacto", () => {
+  it("tiene el cuerpo con desplazamiento propio y los botones fuera de él, siempre a la vista", () => {
+    const html = wizard(3);
+    expect(html).toContain("overflow-y-auto");
+    expect(html).toContain("open:flex");
+    expect(html).toContain("max-h-[calc(100dvh-2rem)]");
+    const body = html.indexOf("overflow-y-auto");
+    const footer = html.indexOf("Fusionar piezas</button>");
+    expect(footer).toBeGreaterThan(body);
+    // El pie queda fuera del cuerpo: su contenedor se abre después de cerrar el cuerpo.
+    expect(html.slice(body, footer)).toContain("border-t border-borde");
+  });
+
+  it("el motivo va primero en el documento (arriba en móvil) y a la derecha en escritorio", () => {
+    const html = wizard(3);
+    expect(html.indexOf("Motivo de la fusión (obligatorio)")).toBeLessThan(html.indexOf("La ficha de"));
+    expect(html).toContain("md:grid-cols-[minmax(0,1fr)_17rem]");
+    expect(html).toMatch(/md:order-2[^"]*md:sticky/);
+  });
+
+  it("el detalle de lo que queda en la pieza absorbida está plegado", () => {
+    const html = wizard(3);
+    expect(html).toMatch(/<details[^>]*>\s*<summary[^>]*>[^<]*Qué se queda en/);
+    expect(html).not.toMatch(/<details[^>]*\sopen/);
+  });
+
+  it("no muestra identificadores de requisitos en ningún paso", () => {
+    // Un código de pieza como «RN-004521» (Ministerio de Cultura) no es un requisito: se buscan RN-001..010, RF-001..044, etc.
+    const requirement = /\b(RF-0\d{2}|RNF-0\d{2}|RN-0\d{2}|RIA-0\d)\b/;
+    // Los datos de la ficha de prueba pueden citar un requisito en su texto libre; aquí solo se comprueba la copia del asistente.
+    const clean = { ...toroB, description: "Descripción de prueba", notes: null };
+    for (const step of [1, 2, 3] as const) expect(visibleText(wizard(step, clean))).not.toMatch(requirement);
+    expect(visibleText(wizard(1, getPieceDetail(ids.piece(7))!))).not.toMatch(requirement);
+    expect(visibleText(wizard(1, getPieceDetail(ids.piece(5))!))).not.toMatch(requirement);
   });
 });

@@ -571,6 +571,7 @@ def test_manual_availability_incoherent_with_current_location_is_rejected(
     move_piece(session, piece, deposit, "Ingreso")
     session.commit()
     piece_id = str(piece.id)
+    version = piece.version
     en_sala_id = str(
         session.scalar(
             select(Term.id)
@@ -584,7 +585,7 @@ def test_manual_availability_incoherent_with_current_location_is_rejected(
     res = client.put(
         f"/api/v1/pieces/{piece_id}",
         json={"availability_term_id": en_sala_id},
-        headers=as_user(CATALOGUER),
+        headers={**as_user(CATALOGUER), "If-Match": str(version)},
     )
     assert res.status_code == 409
     assert res.json()["code"] == "availability_incoherent"

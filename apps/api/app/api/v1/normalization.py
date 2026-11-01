@@ -22,6 +22,7 @@ from app.modules.identification.models import CollectionAcronymAlias
 from app.modules.identification.params_schemas import (
     AcronymAliasCreate,
     AcronymAliasOut,
+    ConcatenationSeparators,
     NormalizationSettingKey,
     NormalizationSettingOut,
     NormalizationSettingUpdate,
@@ -45,7 +46,7 @@ def _setting_out(session: Session, key: str) -> NormalizationSettingOut:
     setting = params_admin.get_setting(session, key)
     return NormalizationSettingOut(
         key=key,  # type: ignore[arg-type]
-        value=setting_value(setting.value if setting else params_admin.default_value(key)),
+        value=setting_value(key, setting.value if setting else params_admin.default_value(key)),
         is_default=setting is None,
         updated_at=setting.updated_at if setting else None,
     )
@@ -69,8 +70,9 @@ def _alias_out(session: Session, alias: CollectionAcronymAlias) -> AcronymAliasO
     "/normalization-settings/{key}",
     response_model=NormalizationSettingOut,
     summary="Parámetro de normalización vigente (RN-010)",
-    description="Marcadores de ausencia (`absence_markers`) o separadores de códigos "
-    "concatenados (`concatenation_separators`); sin valor guardado, el del código.",
+    description="Marcadores de ausencia (`absence_markers`), separadores de códigos "
+    "concatenados (`concatenation_separators`) o correspondencias forma de adquisición → "
+    "régimen (`tenure_aliases`); sin valor guardado, el del código.",
     **implemented(),
 )
 def get_normalization_setting(
@@ -94,7 +96,9 @@ def put_normalization_setting(
     session: SessionDep,
     user: ParamsManager,
 ) -> NormalizationSettingOut:
-    value = body.value.model_dump() if not isinstance(body.value, list) else body.value
+    value = (
+        body.value.model_dump() if isinstance(body.value, ConcatenationSeparators) else body.value
+    )
     params_admin.save_setting(writer(session, user), key, value)
     session.commit()
     return _setting_out(session, key)

@@ -30,14 +30,14 @@ export const NORMALIZATION_RULES: { value: NormalizationRule; label: string }[] 
 
 export const ADMIN_ERROR_MESSAGES: Record<string, string> = {
   ...IMPORT_ERROR_MESSAGES,
-  vocabulary_exists: "Ya existe un vocabulario con ese código.",
-  identifier_type_exists: "Ya existe un tipo de identificador con ese código.",
-  duplicate_term: "Ya existe un término con ese código o esa etiqueta en el vocabulario.",
+  vocabulary_exists: "Ya existe una lista con ese código.",
+  identifier_type_exists: "Ya existe un tipo de código con ese código.",
+  duplicate_term: "Ya existe un término con ese código o esa etiqueta en la lista.",
   term_in_use: "El término está en uso: desactívelo en lugar de eliminarlo.",
-  system_identifier_type: "Es un tipo de identificador del sistema: solo se pueden cambiar su etiqueta, descripción y orden (RN-002, RN-003).",
+  system_identifier_type: "Es un tipo de código del sistema: solo se pueden cambiar su etiqueta, descripción y orden.",
   normalization_change_requires_preview: "Los identificadores cambiaron después de la vista previa: vuelva a revisar el impacto antes de confirmar.",
-  normalization_collision: "La nueva regla dejaría el mismo código vigente en piezas distintas: corrija esos códigos antes de cambiar la regla (RN-002).",
-  admin_required: "Solo un Administrador puede confirmar este cambio (RN-002).",
+  normalization_collision: "La nueva regla dejaría el mismo código vigente en piezas distintas: corrija esos códigos antes de cambiar la regla.",
+  admin_required: "Solo un Administrador puede confirmar este cambio.",
   duplicate_acronym: "Ya existe una colección con esa sigla.",
   invalid_conservation_term: "Elija un estado de conservación activo de la escala.",
   request_validation_failed: "Revise los datos: hay campos obligatorios vacíos o con formato no válido.",
@@ -75,9 +75,9 @@ export function codeError(code: string, { min = 1, max = 60 }: { min?: number; m
 export function lockedRules(type: Pick<IdentifierType, "is_system" | "is_unique_when_current" | "locks_on_assignment" | "owned_pieces_only">): string[] {
   if (!type.is_system) return [];
   const rules: string[] = [];
-  if (type.locks_on_assignment) rules.push("se bloquea al asignarse (RN-002)");
+  if (type.locks_on_assignment) rules.push("se bloquea al asignarse");
   if (type.is_unique_when_current) rules.push("es único entre los códigos vigentes");
-  if (type.owned_pieces_only) rules.push("solo aplica a piezas en propiedad (RN-003)");
+  if (type.owned_pieces_only) rules.push("solo aplica a piezas en propiedad");
   return rules;
 }
 
@@ -258,4 +258,34 @@ export async function recordAssessment(
       }),
     ADMIN_ERROR_MESSAGES,
   );
+}
+
+export interface CollectionFilters {
+  query: string;
+  /** `""` = todas. */
+  status: "" | "active" | "inactive";
+  /** `""` = todas; las subcolecciones tienen colección padre. */
+  kind: "" | "main" | "sub";
+}
+
+export const NO_COLLECTION_FILTERS: CollectionFilters = { query: "", status: "", kind: "" };
+
+function foldText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Colecciones cuyo nombre o sigla contiene la búsqueda y que cumplen el estado y el tipo elegidos. */
+export function filterCollections(items: readonly CollectionItem[], filters: CollectionFilters): CollectionItem[] {
+  const query = foldText(filters.query);
+  return items.filter((item) => {
+    if (filters.status === "active" && !item.is_active) return false;
+    if (filters.status === "inactive" && item.is_active) return false;
+    if (filters.kind === "main" && item.parent_id) return false;
+    if (filters.kind === "sub" && !item.parent_id) return false;
+    return !query || foldText(item.name).includes(query) || foldText(item.acronym ?? "").includes(query);
+  });
 }

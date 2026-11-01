@@ -64,7 +64,7 @@ export function importClassificationStatus(classification: RowClassification | s
 const DECISION: Record<RowDecision, StatusStyle> = {
   PENDING: { label: "Pendiente", intent: "warning" },
   ACCEPTED: { label: "Aceptada", intent: "success" },
-  EXCLUDED: { label: "Excluida", intent: "default" },
+  EXCLUDED: { label: "Dejada fuera", intent: "default" },
   REJECTED: { label: "Rechazada", intent: "danger" },
 };
 

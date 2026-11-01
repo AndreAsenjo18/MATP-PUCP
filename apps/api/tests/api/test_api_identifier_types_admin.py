@@ -19,6 +19,7 @@ from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.service import create_piece
+from app.modules.identification.models import NormalizationStatus
 from app.modules.identification.service import add_identifier
 from app.modules.users.models import AppUser
 from tests.api.conftest import ADMIN, Pipeline
@@ -293,3 +294,57 @@ def test_only_an_administrator_recalculates_a_locked_type(pipeline: Pipeline) ->
 
     assert response.status_code == 403 and response.json()["code"] == "admin_required"
     assert _identifiers(pipeline, code)[0].original_value == "I-0031"
+
+
+def test_the_same_rule_recovers_a_five_digit_rn_stored_as_unparseable(pipeline: Pipeline) -> None:
+    """ajustes-lectura-importacion, task 2.2 (design D3): an RN of 5 digits registered before the
+    rule accepted them stays «no normalizable»; the preview with the current rule proposes it and
+    confirming recalculates it, auditing the change."""
+    code = _create_type(pipeline, rule="INC_RN")
+    _pieces_with(pipeline, code, "RN 12345", "RN 123456")
+    with pipeline.session() as session:  # as it was stored before the 5-digit format existed
+        admin_id = session.scalar(select(AppUser.id).where(AppUser.email == ADMIN))
+        with audit_context(session, AuditContext(origin=AuditOrigin.MANUAL, user_id=admin_id)):
+            old = session.scalar(
+                select(PieceIdentifier).where(
+                    PieceIdentifier.identifier_type_code == code,
+                    PieceIdentifier.original_value == "RN 12345",
+                )
+            )
+            old.normalized_value = None
+            old.normalization_status = NormalizationStatus.UNPARSEABLE
+            old.detected_format = None
+            session.flush()
+        session.commit()
+    admin = pipeline.login("ADMIN")
+
+    report = admin.post(
+        f"{BASE}/{code}/normalization-preview", json={"normalization_rule": "INC_RN"}
+    ).json()
+    confirmed = admin.patch(
+        f"{BASE}/{code}",
+        json={"normalization_rule": "INC_RN", "confirm_token": report["confirm_token"]},
+    )
+
+    assert report["total_identifiers"] == 2 and report["changed_count"] == 1
+    assert report["unparseable_count"] == 0 and report["can_confirm"] is True
+    assert confirmed.status_code == 200, confirmed.text
+    by_original = {
+        identifier.original_value: identifier for identifier in _identifiers(pipeline, code)
+    }
+    recovered = by_original["RN 12345"]
+    assert recovered.normalized_value == "12345"
+    assert recovered.normalization_status is NormalizationStatus.NORMALIZED
+    assert recovered.detected_format == "INC_5_DIGITOS"
+    assert by_original["RN 123456"].normalized_value == "123456"  # untouched
+
+
+def test_the_same_rule_without_a_token_changes_nothing(pipeline: Pipeline) -> None:
+    code = _create_type(pipeline, rule="INC_RN")
+    _pieces_with(pipeline, code, "RN 1234")
+    admin = pipeline.login("ADMIN")
+
+    response = admin.patch(f"{BASE}/{code}", json={"normalization_rule": "INC_RN"})
+
+    assert response.status_code == 200, response.text
+    assert _identifiers(pipeline, code)[0].normalized_value == "1234"
