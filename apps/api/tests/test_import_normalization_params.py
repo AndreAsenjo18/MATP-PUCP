@@ -3,7 +3,7 @@
 
 Change plantillas-mapeo-y-normalizacion, task 2.2 step B (design D5): the transformations,
 ``RowIdentifier.from_raw`` and ``apply_mapping`` use the current parameters of the batch, read
-once per session by ``MappingContext``. Synthetic data only (RNF-014); ``NO REGISTRA`` and
+once per session by ``MappingContext``. Synthetic data only (RNF-014); ``SIN REGISTRO`` and
 ``REP`` are illustrative [SUPUESTO A5, A3].
 """
 
@@ -36,7 +36,7 @@ from app.modules.imports.transforms import parse_transforms, run_transforms
 from app.seed.reference import ReferenceData
 from tests.conftest import ActAs
 
-NO_REGISTRA = NormalizationParams(absence_markers=ABSENCE_MARKERS | {"NOREGISTRA"})
+NO_REGISTRA = NormalizationParams(absence_markers=ABSENCE_MARKERS | {"SINREGISTRO"})
 WITHOUT_COMMA = NormalizationParams(separators=tuple(s for s in DEFAULT_SEPARATORS if s != ","))
 REP_LRM = NormalizationParams(acronym_aliases={"REP": "LRM"})
 
@@ -64,15 +64,15 @@ def _run(raw: str, *names: str, params: NormalizationParams | None = None):  # t
 
 
 def test_absence_markers_uses_the_given_markers() -> None:
-    assert not _run("No registra", "absence_markers").is_absent
-    result = _run("No registra", "absence_markers", params=NO_REGISTRA)
+    assert not _run("Sin registro", "absence_markers").is_absent
+    result = _run("Sin registro", "absence_markers", params=NO_REGISTRA)
     assert result.is_absent and result.value is None
 
 
 def test_split_concatenated_uses_the_given_separators() -> None:
     assert _run("I-1, I-2", "split_concatenated").value == ["I-1", "I-2"]
     assert _run("I-1, I-2", "split_concatenated", params=WITHOUT_COMMA).value == ["I-1, I-2"]
-    assert _run("I-1 / NO REGISTRA", "split_concatenated", params=NO_REGISTRA).value == ["I-1"]
+    assert _run("I-1 / SIN REGISTRO", "split_concatenated", params=NO_REGISTRA).value == ["I-1"]
 
 
 def test_row_identifier_uses_the_given_aliases_and_markers() -> None:
@@ -80,8 +80,8 @@ def test_row_identifier_uses_the_given_aliases_and_markers() -> None:
     assert (
         RowIdentifier.from_raw("COLECCION", "REP 12", params=REP_LRM).normalized_value == "LRM 12"
     )
-    assert not RowIdentifier.from_raw("I", "NO REGISTRA").is_absent
-    assert RowIdentifier.from_raw("I", "NO REGISTRA", params=NO_REGISTRA).is_absent
+    assert not RowIdentifier.from_raw("I", "SIN REGISTRO").is_absent
+    assert RowIdentifier.from_raw("I", "SIN REGISTRO", params=NO_REGISTRA).is_absent
 
 
 # --- apply_mapping con los parámetros vigentes del lote -------------------------------------
@@ -100,7 +100,7 @@ def _store_params(session: Session, act_as: ActAs) -> None:
         session.add_all(
             [
                 NormalizationSetting(
-                    id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=[*ABSENCE_MARKERS, "NO REGISTRA"]
+                    id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=[*ABSENCE_MARKERS, "SIN REGISTRO"]
                 ),
                 NormalizationSetting(
                     id=new_uuid(),
@@ -119,7 +119,7 @@ def test_apply_mapping_uses_the_current_parameters(session: Session, act_as: Act
     _store_params(session, act_as)
     ctx = MappingContext(session)
 
-    absent = apply_mapping({"DENOMINACIÓN": "Soga", "N° INV": "NO REGISTRA"}, SPEC, ctx)
+    absent = apply_mapping({"DENOMINACIÓN": "Soga", "N° INV": "SIN REGISTRO"}, SPEC, ctx)
     [identifier] = absent.identifiers
     assert identifier.type_code == "I" and identifier.is_absent
 
@@ -131,7 +131,7 @@ def test_apply_mapping_uses_the_current_parameters(session: Session, act_as: Act
         ("COLECCION", "LRM 12"),
         ("I", "I-5"),
     ]
-    marked = apply_mapping({"DENOMINACIÓN": "Soga", "CÓDIGOS": "NO REGISTRA"}, SPEC, ctx)
+    marked = apply_mapping({"DENOMINACIÓN": "Soga", "CÓDIGOS": "SIN REGISTRO"}, SPEC, ctx)
     assert marked.transformed["CÓDIGOS"].is_absent
 
 
@@ -140,7 +140,7 @@ def test_without_rows_apply_mapping_behaves_as_before(session: Session) -> None:
     row = apply_mapping({"DENOMINACIÓN": "Soga", "CÓDIGOS": "REP 12, I-3"}, SPEC, ctx)
     assert [i.normalized_value for i in row.identifiers] == ["REP 12", "I-3"]
     [identifier] = apply_mapping(
-        {"DENOMINACIÓN": "Soga", "N° INV": "NO REGISTRA"}, SPEC, ctx
+        {"DENOMINACIÓN": "Soga", "N° INV": "SIN REGISTRO"}, SPEC, ctx
     ).identifiers
     assert not identifier.is_absent
 

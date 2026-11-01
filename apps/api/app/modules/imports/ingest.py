@@ -18,6 +18,7 @@ headers and raw rows. The caller stores the original file untouched and persists
 import csv
 import io
 import posixpath
+import unicodedata
 import zipfile
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
@@ -32,6 +33,7 @@ from openpyxl.utils.cell import get_column_letter, range_boundaries
 from openpyxl.utils.exceptions import InvalidFileException
 
 from app.core.errors import ValidationFailed
+from app.modules.identification.normalization import canonical
 
 SUPPORTED_EXTENSIONS = (".xlsx", ".csv")
 HEADER_SCAN_ROWS = 30
@@ -65,6 +67,9 @@ class IngestResult:
     headers: list[str]
     rows: list[IngestedRow] = field(default_factory=list)
     skipped_empty_rows: int = 0
+    # Rows that repeat the header, and the sub-header row of grouped columns: not data
+    # (change formatos-reales-importacion, design D7), by spreadsheet row number.
+    skipped_header_rows: list[int] = field(default_factory=list)
     encoding: str | None = None
     delimiter: str | None = None
 
@@ -317,14 +322,104 @@ def _detect_header_row(scanned: list[tuple[tuple[Any, ...], frozenset[int]]]) ->
     return None
 
 
-def _header_names(values: tuple[Any, ...]) -> list[str]:
+def _header_names(values: tuple[Any, ...], groups: dict[int, str] | None = None) -> list[str]:
+    """Names of the header cells; an empty cell inside a group takes the group name, which
+    ``_unique`` numbers (``Procedencia (2)``), else a generated ``Columna J``."""
     names: list[str] = []
     seen: dict[str, int] = {}
+    groups = groups or {}
     last = max((i for i, v in enumerate(values) if v is not None), default=-1)
+    last = max(last, max(groups, default=0) - 1)
     for index, value in enumerate(values[: last + 1], start=1):
         name = str(value).strip() if value is not None else ""
-        names.append(_unique(name or _generated_name(index), seen))
+        names.append(_unique(name or groups.get(index) or _generated_name(index), seen))
     return names
+
+
+def _key(value: Any) -> str:
+    """How a header cell is compared with another one: ``header_key`` of the templates."""
+    decomposed = unicodedata.normalize("NFKD", canonical(str(value)))
+    return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def _texts(values: tuple[Any, ...], merged_cols: frozenset[int] = frozenset()) -> dict[int, str]:
+    """Own non-empty cells of a row, by column (1-based), as stripped text."""
+    return {
+        index: str(value).strip()
+        for index, value in enumerate(values, start=1)
+        if value is not None and index not in merged_cols and str(value).strip()
+    }
+
+
+def _group_spans(
+    header: tuple[Any, ...], merged_cols: frozenset[int]
+) -> dict[int, tuple[str, int]]:
+    """Columns after a header cell that have no name of their own (empty, or propagated from a
+    merged range), with the name of that cell and its column: the candidate group members."""
+    spans: dict[int, tuple[str, int]] = {}
+    current: tuple[str, int] | None = None
+    for index, value in enumerate(header, start=1):
+        own = value is not None and index not in merged_cols and str(value).strip()
+        if own:
+            current = (str(value).strip(), index)
+        elif current is not None:
+            spans[index] = current
+    return spans
+
+
+def _sub_header(
+    row: tuple[Any, ...] | None,
+    merged_cols: frozenset[int],
+    spans: dict[int, tuple[str, int]],
+) -> bool:
+    """A row under the header with text only in grouped columns (``Largo (cm)``, ``Ancho (cm)``
+    under «Dimensiones»): the second line of a two-row header, not data (design D7)."""
+    if row is None:
+        return False
+    texts = _texts(row, merged_cols)
+    starts = {start for _, start in spans.values()}
+    return (
+        len(texts) >= 2
+        and all(isinstance(row[index - 1], str) for index in texts)
+        and all(index in spans or index in starts for index in texts)
+        and any(index in spans for index in texts)
+    )
+
+
+def _groups(
+    header: tuple[Any, ...],
+    merged_cols: frozenset[int],
+    above: tuple[Any, ...] | None,
+    below: tuple[Any, ...] | None,
+    below_is_sub_header: bool,
+) -> dict[int, str]:
+    """Group name of each empty header cell that belongs to a group (design D7): its column has
+    a sub-header below, or the row above names a group over it. Others stay «Columna J»."""
+    spans = _group_spans(header, merged_cols)
+    above_texts = _texts(above) if above is not None else {}
+    below_texts = _texts(below) if below is not None and below_is_sub_header else {}
+    groups: dict[int, str] = {}
+    for index, (name, start) in spans.items():
+        if index in merged_cols:
+            continue  # a merged range already repeats the name of its first cell
+        covered = any(column in above_texts for column in range(start, index + 1))
+        if index in below_texts or covered:
+            groups[index] = name
+    return groups
+
+
+#: Share of the non-empty cells of a row that must repeat the header to skip it [SUPUESTO].
+REPEATED_HEADER_SHARE = 0.8
+
+
+def _repeats_header(values: tuple[Any, ...], merged_cols: frozenset[int], keys: list[str]) -> bool:
+    texts = _texts(values, merged_cols)
+    if len(texts) < 2:
+        return False
+    same = sum(
+        1 for index, text in texts.items() if index <= len(keys) and _key(text) == keys[index - 1]
+    )
+    return same >= 2 and same / len(texts) >= REPEATED_HEADER_SHARE
 
 
 def _generated_name(column: int) -> str:
@@ -378,7 +473,19 @@ def _build_result(
             details={"header_row": header_row},
         )
 
-    headers = _header_names(scanned[found - 1][0])
+    header_values, header_merged = scanned[found - 1]
+    below = scanned[found] if len(scanned) > found else None
+    spans = _group_spans(header_values, header_merged)
+    sub_header = below is not None and _sub_header(below[0], below[1], spans)
+    groups = _groups(
+        header_values,
+        header_merged,
+        scanned[found - 2][0] if found >= 2 else None,
+        below[0] if below is not None else None,
+        sub_header,
+    )
+    headers = _header_names(header_values, groups)
+    header_keys = [_key(name) for name in _header_names(header_values)]
     seen = {name: 1 for name in headers}
     result = IngestResult(
         file_format="", sheet_names=[], sheet_name=None, header_row=found, headers=headers
@@ -393,6 +500,11 @@ def _build_result(
         # A row with only values propagated from a merged range has no data of its own.
         if not _own_values(values, merged_cols):
             pending_empty += 1
+            continue
+        if (sub_header and row_number == found + 1) or _repeats_header(
+            values, merged_cols, header_keys
+        ):
+            result.skipped_header_rows.append(row_number)
             continue
         result.skipped_empty_rows += pending_empty
         pending_empty = 0

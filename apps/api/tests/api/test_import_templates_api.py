@@ -54,7 +54,7 @@ COLUMNS: list[dict[str, Any]] = [
     {"source_column": "OBS. CONSULTORÍA", "target_field": None},
 ]
 # What the API returns for COLUMNS: ``identifier:I`` comes back as ``identifier`` + type.
-COLUMNS_OUT: list[dict[str, Any]] = [
+_COLUMNS_OUT: list[dict[str, Any]] = [
     {
         "source_column": "DENOMINACIÓN",
         "target_field": "denomination",
@@ -104,6 +104,17 @@ COLUMNS_OUT: list[dict[str, Any]] = [
         "value_map": None,
     },
 ]
+# Fields of the real formats (formatos-reales-importacion), at their defaults.
+NEW_FIELDS = {
+    "source_columns": None,
+    "join": None,
+    "measure_magnitudes": None,
+    "aliases": None,
+    "optional": None,
+    "sensitive": None,
+    "lender_for_loans": None,
+}
+COLUMNS_OUT: list[dict[str, Any]] = [{**column, **NEW_FIELDS} for column in _COLUMNS_OUT]
 DENOMINATION = {"source_column": "DENOMINACIÓN", "target_field": "denomination"}
 
 

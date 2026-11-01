@@ -170,3 +170,18 @@ La tarea 4.4 alinea solo la forma y la firma de las operaciones 14 a 16 (design 
 | `ImportBatchSummary.status` | `string` sin valores definidos | `string` opcional, `null` en el ejemplo | Los valores en español del estado del lote siguen abiertos (I8); no se añaden a `app/api/enums.py` hasta resolverlos |
 | `GET /imports/{batch_id}/diffs` | `200` sin esquema | `ImportDiffsPage`: `Page[ImportRowOut]` con el diff campo a campo y `classification_rules` (RF-025, RF-026) | Añadido justificado: el contrato no define el esquema |
 | `POST /imports/{batch_id}/confirm` | Sin cuerpo; `200` sin esquema | Cuerpo `ApprovalRequest` con `summary_token` obligatorio (huella del resumen de `ImportBatchOut.approval_summary`, RF-027, RNF-010) y respuesta `ImportBatchOut` en estado `APPROVED`; la aplicación sigue en segundo plano | El cuerpo definitivo sigue abierto (I9, supuesto provisional M7) |
+
+## Ampliación del formato de mapeo para los formatos reales del museo (2026-10-31)
+
+Change `formatos-reales-importacion` (tarea 7.4; diseño D1, D3, D4 y D6). `ColumnMapping` no es un esquema del contrato del equipo; se amplía con campos opcionales, todos con valor por defecto, para que una plantilla real se lea y se guarde por la API sin perder nada:
+
+| Campo | Uso |
+|---|---|
+| `source_columns`, `join` | Varias columnas para un mismo destino, en orden, unidas con `join` (procedencia en tres columnas, dimensiones en cuatro). El valor de cada una se conserva en los datos de origen |
+| `target_field: "measures"` con `measure_magnitudes` | Alto, ancho, espesor, diámetro y peso en columnas separadas forman las medidas estructuradas y su texto |
+| `target_field: "entry_date"` | Fecha de ingreso a la colección (fecha de Excel, `dd/mm/aaaa` o `aaaa-mm-dd`) |
+| `aliases`, `optional` | Otros nombres de la columna en variantes del formato y columnas que una variante puede no traer (plantillas) |
+| `sensitive`, `lender_for_loans` | Datos de origen con datos personales del propietario, visibles solo con `sensitive.donor_data`; en comodato el nombre del propietario es también el comodante |
+
+`GET /pieces/{piece_id}/source-records` suma `masked_keys`: las columnas que se muestran como «(dato restringido)» por falta del permiso.
+

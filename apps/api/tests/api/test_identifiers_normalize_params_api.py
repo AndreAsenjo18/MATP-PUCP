@@ -4,7 +4,7 @@
 Change plantillas-mapeo-y-normalizacion, task 2.2 step C (design D5): the preview of a cell
 uses the current markers, separators and aliases, as the import does. Own module: the
 ``pipeline`` fixture gives it its own seeded database, so the parameters written here do not
-reach other modules. Synthetic data only (RNF-014); ``NO REGISTRA`` and ``REP`` are
+reach other modules. Synthetic data only (RNF-014); ``SIN REGISTRO`` and ``REP`` are
 illustrative [SUPUESTO A5, A3].
 """
 
@@ -33,7 +33,7 @@ def _normalize(pipeline: Pipeline, value: str) -> dict:  # type: ignore[type-arg
 
 
 def test_the_preview_follows_the_current_parameters(pipeline: Pipeline) -> None:
-    before = _normalize(pipeline, "NO REGISTRA")
+    before = _normalize(pipeline, "SIN REGISTRO")
     assert before["is_absence_marker"] is False
     assert [p["normalized"] for p in _normalize(pipeline, "REP 12, I-3")["proposals"]] == [
         "REP 12",
@@ -51,7 +51,7 @@ def test_the_preview_follows_the_current_parameters(pipeline: Pipeline) -> None:
                     NormalizationSetting(
                         id=new_uuid(),
                         key=ABSENCE_MARKERS_KEY,
-                        value=[*ABSENCE_MARKERS, "NO REGISTRA"],
+                        value=[*ABSENCE_MARKERS, "SIN REGISTRO"],
                     ),
                     NormalizationSetting(
                         id=new_uuid(),

@@ -21,6 +21,7 @@ that reads ``MappingSpec`` (``field_diff``, ``validate_stage``, ``decisions``) w
 ``as_json`` stores the v1 form and ``apply_mapping``/``validate_mapping`` follow v1 rules.
 """
 
+import re
 import unicodedata
 import uuid
 from collections.abc import Mapping, Sequence
@@ -34,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.api.enums import TENURE_REGIME_LABELS
 from app.modules.catalog.enums import TenureRegime
-from app.modules.collections.models import Term, Vocabulary
+from app.modules.collections.models import Collection, Term, Vocabulary
 from app.modules.collections.service import find_collection_by_code
 from app.modules.identification.models import (
     IdentifierType,
@@ -42,6 +43,7 @@ from app.modules.identification.models import (
     NormalizationStatus,
 )
 from app.modules.identification.normalization import (
+    TYPE_COLLECTION,
     TYPE_OTHER,
     NormalizationParams,
     is_absence_marker,
@@ -78,6 +80,7 @@ FIELD_TARGETS: dict[str, str] = {
     "provenance": "Procedencia",
     "epoch_original_text": "Época (texto original)",
     "dimensions_text": "Medidas (texto)",
+    "entry_date": "Fecha de ingreso",
     "notes": "Observaciones",
     "recorded_by": "Registrador",
     "lender_name": "Comodante",
@@ -89,6 +92,12 @@ DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
 DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
 PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"})
+
+
+def _collection_name_key(name: str) -> str:
+    """A collection name as the files write it: without accents, case nor «Colección»."""
+    words = [word for word in _fold(name).split() if word not in ("coleccion", "colecciones")]
+    return " ".join(words)
 
 
 def _fold(text: str) -> str:
@@ -212,10 +221,29 @@ class TermsTarget(_Strict):
 
 class SourcePayloadTarget(_Strict):
     kind: Literal["source_payload"] = "source_payload"
+    # Personal data of the owner (RNF-014, RF-041; formatos-reales-importacion, design D6): kept
+    # in the source data marked as sensitive, shown only with ``sensitive.donor_data``.
+    sensitive: bool | None = None
+    # For a loan for use, the value is also the lender of the piece (already sensitive).
+    lender_for_loans: bool | None = None
+
+
+class MeasuresTarget(_Strict):
+    """Separate measure columns (``Alto (cm)``, ``Peso (gr)``…) into the structured dimensions
+    of the piece and their text (formatos-reales-importacion, design D3): ``magnitudes[i]`` is
+    the magnitude of ``sources[i]``; ``peso`` is in grams, the rest in centimetres."""
+
+    kind: Literal["measures"] = "measures"
+    magnitudes: list[str]
 
 
 ColumnTarget = Annotated[
-    FieldTarget | IdentifierTarget | IdentifiersTarget | TermsTarget | SourcePayloadTarget,
+    FieldTarget
+    | IdentifierTarget
+    | IdentifiersTarget
+    | TermsTarget
+    | SourcePayloadTarget
+    | MeasuresTarget,
     Field(discriminator="kind"),
 ]
 
@@ -225,6 +253,23 @@ class ColumnSpecV1(_Strict):
     target: ColumnTarget
     transforms: list[str] = Field(default_factory=list)
     value_map: dict[str, str] | None = None
+    # Other names of the same column in variants of a format, compared with ``header_key``
+    # (change formatos-reales-importacion, design D1). A template applied to a file links the
+    # column to the first file header that matches ``source`` or an alias.
+    aliases: list[str] | None = None
+    # A template column a variant may lack: applying the template to a file without it leaves
+    # it out instead of rejecting the mapping (``unknown_column``).
+    optional: bool | None = None
+    # Several columns into one target, in order (design D3): ``source`` names the column, the
+    # values come from ``sources``; a text field joins the non-empty ones with ``join``. Their
+    # original values stay in the source data (RF-008).
+    sources: list[str] | None = None
+    join: str | None = None
+
+    @property
+    def inputs(self) -> list[str]:
+        """The file columns this column reads."""
+        return list(self.sources) if self.sources else [self.source]
 
     @model_validator(mode="after")
     def _known_transforms(self) -> "ColumnSpecV1":
@@ -266,6 +311,16 @@ class ColumnMappingLike(Protocol):
     split_compound: bool
     transforms: list[str]
     value_map: dict[str, str] | None
+    source_columns: list[str] | None
+    join: str | None
+    measure_magnitudes: list[str] | None
+    aliases: list[str] | None
+    optional: bool | None
+    sensitive: bool | None
+    lender_for_loans: bool | None
+
+
+MEASURES_TARGET = "measures"
 
 
 def _v0_projection(column: ColumnSpecV1) -> ColumnSpec:
@@ -278,6 +333,8 @@ def _v0_projection(column: ColumnSpecV1) -> ColumnSpec:
         return ColumnSpec(column.source, IDENTIFIER_TARGET, target.default_type, True)
     if isinstance(target, TermsTarget):
         return ColumnSpec(column.source, f"{TERMS_TARGET}:{target.vocabulary}")
+    if isinstance(target, MeasuresTarget):
+        return ColumnSpec(column.source, "dimensions_text")
     return ColumnSpec(column.source, PAYLOAD_TARGET)
 
 
@@ -333,7 +390,14 @@ def from_column_mappings(
     for column in columns:
         target = column.target_field or PAYLOAD_TARGET
         column_target: ColumnTarget
-        if target.startswith(f"{TERMS_TARGET}:"):
+        if target == MEASURES_TARGET:
+            column_target = MeasuresTarget(magnitudes=list(column.measure_magnitudes or []))
+        elif target == PAYLOAD_TARGET and (column.sensitive or column.lender_for_loans):
+            column_target = SourcePayloadTarget(
+                sensitive=column.sensitive or None,
+                lender_for_loans=column.lender_for_loans or None,
+            )
+        elif target.startswith(f"{TERMS_TARGET}:"):
             vocabulary = target.split(":", 1)[1]
             if not vocabulary:
                 raise MappingConversionError(
@@ -368,6 +432,10 @@ def from_column_mappings(
                 target=column_target,
                 transforms=transforms,
                 value_map=column.value_map,
+                sources=list(column.source_columns) if column.source_columns else None,
+                join=column.join,
+                aliases=list(column.aliases) if column.aliases else None,
+                optional=column.optional or None,
             )
         )
     return MappingSpecV1(columns=converted, defaults=_defaults_to_codes(defaults or {}))
@@ -456,6 +524,8 @@ class MappingContext:
             code for code, _rule, active in rows if not active
         )
         self._collections: dict[str, uuid.UUID | None] = {}
+        self._names: dict[str, list[uuid.UUID]] | None = None
+        self._acronyms: dict[uuid.UUID, str | None] = {}
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
@@ -465,11 +535,36 @@ class MappingContext:
         return session_params(self._session)
 
     def collection_id(self, code: str) -> uuid.UUID | None:
+        """The collection of an acronym (``MMZ``, a historical one) or, as the museum files write
+        it, of its name without accents nor the word «Colección» (formatos-reales-importacion,
+        design D2); only a single match counts."""
         key = _fold(code)
         if key not in self._collections:
             found = find_collection_by_code(self._session, code)
-            self._collections[key] = found.id if found is not None else None
+            self._collections[key] = (
+                found.id if found is not None else self._collection_by_name(code)
+            )
         return self._collections[key]
+
+    def collection_acronym(self, collection_id: uuid.UUID) -> str | None:
+        """Normalized acronym of a collection (``MMZ``), or None if it has none."""
+        if collection_id not in self._acronyms:
+            self._acronyms[collection_id] = self._session.scalar(
+                select(Collection.acronym_normalized).where(Collection.id == collection_id)
+            )
+        return self._acronyms[collection_id]
+
+    def _collection_by_name(self, name: str) -> uuid.UUID | None:
+        if self._names is None:
+            self._names = {}
+            for collection_id, collection_name in self._session.execute(
+                select(Collection.id, Collection.name).where(Collection.deleted_at.is_(None))
+            ):
+                self._names.setdefault(_collection_name_key(collection_name), []).append(
+                    collection_id
+                )
+        found = self._names.get(_collection_name_key(name), [])
+        return found[0] if len(found) == 1 else None
 
     def vocabulary_terms(self, code: str) -> "dict[str, VocabularyTerm] | None":
         """Terms of a vocabulary by code (active and inactive); None if it does not exist."""
@@ -541,6 +636,10 @@ class MappedRow:
     acquisition_text: str | None = field(default=None, compare=False, repr=False)
     # Findings to review that do not block the row (stored in ``mapped_data``).
     warnings: list[RowError] = field(default_factory=list)
+    # Structured dimensions from separate measure columns (formatos-reales-importacion, D3).
+    dimensions: list[dict[str, Any]] | None = None
+    # Source data columns with personal data (design D6), stored with the source record.
+    sensitive_keys: list[str] = field(default_factory=list)
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -573,6 +672,10 @@ class MappedRow:
             data["acquisition_method"] = self.acquisition_method
         if self.warnings:
             data["warnings"] = [warning.as_json() for warning in self.warnings]
+        if self.dimensions:
+            data["dimensions"] = self.dimensions
+        if self.sensitive_keys:
+            data["sensitive_keys"] = list(self.sensitive_keys)
         return data
 
     @classmethod
@@ -601,6 +704,8 @@ class MappedRow:
                 RowError(item["code"], item["message"], item.get("field"))
                 for item in data.get("warnings") or []
             ],
+            dimensions=data.get("dimensions"),
+            sensitive_keys=list(data.get("sensitive_keys") or []),
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -678,12 +783,33 @@ def validate_mapping(
     seen_sources: set[str] = set()
     scalar_targets: dict[str, str] = {}
     for source, column in plan.columns:
-        if source not in known:
-            errors.append(
-                MappingError(
-                    "unknown_column", f"La columna «{source}» no está en el archivo.", source
+        inputs = column.inputs if isinstance(column, ColumnSpecV1) else [source]
+        for name in inputs:
+            if name not in known:
+                errors.append(
+                    MappingError(
+                        "unknown_column", f"La columna «{name}» no está en el archivo.", name
+                    )
                 )
-            )
+        if isinstance(column, ColumnSpecV1) and isinstance(column.target, MeasuresTarget):
+            if len(column.target.magnitudes) != len(inputs):
+                errors.append(
+                    MappingError(
+                        "invalid_measures",
+                        f"Las medidas de «{source}» necesitan una magnitud por columna.",
+                        source,
+                    )
+                )
+            if "dimensions_text" in scalar_targets:
+                errors.append(
+                    MappingError(
+                        "duplicate_target",
+                        f"«{FIELD_TARGETS['dimensions_text']}» ya se toma de la columna "
+                        f"«{scalar_targets['dimensions_text']}».",
+                        source,
+                    )
+                )
+            scalar_targets["dimensions_text"] = source
         if source in seen_sources:
             errors.append(
                 MappingError(
@@ -869,9 +995,19 @@ def apply_mapping(
     plan = ctx.plan(spec)
     columns = [column for _source, column in plan.columns if isinstance(column, ColumnSpecV1)]
     mapped = MappedRow()
-    mapped_sources = {column.source for column in columns if column.target.kind in MAPPED_KINDS}
+    # Columns read together and the entry date keep their original values in the source data.
+    mapped_sources = {
+        column.source
+        for column in columns
+        if column.target.kind in MAPPED_KINDS
+        and not column.sources
+        and not (isinstance(column.target, FieldTarget) and column.target.name == "entry_date")
+    }
     for column in columns:
-        raw = raw_row.get(column.source)
+        if isinstance(column.target, MeasuresTarget):
+            _map_measures(mapped, column, raw_row)
+            continue
+        raw = raw_row.get(column.source) if not column.sources else _joined(column, raw_row)
         value, is_absent = raw, False
         if column.transforms:
             transformed = run_transforms(
@@ -903,6 +1039,7 @@ def apply_mapping(
         mapped.fields["denomination"] = denomination_default
         mapped.defaulted.append("denomination")
     _resolve_tenure(mapped, plan, ctx)
+    _sensitive_columns(mapped, columns)
     collection = mapped.fields.get("collection")
     if not collection and plan.defaults.get("collection"):
         collection = plan.defaults["collection"]
@@ -917,7 +1054,91 @@ def apply_mapping(
                     "collection",
                 )
             )
+    _complete_collection_numbers(mapped, ctx)
+    _notes_from_code_columns(mapped)
     return mapped
+
+
+#: Words a value of a code column must exceed to be read as a note, not a code [SUPUESTO].
+NOTE_MIN_WORDS = 4
+NOTE_PREFIX = "[Importación] "
+
+
+def _notes_from_code_columns(mapped: MappedRow) -> None:
+    """A text in a code column that is not a code («número de inventario mal asignado,
+    revisar») is proposed as an observation of the piece instead of an identifier (spec
+    identificacion-piezas, «Marcas de vacío y texto que no es un código»; design D5)."""
+    kept: list[RowIdentifier] = []
+    notes: list[str] = []
+    for identifier in mapped.identifiers:
+        text = identifier.original_value.strip()
+        if (
+            identifier.status is NormalizationStatus.UNPARSEABLE
+            and not identifier.is_absent
+            and len(text.split()) >= NOTE_MIN_WORDS
+        ):
+            notes.append(text)
+        else:
+            kept.append(identifier)
+    if not notes:
+        return
+    mapped.identifiers = kept
+    current = mapped.fields.get("notes")
+    added = "\n".join(f"{NOTE_PREFIX}{note}" for note in notes)
+    mapped.fields["notes"] = f"{current}\n{added}" if current else added
+    for note in notes:
+        mapped.warnings.append(
+            RowError(
+                "text_as_observation",
+                f"«{note}» no es un código: se propone como observación de la pieza.",
+                "notes",
+            )
+        )
+
+
+_BARE_NUMBER_RE = re.compile(r"^\d+(?:[.\-]\d+)*$")
+
+
+def _complete_collection_numbers(mapped: MappedRow, ctx: MappingContext) -> None:
+    """A number without acronym in a collection code column (``45``) takes the acronym of the
+    collection of the row (``MMZ 45``) [SUPUESTO FR3], with a warning to review it; without a
+    collection it stays unparseable with ``number_without_acronym`` (formatos-reales-importacion,
+    design D5)."""
+    acronym = ctx.collection_acronym(mapped.collection_id) if mapped.collection_id else None
+    for index, identifier in enumerate(mapped.identifiers):
+        value = identifier.original_value.strip()
+        if (
+            identifier.type_code != TYPE_COLLECTION
+            or identifier.is_absent
+            or identifier.status is not NormalizationStatus.UNPARSEABLE
+            or not _BARE_NUMBER_RE.match(value)
+        ):
+            continue
+        if acronym:
+            completed = RowIdentifier.from_raw(
+                TYPE_COLLECTION,
+                f"{acronym} {value}",
+                ctx.identifier_rules.get(TYPE_COLLECTION),
+                params=ctx.params,
+            )
+            mapped.identifiers[index] = completed
+            mapped.warnings.append(
+                RowError(
+                    "acronym_from_row",
+                    f"El código de colección «{value}» no tiene sigla: se tomó {acronym} de la "
+                    f"colección de la fila ({completed.normalized_value}). Revíselo.",
+                    "identifiers",
+                )
+            )
+        else:
+            mapped.warnings.append(
+                RowError(
+                    "number_without_acronym",
+                    f"El código de colección «{value}» es un número sin sigla ni colección: "
+                    "queda como no normalizable.",
+                    "identifiers",
+                )
+            )
 
 
 def _resolve_tenure(mapped: MappedRow, plan: "_Plan", ctx: MappingContext) -> None:
@@ -981,6 +1202,9 @@ def _map_value(
     ctx: MappingContext,
 ) -> None:
     target = column.target
+    if isinstance(target, FieldTarget) and target.name == "entry_date":
+        _map_entry_date(mapped, column, value)
+        return
     if isinstance(target, FieldTarget):
         if target.name not in FIELD_TARGETS:
             return
@@ -1017,6 +1241,124 @@ def _map_value(
             mapped.acquisition_text = mapped.acquisition_text or next(filter(None, texts), None)
 
 
+def _sensitive_columns(mapped: MappedRow, columns: Sequence[ColumnSpecV1]) -> None:
+    """Personal data columns with a value are marked sensitive; for a loan for use the owner's
+    name is also the lender of the piece, which is sensitive too (design D6)."""
+    for column in columns:
+        target = column.target
+        if not isinstance(target, SourcePayloadTarget) or not target.sensitive:
+            continue
+        text = _text(mapped.source_payload.get(column.source))
+        if text is None:
+            continue
+        mapped.sensitive_keys.append(column.source)
+        if (
+            target.lender_for_loans
+            and mapped.tenure_regime is TenureRegime.LOAN_FOR_USE
+            and not mapped.fields.get("lender_name")
+        ):
+            mapped.fields["lender_name"] = text
+
+
+def _joined(column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> str | None:
+    """The non-empty values of ``column.sources``, in order, joined with ``column.join``."""
+    texts = [text for name in column.inputs if (text := _text(raw_row.get(name))) is not None]
+    return (column.join if column.join is not None else ", ").join(texts) or None
+
+
+#: Unit of each magnitude of a ``measures`` column (design D3) [SUPUESTO].
+MEASURE_UNITS = {"peso": "g"}
+_DECIMAL_RE = re.compile(r"^\d+(?:[.,]\d+)?$")
+
+
+def _measure_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value) if value >= 0 else None
+    text = _text(value)
+    if text is None or not _DECIMAL_RE.match(text):
+        return None
+    return float(text.replace(",", "."))
+
+
+def _shown(number: float) -> str:
+    """``15.5`` → «15,5»; ``23.0`` → «23»."""
+    return f"{number:g}".replace(".", ",")
+
+
+def _map_measures(mapped: MappedRow, column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> None:
+    """Separate measure columns → structured dimensions and their text (design D3). A value that
+    is not a number is kept in the text with a warning; the row is not rejected."""
+    assert isinstance(column.target, MeasuresTarget)
+    texts: list[str] = []
+    dimensions: list[dict[str, Any]] = []
+    for magnitude, name in zip(column.target.magnitudes, column.inputs, strict=False):
+        raw = raw_row.get(name)
+        if _text(raw) is None:
+            continue
+        label = magnitude.capitalize()
+        unit = MEASURE_UNITS.get(magnitude, "cm")
+        number = _measure_number(raw)
+        if number is None:
+            texts.append(f"{label} {_text(raw)}")
+            mapped.warnings.append(
+                RowError(
+                    "measure_not_number",
+                    f"{label} no es un número («{_text(raw)}»): se conserva en el texto de "
+                    "medidas.",
+                    "dimensions_text",
+                )
+            )
+            continue
+        texts.append(f"{label} {_shown(number)} {unit}")
+        dimensions.append({"dimension": magnitude, "value": number, "unit": unit})
+    if texts:
+        mapped.fields["dimensions_text"] = "; ".join(texts)
+    if dimensions:
+        mapped.dimensions = dimensions
+
+
+_YEAR_RE = re.compile(r"^\d{4}$")
+_DAY_FIRST_RE = re.compile(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$")
+_ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$")
+
+
+def _map_entry_date(mapped: MappedRow, column: ColumnSpecV1, value: Any) -> None:
+    """Date of entry to the collection (design D4): an Excel date, ``dd/mm/aaaa`` or
+    ``aaaa-mm-dd``. A year alone or text that is not a date leaves it empty with a warning; the
+    original stays in the source data."""
+    if isinstance(value, datetime):
+        mapped.fields["entry_date"] = value.date().isoformat()
+        return
+    if isinstance(value, date):
+        mapped.fields["entry_date"] = value.isoformat()
+        return
+    text = _text(value)
+    if text is None:
+        return
+    parsed: date | None = None
+    try:
+        if match := _DAY_FIRST_RE.match(text):
+            parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        elif match := _ISO_RE.match(text):
+            parsed = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        mapped.fields["entry_date"] = parsed.isoformat()
+        return
+    if _YEAR_RE.match(text):
+        message = f"Fecha de ingreso: solo año: {text}. La ficha no guarda fechas parciales."
+        code = "entry_date_year_only"
+    else:
+        message = (
+            f"Fecha de ingreso no interpretable: «{text}». Se conserva en los datos de origen."
+        )
+        code = "entry_date_unreadable"
+    mapped.warnings.append(RowError(code, message, "entry_date"))
+
+
 def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatches:
     """An active term whose code or label equals the value, ignoring case and accents
     [SUPUESTO T6]."""
@@ -1051,7 +1393,14 @@ def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> 
             )
         ]
     identifiers: list[RowIdentifier] = []
-    for proposal in propose_identifiers(value, column.identifier_type, params=params):
+    proposals = propose_identifiers(value, column.identifier_type, params=params)
+    if len(value.split()) >= NOTE_MIN_WORDS and all(
+        proposal.result.status is NormalizationStatus.UNPARSEABLE for proposal in proposals
+    ):
+        # A note with commas is not several codes: kept whole, it becomes an observation.
+        type_code = column.identifier_type or TYPE_OTHER
+        return [RowIdentifier(type_code, value, None, NormalizationStatus.UNPARSEABLE)]
+    for proposal in proposals:
         type_code = proposal.type_code or TYPE_OTHER
         identifiers.append(
             RowIdentifier.from_raw(

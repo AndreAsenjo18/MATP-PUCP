@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5f339a8cd7ea298f5b2065f9b7a8c2c2a352364158d71866bd8f39eb0b84cddc
+ * openapi-sha256: f3051c99294a877d7c649fc14812437a6b72c20d91dda295613b94b37d5e7fe9
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3116,13 +3116,48 @@ export interface components {
         };
         /** ColumnMapping */
         ColumnMapping: {
+            /**
+             * Aliases
+             * @description Otros nombres de la columna en variantes del formato (plantillas).
+             */
+            aliases?: string[] | null;
             /** Identifier Type Code */
             identifier_type_code?: string | null;
+            /**
+             * Join
+             * @description Separador con que se unen `source_columns` en un campo de texto.
+             */
+            join?: string | null;
+            /**
+             * Lender For Loans
+             * @description En una pieza en comodato, el valor es también el comodante.
+             */
+            lender_for_loans?: boolean | null;
+            /**
+             * Measure Magnitudes
+             * @description Con `target_field: measures`: la magnitud de cada una de `source_columns` (`alto`, `ancho`, `espesor`, `diámetro`, `peso`); forma las medidas y su texto.
+             */
+            measure_magnitudes?: string[] | null;
+            /**
+             * Optional
+             * @description Una variante del formato puede no traer la columna (plantillas).
+             */
+            optional?: boolean | null;
+            /**
+             * Sensitive
+             * @description Datos de origen con datos personales del propietario: visibles solo con `sensitive.donor_data`.
+             */
+            sensitive?: boolean | null;
             /**
              * Source Column
              * @description Encabezado tal como aparece en el Excel.
              */
             source_column: string;
+            /**
+             * Source Columns
+             * @description Varias columnas para un mismo destino, en orden (la procedencia en tres columnas); el valor de cada una se conserva en los datos de origen.
+             */
+            source_columns?: string[] | null;
             /**
              * Split Compound
              * @description La celda puede tener varios códigos (N7); cada parte toma el tipo que se reconoce en ella.
@@ -7514,6 +7549,11 @@ export interface components {
             id: string;
             /** Import Batch Id */
             import_batch_id: string | null;
+            /**
+             * Masked Keys
+             * @description Columnas con datos personales del propietario que se muestran como «(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).
+             */
+            masked_keys?: string[];
             /**
              * Payload
              * @description Columnas de origen sin mapeo (RF-008).
