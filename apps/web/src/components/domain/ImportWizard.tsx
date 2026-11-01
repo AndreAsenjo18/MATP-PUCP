@@ -10,7 +10,7 @@
  * resumen exacto que se aprueba.
  */
 import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { StatusBadge } from "@/components/domain/StatusBadges";
@@ -196,11 +196,14 @@ export function ImportRowCard({
   canDecide,
   busy,
   onDecide,
+  photos,
 }: {
   row: ImportRow;
   canDecide: boolean;
   busy: boolean;
   onDecide: (input: RowDecisionInput) => void;
+  /** Miniaturas de las fotos de la fila (importacion-masiva-fotografias, tarea 6.3). */
+  photos?: ReactNode;
 }) {
   const candidates = candidatePieces(row);
   const resolvable = needsResolution(row);
@@ -242,6 +245,7 @@ export function ImportRowCard({
         </div>
       </div>
       <p className="text-sm text-gris-texto">{actionLabel(row.action)}</p>
+      {photos}
 
       {errors.length > 0 && (
         <ul className="flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
