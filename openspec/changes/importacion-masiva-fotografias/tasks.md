@@ -44,8 +44,9 @@
 ## 6. Frontend (`apps/web`)
 
 - [x] 6.1 `lib/data/importPhotos.ts` (mock/live): listado de carpeta con ruta relativa, SHA-256 en Web Worker, tandas, concurrencia 4, reintento con espera exponencial y reanudación; pruebas Vitest (Req: Fotografías del lote con subida reanudable)
-- [ ] 6.2 Paso «Fotografías» del asistente de importación (selector de carpeta, arrastrar carpetas, avance global y por archivo, reanudar), con el prototipo v3 como referencia de UX; prueba de componente (Req: Fotografías del lote con subida reanudable)
+- [x] 6.2 Paso «Fotografías» del asistente de importación (selector de carpeta, arrastrar carpetas, avance global y por archivo, reanudar), con el prototipo v3 como referencia de UX; prueba de componente (Req: Fotografías del lote con subida reanudable)
   - Panel integrado en Validación y Previsualización (`ImportPhotosPanel`, 2026-10-25); el paso propio entre Mapeo y Validación queda para S5.
+  - Cerrado (2026-11-01): se aceptó el panel dentro de la validación y la previsualización como el paso «Fotografías» (design D8, decisión al cerrar); cubre el selector y el arrastre de carpetas, el avance global y por archivo y «Reanudar», con su prueba `ImportPhotosPanel.test.tsx`.
 - [x] 6.3 Miniaturas por fila en la previsualización y bandeja lateral con filtros, selección múltiple y «asignar a fila»; pruebas de componente (Req: Bandeja de revisión…; Req: Previsualización del lote…)
   - Hecho (2026-11-01): `RowPhotoStrip` en cada tarjeta de «Revise las filas» (hasta seis miniaturas, vía de emparejamiento, «Repetida» y «Aplicar igual»); la bandeja `ImportPhotoTray` suma los filtros Todas / Ambiguas / Sin emparejar. Pruebas en `ImportPhotoTray.test.tsx`.
 
@@ -59,5 +60,6 @@
 - [x] 7.4 Manual de usuario: sección «Importar fotografías con el Excel» en `docs/manual-usuario/` (cómo nombrar archivos o carpetas, reanudar, bandeja) y nota de cuota en `docs/despliegue/almacenamiento.md`
   - Explicar en el manual (2026-10-22, desde la 3.3): si se vuelve a cargar el Excel del lote (reingesta), las asignaciones manuales de fotos a filas se pierden, porque esas filas dejan de existir, y las fotos vuelven a proponerse al validar. Las fotos desasignadas o descartadas a mano se mantienen.
   - Hecho (2026-11-01): «Importar fotografías con el Excel» en `docs/manual-usuario/importacion.md` (sección 4) y «Fotos de las cargas masivas y cuota» en `docs/despliegue/almacenamiento.md`.
-- [ ] 7.5 Con la célula Importación, `/opsx:update importacion-pipeline-reconciliacion` para marcar la D8 como caso secundario que alimenta `import_photo` con `match_source=embedded`; `openspec validate --all --strict` en verde
+- [x] 7.5 Con la célula Importación, `/opsx:update importacion-pipeline-reconciliacion` para marcar la D8 como caso secundario que alimenta `import_photo` con `match_source=embedded`; `openspec validate --all --strict` en verde
+  - Cerrado (2026-11-01): `importacion-pipeline-reconciliacion` está archivado, así que la D8 se registró en el design de este change (D3, decisión al cerrar); `openspec validate --all --strict` en verde.
 - [ ] 7.6 `npm test`, `npm run lint` y `openspec validate importacion-masiva-fotografias --strict` en verde y, tras aprobar el PR, `openspec archive importacion-masiva-fotografias -y`
