@@ -241,7 +241,7 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
+# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
 MAX_BULK_DOWNLOAD_PIECES = 200
 
 
