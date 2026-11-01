@@ -293,6 +293,13 @@ class MappingRequest(BaseModel):
     header_row: int | None = Field(
         None, ge=1, description="Otra fila de cabeceras: se vuelve a leer el archivo."
     )
+    observations: bool | None = Field(
+        None,
+        description="`true`: la hoja se carga como observaciones de piezas ya registradas, "
+        "emparejadas por sus códigos; no crea piezas (hojas «Errores…» de la consultoría, "
+        "`formatos-reales-importacion` D8). `false`: vuelve a cargarla como piezas. Sin valor, "
+        "el lote conserva su tipo.",
+    )
     columns: list[ColumnMapping] = Field(default_factory=list)
     defaults: dict[str, str] = Field(
         default_factory=dict,

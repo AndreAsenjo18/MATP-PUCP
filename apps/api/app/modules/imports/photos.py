@@ -58,6 +58,7 @@ MATCHING_STATES = frozenset({S.MAPPED, S.VALIDATED, S.IN_PREVIEW})
 MATCHING_STATES_BY_KIND = {
     ImportBatchKind.SPREADSHEET: MATCHING_STATES,
     ImportBatchKind.PHOTOS: frozenset({S.UPLOADED, S.IN_PREVIEW}),
+    ImportBatchKind.OBSERVATIONS: frozenset(),  # no photos (formatos-reales-importacion, D8)
 }
 AUTOMATIC = frozenset({M.MATCHED, M.AMBIGUOUS, M.UNMATCHED})
 

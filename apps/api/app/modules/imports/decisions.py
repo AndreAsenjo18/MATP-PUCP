@@ -39,6 +39,7 @@ from app.modules.imports.models import (
     RowDecision,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.observations import is_observations, observation_diff, observation_line
 from app.modules.imports.service import ensure_idle, field_diff
 from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
 
@@ -213,6 +214,8 @@ def _resolve_to_piece(
             code="inventory_code_mismatch",
             details={"current": sorted(current), "incoming": sorted(incoming)},
         )
+    if is_observations(batch):  # formatos-reales-importacion, D8
+        return observation_diff(piece, observation_line(batch, mapped))
     assert batch.mapping is not None
     spec = MappingSpec.from_json(batch.mapping)
     return field_diff(piece, mapped, spec, _piece_identifiers(session, piece.id))
@@ -269,6 +272,12 @@ def decide_row(
             )
         resolution.pop("field_decisions", None)
         if as_new:
+            if is_observations(batch):
+                raise ValidationFailed(
+                    "Una observación no crea piezas: elija la pieza a la que corresponde o "
+                    "rechace la fila.",
+                    code="observation_creates_no_piece",
+                )
             _check_as_new(row)
             resolution.pop("target_piece_id", None)
             resolution["as_new"] = True

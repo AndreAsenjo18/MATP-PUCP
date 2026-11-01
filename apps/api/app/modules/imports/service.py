@@ -52,11 +52,19 @@ from app.modules.imports.models import (
     ImportBatch,
     ImportBatchKind,
     ImportImage,
+    ImportPhoto,
+    ImportPhotoStatus,
     ImportRow,
     RowClassification,
     RowDecision,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.observations import (
+    classify_observations,
+    is_observations,
+    observation_diff,
+    observation_line,
+)
 from app.modules.imports.photos import (
     detach_photos_from_rows,
     match_batch_photos,
@@ -275,11 +283,14 @@ def set_mapping(
     sheet_name: str | None = None,
     header_row: int | None = None,
     max_rows: int | None = None,
+    observations: bool | None = None,
 ) -> ImportBatch:
     """Check the mapping against the headers and move the batch to ``MAPPED``.
 
     Choosing another sheet or header row reads the original file again (D2). Re-mapping a batch
-    in preview discards its validation.
+    in preview discards its validation. ``observations`` loads the sheet as observations of
+    existing pieces (``True``) or as pieces again (``False``); ``None`` keeps the kind
+    (formatos-reales-importacion, D8).
     """
     batch = lock_batch(session, batch_id)
     ensure_idle(batch)
@@ -313,7 +324,14 @@ def set_mapping(
         )
         store_ingested_rows(session, batch, result)
         store_images(session, storage, batch, content)
-    errors = validate_mapping(spec, list((batch.counts or {})["headers"]), MappingContext(session))
+    if observations is not None:
+        _set_observations(session, batch, observations)
+    errors = validate_mapping(
+        spec,
+        list((batch.counts or {})["headers"]),
+        MappingContext(session),
+        observations=is_observations(batch),
+    )
     if errors:
         raise ValidationFailed(
             "El mapeo de columnas tiene errores; corríjalos y vuelva a enviarlo.",
@@ -325,6 +343,24 @@ def set_mapping(
     batch.mapping = spec.as_json()
     session.flush()
     return transition(session, batch.id, S.MAPPED)
+
+
+def _set_observations(session: Session, batch: ImportBatch, observations: bool) -> None:
+    kind = ImportBatchKind.OBSERVATIONS if observations else ImportBatchKind.SPREADSHEET
+    if kind is ImportBatchKind.OBSERVATIONS and session.scalar(
+        select(ImportPhoto.id)
+        .where(
+            ImportPhoto.batch_id == batch.id,
+            ImportPhoto.status.not_in((ImportPhotoStatus.DISCARDED, ImportPhotoStatus.REJECTED)),
+        )
+        .limit(1)
+    ):
+        raise ConflictError(
+            "El lote tiene fotos: una hoja de observaciones no lleva fotos. Quite las fotos o "
+            "cargue la hoja en otro lote.",
+            code="observations_with_photos",
+        )
+    batch.kind = kind
 
 
 # --- Validación, matching y clasificación (D4, D5) ------------------------------------------------
@@ -458,11 +494,21 @@ def validate_stage() -> StageWork:
         acquisition_codes = _acquisition_codes(session)
 
         mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
+        # An observations batch only finds pieces: no similarity (formatos-reales-importacion, D8).
+        observations = is_observations(batch)
         classified = classify_batch(
             session,
             [mapped[number].row_input(number) for _id, number, _raw in rows],
-            ProvisionalSimilarityScorer(session),
+            None if observations else ProvisionalSimilarityScorer(session),
         )
+        lines: dict[int, str | None] = {}
+        if observations:
+            lines = {number: observation_line(batch, mapped[number]) for _id, number, _raw in rows}
+            classify_observations(
+                [mapped[number] for _id, number, _raw in rows],
+                classified,
+                [lines[number] for _id, number, _raw in rows],
+            )
         by_number: dict[int, ClassifiedRow] = {item.row_number: item for item in classified}
         pieces, identifiers = _update_targets(
             session,
@@ -492,9 +538,13 @@ def validate_stage() -> StageWork:
                     **result.row_values(),
                     "mapped_data": row.as_json(),
                     "diff": (
-                        field_diff(target, row, spec, identifiers[target.id], acquisition_codes)
-                        if target is not None and is_update
-                        else None
+                        None
+                        if target is None or not is_update
+                        else observation_diff(target, lines[number])
+                        if observations
+                        else field_diff(
+                            target, row, spec, identifiers[target.id], acquisition_codes
+                        )
                     ),
                 }
             )

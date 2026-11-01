@@ -4302,10 +4302,11 @@
         "type": "object"
       },
       "ImportBatchKind": {
-        "description": "What a batch loads (change importacion-fotos-a-catalogo, D1).\n\n``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only\nphotos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.",
+        "description": "What a batch loads (change importacion-fotos-a-catalogo, D1).\n\n``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only\nphotos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.\n``OBSERVATIONS``: a sheet of quality observations («Errores pendientes» of the 2024/25\nconsultancy); its rows only add a note to the pieces they identify by their codes and never\ncreate one (change formatos-reales-importacion, D8).",
         "enum": [
           "SPREADSHEET",
-          "PHOTOS"
+          "PHOTOS",
+          "OBSERVATIONS"
         ],
         "title": "ImportBatchKind",
         "type": "string"
@@ -6087,6 +6088,18 @@
             ],
             "description": "Otra fila de cabeceras: se vuelve a leer el archivo.",
             "title": "Header Row"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`true`: la hoja se carga como observaciones de piezas ya registradas, emparejadas por sus códigos; no crea piezas (hojas «Errores…» de la consultoría, `formatos-reales-importacion` D8). `false`: vuelve a cargarla como piezas. Sin valor, el lote conserva su tipo.",
+            "title": "Observations"
           },
           "save_as_template_name": {
             "anyOf": [

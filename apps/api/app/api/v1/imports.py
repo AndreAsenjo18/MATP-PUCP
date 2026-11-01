@@ -139,7 +139,7 @@ from app.modules.imports.service import (
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import STATUS_LABELS, lock_batch, require_kind
+from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 
@@ -175,9 +175,10 @@ def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
 
 def get_spreadsheet_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
     """The batch of an Excel-only operation (mapping, validation, rows, embedded images): a
-    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1)."""
+    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1). An
+    ``OBSERVATIONS`` batch is an Excel too (formatos-reales-importacion, D8)."""
     batch = get_batch(session, batch_id)
-    require_kind(batch, ImportBatchKind.SPREADSHEET)
+    require_kind(batch, ROW_KINDS)
     return batch
 
 
@@ -427,6 +428,7 @@ def set_import_mapping(
         sheet_name=body.sheet_name,
         header_row=body.header_row,
         max_rows=request.app.state.settings.import_max_rows,
+        observations=body.observations,
     )
     batch.template_id = body.template_id  # the template the mapping came from, if any
     session.commit()
