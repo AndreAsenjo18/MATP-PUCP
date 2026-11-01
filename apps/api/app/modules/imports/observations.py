@@ -56,12 +56,16 @@ def _text(value: Any) -> str:
 
 
 def observation_text(mapped: MappedRow) -> str | None:
-    """The observation of a row: its observations field and the columns not mapped to a code."""
+    """The observation of a row: its observations field and the columns not mapped to a code.
+
+    Columns with the owner's personal data (``sensitive_keys``) never reach the notes (RNF-014,
+    D6): they stay restricted in the source data of the piece."""
+    sensitive = set(mapped.sensitive_keys)
     parts = [_text(mapped.fields.get(NOTES_FIELD))]
     parts += [
         f"{column}: {_text(value)}"
         for column, value in mapped.source_payload.items()
-        if _text(value)
+        if _text(value) and column not in sensitive
     ]
     text = "; ".join(part for part in parts if part)
     return text or None

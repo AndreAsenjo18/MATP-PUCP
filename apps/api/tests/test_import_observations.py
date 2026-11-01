@@ -44,6 +44,15 @@ def test_the_text_joins_the_notes_and_every_column_not_mapped_to_a_code() -> Non
     )
 
 
+def test_the_owner_personal_data_never_reaches_the_observation() -> None:
+    row = MappedRow(
+        source_payload={"Error": "Sin foto", "Propietario": "Nombre sintético"},
+        sensitive_keys=["Propietario"],
+    )
+
+    assert observation_text(row) == "Error: Sin foto"
+
+
 def test_an_observation_is_added_after_the_notes_and_never_replaces_them() -> None:
     assert with_observation(None, "[Fuente] Nota") == "[Fuente] Nota"
     assert with_observation("Previa\n", "[Fuente] Nota") == "Previa\n[Fuente] Nota"

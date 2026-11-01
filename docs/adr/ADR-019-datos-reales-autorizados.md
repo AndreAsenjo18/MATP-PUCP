@@ -1,6 +1,6 @@
 # ADR-019 — Uso de los Excel reales del museo en pruebas y demos
 
-- **Estado**: Propuesto
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-11-01)
 - **Fecha**: 2026-10-31
 - **Change de origen**: `formatos-reales-importacion`
 

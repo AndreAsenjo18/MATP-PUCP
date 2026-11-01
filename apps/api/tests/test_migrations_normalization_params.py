@@ -208,7 +208,7 @@ def test_writes_are_audited_and_deletion_is_logical(session: Session, act_as: Ac
         )
         session.add_all([setting, alias])
         session.flush()
-        setting.value = ["S/N", "NO REGISTRA"]
+        setting.value = ["S/N", "SIN REGISTRO"]
         session.flush()
         soft_delete(session, alias, "Alias de prueba (sintético)")
         session.flush()
@@ -247,5 +247,6 @@ def test_offline_postgresql_sql_inserts_the_same_values(
             r"'(\w+)', convert_from\(decode\('([A-Za-z0-9+/=]+)', 'base64'\), 'UTF8'\)::jsonb", sql
         )
     }
-    assert set(values[ABSENCE_MARKERS_KEY]) == ABSENCE_MARKERS
+    # Migration 0020 adds the markers of the museum files (formatos-reales-importacion).
+    assert set(values[ABSENCE_MARKERS_KEY]) == ABSENCE_MARKERS - {"NOPRESENTA", "NOREGISTRA"}
     assert values[CONCATENATION_SEPARATORS_KEY]["separators"] == ["/", ";", "|", ",", "\n", "\r"]

@@ -1,16 +1,13 @@
 """Batches of quality observations: `import_batch.kind` gains `OBSERVATIONS`.
 
 Revision ID: 0022_observation_batches
-Revises: 0019_photo_batches
+Revises: 0021_source_sensitive_keys
 Create Date: 2026-11-01
 
 Change de OpenSpec: formatos-reales-importacion (tarea 6.2; design D8). The sheets «Errores
 identificados» and «Errores pendientes» of the 2024/25 consultancy are loaded as observations of
 the pieces they identify, never as pieces. The enum is a VARCHAR with a named CHECK, so the CHECK
 is replaced (as in 0016 and 0019). No data to migrate.
-
-[PENDIENTE] When formatos-reales-importacion is merged with main, `down_revision` becomes its last
-migration (`0021_source_sensitive_keys`).
 """
 
 from collections.abc import Sequence
@@ -18,7 +15,7 @@ from collections.abc import Sequence
 from alembic import op
 
 revision: str = "0022_observation_batches"
-down_revision: str | None = "0019_photo_batches"
+down_revision: str | None = "0021_source_sensitive_keys"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
