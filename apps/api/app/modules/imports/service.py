@@ -9,7 +9,7 @@ was ingested and every human decision.
 import hashlib
 import uuid
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import PurePath
 from typing import Any
 
@@ -21,6 +21,7 @@ from app.core.errors import ConflictError, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
 from app.modules.catalog.models import Piece
+from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.modules.imports.classify import (
     ClassifiedRow,
@@ -37,6 +38,8 @@ from app.modules.imports.ingest import (
     ingest,
 )
 from app.modules.imports.mapping import (
+    ACQUISITION_TARGET,
+    ACQUISITION_VOCABULARY,
     IDENTIFIER_TARGET,
     PIECE_FIELDS,
     MappedRow,
@@ -322,6 +325,7 @@ def field_diff(
     mapped: MappedRow,
     spec: MappingSpec,
     identifiers: Sequence[tuple[str, str, str]],
+    acquisition_codes: Mapping[uuid.UUID, str] | None = None,
 ) -> dict[str, Any]:
     """``{field: {current, incoming, default_action}}`` for the fields the row would change.
 
@@ -342,6 +346,11 @@ def field_diff(
     if "collection" in targets:
         incoming_values["collection_id"] = mapped.collection_id
         current_values["collection_id"] = piece.collection_id
+    if ACQUISITION_TARGET in targets:  # compared by term code (ajustes-lectura-importacion)
+        incoming_values["acquisition_method"] = mapped.acquisition_method
+        current_values["acquisition_method"] = (acquisition_codes or {}).get(
+            piece.acquisition_method_term_id  # type: ignore[arg-type]
+        )
 
     diff: dict[str, Any] = {}
     for name, incoming in incoming_values.items():
@@ -396,6 +405,17 @@ def _update_targets(
     return pieces, identifiers
 
 
+def _acquisition_codes(session: Session) -> dict[uuid.UUID, str]:
+    """Code of every ``ACQUISITION_METHOD`` term by id, to compare a piece's current method."""
+    return dict(
+        session.execute(
+            select(Term.id, Term.code)
+            .join(Vocabulary, Term.vocabulary_id == Vocabulary.id)
+            .where(Vocabulary.code == ACQUISITION_VOCABULARY)
+        ).all()
+    )
+
+
 def validate_stage() -> StageWork:
     """Stage work: map, match and classify every row, then leave the batch in preview.
 
@@ -415,6 +435,7 @@ def validate_stage() -> StageWork:
         ).all()
         total = len(rows)
         reset_validation(session, batch, reset_counts=False)  # counts are replaced at the end
+        acquisition_codes = _acquisition_codes(session)
 
         mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
         classified = classify_batch(
@@ -451,7 +472,7 @@ def validate_stage() -> StageWork:
                     **result.row_values(),
                     "mapped_data": row.as_json(),
                     "diff": (
-                        field_diff(target, row, spec, identifiers[target.id])
+                        field_diff(target, row, spec, identifiers[target.id], acquisition_codes)
                         if target is not None and is_update
                         else None
                     ),

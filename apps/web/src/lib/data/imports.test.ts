@@ -27,6 +27,7 @@ import {
   wizardStep,
   type ApprovalSummary,
   type ImportRow,
+  rowWarnings,
 } from "./imports";
 
 // Modo `mock` por defecto; `useLive` sustituye `fetch` por un simulacro (sin API real ni red).
@@ -367,5 +368,21 @@ describe("sugerencias para los errores de validación", () => {
     expect(validationHint("invalid_inventory_code")?.action).toBeUndefined();
     expect(validationHint("otro")).toBeNull();
     expect(validationHint(undefined)).toBeNull();
+  });
+});
+
+describe("rowWarnings", () => {
+  it("lee las advertencias guardadas en la fila mapeada (ajustes-lectura-importacion)", () => {
+    const row = {
+      mapped_data: {
+        warnings: [{ code: "acquisition_regime_mismatch", message: "La forma de adquisición «Custodia» indica Comodato, pero la fila dice Propiedad: revise el régimen.", field: "tenure_regime" }],
+      },
+    };
+    expect(rowWarnings(row)).toEqual(["La forma de adquisición «Custodia» indica Comodato, pero la fila dice Propiedad: revise el régimen."]);
+  });
+
+  it("devuelve una lista vacía si la fila no tiene advertencias", () => {
+    expect(rowWarnings({ mapped_data: { fields: {} } })).toEqual([]);
+    expect(rowWarnings({ mapped_data: null })).toEqual([]);
   });
 });

@@ -171,7 +171,8 @@ def validate_row(row: RowInput) -> list[RowError]:
     errors = list(row.errors)
     if not row.denomination or not row.denomination.strip():
         errors.append(RowError("title_required", "La denominación es obligatoria.", "denomination"))
-    if row.tenure_regime is None:
+    # A mapping error already explains a missing regime (invalid or not deducible).
+    if row.tenure_regime is None and not any(e.field == "tenure_regime" for e in errors):
         errors.append(RowError("tenure_required", "Falta el régimen de tenencia.", "tenure_regime"))
     present = [identifier for identifier in row.identifiers if not identifier.is_absent]
     inventory = [i for i in present if i.type_code == INVENTORY_CODE_TYPE]

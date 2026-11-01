@@ -100,6 +100,9 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("COMPRA", "Compra"),
             ("TRANSFERENCIA", "Transferencia interna"),
             ("COMODATO", "Comodato"),
+            # The museum's files use them; they are comodato (answer to L5, 2026-10-31).
+            ("CESION_USO", "Cesión de uso"),
+            ("CUSTODIA", "Custodia"),
             ("LEGADO", "Legado"),
             ("DESCONOCIDA", "Desconocida"),
         ],
