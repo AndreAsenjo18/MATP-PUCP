@@ -22,5 +22,5 @@
 - [x] 4.1 `/deposito` redirige a `/busqueda` conservando el filtro de ubicación si lo hay; quitar «Depósito» del menú; pruebas de la redirección y del menú (Req: Verificar y mover… — escenario «Enlace antiguo al depósito»)
 - [x] 4.2 Retirar el código del depósito que quede sin uso y actualizar `components-architecture.test.ts` si corresponde
 - [x] 4.3 OpenAPI: parámetro `description`, registrado como añadido en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
-- [ ] 4.4 Manual de usuario: unificar «Buscar» y «Depósito» en `docs/manual-usuario/` (filtros, selección, verificar, mover)
+- [x] 4.4 Manual de usuario: unificar «Buscar» y «Depósito» en `docs/manual-usuario/` (filtros, selección, verificar, mover)
 - [ ] 4.5 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate fusion-busqueda-deposito --strict` en verde; tras aprobar el PR, `openspec archive fusion-busqueda-deposito -y`

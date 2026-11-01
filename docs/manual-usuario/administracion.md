@@ -65,7 +65,7 @@ Cada vez que el sistema entrega, sin ocultar, datos del comodante o la ubicació
 
 ## Ubicaciones
 
-Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito (ver [Vista de depósito](deposito.md)) solo mueve o verifica piezas; no crea lugares nuevos.
+Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito solo mueve o verifica piezas, desde la [Búsqueda](busqueda.md#4-verificar-y-mover-desde-los-resultados); no crea lugares nuevos.
 
 ### La jerarquía
 
