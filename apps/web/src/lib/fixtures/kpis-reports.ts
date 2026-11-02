@@ -90,6 +90,7 @@ function singlePage(report: Omit<ReportOut, "page" | "page_size" | "total_rows">
 export function computeInventoryReport(): ReportOut {
   const rows = PIECES.map((p) => [
     p.denomination,
+    p.description ?? "",
     p.collection?.name ?? "Sin colección",
     p.code_i ?? "Sin código I",
     p.tenure_regime,
@@ -101,7 +102,7 @@ export function computeInventoryReport(): ReportOut {
     title: "Inventario general (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
     filters: {},
-    columns: ["Denominación", "Colección", "Código I", "Régimen de tenencia", "Estado de conservación", "Ubicación"],
+    columns: ["Denominación", "Descripción", "Colección", "Código I", "Régimen de tenencia", "Estado de conservación", "Ubicación"],
     rows,
     totals: { piezas: PIECES.length },
     download_url: null,

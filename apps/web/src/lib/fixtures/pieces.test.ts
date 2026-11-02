@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alertsForPiece, getPieceDetail, listPieces, PIECES } from "./index";
+import { alertsForPiece, computeInventoryReport, getPieceDetail, listPieces, PIECES } from "./index";
 
 describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
   it("reproduce el caos de codificación con al menos 14 piezas y todos los regímenes de tenencia", () => {
@@ -68,5 +68,16 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     const byNormalizedCode = listPieces({ q: "I-0236" });
     expect(byNormalizedCode.items).toHaveLength(1);
     expect(byNormalizedCode.items[0].denomination).toBe("Toro de Pucará");
+  });
+});
+
+describe("reporte sintético", () => {
+  it("lleva la descripción tras la denominación, como el reporte real (RF-033)", () => {
+    const report = computeInventoryReport();
+    expect(report.columns.slice(0, 2)).toEqual(["Denominación", "Descripción"]);
+    const described = PIECES.find((piece) => piece.description);
+    const row = report.rows.find((cells) => cells[0] === described?.denomination);
+    expect(row?.[1]).toBe(described?.description);
+    expect(report.rows.every((cells) => cells.length === report.columns.length)).toBe(true);
   });
 });
