@@ -38,6 +38,36 @@ export interface EditorDraft {
   /** Hoja y fila de cabeceras elegidas; `null` = las del lote. */
   sheetName: string | null;
   headerRow: number | null;
+  /**
+   * Cargar la hoja como observaciones de piezas ya registradas; sin valor, se propone para las
+   * hojas «Errores…» de la consultoría (change `formatos-reales-importacion`, D8).
+   */
+  observations?: boolean;
+}
+
+type BatchKindInfo = Pick<ImportBatch, "sheet_name"> & Partial<Pick<ImportBatch, "kind">>;
+
+/** Hoja de errores de la consultoría («Errores pendientes»): se ofrece como hoja de observaciones (D8). */
+export function isErrorSheet(name: string | null | undefined): boolean {
+  return (name ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .startsWith("errores");
+}
+
+/** Si la hoja elegida se cargará como observaciones: lo que eligió la persona, el tipo del lote o, para una hoja «Errores…», sí. */
+export function loadsObservations(draft: Pick<EditorDraft, "sheetName" | "observations">, batch: BatchKindInfo): boolean {
+  if (draft.observations !== undefined) return draft.observations;
+  if (batch.kind === "OBSERVATIONS") return true;
+  return isErrorSheet(draft.sheetName ?? batch.sheet_name);
+}
+
+/** Valor de `observations` del `PUT /mapping`: solo cuando cambia el tipo del lote. */
+function observationsRequest(draft: Pick<EditorDraft, "sheetName" | "observations">, batch: BatchKindInfo): boolean | undefined {
+  const wanted = loadsObservations(draft, batch);
+  return wanted === (batch.kind === "OBSERVATIONS") ? undefined : wanted;
 }
 
 export type DraftStatus = "unchanged" | "modified" | "new";
@@ -419,12 +449,14 @@ export function previewBlocker(draft: EditorDraft, batch: Pick<ImportBatch, "she
  * API los aplica sobre los de la plantilla); si no, las columnas del borrador (v1) con los valores
  * por defecto de la plantilla y el régimen del lote encima.
  */
-export function applySource(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row" | "headers">): BatchMappingSource {
+export function applySource(draft: EditorDraft, batch: Pick<ImportBatch, "sheet_name" | "header_row" | "headers"> & Partial<Pick<ImportBatch, "kind">>): BatchMappingSource {
+  const observations = observationsRequest(draft, batch);
+  const kind = observations === undefined ? {} : { observations };
   // Una plantilla a la que el archivo no le trae columnas no se puede aplicar tal cual: se envían las columnas que quedaron.
   if (draft.base && draftStatus(draft) === "unchanged" && !sourceChanged(draft, batch) && droppedColumns(draft, batch).length === 0) {
-    return { kind: "template", templateId: draft.base.id, tenureDefault: draft.tenureDefault };
+    return { kind: "template", templateId: draft.base.id, tenureDefault: draft.tenureDefault, ...kind };
   }
-  return { kind: "columns", columns: draft.columns.map(canonicalColumn), sheetName: draft.sheetName, headerRow: draft.headerRow, tenureDefault: draft.tenureDefault, defaults: draft.templateDefaults };
+  return { kind: "columns", columns: draft.columns.map(canonicalColumn), sheetName: draft.sheetName, headerRow: draft.headerRow, tenureDefault: draft.tenureDefault, defaults: draft.templateDefaults, ...kind };
 }
 
 /** Aviso junto a «Usar este mapeo y validar» cuando el mapeo no queda guardado como plantilla. */

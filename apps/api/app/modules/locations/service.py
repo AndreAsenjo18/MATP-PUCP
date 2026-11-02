@@ -4,6 +4,7 @@ RF-020, RF-040, RF-041, RN-005)."""
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -97,6 +98,19 @@ def create_location(
 
 def location_path(session: Session, location: Location) -> list[Location]:
     return hierarchy.full_path(session, location)
+
+
+def last_seen(session: Session, piece_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, datetime]:
+    """When each piece was last seen in place: its latest movement or verification (RF-020), in UTC
+    (SQLite gives the aggregate without its time zone)."""
+    if not piece_ids:
+        return {}
+    rows = session.execute(
+        select(PieceMovement.piece_id, func.max(PieceMovement.occurred_at))
+        .where(PieceMovement.piece_id.in_(piece_ids))
+        .group_by(PieceMovement.piece_id)
+    ).all()
+    return {piece_id: seen if seen.tzinfo else seen.replace(tzinfo=UTC) for piece_id, seen in rows}
 
 
 def is_without_location(piece: Piece) -> bool:

@@ -54,6 +54,7 @@ from app.modules.imports.mapping import (
 from app.modules.imports.models import ImportBatch, ImportBatchKind, ImportPhoto, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
+from app.modules.imports.observations import NOTES_FIELD, is_observations, with_observation
 from app.modules.imports.photo_upload import upload_key
 from app.modules.imports.state import batch_kind, transition
 from app.modules.imports.worker import Progress, StageWork
@@ -174,6 +175,21 @@ def _update(session: Session, batch: ImportBatch, row: ImportRow, mapped: Mapped
     if changes:
         update_piece(session, piece, **changes)
     _add_identifiers(session, piece, identifiers, _source_label(batch))
+    return piece
+
+
+def _add_observation(session: Session, row: ImportRow) -> Piece:
+    """Append the observation of the row to the notes the piece has now, if it was accepted
+    (formatos-reales-importacion, D8); nothing else of the piece changes."""
+    assert row.target_piece_id is not None
+    piece = session.get(Piece, row.target_piece_id)
+    if piece is None:
+        raise ValidationFailed(
+            "La pieza destino fue eliminada después de la validación.", code="piece_not_found"
+        )
+    change = (row.diff or {}).get(NOTES_FIELD) or {}
+    if change.get("observation") and field_actions(row).get(NOTES_FIELD) == "accept":
+        update_piece(session, piece, notes=with_observation(piece.notes, change["observation"]))
     return piece
 
 
@@ -393,6 +409,7 @@ def apply_batch(
     change_set_id = batch.change_set_id or new_uuid()
     counts = dict.fromkeys(APPLIED_COUNTS, 0)
     created: list[dict[str, Any]] = []
+    observations = is_observations(batch)
     total = len(rows)
     with refined_context(session, change_set_id=change_set_id):
         for done, row in enumerate(rows, start=1):
@@ -402,7 +419,14 @@ def apply_batch(
                 continue
             mapped = MappedRow.from_json(row.mapped_data or {})
             try:
-                if action == RowAction.CREATE:
+                if observations:
+                    if action == RowAction.CREATE:  # validation never lets it happen (D8)
+                        raise ValidationFailed(
+                            "Una observación no crea piezas.", code="observation_creates_no_piece"
+                        )
+                    piece = _add_observation(session, row)
+                    counts["APPLIED_UPDATED"] += 1
+                elif action == RowAction.CREATE:
                     piece = _create(session, batch, mapped)
                     created.append({"id": row.id, "target_piece_id": piece.id})
                     counts["APPLIED_CREATED"] += 1

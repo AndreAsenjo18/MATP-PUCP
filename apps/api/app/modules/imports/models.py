@@ -46,10 +46,14 @@ class ImportBatchKind(enum.StrEnum):
 
     ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
     photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+    ``OBSERVATIONS``: a sheet of quality observations («Errores pendientes» of the 2024/25
+    consultancy); its rows only add a note to the pieces they identify by their codes and never
+    create one (change formatos-reales-importacion, D8).
     """
 
     SPREADSHEET = "SPREADSHEET"
     PHOTOS = "PHOTOS"
+    OBSERVATIONS = "OBSERVATIONS"
 
 
 class RowClassification(enum.StrEnum):

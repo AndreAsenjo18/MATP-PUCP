@@ -23,6 +23,23 @@ from app.modules.collections.models import Collection, Term
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.seed.synthetic import PERIODS, REGIONS, TITLES
 
+# Sentences of the synthetic descriptions: the description is the longest text of a piece and the
+# free text searches it (fusion-busqueda-deposito D1). Invented, with words the load queries use.
+DESCRIPTION_SENTENCES = [
+    "Pieza de factura artesanal con acabado pulido y huellas de uso en la base",
+    "Decoración incisa en la superficie y asa lateral en forma de cinta",
+    "Tejido en paja toquilla con ala ancha y cinta de lana teñida",
+    "Escenas de la vida rural talladas al burilado sobre la corteza",
+    "Policromía en tonos ocre, rojo y negro sobre engobe crema",
+    "Restauración antigua en el borde con relleno de yeso",
+    "Motivos geométricos repetidos en bandas horizontales",
+    "Figura modelada a mano con aplicaciones de pastillaje",
+    "Marca del taller en la parte inferior, parcialmente borrada",
+    "Uso ceremonial según el registro de ingreso del museo",
+]
+# Share of pieces without description, as in the historical records.
+WITHOUT_DESCRIPTION = 0.15
+
 
 def generate_catalog(
     session: Session,
@@ -33,6 +50,8 @@ def generate_catalog(
 ) -> int:
     """Generate synthetic pieces and identifiers in batches."""
     rng = random.Random(seed)
+    # Its own generator, so the other fields stay the same for a given seed.
+    description_rng = random.Random(seed + 1)
 
     # Set system audit context
     ctx = AuditContext(
@@ -79,6 +98,13 @@ def generate_catalog(
             cat_id = rng.choice(term_ids)
             state_id = rng.choice(term_ids)
 
+            description = None
+            if description_rng.random() >= WITHOUT_DESCRIPTION:
+                sentences = description_rng.sample(
+                    DESCRIPTION_SENTENCES, k=description_rng.randint(3, 6)
+                )
+                description = ". ".join(sentences) + f". Registro sintético #{num}."
+
             p_id = new_uuid()
             piece = Piece(
                 id=p_id,
@@ -89,6 +115,7 @@ def generate_catalog(
                 conservation_state_id=state_id,
                 author=f"Maestro {region}" if rng.random() > 0.4 else None,
                 provenance=region,
+                description=description,
                 epoch_original_text=period_text,
                 epoch_type=period_type,
                 epoch_start_year=period_from,

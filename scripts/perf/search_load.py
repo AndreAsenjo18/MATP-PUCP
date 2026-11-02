@@ -2,8 +2,9 @@
 
 Simulates concurrent user load against the catalog search endpoints with a realistic query mix:
 - 40% code search (normalized exact / historical codes)
-- 30% free text search (denomination, author, provenance, unaccented)
-- 30% combined filters (collection, category, tenure, period)
+- 25% free text search (denomination, author, provenance, description, unaccented)
+- 20% combined filters (collection, category, tenure, period)
+- 15% «Descripción contiene» (alone or with free text; fusion-busqueda-deposito D1)
 
 Computes latency percentiles (p50, p95, p99), error rate, and verifies the SLA (p95 <= 2s).
 """
@@ -45,9 +46,19 @@ TEXT_QUERIES = [
 
 COLLECTIONS_SAMPLE = ["MMZ", "RA", "RAB", "MBB", "AJB"]
 
+# Words of the synthetic descriptions of generate_catalog.
+DESCRIPTION_QUERIES = [
+    "asa",
+    "paja toquilla",
+    "burilado",
+    "policromia",
+    "restauracion",
+    "geometricos",
+]
+
 
 def generate_query(rng: random.Random) -> tuple[str, dict[str, Any]]:
-    """Select query type according to 40% code, 30% text, 30% filter mix."""
+    """Select query type according to 40% code, 25% text, 20% filter, 15% description mix."""
     roll = rng.random()
 
     if roll < 0.40:
@@ -56,13 +67,13 @@ def generate_query(rng: random.Random) -> tuple[str, dict[str, Any]]:
         q = f"I-{num:06d}" if rng.random() > 0.3 else f"I-{num}"
         return "code", {"q": q, "limit": 20}
 
-    elif roll < 0.70:
-        # 30% Text queries
+    elif roll < 0.65:
+        # 25% Text queries (they also scan the description)
         term = rng.choice(TEXT_QUERIES)
         return "text", {"q": term, "limit": 20}
 
-    else:
-        # 30% Combined filters (q is required by contract, plus tenure_regime)
+    elif roll < 0.85:
+        # 20% Combined filters (q is required by contract, plus tenure_regime)
         filters: dict[str, Any] = {
             "q": rng.choice(TEXT_QUERIES),
             "limit": 20,
@@ -72,6 +83,13 @@ def generate_query(rng: random.Random) -> tuple[str, dict[str, Any]]:
         if rng.random() > 0.5:
             filters["collection_code"] = rng.choice(COLLECTIONS_SAMPLE)
         return "filters", filters
+
+    else:
+        # 15% «Descripción contiene», half of them with a free text as well
+        params: dict[str, Any] = {"description": rng.choice(DESCRIPTION_QUERIES), "limit": 20}
+        if rng.random() > 0.5:
+            params["q"] = rng.choice(TEXT_QUERIES)
+        return "description", params
 
 
 async def worker(
@@ -183,6 +201,7 @@ async def run_load_test(
         "code": [],
         "text": [],
         "filters": [],
+        "description": [],
     }
     errors: list[dict[str, Any]] = []
 
@@ -266,9 +285,11 @@ async def run_load_test(
     code_p95 = type_stats["code"]["p95"]
     text_p95 = type_stats["text"]["p95"]
     filt_p95 = type_stats["filters"]["p95"]
+    desc_p95 = type_stats["description"]["p95"]
     print(f"  Code (40%):    {code_p95:>8.2f} ms ({len(latencies_by_type['code'])} reqs)")
-    print(f"  Text (30%):    {text_p95:>8.2f} ms ({len(latencies_by_type['text'])} reqs)")
-    print(f"  Filters (30%): {filt_p95:>8.2f} ms ({len(latencies_by_type['filters'])} reqs)")
+    print(f"  Text (25%):    {text_p95:>8.2f} ms ({len(latencies_by_type['text'])} reqs)")
+    print(f"  Filters (20%): {filt_p95:>8.2f} ms ({len(latencies_by_type['filters'])} reqs)")
+    print(f"  Descr. (15%):  {desc_p95:>8.2f} ms ({len(latencies_by_type['description'])} reqs)")
 
     print(f"\nSLA Verdict: {'PASS [OK]' if sla_met else 'FAIL [EXCEEDED]'}\n")
 

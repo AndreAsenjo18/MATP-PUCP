@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.enums import TENURE_REGIME_LABELS
@@ -30,7 +30,8 @@ from app.modules.identification.normalization import (
     TYPE_INVENTORY,
     TYPE_PUCP,
 )
-from app.modules.locations.models import Location, PieceMovement
+from app.modules.locations.models import Location
+from app.modules.locations.service import last_seen
 from app.modules.reports.models import PieceValuation
 from app.modules.users.sensitive import PERM_EXACT_LOCATION, PUBLIC_LOCATION_LEVELS
 
@@ -374,24 +375,14 @@ def by_location(
         )
 
     ids = [piece.id for piece in pieces]
-    last_seen = (
-        dict(
-            session.execute(
-                select(PieceMovement.piece_id, func.max(PieceMovement.occurred_at))
-                .where(PieceMovement.piece_id.in_(ids))
-                .group_by(PieceMovement.piece_id)
-            ).all()
-        )
-        if ids
-        else {}
-    )
+    seen_at = last_seen(session, ids)
     identifiers = reader.current_identifiers(ids)
     moment = now or datetime.now(UTC)
     rows: list[list[Any]] = []
     for piece in sorted(
         pieces, key=lambda p: (_location_text(reader, p)[0], p.denomination.casefold())
     ):
-        seen = last_seen.get(piece.id)
+        seen = seen_at.get(piece.id)
         days = (moment - _as_utc(seen)).days if seen else None
         if (
             not_verified_since_days is not None

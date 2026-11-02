@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { EMPTY_FILTERS, activeChips, type ExportJob, type SearchHit, type SearchPage } from "@/lib/data/search";
+import { EMPTY_SELECTION, toggleSelected } from "@/lib/data/selection";
 import { render, visibleText } from "@/test/render";
 
-import { ActiveFilterChips, ExportColumnsPicker, ExportJobsList, SearchFiltersPanel, SearchResults, type SearchOptions } from "./SearchLive";
+import { FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "./SearchFilters";
+import { ActiveFilterChips, ExportColumnsPicker, ExportJobsList, SearchResults } from "./SearchLive";
 
 // Datos sintéticos (RNF-014).
 
@@ -44,7 +46,15 @@ const OPTIONS: SearchOptions = {
   categories: [{ id: "cat-ret", label: "Retablo" }],
   materials: [{ id: "mat-madera", label: "Madera" }],
   conservationStates: [{ id: "est-bueno", label: "Bueno" }],
-  locations: [{ id: "loc-d2", label: "Depósito 2 (Depósito)" }],
+  locations: [{ id: "loc-d2", label: "Sede Central (ficticia) › Depósito 2" }],
+  locationTree: [
+    {
+      id: "sede-1",
+      name: "Sede Central (ficticia)",
+      level_type: "Sede",
+      children: [{ id: "loc-d2", name: "Depósito 2", level_type: "Depósito", children: [] }],
+    },
+  ],
 };
 
 describe("resultados de la búsqueda", () => {
@@ -80,6 +90,68 @@ describe("resultados de la búsqueda", () => {
     expect(html.match(/<button/g)).toHaveLength(1);
   });
 
+  it("sin resultados ofrece quitar los filtros uno por uno, aunque la API no sugiera nada", () => {
+    const chips = activeChips({ ...EMPTY_FILTERS, denomination: "xyz" });
+    const html = render(<SearchResults page={page({ items: [], total: 0 })} chips={chips} onRemoveChip={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("No se encontraron piezas con estos filtros.");
+    expect(text).toContain("Quite el filtro Denominación: «xyz».");
+    expect(html).toContain('aria-label="Quitar filtros uno por uno"');
+  });
+
+  it("con filtros aplicados no repite las sugerencias de quitar un filtro y conserva los consejos", () => {
+    const chips = activeChips({ ...EMPTY_FILTERS, q: "I 0236", materialId: "mat-madera", tenureRegime: "Comodato" }, { "mat-madera": "Madera" });
+    const html = render(
+      <SearchResults
+        page={page({ items: [], total: 0, suggestions: ["remove_filter:material_id", "check_code_format"] })}
+        chips={chips}
+        onRemoveChip={noop}
+        onSuggestion={noop}
+      />,
+    );
+    const text = visibleText(html);
+    expect(html.match(/<button/g)).toHaveLength(3);
+    expect(text).toContain("Quite el filtro Material: Madera.");
+    expect(text).not.toContain("Quite el filtro «Material».");
+    expect(text).toContain("Revise cómo escribió el código");
+  });
+
+  it("con permiso de movimientos cada resultado tiene su casilla y se elige la página entera", () => {
+    const second = hit({}, { id: "p-2", denomination: "Mate burilado (sintético)" });
+    const fromOtherPage = hit({}, { id: "p-9", denomination: "Manta (sintética)" });
+    const selection = toggleSelected(toggleSelected(EMPTY_SELECTION, second), fromOtherPage);
+    const html = render(<SearchResults page={page({ items: [hit(), second], total: 2 })} selection={selection} onSelectionChange={noop} />);
+    expect(html.match(/type="checkbox"/g)).toHaveLength(3);
+    expect(html).toContain('aria-label="Seleccionar Retablo de San Marcos (sintético)"');
+    expect(html.match(/checked=""/g)).toHaveLength(1);
+    expect(html).toContain('aria-checked="mixed"');
+    const text = visibleText(html);
+    expect(text).toContain("Seleccionar toda la página");
+    expect(text).toContain("2 piezas seleccionadas");
+    expect(text).toContain("Quitar la selección");
+  });
+
+  it("en tableta las tarjetas son compactas y la casilla es grande", () => {
+    const html = render(<SearchResults page={page({ items: [hit()] })} selection={EMPTY_SELECTION} onSelectionChange={noop} />);
+    expect(html).toMatch(/<a[^>]*class="[^"]*p-3 lg:p-4/);
+    expect(html).toMatch(/type="checkbox"[^>]*class="[^"]*size-7[^"]*lg:size-6/);
+    expect(html).toContain("size-14 lg:size-20");
+  });
+
+  it("muestra cuándo se vio la pieza solo si el resultado trae la fecha (dato restringido)", () => {
+    const seen = visibleText(render(<SearchResults page={page({ items: [hit({ last_seen_at: new Date().toISOString() })] })} />));
+    expect(seen).toContain("Sede Central › Depósito 2 · visto hoy");
+    const restricted = visibleText(render(<SearchResults page={page({ items: [hit()] })} />));
+    expect(restricted).toContain("Sede Central › Depósito 2");
+    expect(restricted).not.toContain("visto");
+  });
+
+  it("sin permiso de movimientos los resultados no tienen casillas", () => {
+    const html = render(<SearchResults page={page({ items: [hit()], total: 1 })} />);
+    expect(html).not.toContain('type="checkbox"');
+    expect(visibleText(html)).not.toContain("Seleccionar toda la página");
+  });
+
   it("avisa de las piezas con época solo en texto y pagina", () => {
     const text = visibleText(render(<SearchResults page={page({ total: 45, excluded_uninterpreted_period: 3 })} onPage={noop} />));
     expect(text).toContain("3 piezas cumplen los demás filtros, pero su época solo está escrita como texto");
@@ -102,10 +174,62 @@ describe("filtros", () => {
       "Época desde (año)",
       "Época hasta (año)",
       "Completitud de la ficha",
+      "Denominación",
+      "Descripción contiene",
+      "Autor",
+      "Procedencia",
     ]) {
       expect(text).toContain(label);
     }
-    expect(text).toContain("Depósito 2 (Depósito)");
+    // La ubicación se elige en el árbol (fusion-busqueda-deposito 2.2), abierto desde la sede.
+    expect(text).toContain("Depósito 2");
+    expect(text).toContain("Al elegir un lugar se incluye todo lo que contiene.");
+  });
+
+  it("pone primero los cinco filtros del museo y el resto en «Más filtros», plegado", () => {
+    const html = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={OPTIONS} onChange={noop} onClear={noop} />);
+    const text = visibleText(html);
+    const order = ["Código o texto", "Denominación", "Categoría", "Material", "Descripción contiene", "Más filtros"].map((label) =>
+      text.indexOf(label),
+    );
+    expect(order.every((position) => position >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    for (const secondary of ["Colección (con subcolecciones)", "Ubicación (con lo que contiene)", "Autor", "Procedencia", "Completitud de la ficha"]) {
+      expect(text.indexOf(secondary)).toBeGreaterThan(text.indexOf("Más filtros"));
+    }
+    expect(html).toContain("<details>");
+  });
+
+  it("«Más filtros» aparece abierto cuando llega un filtro secundario, como la ubicación", () => {
+    const withLocation = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, locationId: "loc-d2" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(withLocation).toContain('<details open="">');
+    expect(visibleText(withLocation)).toContain("Sede Central (ficticia) › Depósito 2");
+    const withAuthor = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, author: "Huamán" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(withAuthor).toContain('<details open="">');
+    const onlyMain = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, denomination: "mate", description: "asa" }} options={OPTIONS} onChange={noop} onClear={noop} />);
+    expect(onlyMain).toContain("<details>");
+    // «Ver por ubicación» (design D3) abre «Más filtros», donde está el árbol de ubicaciones.
+    const byLocation = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={OPTIONS} onChange={noop} onClear={noop} openMore />);
+    expect(byLocation).toContain('<details open="">');
+  });
+
+  it("en tableta los filtros se abren con un botón que dice cuántos hay activos", () => {
+    const closed = render(
+      <FiltersDrawer open={false} onToggle={noop} activeCount={2}>
+        <p>Panel</p>
+      </FiltersDrawer>,
+    );
+    expect(closed).toContain('aria-expanded="false"');
+    expect(visibleText(closed)).toContain("Filtros (2 activos)");
+    expect(closed).toContain('class="hidden lg:block"');
+    const open = render(
+      <FiltersDrawer open onToggle={noop} activeCount={0}>
+        <p>Panel</p>
+      </FiltersDrawer>,
+    );
+    expect(open).toContain('class="block lg:block"');
+    expect(visibleText(open)).toContain("Ocultar los filtros");
+    expect(visibleText(open)).not.toContain("activos");
   });
 
   it("muestra un chip que se puede quitar por cada filtro activo", () => {

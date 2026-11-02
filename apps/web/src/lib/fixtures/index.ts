@@ -139,6 +139,11 @@ export function getPieceMedia(pieceId: string): ApiSchemas["MediaAssetOut"][] {
   return MEDIA_BY_PIECE[pieceId] ?? [];
 }
 
+/** Todas las fotos sintéticas, para la estimación del volumen en modo mock. */
+export function getAllPieceMedia(): ApiSchemas["MediaAssetOut"][] {
+  return Object.values(MEDIA_BY_PIECE).flat();
+}
+
 export function getPieceMovements(pieceId: string): ApiSchemas["MovementOut"][] {
   return MOVEMENTS_BY_PIECE[pieceId] ?? [];
 }

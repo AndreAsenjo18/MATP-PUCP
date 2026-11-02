@@ -10,6 +10,7 @@ import { useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportsLive } from "@/components/domain/ReportsLive";
+import { StorageEstimateCard } from "@/components/domain/StorageEstimateCard";
 import { FullExportPanel } from "@/components/domain/SearchLive";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -119,6 +120,9 @@ function ReportesContent() {
           </Card>
         )
       )}
+
+      {/* La pantalla ya exige `reports.view`, el mismo permiso que la estimación (RNF-003). */}
+      <StorageEstimateCard devUser={currentUser?.email} />
 
       {hasPermission("exports.full") && live && <FullExportPanel />}
       {hasPermission("exports.full") && !live && (

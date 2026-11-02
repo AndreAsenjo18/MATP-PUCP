@@ -37,6 +37,8 @@ import {
   applyNotice,
   draftStatus,
   droppedColumns,
+  isErrorSheet,
+  loadsObservations,
   dropMapping,
   moveTransform,
   parseTransform,
@@ -108,6 +110,9 @@ export function MappingEditor({
   const notice = applyNotice(draft, batch);
   const sheetNames = batch.sheet_names ?? [];
   const templateDefaults = templateDefaultsText(draft.templateDefaults);
+  // Hojas «Errores…» de la consultoría: se ofrecen como observaciones (formatos-reales-importacion, D8).
+  const observations = loadsObservations(draft, batch);
+  const offerObservations = observations || isErrorSheet(draft.sheetName ?? batch.sheet_name);
   return (
     <Card as="section" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -115,8 +120,19 @@ export function MappingEditor({
         <StatusBadge status={mappingDraftStatus(status)} />
       </div>
       <p className="text-base text-gris-texto">
-        Elija a qué corresponde cada columna. La denominación es obligatoria. Lo que deje como «dato de origen» no se pierde: se guarda con cada pieza.
+        {observations
+          ? "Indique la columna de los códigos: con ellos se encuentra la pieza de cada fila. Las demás columnas forman el texto de la observación."
+          : "Elija a qué corresponde cada columna. La denominación es obligatoria. Lo que deje como «dato de origen» no se pierde: se guarda con cada pieza."}
       </p>
+      {offerObservations && (
+        <label className="flex min-h-11 items-start gap-2 rounded-md bg-crema p-3 text-base text-tinta">
+          <input type="checkbox" className="mt-1" checked={observations} onChange={(event) => onChange({ ...draft, observations: event.target.checked })} />
+          <span>
+            Cargar esta hoja como observaciones de piezas ya registradas
+            <span className="block text-sm text-gris-texto">No crea piezas: cada fila agrega una nota a la pieza de sus códigos; las que no se encuentran quedan en la bitácora.</span>
+          </span>
+        </label>
+      )}
       {dropped.length > 0 && (
         <p className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
           Se quitaron del mapeo las columnas de la plantilla que este archivo no trae: {dropped.join(", ")}.

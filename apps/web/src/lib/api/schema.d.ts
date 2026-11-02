@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5992344526f31705f880ee7fb325d0bc2e2d07e78a858c00f227b882d6abba47
+ * openapi-sha256: 33d0cc6f5e7fdded9509dcb8699fafbb642a8277f479247c5c0329decae78910
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -4200,9 +4200,12 @@ export interface components {
          *
          *     ``SPREADSHEET``: an Excel with its rows and, optionally, photos for them. ``PHOTOS``: only
          *     photos, matched with pieces already in the catalogue; it has no mapping, rows nor validation.
+         *     ``OBSERVATIONS``: a sheet of quality observations («Errores pendientes» of the 2024/25
+         *     consultancy); its rows only add a note to the pieces they identify by their codes and never
+         *     create one (change formatos-reales-importacion, D8).
          * @enum {string}
          */
-        ImportBatchKind: "SPREADSHEET" | "PHOTOS";
+        ImportBatchKind: "SPREADSHEET" | "PHOTOS" | "OBSERVATIONS";
         /**
          * ImportBatchOut
          * @example {
@@ -5090,6 +5093,11 @@ export interface components {
              * @description Otra fila de cabeceras: se vuelve a leer el archivo.
              */
             header_row?: number | null;
+            /**
+             * Observations
+             * @description `true`: la hoja se carga como observaciones de piezas ya registradas, emparejadas por sus códigos; no crea piezas (hojas «Errores…» de la consultoría, `formatos-reales-importacion` D8). `false`: vuelve a cargarla como piezas. Sin valor, el lote conserva su tipo.
+             */
+            observations?: boolean | null;
             /**
              * Save As Template Name
              * @description Aún no disponible: cree la plantilla con `POST /import-templates`.
@@ -7404,6 +7412,16 @@ export interface components {
          *     }
          */
         SearchHit: {
+            /**
+             * Last Seen At
+             * @description Último movimiento o verificación de la pieza («visto hace N días»), con la misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).
+             */
+            last_seen_at?: string | null;
+            /**
+             * Location Id
+             * @description Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).
+             */
+            location_id?: string | null;
             /**
              * Match Reason
              * @description Detalle estructurado de la coincidencia (identificador o campos de texto).
@@ -13086,6 +13104,10 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
+                /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                description?: string | null;
                 /** @description Año de fin de época. */
                 epoch_end_year?: number | null;
                 /** @description Año de inicio de época. */
@@ -15441,6 +15463,10 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
+                /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                description?: string | null;
                 /** @description Año de fin de época. */
                 epoch_end_year?: number | null;
                 /** @description Año de inicio de época. */

@@ -46,7 +46,7 @@ function client(devUser: string | undefined) {
 
 /** Lo que se envía en `PUT /mapping`: una plantilla guardada o las columnas del panel actual. */
 export type BatchMappingSource =
-  | { kind: "template"; templateId: string; tenureDefault?: string | null }
+  | { kind: "template"; templateId: string; tenureDefault?: string | null; observations?: boolean }
   | {
       kind: "columns";
       columns: readonly ColumnMapping[];
@@ -55,6 +55,8 @@ export type BatchMappingSource =
       tenureDefault?: string | null;
       /** Otros valores por defecto (`collection`, `denomination`); el régimen va en `tenureDefault`. */
       defaults?: Record<string, string>;
+      /** `true`: la hoja se carga como observaciones; `false`: otra vez como piezas; sin valor, el lote conserva su tipo. */
+      observations?: boolean;
     };
 
 /**
@@ -70,10 +72,16 @@ export function batchMappingRequest(source: BatchMappingSource): MappingRequest 
       header_row: null,
       columns: [],
       defaults: source.tenureDefault ? { tenure_regime: source.tenureDefault } : {},
+      ...(source.observations === undefined ? {} : { observations: source.observations }),
     };
   }
   const request = mappingRequest(source.columns, source);
-  return { ...request, defaults: { ...source.defaults, ...request.defaults }, template_id: null };
+  return {
+    ...request,
+    defaults: { ...source.defaults, ...request.defaults },
+    template_id: null,
+    ...(source.observations === undefined ? {} : { observations: source.observations }),
+  };
 }
 
 /** Columnas de la plantilla que el archivo no trae: aplicarla tal cual respondería 422 (design D1). */

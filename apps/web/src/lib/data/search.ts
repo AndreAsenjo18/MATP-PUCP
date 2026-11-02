@@ -19,10 +19,15 @@ export type TenureRegimeLabel = NonNullable<SearchQuery["tenure_regime"]>;
 export type AlertCode = NonNullable<SearchQuery["alert_code"]>;
 
 export const SEARCH_PAGE_SIZE = 20;
+export const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 /** Filtros de la pantalla. `null`/vacío = filtro inactivo. */
 export interface SearchFilters {
   q: string;
+  denomination: string;
+  description: string;
+  author: string;
+  provenance: string;
   collectionId: string | null;
   categoryId: string | null;
   materialId: string | null;
@@ -37,6 +42,10 @@ export interface SearchFilters {
 
 export const EMPTY_FILTERS: SearchFilters = {
   q: "",
+  denomination: "",
+  description: "",
+  author: "",
+  provenance: "",
   collectionId: null,
   categoryId: null,
   materialId: null,
@@ -52,6 +61,10 @@ export const EMPTY_FILTERS: SearchFilters = {
 /** Nombre del filtro en la API (`PieceFilter`) para cada filtro de la pantalla. */
 const API_KEYS: Record<keyof SearchFilters, string> = {
   q: "q",
+  denomination: "denomination",
+  description: "description",
+  author: "author",
+  provenance: "provenance",
   collectionId: "collection_id",
   categoryId: "category_id",
   materialId: "material_id",
@@ -66,6 +79,10 @@ const API_KEYS: Record<keyof SearchFilters, string> = {
 
 export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   q: "Búsqueda",
+  denomination: "Denominación",
+  description: "Descripción",
+  author: "Autor",
+  provenance: "Procedencia",
   collectionId: "Colección",
   categoryId: "Categoría",
   materialId: "Material",
@@ -78,6 +95,20 @@ export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   hasAlerts: "Completitud",
 };
 
+/** Los cinco filtros que el museo usa más, a la vista; el resto va en «Más filtros» (fusion-busqueda-deposito 2.1). */
+export const MAIN_FILTER_KEYS: readonly (keyof SearchFilters)[] = ["q", "denomination", "categoryId", "materialId", "description"];
+/** Filtros que se escriben: la búsqueda espera a que se deje de teclear. */
+export const TEXT_FILTER_KEYS = ["q", "denomination", "description", "author", "provenance"] as const;
+
+function isActive(value: SearchFilters[keyof SearchFilters]): boolean {
+  return value !== null && !(typeof value === "string" && value.trim() === "");
+}
+
+/** Hay algún filtro activo de «Más filtros»: la sección se abre sola. */
+export function secondaryFiltersActive(filters: SearchFilters): boolean {
+  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).some((key) => !MAIN_FILTER_KEYS.includes(key) && isActive(filters[key]));
+}
+
 /** Filtros activos en el formato de la API: query de `GET /search` y `filters` de la exportación. */
 export function apiFilters(filters: SearchFilters): Record<string, string | number | boolean> {
   const result: Record<string, string | number | boolean> = {};
@@ -88,6 +119,49 @@ export function apiFilters(filters: SearchFilters): Record<string, string | numb
     result[API_KEYS[key]] = typeof value === "string" ? value.trim() : value;
   }
   return result;
+}
+
+const ID_FILTER_KEYS = ["collectionId", "categoryId", "materialId", "conservationStateId", "locationId"] as const;
+
+/**
+ * Los filtros en la dirección de la página, con los nombres de la API (`?denomination=mate&location_id=…`),
+ * para compartir o volver a una búsqueda (fusion-busqueda-deposito 2.3).
+ */
+export function filtersToSearchParams(filters: SearchFilters): URLSearchParams {
+  return new URLSearchParams(Object.entries(apiFilters(filters)).map(([key, value]) => [key, String(value)]));
+}
+
+/** Adónde lleva un enlace a la antigua vista de depósito: a la búsqueda, con su ubicación si la trae. */
+export function depositoRedirectTarget(params: { get(name: string): string | null }): string {
+  const locationId = params.get(API_KEYS.locationId)?.trim();
+  if (!locationId) return "/busqueda";
+  return `/busqueda?${filtersToSearchParams({ ...EMPTY_FILTERS, locationId }).toString()}`;
+}
+
+function booleanParam(value: string | null): boolean | null {
+  return value === "true" ? true : value === "false" ? false : null;
+}
+
+function yearParam(value: string | null): number | null {
+  if (value === null || !/^-?\d+$/.test(value.trim())) return null;
+  return Number(value.trim());
+}
+
+/**
+ * Los filtros de una dirección de la búsqueda; lo que no se reconoce se ignora. También lee los enlaces
+ * del tablero de inicio (`incompleteOnly=1`, `hasInventoryCode=false`).
+ */
+export function filtersFromSearchParams(params: { get(name: string): string | null }): SearchFilters {
+  const filters: SearchFilters = { ...EMPTY_FILTERS };
+  for (const key of TEXT_FILTER_KEYS) filters[key] = params.get(API_KEYS[key])?.trim() ?? "";
+  for (const key of ID_FILTER_KEYS) filters[key] = params.get(API_KEYS[key])?.trim() || null;
+  const tenure = params.get(API_KEYS.tenureRegime);
+  filters.tenureRegime = TENURE_REGIMES.find((label) => label === tenure) ?? null;
+  filters.hasInventoryCode = booleanParam(params.get(API_KEYS.hasInventoryCode) ?? params.get("hasInventoryCode"));
+  filters.hasAlerts = booleanParam(params.get(API_KEYS.hasAlerts)) ?? (params.get("incompleteOnly") === "1" ? true : null);
+  filters.epochStartYear = yearParam(params.get(API_KEYS.epochStartYear));
+  filters.epochEndYear = yearParam(params.get(API_KEYS.epochEndYear));
+  return filters;
 }
 
 export interface FilterChip {
@@ -104,9 +178,13 @@ export function activeChips(filters: SearchFilters, names: Record<string, string
   const chips: FilterChip[] = [];
   const add = (key: keyof SearchFilters, value: string) => chips.push({ key, label: FILTER_LABELS[key], value });
   if (filters.q.trim()) add("q", `«${filters.q.trim()}»`);
-  for (const key of ["collectionId", "categoryId", "materialId", "conservationStateId", "locationId"] as const) {
+  if (filters.denomination.trim()) add("denomination", `«${filters.denomination.trim()}»`);
+  for (const key of ID_FILTER_KEYS) {
     const id = filters[key];
     if (id) add(key, names[id] ?? "(seleccionada)");
+  }
+  for (const key of ["description", "author", "provenance"] as const) {
+    if (filters[key].trim()) add(key, `«${filters[key].trim()}»`);
   }
   if (filters.tenureRegime) add("tenureRegime", filters.tenureRegime);
   if (filters.hasInventoryCode !== null) add("hasInventoryCode", filters.hasInventoryCode ? "Con código I" : "Sin código I");
@@ -136,6 +214,8 @@ const FIELD_LABELS: Record<string, string> = {
   category: "categoría",
   conservation_state: "estado de conservación",
   material: "material",
+  // «Coincide en la descripción» (fusion-busqueda-deposito, escenario «Palabra que solo está en la descripción»).
+  description: "la descripción",
 };
 
 function joinSpanish(items: string[]): string {
