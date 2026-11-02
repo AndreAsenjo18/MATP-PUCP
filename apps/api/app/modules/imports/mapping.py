@@ -86,12 +86,16 @@ FIELD_TARGETS: dict[str, str] = {
     "lender_name": "Comodante",
     "loan_agreement_ref": "Referencia del contrato de comodato",
     "temporary_inventory_number": "Número de inventario temporal",
+    "photo_filename": "Archivo de la foto",
 }
+# The photo file column (importacion-masiva-fotografias, task 3.4; design D3): not a field of the
+# record, it only tells the photo matching which files of the batch belong to the row.
+PHOTO_FILE_FIELD = "photo_filename"
 DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
 # In v1 ``denomination`` may come from a default too (design D2); v0 keeps DEFAULT_TARGETS.
 DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
-PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"})
+PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection", PHOTO_FILE_FIELD})
 
 
 def _collection_name_key(name: str) -> str:

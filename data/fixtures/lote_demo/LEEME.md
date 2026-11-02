@@ -26,7 +26,7 @@ existiera ese formato, el asistente propone el de la sábana sintética, al que 
 | PROCEDENCIA | Procedencia |
 | ÉPOCA | Época (texto original) |
 | MATERIAL, MEDIDAS, OBS. CONSULTORÍA | Sin mapear: se conservan como datos de origen |
-| FOTO | Archivo de la foto (cuando el asistente ofrezca esa columna) |
+| FOTO | Archivo de la foto: empareja la foto por su nombre aunque no traiga el código |
 
 ## Qué debería pasar con las filas
 

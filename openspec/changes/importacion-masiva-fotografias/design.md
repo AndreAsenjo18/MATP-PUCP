@@ -112,6 +112,7 @@ El emparejamiento se ejecuta al terminar la validación del lote, cuando ya exis
 5. **Orden** dentro de la fila: orden natural del nombre (`foto2` antes que `foto10`), guardado en `sort_key`.
 
 - Las fotos extraídas de imágenes incrustadas (D8 del change hermano) pueden entrar en la misma tabla con `match_source=embedded` y su fila de anclaje. Así hay una sola bandeja.
+- *Decisión al cerrar (2026-11-01, tarea 7.5)*: `importacion-pipeline-reconciliacion` se archivó el 2026-10-25, así que su D8 ya no se edita y se registra aquí. Las imágenes incrustadas en el Excel siguen su propio flujo, el secundario: `import_image` y su asociación manual a la pieza después de aplicar (`POST /imports/{batch_id}/images/{image_id}/associate`). No alimentan `import_photo`. El valor `match_source=embedded` queda reservado para unir los dos flujos en una sola bandeja si algún archivo del museo las trae; ninguna de las bases entregadas tiene imágenes incrustadas.
 - *Alternativa*: exigir una convención de nombres fija. Se descartó porque el museo no conoce la suya y no se puede renombrar 25 000 archivos a mano.
 
 ### D4. Bandeja y decisiones
@@ -149,8 +150,9 @@ Las fotos de lotes **abandonados** o descartadas se conservan `IMPORT_PHOTO_RETE
 
 ### D8. Frontend
 
-- Paso «Fotografías» en el asistente de importación, entre mapeo y previsualización, tomando como referencia de UX la pantalla «Importar» del prototipo v3. Permite seleccionar carpeta (`<input webkitdirectory>`) y arrastrar carpetas (`DataTransferItem.webkitGetAsEntry`). Muestra el avance global y por archivo, y un botón «reanudar».
-- En la previsualización, cada fila muestra sus miniaturas propuestas. La bandeja lateral tiene filtros (ambiguas, sin emparejar, repetidas), selección múltiple y la acción «asignar a fila».
+- Panel «Fotografías del lote» en el asistente de importación, tomando como referencia de UX la pantalla «Importar» del prototipo v3. Permite seleccionar carpeta (`<input webkitdirectory>`) y arrastrar carpetas (`DataTransferItem.webkitGetAsEntry`). Muestra el avance global y por archivo, y un botón «reanudar».
+  - *Decisión al cerrar (2026-11-01, tarea 6.2)*: el panel va dentro de la validación y la previsualización (`ImportPhotosPanel`), no como paso propio entre mapeo y previsualización. Las fotos se emparejan con las filas ya validadas, así que subirlas antes de validar no adelanta nada, y un paso nuevo cambiaría el asistente a días de congelar la versión de la demo (jueves 5 de noviembre).
+- En la previsualización, cada fila muestra sus miniaturas propuestas (`RowPhotoStrip`), con la marca de las repetidas en la pieza y la acción «Aplicar igual». La bandeja lateral tiene filtros (todas, ambiguas, sin emparejar), selección múltiple y la acción «asignar a fila».
 - Sin librerías nuevas: `fetch` con concurrencia limitada y reintentos con espera exponencial.
 
 ## Risks / Trade-offs
@@ -166,7 +168,7 @@ Las fotos de lotes **abandonados** o descartadas se conservan `IMPORT_PHOTO_RETE
 
 1. Migración aditiva: tabla `import_photo`, enums y término «sin especificar» en `PHOTO_VIEW_TYPE`. No toca datos existentes. Se revierte con `downgrade`.
 2. Variables nuevas en `.env.example`: `IMPORT_MAX_PHOTOS`, `MEDIA_KEEP_ORIGINALS`, `IMPORT_PHOTO_RETENTION_DAYS`, `MEDIA_QUOTA_BYTES`.
-3. Se despliega detrás del paso nuevo del asistente. Un lote sin fotos se comporta igual que antes.
+3. Se despliega con el panel «Fotografías del lote» del asistente (D8). Un lote sin fotos se comporta igual que antes.
 
 ## Open Questions
 
