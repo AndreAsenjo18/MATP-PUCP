@@ -56,7 +56,7 @@ describe("vista previa del reporte", () => {
 
   it("deja el encabezado de la tabla fijo al desplazarse", () => {
     const html = render(<ReportPreview report={report()} onPage={noop} />);
-    expect(html).toMatch(/<thead[^>]*sticky top-0/);
+    expect(html.match(/<th[^>]*scope="col"[^>]*sticky top-0/g)).toHaveLength(3);
     expect(html).toMatch(/max-h-\[70vh\] overflow-auto/);
   });
 

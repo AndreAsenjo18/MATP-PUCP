@@ -66,10 +66,11 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
   return (
     <div className="max-h-[70vh] overflow-auto rounded-md border border-borde">
       <table className="w-full text-left text-sm">
-        <thead className="sticky top-0 z-10 bg-white text-gris-texto shadow-[inset_0_-1px_0_var(--color-borde)]">
+        <thead className="text-gris-texto">
           <tr>
+            {/* En cada celda y no en `thead`: Safari de tablet no siempre fija `thead`. */}
             {report.columns.map((column) => (
-              <th key={column} scope="col" className="px-2 py-2 font-medium">
+              <th key={column} scope="col" className="sticky top-0 z-10 bg-white px-2 py-2 font-medium shadow-[inset_0_-1px_0_var(--color-borde)]">
                 {column}
               </th>
             ))}
