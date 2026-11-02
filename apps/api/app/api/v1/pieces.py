@@ -244,6 +244,8 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
         availability_term_id=body.availability_term_id,
         current_location_id=None,
     )
+    if body.material_term_ids:
+        catalog_service.set_materials(session, piece, body.material_term_ids)
     set_inventory_code(session, piece, body.code_i)
     session.commit()
     return CatalogReader(session, Viewer(user.permissions)).summaries([piece])[0]
@@ -448,6 +450,8 @@ def update_piece(
         catalog_service.update_piece(session, piece, code_i=code_i, **changes)
     if "code_i" in body.model_fields_set:
         set_inventory_code(session, piece, body.code_i)
+    if "material_term_ids" in body.model_fields_set:
+        catalog_service.set_materials(session, piece, body.material_term_ids or [])
     try:
         session.commit()
     except StaleDataError:  # another edit was committed between the check and this one

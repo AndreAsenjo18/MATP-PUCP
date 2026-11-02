@@ -34,12 +34,13 @@ import {
 } from "@/components/domain/ImportWizard";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
-import { ImportPhotoTray } from "@/components/domain/ImportPhotoTray";
+import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
 import { UploadPanel, type UploadOptions } from "@/components/domain/ImportUpload";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
+import { confirmRepeatedPhotos, fetchRowPhotos, type TrayPhoto } from "@/lib/data/importPhotos";
 import {
   createTemplate,
   dryRunTemplate,
@@ -118,6 +119,8 @@ export function LiveImportWizard() {
   const [allImages, setAllImages] = useState<ReviewImage[]>([]);
   const [log, setLog] = useState<ImportLog | null>(null);
   const [reload, setReload] = useState(0);
+  // Fotos de cada fila para «Revise las filas» (importacion-masiva-fotografias, tarea 6.3).
+  const [rowPhotos, setRowPhotos] = useState<Record<string, TrayPhoto[]>>({});
   const [busyImage, setBusyImage] = useState<string | null>(null);
   // Reversión (RNF-007): conflictos del último intento y su motivo, para la segunda confirmación.
   const [rollbackConflicts, setRollbackConflicts] = useState<RevertConflict[] | null>(null);
@@ -280,6 +283,17 @@ export function LiveImportWizard() {
       active = false;
     };
   }, [batchId, showRows, filters, page, devUser, reload]);
+
+  useEffect(() => {
+    let active = true;
+    if (!batchId || !showRows) return;
+    fetchRowPhotos(batchId, devUser).then((result) => {
+      if (active && result.status === "ok") setRowPhotos(result.value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [batchId, showRows, devUser, reload]);
 
   // Todas las imágenes del lote para la revisión manual (RF-029), sin depender del filtro.
   useEffect(() => {
@@ -686,6 +700,21 @@ export function LiveImportWizard() {
                 canDecide={hasPermission("imports.prepare")}
                 busy={busy}
                 onDecide={(input) => handleDecision(row.id, input)}
+                photos={
+                  <RowPhotoStrip
+                    photos={rowPhotos[row.id] ?? []}
+                    busy={busy}
+                    onConfirmRepeated={
+                      hasPermission("imports.prepare") && batchId
+                        ? async (photoIds) => {
+                            const result = await confirmRepeatedPhotos(batchId, photoIds, devUser);
+                            if (result.status === "ok") setReload((value) => value + 1);
+                            else setError(result.message);
+                          }
+                        : undefined
+                    }
+                  />
+                }
               />
             ))}
           </div>

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 2fbf9dec2ca2de06254d915b498836b0adff658b5867134c12ef5cb78e868ddf
+ * openapi-sha256: 5992344526f31705f880ee7fb325d0bc2e2d07e78a858c00f227b882d6abba47
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1230,7 +1230,7 @@ export interface paths {
         };
         /**
          * Estimación del volumen fotográfico
-         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         * @description Volumen actual de las fotos activas por tipo de archivo, la proyección para las fotos que espera el museo y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la de un volumen a medida; los parámetros que faltan toman los promedios reales (RNF-003). Las proyecciones respetan `MEDIA_KEEP_ORIGINALS` y la cuota es `MEDIA_QUOTA_BYTES` (importacion-masiva-fotografias D6). Parámetros negativos: 422.
          */
         get: operations["getMediaStorageEstimate"];
         put?: never;
@@ -2400,6 +2400,11 @@ export interface components {
              * @description Filas que crearán una pieza nueva.
              */
             create: number;
+            /**
+             * Photo Quota Warning
+             * @description Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).
+             */
+            photo_quota_warning?: string | null;
             /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
             photos?: components["schemas"]["PhotoApprovalOut"] | null;
             /**
@@ -3797,6 +3802,42 @@ export interface components {
             message: string;
         };
         /**
+         * ExpectedCollectionVolume
+         * @description Projection for the photos the museum expects (importacion-masiva-fotografias D6).
+         */
+        ExpectedCollectionVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Mb Per Photo
+             * @description Promedio real de MB por foto con original, o 4 MB si aún no hay fotos [SUPUESTO L3].
+             */
+            mb_per_photo: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Photos
+             * @description Fotos esperadas (≈ 25 000 [SUPUESTO L2]).
+             */
+            photos: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
+            /**
+             * Total Bytes
+             * @description Originales, visualización y miniaturas.
+             */
+            total_bytes: number;
+        };
+        /**
          * ExportFormat
          * @enum {string}
          */
@@ -3874,6 +3915,27 @@ export interface components {
              * @enum {string}
              */
             severity: "error" | "warning";
+        };
+        /**
+         * FileTypeVolume
+         * @description Volume by file type (importacion-masiva-fotografias D6).
+         */
+        FileTypeVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
         };
         /** FolderCollectionOut */
         FolderCollectionOut: {
@@ -7594,9 +7656,23 @@ export interface components {
          * @example {
          *       "avg_mb_per_photo": 2.1,
          *       "avg_photos_per_piece": 3.5,
+         *       "by_file_type": {
+         *         "display_bytes": 230000000,
+         *         "original_bytes": 987654321,
+         *         "thumb_bytes": 16913569
+         *       },
          *       "current_derivatives_bytes": 246913569,
          *       "current_originals_bytes": 987654321,
          *       "current_volume_bytes": 1234567890,
+         *       "expected_collection": {
+         *         "display_bytes": 7680000000,
+         *         "mb_per_photo": 4,
+         *         "original_bytes": 104857600000,
+         *         "photos": 25000,
+         *         "thumb_bytes": 512000000,
+         *         "total_bytes": 113049600000
+         *       },
+         *       "keeps_originals": true,
          *       "projection": {
          *         "mb_per_photo": 4,
          *         "photos_per_piece": 5,
@@ -7618,6 +7694,8 @@ export interface components {
              * @description Promedio real de fotos por pieza.
              */
             avg_photos_per_piece?: number | null;
+            /** @description Volumen actual por tipo de archivo. */
+            by_file_type: components["schemas"]["FileTypeVolume"];
             /**
              * Current Derivatives Bytes
              * @description Tamaño total de derivados (thumb + display).
@@ -7634,12 +7712,29 @@ export interface components {
              */
             current_volume_bytes: number;
             /**
+             * Exceeds Quota
+             * @description Si el volumen actual supera la cuota; vacío sin cuota.
+             */
+            exceeds_quota?: boolean | null;
+            /** @description Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]. */
+            expected_collection: components["schemas"]["ExpectedCollectionVolume"];
+            /**
+             * Keeps Originals
+             * @description `MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).
+             */
+            keeps_originals: boolean;
+            /**
              * Projection
              * @description Proyección de volumen según parámetros indicados.
              */
             projection?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Quota Bytes
+             * @description `MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada.
+             */
+            quota_bytes?: number | null;
         };
         /**
          * SuggestionStatus
