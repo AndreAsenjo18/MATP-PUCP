@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: a4f032ecebd4417a6b0e9bd84ad2384d7f772fe793c8324925cfaaad96151770
+ * openapi-sha256: a4c8153f7516cf49b9082b105c74af5dd5aba5871e3bfd165316c072d2c87dc8
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1768,8 +1768,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Reportes: inventario general, por colección, por ubicación, incompletas y valorización (RF-033, RF-037)
-         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).
+         * Reportes: inventario general, por colección, por ubicación, agrupado por atributo, incompletas y valorización (RF-033, RF-037, RF-047)
+         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. `by-attribute` agrupa por `group_by` (RF-047). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).
          */
         get: operations["getReport"];
         put?: never;
@@ -7016,7 +7016,7 @@ export interface components {
          * ReportType
          * @enum {string}
          */
-        ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
+        ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation" | "by-attribute";
         /**
          * RevertChangeSetOut
          * @description Resultado de una reversión aplicada.
@@ -15064,6 +15064,8 @@ export interface operations {
                 /** @description Año de inicio de época. */
                 epoch_start_year?: number | null;
                 format?: components["schemas"]["ExportFormat"] | null;
+                /** @description Atributo del reporte `by-attribute`; otro valor responde 422 con los admitidos. */
+                group_by?: "provenance" | "denomination" | "author" | "material" | "conservation_state" | "category" | "collection";
                 /** @description true = piezas con alguna alerta de completitud; false = sin alertas. */
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
@@ -15089,7 +15091,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Tipo de reporte. */
-                report_type: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
+                report_type: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation" | "by-attribute";
             };
             cookie?: never;
         };

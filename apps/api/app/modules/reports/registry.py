@@ -24,8 +24,16 @@ from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.queries import Viewer
 from app.modules.quality.completeness import load_active_rules
 from app.modules.quality.incomplete_report import build_incomplete_query, rows_for_pieces
-from app.modules.reports.builders import ReportData, by_location, inventory, valuation
+from app.modules.reports.builders import (
+    GROUP_LABELS,
+    ReportData,
+    by_attribute,
+    by_location,
+    inventory,
+    valuation,
+)
 from app.modules.search.filters import PieceFilter
+from app.modules.search.schemas import GroupBy
 from app.modules.users.sensitive import PERM_VALUATION
 
 #: Feature of the valuation report, enabled by ``FEATURE_VALUATION_REPORT`` (design D6).
@@ -38,6 +46,7 @@ class ReportParams:
     location_id: uuid.UUID | None = None
     include_loans_for_use: bool = True
     not_verified_since_days: int | None = None
+    group_by: str | None = None
     # The filters of the search, for the reports that list pieces (reportes-por-atributo D1).
     piece_filter: PieceFilter | None = None
 
@@ -111,6 +120,19 @@ REPORTS: dict[str, ReportDefinition] = {
             ),
         ),
         ReportDefinition(
+            "by-attribute",
+            "Piezas agrupadas por…",
+            "Piezas agrupadas por procedencia, denominación, autor, material, estado de "
+            "conservación, categoría o colección (`group_by`), con los filtros de la búsqueda.",
+            lambda s, v, p: by_attribute(
+                s,
+                v,
+                group_by=_required_group_by(p),
+                include_loans_for_use=p.include_loans_for_use,
+                piece_filter=p.piece_filter,
+            ),
+        ),
+        ReportDefinition(
             "incomplete",
             "Piezas incompletas",
             "Piezas con alertas de completitud (RF-035).",
@@ -139,6 +161,23 @@ def _required_collection(params: ReportParams) -> uuid.UUID:
             details={"parameter": "collection_id"},
         )
     return params.collection_id
+
+
+def _required_group_by(params: ReportParams) -> GroupBy:
+    """The attribute of the grouped report; 422 with the admitted ones (RF-047)."""
+    try:
+        return GroupBy(params.group_by or "")
+    except ValueError as error:
+        admitted = ", ".join(f"{item.value} ({GROUP_LABELS[item].lower()})" for item in GroupBy)
+        raise ValidationFailed(
+            f"Indique por qué atributo agrupar. Se admiten: {admitted}.",
+            code="invalid_report_parameter",
+            details={
+                "parameter": "group_by",
+                "value": params.group_by,
+                "allowed": [item.value for item in GroupBy],
+            },
+        ) from error
 
 
 def _enabled(definition: ReportDefinition, features: frozenset[str]) -> bool:
@@ -224,6 +263,7 @@ def params_from(stored: dict[str, Any]) -> ReportParams:
         location_id=as_uuid(stored.get("location_id")),
         include_loans_for_use=bool(stored.get("include_loans_for_use", True)),
         not_verified_since_days=stored.get("not_verified_since_days"),
+        group_by=stored.get("group_by"),
         piece_filter=PieceFilter(**stored["piece_filter"]) if stored.get("piece_filter") else None,
     )
 

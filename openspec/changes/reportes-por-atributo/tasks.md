@@ -7,7 +7,7 @@
 - [x] 2.1 «Descripción» tras «Denominación» en `INVENTORY_COLUMNS` y `LOCATION_COLUMNS`, con ajuste de texto en XLSX; pruebas de los tres escenarios del requirement y pruebas existentes de reportes actualizadas (Req: Descripción de la pieza como columna fija de los reportes)
 - [x] 2.2 `ReportParams.piece_filter` y la dependencia de filtros de `/search` en `GET /reports/{report_type}`; prueba de que el inventario respeta un filtro de material (Req: Reporte de piezas agrupadas por atributo; filtro de piezas único)
 - [x] 2.3 Builder `by_attribute` con `GroupBy` (D1): agrupación de texto plegado con la etiqueta más frecuente, términos múltiples, «Sin dato», total de piezas distintas y apariciones; pruebas de los escenarios «Agrupar por estado…», «Pieza con dos materiales», «Procedencias escritas de distinta forma» y «Sin piezas con esos filtros» (Req: Reporte de piezas agrupadas…)
-- [ ] 2.4 Registro `by-attribute` en `REPORTS` y `ReportType`; `422` con los atributos admitidos; ocultamiento por rol igual que el inventario; pruebas: `group_by` inválido, rol sin ubicación exacta (Req: Reporte de piezas agrupadas…; RF-041)
+- [x] 2.4 Registro `by-attribute` en `REPORTS` y `ReportType`; `422` con los atributos admitidos; ocultamiento por rol igual que el inventario; pruebas: `group_by` inválido, rol sin ubicación exacta (Req: Reporte de piezas agrupadas…; RF-041)
 - [ ] 2.5 `generated_at`, `generated_by` y filtros legibles en el JSON y en las primeras filas de XLSX/CSV; prueba de que vista previa y archivo tienen las mismas filas, subtotales y totales (Req: Vista previa del reporte fiel a la descarga)
 
 ## 3. Frontend (`apps/web`)

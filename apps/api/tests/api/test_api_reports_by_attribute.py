@@ -345,3 +345,93 @@ def test_without_pieces_the_report_is_empty_with_its_message(pipeline: Pipeline)
     assert report.subtotals == []
     assert report.totals["Piezas"] == 0
     assert report.message == "No hay piezas con estos filtros"
+
+
+# --- 2.4 el reporte en la API -----------------------------------------------------------------
+def test_the_report_is_available_with_its_attribute(pipeline: Pipeline) -> None:
+    tag = _tag()
+    _piece(pipeline, f"{tag} pieza", provenance=f"Procedencia {tag}")
+
+    response = pipeline.login("ADMIN").get(
+        f"{BASE}/by-attribute", params={"group_by": "provenance", "denomination": tag}
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["report_type"] == "by-attribute"
+    assert body["title"] == "Piezas agrupadas por procedencia"
+    assert body["rows"][0][0] == f"Procedencia {tag}"
+    assert body["subtotals"] == [
+        {"group": "Procedencia", "label": f"Procedencia {tag}", "count": 1, "level": 0}
+    ]
+
+
+@pytest.mark.parametrize("attribute", [item.value for item in GroupBy])
+def test_every_attribute_answers(pipeline: Pipeline, attribute: str) -> None:
+    response = pipeline.login("ADMIN").get(f"{BASE}/by-attribute", params={"group_by": attribute})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["columns"][0] == "Grupo"
+
+
+def test_an_attribute_that_is_not_admitted_is_422_with_the_admitted_ones(
+    pipeline: Pipeline,
+) -> None:
+    """Escenario «Atributo no admitido»."""
+    client = pipeline.login("ADMIN")
+
+    wrong = client.get(f"{BASE}/by-attribute", params={"group_by": "valorizacion"})
+    missing = client.get(f"{BASE}/by-attribute")
+
+    for response in (wrong, missing):
+        assert response.status_code == 422, response.text
+        body = response.json()
+        assert body["code"] == "invalid_report_parameter"
+        assert body["details"]["parameter"] == "group_by"
+        assert set(body["details"]["allowed"]) == {item.value for item in GroupBy}
+        assert "procedencia" in body["message"]
+
+
+def test_a_role_without_exact_location_sees_only_site_and_space(pipeline: Pipeline) -> None:
+    tag = _tag()
+    with pipeline.session() as session, audit_context(session, _admin_context(session)):
+        box = session.scalar(select(Location).where(Location.level == LocationLevel.CONTAINER))
+        assert box is not None
+        box_name = box.name
+        piece = create_piece(
+            session, denomination=f"{tag} en caja", tenure_regime=TenureRegime.OWNED
+        )
+        piece.current_location_id = box.id
+        session.commit()
+    params = {"group_by": "author", "denomination": tag}
+
+    viewer = pipeline.login("INTERNAL_VIEWER").get(f"{BASE}/by-attribute", params=params).json()
+    admin = pipeline.login("ADMIN").get(f"{BASE}/by-attribute", params=params).json()
+
+    location = viewer["columns"].index("Ubicación")
+    assert viewer["masked_columns"] == ["Ubicación"]
+    assert box_name not in viewer["rows"][0][location]
+    assert admin["masked_columns"] == []
+    assert box_name in admin["rows"][0][location]
+
+
+def test_the_grouped_report_can_be_built_in_the_background(
+    pipeline: Pipeline, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tag = _tag()
+    _piece(pipeline, f"{tag} uno", provenance="Puno")
+    _piece(pipeline, f"{tag} dos", provenance="Puno")
+    monkeypatch.setattr(quality_reports, "EXPORT_SYNC_MAX_ROWS", 1)
+
+    response = pipeline.login("ADMIN").get(
+        f"{BASE}/by-attribute",
+        params={"format": "xlsx", "group_by": "provenance", "denomination": tag},
+    )
+
+    assert response.status_code == 202, response.text
+    with pipeline.session() as session:
+        job = session.get(ExportJobModel, uuid.UUID(response.json()["id"]))
+        assert job is not None and job.status == ExportJobStatus.READY
+        assert job.params["group_by"] == "provenance"
+        sheet = load_workbook(io.BytesIO(pipeline.stored[job.storage_key]))["Reporte"]
+    assert sheet["A1"].value == "Piezas agrupadas por procedencia"

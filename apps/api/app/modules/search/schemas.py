@@ -107,6 +107,7 @@ class ReportType(enum.StrEnum):
     BY_LOCATION = "by-location"
     INCOMPLETE = "incomplete"
     VALUATION = "valuation"
+    BY_ATTRIBUTE = "by-attribute"
 
 
 class GroupBy(enum.StrEnum):
