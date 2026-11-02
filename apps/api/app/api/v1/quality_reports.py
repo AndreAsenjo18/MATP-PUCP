@@ -3,7 +3,7 @@
 import csv
 import tempfile
 import uuid
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -40,6 +40,7 @@ from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.exports.results import masked_fields, resolve_columns, result_row
 from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
+from app.modules.locations.service import last_seen
 from app.modules.media.derivatives import thumb_key
 from app.modules.media.models import MediaAsset
 from app.modules.quality.completeness import (
@@ -94,6 +95,7 @@ from app.modules.search.schemas import (
     SearchHit,
     SearchResultPage,
 )
+from app.modules.users.sensitive import PERM_EXACT_LOCATION
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
@@ -408,8 +410,19 @@ def search_pieces(
     else:
         hits = [SearchHit(piece=summary, match_type="TITLE") for summary in summaries]
     thumbnails = _thumbnail_urls(session, request, [hit.piece.id for hit in hits])
+    # The exact location only for whoever can see it (RF-041): it checks a move or a verification
+    # made from the results, like the old depósito view (fusion-busqueda-deposito 3.2).
+    # When it was last seen goes with it (3.3).
+    exact_locations: dict[uuid.UUID, uuid.UUID | None] = {}
+    seen_at: dict[uuid.UUID, datetime] = {}
+    if viewer.can(PERM_EXACT_LOCATION):
+        exact_locations = {piece.id: piece.current_location_id for piece in pieces}
+        seen_at = last_seen(session, [piece.id for piece in pieces])
     for hit in hits:
         hit.thumbnail_url = thumbnails.get(hit.piece.id)
+        if hit.piece.id in exact_locations:
+            hit.location_id = exact_locations[hit.piece.id]
+            hit.last_seen_at = seen_at.get(hit.piece.id)
 
     extra_kwargs: dict[str, Any] = {}
     active_other_filters = [f for f in piece_filter.describe() if f.key != "q"]

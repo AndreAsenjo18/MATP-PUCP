@@ -127,19 +127,24 @@ export async function movePiece(pieceId: string, body: MovementCreateInput, devU
 
 /**
  * `POST /movements/batch` (design D3): todo o nada; `idempotencyKey` evita duplicar el lote si
- * el móvil reenvía la misma petición por una conexión lenta (RNF-005).
+ * el móvil reenvía la misma petición por una conexión lenta (RNF-005). Si alguna pieza no se puede
+ * mover, la API responde 409 o 422 con el detalle por pieza: es la respuesta del lote, no un error de
+ * conexión, así que vuelve como `ok` con sus `failures` para decir qué pieza lo impidió.
  */
 export async function batchMovePieces(
   body: BatchMovementRequest,
   idempotencyKey: string,
   devUser?: string,
 ): Promise<LocationResult<BatchMovementResponse>> {
-  return call(() =>
-    client(devUser).POST("/api/v1/movements/batch", {
+  return call(async () => {
+    const response = await client(devUser).POST("/api/v1/movements/batch", {
       params: { header: { "Idempotency-Key": idempotencyKey } },
       body,
-    }),
-  );
+    });
+    const error: unknown = response.error;
+    if (isRecord(error) && Array.isArray(error.failures)) return { data: error as BatchMovementResponse };
+    return response;
+  });
 }
 
 /** Clave de reintento nueva por lote (crypto.randomUUID, disponible en navegadores modernos). */
@@ -149,6 +154,21 @@ export function newIdempotencyKey(): string {
 }
 
 export type LocationRef = ApiSchemas["LocationRef"];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Cuándo se vio la pieza en su lugar por última vez, en días de calendario: «visto hoy», «visto ayer»
+ * o «visto hace N días» (fusion-busqueda-deposito 3.3).
+ */
+export function seenAgoText(lastSeenAt: string, now: Date = new Date()): string {
+  const seen = new Date(lastSeenAt);
+  const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.max(0, Math.round((startOf(now) - startOf(seen)) / DAY_MS));
+  if (days === 0) return "visto hoy";
+  if (days === 1) return "visto ayer";
+  return `visto hace ${days} días`;
+}
 
 /** Ruta completa de una ubicación como texto, p. ej. «Sede › Depósito 1 › Rack A». */
 export function locationPathLabel(path: readonly Pick<LocationRef, "name">[]): string {
@@ -194,7 +214,7 @@ export interface DestinationOption {
 
 /**
  * Lugares finales del árbol (los que no tienen otros dentro), con la ruta completa como etiqueta.
- * El selector «Mover a» de Depósito solo ofrece estos: una pieza queda en un nivel o un contenedor,
+ * «Mover a» en la búsqueda solo ofrece estos: una pieza queda en un nivel o un contenedor,
  * no en una sede o un mueble con niveles. La API acepta cualquier destino activo que no sea sede;
  * la restricción es de interfaz (`rediseno-ux-deposito`, D1).
  */
@@ -206,26 +226,53 @@ export function finalLocations(nodes: readonly LocationNode[], prefix: readonly 
   });
 }
 
-/** Lo mismo que `finalLocations` para una lista plana con `parent_id` (datos de demostración). */
-export function finalLocationsFromList(
-  locations: readonly { id: string; name: string; level: string; parent_id?: string | null; is_active?: boolean }[],
-): DestinationOption[] {
-  const active = locations.filter((location) => location.is_active !== false);
-  const byId = new Map(active.map((location) => [location.id, location]));
-  const parents = new Set(active.map((location) => location.parent_id).filter((id): id is string => !!id));
-  const pathOf = (id: string): string[] => {
-    const location = byId.get(id);
-    if (!location) return [];
-    return [...(location.parent_id ? pathOf(location.parent_id) : []), location.name];
-  };
-  return active
-    .filter((location) => !parents.has(location.id))
-    .map((location) => ({ id: location.id, label: pathOf(location.id).join(" › "), level: location.level }));
-}
-
 /** Destinos cuya ruta contiene la búsqueda, sin distinguir mayúsculas ni acentos. */
 export function filterDestinations(items: readonly DestinationOption[], query: string): DestinationOption[] {
   const needle = foldName(query);
   if (!needle) return [...items];
   return items.filter((item) => foldName(item.label).includes(needle));
+}
+
+/** El camino desde la sede hasta el lugar `id`, o `null` si no está en el árbol. */
+export function locationTrail(nodes: readonly LocationNode[], id: string): LocationNode[] | null {
+  for (const node of nodes) {
+    if (node.id === id) return [node];
+    const below = locationTrail(node.children ?? [], id);
+    if (below) return [node, ...below];
+  }
+  return null;
+}
+
+/** Una fila visible del selector de ubicaciones en árbol. */
+export interface LocationTreeRow {
+  node: LocationNode;
+  depth: number;
+  /** Nombres desde la sede hasta este lugar. */
+  path: string[];
+  hasChildren: boolean;
+  expanded: boolean;
+}
+
+/**
+ * Filas visibles del selector de ubicaciones (`fusion-busqueda-deposito`, tarea 2.2): sin búsqueda,
+ * las ramas abiertas en `expanded`; con búsqueda, los lugares cuyo nombre la contiene con sus
+ * ascendientes como contexto, todo abierto.
+ */
+export function locationTreeRows(
+  nodes: readonly LocationNode[],
+  { query = "", expanded = new Set<string>() }: { query?: string; expanded?: ReadonlySet<string> } = {},
+): LocationTreeRow[] {
+  const searching = foldName(query) !== "";
+  const rows: LocationTreeRow[] = [];
+  const walk = (list: readonly LocationNode[], depth: number, prefix: readonly string[]) => {
+    for (const node of list) {
+      const children = node.children ?? [];
+      const path = [...prefix, node.name];
+      const open = children.length > 0 && (searching || expanded.has(node.id));
+      rows.push({ node, depth, path, hasChildren: children.length > 0, expanded: open });
+      if (open) walk(children, depth + 1, path);
+    }
+  };
+  walk(searching ? filterLocationTree(nodes, { query, level: "" }) : nodes, 0, []);
+  return rows;
 }

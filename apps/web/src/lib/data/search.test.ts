@@ -5,14 +5,18 @@ import {
   activeChips,
   apiFilters,
   canDownload,
+  depositoRedirectTarget,
   exportResults,
   fetchExportDownloadUrl,
   fetchSearch,
   filterOfSuggestion,
+  filtersFromSearchParams,
+  filtersToSearchParams,
   hasPendingJobs,
   jobStatusLabel,
   matchReasonText,
   removeFilter,
+  secondaryFiltersActive,
   startFullExport,
   suggestionText,
   type SearchFilters,
@@ -81,6 +85,64 @@ describe("filtros de la pantalla", () => {
     expect(without.materialId).toBe("mat-madera");
   });
 
+  it("los filtros de texto nuevos van a la API con su nombre y tienen su chip", () => {
+    const filters = { ...EMPTY_FILTERS, denomination: " mate ", description: "asa", author: "Huamán", provenance: "Ayacucho" };
+    expect(apiFilters(filters)).toEqual({ denomination: "mate", description: "asa", author: "Huamán", provenance: "Ayacucho" });
+    expect(activeChips(filters).map((chip) => `${chip.label}: ${chip.value}`)).toEqual([
+      "Denominación: «mate»",
+      "Descripción: «asa»",
+      "Autor: «Huamán»",
+      "Procedencia: «Ayacucho»",
+    ]);
+    expect(suggestionText("remove_filter:denomination")).toBe("Quite el filtro «Denominación».");
+    expect(filterOfSuggestion("remove_filter:description")).toBe("description");
+  });
+
+  it("los filtros viajan en la dirección con los nombres de la API y vuelven iguales", () => {
+    const filters = {
+      ...EMPTY_FILTERS,
+      q: "mmz 15",
+      denomination: "mate",
+      materialId: "mat-madera",
+      locationId: "loc-d2",
+      tenureRegime: "Préstamo Temporal" as const,
+      hasInventoryCode: false,
+      epochStartYear: -200,
+      hasAlerts: true,
+    };
+    const params = filtersToSearchParams(filters);
+    expect(params.get("denomination")).toBe("mate");
+    expect(params.get("location_id")).toBe("loc-d2");
+    expect(params.has("description")).toBe(false);
+    expect(filtersFromSearchParams(params)).toEqual(filters);
+    expect(filtersToSearchParams(EMPTY_FILTERS).toString()).toBe("");
+  });
+
+  it("lee los enlaces del tablero e ignora los valores que no entiende", () => {
+    expect(filtersFromSearchParams(new URLSearchParams("incompleteOnly=1&hasInventoryCode=false"))).toEqual({
+      ...EMPTY_FILTERS,
+      hasAlerts: true,
+      hasInventoryCode: false,
+    });
+    const odd = filtersFromSearchParams(new URLSearchParams("tenure_regime=Robado&epoch_start_year=hacia%201900&has_alerts=quizas&location_id=%20&otro=1"));
+    expect(odd).toEqual(EMPTY_FILTERS);
+  });
+
+  it("un enlace a la antigua vista de depósito lleva a la búsqueda con su ubicación (4.1)", () => {
+    expect(depositoRedirectTarget(new URLSearchParams(""))).toBe("/busqueda");
+    expect(depositoRedirectTarget(new URLSearchParams("location_id=loc-d2"))).toBe("/busqueda?location_id=loc-d2");
+    expect(depositoRedirectTarget(new URLSearchParams("location_id=%20&q=retablo"))).toBe("/busqueda");
+  });
+
+  it("solo los filtros de «Más filtros» lo abren solo", () => {
+    expect(secondaryFiltersActive(EMPTY_FILTERS)).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, q: "I-0236", denomination: "mate", categoryId: "c", materialId: "m", description: "asa" })).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, provenance: "  " })).toBe(false);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, locationId: "loc-d2" })).toBe(true);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, hasInventoryCode: false })).toBe(true);
+    expect(secondaryFiltersActive({ ...EMPTY_FILTERS, author: "Huamán" })).toBe(true);
+  });
+
   it("explica la coincidencia por código o por campos de texto", () => {
     expect(matchReasonText({ match_reason: { kind: "identifier", type: "COLECCION", original: "M.M.Z. 15", historical: false } })).toBe(
       "Coincide por código de colección «M.M.Z. 15»",
@@ -90,6 +152,9 @@ describe("filtros de la pantalla", () => {
     );
     expect(matchReasonText({ match_reason: { kind: "text", fields: ["denomination", "provenance"] } })).toBe(
       "Coincide en denominación y procedencia",
+    );
+    expect(matchReasonText({ match_reason: { kind: "text", fields: ["description"] } })).toBe(
+      "Coincide en la descripción",
     );
     expect(matchReasonText({ match_reason: null })).toBeNull();
   });

@@ -73,6 +73,7 @@ class PieceFilter(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     q: str | None = None
+    denomination: str | None = None
     collection_id: uuid.UUID | None = None
     collection_code: str | None = None
     without_collection: bool | None = None
@@ -84,6 +85,7 @@ class PieceFilter(BaseModel):
     has_inventory_code: bool | None = None
     author: str | None = None
     provenance: str | None = None
+    description: str | None = None
     period_text: str | None = None
     epoch_start_year: int | None = None
     epoch_end_year: int | None = None
@@ -158,6 +160,9 @@ class PieceFilter(BaseModel):
                     func.immutable_unaccent(
                         func.lower(func.coalesce(Piece.epoch_original_text, ""))
                     ).like(pattern),
+                    func.immutable_unaccent(func.lower(func.coalesce(Piece.description, ""))).like(
+                        pattern
+                    ),
                     exists().where(
                         Term.id == Piece.category_id,
                         func.immutable_unaccent(func.lower(Term.label)).like(pattern),
@@ -191,6 +196,14 @@ class PieceFilter(BaseModel):
                 or_(
                     identifier_match_condition(needle, params=params),
                     or_(*text_match_clauses),
+                )
+            )
+
+        if self.denomination and self.denomination.strip():
+            # «Denominación» of the main filters: contains, without case or accents (design D1).
+            conditions.append(
+                func.immutable_unaccent(func.lower(Piece.denomination)).like(
+                    _contains(strip_accents(self.denomination)), escape="\\"
                 )
             )
 
@@ -257,6 +270,14 @@ class PieceFilter(BaseModel):
         if self.provenance and self.provenance.strip():
             conditions.append(
                 Piece.provenance.ilike(_contains(self.provenance.strip()), escape="\\")
+            )
+
+        if self.description and self.description.strip():
+            # Without case or accents, like the free text; no description never matches.
+            conditions.append(
+                func.immutable_unaccent(func.lower(func.coalesce(Piece.description, ""))).like(
+                    _contains(strip_accents(self.description)), escape="\\"
+                )
             )
 
         if self.period_text and self.period_text.strip():
@@ -359,6 +380,15 @@ class PieceFilter(BaseModel):
                     key="q",
                     label="Búsqueda",
                     value_display=self.q.strip(),
+                )
+            )
+
+        if self.denomination and self.denomination.strip():
+            active.append(
+                ActiveFilter(
+                    key="denomination",
+                    label="Denominación",
+                    value_display=self.denomination.strip(),
                 )
             )
 
@@ -495,6 +525,13 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="provenance", label="Procedencia", value_display=self.provenance.strip()
+                )
+            )
+
+        if self.description and self.description.strip():
+            active.append(
+                ActiveFilter(
+                    key="description", label="Descripción", value_display=self.description.strip()
                 )
             )
 

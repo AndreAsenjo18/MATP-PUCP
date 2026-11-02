@@ -6,6 +6,7 @@ import { ImageOff, MapPin } from "lucide-react";
 import Link from "next/link";
 
 import { cardClassName } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import type { ApiSchemas } from "@/lib/api/client";
 
 import { AlertBadge, TenureBadge } from "./StatusBadges";
@@ -26,6 +27,10 @@ export interface PieceCardProps {
   thumbnailUrl?: string | null;
   /** Qué coincidió con la búsqueda, en lenguaje claro (RF-031). */
   matchReason?: string | null;
+  /** «visto hace N días», solo para quien puede ver la ubicación (fusion-busqueda-deposito 3.3). */
+  seenText?: string | null;
+  /** Más apretada por debajo de lg, para ver más resultados en tableta (fusion-busqueda-deposito D4). */
+  compact?: boolean;
 }
 
 /** Props de la tarjeta a partir del resumen de pieza del contrato de la API. */
@@ -53,15 +58,24 @@ export function PieceCard({
   hasPhoto,
   thumbnailUrl,
   matchReason,
+  seenText,
+  compact = false,
 }: PieceCardProps) {
   // «Sin foto» se muestra en el pie de la tarjeta; no se repite como badge.
   const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
   return (
-    <Link href={href} className={cardClassName({ interactive: true, className: "flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota" })}>
+    <Link
+      href={href}
+      className={cardClassName({
+        interactive: true,
+        padded: !compact,
+        className: cn("flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota", compact && "p-3 lg:p-4"),
+      })}
+    >
       <div className="flex items-start gap-3">
         {thumbnailUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- URL prefirmada del almacenamiento
-          <img src={thumbnailUrl} alt="" loading="lazy" className="size-20 shrink-0 rounded-md bg-crema object-cover" />
+          <img src={thumbnailUrl} alt="" loading="lazy" className={cn("shrink-0 rounded-md bg-crema object-cover", compact ? "size-14 lg:size-20" : "size-20")} />
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
@@ -86,6 +100,7 @@ export function PieceCard({
         <span className="flex items-center gap-1">
           <MapPin size={16} aria-hidden="true" className="text-terracota" />
           {locationLabel ?? "Sin ubicación"}
+          {seenText && <span className="text-gris-texto"> · {seenText}</span>}
         </span>
         {!hasPhoto && (
           <span className="flex items-center gap-1 font-medium text-ambar-texto" title="Requiere fotografía">

@@ -10,7 +10,6 @@ import {
   Search,
   Sparkles,
   Users,
-  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,7 +28,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/ia/sugerencias", label: "Sugerencias IA", icon: Sparkles, permission: "ai.review" },
   { href: "/reportes", label: "Reportes", icon: ChartColumn, permission: "reports.view" },
   { href: "/administracion", label: "Administración", icon: Users, permission: "users.manage" },
-  { href: "/deposito", label: "Vista de depósito", icon: Warehouse, permission: "movements.register" },
 ];
 
 export function visibleNavItems(hasPermission: (permission: string) => boolean, items: NavItem[] = NAV_ITEMS): NavItem[] {
