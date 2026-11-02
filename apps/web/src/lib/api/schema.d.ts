@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 78852845f6b477b11ad4e055dccbbc111bf359839a6765be6acea1e9810673dc
+ * openapi-sha256: 68f0e90d24e60109d671c426dd6fd355430625bc1e1fe7399779777913f61f41
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1192,9 +1192,29 @@ export interface paths {
         put?: never;
         /**
          * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
-         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         * @description Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
          */
         post: operations["bulkDownloadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/bulk-download/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).
+         */
+        get: operations["getBulkDownload"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1210,7 +1230,7 @@ export interface paths {
         };
         /**
          * Estimación del volumen fotográfico
-         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         * @description Volumen actual de las fotos activas por tipo de archivo, la proyección para las fotos que espera el museo y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la de un volumen a medida; los parámetros que faltan toman los promedios reales (RNF-003). Las proyecciones respetan `MEDIA_KEEP_ORIGINALS` y la cuota es `MEDIA_QUOTA_BYTES` (importacion-masiva-fotografias D6). Parámetros negativos: 422.
          */
         get: operations["getMediaStorageEstimate"];
         put?: never;
@@ -2380,6 +2400,11 @@ export interface components {
              * @description Filas que crearán una pieza nueva.
              */
             create: number;
+            /**
+             * Photo Quota Warning
+             * @description Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).
+             */
+            photo_quota_warning?: string | null;
             /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
             photos?: components["schemas"]["PhotoApprovalOut"] | null;
             /**
@@ -2653,7 +2678,7 @@ export interface components {
         BatchEnrichRequest: {
             /**
              * Piece Ids
-             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             * @description Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -2797,7 +2822,7 @@ export interface components {
         BulkDownloadRequest: {
             /**
              * Piece Ids
-             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             * @description Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -3772,6 +3797,42 @@ export interface components {
             message: string;
         };
         /**
+         * ExpectedCollectionVolume
+         * @description Projection for the photos the museum expects (importacion-masiva-fotografias D6).
+         */
+        ExpectedCollectionVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Mb Per Photo
+             * @description Promedio real de MB por foto con original, o 4 MB si aún no hay fotos [SUPUESTO L3].
+             */
+            mb_per_photo: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Photos
+             * @description Fotos esperadas (≈ 25 000 [SUPUESTO L2]).
+             */
+            photos: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
+            /**
+             * Total Bytes
+             * @description Originales, visualización y miniaturas.
+             */
+            total_bytes: number;
+        };
+        /**
          * ExportFormat
          * @enum {string}
          */
@@ -3849,6 +3910,27 @@ export interface components {
              * @enum {string}
              */
             severity: "error" | "warning";
+        };
+        /**
+         * FileTypeVolume
+         * @description Volume by file type (importacion-masiva-fotografias D6).
+         */
+        FileTypeVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
         };
         /** FolderCollectionOut */
         FolderCollectionOut: {
@@ -7564,9 +7646,23 @@ export interface components {
          * @example {
          *       "avg_mb_per_photo": 2.1,
          *       "avg_photos_per_piece": 3.5,
+         *       "by_file_type": {
+         *         "display_bytes": 230000000,
+         *         "original_bytes": 987654321,
+         *         "thumb_bytes": 16913569
+         *       },
          *       "current_derivatives_bytes": 246913569,
          *       "current_originals_bytes": 987654321,
          *       "current_volume_bytes": 1234567890,
+         *       "expected_collection": {
+         *         "display_bytes": 7680000000,
+         *         "mb_per_photo": 4,
+         *         "original_bytes": 104857600000,
+         *         "photos": 25000,
+         *         "thumb_bytes": 512000000,
+         *         "total_bytes": 113049600000
+         *       },
+         *       "keeps_originals": true,
          *       "projection": {
          *         "mb_per_photo": 4,
          *         "photos_per_piece": 5,
@@ -7588,6 +7684,8 @@ export interface components {
              * @description Promedio real de fotos por pieza.
              */
             avg_photos_per_piece?: number | null;
+            /** @description Volumen actual por tipo de archivo. */
+            by_file_type: components["schemas"]["FileTypeVolume"];
             /**
              * Current Derivatives Bytes
              * @description Tamaño total de derivados (thumb + display).
@@ -7604,12 +7702,29 @@ export interface components {
              */
             current_volume_bytes: number;
             /**
+             * Exceeds Quota
+             * @description Si el volumen actual supera la cuota; vacío sin cuota.
+             */
+            exceeds_quota?: boolean | null;
+            /** @description Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]. */
+            expected_collection: components["schemas"]["ExpectedCollectionVolume"];
+            /**
+             * Keeps Originals
+             * @description `MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).
+             */
+            keeps_originals: boolean;
+            /**
              * Projection
              * @description Proyección de volumen según parámetros indicados.
              */
             projection?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Quota Bytes
+             * @description `MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada.
+             */
+            quota_bytes?: number | null;
         };
         /**
          * SuggestionStatus
@@ -12496,7 +12611,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12522,6 +12637,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -12531,13 +12655,71 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
-            501: {
+        };
+    };
+    getBulkDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe ese paquete. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

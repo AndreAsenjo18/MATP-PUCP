@@ -460,6 +460,11 @@ export function ApprovalPanel({
     <Card as="section" className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold text-tinta">Aprobación de la carga</h2>
       {summary ? <p className="text-base text-tinta">{summarySentence(summary)}</p> : <p className="text-base text-gris-texto">Calculando el resumen…</p>}
+      {summary?.photo_quota_warning && (
+        <p role="status" className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
+          {summary.photo_quota_warning}
+        </p>
+      )}
       <p className="text-sm text-gris-texto">
         Las filas nuevas y las actualizaciones sin decisión se aplican con la aprobación; los conflictos y posibles duplicados sin resolver no se
         aplican. Si una fila incumple una regla al aplicar, no se aplica ninguna y el lote vuelve a revisión.
