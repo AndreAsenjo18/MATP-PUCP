@@ -125,6 +125,7 @@ INVENTORY_COLUMNS = [
     "INC / RN",
     "Código PUCP",
     "Denominación",
+    "Descripción",
     "Colección",
     "Régimen",
     "Propietario legal",
@@ -220,6 +221,7 @@ def inventory(
                 codes.get(TYPE_INC_RN, ""),
                 codes.get(TYPE_PUCP, ""),
                 piece.denomination,
+                piece.description or "",
                 collection_label(piece),
                 _regime(piece.tenure_regime),
                 LEGAL_OWNER_PUCP
@@ -290,6 +292,7 @@ LOCATION_COLUMNS = [
     "Código I",
     "Código de colección",
     "Denominación",
+    "Descripción",
     "Ubicación",
     "Última vez vista",
     "Días desde la última verificación",
@@ -396,12 +399,14 @@ def by_location(
                 codes.get(TYPE_INVENTORY, ""),
                 codes.get(TYPE_COLLECTION, ""),
                 piece.denomination,
+                piece.description or "",
                 _location_text(reader, piece)[0],
                 _as_utc(seen).date().isoformat() if seen else NEVER_VERIFIED,
                 days if days is not None else NEVER_VERIFIED,
             ]
         )
-    never = sum(1 for row in rows if row[4] == NEVER_VERIFIED)
+    last_seen_column = LOCATION_COLUMNS.index("Última vez vista")
+    never = sum(1 for row in rows if row[last_seen_column] == NEVER_VERIFIED)
     message = None
     if not pieces:
         message = "La ubicación no tiene piezas."

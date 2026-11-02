@@ -195,8 +195,11 @@ def test_by_location_marks_never_verified_pieces_and_filters_by_age(pipeline: Pi
     )
 
     by_name = {row[2]: row for row in everything["rows"]}
-    assert by_name[f"Nunca vista {tag}"][4] == "Nunca verificada"
-    assert by_name[f"Vista hoy {tag}"][5] == 0
+    seen_column = everything["columns"].index("Última vez vista")
+    days_column = everything["columns"].index("Días desde la última verificación")
+    assert by_name[f"Nunca vista {tag}"][seen_column] == "Nunca verificada"
+    assert by_name[f"Vista hoy {tag}"][days_column] == 0
+    assert everything["totals"]["Nunca verificadas"] >= 1
     names = {row["Denominación"] for row in stale}
     assert f"Nunca vista {tag}" in names and f"Vista hoy {tag}" not in names
     assert everything["filters"]["location"]

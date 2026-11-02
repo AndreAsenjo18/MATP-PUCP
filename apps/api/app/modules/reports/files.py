@@ -12,12 +12,15 @@ from decimal import Decimal
 from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
 from app.modules.reports.builders import ReportData
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 CSV_CONTENT_TYPE = "text/csv"
+DESCRIPTION_COLUMN = "Descripción"
+DESCRIPTION_WIDTH = 60
 
 
 def _cell(value: Any) -> Any:
@@ -55,8 +58,15 @@ def report_file(
     sheet.append(data.columns)
     for cell in sheet[sheet.max_row]:
         cell.font = Font(bold=True)
+    first_row = sheet.max_row + 1
     for row in data.rows:
         sheet.append([_cell(value) for value in row])
+    if DESCRIPTION_COLUMN in data.columns:
+        # The whole text fits in its column, in several lines (reportes-por-atributo D2).
+        column = data.columns.index(DESCRIPTION_COLUMN) + 1
+        sheet.column_dimensions[get_column_letter(column)].width = DESCRIPTION_WIDTH
+        for cells in sheet.iter_rows(min_row=first_row, min_col=column, max_col=column):
+            cells[0].alignment = Alignment(wrap_text=True, vertical="top")
 
     summary = workbook.create_sheet("Subtotales")
     summary.append(["Grupo", "Etiqueta", "Piezas"])
