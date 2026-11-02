@@ -20,5 +20,5 @@
 ## 4. Cierre
 
 - [ ] 4.1 OpenAPI: `by-attribute`, `group_by` y filtros de pieza registrados como ampliación en `docs/api/mapeo-endpoints-v1.md`, aviso al Líder por el enumerado; `npm run openapi && npm run openapi:client`, `npm run openapi:check` y la prueba de conformidad en verde
-- [ ] 4.2 Manual de usuario: sección de reportes con el reporte agrupado y la vista previa en `docs/manual-usuario/`
+- [x] 4.2 Manual de usuario: sección de reportes con el reporte agrupado y la vista previa en `docs/manual-usuario/`
 - [ ] 4.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate reportes-por-atributo --strict` en verde; tras aprobar el PR, `openspec archive reportes-por-atributo -y`
