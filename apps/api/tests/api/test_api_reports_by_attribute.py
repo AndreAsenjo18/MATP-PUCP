@@ -17,11 +17,17 @@ from sqlalchemy import select
 from app.api.v1 import quality_reports
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
+from app.modules.audit.soft_delete import soft_delete
 from app.modules.catalog.enums import TenureRegime
+from app.modules.catalog.models import Piece
+from app.modules.catalog.queries import Viewer
 from app.modules.catalog.service import create_piece, set_materials
-from app.modules.collections.models import Term, Vocabulary, VocabularyCode
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.locations.models import Location, LocationLevel
+from app.modules.reports.builders import INVENTORY_COLUMNS, by_attribute
+from app.modules.search.filters import PieceFilter
 from app.modules.search.models import ExportJobModel, ExportJobStatus
+from app.modules.search.schemas import GroupBy
 from app.modules.users.models import AppUser
 from tests.api.conftest import ADMIN, Pipeline
 
@@ -189,3 +195,153 @@ def test_the_background_report_keeps_the_filters(
     rows = list(csv.DictReader(io.StringIO(stored.decode("utf-8-sig"))))
     assert len(rows) == job.row_count
     assert f"Filtrada en segundo plano {tag}" in {row["Denominación"] for row in rows}
+
+
+# --- 2.3 agrupar por un atributo --------------------------------------------------------------
+ALL_PERMISSIONS = Viewer(frozenset({"sensitive.exact_location"}))
+
+
+def _grouped(pipeline: Pipeline, group_by: GroupBy, tag: str, **filters: Any) -> Any:
+    with pipeline.session() as session:
+        return by_attribute(
+            session,
+            ALL_PERMISSIONS,
+            group_by=group_by,
+            piece_filter=PieceFilter(denomination=tag, **filters),
+        )
+
+
+def _subtotals(report: Any) -> dict[str, int]:
+    return {subtotal.label: subtotal.count for subtotal in report.subtotals}
+
+
+def test_grouping_by_conservation_state_within_a_collection(pipeline: Pipeline) -> None:
+    """Escenario «Agrupar por estado de conservación con un filtro de colección»."""
+    tag = _tag()
+    with pipeline.session() as session:
+        collection_id = session.scalar(select(Collection.id).limit(1))
+    good, regular = _terms(pipeline, VocabularyCode.CONSERVATION_STATUS, 2)
+    for name, state in (("uno", good), ("dos", good), ("tres", regular), ("cuatro", None)):
+        _piece(
+            pipeline,
+            f"{tag} {name}",
+            collection_id=collection_id,
+            conservation_state_id=state.id if state else None,
+        )
+    _piece(pipeline, f"{tag} de otra colección", conservation_state_id=good.id)
+
+    report = _grouped(pipeline, GroupBy.CONSERVATION_STATE, tag, collection_id=collection_id)
+
+    assert _subtotals(report) == {good.label: 2, regular.label: 1, "Sin dato": 1}
+    assert [s.label for s in report.subtotals] == [good.label, regular.label, "Sin dato"]
+    assert report.totals["Piezas"] == 4 == sum(s.count for s in report.subtotals)
+    assert report.title == "Piezas agrupadas por estado de conservación"
+    assert "Apariciones en grupos" not in report.totals
+
+
+def test_a_piece_with_two_materials_counts_once_in_the_total(pipeline: Pipeline) -> None:
+    """Escenario «Pieza con dos materiales»."""
+    tag = _tag()
+    wood, metal = _terms(pipeline, VocabularyCode.MATERIAL, 2)
+    _with_materials(pipeline, f"{tag} con los dos", wood.id, metal.id)
+    _with_materials(pipeline, f"{tag} solo uno", wood.id)
+    _piece(pipeline, f"{tag} sin material")
+
+    report = _grouped(pipeline, GroupBy.MATERIAL, tag)
+
+    assert _subtotals(report) == {wood.label: 2, metal.label: 1, "Sin dato": 1}
+    assert report.totals == {"Piezas": 3, "Apariciones en grupos": 4}
+    assert len(report.rows) == 4
+    assert "cuenta una sola vez" in report.message
+    both = [row for row in report.rows if row[report.columns.index("Denominación")].endswith("dos")]
+    assert {row[0] for row in both} == {wood.label, metal.label}
+
+
+def test_provenances_written_differently_form_one_group(pipeline: Pipeline) -> None:
+    """Escenario «Procedencias escritas de distinta forma»."""
+    tag = _tag()
+    for index, text in enumerate(("Ayacucho", "ayacucho ", "AYACUCHO")):
+        _piece(pipeline, f"{tag} {index}", provenance=text)
+
+    report = _grouped(pipeline, GroupBy.PROVENANCE, tag)
+
+    assert _subtotals(report) == {"Ayacucho": 3}
+    assert {row[0] for row in report.rows} == {"Ayacucho"}
+    provenance = report.columns.index("Procedencia")
+    assert {row[provenance] for row in report.rows} == {"Ayacucho", "ayacucho ", "AYACUCHO"}
+
+
+def test_free_text_ignores_accents_and_inner_spaces_and_shows_the_most_used_form(
+    pipeline: Pipeline,
+) -> None:
+    tag = _tag()
+    for index, text in enumerate(("HUÁNUCO", "HUÁNUCO", "Huanuco", "  huánuco ", "San  Pedro")):
+        _piece(pipeline, f"{tag} {index}", author=text)
+
+    report = _grouped(pipeline, GroupBy.AUTHOR, tag)
+
+    assert _subtotals(report) == {"HUÁNUCO": 4, "San Pedro": 1}
+
+
+def test_grouping_by_denomination_and_by_category_and_collection(pipeline: Pipeline) -> None:
+    tag = _tag()
+    category = _terms(pipeline, VocabularyCode.CATEGORY, 1)[0]
+    with pipeline.session() as session:
+        collection = session.scalar(select(Collection).order_by(Collection.name).limit(1))
+        assert collection is not None
+        collection_id, collection_name = collection.id, collection.name
+    _piece(pipeline, f"{tag} mate", category_id=category.id, collection_id=collection_id)
+    _piece(pipeline, f"{tag} MATE")
+
+    by_name = _grouped(pipeline, GroupBy.DENOMINATION, tag)
+    by_category = _grouped(pipeline, GroupBy.CATEGORY, tag)
+    by_collection = _grouped(pipeline, GroupBy.COLLECTION, tag)
+
+    assert list(_subtotals(by_name).values()) == [2]
+    assert _subtotals(by_category) == {category.label: 1, "Sin dato": 1}
+    assert by_collection.subtotals[-1].label == "Sin dato"
+    assert by_collection.subtotals[0].label.endswith(collection_name)
+    assert by_collection.subtotals[0].count == 1
+
+
+def test_the_groups_keep_the_inventory_columns_led_by_the_group(pipeline: Pipeline) -> None:
+    tag = _tag()
+    _piece(pipeline, f"{tag} pieza", provenance="Puno", description="Texto de la pieza")
+
+    report = _grouped(pipeline, GroupBy.PROVENANCE, tag)
+
+    assert report.columns[0] == "Grupo"
+    assert report.columns[1:] == INVENTORY_COLUMNS
+    row = dict(zip(report.columns, report.rows[0], strict=True))
+    assert row["Grupo"] == "Puno"
+    assert row["Descripción"] == "Texto de la pieza"
+    assert report.columns.index("Descripción") == report.columns.index("Denominación") + 1
+
+
+def test_the_grouped_report_excludes_what_the_inventory_excludes(pipeline: Pipeline) -> None:
+    tag = _tag()
+    _piece(pipeline, f"{tag} propia", provenance="Puno")
+    _piece(
+        pipeline, f"{tag} prestada", provenance="Puno", tenure_regime=TenureRegime.TEMPORARY_LOAN
+    )
+    gone = _piece(pipeline, f"{tag} eliminada", provenance="Puno")
+    with pipeline.session() as session, audit_context(session, _admin_context(session)):
+        piece = session.get(Piece, gone)
+        assert piece is not None
+        soft_delete(session, piece, "Eliminada (sintético)")
+        session.commit()
+
+    report = _grouped(pipeline, GroupBy.PROVENANCE, tag)
+
+    assert report.totals["Piezas"] == 1
+    assert _subtotals(report) == {"Puno": 1}
+
+
+def test_without_pieces_the_report_is_empty_with_its_message(pipeline: Pipeline) -> None:
+    """Escenario «Sin piezas con esos filtros»."""
+    report = _grouped(pipeline, GroupBy.MATERIAL, f"sin-coincidencias-{_tag()}")
+
+    assert report.rows == []
+    assert report.subtotals == []
+    assert report.totals["Piezas"] == 0
+    assert report.message == "No hay piezas con estos filtros"
