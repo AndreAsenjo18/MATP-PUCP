@@ -16,12 +16,12 @@
 
 ## 4. Registro continuo de piezas
 
-- [ ] 4.1 «Guardar y registrar otra» en el formulario con los campos repetibles de D4 y el aviso de datos copiados; pruebas: donación, comodato copiado (Req: Registro manual continuo de piezas)
+- [x] 4.1 «Guardar y registrar otra» en el formulario con los campos repetibles de D4 y el aviso de datos copiados; pruebas: donación, comodato copiado (Req: Registro manual continuo de piezas)
 - [x] 4.2 «Registrar a partir de esta pieza» en la ficha, sin identificadores, fotos ni historial; prueba de que la pieza nueva tiene identificador interno propio (Req: Registro manual continuo… — escenario «Registrar a partir de una pieza similar»)
 - [x] 4.3 Revalidación de colección y términos copiados; prueba con colección retirada (Req: Registro manual continuo… — escenario «Datos copiados que ya no son válidos»)
 
 ## 5. Cierre
 
 - [x] 5.1 OpenAPI (si hubo operaciones nuevas): registrarlas como añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
-- [ ] 5.2 Manual de usuario: «Registrar a mano después de la carga histórica» en `docs/manual-usuario/` (piezas seguidas, colecciones, listas de valores, lugares)
+- [x] 5.2 Manual de usuario: «Registrar a mano después de la carga histórica» en `docs/manual-usuario/` (piezas seguidas, colecciones, listas de valores, lugares)
 - [ ] 5.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate crud-manual-completo --strict` en verde; tras aprobar el PR, `openspec archive crud-manual-completo -y`
