@@ -23,7 +23,11 @@ def _current_identifier(seeded_api: SeededApi, *, inventory: bool) -> PieceIdent
     with seeded_api.session() as session:
         identifier = session.scalars(
             select(PieceIdentifier)
-            .where(type_filter, PieceIdentifier.is_current.is_(True))
+            .where(
+                type_filter,
+                PieceIdentifier.is_current.is_(True),
+                PieceIdentifier.piece.has(deleted_at=None),
+            )
             .order_by(PieceIdentifier.id)
         ).first()
     assert identifier is not None, "El seed debe tener identificadores de ese tipo"
