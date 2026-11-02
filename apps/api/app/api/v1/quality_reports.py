@@ -633,7 +633,9 @@ def export_excel_report(
     "total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, "
     "piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo "
     "`include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el "
-    "permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en "
+    "permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros "
+    "de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. Con `format` "
+    "descarga el archivo, o lo genera en "
     "segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza "
     "por colección y moneda la valorización más reciente de cada pieza: exige "
     "`sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada "
@@ -653,8 +655,7 @@ def get_report(
     ],
     session: SessionDep,
     user: ReportViewer,
-    collection_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
+    piece_filter: Annotated[PieceFilter, Depends(piece_filters)],
     include_loans_for_use: bool = True,
     not_verified_since_days: Annotated[int | None, Query(ge=0)] = None,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -662,10 +663,11 @@ def get_report(
     export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
 ) -> ReportOut | Response:
     params = reports.ReportParams(
-        collection_id=collection_id,
-        location_id=location_id,
+        collection_id=piece_filter.collection_id,
+        location_id=piece_filter.location_id,
         include_loans_for_use=include_loans_for_use,
         not_verified_since_days=not_verified_since_days,
+        piece_filter=piece_filter,
     )
     permissions = frozenset(user.permissions)
     features = (

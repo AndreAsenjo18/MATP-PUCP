@@ -25,6 +25,7 @@ from app.modules.catalog.queries import Viewer
 from app.modules.quality.completeness import load_active_rules
 from app.modules.quality.incomplete_report import build_incomplete_query, rows_for_pieces
 from app.modules.reports.builders import ReportData, by_location, inventory, valuation
+from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive import PERM_VALUATION
 
 #: Feature of the valuation report, enabled by ``FEATURE_VALUATION_REPORT`` (design D6).
@@ -37,6 +38,8 @@ class ReportParams:
     location_id: uuid.UUID | None = None
     include_loans_for_use: bool = True
     not_verified_since_days: int | None = None
+    # The filters of the search, for the reports that list pieces (reportes-por-atributo D1).
+    piece_filter: PieceFilter | None = None
 
 
 Builder = Callable[[Session, Viewer, ReportParams], ReportData]
@@ -79,7 +82,9 @@ REPORTS: dict[str, ReportDefinition] = {
             "inventory",
             "Inventario general",
             "Inventario permanente con subtotales por colección y régimen.",
-            lambda s, v, p: inventory(s, v, include_loans_for_use=p.include_loans_for_use),
+            lambda s, v, p: inventory(
+                s, v, include_loans_for_use=p.include_loans_for_use, piece_filter=p.piece_filter
+            ),
         ),
         ReportDefinition(
             "by-collection",
@@ -90,6 +95,7 @@ REPORTS: dict[str, ReportDefinition] = {
                 v,
                 collection_id=_required_collection(p),
                 include_loans_for_use=p.include_loans_for_use,
+                piece_filter=p.piece_filter,
             ),
         ),
         ReportDefinition(
@@ -97,7 +103,11 @@ REPORTS: dict[str, ReportDefinition] = {
             "Piezas por ubicación",
             "Piezas de una ubicación y sus descendientes, con su última verificación.",
             lambda s, v, p: by_location(
-                s, v, location_id=p.location_id, not_verified_since_days=p.not_verified_since_days
+                s,
+                v,
+                location_id=p.location_id,
+                not_verified_since_days=p.not_verified_since_days,
+                piece_filter=p.piece_filter,
             ),
         ),
         ReportDefinition(
@@ -195,10 +205,14 @@ def build(
 
 def serialize_params(params: ReportParams) -> dict[str, Any]:
     """JSON-safe parameters, stored in the export job to rebuild the same report."""
-    return {
+    stored: dict[str, Any] = {
         key: str(value) if isinstance(value, uuid.UUID) else value
         for key, value in vars(params).items()
+        if key != "piece_filter"
     }
+    if params.piece_filter is not None:
+        stored["piece_filter"] = params.piece_filter.model_dump(mode="json", exclude_none=True)
+    return stored
 
 
 def params_from(stored: dict[str, Any]) -> ReportParams:
@@ -210,6 +224,7 @@ def params_from(stored: dict[str, Any]) -> ReportParams:
         location_id=as_uuid(stored.get("location_id")),
         include_loans_for_use=bool(stored.get("include_loans_for_use", True)),
         not_verified_since_days=stored.get("not_verified_since_days"),
+        piece_filter=PieceFilter(**stored["piece_filter"]) if stored.get("piece_filter") else None,
     )
 
 

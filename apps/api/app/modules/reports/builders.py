@@ -33,6 +33,7 @@ from app.modules.identification.normalization import (
 from app.modules.locations.models import Location
 from app.modules.locations.service import last_seen
 from app.modules.reports.models import PieceValuation
+from app.modules.search.filters import PieceFilter
 from app.modules.users.sensitive import PERM_EXACT_LOCATION, PUBLIC_LOCATION_LEVELS
 
 NO_COLLECTION = "Sin colección"
@@ -109,6 +110,32 @@ def _active_pieces(session: Session):  # type: ignore[no-untyped-def]
     return select(Piece).where(Piece.deleted_at.is_(None), Piece.merged_into_id.is_(None))
 
 
+def _require_visible_location(location: Location, viewer: Viewer) -> None:
+    """Below the space, a place is only for whoever sees exact locations (RF-041)."""
+    if not viewer.can(PERM_EXACT_LOCATION) and location.level not in PUBLIC_LOCATION_LEVELS:
+        raise PermissionDenied(
+            "El detalle por debajo del espacio exige el permiso de ubicación exacta. Puede pedir "
+            "el reporte de la sede o del espacio que contiene esta ubicación: se entrega agregado "
+            "por espacio.",
+            code="exact_location_required",
+            details={"aggregate_available": True},
+        )
+
+
+def _with_piece_filter(  # type: ignore[no-untyped-def]
+    statement, session: Session, viewer: Viewer, piece_filter: PieceFilter | None
+):
+    """The same filters as the search (RF-032). Filtering by a place reveals what is in it, so
+    it needs the same permission as listing that place (RF-041)."""
+    if piece_filter is None:
+        return statement
+    if piece_filter.location_id is not None:
+        location = session.get(Location, piece_filter.location_id)
+        if location is not None:
+            _require_visible_location(location, viewer)
+    return statement.where(piece_filter.to_where(session, viewer))
+
+
 def _location_text(reader: CatalogReader, piece: Piece) -> tuple[str, bool]:
     path, is_exact = reader.visible_path(piece.current_location_id)
     return PATH_SEPARATOR.join(node.name for node in path), not is_exact
@@ -148,10 +175,11 @@ def inventory(
     *,
     collection_id: uuid.UUID | None = None,
     include_loans_for_use: bool = True,
+    piece_filter: PieceFilter | None = None,
 ) -> ReportData:
     """Permanent inventory (D3): owned pieces and, by default, loans for use; never temporary
     loans (RN-004), deleted or merged pieces. With ``collection_id``, that collection and its
-    subcollections."""
+    subcollections; ``piece_filter`` narrows it with the filters of the search."""
     regimes = [TenureRegime.OWNED] + ([TenureRegime.LOAN_FOR_USE] if include_loans_for_use else [])
     statement = _active_pieces(session).where(Piece.tenure_regime.in_(regimes))
     title = "Inventario general"
@@ -167,7 +195,7 @@ def inventory(
         statement = statement.where(Piece.collection_id.in_(_descendants(session, collection_id)))
         title = f"Inventario de la colección {paths[collection_id][-1].name}"
         filters["collection"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
-    pieces = list(session.scalars(statement))
+    pieces = list(session.scalars(_with_piece_filter(statement, session, viewer, piece_filter)))
 
     reader = CatalogReader(session, viewer)
     ids = [piece.id for piece in pieces]
@@ -323,6 +351,7 @@ def by_location(
     location_id: uuid.UUID | None,
     not_verified_since_days: int | None = None,
     now: datetime | None = None,
+    piece_filter: PieceFilter | None = None,
 ) -> ReportData:
     """Pieces of a location and its descendants with when each was last seen (D4)."""
     if location_id is None:
@@ -339,19 +368,11 @@ def by_location(
             details={"parameter": "location_id", "value": str(location_id)},
         )
     exact = viewer.can(PERM_EXACT_LOCATION)
-    if not exact and location.level not in PUBLIC_LOCATION_LEVELS:
-        raise PermissionDenied(
-            "El detalle por debajo del espacio exige el permiso de ubicación exacta. Puede pedir "
-            "el reporte de la sede o del espacio que contiene esta ubicación: se entrega agregado "
-            "por espacio.",
-            code="exact_location_required",
-            details={"aggregate_available": True},
-        )
+    _require_visible_location(location, viewer)
     reader = CatalogReader(session, viewer)
     scope = _location_descendants(session, location_id)
-    pieces = list(
-        session.scalars(_active_pieces(session).where(Piece.current_location_id.in_(scope)))
-    )
+    statement = _active_pieces(session).where(Piece.current_location_id.in_(scope))
+    pieces = list(session.scalars(_with_piece_filter(statement, session, viewer, piece_filter)))
     path_text = PATH_SEPARATOR.join(node.name for node in reader.location_path(location_id))
     filters: dict[str, Any] = {"location": path_text}
     if not_verified_since_days is not None:
