@@ -12,7 +12,7 @@
 
 ## 3. Lugares desde la búsqueda (después de `fusion-busqueda-deposito` 2.2)
 
-- [ ] 3.1 Acciones «Agregar lugar aquí», «Editar» y «Desactivar» en `LocationTreeSelect` con `locations.manage`, tipo propuesto según el padre; pruebas de los cuatro escenarios del requirement (Req: Alta y edición de lugares desde el árbol de ubicaciones)
+- [x] 3.1 Acciones «Agregar lugar aquí», «Editar» y «Desactivar» en `LocationTreeSelect` con `locations.manage`, tipo propuesto según el padre; pruebas de los cuatro escenarios del requirement (Req: Alta y edición de lugares desde el árbol de ubicaciones)
 
 ## 4. Registro continuo de piezas
 

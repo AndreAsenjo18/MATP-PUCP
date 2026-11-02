@@ -10,6 +10,7 @@ import { Download, FileSpreadsheet, MapPin, Plus, RefreshCw, SearchX, X } from "
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { LocationPlaceDialogs, type PlaceAction } from "@/components/domain/LocationPlaceDialogs";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
 import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
@@ -526,6 +527,10 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Cada «Ver por ubicación» vuelve a montar el panel con «Más filtros» abierto (design D3).
   const [locationRevealKey, setLocationRevealKey] = useState(0);
+  // Agregar, editar o desactivar lugares desde el árbol (`crud-manual-completo` 3.1).
+  const canManagePlaces = hasPermission("locations.manage");
+  const [placeAction, setPlaceAction] = useState<PlaceAction | null>(null);
+  const [placeNotice, setPlaceNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -623,6 +628,13 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     setSelection(EMPTY_SELECTION);
     setReloadKey((key) => key + 1);
   }
+  async function handlePlaceChanged(text: string, removedId?: string) {
+    setPlaceNotice(text);
+    if (removedId && filters.locationId === removedId) setFilters((current) => ({ ...current, locationId: null }));
+    const locations = await fetchLocationsTree(devUser);
+    if (locations.status === "ok") setOptions((current) => ({ ...current, locations: flattenLocationTree(locations.value), locationTree: locations.value }));
+  }
+
   const chips = activeChips(query, names);
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
   const remove = (key: FilterChip["key"]) => setFilters((current) => removeFilter(current, key));
@@ -646,8 +658,19 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             onChange={update}
             onClear={() => setFilters(EMPTY_FILTERS)}
             openMore={locationRevealKey > 0}
+            locationActions={
+              canManagePlaces
+                ? {
+                    onAdd: (node) => setPlaceAction({ kind: "add", node }),
+                    onEdit: (node) => setPlaceAction({ kind: "edit", node }),
+                    onDeactivate: (node) => setPlaceAction({ kind: "deactivate", node }),
+                  }
+                : undefined
+            }
+            locationNotice={placeNotice}
           />
         </FiltersDrawer>
+        <LocationPlaceDialogs action={placeAction} nodes={options.locationTree} devUser={devUser} onClose={() => setPlaceAction(null)} onChanged={handlePlaceChanged} />
 
         {/* En tableta la barra de la selección va fija abajo: el final de la lista queda a la vista. */}
         <section className={cn("flex flex-col gap-4", canMove && (selection.size > 0 || feedback) && "pb-48 lg:pb-0")} aria-label="Resultados">
