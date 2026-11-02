@@ -1,6 +1,6 @@
 ## 1. Requisitos y contrato
 
-- [ ] 1.1 Añadir RF-047 («Reporte de piezas agrupadas por atributo de la ficha», *Should*, busqueda-reportes) a `docs/requisitos/catalogo.md` (coordinar con RF-046 de `importacion-fotos-a-catalogo`); `openspec validate reportes-por-atributo --strict` en verde (Req: todos)
+- [x] 1.1 Añadir RF-047 («Reporte de piezas agrupadas por atributo de la ficha», *Should*, busqueda-reportes) a `docs/requisitos/catalogo.md` (coordinar con RF-046 de `importacion-fotos-a-catalogo`); `openspec validate reportes-por-atributo --strict` en verde (Req: todos)
 
 ## 2. API
 
