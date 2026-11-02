@@ -22,5 +22,7 @@
 
 - [ ] 4.1 Regenerar OpenAPI y cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar las filas 42 y 45 del mapeo a «hecho»; `npm run openapi:check` en verde (Req: Descarga masiva de fotografías por paquete; Descripciones preliminares por lote como sugerencias pendientes)
 - [ ] 4.2 Sección del manual de usuario en `docs/manual-usuario/` (descarga de fotos por lote y revisión de borradores de IA)
+  - [x] Parte de fotos: `docs/manual-usuario/descarga-masiva-fotos.md`.
+  - Parte de IA: la revisión de borradores queda para cuando exista la sección 3; hasta entonces 4.2 sigue abierta.
 - [ ] 4.3 `npm run lint`, `npm test`, `npm run test:api:pg` (PostgreSQL con Docker) y `openspec validate descargas-masivas-y-enriquecimiento-lote --strict` en verde
 - [ ] 4.4 Tras aprobar el PR, `openspec archive descargas-masivas-y-enriquecimiento-lote -y`
