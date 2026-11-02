@@ -2132,6 +2132,23 @@
             ],
             "title": "Acronym"
           },
+          "default_tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).",
+            "title": "Default Tenure Regime"
+          },
           "description": {
             "anyOf": [
               {
@@ -5826,6 +5843,14 @@
           }
         ],
         "properties": {
+          "allowed_child_types": {
+            "description": "Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Child Types",
+            "type": "array"
+          },
           "children": {
             "items": {
               "$ref": "#/components/schemas/LocationNode"

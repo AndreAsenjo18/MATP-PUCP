@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 039453d0a0d9f711d3d606da7f5be1577a12b79136d51f6e084c820cd3eb9fd5
+ * openapi-sha256: 33d0cc6f5e7fdded9509dcb8699fafbb642a8277f479247c5c0329decae78910
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3108,6 +3108,11 @@ export interface components {
         CollectionUpdate: {
             /** Acronym */
             acronym?: string | null;
+            /**
+             * Default Tenure Regime
+             * @description Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).
+             */
+            default_tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             /** Description */
             description?: string | null;
             /** Is Active */
@@ -4852,6 +4857,11 @@ export interface components {
          *     }
          */
         LocationNode: {
+            /**
+             * Allowed Child Types
+             * @description Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).
+             */
+            allowed_child_types?: string[];
             /** Children */
             children?: components["schemas"]["LocationNode"][];
             /**

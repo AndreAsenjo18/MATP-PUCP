@@ -125,6 +125,8 @@ def update_collection(session: Session, collection: Collection, changes: dict[st
     for key in ("description", "origin_description", "is_active"):
         if key in changes:
             setattr(collection, key, changes[key])
+    if changes.get("default_tenure_regime") is not None:
+        collection.default_tenure_regime = changes["default_tenure_regime"]  # type: ignore[assignment]
     if "parent_id" in changes and changes["parent_id"] != collection.parent_id:
         parent_id = changes["parent_id"]
         move_collection(

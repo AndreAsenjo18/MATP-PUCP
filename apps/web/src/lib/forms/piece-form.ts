@@ -15,13 +15,14 @@
  *   régimen Comodato — `lender_name` y `loan_agreement_ref` (sensibles, RF-041).
  * - Descripción: `description`, `author`.
  * - Procedencia y época: `provenance`, `period_text` (= `period.text`), `acquisition_method_term_id`,
- *   `entry_date`.
+ *   `entry_date` y `recorded_by` (este, solo en el alta: se repite al registrar piezas seguidas,
+ *   `crud-manual-completo` D4).
  * - Medidas y materiales: `dimensions_text`, `material_term_ids`.
  * - Conservación: `conservation_state_id`.
  * - Observaciones: `notes`.
  *
  * Fuera del formulario: `legal_owner` (no está en el contrato de escritura: lo fija el servidor
- * según el régimen, RN-006), `recorded_by`, `temporary_inventory_number`, `parent_piece_id`,
+ * según el régimen, RN-006), `temporary_inventory_number`, `parent_piece_id`,
  * `dimensions[]`, `identifiers` (otros flujos o derivados) y los datos de fotos, ubicación,
  * alertas y auditoría (otros changes).
  */
@@ -59,6 +60,8 @@ export const pieceFormSchema = z.object({
   acquisition_method_term_id: z.string(),
   /** Fecha de ingreso en formato AAAA-MM-DD; cadena vacía = sin registrar. */
   entry_date: z.string(),
+  /** Quién registró la pieza (solo se envía en el alta; dato personal, Ley 29733). */
+  recorded_by: z.string(),
   dimensions_text: z.string(),
   /** Ids de los términos del vocabulario MATERIAL. */
   material_term_ids: z.array(z.string()),
@@ -85,6 +88,7 @@ export const EMPTY_PIECE_FORM: PieceFormValues = {
   period_text: "",
   acquisition_method_term_id: "",
   entry_date: "",
+  recorded_by: "",
   dimensions_text: "",
   material_term_ids: [],
   conservation_state_id: "",
@@ -128,6 +132,7 @@ export function toFormValues(piece: ApiSchemas["PieceDetail"]): PieceFormValues 
     period_text: piece.period.text ?? "",
     acquisition_method_term_id: piece.acquisition_method?.id ?? "",
     entry_date: piece.entry_date ?? "",
+    recorded_by: piece.recorded_by ?? "",
     dimensions_text: piece.dimensions_text ?? "",
     material_term_ids: piece.materials.map((material) => material.id),
     conservation_state_id: piece.conservation_status?.id ?? "",
@@ -162,6 +167,7 @@ export function toCreateInput(values: PieceFormValues): PieceCreateInput {
     period: periodText === null ? null : { text: periodText },
     acquisition_method_term_id: blankToNull(values.acquisition_method_term_id),
     entry_date: blankToNull(values.entry_date),
+    recorded_by: blankToNull(values.recorded_by),
     dimensions_text: blankToNull(values.dimensions_text),
     material_term_ids: values.material_term_ids.length > 0 ? values.material_term_ids : null,
     conservation_state_id: blankToNull(values.conservation_state_id),
