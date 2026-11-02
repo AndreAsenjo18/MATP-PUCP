@@ -195,6 +195,17 @@ describe("filtros, mapeo y aprobación", () => {
     );
     expect(visibleText(render(<ApprovalPanel summary={summary} canApprove={false} busy={false} onConfirm={noop} />))).toContain("no aprobarla");
   });
+
+  it("avisa de la cuota de fotos sin bloquear la aprobación (importacion-masiva-fotografias 5.5)", () => {
+    const warning = "Al aplicar este lote, las fotos ocuparían hasta unos 12.0 GB y superarían la cuota de 10.0 GB (MEDIA_QUOTA_BYTES).";
+    const html = render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, summary_token: "t", photo_quota_warning: warning }} canApprove busy={false} onConfirm={noop} />);
+
+    expect(visibleText(html)).toContain(warning);
+    expect(visibleText(html)).toContain("Aprobar y aplicar");
+    expect(visibleText(render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />))).not.toContain(
+      "MEDIA_QUOTA_BYTES",
+    );
+  });
 });
 
 describe("bitácora e imágenes (RF-028, RF-029)", () => {
