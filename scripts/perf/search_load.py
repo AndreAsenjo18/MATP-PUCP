@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import random
 import time
 from pathlib import Path
@@ -175,6 +176,19 @@ def calculate_percentiles(values: list[float]) -> dict[str, float]:
     }
 
 
+async def _login(client: httpx.AsyncClient, base_url: str, email: str, password: str) -> None:
+    """A real session in the client's cookies: the identity header only exists under
+    APP_ENV=test (ADR-009), and the reference environment is not a test one."""
+    response = await client.post(
+        f"{base_url.rstrip('/')}/api/v1/auth/login",
+        json={"username": email, "password": password},
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"No se pudo iniciar sesión como {email}: {response.status_code} {response.text[:200]}"
+        )
+
+
 async def run_load_test(
     base_url: str = "http://localhost:8000",
     concurrency: int = 10,
@@ -182,6 +196,7 @@ async def run_load_test(
     auth_header: str | None = None,
     output_path: str | None = None,
     client: httpx.AsyncClient | None = None,
+    password: str | None = None,
 ) -> dict[str, Any]:
     """Run concurrent load test and return summary dictionary."""
     headers = {"Content-Type": "application/json"}
@@ -192,8 +207,8 @@ async def run_load_test(
         "STORAGE": "deposito@matp.local",
         "VIEWER": "consulta@matp.local",
     }
-    if auth_header:
-        email = role_map.get(auth_header.upper(), auth_header)
+    email = role_map.get(auth_header.upper(), auth_header) if auth_header else None
+    if email and not password:
         headers["X-MATP-User"] = email
 
     all_latencies: list[float] = []
@@ -210,7 +225,7 @@ async def run_load_test(
     print(f" Target: {base_url}")
     print(f" Concurrency: {concurrency} users")
     print(f" Duration: {duration_seconds}s")
-    print(" Workload mix: 40% code, 30% text, 30% filters")
+    print(" Workload mix: 40% code, 25% text, 20% filters, 15% description")
     print(" SLA Target: p95 <= 2000 ms")
     print("==================================================\n")
 
@@ -223,6 +238,8 @@ async def run_load_test(
         own_client = True
 
     try:
+        if email and password:
+            await _login(client, base_url, email, password)
         tasks = [
             worker(
                 worker_id=i,
@@ -272,6 +289,8 @@ async def run_load_test(
     print(f"Total Requests:     {total_requests} ({rps} req/s)")
     print(f"Successful:         {len(all_latencies)}")
     print(f"Errors:             {len(errors)} ({err_rate}%)")
+    if errors:
+        print(f"First error:        {errors[0]}")
     print("\nLatency Distribution (ms):")
     print(f"  Min:  {global_stats['min']:>8.2f} ms")
     print(f"  Avg:  {global_stats['avg']:>8.2f} ms")
@@ -321,11 +340,19 @@ def main() -> None:
     parser.add_argument(
         "--auth",
         type=str,
-        default="cataloguer@matp.local",
-        help="Email o dev user para autenticación",
+        default="catalogador@matp.local",
+        help="Correo del usuario con el que se inicia sesión",
+    )
+    parser.add_argument(
+        "--password",
+        type=str,
+        default=os.environ.get("SEED_DEV_PASSWORD"),
+        help="Contraseña del usuario (def: variable SEED_DEV_PASSWORD)",
     )
 
     args = parser.parse_args()
+    if not args.password:
+        parser.error("Falta la contraseña: defina SEED_DEV_PASSWORD o use --password.")
     dur = 30.0 if args.smoke else float(args.duration)
 
     asyncio.run(
@@ -335,6 +362,7 @@ def main() -> None:
             duration_seconds=dur,
             auth_header=args.auth,
             output_path=args.output,
+            password=args.password,
         )
     )
 
