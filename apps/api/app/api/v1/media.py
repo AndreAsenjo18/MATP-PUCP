@@ -10,26 +10,45 @@ import uuid
 from io import BytesIO
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.batch_limits import ensure_batch_size
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.enums import PHOTO_VIEW_TYPE_LABELS, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.refs import TermRef, translate_view_term
-from app.api.stubs import CHANGE_BULK, implemented, not_implemented, stub
+from app.api.stubs import implemented
 from app.core.errors import BusinessRuleViolation, ValidationFailed
+from app.core.jobs import run_in_background
 from app.core.models_base import new_uuid
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.queries import get_piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
-from app.modules.media.models import MediaAsset
+from app.modules.media.bulk_download import (
+    build_bulk_download,
+    bulk_download_of,
+    create_bulk_download,
+    is_expired,
+)
+from app.modules.media.models import BulkDownloadStatus, MediaAsset, MediaBulkDownload
 from app.modules.media.schemas import (
     BulkDownloadJob,
     BulkDownloadRequest,
     MediaAssetOut,
+    OmittedPhoto,
     StorageEstimateRequest,
     StorageEstimateResponse,
 )
@@ -211,15 +230,112 @@ def upload_media_asset(
     )
 
 
+def bulk_download_body(request: Request, body: BulkDownloadRequest) -> BulkDownloadRequest:
+    """The package within ``MEDIA_BULK_DOWNLOAD_MAX_PIECES`` (task 1.2) [SUPUESTO AA1].
+
+    A dependency, so the size is checked before the route is reached.
+    """
+    limit = request.app.state.settings.media_bulk_download_max_pieces
+    ensure_batch_size(len(body.piece_ids), limit, "Un paquete de fotos")
+    return body
+
+
+def _sees_every_package(user: CurrentUser) -> bool:
+    """The rule of the exports (``GET /exports/{id}``): the admin role or ``exports.full``."""
+    return "admin" in {role.lower() for role in user.roles} or "exports.full" in user.permissions
+
+
+def _bulk_download_out(request: Request, job: MediaBulkDownload) -> BulkDownloadJob:
+    """The state of a package; once READY, a short-lived link to its ZIP (D1)."""
+    url = None
+    if job.status is BulkDownloadStatus.READY and job.storage_key:
+        ttl = request.app.state.settings.media_url_ttl_seconds
+        url = request.app.state.storage.presign_get(job.storage_key, ttl)
+    return BulkDownloadJob(
+        id=job.id,
+        status=job.status.value,
+        piece_count=len(job.piece_ids),
+        included_photos=job.included_photos,
+        omitted=[OmittedPhoto(**item) for item in job.omitted],
+        download_url=url,
+        expires_at=job.expires_at,
+    )
+
+
 @router.post(
     "/media/bulk-download",
     response_model=BulkDownloadJob,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        409: {
+            "model": ErrorResponse,
+            "description": "`bulk_download_in_progress`: la persona ya tiene un paquete en "
+            "preparación (`details.job_id`).",
+        },
+    },
     summary="Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)",
-    **stub(CHANGE_BULK),
+    description="Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en "
+    "segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace "
+    "de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el "
+    "documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya "
+    "restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).",
+    **implemented(),
 )
-def bulk_download_media(body: BulkDownloadRequest, user: Exporter) -> BulkDownloadJob:
-    """Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera."""
-    raise not_implemented(CHANGE_BULK, BulkDownloadJob)
+def bulk_download_media(
+    user: Exporter,
+    body: Annotated[BulkDownloadRequest, Depends(bulk_download_body)],
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
+) -> BulkDownloadJob:
+    job = create_bulk_download(writer(session, user), user.id, body.piece_ids)
+    session.commit()
+    run_in_background(
+        background_tasks,
+        build_bulk_download,
+        request.app.state.session_factory,
+        job.id,
+        request.app.state.storage,
+        ttl_hours=request.app.state.settings.media_bulk_download_ttl_hours,
+    )
+    return _bulk_download_out(request, job)
+
+
+@router.get(
+    "/media/bulk-download/{job_id}",
+    response_model=BulkDownloadJob,
+    responses={
+        403: {
+            "model": ErrorResponse,
+            "description": "El rol no tiene el permiso requerido, o el paquete lo pidió otra "
+            "persona y quien consulta no es administrador.",
+        },
+        404: {"model": ErrorResponse, "description": "No existe ese paquete."},
+        410: {
+            "model": ErrorResponse,
+            "description": "El paquete caducó: el archivo ya no está disponible y el registro "
+            "del trabajo se conserva.",
+        },
+    },
+    summary="Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)",
+    description="Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): "
+    "el estado del paquete y, cuando está listo, un enlace de corta duración "
+    "(`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca "
+    "(`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol "
+    "`ADMIN` o permiso `exports.full`, como las exportaciones).",
+    **implemented(),
+)
+def get_bulk_download(
+    job_id: uuid.UUID, request: Request, session: SessionDep, user: Exporter
+) -> BulkDownloadJob:
+    job = bulk_download_of(session, job_id, user.id, sees_every_package=_sees_every_package(user))
+    if job.status is BulkDownloadStatus.READY and job.storage_key and is_expired(job):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="El paquete de fotos caducó y su archivo ya no está disponible; el registro "
+            "se conserva. Pida un paquete nuevo.",
+        )
+    return _bulk_download_out(request, job)
 
 
 # Thumbnail (~20 KB) and display copy (~300 KB) of each photo [SUPUESTO: average of the derivatives

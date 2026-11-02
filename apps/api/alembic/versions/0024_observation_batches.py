@@ -1,7 +1,7 @@
 """Batches of quality observations: `import_batch.kind` gains `OBSERVATIONS`.
 
-Revision ID: 0022_observation_batches
-Revises: 0021_source_sensitive_keys
+Revision ID: 0024_observation_batches
+Revises: 0023_media_bulk_download
 Create Date: 2026-11-01
 
 Change de OpenSpec: formatos-reales-importacion (tarea 6.2; design D8). The sheets «Errores
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0022_observation_batches"
-down_revision: str | None = "0021_source_sensitive_keys"
+revision: str = "0024_observation_batches"
+down_revision: str | None = "0023_media_bulk_download"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
