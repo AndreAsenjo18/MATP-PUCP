@@ -246,6 +246,14 @@ describe("operaciones en modo live", () => {
     expect(result.status === "ok" && result.value.kind).toBe("job");
   });
 
+  it("el reporte agrupado grande también se genera en segundo plano, con el trabajo para seguirlo", async () => {
+    useLive(async () => json(202, { id: "job-2", status: "RUNNING", format: "xlsx", row_count: 10000 }));
+
+    const result = await downloadReport("by-attribute", { groupBy: "material" }, DEV_USER);
+
+    expect(result.status === "ok" && result.value.kind === "job" && result.value.job.id).toBe("job-2");
+  });
+
   it("traduce el 403 del detalle por debajo del espacio", async () => {
     useLive(async () => json(403, { code: "exact_location_required", message: "x", details: { aggregate_available: true } }));
 

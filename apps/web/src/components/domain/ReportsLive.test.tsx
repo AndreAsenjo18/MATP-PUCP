@@ -4,7 +4,7 @@ import { EMPTY_OPTIONS } from "@/components/domain/SearchFilters";
 import { EMPTY_FILTERS } from "@/lib/data/search";
 import { render, visibleText } from "@/test/render";
 
-import { GroupBySelect, ReportActions, ReportFilters } from "./ReportsLive";
+import { GroupBySelect, ReportActions, ReportFilters, ReportJobNotice } from "./ReportsLive";
 
 // Datos sintéticos (RNF-014).
 
@@ -61,5 +61,29 @@ describe("descargar e imprimir", () => {
     const text = visibleText(render(actions(3, false)));
     expect(text).not.toContain("Exportar a Excel");
     expect(text).toContain("Vista imprimible");
+  });
+});
+
+describe("reporte en segundo plano", () => {
+  it("dice que se está generando mientras está en cola o en preparación", () => {
+    for (const status of ["PENDING", "RUNNING"] as const) {
+      const html = render(<ReportJobNotice job={{ status }} />);
+      expect(html).toContain('role="status"');
+      expect(visibleText(html)).toContain("se está generando en segundo plano");
+      expect(visibleText(html)).toContain("Mis exportaciones");
+    }
+  });
+
+  it("avisa al terminar, y dónde descargarlo", () => {
+    const html = render(<ReportJobNotice job={{ status: "READY" }} />);
+    expect(html).toContain('role="status"');
+    expect(visibleText(html)).toContain("ya está listo");
+    expect(visibleText(html)).toContain("Mis exportaciones");
+  });
+
+  it("avisa si falló, como una alerta", () => {
+    const html = render(<ReportJobNotice job={{ status: "FAILED" }} />);
+    expect(html).toContain('role="alert"');
+    expect(visibleText(html)).toContain("No se pudo generar el reporte");
   });
 });

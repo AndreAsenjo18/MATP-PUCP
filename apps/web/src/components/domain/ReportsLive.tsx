@@ -4,7 +4,7 @@
  * Reportes de inventario en modo `live` (change `reportes-inventario`, tareas 3.1 y 3.2; RF-033,
  * RF-034, RF-041): tipo de reporte, parámetros (colección, ubicación, comodatos, días sin
  * verificar, atributo y filtros de la búsqueda), vista previa paginada con subtotales y totales,
- * exportación a Excel (directa o en segundo plano) y vista imprimible.
+ * exportación a Excel (directa o en segundo plano, con aviso al terminar) y vista imprimible.
  */
 import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 
 import { ReportPreview } from "@/components/domain/ReportPreview";
 import { EMPTY_OPTIONS, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
+import { MyExportsPanel } from "@/components/domain/SearchLive";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -25,15 +26,18 @@ import {
   fetchReport,
   missingParameter,
   printHref,
+  type ExportJob,
   type GroupBy,
   type LiveReportType,
   type Report,
   type ReportParams,
 } from "@/lib/data/reports";
-import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, type SearchFilters } from "@/lib/data/search";
+import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, fetchExportJob, hasPendingJobs, type SearchFilters } from "@/lib/data/search";
 
 /** Filas por página de la vista previa (design D4). */
 const PAGE_SIZE = 50;
+/** Cada cuánto se consulta el reporte que se genera en segundo plano. */
+const JOB_POLL_MS = 3000;
 
 // ---------------------------------------------------------------------------------------------
 // Configuración de «Piezas agrupadas por…» (reportes-por-atributo, tarea 3.1)
@@ -109,6 +113,29 @@ export function ReportFilters({
   );
 }
 
+/** Cómo va el reporte que se genera en segundo plano (escenario «Reporte muy grande»). */
+export function ReportJobNotice({ job }: { job: Pick<ExportJob, "status"> }) {
+  if (job.status === "FAILED") {
+    return (
+      <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
+        No se pudo generar el reporte. Intente de nuevo.
+      </p>
+    );
+  }
+  if (job.status === "READY") {
+    return (
+      <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
+        Su reporte ya está listo: descárguelo en «Mis exportaciones», aquí abajo.
+      </p>
+    );
+  }
+  return (
+    <p role="status" className="rounded-md bg-crema px-3 py-2 text-base text-tinta">
+      El reporte es grande: se está generando en segundo plano. Le avisaremos aquí cuando esté listo. También lo encontrará en «Mis exportaciones».
+    </p>
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // Contenedor live
 // ---------------------------------------------------------------------------------------------
@@ -123,6 +150,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [job, setJob] = useState<ExportJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [collections, setCollections] = useState<CollectionOption[]>([]);
   const [locations, setLocations] = useState<{ id: string; label: string }[]>([]);
@@ -177,6 +205,18 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
     };
   }, [type, params, page, devUser, missing]);
 
+  // Sigue el reporte en segundo plano hasta que termina, para avisar en esta pantalla.
+  useEffect(() => {
+    if (!job?.id || !hasPendingJobs([job])) return;
+    const jobId = job.id;
+    const timer = setTimeout(() => {
+      fetchExportJob(jobId, devUser).then((result) => {
+        setJob((current) => (result.status === "ok" ? result.value : current && { ...current }));
+      });
+    }, JOB_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [job, devUser]);
+
   function update(next: Partial<ReportParams>) {
     setParams((current) => ({ ...current, ...next }));
     setPage(1);
@@ -188,7 +228,8 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     if (result.value.kind === "job") {
-      setNotice("El reporte es grande: se está generando en segundo plano. Lo encontrará en «Mis exportaciones» cuando esté listo.");
+      setNotice(null);
+      setJob(result.value.job);
       return;
     }
     const url = URL.createObjectURL(result.value.blob);
@@ -201,66 +242,70 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
   }
 
   return (
-    <Card as="section" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        {type === "by-attribute" && <GroupBySelect value={params.groupBy} onChange={(groupBy) => update({ groupBy })} />}
-        {type === "by-collection" && (
-          <Select label="Colección" value={params.collectionId ?? ""} onChange={(event) => update({ collectionId: event.target.value || null })}>
-            <option value="">Elija una colección</option>
-            {collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.name}
-              </option>
-            ))}
-          </Select>
-        )}
-        {type === "by-location" && (
-          <>
-            <Select label="Ubicación" value={params.locationId ?? ""} onChange={(event) => update({ locationId: event.target.value || null })}>
-              <option value="">Elija una ubicación</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.label}
+    <>
+      <Card as="section" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          {type === "by-attribute" && <GroupBySelect value={params.groupBy} onChange={(groupBy) => update({ groupBy })} />}
+          {type === "by-collection" && (
+            <Select label="Colección" value={params.collectionId ?? ""} onChange={(event) => update({ collectionId: event.target.value || null })}>
+              <option value="">Elija una colección</option>
+              {collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
                 </option>
               ))}
             </Select>
-            <Input
-              label="No verificadas en los últimos (días)"
-              type="number"
-              min={0}
-              value={params.notVerifiedSinceDays ?? ""}
-              onChange={(event) => update({ notVerifiedSinceDays: event.target.value === "" ? null : Number(event.target.value) })}
-            />
+          )}
+          {type === "by-location" && (
+            <>
+              <Select label="Ubicación" value={params.locationId ?? ""} onChange={(event) => update({ locationId: event.target.value || null })}>
+                <option value="">Elija una ubicación</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.label}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="No verificadas en los últimos (días)"
+                type="number"
+                min={0}
+                value={params.notVerifiedSinceDays ?? ""}
+                onChange={(event) => update({ notVerifiedSinceDays: event.target.value === "" ? null : Number(event.target.value) })}
+              />
+            </>
+          )}
+          {type !== "by-location" && (
+            <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
+              <input type="checkbox" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
+              Incluir comodatos
+            </label>
+          )}
+        </div>
+        {type === "by-attribute" && (
+          <ReportFilters
+            filters={filters}
+            options={options}
+            onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
+            onClear={() => setFilters(EMPTY_FILTERS)}
+          />
+        )}
+        {missing && <p className="text-base text-gris-texto">{missing}</p>}
+        {error && (
+          <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
+            {error}
+          </p>
+        )}
+        {job && <ReportJobNotice job={job} />}
+        {report && !missing && (
+          <>
+            <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
+            {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
+            <ReportPreview report={report} onPage={setPage} />
           </>
         )}
-        {type !== "by-location" && (
-          <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
-            <input type="checkbox" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
-            Incluir comodatos
-          </label>
-        )}
-      </div>
-      {type === "by-attribute" && (
-        <ReportFilters
-          filters={filters}
-          options={options}
-          onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
-          onClear={() => setFilters(EMPTY_FILTERS)}
-        />
-      )}
-      {missing && <p className="text-base text-gris-texto">{missing}</p>}
-      {error && (
-        <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
-          {error}
-        </p>
-      )}
-      {report && !missing && (
-        <>
-          <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
-          {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
-          <ReportPreview report={report} onPage={setPage} />
-        </>
-      )}
-    </Card>
+      </Card>
+      {job && <MyExportsPanel refreshKey={hasPendingJobs([job]) ? 0 : 1} />}
+    </>
   );
 }

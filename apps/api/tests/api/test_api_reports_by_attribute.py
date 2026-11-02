@@ -542,3 +542,43 @@ def test_the_notice_of_the_limited_location_is_the_same_in_the_file(pipeline: Pi
     assert response.status_code == 200, response.text
     heading = response.content.decode("utf-8-sig").split("\r\n\r\n")[0]
     assert "Ubicación limitada a sede y espacio por tus permisos" in heading
+
+
+# --- 3.4 reporte muy grande -------------------------------------------------------------------
+def test_a_report_over_the_limit_keeps_its_preview_and_builds_the_file_in_the_background(
+    pipeline: Pipeline, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Escenario «Reporte muy grande», con el doble de filas que el límite."""
+    tag = _tag()
+    limit = 3
+    for number in range(limit * 2):
+        _piece(pipeline, f"{tag} {number}", provenance="Puno" if number % 2 else "Cusco")
+    monkeypatch.setattr(quality_reports, "EXPORT_SYNC_MAX_ROWS", limit)
+    client = pipeline.login("ADMIN")
+    params = {"group_by": "provenance", "denomination": tag, "page_size": 2}
+
+    first = client.get(f"{BASE}/by-attribute", params=params)
+    second = client.get(f"{BASE}/by-attribute", params={**params, "page": 2})
+    download = client.get(f"{BASE}/by-attribute", params={**params, "format": "xlsx"})
+
+    assert first.status_code == 200, first.text
+    body = first.json()
+    assert body["total_rows"] == limit * 2
+    assert len(body["rows"]) == 2
+    assert body["totals"]["Piezas"] == limit * 2
+    assert {(item["label"], item["count"]) for item in body["subtotals"]} == {
+        ("Cusco", limit),
+        ("Puno", limit),
+    }
+    assert second.status_code == 200, second.text
+    assert len(second.json()["rows"]) == 2
+    assert second.json()["rows"] != body["rows"]
+
+    assert download.status_code == 202, download.text
+    with pipeline.session() as session:
+        job = session.get(ExportJobModel, uuid.UUID(download.json()["id"]))
+        assert job is not None and job.status == ExportJobStatus.READY
+        assert job.row_count == limit * 2
+        sheet = load_workbook(io.BytesIO(pipeline.stored[job.storage_key]))["Reporte"]
+    cells = [str(cell) for row in sheet.iter_rows(values_only=True) for cell in row if cell]
+    assert {f"{tag} {number}" for number in range(limit * 2)} <= set(cells)

@@ -97,6 +97,21 @@ describe("vista previa del reporte", () => {
   });
 });
 
+describe("reporte muy grande", () => {
+  it("muestra los totales de todo el reporte y solo la primera página", () => {
+    const rows = Array.from({ length: 50 }, (_, index) => [`Pieza ${index}`, "RA", "Depósito"]);
+    const html = render(
+      <ReportPreview report={report({ rows, total_rows: 10000, page_size: 50, totals: { Piezas: 10000 }, subtotals: [{ group: "Colección", label: "RA", count: 10000, level: 0 }] })} onPage={noop} />,
+    );
+    const text = visibleText(html);
+    expect(text).toContain("Piezas: 10000");
+    expect(text).toContain("Colección: RA — 10000 piezas");
+    expect(text).toContain("Página 1 de 200 (10000 filas)");
+    expect(text).toContain("Pieza 49");
+    expect(text).not.toContain("Pieza 50");
+  });
+});
+
 describe("grupos plegables", () => {
   const grouped = report({
     columns: ["Grupo", "Denominación", "Descripción"],
