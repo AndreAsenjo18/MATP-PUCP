@@ -19643,7 +19643,7 @@
     },
     "/api/v1/media/bulk-download": {
       "post": {
-        "description": "Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.",
+        "description": "Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).",
         "operationId": "bulkDownloadMedia",
         "requestBody": {
           "content": {
@@ -19656,7 +19656,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -19686,6 +19686,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19695,16 +19705,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
           }
         },
         "security": [
@@ -19716,13 +19716,12 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "descargas-masivas-y-enriquecimiento-lote",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/media/bulk-download/{job_id}": {
       "get": {
-        "description": "Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el `POST` responde el estado del trabajo y el ZIP se descarga después con un enlace de corta duración, que esta operación entrega cuando el paquete está listo.",
+        "description": "Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).",
         "operationId": "getBulkDownload",
         "parameters": [
           {
@@ -19765,7 +19764,27 @@
                 }
               }
             },
-            "description": "El rol no tiene el permiso requerido."
+            "description": "El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe ese paquete."
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva."
           },
           "422": {
             "content": {
@@ -19776,16 +19795,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
           }
         },
         "security": [
@@ -19797,8 +19806,7 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "descargas-masivas-y-enriquecimiento-lote",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/media/storage-estimate": {

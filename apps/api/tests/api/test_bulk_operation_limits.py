@@ -2,8 +2,9 @@
 
 Spec multimedia, «Descarga masiva de fotografías por paquete», and spec ia-asistiva,
 «Descripciones preliminares por lote como sugerencias pendientes», scenarios «Lote demasiado
-grande». Both routes are still stubs (501): the size is checked before, so a valid request reaches
-the stub and an invalid one never does. Limits [SUPUESTO AA1]. Synthetic data only (RNF-014).
+grande». The size is checked before the route is reached, so an invalid request never creates
+anything: the package answers its job (section 2) and the AI batch is still a stub (501) until
+section 3. Limits [SUPUESTO AA1]. Synthetic data only (RNF-014).
 """
 
 import uuid
@@ -16,6 +17,8 @@ ROUTES = {
     "/api/v1/media/bulk-download": ("media_bulk_download_max_pieces", 200),
     "/api/v1/ai/batch-enrich": ("ai_batch_enrich_max_pieces", 50),
 }
+# What a request within the limit answers: the job of the package, or the stub of the AI batch.
+WITHIN = {"/api/v1/media/bulk-download": 202, "/api/v1/ai/batch-enrich": 501}
 
 
 def _ids(count: int) -> list[str]:
@@ -43,7 +46,7 @@ def test_the_default_limit_is_the_assumption_aa1(seeded_api: SeededApi, path: st
     assert error["code"] == "batch_too_large"
     assert error["details"] == {"limit": default, "received": default + 1}
     assert str(default) in error["message"]
-    assert at_the_limit.status_code == 501  # the stub: implemented in sections 2 and 3
+    assert at_the_limit.status_code == WITHIN[path], at_the_limit.text
 
 
 @pytest.mark.parametrize("path", ROUTES)
@@ -58,7 +61,7 @@ def test_the_limit_comes_from_the_settings(
     within = client.post(path, json={"piece_ids": _ids(3)})
 
     assert (over.status_code, over.json()["details"]["limit"]) == (422, 3)
-    assert within.status_code == 501
+    assert within.status_code == WITHIN[path], within.text
 
 
 def test_the_limits_are_documented_in_the_env_example() -> None:

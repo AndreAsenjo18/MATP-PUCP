@@ -190,11 +190,6 @@ class DownloadUrlResponse(BaseModel):
     )
 
 
-restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
-    default="ninguna", description="Origen de la restricción efectiva."
-)
-
-
 class StorageEstimateRequest(BaseModel):
     """Query parameters for storage estimation."""
 

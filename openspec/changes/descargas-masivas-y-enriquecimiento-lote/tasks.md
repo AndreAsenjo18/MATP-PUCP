@@ -6,10 +6,10 @@
 
 ## 2. Descarga masiva de fotografías
 
-- [ ] 2.1 Servicio de creación del trabajo con un paquete activo por usuario sobre `app/core/jobs.py` (ADR-010); pruebas de alta y del segundo paquete simultáneo (409) (Req: Descarga masiva de fotografías por paquete; RF-013)
-- [ ] 2.2 Worker que evalúa la restricción efectiva de cada foto al generar (D3), escribe el ZIP con `zipfile` en un temporal y lo sube a `exports/` con caducidad (D2); pruebas con MinIO simulado: grupo mixto, todas restringidas y borrado del temporal (Req: Restricciones de uso respetadas en la descarga masiva; RF-014, RN-008)
-- [ ] 2.3 `POST /media/bulk-download` y `GET /media/bulk-download/{job_id}` con enlace de corta duración; pruebas de estado, descarga por otro usuario (403) y paquete caducado (Req: Descarga masiva de fotografías por paquete; RF-013, RNF-005)
-- [ ] 2.4 Auditoría del paquete con piezas solicitadas, fotos incluidas y omitidas; prueba que lee la entrada de auditoría (Req: Restricciones de uso respetadas en la descarga masiva; RN-005)
+- [x] 2.1 Servicio de creación del trabajo con un paquete activo por usuario sobre `app/core/jobs.py` (ADR-010); pruebas de alta y del segundo paquete simultáneo (409) (Req: Descarga masiva de fotografías por paquete; RF-013)
+- [x] 2.2 Worker que evalúa la restricción efectiva de cada foto al generar (D3), escribe el ZIP con `zipfile` en un temporal y lo sube a `exports/` con caducidad (D2); pruebas con MinIO simulado: grupo mixto, todas restringidas y borrado del temporal (Req: Restricciones de uso respetadas en la descarga masiva; RF-014, RN-008)
+- [x] 2.3 `POST /media/bulk-download` y `GET /media/bulk-download/{job_id}` con enlace de corta duración; pruebas de estado, descarga por otro usuario (403) y paquete caducado (Req: Descarga masiva de fotografías por paquete; RF-013, RNF-005)
+- [x] 2.4 Auditoría del paquete con piezas solicitadas, fotos incluidas y omitidas; prueba que lee la entrada de auditoría (Req: Restricciones de uso respetadas en la descarga masiva; RN-005)
 
 ## 3. Enriquecimiento por lote
 
