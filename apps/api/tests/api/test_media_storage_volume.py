@@ -193,3 +193,17 @@ def test_a_batch_of_only_photos_warns_about_the_quota_too(pipeline: Pipeline) ->
 
     assert warning is not None and "MEDIA_QUOTA_BYTES" in warning
     assert no_quota is None
+
+
+def test_the_projection_takes_decimal_averages(seeded_api: SeededApi) -> None:
+    """2.5 photos per piece and 3.5 MB per photo are the usual averages, not whole numbers."""
+    response = seeded_api.client.get(
+        ESTIMATE,
+        params={"pieces": 1000, "photos_per_piece": 2.5, "mb_per_photo": 3.5},
+        headers=as_user(ADMIN),
+    )
+
+    assert response.status_code == 200, response.text
+    projection = response.json()["projection"]
+    assert (projection["photos_per_piece"], projection["mb_per_photo"]) == (2.5, 3.5)
+    assert projection["projected_originals_bytes"] == int(2500 * 3.5 * 1024 * 1024)

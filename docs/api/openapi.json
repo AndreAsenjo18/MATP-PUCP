@@ -20003,7 +20003,7 @@
               "anyOf": [
                 {
                   "minimum": 0,
-                  "type": "integer"
+                  "type": "number"
                 },
                 {
                   "type": "null"
@@ -20020,7 +20020,7 @@
               "anyOf": [
                 {
                   "minimum": 0,
-                  "type": "integer"
+                  "type": "number"
                 },
                 {
                   "type": "null"
