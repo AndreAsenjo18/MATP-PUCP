@@ -13,6 +13,8 @@ import {
   draftFromTemplate,
   draftStatus,
   droppedColumns,
+  isErrorSheet,
+  loadsObservations,
   moveTransform,
   parseTransform,
   previewBlocker,
@@ -308,6 +310,31 @@ describe("vista previa y validar (design D1, D4)", () => {
     const body = applyRequest({ ...loaded(), sheetName: "Otra" }, BATCH);
     expect(body.template_id).toBeNull();
     expect(body.sheet_name).toBe("Otra");
+  });
+});
+
+describe("hojas «Errores…» como observaciones (formatos-reales-importacion, D8)", () => {
+  it("reconoce las hojas de errores de la consultoría sin importar mayúsculas ni tildes", () => {
+    expect(isErrorSheet("Errores pendientes")).toBe(true);
+    expect(isErrorSheet(" ERRORES identificados")).toBe(true);
+    expect(isErrorSheet("Inventario")).toBe(false);
+    expect(isErrorSheet(null)).toBe(false);
+  });
+
+  it("propone observaciones al elegir una hoja «Errores…» y la persona puede desmarcarlo", () => {
+    const errores = { ...loaded(), sheetName: "Errores pendientes" };
+    expect(loadsObservations(loaded(), BATCH)).toBe(false);
+    expect(loadsObservations(errores, BATCH)).toBe(true);
+    expect(loadsObservations({ ...errores, observations: false }, BATCH)).toBe(false);
+    expect(loadsObservations(loaded(), { ...BATCH, kind: "OBSERVATIONS" })).toBe(true);
+  });
+
+  it("envía observations solo cuando cambia el tipo del lote", () => {
+    expect(applyRequest({ ...loaded(), sheetName: "Errores pendientes" }, BATCH).observations).toBe(true);
+    expect(applyRequest(loaded(), BATCH)).not.toHaveProperty("observations");
+    const observations = { ...BATCH, kind: "OBSERVATIONS" } as ImportBatch;
+    expect(applyRequest(loaded(), observations)).not.toHaveProperty("observations");
+    expect(applyRequest({ ...loaded(), observations: false }, observations).observations).toBe(false);
   });
 });
 
