@@ -212,6 +212,17 @@ class FileTypeVolume(BaseModel):
     thumb_bytes: int = Field(description="Miniaturas (320 px).")
 
 
+class ExpectedCollectionVolume(FileTypeVolume):
+    """Projection for the photos the museum expects (importacion-masiva-fotografias D6)."""
+
+    photos: int = Field(description="Fotos esperadas (≈ 25 000 [SUPUESTO L2]).")
+    mb_per_photo: float = Field(
+        description="Promedio real de MB por foto con original, o 4 MB si aún no hay fotos "
+        "[SUPUESTO L3]."
+    )
+    total_bytes: int = Field(description="Originales, visualización y miniaturas.")
+
+
 class StorageEstimateResponse(BaseModel):
     """Response with current storage volume and projection."""
 
@@ -274,7 +285,7 @@ class StorageEstimateResponse(BaseModel):
         "proyecciones lo respetan (importacion-masiva-fotografias D6)."
     )
     by_file_type: FileTypeVolume = Field(description="Volumen actual por tipo de archivo.")
-    expected_collection: dict = Field(
+    expected_collection: ExpectedCollectionVolume = Field(
         description="Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con "
         "el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
     )

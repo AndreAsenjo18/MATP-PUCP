@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.modules.media.models import MediaAsset
 
 MIB = 1024 * 1024
+GIB = 1024 * MIB
 DISPLAY_BYTES = 300 * 1024
 THUMB_BYTES = 20 * 1024
 # Photos the museum expects to digitise [SUPUESTO L2: ≈ 10 000 pieces and ≈ 25 000 photos].
@@ -45,6 +46,14 @@ class CurrentVolume:
     volume: Volume
     photos: int
     pieces_with_photos: int
+    # Photos that keep their original: the average weight of a photo is taken over them only.
+    photos_with_original: int = 0
+
+    @property
+    def mb_per_original(self) -> float | None:
+        if not self.photos_with_original:
+            return None
+        return self.volume.original_bytes / self.photos_with_original / MIB
 
 
 def current_volume(session: Session) -> CurrentVolume:
@@ -64,7 +73,7 @@ def current_volume(session: Session) -> CurrentVolume:
         display_bytes=int(displays) + int(with_original) * DISPLAY_BYTES,
         thumb_bytes=int(photos) * THUMB_BYTES,
     )
-    return CurrentVolume(volume, int(photos), int(pieces))
+    return CurrentVolume(volume, int(photos), int(pieces), int(with_original))
 
 
 def projected_volume(photos: float, mb_per_photo: float, *, keep_originals: bool) -> Volume:

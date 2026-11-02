@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 68074d9565f9630cdec9c386ab4bcf10379c3e30a64acbe9400716e0c22e3590
+ * openapi-sha256: 68f0e90d24e60109d671c426dd6fd355430625bc1e1fe7399779777913f61f41
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3795,6 +3795,42 @@ export interface components {
              * @description Mensaje para la persona usuaria, en español.
              */
             message: string;
+        };
+        /**
+         * ExpectedCollectionVolume
+         * @description Projection for the photos the museum expects (importacion-masiva-fotografias D6).
+         */
+        ExpectedCollectionVolume: {
+            /**
+             * Display Bytes
+             * @description Versiones de visualización (1600 px).
+             */
+            display_bytes: number;
+            /**
+             * Mb Per Photo
+             * @description Promedio real de MB por foto con original, o 4 MB si aún no hay fotos [SUPUESTO L3].
+             */
+            mb_per_photo: number;
+            /**
+             * Original Bytes
+             * @description Originales conservados.
+             */
+            original_bytes: number;
+            /**
+             * Photos
+             * @description Fotos esperadas (≈ 25 000 [SUPUESTO L2]).
+             */
+            photos: number;
+            /**
+             * Thumb Bytes
+             * @description Miniaturas (320 px).
+             */
+            thumb_bytes: number;
+            /**
+             * Total Bytes
+             * @description Originales, visualización y miniaturas.
+             */
+            total_bytes: number;
         };
         /**
          * ExportFormat
@@ -7670,13 +7706,8 @@ export interface components {
              * @description Si el volumen actual supera la cuota; vacío sin cuota.
              */
             exceeds_quota?: boolean | null;
-            /**
-             * Expected Collection
-             * @description Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3].
-             */
-            expected_collection: {
-                [key: string]: unknown;
-            };
+            /** @description Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]. */
+            expected_collection: components["schemas"]["ExpectedCollectionVolume"];
             /**
              * Keeps Originals
              * @description `MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).

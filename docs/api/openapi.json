@@ -3529,6 +3529,51 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "ExpectedCollectionVolume": {
+        "description": "Projection for the photos the museum expects (importacion-masiva-fotografias D6).",
+        "properties": {
+          "display_bytes": {
+            "description": "Versiones de visualización (1600 px).",
+            "title": "Display Bytes",
+            "type": "integer"
+          },
+          "mb_per_photo": {
+            "description": "Promedio real de MB por foto con original, o 4 MB si aún no hay fotos [SUPUESTO L3].",
+            "title": "Mb Per Photo",
+            "type": "number"
+          },
+          "original_bytes": {
+            "description": "Originales conservados.",
+            "title": "Original Bytes",
+            "type": "integer"
+          },
+          "photos": {
+            "description": "Fotos esperadas (≈ 25 000 [SUPUESTO L2]).",
+            "title": "Photos",
+            "type": "integer"
+          },
+          "thumb_bytes": {
+            "description": "Miniaturas (320 px).",
+            "title": "Thumb Bytes",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "description": "Originales, visualización y miniaturas.",
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "original_bytes",
+          "display_bytes",
+          "thumb_bytes",
+          "photos",
+          "mb_per_photo",
+          "total_bytes"
+        ],
+        "title": "ExpectedCollectionVolume",
+        "type": "object"
+      },
       "ExportFormat": {
         "enum": [
           "xlsx",
@@ -12008,10 +12053,8 @@
             "title": "Exceeds Quota"
           },
           "expected_collection": {
-            "additionalProperties": true,
-            "description": "Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3].",
-            "title": "Expected Collection",
-            "type": "object"
+            "$ref": "#/components/schemas/ExpectedCollectionVolume",
+            "description": "Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
           },
           "keeps_originals": {
             "description": "`MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).",

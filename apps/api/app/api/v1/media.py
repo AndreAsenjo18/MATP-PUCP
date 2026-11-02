@@ -47,6 +47,7 @@ from app.modules.media.models import BulkDownloadStatus, MediaAsset, MediaBulkDo
 from app.modules.media.schemas import (
     BulkDownloadJob,
     BulkDownloadRequest,
+    ExpectedCollectionVolume,
     FileTypeVolume,
     MediaAssetOut,
     OmittedPhoto,
@@ -57,7 +58,6 @@ from app.modules.media.service import provenance_of
 from app.modules.media.volume import (
     DEFAULT_MB_PER_PHOTO,
     EXPECTED_PHOTOS,
-    MIB,
     current_volume,
     projected_volume,
 )
@@ -376,7 +376,8 @@ def get_media_storage_estimate(
     avg_photos_per_piece = (
         current.photos / current.pieces_with_photos if current.pieces_with_photos else None
     )
-    avg_mb_per_photo = volume.original_bytes / current.photos / MIB if current.photos else None
+    # Over the photos that keep their original: one stored on its display copy weighs no original.
+    avg_mb_per_photo = current.mb_per_original
 
     projection = None
     if any(
@@ -406,11 +407,11 @@ def get_media_storage_estimate(
         projection=projection,
         keeps_originals=keep,
         by_file_type=FileTypeVolume(**volume.as_json()),
-        expected_collection={
-            "photos": EXPECTED_PHOTOS,
-            "mb_per_photo": expected_mb,
+        expected_collection=ExpectedCollectionVolume(
+            photos=EXPECTED_PHOTOS,
+            mb_per_photo=expected_mb,
             **_projection_json(EXPECTED_PHOTOS, expected_mb, keep),
-        },
+        ),
         quota_bytes=quota,
         exceeds_quota=volume.total_bytes > quota if quota else None,
     )
