@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la gestión de fotografías múltiples por pieza tridimensional, las restricciones contractuales de uso de imágenes (comodato), los documentos asociados preparados para el archivo documental y la estimación del volumen fotográfico.
-
 ## Requirements
-
 ### Requirement: Múltiples fotografías por pieza
 El sistema MUST permitir asociar a una pieza cero o más fotografías, cada una con tipo de vista de un vocabulario controlado (por ejemplo frontal, perfil, posterior, superior, detalle, abierta, cerrada), orden de presentación, foto principal, autor y fecha de la toma, y SHALL almacenar los archivos fuera de la base de datos conservando el archivo original sin modificar. (RF-013, RN-010)
 
@@ -61,3 +59,19 @@ El sistema MUST ofrecer una estimación del volumen de almacenamiento fotográfi
 #### Scenario: Sin fotos registradas
 - **WHEN** se consulta la estimación sin fotos almacenadas
 - **THEN** el sistema muestra volumen actual cero y calcula la proyección solo con los parámetros ingresados
+
+### Requirement: Procedencia visible de las fotografías importadas
+Cada fotografía registrada desde un lote de importación MUST conservar el nombre del archivo y la ruta de carpetas con que se subió, el lote del que proviene y, si lo hubo, el nombre de la versión de menor resolución que se descartó en su lugar. La galería de la ficha SHALL mostrar esa procedencia a quien puede ver la foto, y esos datos MUST NOT poder editarse. (RF-046, RF-013, RN-005)
+
+#### Scenario: Procedencia de una foto del archivo histórico
+- **WHEN** un usuario de Consulta interna abre en la galería de una pieza una foto aplicada desde el lote 12 con la ruta `FOTOS/ALTAS/82LF4169 copy.jpg`
+- **THEN** ve la ruta original, el lote 12 y que reemplazó a la versión de menor resolución `FOTOS/82LF4169.jpg`
+
+#### Scenario: Foto subida a mano
+- **WHEN** se abre una foto subida desde la ficha, sin lote
+- **THEN** la procedencia muestra solo el nombre original del archivo y «subida desde la ficha»
+
+#### Scenario: Intento de editar la procedencia
+- **WHEN** alguien envía un cambio a la ruta original de una foto por la API
+- **THEN** la API ignora ese campo y la procedencia no cambia
+
