@@ -8,7 +8,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 |---|---|---|---|
 | Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | escrita |
 | Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | parcial: «Conservación» (`colecciones-y-vocabularios-admin`) |
-| Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
+| Fotografías: agregar, ordenar, principal, retirar y restricciones | `fotografias.md` | `fotografias-multiples-por-pieza` | escrita |
 | Depósito: ahora en la Búsqueda (nota con los enlaces) | `deposito.md` | `ubicacion-jerarquica-y-movimientos`, `fusion-busqueda-deposito` | escrita |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |
 | Cargar el histórico del museo (formatos reales, orden de carga, qué revisar) | `carga-historico.md` | `formatos-reales-importacion` | escrita |
