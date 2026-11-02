@@ -1,0 +1,35 @@
+﻿ruta_relativa,forma,codigo_catalogo,debe_asignarse,nota
+fotos/Fotos MMZ/MMZ 001 - PUCP 4721 (1).JPG,F1,MMZ-001,SI,Sigla + correlativo + PUCP
+fotos/Fotos MMZ/MMZ 001 - PUCP 4721 (2).JPG,F1,MMZ-001,SI,Sigla + correlativo + PUCP
+fotos/Fotos MMZ/MMZ 002 - PUCP 4728 (1).JPG,F1,MMZ-002,SI,Sigla + correlativo + PUCP
+fotos/Fotos MMZ/MMZ 003 - PUCP 4736 (1).JPG,F1,MMZ-003,SI,Sigla + correlativo + PUCP
+fotos/Fotos MMZ/MMZ 004 - PUCP 4744 (1).JPG,F1,MMZ-004,SI,Sigla + correlativo + PUCP
+fotos/Fotos AJB/AJB 001-050/AJB 1 - INC 2814.jpg,F2,AJB-001,SI,Sigla + correlativo + INC
+fotos/Fotos AJB/AJB 001-050/AJB 2 - INC 2820.jpg,F2,AJB-002,SI,Sigla + correlativo + INC
+fotos/Fotos AJB/AJB 001-050/AJB 3 - INC 2827.jpg,F2,AJB-003,SI,Sigla + correlativo + INC
+fotos/Fotos AJB/AJB 001-050/AJB 4 - INC 2835.jpg,F2,AJB-004,SI,Sigla + correlativo + INC
+fotos/Fotos LRM/I-7421 LRM-204(1).jpg,F3,LRM-204,SI,Dos códigos; sufijo de foto
+fotos/Fotos LRM/I-7421 LRM-204(2).jpg,F3,LRM-204,SI,Dos códigos; sufijo de foto
+fotos/Fotos LRM/I-7430 LRM-207(2).jpg,F3,LRM-207,SI,Caso sintético con (2) sin (1)
+fotos/Fotos LRM/I-7438 LRM-213(1).jpg,F3,LRM-213,SI,Dos códigos; sufijo de foto
+fotos/Fotos MBB/1.JPG,F4,MBB-001,SI,Número solo; colección sale de la carpeta
+fotos/Fotos MBB/2.JPG,F4,MBB-002,SI,Número solo; colección sale de la carpeta
+fotos/Fotos MBB/3.JPG,F4,MBB-003,SI,Número solo; colección sale de la carpeta
+fotos/Fotos MBB/4.JPG,F4,MBB-004,SI,Número solo; colección sale de la carpeta
+fotos/Fotos MBB/5.JPG,F4,MBB-005,SI,Número solo; colección sale de la carpeta
+fotos/FOTOS 121-140/121-6842.jpg,F5,ARG-121,SI,Correlativo + contador de cámara en carpeta de rango
+fotos/FOTOS 121-140/124-6850.jpg,F5,ARG-124,SI,Correlativo + contador de cámara en carpeta de rango
+fotos/FOTOS 121-140/129-6866.jpg,F5,ARG-129,SI,Correlativo + contador de cámara en carpeta de rango
+fotos/FOTOS 121-140/133-6872 x.jpg,F5,ARG-133,SI,Correlativo + contador de cámara en carpeta de rango
+fotos/FOTOS 121-140/138-6889.jpg,F5,ARG-138,SI,Correlativo + contador de cámara en carpeta de rango
+fotos/ARCHIVO SECUNDARIO/FDX/201-7720.JPG,F5,ARG-201,SI,F5 en subcarpeta anidada sin rango en el nombre
+fotos/ARCHIVO SECUNDARIO/FDX/204-7733.JPG,F5,ARG-204,SI,F5 en subcarpeta anidada sin rango en el nombre
+fotos/Fotos RAB/ALTAS/Nueva carpeta/173-8451.jpg,F5,,NO,Caso trampa sintético: no debe asociarse por coincidencia numérica
+fotos/Fotos RAB/93QX5821.jpg,F6,RAB-301,SI,Nombre de cámara; baja resolución
+fotos/Fotos RAB/ALTAS/93QX5821 copy.jpg,F6,RAB-301,SI,Copia en ALTAS; mayor resolución
+fotos/Fotos RAB/93QX5824.jpg,F6,RAB-302,SI,Nombre de cámara; baja resolución
+fotos/Fotos RAB/ALTAS/93QX5824 copy.jpg,F6,RAB-302,SI,Copia en ALTAS; mayor resolución
+fotos/Fotos RAB/93QX5830.jpg,F6,RAB-303,SI,Nombre de cámara; baja resolución
+fotos/Fotos RAB/ALTAS/93QX5830 copy.jpg,F6,RAB-303,SI,Copia en ALTAS; mayor resolución
+fotos/Fotos RAB/93QX5842.jpg,F6,RAB-304,SI,Nombre de cámara; baja resolución
+fotos/Fotos RAB/ALTAS/93QX5842 copy.jpg,F6,RAB-304,SI,Copia en ALTAS; mayor resolución
