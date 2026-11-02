@@ -103,6 +103,7 @@ from app.modules.quality.completeness import (
 )
 from app.modules.quality.schemas import PieceAlert
 from app.modules.search.filters import PieceFilter
+from app.modules.users.sensitive import PERM_DONOR_DATA
 from app.modules.users.sensitive_log import delivered_piece_fields, record_sensitive_access
 
 router = APIRouter(prefix="/pieces", responses=COMMON_ERROR_RESPONSES)
@@ -243,6 +244,8 @@ def create_piece(body: PieceCreate, session: SessionDep, user: Creator) -> Piece
         availability_term_id=body.availability_term_id,
         current_location_id=None,
     )
+    if body.material_term_ids:
+        catalog_service.set_materials(session, piece, body.material_term_ids)
     set_inventory_code(session, piece, body.code_i)
     session.commit()
     return CatalogReader(session, Viewer(user.permissions)).summaries([piece])[0]
@@ -446,6 +449,8 @@ def update_piece(
         catalog_service.update_piece(session, piece, code_i=code_i, **changes)
     if "code_i" in body.model_fields_set:
         set_inventory_code(session, piece, body.code_i)
+    if "material_term_ids" in body.model_fields_set:
+        catalog_service.set_materials(session, piece, body.material_term_ids or [])
     try:
         session.commit()
     except StaleDataError:  # another edit was committed between the check and this one
@@ -523,7 +528,23 @@ def list_source_records(
         .where(PieceSourceRecord.piece_id == piece_id)
         .order_by(PieceSourceRecord.recorded_at)
     )
-    return [SourceRecordOut.model_validate(row) for row in rows]
+    return [_source_record_out(row, user.can(PERM_DONOR_DATA)) for row in rows]
+
+
+RESTRICTED_VALUE = "(dato restringido)"
+
+
+def _source_record_out(row: PieceSourceRecord, donor_data: bool) -> SourceRecordOut:
+    """The personal data of the owner is shown only with ``sensitive.donor_data`` (RF-041;
+    formatos-reales-importacion, design D6)."""
+    out = SourceRecordOut.model_validate(row)
+    if donor_data or not row.sensitive_keys:
+        return out
+    masked = [key for key in row.sensitive_keys if key in out.payload]
+    payload = {
+        key: RESTRICTED_VALUE if key in masked else value for key, value in out.payload.items()
+    }
+    return out.model_copy(update={"payload": payload, "masked_keys": masked})
 
 
 def _assessments_out(session: Session, piece: Piece) -> list[ConservationAssessmentOut]:

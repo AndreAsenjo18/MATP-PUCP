@@ -8,6 +8,7 @@ El asistente de importación carga en el catálogo las piezas de una hoja de cá
 - Solo la **Gestora de colecciones** y el **Administrador** pueden **aprobarla**.
 - **Nada llega al catálogo hasta que se aprueba.** Mientras tanto, el lote es una propuesta que se puede revisar, corregir o abandonar.
 - El archivo original se guarda sin cambios y cada decisión queda en la **bitácora** del lote, con su usuario y la fecha.
+- Para los Excel históricos del museo (BD estandarizada y fichas de catalogación), vea antes [Cargar el histórico del museo](carga-historico.md).
 - ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Use **Importar fotografías al catálogo**: ver [Importar el archivo fotográfico](importacion-fotos.md).
 
 ## 1. Preparar el archivo
@@ -179,6 +180,38 @@ No se puede elegir una pieza que tenga **otro código I** que el de la fila: el 
 Una fila con errores no se puede aceptar, pero sí dejar fuera o rechazar.
 
 Las filas nuevas y las actualizaciones que no toque se aplican al aprobar. Los conflictos y posibles duplicados que no resuelva **no se aplican**.
+
+### Importar fotografías con el Excel
+
+Las fotos de las piezas pueden subirse junto con el Excel, en el mismo lote. Es opcional. Para fotos de piezas que ya están en el catálogo, sin Excel, use [Importar fotografías al catálogo](importacion-fotos.md).
+
+**Cómo nombrar las fotos.** Cada foto se propone a su fila por el código de la pieza, en este orden:
+
+1. **El nombre del archivo**: `I-9101.jpg`, `I 9101 (2).jpg`, `MMZ 045_frontal.jpg`. Los sufijos de copia y de vista (`(2)`, `_2`, `-a`, `_frontal`, `copia`) no cuentan.
+2. **La carpeta**: `MBB 502/IMG_0001.jpg` va a la fila con el código MBB 502. Si hay varias carpetas, gana la más cercana a la foto.
+3. **La columna de archivo del Excel**: si el Excel trae una columna con el nombre de la foto, asígnela en el mapeo como **Archivo de la foto**. Una celda puede nombrar varias fotos separadas por «;» o «,».
+
+Los códigos se leen como en el resto de la carga: `M.M.Z. 509`, `MMZ 509` y `mmz-509` son el mismo código.
+
+**Subir la carpeta.**
+
+1. Después de validar, en **Fotografías del lote**, arrastre la carpeta de fotos o haga clic para elegirla.
+2. Se ve el avance de cada archivo. Los archivos ocultos y del sistema (`Thumbs.db`, `.DS_Store`) y las extensiones no admitidas se ignoran.
+3. **Si se corta la conexión**, vuelva a soltar la misma carpeta: solo se sube lo que falta. Una foto con los mismos bytes que otra del lote aparece como «Ya estaba en el lote» y no se sube dos veces.
+
+**Revisar las fotos.**
+
+- Cada tarjeta de fila muestra las miniaturas de sus fotos (hasta seis y «+N») y cómo se emparejaron: «3 fotos por el nombre del archivo».
+- **Fotos por revisar** reúne las fotos que no se pudieron proponer solas:
+  - **Ambigua**: varias filas tienen su código, por ejemplo dos filas con el mismo código I.
+  - **Sin emparejar**: ninguna fila tiene su código (`IMG_20240101.jpg`, `DSC_0912.jpg`).
+
+  Elija una o varias, escriba el **número de fila del Excel** y pulse **Asignar a la fila**. Lo que asigne a mano ya no lo cambia el emparejamiento automático.
+- **Foto repetida**: si una fila actualiza una pieza que ya tiene esa misma foto, la miniatura dice «Repetida» y la foto **no se aplica**. Para aplicarla igual, pulse **Aplicar igual la foto repetida**.
+
+**Al aprobar.** Las fotos de las filas que se aplican pasan a ser fotos de su pieza, en su orden; la primera es la principal de una pieza nueva. En una pieza en comodato heredan la restricción «No publicar». Las fotos de filas rechazadas, dejadas fuera o sin resolver quedan en el lote sin aplicarse. Revertir el lote retira también sus fotos, sin borrar los archivos.
+
+**Si vuelve a cargar el Excel del lote** (otra hoja u otra fila de títulos), las asignaciones a mano de fotos a filas se pierden, porque esas filas dejan de existir: las fotos vuelven a proponerse al validar. Las fotos desasignadas o descartadas a mano se mantienen así.
 
 ## 5. Aprobar la carga
 

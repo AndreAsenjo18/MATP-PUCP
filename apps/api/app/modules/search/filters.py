@@ -113,7 +113,7 @@ class PieceFilter(BaseModel):
             PERM_VALUATION not in perms
         ):
             raise PermissionDenied(
-                "No tiene permisos para filtrar por valorizacin (filter_not_allowed).",
+                "No tiene permisos para filtrar por valorización (filter_not_allowed).",
                 code="filter_not_allowed",
             )
 
@@ -129,7 +129,7 @@ class PieceFilter(BaseModel):
             and (PERM_LOAN_TERMS not in perms)
         ):
             raise PermissionDenied(
-                "No tiene permisos para filtrar por convenio de prstamo (filter_not_allowed).",
+                "No tiene permisos para filtrar por convenio de préstamo (filter_not_allowed).",
                 code="filter_not_allowed",
             )
 
@@ -357,7 +357,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="q",
-                    label="Bsqueda",
+                    label="Búsqueda",
                     value_display=self.q.strip(),
                 )
             )
@@ -373,16 +373,16 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="collection_id",
-                    label="Coleccin",
-                    value_display=name or f"Coleccin {self.collection_id} (con subcolecciones)",
+                    label="Colección",
+                    value_display=name or f"Colección {self.collection_id} (con subcolecciones)",
                 )
             )
         elif self.collection_code and self.collection_code.strip():
             active.append(
                 ActiveFilter(
                     key="collection_code",
-                    label="Coleccin",
-                    value_display=f"Cdigo '{self.collection_code.strip()}'",
+                    label="Colección",
+                    value_display=f"Código '{self.collection_code.strip()}'",
                 )
             )
 
@@ -390,16 +390,16 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="without_collection",
-                    label="Coleccin",
-                    value_display="Sin coleccin asignada",
+                    label="Colección",
+                    value_display="Sin colección asignada",
                 )
             )
         elif self.without_collection is False:
             active.append(
                 ActiveFilter(
                     key="without_collection",
-                    label="Coleccin",
-                    value_display="Con coleccin asignada",
+                    label="Colección",
+                    value_display="Con colección asignada",
                 )
             )
 
@@ -408,7 +408,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="tenure_regime",
-                    label="Rgimen de tenencia",
+                    label="Régimen de tenencia",
                     value_display=label,
                 )
             )
@@ -422,7 +422,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="category_id",
-                    label="Categora",
+                    label="Categoría",
                     value_display=name or str(self.category_id),
                 )
             )
@@ -436,7 +436,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="conservation_state_id",
-                    label="Estado de conservacin",
+                    label="Estado de conservación",
                     value_display=name or str(self.conservation_state_id),
                 )
             )
@@ -464,7 +464,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="location_id",
-                    label="Ubicacin",
+                    label="Ubicación",
                     value_display=f"{loc_name or self.location_id} (con descendientes)",
                 )
             )
@@ -473,16 +473,16 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="has_inventory_code",
-                    label="Cdigo de inventario",
-                    value_display="Con cdigo I vigente",
+                    label="Código de inventario",
+                    value_display="Con código I vigente",
                 )
             )
         elif self.has_inventory_code is False:
             active.append(
                 ActiveFilter(
                     key="has_inventory_code",
-                    label="Cdigo de inventario",
-                    value_display="Sin cdigo I vigente",
+                    label="Código de inventario",
+                    value_display="Sin código I vigente",
                 )
             )
 
@@ -501,7 +501,7 @@ class PieceFilter(BaseModel):
         if self.period_text and self.period_text.strip():
             active.append(
                 ActiveFilter(
-                    key="period_text", label="poca (texto)", value_display=self.period_text.strip()
+                    key="period_text", label="Época (texto)", value_display=self.period_text.strip()
                 )
             )
 
@@ -509,7 +509,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="epoch",
-                    label="poca",
+                    label="Época",
                     value_display=f"Entre {self.epoch_start_year} y {self.epoch_end_year}",
                 )
             )
@@ -517,7 +517,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="epoch_start_year",
-                    label="poca desde",
+                    label="Época desde",
                     value_display=str(self.epoch_start_year),
                 )
             )
@@ -525,7 +525,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="epoch_end_year",
-                    label="poca hasta",
+                    label="Época hasta",
                     value_display=str(self.epoch_end_year),
                 )
             )
@@ -534,7 +534,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="valuation_range",
-                    label="Valorizacin",
+                    label="Valorización",
                     value_display=f"{self.valuation_min} - {self.valuation_max}",
                 )
             )
@@ -542,7 +542,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="valuation_min",
-                    label="Valorizacin mnima",
+                    label="Valorización mínima",
                     value_display=str(self.valuation_min),
                 )
             )
@@ -550,7 +550,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="valuation_max",
-                    label="Valorizacin mxima",
+                    label="Valorización máxima",
                     value_display=str(self.valuation_max),
                 )
             )
@@ -568,7 +568,7 @@ class PieceFilter(BaseModel):
             active.append(
                 ActiveFilter(
                     key="loan_agreement_ref",
-                    label="Convenio de prstamo",
+                    label="Convenio de préstamo",
                     value_display=self.loan_agreement_ref.strip(),
                 )
             )

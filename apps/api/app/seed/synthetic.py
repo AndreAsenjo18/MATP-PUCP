@@ -59,7 +59,7 @@ from app.modules.users.models import AppUser, UserRole
 from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
 from app.seed.fixtures import HEADERS as SABANA_HEADERS
 from app.seed.images import placeholder_photo
-from app.seed.import_templates import PREDEFINED_TEMPLATES
+from app.seed.import_templates import sync_predefined_templates
 from app.seed.reference import UNSPECIFIED_VIEW_TYPE, ReferenceData, seed_reference_data
 
 SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
@@ -104,7 +104,8 @@ DEMO_BATCH_TEMPLATE_MAPPING: dict[str, object] = {
             "transforms": ["trim"],
         },
         {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
-        {"source": "FOTO", "target": {"kind": "source_payload"}},
+        # The photo file column (importacion-masiva-fotografias, task 3.4).
+        {"source": "FOTO", "target": {"kind": "field", "name": "photo_filename"}},
     ],
 }
 # Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of
@@ -744,17 +745,7 @@ class SyntheticCatalogBuilder:
                 "(data/fixtures/lote_demo/).",
             )
         )
-        for predefined in PREDEFINED_TEMPLATES:
-            self.session.add(
-                ImportMappingTemplate(
-                    id=new_uuid(),
-                    name=predefined.name,
-                    source_name=predefined.source_name,
-                    header_signature=header_signature(predefined.headers),
-                    mapping=MappingSpecV1.model_validate(predefined.mapping()).as_json(),
-                    description=predefined.description,
-                )
-            )
+        sync_predefined_templates(self.session)  # the real formats (formatos-reales-importacion)
         self.session.flush()
         batch = ImportBatch(
             id=new_uuid(),

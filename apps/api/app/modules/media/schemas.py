@@ -190,11 +190,6 @@ class DownloadUrlResponse(BaseModel):
     )
 
 
-restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
-    default="ninguna", description="Origen de la restricción efectiva."
-)
-
-
 class StorageEstimateRequest(BaseModel):
     """Query parameters for storage estimation."""
 
@@ -215,6 +210,17 @@ class FileTypeVolume(BaseModel):
     original_bytes: int = Field(description="Originales conservados.")
     display_bytes: int = Field(description="Versiones de visualización (1600 px).")
     thumb_bytes: int = Field(description="Miniaturas (320 px).")
+
+
+class ExpectedCollectionVolume(FileTypeVolume):
+    """Projection for the photos the museum expects (importacion-masiva-fotografias D6)."""
+
+    photos: int = Field(description="Fotos esperadas (≈ 25 000 [SUPUESTO L2]).")
+    mb_per_photo: float = Field(
+        description="Promedio real de MB por foto con original, o 4 MB si aún no hay fotos "
+        "[SUPUESTO L3]."
+    )
+    total_bytes: int = Field(description="Originales, visualización y miniaturas.")
 
 
 class StorageEstimateResponse(BaseModel):
@@ -279,7 +285,7 @@ class StorageEstimateResponse(BaseModel):
         "proyecciones lo respetan (importacion-masiva-fotografias D6)."
     )
     by_file_type: FileTypeVolume = Field(description="Volumen actual por tipo de archivo.")
-    expected_collection: dict = Field(
+    expected_collection: ExpectedCollectionVolume = Field(
         description="Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con "
         "el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
     )
@@ -291,10 +297,6 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
-MAX_BULK_DOWNLOAD_PIECES = 200
-
-
 class BulkDownloadRequest(BaseModel):
     """Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote)."""
 
@@ -302,8 +304,9 @@ class BulkDownloadRequest(BaseModel):
 
     piece_ids: list[uuid.UUID] = Field(
         min_length=1,
-        max_length=MAX_BULK_DOWNLOAD_PIECES,
-        description="Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+        description="Piezas cuyas fotografías se empaquetan; como máximo "
+        "`MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 "
+        "`batch_too_large`.",
     )
 
 

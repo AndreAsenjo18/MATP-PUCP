@@ -359,7 +359,9 @@ def get_import(
     return batch_out(session, get_batch(session, batch_id), request.app.state.settings)
 
 
-def _mapping_spec(body: MappingRequest, session: Session | None = None) -> MappingSpec:
+def _mapping_spec(
+    body: MappingRequest, session: Session | None = None, headers: list[str] | None = None
+) -> MappingSpec:
     if body.save_as_template_name is not None:
         raise ValidationFailed(
             "Guardar el mapeo de un lote como plantilla todavía no está disponible; cree la "
@@ -375,7 +377,7 @@ def _mapping_spec(body: MappingRequest, session: Session | None = None) -> Mappi
                 code="template_with_columns",
             )
         assert session is not None
-        return templates.batch_spec(session, body.template_id, body.defaults)
+        return templates.batch_spec(session, body.template_id, body.defaults, headers)
     if any(
         column.transforms
         or column.value_map
@@ -429,8 +431,8 @@ def set_import_mapping(
     session: SessionDep,
     user: Preparer,
 ) -> ImportBatchOut:
-    get_spreadsheet_batch(session, batch_id)
-    spec = _mapping_spec(body, session)
+    batch = get_spreadsheet_batch(session, batch_id)
+    spec = _mapping_spec(body, session, list((batch.counts or {}).get("headers") or []))
     writer(session, user)
     batch = set_mapping(
         session,

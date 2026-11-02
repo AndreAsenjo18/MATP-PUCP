@@ -49,7 +49,7 @@ from app.modules.imports.catalog_photo_matching import (
     read_with_template,
     suggest_template,
 )
-from app.modules.imports.models import ImportBatch, ImportPhoto, ImportPhotoStatus
+from app.modules.imports.models import ImportBatch, ImportPhoto, ImportPhotoStatus, ImportRow
 from app.modules.imports.models import PhotoMatchStatus as M
 from app.modules.imports.photo_correspondences import (
     LineResult,
@@ -145,9 +145,27 @@ def batch_folders(session: Session, batch: ImportBatch) -> dict[str, FolderInfo]
 
 def mark_duplicates(session: Session, photos: Iterable[ImportPhoto]) -> None:
     """A photo proposed or assigned to a piece that already has one with the same SHA-256 is
-    repeated: it is not applied unless a person confirms it. One query for all the pieces."""
+    repeated: it is not applied unless a person confirms it. One query for all the pieces.
+
+    The piece of a photo on a row of a batch with Excel is the piece the row updates, if any
+    (importacion-masiva-fotografias, task 4.3): a new piece has no photos yet."""
     photos = list(photos)
-    pieces = {photo.piece_id for photo in photos if photo.piece_id}
+    row_ids = {photo.row_id for photo in photos if photo.row_id}
+    row_pieces: dict[uuid.UUID, uuid.UUID] = {}
+    if row_ids:
+        row_pieces = {
+            row_id: piece_id
+            for row_id, piece_id in session.execute(
+                select(ImportRow.id, ImportRow.target_piece_id).where(
+                    ImportRow.id.in_(row_ids), ImportRow.target_piece_id.is_not(None)
+                )
+            )
+        }
+
+    def piece_of(photo: ImportPhoto) -> uuid.UUID | None:
+        return row_pieces.get(photo.row_id) if photo.row_id else photo.piece_id
+
+    pieces = {piece for photo in photos if (piece := piece_of(photo))}
     existing: set[tuple[uuid.UUID, str]] = set()
     if pieces:
         existing = set(
@@ -158,9 +176,8 @@ def mark_duplicates(session: Session, photos: Iterable[ImportPhoto]) -> None:
             ).tuples()
         )
     for photo in photos:
-        if photo.row_id is not None:
-            continue  # a row's piece is checked by the batch with Excel
-        repeated = photo.piece_id is not None and (photo.piece_id, photo.content_sha256) in existing
+        piece = piece_of(photo)
+        repeated = piece is not None and (piece, photo.content_sha256) in existing
         if photo.duplicate_of_existing != repeated:
             photo.duplicate_of_existing = repeated
             if not repeated:

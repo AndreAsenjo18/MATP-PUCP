@@ -9,7 +9,7 @@ with affected identifiers (409 with how many and examples: the recalculation flo
 colecciones-y-vocabularios-admin does not exist yet [SUPUESTO T10]).
 
 Own module: the ``pipeline`` fixture gives it its own seeded database; the tests run in order
-and share it. Synthetic data only (RNF-014); ``NO REGISTRA``, ``REP``, ``ANT`` and ``VIEJA`` are
+and share it. Synthetic data only (RNF-014); ``SIN REGISTRO``, ``REP``, ``ANT`` and ``VIEJA`` are
 illustrative [SUPUESTO A5, A3], and the codes 91xx and 88xx are not used by the seed.
 """
 
@@ -147,26 +147,26 @@ def test_invalid_keys_and_values_are_rejected(pipeline: Pipeline) -> None:
 def test_a_new_absence_marker_applies_to_manual_entry_and_import(pipeline: Pipeline) -> None:
     before = pipeline.client.post(
         "/api/v1/pieces",
-        json={"denomination": "Soga", "tenure_regime": "Propiedad", "code_i": "NO REGISTRA"},
+        json={"denomination": "Soga", "tenure_regime": "Propiedad", "code_i": "SIN REGISTRO"},
     )
     assert before.status_code == 422
 
     saved = manager(pipeline).put(
-        f"{SETTINGS}/absence_markers", json={"value": [*sorted(ABSENCE_MARKERS), "NO REGISTRA"]}
+        f"{SETTINGS}/absence_markers", json={"value": [*sorted(ABSENCE_MARKERS), "SIN REGISTRO"]}
     )
 
     assert saved.status_code == 200, saved.text
-    assert saved.json()["is_default"] is False and "NO REGISTRA" in saved.json()["value"]
+    assert saved.json()["is_default"] is False and "SIN REGISTRO" in saved.json()["value"]
     # The next requests read the new value (``session_params`` of their session).
     created = pipeline.client.post(
         "/api/v1/pieces",
-        json={"denomination": "Soga", "tenure_regime": "Propiedad", "code_i": "No registra"},
+        json={"denomination": "Soga", "tenure_regime": "Propiedad", "code_i": "Sin registro"},
     )
     assert created.status_code == 201, created.text
     batch_id = upload(
         pipeline.client,
         "marcador.xlsx",
-        sheet(["DENOMINACIÓN", "N° INV"], [["Soga", "NO REGISTRA"]]),
+        sheet(["DENOMINACIÓN", "N° INV"], [["Soga", "SIN REGISTRO"]]),
     )["batch_id"]
     mapping = {
         "columns": [

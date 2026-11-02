@@ -2,11 +2,11 @@
 RF-004, RF-023).
 
 Change plantillas-mapeo-y-normalizacion, task 2.2 step E (design D5): once an administrator adds
-``NO REGISTRA`` to the absence markers, a code I with that value means "no code I" in the manual
+``SIN REGISTRO`` to the absence markers, a code I with that value means "no code I" in the manual
 entry (``POST /pieces``; ``POST /pieces/validate`` is still a stub of ``ficha-pieza-crud``) and
 in the import (dry-run and validation of
 a batch). Before, it is a malformed code I. Own module: the ``pipeline`` fixture gives it its own
-seeded database. Synthetic data only (RNF-014); ``NO REGISTRA`` is illustrative [SUPUESTO A5].
+seeded database. Synthetic data only (RNF-014); ``SIN REGISTRO`` is illustrative [SUPUESTO A5].
 """
 
 from typing import Any
@@ -53,7 +53,7 @@ def _template_id(pipeline: Pipeline) -> str:
 
 
 def _dry_run_counts(pipeline: Pipeline, template_id: str) -> dict[str, int]:
-    batch_id = upload(pipeline.client, "marcador.xlsx", sheet(HEADERS, [["Soga", "NO REGISTRA"]]))[
+    batch_id = upload(pipeline.client, "marcador.xlsx", sheet(HEADERS, [["Soga", "SIN REGISTRO"]]))[
         "batch_id"
     ]
     response = pipeline.client.post(
@@ -65,7 +65,7 @@ def _dry_run_counts(pipeline: Pipeline, template_id: str) -> dict[str, int]:
 
 
 def _validated_identifiers(pipeline: Pipeline) -> list[dict[str, Any]]:
-    batch_id = upload(pipeline.client, "lote.xlsx", sheet(HEADERS, [["Soga", "no registra"]]))[
+    batch_id = upload(pipeline.client, "lote.xlsx", sheet(HEADERS, [["Soga", "sin registro"]]))[
         "batch_id"
     ]
     assert put_mapping(pipeline.client, batch_id, MAPPING).status_code == 200
@@ -77,17 +77,17 @@ def _validated_identifiers(pipeline: Pipeline) -> list[dict[str, Any]]:
 def test_no_registra_becomes_no_code_i_in_manual_entry_and_import(pipeline: Pipeline) -> None:
     template_id = _template_id(pipeline)
 
-    # Before: NO REGISTRA is a malformed code I everywhere.
-    rejected = _create(pipeline, "NO REGISTRA")
+    # Before: SIN REGISTRO is a malformed code I everywhere.
+    rejected = _create(pipeline, "SIN REGISTRO")
     assert rejected.status_code == 422 and rejected.json()["code"] == "unrecognized_format"
     assert _dry_run_counts(pipeline, template_id)["ABSENT"] == 0
     [before] = _validated_identifiers(pipeline)
     assert before["is_absent"] is False and before["status"] == "UNPARSEABLE"
 
-    set_params(pipeline, absence_markers=[*ABSENCE_MARKERS, "NO REGISTRA"])
+    set_params(pipeline, absence_markers=[*ABSENCE_MARKERS, "SIN REGISTRO"])
 
     # Manual entry: the piece is created without a code I.
-    created = _create(pipeline, "No registra")
+    created = _create(pipeline, "Sin registro")
     assert created.status_code == 201, created.text
     identifiers = pipeline.client.get(f"/api/v1/pieces/{created.json()['id']}/identifiers")
     assert identifiers.status_code == 200, identifiers.text
@@ -97,4 +97,4 @@ def test_no_registra_becomes_no_code_i_in_manual_entry_and_import(pipeline: Pipe
     counts = _dry_run_counts(pipeline, template_id)
     assert counts["ABSENT"] == 1 and counts["UNPARSEABLE"] == 0
     [after] = _validated_identifiers(pipeline)
-    assert after["is_absent"] is True and after["original_value"] == "no registra"
+    assert after["is_absent"] is True and after["original_value"] == "sin registro"

@@ -324,6 +324,12 @@ export function PhotoReviewView({
         ) : approval ? (
           <>
             <p className="text-base text-tinta">{approvalSentence(approval)}</p>
+            {/* Cuota de fotos (importacion-masiva-fotografias 5.5): avisa, no bloquea. */}
+            {batch?.approval_summary?.photo_quota_warning && (
+              <p role="status" className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
+                {batch.approval_summary.photo_quota_warning}
+              </p>
+            )}
             {warnings.length > 0 && (
               <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-ambar-texto" aria-label="Antes de aprobar">
                 {warnings.map((line) => (

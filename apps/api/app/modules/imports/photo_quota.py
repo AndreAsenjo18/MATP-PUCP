@@ -2,19 +2,18 @@
 
 With ``MEDIA_QUOTA_BYTES`` configured, the approval summary warns when the photos the batch would
 add, on top of the current volume, go beyond the quota. It is an upper bound: it counts every
-verified photo with a row, even if the row ends up skipped, and it never blocks the approval.
+verified photo with a row or, in a batch of only photos (importacion-fotos-a-catalogo), with a
+piece, even if the row ends up skipped, and it never blocks the approval.
 """
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.modules.imports.models import ImportPhoto
 from app.modules.imports.models import ImportPhotoStatus as P
-from app.modules.media.volume import DISPLAY_BYTES, THUMB_BYTES, current_volume
-
-GB = 10**9
+from app.modules.media.volume import DISPLAY_BYTES, GIB, THUMB_BYTES, current_volume
 
 
 def batch_photo_bytes(session: Session, batch_id: uuid.UUID, *, keep_originals: bool) -> int:
@@ -24,7 +23,7 @@ def batch_photo_bytes(session: Session, batch_id: uuid.UUID, *, keep_originals: 
         ).where(
             ImportPhoto.batch_id == batch_id,
             ImportPhoto.status == P.VERIFIED,
-            ImportPhoto.row_id.is_not(None),
+            or_(ImportPhoto.row_id.is_not(None), ImportPhoto.piece_id.is_not(None)),
         )
     ).one()
     return (int(originals) if keep_originals else 0) + int(photos) * (DISPLAY_BYTES + THUMB_BYTES)
@@ -42,7 +41,7 @@ def photo_quota_warning(
     if total <= quota_bytes:
         return None
     return (
-        f"Al aplicar este lote, las fotos ocuparían hasta unos {total / GB:.1f} GB y superarían "
-        f"la cuota de {quota_bytes / GB:.1f} GB (MEDIA_QUOTA_BYTES). Revise la estimación del "
+        f"Al aplicar este lote, las fotos ocuparían hasta unos {total / GIB:.1f} GB y superarían "
+        f"la cuota de {quota_bytes / GIB:.1f} GB (MEDIA_QUOTA_BYTES). Revise la estimación del "
         "volumen fotográfico antes de aprobar."
     )

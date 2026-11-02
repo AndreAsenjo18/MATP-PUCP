@@ -18,6 +18,9 @@ from app.modules.audit.soft_delete import soft_delete
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.catalog.service import create_piece
+from app.modules.imports.models import ImportPhoto, ImportPhotoStatus
+from app.modules.imports.photo_quota import photo_quota_warning
+from app.modules.imports.service import create_photo_batch
 from app.modules.media.models import MediaAsset
 from app.modules.media.volume import DISPLAY_BYTES, EXPECTED_PHOTOS, THUMB_BYTES
 from tests.api.conftest import ADMIN, Pipeline, SeededApi, as_user
@@ -81,7 +84,8 @@ def test_without_originals_the_projections_count_only_derivatives(
 
 
 def test_a_photo_kept_on_its_display_copy_counts_as_display(seeded_api: SeededApi) -> None:
-    before = _estimate(seeded_api)["by_file_type"]
+    estimate = _estimate(seeded_api)
+    before = estimate["by_file_type"]
     with seeded_api.session() as session:
         admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
         assert admin is not None
@@ -104,9 +108,12 @@ def test_a_photo_kept_on_its_display_copy_counts_as_display(seeded_api: SeededAp
             session.add(asset)
             session.commit()
 
-    after = _estimate(seeded_api)["by_file_type"]
+    estimate_after = _estimate(seeded_api)
+    after = estimate_after["by_file_type"]
 
     assert after["original_bytes"] == before["original_bytes"]
+    # The average weight of a photo is over the photos with their original: unchanged.
+    assert estimate_after["avg_mb_per_photo"] == pytest.approx(estimate["avg_mb_per_photo"])
     assert after["display_bytes"] == before["display_bytes"] + 123_456
     assert after["thumb_bytes"] == before["thumb_bytes"] + THUMB_BYTES
     with (
@@ -150,3 +157,39 @@ def test_the_batch_summary_warns_when_its_photos_go_beyond_the_quota(
     assert "MEDIA_QUOTA_BYTES" in over["photo_quota_warning"]
     assert under["photo_quota_warning"] is None
     assert over["summary_token"] == without_quota["summary_token"]  # it never blocks approving
+
+
+def test_a_batch_of_only_photos_warns_about_the_quota_too(pipeline: Pipeline) -> None:
+    """A batch of only photos (importacion-fotos-a-catalogo) has its photos on pieces, not rows."""
+    with pipeline.session() as session:
+        admin = session.scalar(select(AppUser).where(AppUser.email == ADMIN))
+        assert admin is not None
+        with audit_context(session, AuditContext(origin=AuditOrigin.MANUAL, user_id=admin.id)):
+            piece = create_piece(
+                session,
+                denomination="Pieza del archivo (sintética)",
+                tenure_regime=TenureRegime.OWNED,
+            )
+            batch = create_photo_batch(session, name="Archivo sintético", uploaded_by_id=admin.id)
+            photo_id = uuid.uuid4()
+            session.add(
+                ImportPhoto(
+                    id=photo_id,
+                    batch_id=batch.id,
+                    relative_path="MMZ 1/foto.jpg",
+                    original_filename="foto.jpg",
+                    content_sha256=uuid.uuid4().hex * 2,
+                    size_bytes=5_000_000,
+                    content_type="image/jpeg",
+                    storage_prefix=f"media/{photo_id}/",
+                    status=ImportPhotoStatus.VERIFIED,
+                    piece_id=piece.id,
+                )
+            )
+            session.commit()
+
+        warning = photo_quota_warning(session, batch.id, quota_bytes=1, keep_originals=True)
+        no_quota = photo_quota_warning(session, batch.id, quota_bytes=None, keep_originals=True)
+
+    assert warning is not None and "MEDIA_QUOTA_BYTES" in warning
+    assert no_quota is None

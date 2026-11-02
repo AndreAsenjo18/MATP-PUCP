@@ -21,7 +21,7 @@ from app.modules.identification.models import (
 )
 from app.modules.imports.models import ImportBatch, ImportImage, ImportMappingTemplate, ImportRow
 from app.modules.locations.models import Loan, LoanItem, Location, PieceMovement
-from app.modules.media.models import MediaAsset
+from app.modules.media.models import MediaAsset, MediaBulkDownload
 from app.modules.quality.models import (
     DuplicateCandidate,
     QualityJob,
@@ -62,6 +62,7 @@ __all__ = [
     "LoanItem",
     "Location",
     "MediaAsset",
+    "MediaBulkDownload",
     "NormalizationSetting",
     "Permission",
     "Piece",

@@ -112,6 +112,9 @@ class PieceSourceRecord(UUIDPrimaryKeyMixin, Base):
     source_row_number: Mapped[int | None] = mapped_column()
     payload: Mapped[dict[str, Any]] = mapped_column(JsonType)
     recorded_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Keys of ``payload`` with personal data (formatos-reales-importacion, design D6): shown only
+    # with ``sensitive.donor_data`` (RF-041, RNF-014).
+    sensitive_keys: Mapped[list[Any] | None] = mapped_column(JsonType)
 
 
 class ConservationAssessment(UUIDPrimaryKeyMixin, Base):
