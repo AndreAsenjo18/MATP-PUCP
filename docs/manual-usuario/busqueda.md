@@ -114,6 +114,7 @@ En una computadora, los filtros están siempre a la izquierda y la barra de acci
 
 ## 6. Si algo sale mal
 
+- **«El detalle por debajo del espacio exige el permiso de ubicación exacta»**: su rol trabaja con sedes y espacios. Filtre por la sede o el espacio que contiene ese lugar.
 - **«La ubicación de destino no está activa»**: el lugar elegido fue desactivado por un Administrador. Elija otro destino o pida que lo reactiven.
 - **«No se movió ninguna pieza»**: alguna pieza ya no estaba donde el sistema esperaba (por ejemplo, otra persona la movió). El mensaje nombra cada pieza con su problema; revísela, actualice la búsqueda y vuelva a intentar.
 - **«No se verificaron N de M piezas»**: por ejemplo, una pieza sin ubicación registrada no se puede verificar; muévala primero a su lugar.
