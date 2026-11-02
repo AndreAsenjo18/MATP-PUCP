@@ -568,6 +568,18 @@
             "title": "Create",
             "type": "integer"
           },
+          "photo_quota_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).",
+            "title": "Photo Quota Warning"
+          },
           "photos": {
             "anyOf": [
               {
@@ -3517,6 +3529,51 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "ExpectedCollectionVolume": {
+        "description": "Projection for the photos the museum expects (importacion-masiva-fotografias D6).",
+        "properties": {
+          "display_bytes": {
+            "description": "Versiones de visualización (1600 px).",
+            "title": "Display Bytes",
+            "type": "integer"
+          },
+          "mb_per_photo": {
+            "description": "Promedio real de MB por foto con original, o 4 MB si aún no hay fotos [SUPUESTO L3].",
+            "title": "Mb Per Photo",
+            "type": "number"
+          },
+          "original_bytes": {
+            "description": "Originales conservados.",
+            "title": "Original Bytes",
+            "type": "integer"
+          },
+          "photos": {
+            "description": "Fotos esperadas (≈ 25 000 [SUPUESTO L2]).",
+            "title": "Photos",
+            "type": "integer"
+          },
+          "thumb_bytes": {
+            "description": "Miniaturas (320 px).",
+            "title": "Thumb Bytes",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "description": "Originales, visualización y miniaturas.",
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "original_bytes",
+          "display_bytes",
+          "thumb_bytes",
+          "photos",
+          "mb_per_photo",
+          "total_bytes"
+        ],
+        "title": "ExpectedCollectionVolume",
+        "type": "object"
+      },
       "ExportFormat": {
         "enum": [
           "xlsx",
@@ -3745,6 +3802,33 @@
           "severity"
         ],
         "title": "FieldIssue",
+        "type": "object"
+      },
+      "FileTypeVolume": {
+        "description": "Volume by file type (importacion-masiva-fotografias D6).",
+        "properties": {
+          "display_bytes": {
+            "description": "Versiones de visualización (1600 px).",
+            "title": "Display Bytes",
+            "type": "integer"
+          },
+          "original_bytes": {
+            "description": "Originales conservados.",
+            "title": "Original Bytes",
+            "type": "integer"
+          },
+          "thumb_bytes": {
+            "description": "Miniaturas (320 px).",
+            "title": "Thumb Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "original_bytes",
+          "display_bytes",
+          "thumb_bytes"
+        ],
+        "title": "FileTypeVolume",
         "type": "object"
       },
       "FolderCollectionOut": {
@@ -11885,9 +11969,23 @@
           {
             "avg_mb_per_photo": 2.1,
             "avg_photos_per_piece": 3.5,
+            "by_file_type": {
+              "display_bytes": 230000000,
+              "original_bytes": 987654321,
+              "thumb_bytes": 16913569
+            },
             "current_derivatives_bytes": 246913569,
             "current_originals_bytes": 987654321,
             "current_volume_bytes": 1234567890,
+            "expected_collection": {
+              "display_bytes": 7680000000,
+              "mb_per_photo": 4,
+              "original_bytes": 104857600000,
+              "photos": 25000,
+              "thumb_bytes": 512000000,
+              "total_bytes": 113049600000
+            },
+            "keeps_originals": true,
             "projection": {
               "mb_per_photo": 4,
               "photos_per_piece": 5,
@@ -11923,6 +12021,10 @@
             "description": "Promedio real de fotos por pieza.",
             "title": "Avg Photos Per Piece"
           },
+          "by_file_type": {
+            "$ref": "#/components/schemas/FileTypeVolume",
+            "description": "Volumen actual por tipo de archivo."
+          },
           "current_derivatives_bytes": {
             "description": "Tamaño total de derivados (thumb + display).",
             "title": "Current Derivatives Bytes",
@@ -11938,6 +12040,27 @@
             "title": "Current Volume Bytes",
             "type": "integer"
           },
+          "exceeds_quota": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Si el volumen actual supera la cuota; vacío sin cuota.",
+            "title": "Exceeds Quota"
+          },
+          "expected_collection": {
+            "$ref": "#/components/schemas/ExpectedCollectionVolume",
+            "description": "Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
+          },
+          "keeps_originals": {
+            "description": "`MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las proyecciones lo respetan (importacion-masiva-fotografias D6).",
+            "title": "Keeps Originals",
+            "type": "boolean"
+          },
           "projection": {
             "anyOf": [
               {
@@ -11950,12 +12073,27 @@
             ],
             "description": "Proyección de volumen según parámetros indicados.",
             "title": "Projection"
+          },
+          "quota_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada.",
+            "title": "Quota Bytes"
           }
         },
         "required": [
           "current_volume_bytes",
           "current_originals_bytes",
-          "current_derivatives_bytes"
+          "current_derivatives_bytes",
+          "keeps_originals",
+          "by_file_type",
+          "expected_collection"
         ],
         "title": "StorageEstimateResponse",
         "type": "object"
@@ -19811,7 +19949,7 @@
     },
     "/api/v1/media/storage-estimate": {
       "get": {
-        "description": "Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.",
+        "description": "Volumen actual de las fotos activas por tipo de archivo, la proyección para las fotos que espera el museo y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la de un volumen a medida; los parámetros que faltan toman los promedios reales (RNF-003). Las proyecciones respetan `MEDIA_KEEP_ORIGINALS` y la cuota es `MEDIA_QUOTA_BYTES` (importacion-masiva-fotografias D6). Parámetros negativos: 422.",
         "operationId": "getMediaStorageEstimate",
         "parameters": [
           {
