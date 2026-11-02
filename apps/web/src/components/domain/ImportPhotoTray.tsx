@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { ImportBatch } from "@/lib/data/imports";
-import { assignPhotos, fetchTrayPhotos, fetchTrayRows, type TrayPhoto, type TrayRow } from "@/lib/data/importPhotos";
+import { assignPhotos, fetchTrayPhotos, fetchTrayRows, rowPhotosText, type TrayPhoto, type TrayRow } from "@/lib/data/importPhotos";
 
 /** Por qué una foto está en la bandeja, con los números de fila que la persona ve en el Excel. */
 export function trayReason(photo: TrayPhoto, rows: TrayRow[]): string {
@@ -27,8 +27,19 @@ export function trayReason(photo: TrayPhoto, rows: TrayRow[]): string {
   return `Ambigua: filas ${list}`;
 }
 
+/** Filtro de la bandeja (tarea 6.3): todas, solo las ambiguas o solo las sin emparejar. */
+export type TrayFilter = "ALL" | "AMBIGUOUS" | "UNMATCHED";
+
+const TRAY_FILTERS: { value: TrayFilter; label: string }[] = [
+  { value: "ALL", label: "Todas" },
+  { value: "AMBIGUOUS", label: "Ambiguas" },
+  { value: "UNMATCHED", label: "Sin emparejar" },
+];
+
 export interface ImportPhotoTrayViewProps {
   photos: TrayPhoto[];
+  filter?: TrayFilter;
+  onFilter?: (filter: TrayFilter) => void;
   rows: TrayRow[];
   selected: string[];
   rowNumber: string;
@@ -41,13 +52,14 @@ export interface ImportPhotoTrayViewProps {
 }
 
 /** Vista sin estado de la bandeja (se prueba como HTML estático, ADR-012). */
-export function ImportPhotoTrayView({ photos, rows, selected, rowNumber, busy, message, error, onToggle, onRowNumber, onAssign }: ImportPhotoTrayViewProps) {
+export function ImportPhotoTrayView({ photos: all, filter = "ALL", onFilter, rows, selected, rowNumber, busy, message, error, onToggle, onRowNumber, onAssign }: ImportPhotoTrayViewProps) {
+  const photos = filter === "ALL" ? all : all.filter((photo) => photo.match_status === filter);
   const target = rowNumber.trim() === "" ? null : rows.find((row) => row.number === Number(rowNumber));
   const canAssign = !busy && selected.length > 0 && target != null;
   return (
     <Card as="section" aria-label="Fotos por revisar" className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-tinta">Fotos por revisar ({photos.length})</h2>
+        <h2 className="text-lg font-semibold text-tinta">Fotos por revisar ({all.length})</h2>
         <p className="text-base text-gris-texto">
           Fotos que no se pudieron proponer solas. Elíjalas y asígnelas a una fila; nada llega al catálogo hasta aprobar el lote.
         </p>
@@ -62,8 +74,20 @@ export function ImportPhotoTrayView({ photos, rows, selected, rowNumber, busy, m
           {message}
         </p>
       )}
+      {all.length > 0 && (
+        <div role="group" aria-label="Filtrar las fotos" className="flex flex-wrap gap-2">
+          {TRAY_FILTERS.map((option) => {
+            const count = option.value === "ALL" ? all.length : all.filter((photo) => photo.match_status === option.value).length;
+            return (
+              <Button key={option.value} variant={filter === option.value ? "primary" : "secondary"} aria-pressed={filter === option.value} onClick={() => onFilter?.(option.value)}>
+                {option.label} ({count})
+              </Button>
+            );
+          })}
+        </div>
+      )}
       {photos.length === 0 ? (
-        <p className="text-base text-gris-texto">No hay fotos ambiguas ni sin emparejar.</p>
+        <p className="text-base text-gris-texto">{all.length === 0 ? "No hay fotos ambiguas ni sin emparejar." : "No hay fotos con este filtro."}</p>
       ) : (
         <>
           <ul className="flex max-h-96 flex-col gap-2 overflow-y-auto">
@@ -126,6 +150,7 @@ export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "
   const [rows, setRows] = useState<TrayRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [rowNumber, setRowNumber] = useState("");
+  const [filter, setFilter] = useState<TrayFilter>("ALL");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +173,8 @@ export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "
   return (
     <ImportPhotoTrayView
       photos={photos}
+      filter={filter}
+      onFilter={setFilter}
       rows={rows}
       selected={selected}
       rowNumber={rowNumber}
@@ -172,5 +199,48 @@ export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "
         await load();
       }}
     />
+  );
+}
+
+/** Cuántas miniaturas se ven por fila antes de «+N». */
+const STRIP_SIZE = 6;
+
+/**
+ * Miniaturas de las fotos de una fila en «Revise las filas» (tarea 6.3; diseño D4): cuántas, por
+ * qué vía se emparejaron y cuáles ya están en la pieza que la fila actualiza (tarea 4.3), con la
+ * opción de aplicarlas igual. Vista sin estado (ADR-012).
+ */
+export function RowPhotoStrip({ photos, busy = false, onConfirmRepeated }: { photos: TrayPhoto[]; busy?: boolean; onConfirmRepeated?: (photoIds: string[]) => void }) {
+  if (photos.length === 0) return null;
+  const repeated = photos.filter((photo) => photo.duplicate_of_existing && !photo.duplicate_confirmed);
+  return (
+    <section aria-label="Fotos de la fila" className="flex flex-col gap-2">
+      <ul className="flex flex-wrap gap-2">
+        {photos.slice(0, STRIP_SIZE).map((photo) => (
+          <li key={photo.id} className="relative h-16 w-16 overflow-hidden rounded-md bg-crema" title={photo.relative_path}>
+            {photo.thumbnail_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- miniatura prefirmada de corta duración
+              <img src={photo.thumbnail_url} alt={photo.relative_path} className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <ImageOff size={18} aria-label={photo.relative_path} className="text-gris-texto" />
+              </span>
+            )}
+            {photo.duplicate_of_existing && !photo.duplicate_confirmed && (
+              <span className="absolute inset-x-0 bottom-0 bg-ambar-bg px-1 text-center text-xs text-ambar-texto">Repetida</span>
+            )}
+          </li>
+        ))}
+        {photos.length > STRIP_SIZE && <li className="flex h-16 w-16 items-center justify-center rounded-md bg-crema text-sm text-tinta">+{photos.length - STRIP_SIZE}</li>}
+      </ul>
+      <p className="text-sm text-gris-texto">{rowPhotosText(photos)}</p>
+      {repeated.length > 0 && onConfirmRepeated && (
+        <div>
+          <Button variant="secondary" disabled={busy} onClick={() => onConfirmRepeated(repeated.map((photo) => photo.id))}>
+            Aplicar igual {repeated.length === 1 ? "la foto repetida" : `las ${repeated.length} fotos repetidas`}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }

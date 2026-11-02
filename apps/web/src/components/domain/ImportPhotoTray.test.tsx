@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assignPhotos, fetchTrayPhotos, fetchTrayRows, type TrayPhoto, type TrayRow } from "@/lib/data/importPhotos";
+import { assignPhotos, fetchTrayPhotos, fetchTrayRows, photosByRow, rowPhotosText, type TrayPhoto, type TrayRow } from "@/lib/data/importPhotos";
 import { render, visibleText } from "@/test/render";
-import { ImportPhotoTray, ImportPhotoTrayView, trayReason } from "./ImportPhotoTray";
+import { ImportPhotoTray, ImportPhotoTrayView, RowPhotoStrip, trayReason } from "./ImportPhotoTray";
 
 const BATCH = "01920000-0000-7000-8000-000000000601";
 const noop = () => {};
@@ -69,7 +69,7 @@ describe("bandeja de fotos del lote (Req: Bandeja de revisión de fotografías d
   });
 
   it("solo deja asignar con fotos elegidas y una fila que existe", () => {
-    const button = (html: string) => html.match(/<button[^>]*>[\s\S]*?<\/button>/)![0];
+    const button = (html: string) => html.match(/<button[^>]*>(?:(?!<\/button>)[\s\S])*Asignar(?:(?!<\/button>)[\s\S])*<\/button>/)![0];
     // The class carries `disabled:` variants: only the attribute tells whether it is disabled.
     const disabled = /\sdisabled=""/;
 
@@ -152,5 +152,52 @@ describe("datos de la bandeja", () => {
 
     expect(result.status === "ok" && result.value[0]!.match_status).toBe("MANUAL");
     expect(bodies).toEqual([{ op: "assign", photo_ids: ["IMG_0001"], row_id: "fila-4" }]);
+  });
+});
+
+describe("miniaturas por fila en «Revise las filas» (tarea 6.3)", () => {
+  const matched = (id: string, sortKey: number, overrides: Partial<TrayPhoto> = {}) =>
+    photo(id, { match_status: "MATCHED", match_source: "FILENAME", row_id: "fila-4", sort_key: sortKey, ...overrides });
+
+  it("agrupa las fotos por fila en su orden y deja fuera las que no tienen fila", () => {
+    const byRow = photosByRow([matched("b", 2), matched("a", 1), photo("suelta"), matched("c", 1, { row_id: "fila-5" })]);
+
+    expect(Object.keys(byRow).sort()).toEqual(["fila-4", "fila-5"]);
+    expect(byRow["fila-4"].map((item) => item.id)).toEqual(["a", "b"]);
+  });
+
+  it("resume cuántas fotos, por qué vía y cuántas ya están en la pieza", () => {
+    expect(rowPhotosText([matched("a", 1), matched("b", 2, { match_source: "FOLDER" })])).toBe("2 fotos por el nombre del archivo y por la carpeta");
+    expect(rowPhotosText([matched("a", 1, { duplicate_of_existing: true })])).toBe(
+      "1 foto por el nombre del archivo · 1 ya está en la pieza: no se aplica si no la confirma",
+    );
+    expect(rowPhotosText([matched("a", 1, { duplicate_of_existing: true, duplicate_confirmed: true })])).toBe("1 foto por el nombre del archivo");
+  });
+
+  it("muestra hasta seis miniaturas, «+N» y la opción de aplicar igual las repetidas", () => {
+    const photos = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => matched(`f${n}`, n, { duplicate_of_existing: n === 1 }));
+    const html = render(<RowPhotoStrip photos={photos} onConfirmRepeated={noop} />);
+    const text = visibleText(html);
+
+    expect(html.match(/<img /g)).toHaveLength(6);
+    expect(text).toContain("+2");
+    expect(text).toContain("Repetida");
+    expect(text).toContain("Aplicar igual la foto repetida");
+  });
+
+  it("una fila sin fotos no muestra nada", () => {
+    expect(render(<RowPhotoStrip photos={[]} />)).toBe("");
+  });
+});
+
+describe("filtros de la bandeja (tarea 6.3)", () => {
+  it("filtra las ambiguas y las sin emparejar con su conteo", () => {
+    const ambiguous = visibleText(view({ filter: "AMBIGUOUS" }));
+    expect(ambiguous).toContain("Todas (2)");
+    expect(ambiguous).toContain("Ambiguas (1)");
+    expect(ambiguous).toContain("Sin emparejar (1)");
+    expect(ambiguous).toContain("lote/245.jpg");
+    expect(ambiguous).not.toContain("lote/IMG_0001.jpg");
+    expect(visibleText(view({ filter: "UNMATCHED" }))).not.toContain("lote/245.jpg");
   });
 });
