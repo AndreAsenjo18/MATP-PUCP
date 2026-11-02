@@ -262,7 +262,7 @@ Detalle en `docs/adr/ADR-009-autenticacion-sesiones.md` y `openspec/changes/arch
 
 ## S. Supuestos del emparejamiento de fotografías del lote (change `importacion-masiva-fotografias`, 2026-10-22)
 
-Detalle en `openspec/changes/importacion-masiva-fotografias/design.md` (D3) y en `apps/api/app/modules/imports/photo_matching.py`. Mientras el museo no responda L1, las reglas se ajustan con sus primeras carpetas reales.
+Detalle en `openspec/changes/archive/2026-11-02-importacion-masiva-fotografias/design.md` (D3) y en `apps/api/app/modules/imports/photo_matching.py`. Mientras el museo no responda L1, las reglas se ajustan con sus primeras carpetas reales.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
