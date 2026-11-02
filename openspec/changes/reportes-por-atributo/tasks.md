@@ -14,7 +14,7 @@
 
 - [x] 3.1 Selector de reportes con tarjetas y configuración de «Piezas agrupadas por…» (atributo + filtros de la búsqueda); pruebas de componente (Req: Reporte de piezas agrupadas…; RNF-010)
 - [x] 3.2 `ReportPreview`: encabezado, totales, encabezado fijo, grupos plegables, descripción con «ver más», paginación y aviso de columnas ocultas; dividir `ReportsLive.tsx`; pruebas de componente (Req: Vista previa del reporte…)
-- [ ] 3.3 Impresión con la columna Descripción ajustada; prueba de la vista de impresión con texto largo (Req: Descripción de la pieza… — escenario «Descripción larga en la impresión»)
+- [x] 3.3 Impresión con la columna Descripción ajustada; prueba de la vista de impresión con texto largo (Req: Descripción de la pieza… — escenario «Descripción larga en la impresión»)
 - [ ] 3.4 Reporte grande: totales y primeras páginas en la vista previa y descarga en segundo plano con aviso; prueba con el doble de datos (Req: Vista previa… — escenario «Reporte muy grande»)
 
 ## 4. Cierre

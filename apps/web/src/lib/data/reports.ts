@@ -31,6 +31,8 @@ export interface ReportParams {
   filters?: SearchFilters;
 }
 
+/** Los reportes con vista imprimible. */
+export const PRINTABLE_REPORTS: LiveReportType[] = ["inventory", "by-collection", "by-location", "by-attribute"];
 /** Filas máximas de la vista imprimible; por encima se sugiere Excel (design D5). */
 export const PRINT_LIMIT = 2000;
 const PAGE_SIZE_MAX = 100;
@@ -202,6 +204,12 @@ export function groupRows(report: Pick<Report, "columns" | "rows" | "subtotals">
     groups.push({ label, heading: subtotal?.group ?? column, count: subtotal?.count ?? null, rows: [row] });
   }
   return groups;
+}
+
+/** «Procedencia: Puno — 80 piezas»; el conteo es de todo el reporte, no de la página. */
+export function groupTitle(group: Pick<ReportRowGroup, "heading" | "label" | "count">): string {
+  const title = `${group.heading}: ${group.label}`;
+  return group.count === null ? title : `${title} — ${group.count} ${group.count === 1 ? "pieza" : "piezas"}`;
 }
 
 /** El texto de una celda. Una descripción vacía queda vacía, sin texto de relleno. */

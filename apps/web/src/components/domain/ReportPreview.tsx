@@ -15,6 +15,7 @@ import {
   cellText,
   filtersText,
   groupRows,
+  groupTitle,
   isLongDescription,
   maskedNotice,
   totalsText,
@@ -75,7 +76,7 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
           </tr>
         </thead>
         {groupRows(report).map((group, index) => {
-          const { label, count } = group;
+          const { label } = group;
           const folded = label !== null && collapsed.has(label);
           const Icon = folded ? ChevronRight : ChevronDown;
           return (
@@ -85,8 +86,7 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
                   <th colSpan={report.columns.length} scope="colgroup" className="p-0 font-semibold">
                     <button type="button" aria-expanded={!folded} onClick={() => toggle(label)} className={`sticky left-0 flex min-h-11 items-center gap-2 px-2 text-left ${FOCUS_RING}`}>
                       <Icon size={18} aria-hidden="true" />
-                      {group.heading}: {label}
-                      {count !== null && ` — ${count} ${count === 1 ? "pieza" : "piezas"}`}
+                      {groupTitle(group)}
                     </button>
                   </th>
                 </tr>

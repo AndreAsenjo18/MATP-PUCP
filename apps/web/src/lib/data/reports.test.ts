@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   GROUP_BY_OPTIONS,
+  PRINTABLE_REPORTS,
   PRINT_LIMIT,
   cellText,
   downloadReport,
@@ -9,6 +10,7 @@ import {
   fetchReport,
   filtersText,
   groupRows,
+  groupTitle,
   isLongDescription,
   maskedNotice,
   missingParameter,
@@ -151,6 +153,16 @@ describe("reglas de la pantalla", () => {
     });
     expect(group.count).toBeNull();
     expect(group.heading).toBe("Colección");
+  });
+
+  it("titula el grupo con su subtotal, en singular y plural, o sin él", () => {
+    expect(groupTitle({ heading: "Procedencia", label: "Puno", count: 80 })).toBe("Procedencia: Puno — 80 piezas");
+    expect(groupTitle({ heading: "Procedencia", label: "Sin dato", count: 1 })).toBe("Procedencia: Sin dato — 1 pieza");
+    expect(groupTitle({ heading: "Colección", label: "RA", count: null })).toBe("Colección: RA");
+  });
+
+  it("el reporte agrupado también se imprime", () => {
+    expect(PRINTABLE_REPORTS).toContain("by-attribute");
   });
 
   it("deja vacía la descripción que no existe y marca con una raya lo demás", () => {

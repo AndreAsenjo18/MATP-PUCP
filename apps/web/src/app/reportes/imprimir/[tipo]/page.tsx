@@ -3,7 +3,8 @@
 /**
  * Vista imprimible de un reporte (change `reportes-inventario`, tarea 3.2; RF-033, RNF-010): lee el
  * reporte completo hasta 2 000 filas, repite la cabecera (título, fecha, usuario y filtros) en cada
- * página impresa y salta de página por colección. Por encima del límite sugiere Excel.
+ * página impresa y salta de página por colección; el agrupado por atributo corre seguido. Por encima
+ * del límite sugiere Excel.
  */
 import { Printer } from "lucide-react";
 import { notFound, useSearchParams } from "next/navigation";
@@ -14,9 +15,7 @@ import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/lib/auth/session";
-import { fetchPrintableReport, paramsFromSearch, type LiveReportType, type Report } from "@/lib/data/reports";
-
-const PRINTABLE: LiveReportType[] = ["inventory", "by-collection", "by-location"];
+import { PRINTABLE_REPORTS, fetchPrintableReport, paramsFromSearch, type LiveReportType, type Report } from "@/lib/data/reports";
 
 function PrintContent({ type }: { type: LiveReportType }) {
   const { currentUser } = useSession();
@@ -57,7 +56,7 @@ function PrintContent({ type }: { type: LiveReportType }) {
 
 export default function PrintReportPage({ params }: PageProps<"/reportes/imprimir/[tipo]">) {
   const { tipo } = use(params);
-  if (!PRINTABLE.includes(tipo as LiveReportType)) notFound();
+  if (!PRINTABLE_REPORTS.includes(tipo as LiveReportType)) notFound();
   return (
     <RequireSession>
       <Suspense fallback={null}>
