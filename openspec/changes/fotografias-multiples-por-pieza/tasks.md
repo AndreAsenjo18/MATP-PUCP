@@ -23,5 +23,5 @@
 
 - [ ] 4.1 Tests requeridos: secciones 1–3 en verde (`npm test`, `npm run lint`); prueba de extremo a extremo contra MinIO en compose (subida real, CORS, URL prefirmada con `S3_PUBLIC_ENDPOINT_URL`) cuando Docker esté disponible
 - [x] 4.2 Actualizar OpenAPI: implementar los 4 stubs, añadir `media/order`, `download-url` y `media/storage-estimate`; `npm run openapi && npm run openapi:client`, `npm run openapi:check` en verde
-- [ ] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/fotografias.md` (subir, ordenar, principal, retirar, restricciones) y documentar CORS del bucket en `docs/despliegue/almacenamiento.md`
+- [x] 4.3 Actualizar el manual de usuario: `docs/manual-usuario/fotografias.md` (subir, ordenar, principal, retirar, restricciones) y documentar CORS del bucket en `docs/despliegue/almacenamiento.md`
 - [ ] 4.4 Registrar supuestos (formatos, tamaño máximo, restricciones) en `docs/preguntas-contraparte.md`, `openspec validate fotografias-multiples-por-pieza --strict` y, tras aprobar el PR, `openspec archive fotografias-multiples-por-pieza -y`

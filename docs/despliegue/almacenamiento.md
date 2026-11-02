@@ -56,3 +56,4 @@ La política de contenido del proxy (`Content-Security-Policy`) ya admite `https
 2. Suba una foto de prueba: el `PUT` a `media.<dominio>` responde 200.
 3. Si una foto da **403 `SignatureDoesNotMatch`**: el host o la ruta que firmó la API no es el que llegó al almacenamiento. Revise `S3_PUBLIC_ENDPOINT_URL` y que ningún proxy esté reescribiendo la ruta o el encabezado `Host`.
 4. Si da un error de CORS en la consola: falta o está mal el origen permitido de la tabla de arriba.
+5. Pruebe la subida desde una tableta **por `https://<dominio>`**. La huella de cada foto se calcula en el navegador con `crypto.subtle`, que solo existe con conexión segura o en `localhost`: por `http://` a la IP del equipo, la subida falla con «Este navegador no pudo preparar la foto».
