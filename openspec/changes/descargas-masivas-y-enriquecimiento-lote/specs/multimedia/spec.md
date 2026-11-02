@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Descarga masiva de fotografías por paquete
-El sistema SHALL permitir a un usuario con permiso de descarga de fotografías solicitar un paquete ZIP con las fotos de un conjunto de hasta 200 piezas [SUPUESTO AA1], generado en segundo plano con un identificador de trabajo, consultable por su solicitante y descargable mediante un enlace de corta duración hasta su caducidad [SUPUESTO AA2]. El sistema MUST limitar a un paquete en preparación por usuario. (RF-013, RNF-005)
+El sistema SHALL permitir a un usuario con permiso de descarga de fotografías solicitar un paquete ZIP con las fotos de un conjunto de hasta 200 piezas [SUPUESTO AA1], generado en segundo plano con un identificador de trabajo, consultable por su solicitante o por un administrador y descargable mediante un enlace de corta duración hasta su caducidad [SUPUESTO AA2]. El sistema MUST limitar a un paquete en preparación por usuario. (RF-013, RNF-005)
 
 #### Scenario: Paquete de un grupo de piezas
 - **WHEN** un Gestor de colecciones solicita el paquete de fotos de 30 piezas
@@ -15,6 +15,10 @@ El sistema SHALL permitir a un usuario con permiso de descarga de fotografías s
 - **GIVEN** un paquete del mismo usuario todavía en preparación
 - **WHEN** ese usuario solicita otro paquete
 - **THEN** la API responde 409 indicando el trabajo en curso
+
+#### Scenario: Paquete de otra persona
+- **WHEN** alguien que no es el solicitante consulta un paquete
+- **THEN** la API responde 403, salvo que sea un administrador, que lo consulta como su solicitante
 
 #### Scenario: Paquete caducado
 - **WHEN** se intenta descargar un paquete después de su caducidad

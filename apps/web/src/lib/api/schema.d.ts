@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 58bfd900ccb616bea1d7260f21b7c900b07cdcb3ddecfde5ae11499f5dff2234
+ * openapi-sha256: 05003f5be2966bf6e207285764aa3652456c95d93dd4812d7d6eec6f1f4bfc80
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1192,9 +1192,29 @@ export interface paths {
         put?: never;
         /**
          * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
-         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         * @description Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
          */
         post: operations["bulkDownloadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/bulk-download/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).
+         */
+        get: operations["getBulkDownload"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2653,7 +2673,7 @@ export interface components {
         BatchEnrichRequest: {
             /**
              * Piece Ids
-             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             * @description Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -2797,7 +2817,7 @@ export interface components {
         BulkDownloadRequest: {
             /**
              * Piece Ids
-             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             * @description Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -12506,7 +12526,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12532,6 +12552,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description `bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Datos no válidos. */
             422: {
                 headers: {
@@ -12541,13 +12570,71 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
-            501: {
+        };
+    };
+    getBulkDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe ese paquete. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
