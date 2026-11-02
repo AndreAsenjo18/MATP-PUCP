@@ -10,7 +10,7 @@
  * resumen exacto que se aprueba.
  */
 import { Check, Download, FileSpreadsheet, ImageIcon, MinusCircle, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { StatusBadge } from "@/components/domain/StatusBadges";
@@ -196,11 +196,14 @@ export function ImportRowCard({
   canDecide,
   busy,
   onDecide,
+  photos,
 }: {
   row: ImportRow;
   canDecide: boolean;
   busy: boolean;
   onDecide: (input: RowDecisionInput) => void;
+  /** Miniaturas de las fotos de la fila (importacion-masiva-fotografias, tarea 6.3). */
+  photos?: ReactNode;
 }) {
   const candidates = candidatePieces(row);
   const resolvable = needsResolution(row);
@@ -242,6 +245,7 @@ export function ImportRowCard({
         </div>
       </div>
       <p className="text-sm text-gris-texto">{actionLabel(row.action)}</p>
+      {photos}
 
       {errors.length > 0 && (
         <ul className="flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
@@ -460,6 +464,11 @@ export function ApprovalPanel({
     <Card as="section" className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold text-tinta">Aprobación de la carga</h2>
       {summary ? <p className="text-base text-tinta">{summarySentence(summary)}</p> : <p className="text-base text-gris-texto">Calculando el resumen…</p>}
+      {summary?.photo_quota_warning && (
+        <p role="status" className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
+          {summary.photo_quota_warning}
+        </p>
+      )}
       <p className="text-sm text-gris-texto">
         Las filas nuevas y las actualizaciones sin decisión se aplican con la aprobación; los conflictos y posibles duplicados sin resolver no se
         aplican. Si una fila incumple una regla al aplicar, no se aplica ninguna y el lote vuelve a revisión.

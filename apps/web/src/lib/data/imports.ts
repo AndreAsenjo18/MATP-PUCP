@@ -315,6 +315,7 @@ export const TARGET_OPTIONS: TargetOption[] = [
   { value: "lender_name", label: "Comodante" },
   { value: "loan_agreement_ref", label: "Referencia del contrato de comodato" },
   { value: "temporary_inventory_number", label: "Número de inventario temporal" },
+  { value: "photo_filename", label: "Archivo de la foto (nombre del archivo en la carpeta de fotos)" },
   { value: "identifier", label: "Códigos (se reconoce el tipo de cada uno)" },
   { value: "identifier:I", label: "Código I (inventario general)" },
   { value: "identifier:COLECCION", label: "Código de colección" },

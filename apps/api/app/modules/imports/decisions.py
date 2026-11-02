@@ -29,11 +29,13 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
-from app.modules.imports.catalog_photos import photo_approval_counts
+from app.modules.imports.catalog_photos import mark_duplicates, photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchKind,
+    ImportPhoto,
+    ImportPhotoStatus,
     ImportRow,
     RowClassification,
     RowDecision,
@@ -289,6 +291,17 @@ def decide_row(
             row.target_piece_id = target_piece_id
             resolution.pop("as_new", None)
             resolution["target_piece_id"] = str(target_piece_id)
+        # Its photos may be repeated on the new target, or no longer (task 4.3 of
+        # importacion-masiva-fotografias).
+        session.flush()
+        mark_duplicates(
+            session,
+            session.scalars(
+                select(ImportPhoto).where(
+                    ImportPhoto.row_id == row.id, ImportPhoto.status == ImportPhotoStatus.VERIFIED
+                )
+            ),
+        )
 
     if field_decisions:
         unknown = sorted(set(field_decisions) - set(row.diff or {}))
