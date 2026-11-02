@@ -53,5 +53,6 @@
   - Hecho: 78 fotos subidas (2 repetidas por huella), 64 emparejadas (32 por nombre y 32 por carpeta), 3 ambiguas y 11 sin código; se aprobó (28 filas aplicadas, 63 fotos) y se revirtió el lote.
 - [x] 8.3 Revisar el recorrido a 360 px, 768 px y 1280 px con la barra lateral expandida y contraída
   - Hecho a 360, 768 y 1280 px con la barra expandida y contraída: sin desplazamiento horizontal; Tab recorre el riel con foco visible.
-- [ ] 8.4 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate --all --strict` en verde; PR con el change, los IDs cubiertos y la evidencia; `openspec archive rediseno-ux-importacion -y` solo tras aprobar el PR
+- [x] 8.4 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate --all --strict` en verde; PR con el change, los IDs cubiertos y la evidencia; `openspec archive rediseno-ux-importacion -y` solo tras aprobar el PR
   - Hecho (2026-10-27): `npm run lint`, 850 pruebas web, pruebas de API de importación, seed, contrato y reglas transversales, `test:api:pg` (15 pruebas en PostgreSQL) y `openspec validate --all --strict` en verde. Falta el PR y archivar tras aprobarlo (no se hacen aquí).
+  - Hecho (2026-11-01): PR #122 fusionado (2026-10-28) con el CI en verde.

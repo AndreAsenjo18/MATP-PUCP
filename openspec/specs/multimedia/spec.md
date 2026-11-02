@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la gestión de fotografías múltiples por pieza tridimensional, las restricciones contractuales de uso de imágenes (comodato), los documentos asociados preparados para el archivo documental y la estimación del volumen fotográfico.
-
 ## Requirements
-
 ### Requirement: Múltiples fotografías por pieza
 El sistema MUST permitir asociar a una pieza cero o más fotografías, cada una con tipo de vista de un vocabulario controlado (por ejemplo frontal, perfil, posterior, superior, detalle, abierta, cerrada), orden de presentación, foto principal, autor y fecha de la toma, y SHALL almacenar los archivos fuera de la base de datos conservando el archivo original sin modificar. (RF-013, RN-010)
 
@@ -61,3 +59,41 @@ El sistema MUST ofrecer una estimación del volumen de almacenamiento fotográfi
 #### Scenario: Sin fotos registradas
 - **WHEN** se consulta la estimación sin fotos almacenadas
 - **THEN** el sistema muestra volumen actual cero y calcula la proyección solo con los parámetros ingresados
+
+### Requirement: Procedencia visible de las fotografías importadas
+Cada fotografía registrada desde un lote de importación MUST conservar el nombre del archivo y la ruta de carpetas con que se subió, el lote del que proviene y, si lo hubo, el nombre de la versión de menor resolución que se descartó en su lugar. La galería de la ficha SHALL mostrar esa procedencia a quien puede ver la foto, y esos datos MUST NOT poder editarse. (RF-046, RF-013, RN-005)
+
+#### Scenario: Procedencia de una foto del archivo histórico
+- **WHEN** un usuario de Consulta interna abre en la galería de una pieza una foto aplicada desde el lote 12 con la ruta `FOTOS/ALTAS/82LF4169 copy.jpg`
+- **THEN** ve la ruta original, el lote 12 y que reemplazó a la versión de menor resolución `FOTOS/82LF4169.jpg`
+
+#### Scenario: Foto subida a mano
+- **WHEN** se abre una foto subida desde la ficha, sin lote
+- **THEN** la procedencia muestra solo el nombre original del archivo y «subida desde la ficha»
+
+#### Scenario: Intento de editar la procedencia
+- **WHEN** alguien envía un cambio a la ruta original de una foto por la API
+- **THEN** la API ignora ese campo y la procedencia no cambia
+
+### Requirement: Conservación configurable del original en cargas masivas
+El sistema MUST generar la miniatura y la versión de visualización de toda fotografía registrada desde un lote de importación antes de considerarla disponible, y SHALL conservar o no el archivo original según el parámetro de despliegue `MEDIA_KEEP_ORIGINALS`; cuando no se conserva, la versión de visualización MUST pasar a ser el archivo de referencia de la foto, guardando el tamaño y la huella del original recibido. El parámetro vigente y el volumen ocupado SHALL ser visibles en la estimación del volumen fotográfico. [SUPUESTO: la cuota de almacenamiento de la universidad no alcanza para ≈ 25 000 originales; valor por defecto `true` hasta confirmar] (RF-045, RNF-003, RNF-005, RNF-002)
+
+#### Scenario: Despliegue con originales conservados
+- **GIVEN** `MEDIA_KEEP_ORIGINALS=true`
+- **WHEN** se aplica un lote con 500 fotos de 6 MB
+- **THEN** cada foto conserva su original sin modificaciones, más su miniatura y su versión de visualización
+
+#### Scenario: Despliegue sin originales por cuota limitada
+- **GIVEN** `MEDIA_KEEP_ORIGINALS=false`
+- **WHEN** se aplica un lote con 500 fotos de 6 MB
+- **THEN** se almacenan solo la miniatura y la versión de visualización de cada foto, la foto registra el tamaño y la huella del original recibido y el original temporal se elimina del área de carga
+
+#### Scenario: Derivado imposible de generar
+- **GIVEN** `MEDIA_KEEP_ORIGINALS=false`
+- **WHEN** no se puede generar la versión de visualización de una foto del lote
+- **THEN** la foto queda rechazada en el lote con el motivo «no se pudo procesar la imagen» y no se aplica, para no perder la única copia
+
+#### Scenario: Estimación con el parámetro vigente
+- **WHEN** un Administrador consulta la estimación del volumen fotográfico
+- **THEN** la respuesta indica si se conservan los originales, el volumen actual por tipo de archivo y la proyección para 25 000 fotos con ese parámetro
+

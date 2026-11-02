@@ -253,7 +253,7 @@ def test_register_object_missing(seeded_api: SeededApi, fake_storage: dict) -> N
         response = seeded_api.client.post(
             f"/api/v1/pieces/{piece_id}/media",
             json={
-                "storage_key": "pieces/nonexistent/pending/test.jpg",
+                "storage_key": f"pieces/{piece_id}/pending/nothing-here.jpg",
                 "original_filename": "test.jpg",
                 "content_type": "image/jpeg",
                 "size_bytes": 100,
@@ -263,6 +263,38 @@ def test_register_object_missing(seeded_api: SeededApi, fake_storage: dict) -> N
         )
     assert response.status_code == 422
     assert response.json()["code"] == "object_not_found"
+
+
+def test_register_refuses_a_key_outside_the_pending_area_of_the_piece(
+    seeded_api: SeededApi, fake_storage: dict
+) -> None:
+    """The object is deleted after the copy, so another key could destroy an original (RN-005)."""
+    piece_id = _piece_id(seeded_api, TenureRegime.OWNED)
+    other_piece = uuid.uuid4()
+    data = _jpeg_bytes()
+    for key in (
+        f"pieces/{piece_id}/{uuid.uuid4()}/original.jpg",
+        f"pieces/{other_piece}/{uuid.uuid4()}/original.jpg",
+        f"pieces/{other_piece}/pending/test.jpg",
+        f"pieces/{piece_id}/pending/../{uuid.uuid4()}/original.jpg",
+    ):
+        fake_storage["objects"][key] = data
+
+        response = seeded_api.client.post(
+            f"/api/v1/pieces/{piece_id}/media",
+            json={
+                "storage_key": key,
+                "original_filename": "test.jpg",
+                "content_type": "image/jpeg",
+                "size_bytes": len(data),
+                "content_sha256": hashlib.sha256(data).hexdigest(),
+            },
+            headers=H,
+        )
+
+        assert response.status_code == 422, key
+        assert response.json()["code"] == "invalid_storage_key"
+        assert fake_storage["objects"][key] == data
 
 
 def test_register_comodato_restriction(seeded_api: SeededApi, fake_storage: dict) -> None:
