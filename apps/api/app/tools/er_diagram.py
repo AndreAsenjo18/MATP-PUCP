@@ -101,7 +101,7 @@ GROUPS = [
     (
         "Búsqueda y Exportación",
         "#E8F4F8",
-        ["export_job"],
+        ["export_job", "media_bulk_download"],
     ),
 ]
 
@@ -166,6 +166,7 @@ LABELS = {
     ("user_session", "user_id"): "sesiones abiertas",
     ("auth_event", "user_id"): "eventos de autenticación",
     ("export_job", "requested_by_id"): "solicita",
+    ("media_bulk_download", "requested_by_id"): "solicita",
     ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
