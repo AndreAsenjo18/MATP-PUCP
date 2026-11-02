@@ -75,6 +75,21 @@ export function statusLabel(item: PhotoProgress): string {
   }
 }
 
+/** Avance global de una subida: fotos listas, porcentaje y barra. */
+export function OverallPhotoProgress({ progress }: { progress: readonly PhotoProgress[] }) {
+  const overall = overallProgress([...progress]);
+  return (
+    <>
+      <p className="text-base text-tinta">
+        {overall.done} de {plural(overall.total, "foto lista", "fotos listas")} ({overall.percent} %)
+      </p>
+      <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={overall.percent} className="h-2 w-full rounded-full bg-crema">
+        <div className="h-2 rounded-full bg-terracota" style={{ width: `${overall.percent}%` }} />
+      </div>
+    </>
+  );
+}
+
 export interface ImportPhotosViewProps {
   progress: PhotoProgress[];
   ignored: IgnoredFiles | null;
@@ -90,7 +105,6 @@ export interface ImportPhotosViewProps {
 
 /** Vista sin estado del panel (se prueba como HTML estático, ADR-012). */
 export function ImportPhotosView({ progress, ignored, running, message, error, onPick, onDrop, onResume, intro }: ImportPhotosViewProps) {
-  const overall = overallProgress(progress);
   const ignoredText = ignored ? ignoredSentence(ignored) : null;
   // Primero lo que necesita atención: fallidas, rechazadas y en curso.
   const order = (item: PhotoProgress) => ({ failed: 0, rejected: 1, uploading: 2, hashing: 3, pending: 4, uploaded: 5, registered: 6 })[item.status];
@@ -129,12 +143,7 @@ export function ImportPhotosView({ progress, ignored, running, message, error, o
       )}
       {progress.length > 0 && (
         <div className="flex flex-col gap-2" aria-live="polite">
-          <p className="text-base text-tinta">
-            {overall.done} de {plural(overall.total, "foto lista", "fotos listas")} ({overall.percent} %)
-          </p>
-          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={overall.percent} className="h-2 w-full rounded-full bg-crema">
-            <div className="h-2 rounded-full bg-terracota" style={{ width: `${overall.percent}%` }} />
-          </div>
+          <OverallPhotoProgress progress={progress} />
           {message && <p className="text-sm text-gris-texto">{message}</p>}
           {onResume && !running && canResume(progress) && (
             <Button variant="secondary" className="self-start" onClick={onResume}>

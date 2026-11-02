@@ -297,6 +297,7 @@ def validate_piece(
             epoch_end_year=body.period.year_to if body.period else None,
             dimensions=[item.model_dump() for item in body.dimensions] if body.dimensions else None,
             parent_piece_id=body.parent_piece_id,
+            collection_id=body.collection_id,
             piece=piece,
         )
     finally:
@@ -1019,6 +1020,14 @@ def register_media(
 ) -> MediaAssetOut:
     # 1. Pieza existe
     get_piece(session, piece_id)
+
+    # The object is deleted after the copy: any other key could destroy an original (RN-005).
+    if not body.storage_key.startswith(f"pieces/{piece_id}/pending/") or ".." in body.storage_key:
+        raise ValidationFailed(
+            "La clave no corresponde a una subida pendiente de esta pieza.",
+            code="invalid_storage_key",
+            details={"field": "storage_key"},
+        )
 
     # 2. HEAD object en storage (existe, tamaño, content-type)
     try:

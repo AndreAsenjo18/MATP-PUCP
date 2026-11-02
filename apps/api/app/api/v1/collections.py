@@ -142,7 +142,13 @@ def update_collection_endpoint(
     collection_id: uuid.UUID, body: CollectionUpdate, session: SessionDep, user: CollectionManager
 ) -> CollectionOut:
     collection = _get_collection(session, collection_id)
-    update_collection(writer(session, user), collection, body.model_dump(exclude_unset=True))
+    changes = body.model_dump(exclude_unset=True)
+    if changes.get("default_tenure_regime") is not None:
+        # El esquema acepta la etiqueta del contrato; el servicio trabaja con el código interno.
+        changes["default_tenure_regime"] = code_of(
+            TENURE_REGIME_LABELS, changes["default_tenure_regime"], "default_tenure_regime"
+        )
+    update_collection(writer(session, user), collection, changes)
     session.commit()
     return _collection_out(session, collection, user)
 

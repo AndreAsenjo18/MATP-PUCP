@@ -98,15 +98,7 @@ class CollectionCreate(BaseModel):
     @field_validator("default_tenure_regime", mode="before")
     @classmethod
     def _tenure_from_label(cls, value: object) -> str | None:
-        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
-        if value is None:
-            return None
-        code = (
-            value
-            if isinstance(value, TenureRegime)
-            else code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
-        )
-        return TENURE_REGIME_LABELS[code]
+        return _tenure_label(value)
 
     @model_validator(mode="after")
     def _acronym_from_code(self) -> Self:
@@ -116,6 +108,18 @@ class CollectionCreate(BaseModel):
         if self.acronym is None:
             self.acronym = self.code
         return self
+
+
+def _tenure_label(value: object) -> str | None:
+    """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+    if value is None:
+        return None
+    code = (
+        value
+        if isinstance(value, TenureRegime)
+        else code_of(TENURE_REGIME_LABELS, str(value), "default_tenure_regime")
+    )
+    return TENURE_REGIME_LABELS[code]
 
 
 class CollectionUpdate(BaseModel):
@@ -131,6 +135,16 @@ class CollectionUpdate(BaseModel):
     description: str | None = None
     origin_description: str | None = None
     is_active: bool | None = None
+    default_tenure_regime: TenureRegimeLabel | None = Field(
+        None,
+        description="Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo "
+        "Temporal (crud-manual-completo 2.2).",
+    )
+
+    @field_validator("default_tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> str | None:
+        return _tenure_label(value)
 
 
 class VocabularyOut(ORMModel):

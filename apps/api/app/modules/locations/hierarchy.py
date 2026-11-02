@@ -25,7 +25,21 @@ ALLOWED_PARENT: dict[LocationLevel, set[LocationLevel | None]] = {
     LocationLevel.CONTAINER: {LocationLevel.SHELF_LEVEL, LocationLevel.FURNITURE},
 }
 
+# The levels in hierarchy order, from the sede to the container.
+LEVEL_ORDER = [
+    LocationLevel.SITE,
+    LocationLevel.SPACE,
+    LocationLevel.FURNITURE,
+    LocationLevel.SHELF_LEVEL,
+    LocationLevel.CONTAINER,
+]
+
 _WHITESPACE = re.compile(r"\s+")
+
+
+def allowed_children(level: LocationLevel) -> list[LocationLevel]:
+    """The levels a place of `level` admits inside, in hierarchy order (crud-manual-completo D3)."""
+    return [child for child in LEVEL_ORDER if level in ALLOWED_PARENT[child]]
 
 
 def normalize_code(code: str) -> str:

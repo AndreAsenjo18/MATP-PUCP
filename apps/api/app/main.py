@@ -139,6 +139,7 @@ def create_app(
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Warning"],
     )
     install_error_handlers(app)
     app.include_router(health_router)

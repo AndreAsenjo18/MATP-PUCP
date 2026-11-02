@@ -111,6 +111,11 @@ class LocationNode(BaseModel):
     level_type: str = Field(
         description="Nivel jerárquico: Sede, Depósito, Mueble, Nivel o Contenedor."
     )
+    allowed_child_types: list[str] = Field(
+        default_factory=list,
+        description="Niveles que el lugar admite dentro, en español y en orden; vacío para un "
+        "contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).",
+    )
     children: list["LocationNode"] = Field(default_factory=list)
 
 

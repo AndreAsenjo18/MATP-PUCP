@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { locationTrail, locationTreeRows, type LocationNode } from "@/lib/data/locations";
 import { render, visibleText } from "@/test/render";
 
-import { LOCATION_TREE_HINT, LocationTreeSelect } from "./LocationTreeSelect";
+import { LOCATION_TREE_HINT, LocationTreeSelect, PLACE_ACTIONS_HINT } from "./LocationTreeSelect";
 
 // Ubicaciones sintéticas (RNF-014): sede › depósito › mueble › nivel.
 const TREE: LocationNode[] = [
@@ -94,5 +94,44 @@ describe("selector de ubicación en árbol", () => {
   it("un lugar elegido que ya no está en el árbol se puede quitar igual", () => {
     const text = visibleText(render(<LocationTreeSelect nodes={TREE} value="retirada" onChange={noop} />));
     expect(text).toContain("Lugar elegido (ya no está en el árbol)");
+  });
+});
+
+describe("acciones sobre el lugar elegido (crud-manual-completo 3.1)", () => {
+  const noop = () => {};
+  const actions = { onAdd: noop, onEdit: noop, onDeactivate: noop };
+  const LEVEL: LocationNode = { id: "niv", name: "Nivel 1", level_type: "Nivel", allowed_child_types: ["Contenedor"], children: [] };
+  const BOX: LocationNode = { id: "caja", name: "Caja 3", level_type: "Contenedor", allowed_child_types: [], children: [] };
+
+  it("con permiso, el lugar elegido se puede ampliar, editar o desactivar", () => {
+    const html = render(<LocationTreeSelect nodes={[LEVEL]} value="niv" onChange={noop} actions={actions} />);
+    const text = visibleText(html);
+    for (const label of ["Agregar lugar aquí", "Editar", "Desactivar"]) expect(text).toContain(label);
+    expect(html).toContain('aria-label="Acciones sobre Nivel 1"');
+    expect(html).not.toMatch(/<button[^>]*\sdisabled=""/);
+  });
+
+  it("sin lugar elegido, explica cómo llegar a las acciones", () => {
+    const text = visibleText(render(<LocationTreeSelect nodes={[LEVEL]} value={null} onChange={noop} actions={actions} />));
+    expect(text).toContain(PLACE_ACTIONS_HINT);
+    expect(text).not.toContain("Agregar lugar aquí");
+  });
+
+  it("«Usuario sin permiso»: puede filtrar por lugar, pero no ve las acciones", () => {
+    const html = render(<LocationTreeSelect nodes={[LEVEL]} value="niv" onChange={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Nivel 1");
+    for (const label of ["Agregar lugar aquí", "Editar", "Desactivar", PLACE_ACTIONS_HINT]) expect(text).not.toContain(label);
+  });
+
+  it("en un contenedor no se puede agregar nada, y lo dice", () => {
+    const html = render(<LocationTreeSelect nodes={[BOX]} value="caja" onChange={noop} actions={actions} />);
+    expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>).)*Agregar lugar aquí/);
+    expect(visibleText(html)).toContain("En «Caja 3» (contenedor) no se pueden agregar lugares.");
+  });
+
+  it("muestra el resultado de la última acción", () => {
+    const text = visibleText(render(<LocationTreeSelect nodes={[LEVEL]} value={null} onChange={noop} actions={actions} notice="Lugar «Caja 14» agregado en «Nivel 1»." />));
+    expect(text).toContain("Lugar «Caja 14» agregado en «Nivel 1».");
   });
 });

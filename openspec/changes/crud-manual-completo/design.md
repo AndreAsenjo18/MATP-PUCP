@@ -15,11 +15,11 @@
 
 ### D1. Componente común `AdminList`
 
-Tabla con buscador, «Agregar», acciones por fila («Editar», «Retirar» o «Desactivar»), filtro «Ver retiradas» con «Restaurar», y un `AdminDialog` común (título, campos, errores junto al campo, motivo obligatorio al retirar). Se usa en Colecciones y Listas de valores; Ubicaciones conserva su árbol pero usa el mismo diálogo.
+Tabla con buscador, «Agregar», acciones por fila («Editar», «Retirar» o «Desactivar»), filtro «Ver retiradas» con «Restaurar», y un `AdminDialog` común (título, campos, errores junto al campo, motivo obligatorio al retirar). Se usa en Colecciones. Listas de valores conserva sus etiquetas, que `rediseno-ux-administracion` exige «sin un botón por término», y corrige una etiqueta con «Corregir etiqueta» en la barra, en el mismo diálogo (decidido al aplicar 2.3); Ubicaciones conserva su árbol pero usa el mismo diálogo.
 
 ### D2. Restauración de colecciones
 
-Si no existe, `POST /collections/{id}/restore` con motivo, que reutiliza `SoftDeleteMixin` y la auditoría, y `GET /collections?include_retired=true`. Al cambiar una sigla, el diálogo ofrece guardarla como sigla histórica (`POST /collection-acronym-aliases`, ya existe), para que las importaciones y el emparejamiento de fotos la sigan reconociendo.
+Si no existe, `POST /collections/{id}/restore` con motivo, que reutiliza `SoftDeleteMixin` y la auditoría, y `GET /collections?include_retired=true`. Existe (tarea 1.1): la papelera ya lista las colecciones retiradas (`GET /trash?entity_type=collection`, para quien administra colecciones) y las restaura (`POST /trash/collection/{id}/restore`), solo el Administrador [SUPUESTO Ñ3], así que no se añade ninguna operación. Al cambiar una sigla, el diálogo ofrece guardarla como sigla histórica (`POST /collection-acronym-aliases`, ya existe), para que las importaciones y el emparejamiento de fotos la sigan reconociendo. El requirement pide editar también el régimen por defecto y `PATCH /collections/{id}` no lo aceptaba: la tarea 2.2 lo añade (`default_tenure_regime`, auditado), sin operación nueva.
 
 ### D3. Lugares desde el árbol de la búsqueda
 
@@ -41,6 +41,7 @@ flowchart LR
 - Campos repetibles: `collection_id`, `tenure_regime`, `acquisition_method_term_id`, `entry_date`, `recorded_by`, ubicación inicial, y `lender_name`/`loan_agreement_ref` si es comodato. Campos descriptivos copiables: además, denominación, autor, procedencia, época, tipo de bien, categoría, materiales, técnicas, medidas, descripción, observaciones.
 - Nunca se copian: identificadores, fotos, movimientos, evaluaciones, valorizaciones, piezas hijas.
 - Antes de mostrar el formulario se revalidan los términos y la colección copiados (pueden haberse retirado).
+- La colección también se puede retirar con el formulario abierto, así que el servidor tiene la última palabra: guardar una ficha en una colección retirada o inexistente responde `422 collection_not_available`, y `POST /pieces/validate` lo avisa en el campo `collection_id`. Una ficha que ya tiene esa colección la conserva (decidido al aplicar 4.3).
 
 ## Risks / Trade-offs
 

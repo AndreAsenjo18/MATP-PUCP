@@ -35,9 +35,9 @@ describe("árbol de ubicaciones", () => {
     expect(html).toContain("bg-ambar-bg"); // Mueble
   });
 
-  it("solo los contenedores se pueden desactivar, con un botón de icono que nombra la ubicación", () => {
+  it("cualquier lugar se puede intentar desactivar, con un botón de icono que nombra la ubicación", () => {
     const html = render(<LocationTreeView nodes={tree} onDeactivate={() => {}} />);
-    expect(html.match(/aria-label="Desactivar /g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Desactivar Rack A"');
     expect(html).toContain('aria-label="Desactivar Caja 3"');
     expect(html).toContain("min-h-8");
     expect(render(<LocationTreeView nodes={tree} />)).not.toContain("Desactivar");

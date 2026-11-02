@@ -126,6 +126,8 @@ describe("ConfirmButton", () => {
     expect(canConfirm(true, "  ")).toBe(false);
     expect(canConfirm(true, "Error de digitación")).toBe(true);
     expect(canConfirm(false, "")).toBe(true);
+    expect(canConfirm(true, "ab", 3)).toBe(false);
+    expect(canConfirm(true, " abc ", 3)).toBe(true);
     expect(confirmVariant("danger")).toBe("danger");
     expect(confirmVariant("secondary")).toBe("primary");
     const html = render(<ConfirmButton label="Rechazar" requireReason reasonLabel="Motivo del rechazo" confirmTitle="Rechazar" confirmDescription="" onConfirm={() => {}} />);

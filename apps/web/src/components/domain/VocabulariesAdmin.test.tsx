@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import type { CollectionItem, IdentifierType, NormalizationPreview, VocabularyTerm } from "@/lib/data/admin";
+import { NO_COLLECTION_FILTERS, type CollectionItem, type IdentifierType, type NormalizationPreview, type VocabularyTerm } from "@/lib/data/admin";
 import { render, visibleText } from "@/test/render";
 
 import { ConservationForm, ConservationHistory } from "./ConservationPanel";
-import { CollectionsTable, IdentifierTypesTable, RulePreviewPanel, TermList } from "./VocabulariesAdmin";
+import {
+  CollectionFormFields,
+  CollectionsList,
+  IdentifierTypesTable,
+  RulePreviewPanel,
+  TermActions,
+  TermLabelFields,
+  TermList,
+  termsByLabel,
+  type CollectionForm,
+} from "./VocabulariesAdmin";
 
 // Datos sintéticos (RNF-014).
 
@@ -84,6 +94,49 @@ describe("términos de una lista de valores", () => {
   });
 });
 
+describe("corregir la etiqueta de un término (crud-manual-completo 2.3)", () => {
+  const terms = [
+    term({ id: "t-2", code: "MADERA", label: "Madera" }),
+    term({ id: "t-1", code: "CERAMICA", label: "Ceramica" }),
+    term({ id: "t-3", code: "LANA", label: "Lana", is_active: false }),
+  ];
+
+  it("se abre desde la barra y no añade un botón por término", () => {
+    const bar = render(<TermActions canFixLabel onFixLabel={noop} onNewList={noop} />);
+    expect(visibleText(bar)).toContain("Corregir etiqueta");
+    expect(visibleText(bar)).toContain("Nueva lista");
+    expect(bar.match(/<button/g)).toHaveLength(2);
+    const chips = render(<TermList terms={terms} busy={false} onToggle={noop} />);
+    expect(chips.match(/<button/g)).toHaveLength(terms.length);
+  });
+
+  it("una lista sin términos no tiene nada que corregir", () => {
+    const button = render(<TermActions canFixLabel={false} onFixLabel={noop} onNewList={noop} />).match(/<button[^>]*>(?:(?!<\/button>).)*Corregir etiqueta/)?.[0];
+    expect(button).toMatch(/\sdisabled=""/);
+  });
+
+  it("ofrece los términos por orden alfabético, también los desactivados, y lo dice", () => {
+    expect(termsByLabel(terms).map((item) => item.label)).toEqual(["Ceramica", "Lana", "Madera"]);
+    expect(terms[0]?.label).toBe("Madera");
+    const text = visibleText(render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Ceramica" }} onChange={noop} />));
+    expect(text).toContain("Lana (desactivado)");
+    expect(text).not.toContain("Madera (desactivado)");
+  });
+
+  it("explica que las fichas muestran la etiqueta nueva y que el código no cambia", () => {
+    const text = visibleText(render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Cerámica" }} onChange={noop} />));
+    expect(text).toContain("Las fichas que usan este término mostrarán la etiqueta nueva.");
+    expect(text).toContain("Su código estable no cambia.");
+  });
+
+  it("muestra junto al campo la sugerencia cuando la etiqueta está repetida", () => {
+    const repeated = "Ya existe el término «Madera» en esta lista; desactive uno de los dos o use otra etiqueta.";
+    const html = render(<TermLabelFields terms={terms} form={{ termId: "t-1", label: "Madera" }} error={repeated} onChange={noop} />);
+    expect(visibleText(html)).toContain(repeated);
+    expect(html).toContain('aria-invalid="true"');
+  });
+});
+
 describe("listado de colecciones", () => {
   const items = [
     { id: "1", name: "Cerámica de Puno", acronym: "M.M.Z.", parent_id: null, is_active: true, piece_count: 3 },
@@ -91,7 +144,7 @@ describe("listado de colecciones", () => {
   ] as unknown as CollectionItem[];
 
   it("distingue las subcolecciones con el nombre de su colección padre y el estado con texto", () => {
-    const text = visibleText(render(<CollectionsTable items={items} all={items} />));
+    const text = visibleText(render(<CollectionsList shown={items} all={items} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} />));
     expect(text).toContain("Cerámica de Puno");
     expect(text).toContain("Subcolección de Cerámica de Puno");
     expect(text).toContain("Activa");
@@ -99,9 +152,57 @@ describe("listado de colecciones", () => {
   });
 
   it("sin resultados lo dice y ofrece limpiar los filtros", () => {
-    const text = visibleText(render(<CollectionsTable items={[]} all={items} onClearFilters={noop} />));
+    const text = visibleText(render(<CollectionsList shown={[]} all={items} filters={{ ...NO_COLLECTION_FILTERS, query: "zzz" }} onFiltersChange={noop} />));
     expect(text).toContain("No hay colecciones con estos filtros.");
     expect(text).toContain("Limpiar filtros");
+  });
+});
+
+describe("edición y retiro de colecciones (crud-manual-completo 2.2)", () => {
+  const items = [
+    { id: "1", name: "Colección ABC (ficticia)", acronym: "ABC", parent_id: null, is_active: true, piece_count: 35 },
+    { id: "2", name: "Colección vacía (ficticia)", acronym: "VAC", parent_id: null, is_active: true, piece_count: 0 },
+  ] as unknown as CollectionItem[];
+  const form: CollectionForm = { name: "Colección ABC (ficticia)", acronym: "ABD", tenure: "Propiedad", parentId: "" };
+  const retired = [
+    { entity_type: "collection", entity_id: "9", entity_label: "Colección retirada (ficticia)", type_label: "Colección", deleted_at: "2026-11-01T12:00:00Z", deleted_by_name: "Gestora (ficticia)", deletion_reason: "Duplicada" },
+  ] as never;
+
+  it("corregir la sigla ofrece guardar la anterior como histórica", () => {
+    const html = render(<CollectionFormFields form={form} onChange={noop} collections={items} editingId="1" previousAcronym="ABC" keepPrevious onKeepPreviousChange={noop} />);
+    expect(visibleText(html)).toContain("Guardar «ABC» como sigla histórica");
+    expect(html).toMatch(/type="checkbox"[^>]*checked=""/);
+    // La colección no se ofrece como su propia madre.
+    expect(html).not.toContain('<option value="1">');
+    const same = render(<CollectionFormFields form={{ ...form, acronym: "abc" }} onChange={noop} collections={items} previousAcronym="ABC" onKeepPreviousChange={noop} />);
+    expect(visibleText(same)).not.toContain("sigla histórica");
+  });
+
+  it("una sigla repetida se explica junto al campo", () => {
+    const text = visibleText(render(<CollectionFormFields form={form} onChange={noop} collections={items} errors={{ acronym: "Ya existe una colección con esa sigla." }} />));
+    expect(text).toMatch(/Sigla.*Ya existe una colección con esa sigla\./);
+  });
+
+  it("quien administra colecciones edita, retira y ve las retiradas; solo el Administrador restaura", () => {
+    const manager = render(
+      <CollectionsList shown={items} all={items} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} retired={retired} showRetired onToggleRetired={noop} onAdd={noop} onEdit={noop} onRetire={noop} />,
+    );
+    expect(manager).toContain('aria-label="Editar Colección ABC (ficticia)"');
+    expect(manager).toContain('aria-label="Retirar Colección vacía (ficticia)"');
+    expect(visibleText(manager)).toContain("Colección retirada (ficticia)");
+    expect(visibleText(manager)).toContain("Duplicada");
+    expect(manager).not.toContain("Restaurar Colección retirada");
+    const admin = render(
+      <CollectionsList shown={items} all={items} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} retired={retired} showRetired onToggleRetired={noop} onRestore={noop} />,
+    );
+    expect(admin).toContain('aria-label="Restaurar Colección retirada (ficticia)"');
+  });
+
+  it("sin el permiso, la lista no ofrece acciones ni las retiradas", () => {
+    const html = render(<CollectionsList shown={items} all={items} filters={NO_COLLECTION_FILTERS} onFiltersChange={noop} />);
+    expect(html).not.toContain("Editar Colección");
+    expect(visibleText(html)).not.toContain("Ver retiradas");
+    expect(visibleText(html)).not.toContain("Nueva colección");
   });
 });
 

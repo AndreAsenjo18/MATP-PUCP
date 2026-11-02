@@ -10,7 +10,7 @@ import { Eraser, SlidersHorizontal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
-import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
+import { LocationTreeSelect, type LocationTreeActions } from "@/components/domain/LocationTreeSelect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -111,6 +111,8 @@ export function SearchFiltersPanel({
   onChange,
   onClear,
   openMore = false,
+  locationActions,
+  locationNotice = null,
 }: {
   filters: SearchFilters;
   options: SearchOptions;
@@ -118,6 +120,9 @@ export function SearchFiltersPanel({
   onClear: () => void;
   /** Abre «Más filtros» desde el inicio: el acceso «Ver por ubicación» (design D3). */
   openMore?: boolean;
+  /** Agregar, editar o desactivar lugares: solo para quien administra ubicaciones (`crud-manual-completo` 3.1). */
+  locationActions?: LocationTreeActions;
+  locationNotice?: string | null;
 }) {
   const secondary = secondaryFiltersActive(filters);
   const [moreOpen, setMoreOpen] = useState(secondary || openMore);
@@ -177,6 +182,8 @@ export function SearchFiltersPanel({
             nodes={options.locationTree}
             value={filters.locationId}
             onChange={(locationId) => onChange({ locationId })}
+            actions={locationActions}
+            notice={locationNotice}
           />
           <Select
             label="Régimen de tenencia"

@@ -5,8 +5,11 @@
  * sede › espacio › mueble › nivel › contenedor, con buscador. Elegir un lugar incluye todo lo que
  * contiene, como el filtro `location_id` de la API. Las ramas abiertas parten de las sedes y de la
  * ruta del lugar elegido; quien las abre o cierra decide sobre ese punto de partida.
+ *
+ * Con `actions` (quien administra ubicaciones, `crud-manual-completo` 3.1), el lugar elegido se puede
+ * ampliar, editar o desactivar desde aquí. Sin ellas, el árbol solo sirve para filtrar.
  */
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleOff, Pencil, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { LEVEL_INTENT } from "@/components/domain/LocationsAdmin";
@@ -14,9 +17,17 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
-import { locationTrail, locationTreeRows, type LocationNode } from "@/lib/data/locations";
+import { allowedTypesSentence, locationTrail, locationTreeRows, type LocationNode } from "@/lib/data/locations";
 
 export const LOCATION_TREE_HINT = "Al elegir un lugar se incluye todo lo que contiene.";
+
+export const PLACE_ACTIONS_HINT = "Elija un lugar para agregar otro dentro, editarlo o desactivarlo.";
+
+export interface LocationTreeActions {
+  onAdd: (node: LocationNode) => void;
+  onEdit: (node: LocationNode) => void;
+  onDeactivate: (node: LocationNode) => void;
+}
 
 export interface LocationTreeSelectProps {
   nodes: readonly LocationNode[];
@@ -25,14 +36,20 @@ export interface LocationTreeSelectProps {
   label?: string;
   /** Búsqueda con la que abre el selector (pruebas y enlaces). */
   initialQuery?: string;
+  /** Solo para quien administra ubicaciones. */
+  actions?: LocationTreeActions;
+  /** Resultado de la última acción sobre un lugar. */
+  notice?: string | null;
 }
 
-export function LocationTreeSelect({ nodes, value, onChange, label = "Ubicación", initialQuery = "" }: LocationTreeSelectProps) {
+export function LocationTreeSelect({ nodes, value, onChange, label = "Ubicación", initialQuery = "", actions, notice = null }: LocationTreeSelectProps) {
   const [query, setQuery] = useState(initialQuery);
   // Solo lo que la persona abrió o cerró; el resto sigue el punto de partida (sedes y ruta elegida).
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(new Map());
 
   const trail = value ? locationTrail(nodes, value) : null;
+  const chosen = trail?.at(-1) ?? null;
+  const admitsPlaces = (chosen?.allowed_child_types ?? []).length > 0;
   const opened = new Set([...nodes.map((node) => node.id), ...(trail ?? []).slice(0, -1).map((node) => node.id)]);
   for (const [id, open] of toggled) {
     if (open) opened.add(id);
@@ -49,6 +66,30 @@ export function LocationTreeSelect({ nodes, value, onChange, label = "Ubicación
         <p className="flex items-center justify-between gap-2 rounded-md bg-crema px-2 py-1 text-sm text-tinta">
           <span>{trail ? trail.map((node) => node.name).join(" › ") : "Lugar elegido (ya no está en el árbol)"}</span>
           <Button variant="outline" size="sm" icon={X} aria-label="Quitar la ubicación" onClick={() => onChange(null)} />
+        </p>
+      )}
+      {actions &&
+        (chosen ? (
+          <div role="group" aria-label={`Acciones sobre ${chosen.name}`} className="flex flex-col gap-1">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" icon={Plus} disabled={!admitsPlaces} onClick={() => actions.onAdd(chosen)}>
+                Agregar lugar aquí
+              </Button>
+              <Button variant="outline" size="sm" icon={Pencil} onClick={() => actions.onEdit(chosen)}>
+                Editar
+              </Button>
+              <Button variant="outline" size="sm" icon={CircleOff} onClick={() => actions.onDeactivate(chosen)}>
+                Desactivar
+              </Button>
+            </div>
+            {!admitsPlaces && <p className="text-sm text-gris-texto">{allowedTypesSentence(chosen)}</p>}
+          </div>
+        ) : (
+          <p className="text-sm text-gris-texto">{PLACE_ACTIONS_HINT}</p>
+        ))}
+      {notice && (
+        <p role="status" className="rounded-md bg-verde-bg px-2 py-1 text-sm text-verde-exito">
+          {notice}
         </p>
       )}
       <Input

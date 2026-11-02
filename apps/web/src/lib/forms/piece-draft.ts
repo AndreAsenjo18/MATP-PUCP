@@ -36,6 +36,8 @@ const draftSchema = z.object({
     period_text: z.string().default(""),
     acquisition_method_term_id: z.string().default(""),
     entry_date: z.string().default(""),
+    recorded_by: z.string().default(""),
+    initial_location_id: z.string().default(""),
     material_term_ids: z.array(z.string()).default([]),
     conservation_state_id: z.string().default(""),
   }),

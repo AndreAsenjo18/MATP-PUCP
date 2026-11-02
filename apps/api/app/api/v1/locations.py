@@ -110,6 +110,10 @@ def get_locations_tree(session: SessionDep, user: Reader) -> list[LocationNode]:
             id=location.id,
             name=location.name,
             level_type=label_of(LOCATION_LEVEL_LABELS, location.level) or str(location.level),
+            allowed_child_types=[
+                label_of(LOCATION_LEVEL_LABELS, child) or str(child)
+                for child in location_hierarchy.allowed_children(location.level)
+            ],
         )
         for location in locations
     }
