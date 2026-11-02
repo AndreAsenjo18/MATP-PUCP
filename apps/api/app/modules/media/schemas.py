@@ -196,10 +196,11 @@ class StorageEstimateRequest(BaseModel):
     pieces: int | None = Field(
         default=None, ge=0, description="Número de piezas para la proyección."
     )
-    photos_per_piece: int | None = Field(
+    # Averages: decimals are allowed (2.5 photos per piece, 3.5 MB per photo).
+    photos_per_piece: float | None = Field(
         default=None, ge=0, description="Fotos promedio por pieza para la proyección."
     )
-    mb_per_photo: int | None = Field(
+    mb_per_photo: float | None = Field(
         default=None, ge=0, description="MB promedio por foto para la proyección."
     )
 
