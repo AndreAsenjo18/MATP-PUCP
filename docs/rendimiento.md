@@ -38,12 +38,23 @@ La semilla crea los usuarios, las colecciones y las listas de valores. Necesita 
 
 ```powershell
 npm run perf:generate -- --count 20000 --database-url "postgresql+psycopg://matp:matp-dev-password@localhost:5432/matp_perf"
+```
+
+Al terminar dice cuántas piezas quedaron sin código I porque ese número ya lo tenía una pieza de la semilla. Son pocas y es lo esperado.
+
+**3. Esperar a que se vacíe la cola de duplicados.** Cada pieza nueva se encola para detectar duplicados, y ese trabajo corre dentro del proceso de la API, a unas 600 piezas por minuto: unos 30 minutos para 20 000. **Medir antes da tiempos falsos** (ver «Mediciones»). Este comando debe responder `0`:
+
+```powershell
+"select count(*) from quality_job_item where status = 'PENDING'" | docker compose exec -T db sh -c 'psql -U $POSTGRES_USER -d matp_perf -At'
+```
+
+Con la cola en 0, actualiza las estadísticas. Sin esto, PostgreSQL puede elegir malos planes justo después de la carga:
+
+```powershell
 docker compose exec db sh -c 'psql -U $POSTGRES_USER -d matp_perf -c ANALYZE'
 ```
 
-Al terminar dice cuántas piezas quedaron sin código I porque ese número ya lo tenía una pieza de la semilla. Son pocas y es lo esperado. `ANALYZE` actualiza las estadísticas: sin él, PostgreSQL puede elegir malos planes justo después de la carga.
-
-**3. Medir.** Primero una prueba corta de 30 segundos, que también calienta la caché, y luego la medición de 5 minutos:
+**4. Medir.** Primero una prueba corta de 30 segundos, que también calienta la caché, y luego la medición de 5 minutos:
 
 ```powershell
 $env:SEED_DEV_PASSWORD = "change-me-dev-password"
@@ -53,7 +64,7 @@ npm run perf:search -- --url http://localhost:8000 --users 10 --duration 300 --o
 
 Conviene no usar la máquina para otra cosa mientras mide.
 
-**4. Volver a la configuración normal.** La API vuelve a `matp` y se borra la base de prueba:
+**5. Volver a la configuración normal.** La API vuelve a `matp` y se borra la base de prueba:
 
 ```powershell
 docker compose up -d api
@@ -78,6 +89,8 @@ Mira `p95`, `Errors` y `By Query Category (p95)`:
 En cualquier caso, la medición se registra aquí, también si no cumple: el spec lo exige y pide nombrar el tipo de consulta más lento.
 
 ## Si hace falta el índice
+
+**Hoy no hace falta:** la medición del 2026-11-02 cumple y «Descripción contiene» no es lo más lento. Esto queda como plan por si cambia.
 
 Índice trigram sobre la descripción (diseño D1 de `fusion-busqueda-deposito`), en una migración aditiva solo para PostgreSQL, encadenada sobre la cabeza de `main` (verificar con `alembic heads`). `pg_trgm` y `immutable_unaccent` ya existen por las migraciones 0001 y 0009:
 
@@ -106,8 +119,38 @@ El plan debe mostrar `Bitmap Index Scan on ix_piece_description_unaccent_trgm`.
 
 ## Mediciones
 
-| Fecha | Commit | Entorno | Piezas | Usuarios | Duración | Errores | p50 | p95 | p99 | Tipo más lento (p95) | ¿Cumple? |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|
-| | | Docker, PostgreSQL | 20 000 | 10 | 5 min | | | | | | *Pendiente* |
+Entorno de todas: Docker Desktop en Windows 11 (20 CPU, 15,5 GiB), PostgreSQL 18 y la API en contenedor, con un solo proceso. Catálogo: 20 028 piezas activas, las mismas en todas las corridas. Usuario: Catalogador. Cifras en milisegundos.
+
+| Fecha | Código | Qué incluye | Usuarios | Duración | Errores | p50 | p95 | p99 | Tipo más lento (p95) | ¿Cumple? |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| 2026-11-02 | `6f98f9d` | Con la búsqueda en la descripción | 10 | 5 min | 0 | 681 | **1 309** | 1 393 | Código, 1 360 | **Sí** |
+| 2026-11-02 | `b974d2d` | Anterior a `fusion-busqueda-deposito` (#151), como referencia | 10 | 5 min | 0 | 455 | **904** | 972 | Código, 945 | Sí |
+
+p95 por tipo de consulta:
+
+| Código | Código (40 %) | Texto (25 %) | Filtros (20 %) | Descripción (15 %) | Peticiones por segundo |
+|---|---:|---:|---:|---:|---:|
+| `6f98f9d` | 1 360 | 789 | 751 | 755 | 12,9 |
+| `b974d2d` | 945 | 585 | 534 | No comparable | 18,3 |
+
+**Cómo leerlas:**
+
+- **Cumple RF-038 con margen:** 691 ms bajo el objetivo y cero errores. No hace falta índice.
+- **Lo que aporta #151:** 405 ms más de p95 (un 45 %) y un 29 % menos de peticiones por segundo. Esa rama añade la descripción al texto libre, y también la ubicación y «visto hace» en cada resultado; esta medición no separa cuánto pesa cada cosa.
+- **Lo más lento ya era lo más lento:** la búsqueda por código, en las dos versiones. Toda búsqueda con `q` recorre la tabla completa.
+- **La fila «Descripción» de `b974d2d` no es comparable:** ese código ignora el parámetro, así que esas peticiones listan sin filtrar.
+- **Límites:** una corrida por versión, y el catálogo casi no tiene fotos (19), así que los resultados apenas firman enlaces de miniaturas. El de producción sí las tendrá.
+
+### Con la cola de duplicados activa
+
+Estas tres corridas se hicieron con `6f98f9d` y el catálogo recién cargado, mientras la API procesaba la cola. **No valen como medición de la búsqueda**, pero muestran lo que pasa después de una carga masiva:
+
+| Corrida | Errores | p95 | p99 | Tipo más lento (p95) |
+|---|---:|---:|---:|---|
+| Prueba corta, 30 s | 0 | 1 368 | 3 468 | Filtros, 2 517 |
+| Completa, 5 min | 0 | 1 965 | 3 553 | Texto, 3 251 |
+| Completa, 5 min | 0 | 2 280 | 3 522 | Texto, 3 267 |
+
+Con la cola vacía, el máximo baja de unos 4 000 ms a 1 511 ms. **Hallazgo:** durante la detección de duplicados que sigue a una carga grande, la búsqueda se vuelve notoriamente más lenta y el p95 puede superar los 2 s. Dura lo que tarde la cola, a unas 600 piezas por minuto. Hay que tenerlo en cuenta al planificar la carga del histórico.
 
 **Antecedente, que no decide nada:** en SQLite, con 20 000 piezas, el p95 pasó de 2,5 s a 3,8 s al buscar también en la descripción (`fusion-busqueda-deposito`, #151). SQLite compara sin tildes con una función de Python fila por fila, y el generador aún guardaba mal los códigos I.
