@@ -6,31 +6,52 @@
  * completo por páginas, hasta `PRINT_LIMIT` filas (design D5).
  */
 import { createApiClient, type ApiSchemas } from "@/lib/api/client";
+import type { paths } from "@/lib/api/schema";
 
 import { IMPORT_ERROR_MESSAGES, call, type ImportFailure, type ImportResult } from "./imports";
 import { apiBaseUrl, getApiMode } from "./mode";
+import { apiFilters, filtersFromSearchParams, type SearchFilters } from "./search";
 
 export type Report = ApiSchemas["ReportOut"];
 export type ReportSubtotal = ApiSchemas["ReportSubtotal"];
 export type ExportJob = ApiSchemas["ExportJob"];
-export type LiveReportType = "inventory" | "by-collection" | "by-location";
+export type LiveReportType = "inventory" | "by-collection" | "by-location" | "by-attribute";
+export type ReportKey = LiveReportType | "incomplete";
+type ReportQuery = NonNullable<paths["/api/v1/reports/{report_type}"]["get"]["parameters"]["query"]>;
+export type GroupBy = NonNullable<ReportQuery["group_by"]>;
 
 export interface ReportParams {
   collectionId?: string | null;
   locationId?: string | null;
   includeLoansForUse?: boolean;
   notVerifiedSinceDays?: number | null;
+  /** El atributo de «Piezas agrupadas por…» (RF-047). */
+  groupBy?: GroupBy | null;
+  /** Los filtros de la búsqueda, los mismos que entiende `GET /search` (RF-047, design D1). */
+  filters?: SearchFilters;
 }
 
 /** Filas máximas de la vista imprimible; por encima se sugiere Excel (design D5). */
 export const PRINT_LIMIT = 2000;
 const PAGE_SIZE_MAX = 100;
 
-export const REPORT_TYPES: { type: LiveReportType | "incomplete"; label: string; needs?: "collection" | "location" }[] = [
-  { type: "inventory", label: "Inventario general" },
-  { type: "by-collection", label: "Por colección", needs: "collection" },
-  { type: "by-location", label: "Por ubicación", needs: "location" },
-  { type: "incomplete", label: "Información incompleta" },
+export const REPORT_TYPES: { type: ReportKey; label: string; summary: string; needs?: "collection" | "location" }[] = [
+  { type: "inventory", label: "Inventario general", summary: "Todas las piezas del inventario permanente." },
+  { type: "by-collection", label: "Por colección", summary: "Las piezas de una colección y sus subcolecciones.", needs: "collection" },
+  { type: "by-location", label: "Por ubicación", summary: "Las piezas de una ubicación y cuándo se verificaron.", needs: "location" },
+  { type: "by-attribute", label: "Piezas agrupadas por…", summary: "Por procedencia, denominación, autor, material, estado, categoría o colección." },
+  { type: "incomplete", label: "Información incompleta", summary: "Las piezas a las que aún les faltan datos." },
+];
+
+/** Los atributos de «Piezas agrupadas por…», con los nombres que lleva el título del reporte. */
+export const GROUP_BY_OPTIONS: { value: GroupBy; label: string }[] = [
+  { value: "provenance", label: "Procedencia" },
+  { value: "denomination", label: "Denominación" },
+  { value: "author", label: "Autor" },
+  { value: "material", label: "Material" },
+  { value: "conservation_state", label: "Estado de conservación" },
+  { value: "category", label: "Categoría" },
+  { value: "collection", label: "Colección" },
 ];
 
 export const REPORT_ERROR_MESSAGES: Record<string, string> = {
@@ -45,8 +66,10 @@ function client(devUser: string | undefined) {
   return createApiClient({ baseUrl: apiBaseUrl(), devUser });
 }
 
-function query(params: ReportParams) {
+function query(params: ReportParams): ReportQuery {
   return {
+    ...(params.filters ? (apiFilters(params.filters) as ReportQuery) : {}),
+    ...(params.groupBy ? { group_by: params.groupBy } : {}),
     ...(params.collectionId ? { collection_id: params.collectionId } : {}),
     ...(params.locationId ? { location_id: params.locationId } : {}),
     ...(params.includeLoansForUse === false ? { include_loans_for_use: false } : {}),
@@ -68,6 +91,8 @@ export function paramsFromSearch(search: URLSearchParams): ReportParams {
     locationId: search.get("location_id"),
     includeLoansForUse: search.get("include_loans_for_use") !== "false",
     notVerifiedSinceDays: days ? Number(days) : null,
+    groupBy: GROUP_BY_OPTIONS.find((option) => option.value === search.get("group_by"))?.value ?? null,
+    filters: filtersFromSearchParams(search),
   };
 }
 
@@ -75,6 +100,7 @@ export function paramsFromSearch(search: URLSearchParams): ReportParams {
 export function missingParameter(type: LiveReportType, params: ReportParams): string | null {
   if (type === "by-collection" && !params.collectionId) return "Elija la colección.";
   if (type === "by-location" && !params.locationId) return "Elija la ubicación.";
+  if (type === "by-attribute" && !params.groupBy) return "Elija por qué atributo agrupar.";
   return null;
 }
 

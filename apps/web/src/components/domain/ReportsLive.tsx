@@ -3,13 +3,14 @@
 /**
  * Reportes de inventario en modo `live` (change `reportes-inventario`, tareas 3.1 y 3.2; RF-033,
  * RF-034, RF-041): tipo de reporte, parámetros (colección, ubicación, comodatos, días sin
- * verificar), vista previa paginada con subtotales y totales, exportación a Excel (directa o en
- * segundo plano) y vista imprimible.
+ * verificar, atributo y filtros de la búsqueda), vista previa paginada con subtotales y totales,
+ * exportación a Excel (directa o en segundo plano) y vista imprimible.
  */
 import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { EMPTY_OPTIONS, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -18,16 +19,19 @@ import { useSession } from "@/lib/auth/session";
 import { fetchCollections, type CollectionOption } from "@/lib/data/normalization-admin";
 import { fetchLocations } from "@/lib/data/locations";
 import {
+  GROUP_BY_OPTIONS,
   PRINT_LIMIT,
   downloadReport,
   fetchReport,
   groupByCollection,
   missingParameter,
   printHref,
+  type GroupBy,
   type LiveReportType,
   type Report,
   type ReportParams,
 } from "@/lib/data/reports";
+import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, type SearchFilters } from "@/lib/data/search";
 
 const PAGE_SIZE = 25;
 
@@ -188,13 +192,57 @@ export function PrintableReport({ report, tooLarge }: { report: Report; tooLarge
 }
 
 // ---------------------------------------------------------------------------------------------
+// Configuración de «Piezas agrupadas por…» (reportes-por-atributo, tarea 3.1)
+// ---------------------------------------------------------------------------------------------
+
+export function GroupBySelect({ value, onChange }: { value: GroupBy | null | undefined; onChange: (value: GroupBy | null) => void }) {
+  return (
+    <Select label="Agrupar por" value={value ?? ""} onChange={(event) => onChange((event.target.value || null) as GroupBy | null)}>
+      <option value="">Elija un atributo</option>
+      {GROUP_BY_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+/** Los filtros de la búsqueda, plegados para que la tabla quede a la vista (design D4). */
+export function ReportFilters({
+  filters,
+  options,
+  onChange,
+  onClear,
+}: {
+  filters: SearchFilters;
+  options: SearchOptions;
+  onChange: (next: Partial<SearchFilters>) => void;
+  onClear: () => void;
+}) {
+  const active = activeChips(filters).length;
+  return (
+    <details className="flex flex-col gap-3">
+      <summary className="flex min-h-11 cursor-pointer items-center text-base font-medium text-tinta">
+        Filtros{active > 0 && ` (${active} activo${active === 1 ? "" : "s"})`}
+      </summary>
+      <div className="max-w-xl">
+        <SearchFiltersPanel filters={filters} options={options} onChange={onChange} onClear={onClear} />
+      </div>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
 // Contenedor live
 // ---------------------------------------------------------------------------------------------
 
 export function ReportsLive({ type }: { type: LiveReportType }) {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
-  const [params, setParams] = useState<ReportParams>({ includeLoansForUse: true });
+  const [params, setParams] = useState<ReportParams>({ includeLoansForUse: true, filters: EMPTY_FILTERS });
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [page, setPage] = useState(1);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -216,10 +264,24 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
         if (active && result.status === "ok") setLocations(result.value.map((l) => ({ id: l.id, label: `${l.name} (${l.level})` })));
       });
     }
+    if (type === "by-attribute") {
+      loadSearchOptions(devUser).then((loaded) => {
+        if (active) setOptions(loaded);
+      });
+    }
     return () => {
       active = false;
     };
   }, [type, devUser]);
+
+  // Los textos esperan a que el usuario deje de escribir; los demás filtros se aplican al instante.
+  useEffect(() => {
+    if (filters === params.filters) return;
+    const typing = TEXT_FILTER_KEYS.some((key) => filters[key] !== params.filters?.[key]);
+    const timer = setTimeout(() => update({ filters }), typing ? TYPING_DEBOUNCE_MS : 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- los filtros aplicados solo deciden la espera
+  }, [filters]);
 
   useEffect(() => {
     let active = true;
@@ -265,6 +327,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
   return (
     <Card as="section" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
+        {type === "by-attribute" && <GroupBySelect value={params.groupBy} onChange={(groupBy) => update({ groupBy })} />}
         {type === "by-collection" && (
           <Select label="Colección" value={params.collectionId ?? ""} onChange={(event) => update({ collectionId: event.target.value || null })}>
             <option value="">Elija una colección</option>
@@ -301,6 +364,14 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
           </label>
         )}
       </div>
+      {type === "by-attribute" && (
+        <ReportFilters
+          filters={filters}
+          options={options}
+          onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
+          onClear={() => setFilters(EMPTY_FILTERS)}
+        />
+      )}
       {missing && <p className="text-base text-gris-texto">{missing}</p>}
       {error && (
         <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { EMPTY_OPTIONS } from "@/components/domain/SearchFilters";
 import type { Report } from "@/lib/data/reports";
+import { EMPTY_FILTERS } from "@/lib/data/search";
 import { render, visibleText } from "@/test/render";
 
-import { PrintableReport, ReportPreview } from "./ReportsLive";
+import { GroupBySelect, PrintableReport, ReportFilters, ReportPreview } from "./ReportsLive";
 
 // Datos sintéticos (RNF-014).
 
@@ -36,6 +38,37 @@ function report(overrides: Partial<Report> = {}): Report {
     ...overrides,
   };
 }
+
+describe("configuración de «Piezas agrupadas por…»", () => {
+  it("ofrece los atributos que pidió el museo, sin elegir ninguno de antemano", () => {
+    const html = render(<GroupBySelect value={null} onChange={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Agrupar por");
+    expect(text).toContain("Elija un atributo");
+    for (const label of ["Procedencia", "Denominación", "Autor", "Material", "Estado de conservación", "Categoría", "Colección"]) {
+      expect(text).toContain(label);
+    }
+    expect(html).not.toMatch(/<option[^>]*selected=""[^>]*value="[a-z]/);
+  });
+
+  it("marca el atributo elegido", () => {
+    expect(render(<GroupBySelect value="material" onChange={noop} />)).toMatch(/<option[^>]*selected=""[^>]*>Material</);
+  });
+
+  it("usa los mismos filtros de la búsqueda, plegados y con cuántos hay activos", () => {
+    const closed = render(<ReportFilters filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
+    expect(closed).toContain("<details");
+    expect(closed).not.toMatch(/<details[^>]*\sopen/);
+    expect(closed).toContain('aria-label="Filtros de búsqueda"');
+    expect(closed).toContain("Código o texto");
+    expect(visibleText(closed)).not.toContain("activo");
+
+    const one = visibleText(render(<ReportFilters filters={{ ...EMPTY_FILTERS, provenance: "Ayacucho" }} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />));
+    expect(one).toContain("Filtros (1 activo)");
+    const two = visibleText(render(<ReportFilters filters={{ ...EMPTY_FILTERS, provenance: "Ayacucho", author: "Anónimo" }} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />));
+    expect(two).toContain("Filtros (2 activos)");
+  });
+});
 
 describe("vista previa del reporte", () => {
   it("muestra quién lo generó, el detalle, los subtotales y los totales", () => {
