@@ -4,7 +4,7 @@ RF-023).
 Change plantillas-mapeo-y-normalizacion, task 2.3 (design D5): after a parameter or an alias is
 saved, ``session_params`` of the same session sees it (the flush drops the cached copy), and
 the impact of a change only counts stored identifiers that would change. Synthetic data only
-(RNF-014); ``NO REGISTRA`` and ``REP`` are illustrative [SUPUESTO A5, A3].
+(RNF-014); ``SIN REGISTRO`` and ``REP`` are illustrative [SUPUESTO A5, A3].
 """
 
 import pytest
@@ -39,10 +39,10 @@ def _collection(session: Session, acronym: str | None) -> Collection:
 def test_session_params_see_a_saved_marker_in_the_same_session(
     session: Session, act_as: ActAs
 ) -> None:
-    assert "NOREGISTRA" not in session_params(session).absence_markers
+    assert "SINREGISTRO" not in session_params(session).absence_markers
     with act_as("ADMIN"):
-        save_setting(session, ABSENCE_MARKERS_KEY, [*ABSENCE_MARKERS, "NO REGISTRA"])
-    assert "NOREGISTRA" in session_params(session).absence_markers
+        save_setting(session, ABSENCE_MARKERS_KEY, [*ABSENCE_MARKERS, "SIN REGISTRO"])
+    assert "SINREGISTRO" in session_params(session).absence_markers
 
 
 def test_session_params_see_a_saved_and_a_deleted_alias(session: Session, act_as: ActAs) -> None:

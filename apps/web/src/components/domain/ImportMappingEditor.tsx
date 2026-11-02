@@ -30,7 +30,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import type { ColumnMapping, ImportBatch, TargetOption } from "@/lib/data/imports";
+import { combinedColumnsText, type ColumnMapping, type ImportBatch, type TargetOption } from "@/lib/data/imports";
 import {
   TRANSFORMS,
   addTransform,
@@ -236,12 +236,25 @@ export function ColumnMappingRow({
   const known = options.some((option) => option.value === value);
   const vocabulary = termsVocabulary(column);
   const map = column.value_map ?? {};
+  // Several columns into one destination come from the template and are edited there (D3).
+  const combined = combinedColumnsText(column);
   return (
     <li className="flex flex-col gap-3 rounded-md border border-borde p-3 sm:flex-row sm:items-start">
       <div className="flex flex-col gap-2 sm:w-72 sm:shrink-0">
         <p className="font-medium break-words text-tinta">{column.source_column}</p>
-        <Select label={<span className="sr-only">Destino de {column.source_column}</span>} value={value} error={error ?? undefined} onChange={(event) => onTarget(event.target.value)}>
-          {!known && <option value={value}>{value}</option>}
+        {combined && (
+          <p className="rounded-full bg-crema px-3 py-1 text-sm text-tinta" title="Columnas combinadas: se editan en la plantilla">
+            Columnas combinadas: {combined}
+          </p>
+        )}
+        <Select
+          label={<span className="sr-only">Destino de {column.source_column}</span>}
+          value={value}
+          error={error ?? undefined}
+          disabled={combined !== null}
+          onChange={(event) => onTarget(event.target.value)}
+        >
+          {!known && <option value={value}>{value === "measures" ? "Medidas (columnas separadas)" : value}</option>}
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

@@ -1184,12 +1184,11 @@
         ],
         "properties": {
           "piece_ids": {
-            "description": "Piezas sin descripción [SUPUESTO M1: máximo 50].",
+            "description": "Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.",
             "items": {
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 50,
             "minItems": 1,
             "title": "Piece Ids",
             "type": "array"
@@ -1475,12 +1474,11 @@
         ],
         "properties": {
           "piece_ids": {
-            "description": "Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+            "description": "Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.",
             "items": {
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 200,
             "minItems": 1,
             "title": "Piece Ids",
             "type": "array"
@@ -2198,6 +2196,21 @@
       },
       "ColumnMapping": {
         "properties": {
+          "aliases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Otros nombres de la columna en variantes del formato (plantillas).",
+            "title": "Aliases"
+          },
           "identifier_type_code": {
             "anyOf": [
               {
@@ -2209,10 +2222,88 @@
             ],
             "title": "Identifier Type Code"
           },
+          "join": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Separador con que se unen `source_columns` en un campo de texto.",
+            "title": "Join"
+          },
+          "lender_for_loans": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "En una pieza en comodato, el valor es también el comodante.",
+            "title": "Lender For Loans"
+          },
+          "measure_magnitudes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Con `target_field: measures`: la magnitud de cada una de `source_columns` (`alto`, `ancho`, `espesor`, `diámetro`, `peso`); forma las medidas y su texto.",
+            "title": "Measure Magnitudes"
+          },
+          "optional": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Una variante del formato puede no traer la columna (plantillas).",
+            "title": "Optional"
+          },
+          "sensitive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Datos de origen con datos personales del propietario: visibles solo con `sensitive.donor_data`.",
+            "title": "Sensitive"
+          },
           "source_column": {
             "description": "Encabezado tal como aparece en el Excel.",
             "title": "Source Column",
             "type": "string"
+          },
+          "source_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Varias columnas para un mismo destino, en orden (la procedencia en tres columnas); el valor de cada una se conserva en los datos de origen.",
+            "title": "Source Columns"
           },
           "split_compound": {
             "default": false,
@@ -11763,6 +11854,14 @@
             ],
             "title": "Import Batch Id"
           },
+          "masked_keys": {
+            "description": "Columnas con datos personales del propietario que se muestran como «(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Masked Keys",
+            "type": "array"
+          },
           "payload": {
             "additionalProperties": true,
             "description": "Columnas de origen sin mapeo (RF-008).",
@@ -19639,7 +19738,7 @@
     },
     "/api/v1/media/bulk-download": {
       "post": {
-        "description": "Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.",
+        "description": "Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).",
         "operationId": "bulkDownloadMedia",
         "requestBody": {
           "content": {
@@ -19652,7 +19751,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -19682,6 +19781,16 @@
             },
             "description": "El rol no tiene el permiso requerido."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`)."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -19691,16 +19800,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
           }
         },
         "security": [
@@ -19712,8 +19811,97 @@
         "tags": [
           "Multimedia"
         ],
-        "x-change": "descargas-masivas-y-enriquecimiento-lote",
-        "x-status": "stub"
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/media/bulk-download/{job_id}": {
+      "get": {
+        "description": "Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).",
+        "operationId": "getBulkDownload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDownloadJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No existe ese paquete."
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)",
+        "tags": [
+          "Multimedia"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/media/storage-estimate": {

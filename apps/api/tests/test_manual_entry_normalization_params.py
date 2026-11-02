@@ -3,7 +3,7 @@
 
 Change plantillas-mapeo-y-normalizacion, task 2.2 step C (design D5): the sheet validation, the
 identifier services and ``POST /identifiers/normalize`` use the current parameters of the
-session. Synthetic data only (RNF-014); ``NO REGISTRA`` and ``REP`` are illustrative
+session. Synthetic data only (RNF-014); ``SIN REGISTRO`` and ``REP`` are illustrative
 [SUPUESTO A5, A3].
 """
 
@@ -39,7 +39,7 @@ def _store_params(session: Session) -> None:
     session.add_all(
         [
             NormalizationSetting(
-                id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=[*ABSENCE_MARKERS, "NO REGISTRA"]
+                id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=[*ABSENCE_MARKERS, "SIN REGISTRO"]
             ),
             CollectionAcronymAlias(
                 id=new_uuid(), alias="REP", alias_normalized="REP", collection_id=lrm.id
@@ -55,14 +55,14 @@ def _codes(issues: list) -> list[str]:  # type: ignore[type-arg]
 
 def test_the_sheet_treats_a_new_marker_as_no_code_i(session: Session, act_as: ActAs) -> None:
     before = validate_piece_payload(
-        session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="NO REGISTRA"
+        session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="SIN REGISTRO"
     )
     assert "absence_marker" not in _codes(before)
     with act_as("ADMIN"):
         _store_params(session)
 
     after = validate_piece_payload(
-        session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="No registra"
+        session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="Sin registro"
     )
     assert _codes(after) == ["absence_marker"]
 
@@ -73,9 +73,9 @@ def test_creating_a_piece_with_the_new_marker_registers_no_code_i(
     with act_as("ADMIN"):
         _store_params(session)
         piece = create_piece(
-            session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="NO REGISTRA"
+            session, denomination="Soga", tenure_regime=TenureRegime.OWNED, code_i="SIN REGISTRO"
         )
-        assert set_inventory_code(session, piece, "no registra") is None
+        assert set_inventory_code(session, piece, "sin registro") is None
     assert current_identifiers(session, piece, "I") == []
 
 
