@@ -314,7 +314,16 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
       <PieceGeneralData piece={piece} />
       <PieceIdentifiersTable piece={piece} />
-      <PieceGallery pieceId={pieceId} pieceTitle={piece.denomination} />
+      <PieceGallery
+        pieceId={pieceId}
+        pieceTitle={piece.denomination}
+        onChanged={() => {
+          // La alerta «sin fotografía» depende de lo que acaba de cambiar.
+          fetchPieceAlerts(pieceId, devUser).then((result) => {
+            if (result.status === "ok") setAlerts(result.alerts);
+          });
+        }}
+      />
       <ConservationLive pieceId={pieceId} />
       <p className="text-sm text-gris-texto">Ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
     </div>

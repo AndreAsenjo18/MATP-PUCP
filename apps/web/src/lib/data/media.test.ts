@@ -54,7 +54,7 @@ function liveApi({ authorize, register }: Handlers = {}) {
 function run(files: PhotoFile[], extra: Parameters<typeof uploadPiecePhotos>[3] = {}) {
   const puts: string[] = [];
   const updates: PiecePhotoProgress[][] = [];
-  const sleep = vi.fn(async (_ms: number) => {});
+  const sleep = vi.fn<(ms: number) => Promise<void>>(async () => {});
   const options = {
     hash: vi.fn(async () => SHA),
     put: vi.fn(async (upload: { url: string }, _file: Blob, onProgress: (loaded: number) => void) => {
