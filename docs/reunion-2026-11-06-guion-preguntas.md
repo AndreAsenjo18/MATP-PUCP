@@ -66,6 +66,16 @@ Señale: filas con «Cesión de uso» y «Custodia» como comodato, y «Donació
 Pregunte: «Ya confirmaron que cesión de uso y custodia son comodato. ¿Donación, compra, legado y transferencia interna son siempre propiedad de la PUCP? ¿Hay otras formas de adquisición?»
 Respuesta:
 
+**6b. PRIORITARIA · Importación › Códigos de colección reales [FR1, FR2, FR3]**
+Señale: en la revisión de filas, `ELA 12 CEL`, `AMM-IN-V 195` leído como código de colección y un `104` completado con la sigla de la colección de la fila.
+Pregunte: «¿Qué significan `ELA` y el sufijo `CEL`? ¿`AMM-IN-V` y `AMM-OT-R` son los códigos de la colección Alicia Maguiña? Cuando en "Código de la colección" hay solo un número, ¿es el correlativo dentro de la colección de esa fila?»
+Respuesta:
+
+**6c. Importación › Otros códigos y orden de carga [FR4, FR5, FR6]**
+Señale: la columna «Código INC» de las fichas AJB con `D-1`, `VI-1.2` y `#RN …`.
+Pregunte: «¿Qué son estos códigos? Y si una pieza aparece en el inventario general y en el archivo de su colección con datos distintos, ¿cuál vale?»
+Respuesta:
+
 **7. Ficha › Formulario [B1]**
 Señale: la leyenda de campos obligatorios.
 Pregunte: «¿Algún campo debería avisar si falta, sin impedir guardar?»

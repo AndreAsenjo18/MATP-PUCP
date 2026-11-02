@@ -3,7 +3,7 @@
 Change plantillas-mapeo-y-normalizacion, task 2.2 step A (design D5): ``NormalizationParams``
 with the constants as defaults, the optional keyword-only ``params`` of the public functions,
 the N7 regex built from the separators, and ``load_params``/``session_params`` reading the
-active rows once per session. Synthetic data only (RNF-014); ``NO REGISTRA`` and ``REP`` are
+active rows once per session. Synthetic data only (RNF-014); ``SIN REGISTRO`` and ``REP`` are
 illustrative [SUPUESTO A5, A3].
 """
 
@@ -123,13 +123,13 @@ def test_default_params_give_the_same_result_as_no_params(raw: str) -> None:
 
 
 def test_a_new_absence_marker_is_compared_without_spaces_or_case() -> None:
-    params = with_markers("NO REGISTRA")
-    assert not is_absence_marker("No registra")
-    assert is_absence_marker("No registra", params=params)
-    assert is_absence_marker("NO  REGISTRA", params=params)
-    assert normalize_inventory_code("NO REGISTRA", params=params).is_absent
-    assert not normalize_inventory_code("NO REGISTRA").is_absent
-    assert split_compound("I-1 / NO REGISTRA", params=params) == ["I-1"]
+    params = with_markers("SIN REG")
+    assert not is_absence_marker("Sin reg")
+    assert is_absence_marker("Sin reg", params=params)
+    assert is_absence_marker("SIN  REG", params=params)
+    assert normalize_inventory_code("SIN REG", params=params).is_absent
+    assert not normalize_inventory_code("SIN REG").is_absent
+    assert split_compound("I-1 / SIN REG", params=params) == ["I-1"]
 
 
 def test_removing_a_separator_stops_splitting_on_it() -> None:
@@ -180,8 +180,8 @@ def test_without_rows_the_defaults_apply() -> None:
 
 
 def test_each_key_replaces_only_its_values() -> None:
-    params = params_from_rows({ABSENCE_MARKERS_KEY: ["S/N", "No registra"]})
-    assert params.absence_markers == {"S/N", "NOREGISTRA"}
+    params = params_from_rows({ABSENCE_MARKERS_KEY: ["S/N", "Sin registro"]})
+    assert params.absence_markers == {"S/N", "SINREGISTRO"}
     assert params.separators == DEFAULT_SEPARATORS
     separators = params_from_rows(
         {CONCATENATION_SEPARATORS_KEY: {"separators": [";"], "unsplit_markers": []}}
@@ -247,7 +247,9 @@ def test_load_params_reads_active_rows_in_two_queries(session: Session, act_as: 
         gone = _collection(session, "OLD")
         session.add_all(
             [
-                NormalizationSetting(id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=["NO REGISTRA"]),
+                NormalizationSetting(
+                    id=new_uuid(), key=ABSENCE_MARKERS_KEY, value=["SIN REGISTRO"]
+                ),
                 CollectionAcronymAlias(
                     id=new_uuid(), alias="R.E.P.", alias_normalized="REP", collection_id=lrm.id
                 ),
@@ -269,7 +271,7 @@ def test_load_params_reads_active_rows_in_two_queries(session: Session, act_as: 
     params = load_params(session)
 
     assert len(statements) == 2
-    assert params.absence_markers == {"NOREGISTRA"}
+    assert params.absence_markers == {"SINREGISTRO"}
     assert params.separators == DEFAULT_SEPARATORS
     assert params.acronym_aliases == {"REP": "LRM"}  # neither the deleted alias nor collection
     assert params.alias_collection_ids == {"REP": lrm.id}
@@ -291,9 +293,9 @@ def test_session_params_reads_once_and_reloads_after_a_parameter_changes(
     assert session_params(session).absence_markers == {"S/N"}
 
     with act_as("ADMIN"):
-        setting.value = ["S/N", "No registra"]
+        setting.value = ["S/N", "Sin registro"]
         session.flush()
-    assert session_params(session).absence_markers == {"S/N", "NOREGISTRA"}
+    assert session_params(session).absence_markers == {"S/N", "SINREGISTRO"}
 
 
 def test_other_writes_keep_the_cached_params(session: Session, act_as: ActAs) -> None:

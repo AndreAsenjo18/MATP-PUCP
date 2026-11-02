@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 4c80a5b6d8366a3535d0e746898c3f80684698004f491faf5885a9d0c9fcdc3c
+ * openapi-sha256: 32b19518a5f0426c696bdcaace4e0585457e2a8b7ccf6016503686c5376f768b
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1192,9 +1192,49 @@ export interface paths {
         put?: never;
         /**
          * Generar un paquete ZIP con las fotos de un grupo de piezas (RF-013, RN-008)
-         * @description Se prepara en segundo plano; las fotos con restricción que lo prohíbe quedan fuera.
+         * @description Responde `202` con el estado del trabajo (`PENDING`): el paquete se prepara en segundo plano y se consulta con `GET /media/bulk-download/{job_id}`, que entrega el enlace de descarga cuando está listo (diseño D1 de `descargas-masivas-y-enriquecimiento-lote`; el documento del equipo dice «Archivo ZIP generado», ver la fila 42 del mapeo). Las fotos cuya restricción efectiva prohíbe la descarga quedan fuera, con su restricción (RN-008).
          */
         post: operations["bulkDownloadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/bulk-download/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de un paquete de fotos y su enlace de descarga (RF-013, RNF-005)
+         * @description Operación añadida al contrato (D1 de `descargas-masivas-y-enriquecimiento-lote`): el estado del paquete y, cuando está listo, un enlace de corta duración (`MEDIA_URL_TTL_SECONDS`) a su ZIP, hasta que el paquete caduca (`MEDIA_BULK_DOWNLOAD_TTL_HOURS`). Lo consulta quien lo pidió o un administrador (rol `ADMIN` o permiso `exports.full`, como las exportaciones).
+         */
+        get: operations["getBulkDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/storage-estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estimación del volumen fotográfico
+         * @description Volumen actual de las fotos activas (originales y derivados estimados) y, con `pieces`, `photos_per_piece` o `mb_per_photo`, la proyección de un volumen futuro; los parámetros que faltan toman los promedios reales (RNF-003). Parámetros negativos: 422.
+         */
+        get: operations["getMediaStorageEstimate"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1496,7 +1536,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obtener URL prefirmada para descargar una foto */
+        /**
+         * Obtener URL prefirmada para descargar una foto
+         * @description URL de lectura de corta duración (`MEDIA_URL_TTL_SECONDS`) con la restricción efectiva de la foto: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden (RN-008).
+         */
         get: operations["getMediaDownloadUrl"];
         put?: never;
         post?: never;
@@ -1586,23 +1629,6 @@ export interface paths {
         };
         /** Datos de origen sin mapeo (payload, solo lectura) */
         get: operations["listSourceRecords"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/pieces/media/storage-estimate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Estimación del volumen fotográfico */
-        get: operations["getMediaStorageEstimate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2647,7 +2673,7 @@ export interface components {
         BatchEnrichRequest: {
             /**
              * Piece Ids
-             * @description Piezas sin descripción [SUPUESTO M1: máximo 50].
+             * @description Piezas sin descripción; como máximo `AI_BATCH_ENRICH_MAX_PIECES` (50 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -2791,7 +2817,7 @@ export interface components {
         BulkDownloadRequest: {
             /**
              * Piece Ids
-             * @description Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].
+             * @description Piezas cuyas fotografías se empaquetan; como máximo `MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 `batch_too_large`.
              */
             piece_ids: string[];
         };
@@ -3090,13 +3116,48 @@ export interface components {
         };
         /** ColumnMapping */
         ColumnMapping: {
+            /**
+             * Aliases
+             * @description Otros nombres de la columna en variantes del formato (plantillas).
+             */
+            aliases?: string[] | null;
             /** Identifier Type Code */
             identifier_type_code?: string | null;
+            /**
+             * Join
+             * @description Separador con que se unen `source_columns` en un campo de texto.
+             */
+            join?: string | null;
+            /**
+             * Lender For Loans
+             * @description En una pieza en comodato, el valor es también el comodante.
+             */
+            lender_for_loans?: boolean | null;
+            /**
+             * Measure Magnitudes
+             * @description Con `target_field: measures`: la magnitud de cada una de `source_columns` (`alto`, `ancho`, `espesor`, `diámetro`, `peso`); forma las medidas y su texto.
+             */
+            measure_magnitudes?: string[] | null;
+            /**
+             * Optional
+             * @description Una variante del formato puede no traer la columna (plantillas).
+             */
+            optional?: boolean | null;
+            /**
+             * Sensitive
+             * @description Datos de origen con datos personales del propietario: visibles solo con `sensitive.donor_data`.
+             */
+            sensitive?: boolean | null;
             /**
              * Source Column
              * @description Encabezado tal como aparece en el Excel.
              */
             source_column: string;
+            /**
+             * Source Columns
+             * @description Varias columnas para un mismo destino, en orden (la procedencia en tres columnas); el valor de cada una se conserva en los datos de origen.
+             */
+            source_columns?: string[] | null;
             /**
              * Split Compound
              * @description La celda puede tener varios códigos (N7); cada parte toma el tipo que se reconoce en ella.
@@ -3389,25 +3450,6 @@ export interface components {
             unit: string;
             /** Value */
             value: number;
-        };
-        /**
-         * DownloadUrlRequest
-         * @description Request for download URL with purpose.
-         * @example {
-         *       "purpose": "internal"
-         *     }
-         * @example {
-         *       "purpose": "external"
-         *     }
-         */
-        DownloadUrlRequest: {
-            /**
-             * Purpose
-             * @description Uso previsto: internal (visualización) o external (descarga).
-             * @default internal
-             * @enum {string}
-             */
-            purpose: "internal" | "external";
         };
         /**
          * DownloadUrlResponse
@@ -5204,6 +5246,8 @@ export interface components {
              * @description En el listado de la galería, URL prefirmada temporal de la copia de visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.
              */
             download_url?: string | null;
+            /** @description Restricción que se aplica: la propia, la de la pieza (en comodato, «No publicar») o la de su colección, en ese orden. */
+            effective_restriction?: components["schemas"]["TermRef"] | null;
             /** Height Px */
             height_px: number | null;
             /**
@@ -5226,6 +5270,13 @@ export interface components {
             provenance?: components["schemas"]["MediaProvenance"] | null;
             /** Restriction Note */
             restriction_note: string | null;
+            /**
+             * Restriction Origin
+             * @description De dónde viene la restricción efectiva (RN-008).
+             * @default ninguna
+             * @enum {string}
+             */
+            restriction_origin: "foto" | "pieza" | "colección" | "ninguna";
             /** Size Bytes */
             size_bytes: number;
             /** Sort Order */
@@ -7498,6 +7549,11 @@ export interface components {
             id: string;
             /** Import Batch Id */
             import_batch_id: string | null;
+            /**
+             * Masked Keys
+             * @description Columnas con datos personales del propietario que se muestran como «(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).
+             */
+            masked_keys?: string[];
             /**
              * Payload
              * @description Columnas de origen sin mapeo (RF-008).
@@ -12460,12 +12516,139 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `bulk_download_in_progress`: la persona ya tiene un paquete en preparación (`details.job_id`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBulkDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["BulkDownloadJob"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido, o el paquete lo pidió otra persona y quien consulta no es administrador. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No existe ese paquete. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El paquete caducó: el archivo ya no está disponible y el registro del trabajo se conserva. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMediaStorageEstimate: {
+        parameters: {
+            query?: {
+                mb_per_photo?: number | null;
+                photos_per_piece?: number | null;
+                pieces?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageEstimateResponse"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -12493,15 +12676,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotImplementedResponse"];
                 };
             };
         };
@@ -13977,7 +14151,10 @@ export interface operations {
     };
     getMediaDownloadUrl: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Uso previsto: `internal` (verla en la ficha) o `external` (descarga). */
+                purpose?: "internal" | "external";
+            };
             header?: never;
             path: {
                 media_id: string;
@@ -13985,11 +14162,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DownloadUrlRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -14011,6 +14184,24 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe o fue eliminada. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `usage_restricted`: la restricción efectiva bloquea la descarga externa; `details` trae la restricción, su origen y el acuerdo de comodato. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14298,57 +14489,6 @@ export interface operations {
             };
             /** @description La pieza no existe o fue eliminada. */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Datos no válidos. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getMediaStorageEstimate: {
-        parameters: {
-            query?: {
-                mb_per_photo?: number | null;
-                photos_per_piece?: number | null;
-                pieces?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StorageEstimateResponse"];
-                };
-            };
-            /** @description Falta identificar al usuario (RF-042). */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description El rol no tiene el permiso requerido. */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

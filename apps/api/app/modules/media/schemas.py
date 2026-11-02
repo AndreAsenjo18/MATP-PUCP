@@ -71,6 +71,14 @@ class MediaAssetOut(ORMModel):
     photographer: str | None
     taken_on: date | None
     usage_restriction: TermRef | None = Field(description="Restricción de uso (RF-014, RN-008).")
+    effective_restriction: TermRef | None = Field(
+        None,
+        description="Restricción que se aplica: la propia, la de la pieza (en comodato, «No "
+        "publicar») o la de su colección, en ese orden.",
+    )
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+        default="ninguna", description="De dónde viene la restricción efectiva (RN-008)."
+    )
     restriction_note: str | None
     download_url: str | None = Field(
         None,
@@ -152,24 +160,6 @@ class MediaAssetUpdate(BaseModel):
     restriction_note: str | None = None
 
 
-class DownloadUrlRequest(BaseModel):
-    """Request for download URL with purpose."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {"purpose": "internal"},
-                {"purpose": "external"},
-            ]
-        }
-    )
-
-    purpose: Literal["internal", "external"] = Field(
-        default="internal",
-        description="Uso previsto: internal (visualización) o external (descarga).",
-    )
-
-
 class DownloadUrlResponse(BaseModel):
     """Response with pre-signed download URL."""
 
@@ -198,11 +188,6 @@ class DownloadUrlResponse(BaseModel):
     restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
         default="ninguna", description="Origen de la restricción efectiva."
     )
-
-
-restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
-    default="ninguna", description="Origen de la restricción efectiva."
-)
 
 
 class StorageEstimateRequest(BaseModel):
@@ -262,10 +247,6 @@ class StorageEstimateResponse(BaseModel):
     )
 
 
-# Limits of the bulk operations: [SUPUESTO AA1] of descargas-masivas-y-enriquecimiento-lote.
-MAX_BULK_DOWNLOAD_PIECES = 200
-
-
 class BulkDownloadRequest(BaseModel):
     """Body of ``POST /media/bulk-download`` (D1 of descargas-masivas-y-enriquecimiento-lote)."""
 
@@ -273,8 +254,9 @@ class BulkDownloadRequest(BaseModel):
 
     piece_ids: list[uuid.UUID] = Field(
         min_length=1,
-        max_length=MAX_BULK_DOWNLOAD_PIECES,
-        description="Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+        description="Piezas cuyas fotografías se empaquetan; como máximo "
+        "`MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 "
+        "`batch_too_large`.",
     )
 
 

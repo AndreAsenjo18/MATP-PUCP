@@ -485,6 +485,30 @@ const FIELD_LABELS: Record<string, string> = Object.fromEntries(
   ],
 );
 
+/**
+ * Aviso de las filas que no se cargaron porque repetían el encabezado o eran la segunda línea de
+ * un encabezado de grupo (change `formatos-reales-importacion`, diseño D7).
+ */
+export function skippedHeaderRowsNotice(batch: Pick<ImportBatch, "counts"> | null): string | null {
+  const count = (batch?.counts as Record<string, number> | null | undefined)?.skipped_header_rows ?? 0;
+  if (count <= 0) return null;
+  return count === 1
+    ? "1 fila no se cargó porque repetía el encabezado; queda en la bitácora del lote."
+    : `${count} filas no se cargaron porque repetían el encabezado; quedan en la bitácora del lote.`;
+}
+
+/** Columnas combinadas de una plantilla: «Procedencia · Procedencia (2)», con el separador o las magnitudes. */
+export function combinedColumnsText(column: Pick<ColumnMapping, "source_columns" | "join" | "measure_magnitudes" | "target_field">): string | null {
+  const sources = column.source_columns ?? [];
+  if (sources.length === 0) return null;
+  if (column.target_field === "measures") {
+    const magnitudes = column.measure_magnitudes ?? [];
+    return sources.map((source, index) => `${source} → ${magnitudes[index] ?? "?"}`).join(" · ");
+  }
+  const join = column.join ?? ", ";
+  return `${sources.join(" · ")} (se unen con «${join}»)`;
+}
+
 /** Advertencias de una fila que no impiden aceptarla (p. ej. régimen que contradice la forma de adquisición). */
 export function rowWarnings(row: { mapped_data?: unknown }): string[] {
   const data = isRecord(row.mapped_data) ? row.mapped_data : null;

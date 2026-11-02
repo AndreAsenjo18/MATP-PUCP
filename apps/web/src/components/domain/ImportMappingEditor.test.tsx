@@ -209,3 +209,39 @@ describe("guardar como plantilla", () => {
     expect(text).toContain("los ya procesados no cambian");
   });
 });
+
+describe("columnas combinadas de los formatos reales (formatos-reales-importacion, tarea 7.1)", () => {
+  const provenance = {
+    source_column: "Procedencia",
+    target_field: "provenance",
+    identifier_type_code: null,
+    split_compound: false,
+    transforms: ["trim"],
+    value_map: null,
+    source_columns: ["Procedencia", "Procedencia (2)", "Procedencia (3)"],
+    join: ", ",
+  };
+
+  it("muestra las columnas unidas como un chip y no deja cambiar su destino en el lote", () => {
+    const html = render(<ColumnMappingRow column={provenance} options={targetOptions(VOCABULARIES)} error={null} onTarget={noop} onTransforms={noop} />);
+
+    expect(visibleText(html)).toContain("Columnas combinadas: Procedencia · Procedencia (2) · Procedencia (3) (se unen con «, »)");
+    expect(html).toMatch(/<select[^>]*disabled=""/);
+  });
+
+  it("muestra la magnitud de cada columna de medidas", () => {
+    const measures = { ...provenance, source_column: "Alto (cm)", target_field: "measures", join: null, source_columns: ["Alto (cm)", "Peso (gr)"], measure_magnitudes: ["alto", "peso"] };
+    const text = visibleText(render(<ColumnMappingRow column={measures} options={targetOptions(VOCABULARIES)} error={null} onTarget={noop} onTransforms={noop} />));
+
+    expect(text).toContain("Alto (cm) → alto · Peso (gr) → peso");
+    expect(text).toContain("Medidas (columnas separadas)");
+  });
+
+  it("una columna sola no muestra el chip", () => {
+    const single = { ...provenance, source_columns: null, join: null };
+    const html = render(<ColumnMappingRow column={single} options={targetOptions(VOCABULARIES)} error={null} onTarget={noop} onTransforms={noop} />);
+
+    expect(visibleText(html)).not.toContain("Columnas combinadas");
+    expect(html).not.toMatch(/<select[^>]*disabled=""/);
+  });
+});
