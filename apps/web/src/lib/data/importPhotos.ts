@@ -42,6 +42,8 @@ const PHOTO_STATES = new Set<ImportBatch["status"]>(["MAPPED", "VALIDATED", "IN_
 const PHOTO_BATCH_STATES = new Set<ImportBatch["status"]>(["UPLOADED", "IN_PREVIEW"]);
 
 export function acceptsPhotos(batch: Pick<ImportBatch, "status"> & { kind?: ImportBatch["kind"] }): boolean {
+  // Una hoja de observaciones no lleva fotos: la API las rechaza (`formatos-reales-importacion`, D8).
+  if (batch.kind === "OBSERVATIONS") return false;
   return (batch.kind === "PHOTOS" ? PHOTO_BATCH_STATES : PHOTO_STATES).has(batch.status);
 }
 

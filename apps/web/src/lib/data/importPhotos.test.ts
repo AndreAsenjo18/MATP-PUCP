@@ -295,4 +295,17 @@ describe("estados del lote que admiten fotos", () => {
       false,
     ]);
   });
+
+  it("una hoja de observaciones no lleva fotos en ningún estado, igual que en la API", () => {
+    for (const status of ["UPLOADED", "MAPPED", "VALIDATED", "IN_PREVIEW", "APPROVED", "APPLIED"]) {
+      expect(acceptsPhotos({ status: status as never, kind: "OBSERVATIONS" })).toBe(false);
+    }
+  });
+
+  it("el Excel normal y el lote de solo fotos siguen admitiéndolas en sus estados", () => {
+    expect(acceptsPhotos({ status: "MAPPED", kind: "SPREADSHEET" })).toBe(true);
+    expect(acceptsPhotos({ status: "UPLOADED", kind: "SPREADSHEET" })).toBe(false);
+    expect(acceptsPhotos({ status: "UPLOADED", kind: "PHOTOS" })).toBe(true);
+    expect(acceptsPhotos({ status: "MAPPED", kind: "PHOTOS" })).toBe(false);
+  });
 });
