@@ -41,6 +41,7 @@ flowchart LR
 - Campos repetibles: `collection_id`, `tenure_regime`, `acquisition_method_term_id`, `entry_date`, `recorded_by`, ubicación inicial, y `lender_name`/`loan_agreement_ref` si es comodato. Campos descriptivos copiables: además, denominación, autor, procedencia, época, tipo de bien, categoría, materiales, técnicas, medidas, descripción, observaciones.
 - Nunca se copian: identificadores, fotos, movimientos, evaluaciones, valorizaciones, piezas hijas.
 - Antes de mostrar el formulario se revalidan los términos y la colección copiados (pueden haberse retirado).
+- La colección también se puede retirar con el formulario abierto, así que el servidor tiene la última palabra: guardar una ficha en una colección retirada o inexistente responde `422 collection_not_available`, y `POST /pieces/validate` lo avisa en el campo `collection_id`. Una ficha que ya tiene esa colección la conserva (decidido al aplicar 4.3).
 
 ## Risks / Trade-offs
 
