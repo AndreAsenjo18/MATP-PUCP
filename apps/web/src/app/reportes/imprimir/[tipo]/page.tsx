@@ -9,7 +9,7 @@ import { Printer } from "lucide-react";
 import { notFound, useSearchParams } from "next/navigation";
 import { Suspense, use, useEffect, useState } from "react";
 
-import { PrintableReport } from "@/components/domain/ReportsLive";
+import { PrintableReport } from "@/components/domain/PrintableReport";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";

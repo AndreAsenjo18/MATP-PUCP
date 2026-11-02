@@ -3,10 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GROUP_BY_OPTIONS,
   PRINT_LIMIT,
+  cellText,
   downloadReport,
   fetchPrintableReport,
   fetchReport,
-  groupByCollection,
+  filtersText,
+  groupRows,
+  isLongDescription,
+  maskedNotice,
   missingParameter,
   paramsFromSearch,
   printHref,
@@ -115,13 +119,61 @@ describe("reglas de la pantalla", () => {
     ]);
   });
 
-  it("agrupa las filas por colección para los saltos de página", () => {
-    const groups = groupByCollection({ columns: ["Denominación", "Colección"], rows: [["a", "RA"], ["b", "RA"], ["c", "MMZ"]] });
+  it("agrupa las filas por colección", () => {
+    const groups = groupRows({ columns: ["Denominación", "Colección"], rows: [["a", "RA"], ["b", "RA"], ["c", "MMZ"]] });
     expect(groups.map((g) => [g.label, g.rows.length])).toEqual([
       ["RA", 2],
       ["MMZ", 1],
     ]);
-    expect(groupByCollection({ columns: ["Espacio", "Piezas"], rows: [["Depósito 1", 3]] })).toEqual([{ label: null, rows: [["Depósito 1", 3]] }]);
+    expect(groupRows({ columns: ["Espacio", "Piezas"], rows: [["Depósito 1", 3]] })).toEqual([{ label: null, heading: null, count: null, rows: [["Depósito 1", 3]] }]);
+  });
+
+  it("en el reporte agrupado usa «Grupo» y no la colección, con el subtotal de todo el reporte", () => {
+    const groups = groupRows({
+      columns: ["Grupo", "Denominación", "Colección"],
+      rows: [["Puno", "a", "RA"], ["Puno", "b", "MMZ"], ["Sin dato", "c", "RA"]],
+      subtotals: [
+        { group: "Procedencia", label: "Puno", count: 80, level: 0 },
+        { group: "Procedencia", label: "Sin dato", count: 1, level: 0 },
+      ],
+    });
+    expect(groups.map((g) => [g.heading, g.label, g.count, g.rows.length])).toEqual([
+      ["Procedencia", "Puno", 80, 2],
+      ["Procedencia", "Sin dato", 1, 1],
+    ]);
+  });
+
+  it("no toma por subtotal de la colección el de otro grupo con el mismo nombre", () => {
+    const [group] = groupRows({
+      columns: ["Colección"],
+      rows: [["Propiedad"]],
+      subtotals: [{ group: "Régimen", label: "Propiedad", count: 9, level: 0 }],
+    });
+    expect(group.count).toBeNull();
+    expect(group.heading).toBe("Colección");
+  });
+
+  it("deja vacía la descripción que no existe y marca con una raya lo demás", () => {
+    expect(cellText(null, "Descripción")).toBe("");
+    expect(cellText("", "Descripción")).toBe("");
+    expect(cellText(null, "Autor")).toBe("—");
+    expect(cellText(0, "Días desde la última verificación")).toBe("0");
+  });
+
+  it("solo ofrece «ver más» si la descripción no cabe en dos líneas", () => {
+    expect(isLongDescription("Mate burilado")).toBe(false);
+    expect(isLongDescription("x".repeat(141))).toBe(true);
+    expect(isLongDescription("Primera línea\nSegunda línea")).toBe(true);
+  });
+
+  it("avisa de lo limitado con las mismas palabras que el archivo", () => {
+    expect(maskedNotice(["Ubicación"])).toBe("Ubicación limitada a sede y espacio por tus permisos");
+    expect(maskedNotice(["Ubicación", "Valor"])).toBe("Columnas limitadas por tus permisos: Ubicación, Valor");
+  });
+
+  it("escribe los filtros aplicados, o que no hay", () => {
+    expect(filtersText({ filters: { Colección: "RA", Comodatos: "Incluidos" } })).toBe("Colección: RA; Comodatos: Incluidos");
+    expect(filtersText({ filters: {} })).toBe("sin filtros");
   });
 });
 

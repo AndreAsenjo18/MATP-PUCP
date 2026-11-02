@@ -169,16 +169,65 @@ export async function downloadReport(
   }
 }
 
-/** Filas agrupadas por colección para los saltos de página de la vista imprimible. */
-export function groupByCollection(report: Pick<Report, "columns" | "rows">): { label: string | null; rows: unknown[][] }[] {
-  const index = report.columns.indexOf("Colección");
-  if (index < 0) return [{ label: null, rows: report.rows }];
-  const groups: { label: string | null; rows: unknown[][] }[] = [];
+export const DESCRIPTION_COLUMN = "Descripción";
+/** Hasta aquí la descripción cabe en las dos líneas de la vista previa; con más se ofrece «ver más». */
+const DESCRIPTION_PREVIEW_CHARS = 140;
+/** Las columnas que dividen las filas en grupos, de la más específica a la más general. */
+const GROUP_COLUMNS = ["Grupo", "Colección"];
+
+export interface ReportRowGroup {
+  /** El valor del grupo; `null` si el reporte no se divide en grupos. */
+  label: string | null;
+  /** Qué agrupa: «Procedencia», «Colección»… */
+  heading: string | null;
+  /** Piezas del grupo en el reporte completo, no solo en esta página; `null` si no hay subtotal. */
+  count: number | null;
+  rows: unknown[][];
+}
+
+/** Filas consecutivas del mismo grupo, para plegarlas en la vista previa y separarlas al imprimir. */
+export function groupRows(report: Pick<Report, "columns" | "rows" | "subtotals">): ReportRowGroup[] {
+  const column = GROUP_COLUMNS.find((name) => report.columns.includes(name));
+  if (!column) return [{ label: null, heading: null, count: null, rows: report.rows }];
+  const index = report.columns.indexOf(column);
+  const groups: ReportRowGroup[] = [];
   for (const row of report.rows) {
     const label = String(row[index] ?? "");
     const last = groups[groups.length - 1];
-    if (last && last.label === label) last.rows.push(row);
-    else groups.push({ label, rows: [row] });
+    if (last && last.label === label) {
+      last.rows.push(row);
+      continue;
+    }
+    const subtotal = (report.subtotals ?? []).find((item) => item.label === label && (column === "Grupo" || item.group === column));
+    groups.push({ label, heading: subtotal?.group ?? column, count: subtotal?.count ?? null, rows: [row] });
   }
   return groups;
+}
+
+/** El texto de una celda. Una descripción vacía queda vacía, sin texto de relleno. */
+export function cellText(value: unknown, column?: string): string {
+  if (value == null || value === "") return column === DESCRIPTION_COLUMN ? "" : "—";
+  return String(value);
+}
+
+/** La descripción no cabe en dos líneas: se recorta y se ofrece «ver más». */
+export function isLongDescription(text: string): boolean {
+  return text.length > DESCRIPTION_PREVIEW_CHARS || text.includes("\n");
+}
+
+/** Lo que el rol no puede ver, con las mismas palabras que el archivo (RF-041). */
+export function maskedNotice(columns: string[]): string {
+  if (columns.length === 1 && columns[0] === "Ubicación") return "Ubicación limitada a sede y espacio por tus permisos";
+  return `Columnas limitadas por tus permisos: ${columns.join(", ")}`;
+}
+
+export function filtersText(report: Pick<Report, "filters">): string {
+  const filters = Object.entries(report.filters ?? {});
+  return filters.length ? filters.map(([key, value]) => `${key}: ${String(value)}`).join("; ") : "sin filtros";
+}
+
+export function totalsText(report: Pick<Report, "totals">): string {
+  return Object.entries(report.totals)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join(" · ");
 }

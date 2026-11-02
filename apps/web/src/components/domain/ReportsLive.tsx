@@ -10,6 +10,7 @@ import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { ReportPreview } from "@/components/domain/ReportPreview";
 import { EMPTY_OPTIONS, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,10 +21,8 @@ import { fetchCollections, type CollectionOption } from "@/lib/data/normalizatio
 import { fetchLocations } from "@/lib/data/locations";
 import {
   GROUP_BY_OPTIONS,
-  PRINT_LIMIT,
   downloadReport,
   fetchReport,
-  groupByCollection,
   missingParameter,
   printHref,
   type GroupBy,
@@ -33,163 +32,8 @@ import {
 } from "@/lib/data/reports";
 import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, type SearchFilters } from "@/lib/data/search";
 
-const PAGE_SIZE = 25;
-
-function cellText(value: unknown): string {
-  return value == null || value === "" ? "—" : String(value);
-}
-
-export function ReportTable({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-gris-texto">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} className="py-2 pr-3 font-medium">
-                {column}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="text-tinta">
-          {rows.map((row, index) => (
-            <tr key={index} className="border-t border-borde">
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="py-1 pr-3">
-                  {cellText(cell)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** Subtotales y totales del reporte completo (no solo de la página). */
-export function ReportSummary({ report }: { report: Pick<Report, "subtotals" | "totals"> }) {
-  const subtotals = report.subtotals ?? [];
-  return (
-    <div className="flex flex-col gap-2 border-t border-borde pt-3">
-      {subtotals.length > 0 && (
-        <ul className="grid gap-1 text-sm text-tinta sm:grid-cols-2">
-          {subtotals.map((subtotal) => (
-            <li key={`${subtotal.group}-${subtotal.label}`} style={{ paddingLeft: `${(subtotal.level ?? 0) * 16}px` }}>
-              <span className="text-gris-texto">{subtotal.group}:</span> {subtotal.label} — {subtotal.count}
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="text-base font-semibold text-tinta">
-        {Object.entries(report.totals)
-          .map(([label, value]) => `${label}: ${value}`)
-          .join(" · ")}
-      </p>
-    </div>
-  );
-}
-
-export function ReportPreview({ report, onPage }: { report: Report; onPage?: (page: number) => void }) {
-  const pages = Math.max(1, Math.ceil(report.total_rows / Math.max(1, report.page_size)));
-  return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-        <p className="text-sm text-gris-texto">
-          Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
-          {report.generated_by ? ` por ${report.generated_by}` : ""}.
-        </p>
-      </div>
-      {(report.masked_columns ?? []).length > 0 && (
-        <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">
-          Su rol ve limitadas estas columnas: {report.masked_columns?.join(", ")} (solo sede y espacio, RF-041).
-        </p>
-      )}
-      {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
-      {report.rows.length > 0 && <ReportTable columns={report.columns} rows={report.rows as unknown[][]} />}
-      {report.total_rows > report.page_size && onPage && (
-        <div className="flex items-center justify-between gap-3">
-          <Button variant="secondary" disabled={report.page <= 1} onClick={() => onPage(report.page - 1)}>
-            Anterior
-          </Button>
-          <span className="text-sm text-gris-texto">
-            Página {report.page} de {pages} ({report.total_rows} filas)
-          </span>
-          <Button variant="secondary" disabled={report.page >= pages} onClick={() => onPage(report.page + 1)}>
-            Siguiente
-          </Button>
-        </div>
-      )}
-      <ReportSummary report={report} />
-    </div>
-  );
-}
-
-/** Vista imprimible (tarea 3.2): cabecera repetida en cada página y salto por colección. */
-export function PrintableReport({ report, tooLarge }: { report: Report; tooLarge: boolean }) {
-  const filters = Object.entries(report.filters ?? {});
-  const header = (
-    <div className="flex flex-col gap-1 border-b border-tinta pb-2">
-      <h1 className="text-xl font-bold text-tinta">{report.title}</h1>
-      <p className="text-sm text-tinta">
-        Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
-        {report.generated_by ? ` por ${report.generated_by}` : ""}
-      </p>
-      <p className="text-sm text-tinta">Filtros: {filters.length ? filters.map(([key, value]) => `${key}: ${String(value)}`).join("; ") : "sin filtros"}</p>
-    </div>
-  );
-  if (tooLarge) {
-    return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <p role="alert" className="rounded-md bg-ambar-bg p-3 text-base text-ambar-texto">
-          El reporte tiene {report.total_rows.toLocaleString("es-PE")} filas y supera el límite de impresión ({PRINT_LIMIT.toLocaleString("es-PE")}).
-          Expórtelo a Excel desde la pantalla de Reportes, o filtre por colección.
-        </p>
-      </div>
-    );
-  }
-  const groups = groupByCollection(report);
-  return (
-    <div className="flex flex-col gap-4 print:gap-0">
-      {groups.map((group, index) => (
-        <section key={`${group.label}-${index}`} className={index > 0 ? "print:break-before-page" : undefined}>
-          <table className="w-full text-left text-xs">
-            <thead className="table-header-group">
-              <tr>
-                <th colSpan={report.columns.length} className="pb-2 font-normal">
-                  {header}
-                  {group.label && <p className="pt-1 text-sm font-semibold text-tinta">Colección: {group.label}</p>}
-                </th>
-              </tr>
-              <tr>
-                {report.columns.map((column) => (
-                  <th key={column} className="border-b border-borde py-1 pr-2 font-semibold">
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {group.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b border-borde">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="py-0.5 pr-2 align-top">
-                      {cellText(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ))}
-      <ReportSummary report={report} />
-    </div>
-  );
-}
+/** Filas por página de la vista previa (design D4). */
+const PAGE_SIZE = 50;
 
 // ---------------------------------------------------------------------------------------------
 // Configuración de «Piezas agrupadas por…» (reportes-por-atributo, tarea 3.1)
@@ -205,6 +49,38 @@ export function GroupBySelect({ value, onChange }: { value: GroupBy | null | und
         </option>
       ))}
     </Select>
+  );
+}
+
+/** Descargar e imprimir; un reporte sin piezas no ofrece ninguna de las dos. */
+export function ReportActions({
+  type,
+  params,
+  report,
+  canExport,
+  busy,
+  onExport,
+}: {
+  type: LiveReportType;
+  params: ReportParams;
+  report: Pick<Report, "total_rows">;
+  canExport: boolean;
+  busy: boolean;
+  onExport: () => void;
+}) {
+  if (report.total_rows === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canExport && (
+        <Button variant="outline" icon={FileSpreadsheet} disabled={busy} onClick={onExport}>
+          Exportar a Excel
+        </Button>
+      )}
+      <Link href={printHref(type, params)} target="_blank" className={buttonClassName({ variant: "outline" })}>
+        <Printer size={18} aria-hidden="true" />
+        Vista imprimible
+      </Link>
+    </div>
   );
 }
 
@@ -380,17 +256,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
       )}
       {report && !missing && (
         <>
-          <div className="flex flex-wrap gap-2">
-            {hasPermission("exports.run") && (
-              <Button variant="outline" icon={FileSpreadsheet} disabled={busy} onClick={handleExport}>
-                Exportar a Excel
-              </Button>
-            )}
-            <Link href={printHref(type, params)} target="_blank" className={buttonClassName({ variant: "outline" })}>
-              <Printer size={18} aria-hidden="true" />
-              Vista imprimible
-            </Link>
-          </div>
+          <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
           {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
           <ReportPreview report={report} onPage={setPage} />
         </>
