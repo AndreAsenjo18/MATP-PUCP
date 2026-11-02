@@ -13,7 +13,12 @@ from app.modules.collections.models import Collection
 from app.modules.locations.models import Location, LocationLevel
 from app.modules.search import filters
 from app.modules.search.filters import PieceFilter
-from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
+from app.modules.users.sensitive import (
+    PERM_DONOR_DATA,
+    PERM_EXACT_LOCATION,
+    PERM_LOAN_TERMS,
+    PERM_VALUATION,
+)
 from tests.conftest import ActAs
 
 
@@ -157,6 +162,40 @@ def test_location_descendants_included(session, act_as: ActAs) -> None:
     assert p_space.id in piece_ids
     assert p_box.id in piece_ids
     assert p_outside.id not in piece_ids
+
+
+def test_location_filter_respects_the_scope_of_the_role(session, act_as: ActAs) -> None:
+    with act_as("CATALOGUER"):
+        site = Location(name="Sede de alcance", code="SCOPE-S", level=LocationLevel.SITE)
+        session.add(site)
+        session.flush()
+        space = Location(
+            name="Depósito de alcance",
+            code="SCOPE-D",
+            level=LocationLevel.SPACE,
+            parent_id=site.id,
+        )
+        session.add(space)
+        session.flush()
+        box = Location(
+            name="Caja de alcance",
+            code="SCOPE-C",
+            level=LocationLevel.CONTAINER,
+            parent_id=space.id,
+        )
+        session.add(box)
+        session.flush()
+    limited = Viewer(permissions=frozenset({"pieces.read"}))
+    exact = Viewer(permissions=frozenset({"pieces.read", PERM_EXACT_LOCATION}))
+
+    for viewer in (limited, None):
+        with pytest.raises(PermissionDenied) as exc_info:
+            PieceFilter(location_id=box.id).to_where(session, viewer)
+        assert exc_info.value.code == "exact_location_required"
+
+    assert PieceFilter(location_id=box.id).to_where(session, exact) is not None
+    for inside in (site, space):
+        assert PieceFilter(location_id=inside.id).to_where(session, limited) is not None
 
 
 def test_epoch_filtering_and_uninterpreted_count(session, act_as: ActAs) -> None:
