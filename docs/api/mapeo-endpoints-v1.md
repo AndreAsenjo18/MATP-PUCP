@@ -113,6 +113,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `GET /audit/sensitive-access` | RNF-014, RF-041: registro de los accesos a datos sensibles sin enmascarar (usuario, ruta, entidades y campos, nunca valores), consultable con `audit.read` (`autenticacion-y-matriz-permisos`, tarea 3.3) |
 | `POST /auth/logout` | RNF-012: cierre de sesión que revoca la sesión de servidor (ADR-009); el documento solo trae el inicio de sesión |
 | `POST /auth/change-password` | RNF-012, RNF-013: cambio de contraseña propio, obligatorio con una contraseña temporal; revoca todas las sesiones y abre una nueva (`autenticacion-y-matriz-permisos`, tarea 2.3) |
+| `GET /reports/{report_type}` | RF-033, RF-034, RF-036, RF-041 y RF-047: reportes de inventario, por colección, por ubicación, incompletas, valorización y agrupado por atributo, en JSON paginado o, con `format`, en archivo; los grandes responden 202 con un trabajo de exportación (`reportes-inventario`; ampliación de `reportes-por-atributo`, más abajo) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 | `POST /movements/batch` | RF-017, RNF-001, RNF-005: mover o verificar varias piezas escaneadas hacia un mismo destino en una sola operación todo o nada, con `Idempotency-Key` para reintentos en conexión lenta desde la vista móvil de depósito (`ubicacion-jerarquica-y-movimientos`, tarea 3.3) |
 
@@ -185,3 +186,15 @@ Change `formatos-reales-importacion` (tarea 7.4; diseño D1, D3, D4 y D6). `Colu
 
 `GET /pieces/{piece_id}/source-records` suma `masked_keys`: las columnas que se muestran como «(dato restringido)» por falta del permiso.
 
+## Ampliación de los reportes por el pedido del museo (2026-11-02)
+
+Change `reportes-por-atributo` (tarea 4.1; diseño D1 y D3). `GET /reports/{report_type}` y `ReportType` no están en `endpoints-api-v1.yaml`: son un añadido (`ANADIDOS` en `test_contract_conformance.py`), así que esto amplía un añadido y no cambia ninguna operación del contrato del equipo. Es compatible con quien ya usa la ruta en JSON; el CSV cambia de forma:
+
+| Cambio | Uso |
+|---|---|
+| Valor `by-attribute` en `ReportType` | RF-047: piezas agrupadas por un atributo, con el subtotal de cada grupo y el total de piezas distintas |
+| `group_by` | Obligatorio en `by-attribute`: `provenance`, `denomination`, `author`, `material`, `conservation_state`, `category` o `collection`. Si falta o no se admite, responde 422 `invalid_report_parameter` con los admitidos en `details.allowed` |
+| Filtros de `GET /search` | Los mismos parámetros y el mismo `PieceFilter` (RF-032) en los reportes que listan piezas. `collection_id` y `location_id` se siguen aceptando. Filtrar por debajo del espacio sin permiso de ubicación exacta responde 403 `exact_location_required` |
+| Columna `Descripción` | Tras `Denominación` en `inventory`, `by-collection`, `by-location` y `by-attribute` |
+| Columna `Grupo` | Primera columna de `by-attribute`: una pieza puede repetirse, y el archivo debe decir a qué grupo pertenece cada fila |
+| Formato CSV | Encabezado (título, fecha, usuario y filtros), línea en blanco, columnas y filas, línea en blanco y la tabla `Grupo,Etiqueta,Piezas` con subtotales y total. Quien lea el CSV debe saltarse el encabezado |
