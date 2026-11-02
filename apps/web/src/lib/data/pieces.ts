@@ -416,7 +416,7 @@ export function initialPieceCatalogs(): PieceFormCatalogs {
 
 export type PieceCatalogsResult = { status: "ok"; catalogs: PieceFormCatalogs } | { status: "unavailable"; message: string };
 
-async function fetchTermOptions(vocabularyCode: string): Promise<TermOption[] | null> {
+export async function fetchTermOptions(vocabularyCode: string): Promise<TermOption[] | null> {
   const { data, error } = await client().GET("/api/v1/vocabularies/{vocabulary_code}/terms", {
     params: { path: { vocabulary_code: vocabularyCode } },
   });

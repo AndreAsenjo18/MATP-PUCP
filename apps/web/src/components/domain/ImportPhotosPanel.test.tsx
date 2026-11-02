@@ -80,4 +80,9 @@ describe("panel de fotografías del lote (Req: Fotografías del lote con subida 
     expect(render(<ImportPhotosPanel batch={{ id: "lote-1", status: "UPLOADED" }} />)).toBe("");
     expect(render(<ImportPhotosPanel batch={{ id: "lote-1", status: "APPROVED" }} />)).toBe("");
   });
+
+  it("no aparece en un lote de observaciones, ni siquiera mapeado o en previsualización", () => {
+    expect(render(<ImportPhotosPanel batch={{ id: "lote-1", status: "MAPPED", kind: "OBSERVATIONS" }} />)).toBe("");
+    expect(render(<ImportPhotosPanel batch={{ id: "lote-1", status: "IN_PREVIEW", kind: "OBSERVATIONS" }} />)).toBe("");
+  });
 });

@@ -32,7 +32,13 @@ from app.modules.collections.service import find_collection_by_code
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
 from app.modules.identification.params import session_params
 from app.modules.locations.models import Location
-from app.modules.users.sensitive import PERM_DONOR_DATA, PERM_LOAN_TERMS, PERM_VALUATION
+from app.modules.users.sensitive import (
+    PERM_DONOR_DATA,
+    PERM_EXACT_LOCATION,
+    PERM_LOAN_TERMS,
+    PERM_VALUATION,
+    PUBLIC_LOCATION_LEVELS,
+)
 
 ALERT_PREDICATES: dict[str, Callable[[Session], ColumnElement[bool]]] = {}
 
@@ -133,6 +139,18 @@ class PieceFilter(BaseModel):
             raise PermissionDenied(
                 "No tiene permisos para filtrar por convenio de préstamo (filter_not_allowed).",
                 code="filter_not_allowed",
+            )
+
+    def _validate_location_scope(self, session: Session, viewer: Viewer | None) -> None:
+        """Below the space, a place is only for whoever sees exact locations (RF-041)."""
+        if self.location_id is None or (viewer is not None and viewer.can(PERM_EXACT_LOCATION)):
+            return
+        location = session.get(Location, self.location_id)
+        if location is not None and location.level not in PUBLIC_LOCATION_LEVELS:
+            raise PermissionDenied(
+                "El detalle por debajo del espacio exige el permiso de ubicación exacta. Filtre "
+                "por la sede o el espacio que contiene esta ubicación.",
+                code="exact_location_required",
             )
 
     def _build_conditions(
@@ -330,6 +348,7 @@ class PieceFilter(BaseModel):
     def to_where(self, session: Session, viewer: Viewer | None = None) -> ColumnElement[bool]:
         """Validate permissions and return SQLAlchemy ColumnElement for WHERE clause."""
         self.validate_permissions(viewer)
+        self._validate_location_scope(session, viewer)
 
         alert_key = self.alert_code or ("has_alerts" if self.has_alerts is not None else None)
         alert_pred = None
