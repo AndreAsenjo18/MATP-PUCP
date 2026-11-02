@@ -52,11 +52,15 @@ def _piece(pipeline: Pipeline, denomination: str, **fields: Any) -> uuid.UUID:
         return piece.id
 
 
+def _detail(content: bytes) -> list[dict[str, str]]:
+    """The rows of a report CSV: under the heading and above the subtotals."""
+    return list(csv.DictReader(io.StringIO(content.decode("utf-8-sig").split("\r\n\r\n")[1])))
+
+
 def _csv_rows(pipeline: Pipeline, path: str, **params: Any) -> list[dict[str, str]]:
     response = pipeline.login("ADMIN").get(f"{BASE}/{path}", params={"format": "csv", **params})
     assert response.status_code == 200, response.text
-    lines = response.content.decode("utf-8-sig").splitlines()
-    return list(csv.DictReader(io.StringIO("\n".join(lines))))
+    return _detail(response.content)
 
 
 # --- 2.1 descripción como columna fija --------------------------------------------------------
@@ -192,7 +196,7 @@ def test_the_background_report_keeps_the_filters(
         assert job is not None and job.status == ExportJobStatus.READY
         assert job.params["piece_filter"]["material_id"] == str(wood.id)
         stored = pipeline.stored[job.storage_key]
-    rows = list(csv.DictReader(io.StringIO(stored.decode("utf-8-sig"))))
+    rows = _detail(stored)
     assert len(rows) == job.row_count
     assert f"Filtrada en segundo plano {tag}" in {row["Denominación"] for row in rows}
 
@@ -435,3 +439,106 @@ def test_the_grouped_report_can_be_built_in_the_background(
         assert job.params["group_by"] == "provenance"
         sheet = load_workbook(io.BytesIO(pipeline.stored[job.storage_key]))["Reporte"]
     assert sheet["A1"].value == "Piezas agrupadas por procedencia"
+
+
+# --- 2.5 la vista previa es igual a la descarga ------------------------------------------------
+def _whole_preview(pipeline: Pipeline, path: str, **params: Any) -> dict[str, Any]:
+    client = pipeline.login("ADMIN")
+    first = client.get(f"{BASE}/{path}", params={**params, "page_size": 100}).json()
+    rows = list(first["rows"])
+    page = 2
+    while len(rows) < first["total_rows"]:
+        rows += client.get(
+            f"{BASE}/{path}", params={**params, "page": page, "page_size": 100}
+        ).json()["rows"]
+        page += 1
+    return {**first, "rows": rows}
+
+
+def _as_text(row: list[Any]) -> list[str]:
+    return ["" if value is None else str(value) for value in row]
+
+
+def test_the_preview_and_the_excel_have_the_same_data_and_heading(pipeline: Pipeline) -> None:
+    """Escenario «Vista previa y Excel coinciden»."""
+    tag = _tag()
+    for index, author in enumerate(("Persona A", "persona a", "Persona B", None)):
+        _piece(pipeline, f"{tag} {index}", author=author, description=f"Descripción {index}")
+    params = {"group_by": "author", "denomination": tag}
+
+    preview = _whole_preview(pipeline, "by-attribute", **params)
+    response = pipeline.login("ADMIN").get(
+        f"{BASE}/by-attribute", params={**params, "format": "xlsx"}
+    )
+
+    book = load_workbook(io.BytesIO(response.content))
+    cells = [[cell.value for cell in row] for row in book["Reporte"].iter_rows()]
+    heading = cells.index(preview["columns"])
+    assert [_as_text(row) for row in cells[heading + 1 :]] == [_as_text(r) for r in preview["rows"]]
+    assert cells[0][0] == preview["title"]
+    assert preview["generated_by"] in cells[1][0]
+    for label, value in preview["filters"].items():
+        assert f"{label}: {value}" in cells[2][0]
+    summary = [[cell.value for cell in row] for row in book["Subtotales"].iter_rows()]
+    assert [row for row in summary if row[0] == "Autor"] == [
+        [s["group"], s["label"], s["count"]] for s in preview["subtotals"]
+    ]
+    assert ["Total", "Piezas", preview["totals"]["Piezas"]] in summary
+
+
+def test_the_preview_and_the_csv_have_the_same_data_and_heading(pipeline: Pipeline) -> None:
+    tag = _tag()
+    wood, metal = _terms(pipeline, VocabularyCode.MATERIAL, 2)
+    _with_materials(pipeline, f"{tag} con los dos", wood.id, metal.id)
+    params = {"group_by": "material", "denomination": tag}
+
+    preview = _whole_preview(pipeline, "by-attribute", **params)
+    response = pipeline.login("ADMIN").get(
+        f"{BASE}/by-attribute", params={**params, "format": "csv"}
+    )
+
+    heading, detail, summary = response.content.decode("utf-8-sig").split("\r\n\r\n")
+    assert heading.splitlines()[0] == preview["title"]
+    assert "Agrupado por: Material" in heading
+    rows = list(csv.reader(io.StringIO(detail)))
+    assert rows[0] == preview["columns"]
+    assert rows[1:] == [_as_text(row) for row in preview["rows"]]
+    lines = list(csv.reader(io.StringIO(summary)))
+    assert ["Material", wood.label, "1"] in lines and ["Material", metal.label, "1"] in lines
+    assert ["Total", "Piezas", "1"] in lines and ["Total", "Apariciones en grupos", "2"] in lines
+
+
+def test_the_filters_are_readable_in_the_preview(pipeline: Pipeline) -> None:
+    wood = _terms(pipeline, VocabularyCode.MATERIAL, 1)[0]
+
+    body = (
+        pipeline.login("ADMIN")
+        .get(f"{BASE}/by-attribute", params={"group_by": "author", "material_id": str(wood.id)})
+        .json()
+    )
+
+    assert body["filters"] == {
+        "Agrupado por": "Autor",
+        "Comodatos": "Incluidos",
+        "Material": wood.label,
+    }
+    assert body["generated_at"] and body["generated_by"]
+
+
+def test_the_notice_of_the_limited_location_is_the_same_in_the_file(pipeline: Pipeline) -> None:
+    """Escenario «Columna oculta por permisos»."""
+    with pipeline.session() as session, audit_context(session, _admin_context(session)):
+        box = session.scalar(select(Location).where(Location.level == LocationLevel.CONTAINER))
+        assert box is not None
+        piece = create_piece(
+            session, denomination=f"{_tag()} en caja", tenure_regime=TenureRegime.OWNED
+        )
+        piece.current_location_id = box.id
+        session.commit()
+    viewer = pipeline.login("INTERNAL_VIEWER")
+
+    response = viewer.get(f"{BASE}/inventory", params={"format": "csv"})
+
+    assert response.status_code == 200, response.text
+    heading = response.content.decode("utf-8-sig").split("\r\n\r\n")[0]
+    assert "Ubicación limitada a sede y espacio por tus permisos" in heading

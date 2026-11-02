@@ -263,6 +263,19 @@ def _piece_cells(
     return _PieceCells(reader, paths, reader.current_identifiers(ids), terms, materials)
 
 
+def _readable_filters(
+    session: Session, piece_filter: PieceFilter | None, include_loans_for_use: bool | None = None
+) -> dict[str, Any]:
+    """The filters in the words of the heading, the same in the preview and in the file (D3)."""
+    filters: dict[str, Any] = {}
+    if include_loans_for_use is not None:
+        filters["Comodatos"] = "Incluidos" if include_loans_for_use else "No incluidos"
+    if piece_filter is not None:
+        for active in piece_filter.describe(session):
+            filters[active.label] = active.value_display
+    return filters
+
+
 def _permanent_regimes(include_loans_for_use: bool) -> list[TenureRegime]:
     """Owned pieces and, by default, loans for use: never temporary loans (RN-004)."""
     return [TenureRegime.OWNED] + ([TenureRegime.LOAN_FOR_USE] if include_loans_for_use else [])
@@ -282,7 +295,7 @@ def inventory(
     regimes = _permanent_regimes(include_loans_for_use)
     statement = _active_pieces(session).where(Piece.tenure_regime.in_(regimes))
     title = "Inventario general"
-    filters: dict[str, Any] = {"include_loans_for_use": include_loans_for_use}
+    filters = _readable_filters(session, piece_filter, include_loans_for_use)
     paths = _collection_paths(session)
     if collection_id is not None:
         if collection_id not in paths:
@@ -293,7 +306,7 @@ def inventory(
             )
         statement = statement.where(Piece.collection_id.in_(_descendants(session, collection_id)))
         title = f"Inventario de la colección {paths[collection_id][-1].name}"
-        filters["collection"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
+        filters["Colección"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
     pieces = list(session.scalars(_with_piece_filter(statement, session, viewer, piece_filter)))
 
     cells = _piece_cells(session, viewer, pieces, paths)
@@ -488,6 +501,10 @@ def by_attribute(
         rows=rows,
         subtotals=subtotals,
         totals=totals,
+        filters={
+            "Agrupado por": label,
+            **_readable_filters(session, piece_filter, include_loans_for_use),
+        },
         masked_columns=["Ubicación"] if masked else [],
         message=message,
     )
@@ -552,9 +569,10 @@ def by_location(
     statement = _active_pieces(session).where(Piece.current_location_id.in_(scope))
     pieces = list(session.scalars(_with_piece_filter(statement, session, viewer, piece_filter)))
     path_text = PATH_SEPARATOR.join(node.name for node in reader.location_path(location_id))
-    filters: dict[str, Any] = {"location": path_text}
+    filters = _readable_filters(session, piece_filter)
+    filters["Ubicación"] = path_text
     if not_verified_since_days is not None:
-        filters["not_verified_since_days"] = not_verified_since_days
+        filters["Sin verificar desde hace (días)"] = not_verified_since_days
 
     if not exact:
         # Aggregated by space: counts only, never the exact place of a piece (RF-041).
@@ -655,7 +673,7 @@ def valuation(
     regimes = [TenureRegime.OWNED] + ([TenureRegime.LOAN_FOR_USE] if include_loans_for_use else [])
     statement = _active_pieces(session).where(Piece.tenure_regime.in_(regimes))
     title = "Valorización por colección"
-    filters: dict[str, Any] = {"include_loans_for_use": include_loans_for_use}
+    filters = _readable_filters(session, None, include_loans_for_use)
     paths = _collection_paths(session)
     if collection_id is not None:
         if collection_id not in paths:
@@ -666,7 +684,7 @@ def valuation(
             )
         statement = statement.where(Piece.collection_id.in_(_descendants(session, collection_id)))
         title = f"Valorización de la colección {paths[collection_id][-1].name}"
-        filters["collection"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
+        filters["Colección"] = PATH_SEPARATOR.join(c.name for c in paths[collection_id])
     pieces = list(session.scalars(statement))
     current = _current_valuations(session, [piece.id for piece in pieces])
 

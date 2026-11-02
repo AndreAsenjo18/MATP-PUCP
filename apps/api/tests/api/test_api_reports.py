@@ -35,7 +35,9 @@ BASE = "/api/v1/reports"
 def _csv(pipeline: Pipeline, path: str, role: str = "ADMIN", **params: Any) -> list[dict[str, str]]:
     response = pipeline.login(role).get(f"{BASE}/{path}", params={"format": "csv", **params})
     assert response.status_code == 200, response.text
-    return list(csv.DictReader(io.StringIO(response.content.decode("utf-8-sig"))))
+    # Under the heading and above the subtotals, each after a blank line.
+    detail = response.content.decode("utf-8-sig").split("\r\n\r\n")[1]
+    return list(csv.DictReader(io.StringIO(detail)))
 
 
 def _admin_context(session: Any) -> AuditContext:
@@ -202,7 +204,7 @@ def test_by_location_marks_never_verified_pieces_and_filters_by_age(pipeline: Pi
     assert everything["totals"]["Nunca verificadas"] >= 1
     names = {row["Denominación"] for row in stale}
     assert f"Nunca vista {tag}" in names and f"Vista hoy {tag}" not in names
-    assert everything["filters"]["location"]
+    assert everything["filters"]["Ubicación"]
 
 
 def test_detail_below_the_space_needs_the_exact_location_permission(pipeline: Pipeline) -> None:
