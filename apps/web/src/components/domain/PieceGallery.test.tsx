@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchPieceMedia, initialPhoto, restrictionLabel, type PieceMedia } from "@/lib/data/media";
+import { fetchPieceMedia, initialPhoto, type PieceMedia } from "@/lib/data/media";
 import { render, visibleText } from "@/test/render";
 import { PieceGalleryView } from "./PieceGallery";
 
@@ -63,12 +63,12 @@ describe("galería de la ficha (Req: Gestión de galería con foto principal ún
     expect(html).not.toContain("a/display.webp");
   });
 
-  it("etiqueta la restricción heredada del comodato (RN-008) y no ofrece descargas", () => {
-    const media = [photo("c", { is_primary: true, usage_restriction: NO_PUBLICAR, restriction_note: "Restricción contractual del comodato (RN-008)" })];
+  it("etiqueta la restricción efectiva con su origen (RN-008) y no ofrece descargas", () => {
+    const media = [photo("c", { is_primary: true, effective_restriction: NO_PUBLICAR, restriction_origin: "colección" })];
 
     const html = render(<PieceGalleryView media={media} pieceTitle="Manta" selectedId={null} />);
 
-    expect(visibleText(html)).toContain("No publicar: Restricción contractual del comodato (RN-008)");
+    expect(visibleText(html)).toContain("No publicar (origen: colección)");
     expect(html).not.toMatch(/download=|Descargar/);
   });
 
@@ -82,12 +82,10 @@ describe("galería de la ficha (Req: Gestión de galería con foto principal ún
 });
 
 describe("capa de datos de la galería", () => {
-  it("elige la principal o la primera y oculta «Sin restricción»", () => {
+  it("elige la principal o la primera", () => {
     expect(initialPhoto([photo("a"), photo("b", { is_primary: true })])?.id).toBe("b");
     expect(initialPhoto([photo("a"), photo("b")])?.id).toBe("a");
     expect(initialPhoto([])).toBeNull();
-    expect(restrictionLabel({ usage_restriction: { id: "s", code: "SIN_RESTRICCION", label: "Sin restricción" }, restriction_note: null })).toBeNull();
-    expect(restrictionLabel({ usage_restriction: NO_PUBLICAR, restriction_note: null })).toBe("No publicar");
   });
 
   it("en modo live lee GET /pieces/{piece_id}/media", async () => {

@@ -244,7 +244,7 @@ export const xhrPut: PutFile = (upload, file, onProgress) =>
     request.send(file);
   });
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+export const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Estado inicial de cada foto, conservando lo ya sabido de una pasada anterior (reanudar). */
 export function initialProgress(files: PhotoFile[], previous: PhotoProgress[] = []): PhotoProgress[] {
@@ -256,7 +256,7 @@ export function initialProgress(files: PhotoFile[], previous: PhotoProgress[] = 
   });
 }
 
-async function withRetries(attempt: () => Promise<void>, sleep: (ms: number) => Promise<void>): Promise<void> {
+export async function withRetries(attempt: () => Promise<void>, sleep: (ms: number) => Promise<void>): Promise<void> {
   for (let index = 0; ; index += 1) {
     try {
       return await attempt();
