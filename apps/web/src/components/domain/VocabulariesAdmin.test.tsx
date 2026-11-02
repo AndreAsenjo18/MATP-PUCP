@@ -112,7 +112,7 @@ describe("corregir la etiqueta de un término (crud-manual-completo 2.3)", () =>
 
   it("una lista sin términos no tiene nada que corregir", () => {
     const button = render(<TermActions canFixLabel={false} onFixLabel={noop} onNewList={noop} />).match(/<button[^>]*>(?:(?!<\/button>).)*Corregir etiqueta/)?.[0];
-    expect(button).toContain("disabled");
+    expect(button).toMatch(/\sdisabled=""/);
   });
 
   it("ofrece los términos por orden alfabético, también los desactivados, y lo dice", () => {
