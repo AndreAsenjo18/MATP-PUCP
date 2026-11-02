@@ -19169,7 +19169,7 @@
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+            "description": "Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`."
           }
         },
         "security": [
@@ -19181,7 +19181,7 @@
         "tags": [
           "Préstamos y exposiciones"
         ],
-        "x-change": "prestamos-y-exposiciones",
+        "x-change": "rutas-prestamos-y-exposiciones",
         "x-status": "stub"
       },
       "post": {
@@ -19235,7 +19235,7 @@
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+            "description": "Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`."
           }
         },
         "security": [
@@ -19247,7 +19247,7 @@
         "tags": [
           "Préstamos y exposiciones"
         ],
-        "x-change": "prestamos-y-exposiciones",
+        "x-change": "rutas-prestamos-y-exposiciones",
         "x-status": "stub"
       }
     },
@@ -19315,7 +19315,7 @@
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `prestamos-y-exposiciones`."
+            "description": "Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`."
           }
         },
         "security": [
@@ -19327,7 +19327,7 @@
         "tags": [
           "Préstamos y exposiciones"
         ],
-        "x-change": "prestamos-y-exposiciones",
+        "x-change": "rutas-prestamos-y-exposiciones",
         "x-status": "stub"
       }
     },

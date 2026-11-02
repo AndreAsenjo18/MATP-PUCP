@@ -1,4 +1,4 @@
-"""Loan and exhibition contract stubs (prestamos-y-exposiciones; RF-018)."""
+"""Loan and exhibition contract stubs (rutas-prestamos-y-exposiciones; RF-018)."""
 
 import uuid
 
@@ -9,7 +9,7 @@ from app.api.deps import CurrentUserDep
 from app.api.errors import COMMON_ERROR_RESPONSES
 from app.api.stubs import not_implemented, stub
 
-CHANGE_LOANS = "prestamos-y-exposiciones"
+CHANGE_LOANS = "rutas-prestamos-y-exposiciones"
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Préstamos y exposiciones"])
 

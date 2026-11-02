@@ -6,7 +6,7 @@
 
 - **Diagrama del modelo vigente**: [`docs/diagramas/modelo-datos/er.puml`](diagramas/modelo-datos/er.puml), generado desde los modelos SQLAlchemy con `npm run diagrams:er` y verificado en CI con `npm run diagrams:check`.
 - **Extensiones previstas en el expediente**: [`docs/diagramas/cap6/er_extensiones.puml`](diagramas/cap6/er_extensiones.puml) (capítulo 6). Las extensiones de la tabla siguiente siguen planificadas; cada una indica su change o spec de origen.
-- **Préstamos y exposiciones**: `loan` y `loan_item` ya forman parte del modelo vigente y permiten expedientes con varias piezas. El servicio, sus rutas y los valores de sus vocabularios permanecen en el change `prestamos-y-exposiciones`; K1 debe validar esos valores.
+- **Préstamos y exposiciones**: `loan` y `loan_item` ya forman parte del modelo vigente y permiten expedientes con varias piezas. El servicio ya está implementado (`prestamos-y-exposiciones`, archivado) y sus rutas quedan en el change `rutas-prestamos-y-exposiciones`; K1 debe validar los valores de sus vocabularios.
 
 ### Extensiones planificadas
 

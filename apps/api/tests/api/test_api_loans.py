@@ -12,4 +12,4 @@ def test_loan_contract_stubs_return_501(login_as: LoginAs) -> None:
     ):
         response = getattr(client, method)(path)
         assert response.status_code == 501
-        assert response.json()["change"] == "prestamos-y-exposiciones"
+        assert response.json()["change"] == "rutas-prestamos-y-exposiciones"
