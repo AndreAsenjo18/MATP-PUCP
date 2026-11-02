@@ -10,6 +10,7 @@
  */
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
 
+import { suggestCode } from "./admin";
 import { apiBaseUrl, getApiMode } from "./mode";
 
 export type LocationOut = ApiSchemas["LocationOut"];
@@ -51,6 +52,11 @@ export const LOCATION_ERROR_MESSAGES: Record<string, string> = {
   idempotency_key_reused: "La clave de reintento ya se usó con una petición distinta.",
   permission_denied: "Su rol no tiene permiso para esta operación.",
 };
+
+export function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
+}
 
 function client(devUser: string | undefined) {
   return createApiClient({ baseUrl: apiBaseUrl(), devUser });
@@ -233,6 +239,33 @@ export function filterDestinations(items: readonly DestinationOption[], query: s
 }
 
 /** El camino desde la sede hasta el lugar `id`, o `null` si no está en el árbol. */
+/** Los lugares finales para la ubicación inicial de una pieza, o `null` si no se pudieron cargar. */
+export async function fetchDestinations(devUser?: string): Promise<DestinationOption[] | null> {
+  const tree = await fetchLocationsTree(devUser);
+  return tree.status === "ok" ? finalLocations(tree.value) : null;
+}
+
+/** La ubicación inicial es el primer movimiento de la pieza: queda en su historial y en la auditoría. */
+export function firstLocationBody(toLocationId: string): MovementCreateInput {
+  return { movement_type: "MOVE", to_location_id: toLocationId, reason: "Ubicación inicial al registrar la pieza" };
+}
+
+/** Qué se puede agregar dentro de un lugar, en lenguaje claro (`crud-manual-completo` D3). */
+export function allowedTypesSentence(node: Pick<LocationNode, "name" | "level_type" | "allowed_child_types">): string {
+  const level = node.level_type.toLowerCase();
+  const types = node.allowed_child_types ?? [];
+  if (types.length === 0) return `En «${node.name}» (${level}) no se pueden agregar lugares.`;
+  return `Dentro de «${node.name}» (${level}) se puede agregar: ${types.map((type) => type.toLowerCase()).join(" o ")}.`;
+}
+
+/**
+ * Código propuesto para un lugar nuevo: su ruta sin la sede, porque un mismo nombre («Caja 14») puede
+ * repetirse en otro estante y el código no. Mismo tope que la API.
+ */
+export function proposedPlaceCode(trail: readonly Pick<LocationNode, "name">[], name: string): string {
+  return suggestCode([...trail.slice(1).map((node) => node.name), name].join(" ")).slice(0, 80);
+}
+
 export function locationTrail(nodes: readonly LocationNode[], id: string): LocationNode[] | null {
   for (const node of nodes) {
     if (node.id === id) return [node];

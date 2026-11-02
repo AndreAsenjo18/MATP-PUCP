@@ -70,7 +70,7 @@ export function LocationTreeView({
               {node.level_type}
             </Badge>
             {node.name}
-            {node.level_type === "Contenedor" && onDeactivate && (
+            {onDeactivate && (
               <Button
                 variant="outline"
                 size="sm"

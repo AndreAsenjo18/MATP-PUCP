@@ -37,6 +37,7 @@ describe("pieceFormSchema", () => {
         "period_text",
         "acquisition_method_term_id",
         "entry_date",
+        "initial_location_id",
         "dimensions_text",
         "material_term_ids",
         "conservation_state_id",

@@ -65,7 +65,7 @@ Cada vez que el sistema entrega, sin ocultar, datos del comodante o la ubicació
 
 ## Ubicaciones
 
-Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito solo mueve o verifica piezas, desde la [Búsqueda](busqueda.md#4-verificar-y-mover-desde-los-resultados); no crea lugares nuevos.
+Quien administra ubicaciones (el **Administrador** y la **Gestora de colecciones**) puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito solo mueve o verifica piezas, desde la [Búsqueda](busqueda.md#4-verificar-y-mover-desde-los-resultados); no crea lugares nuevos.
 
 ### La jerarquía
 
@@ -84,6 +84,17 @@ Un lugar solo puede crearse dentro del nivel inmediatamente superior (por ejempl
 3. Presione **Crear**. El árbol se actualiza con el lugar nuevo.
 
 Si el código ya existe, el sistema lo indica y no crea un lugar repetido.
+
+### Agregar o corregir un lugar desde la búsqueda
+
+No hace falta ir a Administración para agregar una caja que acaba de aparecer en un estante. Valen las mismas reglas, y todo queda en la auditoría.
+
+1. Vaya a **Búsqueda** y abra **Más filtros** (o pulse **Ver por ubicación**).
+2. En el árbol de **Ubicación**, elija el lugar. Debajo de su ruta aparecen **Agregar lugar aquí**, **Editar** y **Desactivar**.
+3. Para agregar, pulse **Agregar lugar aquí**. El sistema ya propone el **Tipo**, y solo ofrece los que ese lugar admite. Escriba el **Nombre**; el **Código** se propone a partir de la ruta y puede cambiarlo.
+4. Pulse **Agregar lugar**. El lugar aparece en el árbol y, si es un lugar final, ya se ofrece como destino de **Mover a**.
+
+Un contenedor no admite lugares dentro: **Agregar lugar aquí** aparece apagado y el sistema lo explica. **Editar** cambia solo el nombre. Quien no administra ubicaciones ve el mismo árbol para filtrar, sin estas acciones.
 
 ### Tipo de espacio
 

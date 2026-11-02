@@ -16,7 +16,8 @@
  * - Descripción: `description`, `author`.
  * - Procedencia y época: `provenance`, `period_text` (= `period.text`), `acquisition_method_term_id`,
  *   `entry_date` y `recorded_by` (este, solo en el alta: se repite al registrar piezas seguidas,
- *   `crud-manual-completo` D4).
+ *   `crud-manual-completo` D4). También `initial_location_id` en el alta, que no va en `POST /pieces`:
+ *   se registra después como el primer movimiento de la pieza.
  * - Medidas y materiales: `dimensions_text`, `material_term_ids`.
  * - Conservación: `conservation_state_id`.
  * - Observaciones: `notes`.
@@ -62,6 +63,8 @@ export const pieceFormSchema = z.object({
   entry_date: z.string(),
   /** Quién registró la pieza (solo se envía en el alta; dato personal, Ley 29733). */
   recorded_by: z.string(),
+  /** Lugar final donde queda la pieza al registrarla; cadena vacía = sin ubicación por ahora. */
+  initial_location_id: z.string(),
   dimensions_text: z.string(),
   /** Ids de los términos del vocabulario MATERIAL. */
   material_term_ids: z.array(z.string()),
@@ -89,6 +92,7 @@ export const EMPTY_PIECE_FORM: PieceFormValues = {
   acquisition_method_term_id: "",
   entry_date: "",
   recorded_by: "",
+  initial_location_id: "",
   dimensions_text: "",
   material_term_ids: [],
   conservation_state_id: "",
@@ -133,6 +137,7 @@ export function toFormValues(piece: ApiSchemas["PieceDetail"]): PieceFormValues 
     acquisition_method_term_id: piece.acquisition_method?.id ?? "",
     entry_date: piece.entry_date ?? "",
     recorded_by: piece.recorded_by ?? "",
+    initial_location_id: "",
     dimensions_text: piece.dimensions_text ?? "",
     material_term_ids: piece.materials.map((material) => material.id),
     conservation_state_id: piece.conservation_status?.id ?? "",
