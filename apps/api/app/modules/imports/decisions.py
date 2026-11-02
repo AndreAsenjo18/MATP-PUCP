@@ -29,16 +29,19 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
-from app.modules.imports.catalog_photos import photo_approval_counts
+from app.modules.imports.catalog_photos import mark_duplicates, photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchKind,
+    ImportPhoto,
+    ImportPhotoStatus,
     ImportRow,
     RowClassification,
     RowDecision,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.observations import is_observations, observation_diff, observation_line
 from app.modules.imports.service import ensure_idle, field_diff
 from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
 
@@ -213,6 +216,8 @@ def _resolve_to_piece(
             code="inventory_code_mismatch",
             details={"current": sorted(current), "incoming": sorted(incoming)},
         )
+    if is_observations(batch):  # formatos-reales-importacion, D8
+        return observation_diff(piece, observation_line(batch, mapped))
     assert batch.mapping is not None
     spec = MappingSpec.from_json(batch.mapping)
     return field_diff(piece, mapped, spec, _piece_identifiers(session, piece.id))
@@ -269,6 +274,12 @@ def decide_row(
             )
         resolution.pop("field_decisions", None)
         if as_new:
+            if is_observations(batch):
+                raise ValidationFailed(
+                    "Una observación no crea piezas: elija la pieza a la que corresponde o "
+                    "rechace la fila.",
+                    code="observation_creates_no_piece",
+                )
             _check_as_new(row)
             resolution.pop("target_piece_id", None)
             resolution["as_new"] = True
@@ -280,6 +291,17 @@ def decide_row(
             row.target_piece_id = target_piece_id
             resolution.pop("as_new", None)
             resolution["target_piece_id"] = str(target_piece_id)
+        # Its photos may be repeated on the new target, or no longer (task 4.3 of
+        # importacion-masiva-fotografias).
+        session.flush()
+        mark_duplicates(
+            session,
+            session.scalars(
+                select(ImportPhoto).where(
+                    ImportPhoto.row_id == row.id, ImportPhoto.status == ImportPhotoStatus.VERIFIED
+                )
+            ),
+        )
 
     if field_decisions:
         unknown = sorted(set(field_decisions) - set(row.diff or {}))

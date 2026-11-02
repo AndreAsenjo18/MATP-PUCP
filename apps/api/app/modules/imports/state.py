@@ -47,13 +47,18 @@ PHOTO_TRANSITIONS: dict[S, frozenset[S]] = {
 TRANSITIONS_BY_KIND: dict[K, dict[S, frozenset[S]]] = {
     K.SPREADSHEET: TRANSITIONS,
     K.PHOTOS: PHOTO_TRANSITIONS,
+    K.OBSERVATIONS: TRANSITIONS,  # the same pipeline as an Excel (formatos-reales-importacion, D8)
 }
+
+#: Kinds of batch with an Excel, its mapping, validation and rows.
+ROW_KINDS = frozenset({K.SPREADSHEET, K.OBSERVATIONS})
 
 #: States in which a batch admits new photos: while it is prepared, before approval (D2 of
 #: importacion-masiva-fotografias; D1 of importacion-fotos-a-catalogo).
 PHOTO_STATES_BY_KIND: dict[K, frozenset[S]] = {
     K.SPREADSHEET: frozenset({S.UPLOADED, S.MAPPED, S.VALIDATED, S.IN_PREVIEW}),
     K.PHOTOS: frozenset({S.UPLOADED, S.IN_PREVIEW}),
+    K.OBSERVATIONS: frozenset(),  # observations carry no photos
 }
 
 STATUS_LABELS: dict[S, str] = {
@@ -104,19 +109,27 @@ def batch_kind(batch: ImportBatch) -> K:
     return batch.kind or K.SPREADSHEET
 
 
-KIND_LABELS: dict[K, str] = {K.SPREADSHEET: "con Excel", K.PHOTOS: "de solo fotografías"}
+KIND_LABELS: dict[K, str] = {
+    K.SPREADSHEET: "con Excel",
+    K.PHOTOS: "de solo fotografías",
+    K.OBSERVATIONS: "de observaciones",
+}
 
 
-def require_kind(batch: ImportBatch, kind: K) -> None:
+def require_kind(batch: ImportBatch, kind: K | frozenset[K]) -> None:
     """``409 batch_kind_mismatch`` when an operation of one kind of batch reaches the other: a
-    ``PHOTOS`` batch has no mapping, validation nor rows (importacion-fotos-a-catalogo, D1)."""
+    ``PHOTOS`` batch has no mapping, validation nor rows (importacion-fotos-a-catalogo, D1).
+    ``kind`` may be several kinds, such as ``ROW_KINDS``."""
     current = batch_kind(batch)
-    if current == kind:
+    kinds = kind if isinstance(kind, frozenset) else frozenset({kind})
+    if current in kinds:
         return
+    required = kind if isinstance(kind, K) else K.SPREADSHEET
     raise ConflictError(
-        f"Esta operación es de un lote {KIND_LABELS[kind]} y el lote es {KIND_LABELS[current]}.",
+        f"Esta operación es de un lote {KIND_LABELS[required]} y el lote es "
+        f"{KIND_LABELS[current]}.",
         code="batch_kind_mismatch",
-        details={"batch_kind": current.value, "required_kind": kind.value},
+        details={"batch_kind": current.value, "required_kind": required.value},
     )
 
 

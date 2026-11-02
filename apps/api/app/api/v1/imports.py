@@ -39,6 +39,7 @@ from app.api.stubs import (
     implemented,
 )
 from app.core import jobs
+from app.core.config import Settings
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.storage import ObjectStorage
 from app.modules.audit.context import AuditContext, require_audit_context, set_audit_context
@@ -79,6 +80,7 @@ from app.modules.imports.models import (
     RowClassification,
     RowDecision,
 )
+from app.modules.imports.photo_quota import photo_quota_warning
 from app.modules.imports.photo_review import OPERATION_LABELS, decide_photos, photos_query
 from app.modules.imports.photo_review import summary as photo_summary
 from app.modules.imports.photo_review import thumbnail_url as photo_thumbnail_url
@@ -139,7 +141,7 @@ from app.modules.imports.service import (
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import STATUS_LABELS, lock_batch, require_kind
+from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 
@@ -175,9 +177,10 @@ def get_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
 
 def get_spreadsheet_batch(session: SessionDep, batch_id: uuid.UUID) -> ImportBatch:
     """The batch of an Excel-only operation (mapping, validation, rows, embedded images): a
-    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1)."""
+    ``PHOTOS`` batch answers ``409 batch_kind_mismatch`` (importacion-fotos-a-catalogo, D1). An
+    ``OBSERVATIONS`` batch is an Excel too (formatos-reales-importacion, D8)."""
     batch = get_batch(session, batch_id)
-    require_kind(batch, ImportBatchKind.SPREADSHEET)
+    require_kind(batch, ROW_KINDS)
     return batch
 
 
@@ -189,12 +192,21 @@ KIND_CONFLICT = {
 }
 
 
-def batch_out(session: SessionDep, batch: ImportBatch) -> ImportBatchOut:
+def batch_out(
+    session: SessionDep, batch: ImportBatch, settings: Settings | None = None
+) -> ImportBatchOut:
     approval = (
         approval_summary(session, batch.id).as_json()
         if batch.status in APPROVABLE_STATUSES
         else None
     )
+    if approval is not None and settings is not None:  # outside the token: it does not change
+        approval["photo_quota_warning"] = photo_quota_warning(
+            session,
+            batch.id,
+            quota_bytes=settings.media_quota_bytes,
+            keep_originals=settings.media_keep_originals,
+        )
     out = ImportBatchOut.from_batch(batch, approval)
     if batch.status in APPROVABLE_STATUSES:
         # Rows a person already decided: validating again recalculates every row and drops them.
@@ -342,8 +354,10 @@ def list_import_batches(
     summary="Estado de un lote, con la etapa en curso y su avance",
     **implemented(),
 )
-def get_import(batch_id: uuid.UUID, session: SessionDep, user: Preparer) -> ImportBatchOut:
-    return batch_out(session, get_batch(session, batch_id))
+def get_import(
+    request: Request, batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    return batch_out(session, get_batch(session, batch_id), request.app.state.settings)
 
 
 def _mapping_spec(
@@ -429,6 +443,7 @@ def set_import_mapping(
         sheet_name=body.sheet_name,
         header_row=body.header_row,
         max_rows=request.app.state.settings.import_max_rows,
+        observations=body.observations,
     )
     batch.template_id = body.template_id  # the template the mapping came from, if any
     session.commit()

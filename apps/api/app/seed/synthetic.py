@@ -104,7 +104,8 @@ DEMO_BATCH_TEMPLATE_MAPPING: dict[str, object] = {
             "transforms": ["trim"],
         },
         {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
-        {"source": "FOTO", "target": {"kind": "source_payload"}},
+        # The photo file column (importacion-masiva-fotografias, task 3.4).
+        {"source": "FOTO", "target": {"kind": "field", "name": "photo_filename"}},
     ],
 }
 # Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of

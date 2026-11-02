@@ -21,6 +21,7 @@ or were already applied. Nothing reaches the catalogue until the batch is approv
 """
 
 import logging
+import re
 import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -31,7 +32,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import DomainError
 from app.modules.identification.models import NormalizationRule
 from app.modules.identification.params import session_params
-from app.modules.imports.catalog_photos import match_catalog_batch
+from app.modules.imports.catalog_photos import mark_duplicates, match_catalog_batch
+from app.modules.imports.mapping import PHOTO_FILE_FIELD
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchKind,
@@ -58,6 +60,7 @@ MATCHING_STATES = frozenset({S.MAPPED, S.VALIDATED, S.IN_PREVIEW})
 MATCHING_STATES_BY_KIND = {
     ImportBatchKind.SPREADSHEET: MATCHING_STATES,
     ImportBatchKind.PHOTOS: frozenset({S.UPLOADED, S.IN_PREVIEW}),
+    ImportBatchKind.OBSERVATIONS: frozenset(),  # no photos (formatos-reales-importacion, D8)
 }
 AUTOMATIC = frozenset({M.MATCHED, M.AMBIGUOUS, M.UNMATCHED})
 
@@ -76,8 +79,8 @@ class PhotoMatchingFailed(DomainError):
 def batch_rows(session: Session, batch_id: uuid.UUID) -> list[BatchRow]:
     """Validated rows of the batch for the matching; empty while the batch is not validated.
 
-    The photo file column is read once ``MappingSpec`` has it (task 3.4); until then that path
-    finds nothing.
+    The photo file column of the mapping (``photo_filename``, task 3.4) may name several files,
+    separated by «;», «,» or a line break.
     """
     rows = []
     for row_id, mapped in session.execute(
@@ -88,8 +91,16 @@ def batch_rows(session: Session, batch_id: uuid.UUID) -> list[BatchRow]:
         identifiers = tuple(
             (item["type"], item.get("normalized_value")) for item in mapped.get("identifiers") or []
         )
-        rows.append(BatchRow(row_id, identifiers))
+        files = (mapped.get("fields") or {}).get(PHOTO_FILE_FIELD)
+        rows.append(BatchRow(row_id, identifiers, photo_filenames(files)))
     return rows
+
+
+def photo_filenames(value: object) -> tuple[str, ...]:
+    """The file names of a cell of the photo file column («I-9101.jpg; I-9101 (2).jpg»)."""
+    if value is None:
+        return ()
+    return tuple(name.strip() for name in re.split(r"[;,\n]", str(value)) if name.strip())
 
 
 def _candidate_ids(row_ids: Sequence[uuid.UUID]) -> list[str] | None:
@@ -159,6 +170,7 @@ def match_batch_photos(
             for name, value in values.items():
                 if getattr(photo, name) != value:  # an unchanged photo is not written again
                     setattr(photo, name, value)
+        mark_duplicates(session, photos)  # repeated on the piece a row updates (task 4.3)
         session.flush()
     except DomainError:
         raise

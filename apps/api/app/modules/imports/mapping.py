@@ -86,12 +86,16 @@ FIELD_TARGETS: dict[str, str] = {
     "lender_name": "Comodante",
     "loan_agreement_ref": "Referencia del contrato de comodato",
     "temporary_inventory_number": "Número de inventario temporal",
+    "photo_filename": "Archivo de la foto",
 }
+# The photo file column (importacion-masiva-fotografias, task 3.4; design D3): not a field of the
+# record, it only tells the photo matching which files of the batch belong to the row.
+PHOTO_FILE_FIELD = "photo_filename"
 DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
 # In v1 ``denomination`` may come from a default too (design D2); v0 keeps DEFAULT_TARGETS.
 DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
-PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"})
+PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection", PHOTO_FILE_FIELD})
 
 
 def _collection_name_key(name: str) -> str:
@@ -774,9 +778,16 @@ def _splits(column: ColumnSpecV1) -> bool:
 
 
 def validate_mapping(
-    spec: "MappingSpec | MappingSpecV1", headers: list[str], ctx: MappingContext
+    spec: "MappingSpec | MappingSpecV1",
+    headers: list[str],
+    ctx: MappingContext,
+    *,
+    observations: bool = False,
 ) -> list[MappingError]:
-    """Errors of a mapping (v0 or v1) against the file headers and the reference data."""
+    """Errors of a mapping (v0 or v1) against the file headers and the reference data.
+
+    A sheet of observations creates no piece, so it needs a column of codes to find the piece
+    instead of the denomination (formatos-reales-importacion, D8)."""
     plan = ctx.plan(spec)
     errors: list[MappingError] = []
     known = set(headers)
@@ -860,7 +871,20 @@ def validate_mapping(
         elif isinstance(target, TermsTarget):  # only v1 has ``terms`` columns
             errors += _terms_errors(target.vocabulary, column.value_map or {}, source, ctx)
     errors += _defaults_errors(plan, ctx)
-    if "denomination" not in scalar_targets and not _denomination_default(plan):
+    if observations:
+        if not any(
+            isinstance(column, ColumnSpecV1)
+            and isinstance(column.target, IdentifierTarget | IdentifiersTarget)
+            for _source, column in plan.columns
+        ):
+            errors.append(
+                MappingError(
+                    "identifier_required",
+                    "Indique la columna de los códigos: con ellos se encuentra la pieza de cada "
+                    "observación.",
+                )
+            )
+    elif "denomination" not in scalar_targets and not _denomination_default(plan):
         errors.append(
             MappingError(
                 "denomination_required",

@@ -22,8 +22,10 @@ qué cargar primero, qué hace cada plantilla y qué revisar antes de aprobar.
    completos.
 2. **Después el inventario general.** Sus filas que ya se cargaron por colección aparecen como **actualizaciones** o
    **posibles duplicados**: revise el diff y decida qué valor queda [SUPUESTO FR6: manda el archivo de la colección].
-3. **No cargue** las hojas «Errores identificados» y «Errores pendientes» como piezas: son observaciones de la
-   consultoría. Se cargarán como observaciones de calidad cuando esté disponible esa opción.
+3. **Al final, las hojas «Errores identificados» y «Errores pendientes»**, como **observaciones**: no son piezas. Al
+   elegir la hoja, el asistente marca solo «Cargar esta hoja como observaciones de piezas ya registradas»; cada fila
+   agrega una nota a la pieza de sus códigos y las que no se encuentran quedan en la bitácora. Paso a paso: [Cargar
+   las hojas de errores de la consultoría](importacion.md#8-cargar-las-hojas-de-errores-de-la-consultoría).
 
 Un lote admite hasta 20 000 filas; el inventario general (≈ 4 400 filas) entra en un solo lote.
 

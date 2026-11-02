@@ -61,6 +61,11 @@ class ApprovalSummaryOut(BaseModel):
         description="Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver)."
     )
     summary_token: str = Field(description="Huella del resumen; se envía al aprobar.")
+    photo_quota_warning: str | None = Field(
+        None,
+        description="Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la "
+        "aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).",
+    )
     photos: PhotoApprovalOut | None = Field(
         None, description="Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
     )
@@ -320,6 +325,13 @@ class MappingRequest(BaseModel):
     sheet_name: str | None = Field(None, description="Otra hoja: se vuelve a leer el archivo.")
     header_row: int | None = Field(
         None, ge=1, description="Otra fila de cabeceras: se vuelve a leer el archivo."
+    )
+    observations: bool | None = Field(
+        None,
+        description="`true`: la hoja se carga como observaciones de piezas ya registradas, "
+        "emparejadas por sus códigos; no crea piezas (hojas «Errores…» de la consultoría, "
+        "`formatos-reales-importacion` D8). `false`: vuelve a cargarla como piezas. Sin valor, "
+        "el lote conserva su tipo.",
     )
     columns: list[ColumnMapping] = Field(default_factory=list)
     defaults: dict[str, str] = Field(

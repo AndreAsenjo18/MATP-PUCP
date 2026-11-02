@@ -5,17 +5,19 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import BusinessRuleViolation, DomainError, NotFound, ValidationFailed
-from app.core.models_base import new_uuid
+from app.core.models_base import new_uuid, utcnow
 from app.modules.audit.context import refined_context, require_audit_context
+from app.modules.audit.soft_delete import soft_delete
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
-from app.modules.catalog.models import Piece
+from app.modules.catalog.models import Piece, PieceMaterial
 from app.modules.catalog.schemas import FieldIssue
 from app.modules.catalog.tenure import audit_reason, check_transition, legal_owner_for
-from app.modules.collections.models import Collection
+from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
 from app.modules.identification.models import NormalizationStatus
 from app.modules.identification.normalization import TYPE_INVENTORY, TYPE_OTHER, is_absence_marker
 from app.modules.identification.normalization import normalize as normalize_value
@@ -429,6 +431,53 @@ def _creates_cycle(session: Session, piece_id: uuid.UUID, parent_id: uuid.UUID) 
         ancestor = session.get(Piece, cursor, execution_options={INCLUDE_DELETED: True})
         cursor = ancestor.parent_piece_id if ancestor else None
     return False
+
+
+MATERIAL_REMOVED = "Material quitado de la ficha"
+
+
+def set_materials(session: Session, piece: Piece, term_ids: list[uuid.UUID]) -> None:
+    """Replace the materials of the sheet (RF-006). Each one must be an active term of the
+    MATERIAL list; the ones removed are soft-deleted with a reason (RN-005) and the new ones added,
+    and a real change moves the version of the piece, so a concurrent edit still sees it."""
+    require_audit_context(session)
+    wanted = list(dict.fromkeys(term_ids))
+    if wanted:
+        valid = set(
+            session.scalars(
+                select(Term.id)
+                .join(Vocabulary, Vocabulary.id == Term.vocabulary_id)
+                .where(
+                    Term.id.in_(wanted),
+                    Term.is_active.is_(True),
+                    Vocabulary.code == VocabularyCode.MATERIAL,
+                )
+            )
+        )
+        invalid = [str(term_id) for term_id in wanted if term_id not in valid]
+        if invalid:
+            raise ValidationFailed(
+                "Algún material no existe en la lista de materiales o está desactivado.",
+                code="invalid_material",
+                details={"field": "material_term_ids", "term_ids": invalid},
+            )
+    current = list(
+        session.scalars(
+            select(PieceMaterial).where(
+                PieceMaterial.piece_id == piece.id, PieceMaterial.deleted_at.is_(None)
+            )
+        )
+    )
+    present = {material.term_id for material in current}
+    removed = [material for material in current if material.term_id not in wanted]
+    added = [term_id for term_id in wanted if term_id not in present]
+    for material in removed:
+        soft_delete(session, material, MATERIAL_REMOVED)
+    for term_id in added:
+        session.add(PieceMaterial(id=new_uuid(), piece_id=piece.id, term_id=term_id))
+    if removed or added:
+        piece.updated_at = utcnow()  # the materials are part of the sheet: its version moves
+    session.flush()
 
 
 def set_parent(session: Session, piece: Piece, parent_id: uuid.UUID | None) -> None:
