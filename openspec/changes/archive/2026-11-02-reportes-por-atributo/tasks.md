@@ -21,4 +21,5 @@
 
 - [x] 4.1 OpenAPI: `by-attribute`, `group_by` y filtros de pieza registrados como ampliación en `docs/api/mapeo-endpoints-v1.md`, aviso al Líder por el enumerado; `npm run openapi && npm run openapi:client`, `npm run openapi:check` y la prueba de conformidad en verde
 - [x] 4.2 Manual de usuario: sección de reportes con el reporte agrupado y la vista previa en `docs/manual-usuario/`
-- [ ] 4.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate reportes-por-atributo --strict` en verde; tras aprobar el PR, `openspec archive reportes-por-atributo -y`
+- [x] 4.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate reportes-por-atributo --strict` en verde; tras aprobar el PR, `openspec archive reportes-por-atributo -y`
+  - Hecho (2026-11-02). Proyecto Compose aislado con PostgreSQL y MinIO (variables de `.env.example`, sin `web`) sobre `main` con #156 a #162 fusionados: migraciones hasta `0024_observation_batches`, `pytest -m postgres` 15 de 15 sobre `matp_test`. No se probó desde un navegador. En esa pila: `by-attribute` responde con los siete atributos, genera Excel (hojas «Reporte» y «Subtotales») y CSV, y un `group_by` no admitido da `422 invalid_report_parameter`. Que la vista previa coincida con el archivo lo comprueba la prueba del PR. PR #162 aprobado y fusionado.
