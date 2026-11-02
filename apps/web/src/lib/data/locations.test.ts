@@ -7,10 +7,10 @@ import {
   filterDestinations,
   filterLocationTree,
   finalLocations,
-  finalLocationsFromList,
   locationPathLabel,
   movePiece,
   newIdempotencyKey,
+  seenAgoText,
   updateLocation,
   type LocationNode,
 } from "./locations";
@@ -129,8 +129,19 @@ describe("modo live", () => {
       newIdempotencyKey(),
       DEV_USER,
     );
-    // El cuerpo 409 no tiene `code`/`message` de ErrorResponse, así que cae al mensaje genérico.
-    expect(result.status).toBe("rejected");
+    // Todo o nada: el 409 trae el detalle por pieza, que la barra de la búsqueda muestra (fusion-busqueda-deposito).
+    expect(result).toEqual({
+      status: "ok",
+      value: { registered: [], failures: [{ piece_id: "p1", code: "location_changed", message: "La pieza ya cambió de ubicación." }] },
+    });
+  });
+});
+
+describe("lote rechazado sin detalle por pieza", () => {
+  it("un error sin `failures` sigue siendo un rechazo con su mensaje", async () => {
+    useLive(async () => json(422, { code: "batch_too_large", message: "Demasiadas piezas.", details: {} }));
+    const result = await batchMovePieces({ movement_type: "MOVE", to_location_id: "loc-dest", items: [{ piece_id: "p1" }] }, newIdempotencyKey(), DEV_USER);
+    expect(result).toMatchObject({ status: "rejected", code: "batch_too_large", message: "El lote admite hasta 200 piezas." });
   });
 });
 
@@ -232,21 +243,24 @@ describe("destinos finales", () => {
     expect(finalLocations([])).toEqual([]);
   });
 
-  it("finalLocationsFromList da lo mismo para una lista plana y omite lo inactivo", () => {
-    const list = [
-      { id: "s", name: "Sede", level: "Sede", parent_id: null },
-      { id: "d", name: "Depósito", level: "Depósito", parent_id: "s" },
-      { id: "n", name: "Nivel 1", level: "Nivel", parent_id: "d" },
-      { id: "x", name: "Nivel viejo", level: "Nivel", parent_id: "d", is_active: false },
-    ];
-    expect(finalLocationsFromList(list)).toEqual([{ id: "n", label: "Sede › Depósito › Nivel 1", level: "Nivel" }]);
-  });
-
   it("filterDestinations busca en cualquier parte de la ruta sin acentos ni mayúsculas", () => {
     const finals = finalLocations(tree);
     expect(filterDestinations(finals, "rack a").map((item) => item.id)).toEqual(["c1", "n1"]);
     expect(filterDestinations(finals, "DEPOSITO 2").map((item) => item.id)).toEqual(["d2"]);
     expect(filterDestinations(finals, "  ")).toHaveLength(4);
     expect(filterDestinations(finals, "inexistente")).toEqual([]);
+  });
+});
+
+describe("cuándo se vio la pieza (fusion-busqueda-deposito 3.3)", () => {
+  const now = new Date(2026, 10, 1, 9, 30);
+  it("cuenta días de calendario: hoy, ayer o hace N días", () => {
+    expect(seenAgoText(new Date(2026, 10, 1, 0, 5).toISOString(), now)).toBe("visto hoy");
+    expect(seenAgoText(new Date(2026, 9, 31, 23, 50).toISOString(), now)).toBe("visto ayer");
+    expect(seenAgoText(new Date(2026, 9, 20, 12, 0).toISOString(), now)).toBe("visto hace 12 días");
+  });
+
+  it("una fecha posterior por un reloj adelantado se lee como hoy", () => {
+    expect(seenAgoText(new Date(2026, 10, 2, 8, 0).toISOString(), now)).toBe("visto hoy");
   });
 });

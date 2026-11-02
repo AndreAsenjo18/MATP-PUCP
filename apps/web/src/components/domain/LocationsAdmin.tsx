@@ -31,7 +31,7 @@ import {
 
 export const LOCATION_LEVELS: LocationLevelLabel[] = ["Sede", "Depósito", "Mueble", "Nivel", "Contenedor"];
 
-const LEVEL_INTENT: Record<string, BadgeIntent> = {
+export const LEVEL_INTENT: Record<string, BadgeIntent> = {
   Sede: "info",
   Depósito: "success",
   Mueble: "warning",

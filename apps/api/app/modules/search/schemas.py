@@ -47,6 +47,17 @@ class SearchHit(BaseModel):
         default=None,
         description="URL prefirmada de la miniatura de la foto principal; null si no tiene fotos.",
     )
+    location_id: uuid.UUID | None = Field(
+        default=None,
+        description="Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; "
+        "ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover "
+        "desde la búsqueda (fusion-busqueda-deposito 3.2).",
+    )
+    last_seen_at: datetime | None = Field(
+        default=None,
+        description="Último movimiento o verificación de la pieza («visto hace N días»), con la "
+        "misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).",
+    )
 
 
 class SearchResultPage(BaseModel):

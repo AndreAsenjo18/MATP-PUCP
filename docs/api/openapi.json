@@ -11532,6 +11532,32 @@
           }
         ],
         "properties": {
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Último movimiento o verificación de la pieza («visto hace N días»), con la misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).",
+            "title": "Last Seen At"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).",
+            "title": "Location Id"
+          },
           "match_reason": {
             "anyOf": [
               {
@@ -20493,6 +20519,25 @@
             }
           },
           {
+            "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "denomination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Denomination"
+            }
+          },
+          {
             "description": "Incluye subcolecciones.",
             "in": "query",
             "name": "collection_id",
@@ -20723,6 +20768,25 @@
                 }
               ],
               "title": "Provenance"
+            }
+          },
+          {
+            "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Description"
             }
           },
           {
@@ -24540,6 +24604,25 @@
             }
           },
           {
+            "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "denomination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Denomination"
+            }
+          },
+          {
             "description": "Incluye subcolecciones.",
             "in": "query",
             "name": "collection_id",
@@ -24770,6 +24853,25 @@
                 }
               ],
               "title": "Provenance"
+            }
+          },
+          {
+            "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Description"
             }
           },
           {

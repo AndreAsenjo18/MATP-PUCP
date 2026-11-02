@@ -6,24 +6,47 @@
  * quitar, qué coincidió por resultado, sugerencias sin resultados, miniatura de la foto
  * principal, exportación con selección de columnas, «Mis exportaciones» y exportación completa.
  */
-import { Download, Eraser, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "lucide-react";
+import { Download, FileSpreadsheet, MapPin, Plus, RefreshCw, SearchX, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
+import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
+import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
-import { fetchLocations } from "@/lib/data/locations";
-import { fetchPieceCatalogs, type TermOption } from "@/lib/data/pieces";
+import { cn } from "@/lib/cn";
+import {
+  LOCATION_ERROR_MESSAGES,
+  batchMovePieces,
+  fetchLocationsTree,
+  finalLocations,
+  movePiece,
+  newIdempotencyKey,
+  seenAgoText,
+  type LocationFailure,
+} from "@/lib/data/locations";
+import { fetchPieceCatalogs } from "@/lib/data/pieces";
+import {
+  EMPTY_SELECTION,
+  batchMoveRequest,
+  pageSelectionState,
+  setPageSelected,
+  toggleSelected,
+  verificationBody,
+  type Selection,
+} from "@/lib/data/selection";
 import {
   DEFAULT_EXPORT_COLUMNS,
   EMPTY_FILTERS,
   EXPORT_COLUMNS,
   SEARCH_PAGE_SIZE,
+  TEXT_FILTER_KEYS,
   activeChips,
+  filtersToSearchParams,
   canDownload,
   exportResults,
   fetchExportDownloadUrl,
@@ -41,8 +64,8 @@ import {
   type ExportJob,
   type FilterChip,
   type SearchFilters,
+  type SearchHit,
   type SearchPage,
-  type TenureRegimeLabel,
 } from "@/lib/data/search";
 
 /** Espera tras la última tecla antes de buscar. */
@@ -52,135 +75,14 @@ const JOBS_POLL_MS = 3000;
 const PERM_DONOR_DATA = "sensitive.donor_data";
 const PERM_LOAN_TERMS = "sensitive.loan_terms";
 
-export interface SearchOptions {
-  collections: TermOption[];
-  categories: TermOption[];
-  materials: TermOption[];
-  conservationStates: TermOption[];
-  locations: TermOption[];
+function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
 }
-
-const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [] };
-const TENURE_REGIMES: TenureRegimeLabel[] = ["Propiedad", "Comodato", "Préstamo Temporal"];
 
 function optionNames(options: SearchOptions): Record<string, string> {
-  return Object.fromEntries(Object.values(options).flatMap((list: TermOption[]) => list.map((option) => [option.id, option.label])));
-}
-
-function toBoolean(value: string): boolean | null {
-  return value === "" ? null : value === "true";
-}
-
-function toYear(value: string): number | null {
-  if (value.trim() === "") return null;
-  const year = Number(value);
-  return Number.isFinite(year) ? Math.trunc(year) : null;
-}
-
-function OptionSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string | null;
-  options: TermOption[];
-  onChange: (value: string | null) => void;
-}) {
-  return (
-    <Select label={label} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
-      <option value="">Todas</option>
-      {options.map((option) => (
-        <option key={option.id} value={option.id}>
-          {option.label}
-        </option>
-      ))}
-    </Select>
-  );
-}
-
-export function SearchFiltersPanel({
-  filters,
-  options,
-  onChange,
-  onClear,
-}: {
-  filters: SearchFilters;
-  options: SearchOptions;
-  onChange: (next: Partial<SearchFilters>) => void;
-  onClear: () => void;
-}) {
-  return (
-    <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
-      <Input
-        id="q"
-        label="Código o texto"
-        value={filters.q}
-        onChange={(event) => onChange({ q: event.target.value })}
-        placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
-        hint="Sin distinguir mayúsculas ni tildes."
-        className="p-2.5"
-      />
-      <OptionSelect label="Colección (con subcolecciones)" value={filters.collectionId} options={options.collections} onChange={(collectionId) => onChange({ collectionId })} />
-      <OptionSelect label="Categoría" value={filters.categoryId} options={options.categories} onChange={(categoryId) => onChange({ categoryId })} />
-      <OptionSelect label="Material" value={filters.materialId} options={options.materials} onChange={(materialId) => onChange({ materialId })} />
-      <OptionSelect
-        label="Estado de conservación"
-        value={filters.conservationStateId}
-        options={options.conservationStates}
-        onChange={(conservationStateId) => onChange({ conservationStateId })}
-      />
-      <OptionSelect label="Ubicación (con lo que contiene)" value={filters.locationId} options={options.locations} onChange={(locationId) => onChange({ locationId })} />
-      <Select
-        label="Régimen de tenencia"
-        value={filters.tenureRegime ?? ""}
-        onChange={(event) => onChange({ tenureRegime: (event.target.value || null) as TenureRegimeLabel | null })}
-      >
-        <option value="">Todos</option>
-        {TENURE_REGIMES.map((regime) => (
-          <option key={regime} value={regime}>
-            {regime}
-          </option>
-        ))}
-      </Select>
-      <Select
-        label="Código I"
-        value={filters.hasInventoryCode === null ? "" : String(filters.hasInventoryCode)}
-        onChange={(event) => onChange({ hasInventoryCode: toBoolean(event.target.value) })}
-      >
-        <option value="">Con o sin código I</option>
-        <option value="true">Con código I</option>
-        <option value="false">Sin código I</option>
-      </Select>
-      <div className="grid grid-cols-2 gap-2">
-        <Input
-          label="Época desde (año)"
-          type="number"
-          value={filters.epochStartYear ?? ""}
-          onChange={(event) => onChange({ epochStartYear: toYear(event.target.value) })}
-        />
-        <Input
-          label="Época hasta (año)"
-          type="number"
-          value={filters.epochEndYear ?? ""}
-          onChange={(event) => onChange({ epochEndYear: toYear(event.target.value) })}
-        />
-      </div>
-      <Select
-        label="Completitud de la ficha"
-        value={filters.hasAlerts === null ? "" : String(filters.hasAlerts)}
-        onChange={(event) => onChange({ hasAlerts: toBoolean(event.target.value) })}
-      >
-        <option value="">Todas las piezas</option>
-        <option value="true">Solo piezas incompletas</option>
-        <option value="false">Solo piezas completas</option>
-      </Select>
-      <Button variant="secondary" icon={Eraser} onClick={onClear}>
-        Limpiar filtros
-      </Button>
-    </Card>
-  );
+  const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
+  return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
 }
 
 export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; onRemove: (key: FilterChip["key"]) => void }) {
@@ -204,15 +106,66 @@ export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; on
   );
 }
 
+/** «Seleccionar toda la página» y cuántas piezas hay elegidas, también de otras páginas. */
+function PageSelection({
+  hits,
+  selection,
+  onSelectionChange,
+}: {
+  hits: SearchHit[];
+  selection: Selection;
+  onSelectionChange: (next: Selection) => void;
+}) {
+  const state = pageSelectionState(selection, hits);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-tinta">
+      <label className="flex min-h-11 items-center gap-2">
+        <input
+          type="checkbox"
+          checked={state === "all"}
+          aria-checked={state === "some" ? "mixed" : state === "all"}
+          onChange={() => onSelectionChange(setPageSelected(selection, hits, state !== "all"))}
+          className="size-6 accent-terracota"
+        />
+        Seleccionar toda la página
+      </label>
+      {selection.size > 0 && (
+        <span className="flex items-center gap-2" aria-live="polite">
+          {selection.size} pieza{selection.size === 1 ? "" : "s"} seleccionada{selection.size === 1 ? "" : "s"}
+          <Button variant="outline" size="sm" onClick={() => onSelectionChange(EMPTY_SELECTION)}>
+            Quitar la selección
+          </Button>
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function SearchResults({
   page,
   onPage,
   onSuggestion,
+  chips = [],
+  onRemoveChip,
+  selection,
+  onSelectionChange,
 }: {
   page: SearchPage;
   onPage?: (page: number) => void;
   onSuggestion?: (suggestion: string) => void;
+  /** Filtros aplicados: sin resultados se ofrece quitarlos uno por uno (fusion-busqueda-deposito 2.3). */
+  chips?: FilterChip[];
+  onRemoveChip?: (key: FilterChip["key"]) => void;
+  /**
+   * Piezas elegidas para verificar o mover (fusion-busqueda-deposito 3.1). Sin ella no hay casillas:
+   * solo se pasa a quien tiene el permiso de registrar movimientos.
+   */
+  selection?: Selection;
+  onSelectionChange?: (next: Selection) => void;
 }) {
+  // Los filtros que se pueden quitar ya están en `chips`; de las sugerencias quedan las demás.
+  const removable = onRemoveChip ? chips : [];
+  const suggestions = (page.suggestions ?? []).filter((suggestion) => !(removable.length > 0 && filterOfSuggestion(suggestion)));
   const pages = Math.max(1, Math.ceil(page.total / Math.max(1, page.limit)));
   const excluded = page.excluded_uninterpreted_period ?? 0;
   return (
@@ -227,9 +180,20 @@ export function SearchResults({
         <Card className="flex flex-col items-center gap-2 border-dashed text-center text-base text-gris-texto">
           <SearchX size={24} aria-hidden="true" />
           No se encontraron piezas con estos filtros.
-          {(page.suggestions ?? []).length > 0 && (
+          {removable.length > 0 && onRemoveChip && (
+            <ul className="flex flex-col gap-1 text-left text-sm text-tinta" aria-label="Quitar filtros uno por uno">
+              {removable.map((chip) => (
+                <li key={chip.key}>
+                  <button type="button" onClick={() => onRemoveChip(chip.key)} className="text-terracota underline">
+                    Quite el filtro {chip.label}: {chip.value}.
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {suggestions.length > 0 && (
             <ul className="flex flex-col gap-1 text-left text-sm text-tinta">
-              {(page.suggestions ?? []).map((suggestion) => (
+              {suggestions.map((suggestion) => (
                 <li key={suggestion}>
                   {filterOfSuggestion(suggestion) && onSuggestion ? (
                     <button type="button" onClick={() => onSuggestion(suggestion)} className="text-terracota underline">
@@ -244,11 +208,38 @@ export function SearchResults({
           )}
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {page.items.map((hit) => (
-            <PieceCard key={hit.piece.id} {...pieceCardProps(hit.piece)} thumbnailUrl={hit.thumbnail_url} matchReason={matchReasonText(hit)} />
-          ))}
-        </div>
+        <>
+          {selection && onSelectionChange && (
+            <PageSelection hits={page.items} selection={selection} onSelectionChange={onSelectionChange} />
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {page.items.map((hit) => {
+              const card = (
+                <PieceCard
+                  compact
+                  {...pieceCardProps(hit.piece)}
+                  thumbnailUrl={hit.thumbnail_url}
+                  matchReason={matchReasonText(hit)}
+                  seenText={hit.last_seen_at ? seenAgoText(hit.last_seen_at) : null}
+                />
+              );
+              if (!selection || !onSelectionChange) return <div key={hit.piece.id}>{card}</div>;
+              // La casilla va al lado de la tarjeta, que es un enlace a la ficha.
+              return (
+                <div key={hit.piece.id} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selection.has(hit.piece.id)}
+                    onChange={() => onSelectionChange(toggleSelected(selection, hit))}
+                    aria-label={`Seleccionar ${hit.piece.denomination}`}
+                    className="mt-3 size-7 shrink-0 accent-terracota lg:mt-4 lg:size-6"
+                  />
+                  <div className="min-w-0 flex-1">{card}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
       {page.total > page.limit && onPage && (
         <div className="flex items-center justify-between gap-3">
@@ -525,17 +516,29 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [jobsKey, setJobsKey] = useState(0);
   const canExport = hasPermission("exports.run");
+  // Verificar y mover desde los resultados: solo con el permiso de la antigua vista de depósito (3.1).
+  const canMove = hasPermission("movements.register");
+  const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
+  const [acting, setActing] = useState(false);
+  const [feedback, setFeedback] = useState<SelectionFeedback | null>(null);
+  // Sube al verificar o mover, para que los resultados muestren la ubicación nueva (3.2).
+  const [reloadKey, setReloadKey] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Cada «Ver por ubicación» vuelve a montar el panel con «Más filtros» abierto (design D3).
+  const [locationRevealKey, setLocationRevealKey] = useState(0);
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchPieceCatalogs(), fetchLocations({}, devUser)]).then(([catalogs, locations]) => {
+    Promise.all([fetchPieceCatalogs(), fetchLocationsTree(devUser)]).then(([catalogs, locations]) => {
       if (!active) return;
+      const tree = locations.status === "ok" ? locations.value : [];
       setOptions({
         collections: catalogs.status === "ok" ? catalogs.catalogs.collections : [],
         categories: catalogs.status === "ok" ? catalogs.catalogs.categories : [],
         materials: catalogs.status === "ok" ? catalogs.catalogs.materials : [],
         conservationStates: catalogs.status === "ok" ? catalogs.catalogs.conservationStates : [],
-        locations: locations.status === "ok" ? locations.value.map((location) => ({ id: location.id, label: `${location.name} (${location.level})` })) : [],
+        locations: flattenLocationTree(tree),
+        locationTree: tree,
       });
     });
     return () => {
@@ -543,15 +546,16 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     };
   }, [devUser]);
 
-  // El texto espera a que el usuario deje de escribir; los demás filtros se aplican al instante.
+  // Los textos esperan a que el usuario deje de escribir; los demás filtros se aplican al instante.
   useEffect(() => {
-    const delay = filters.q === query.q ? 0 : TYPING_DEBOUNCE_MS;
+    const typing = TEXT_FILTER_KEYS.some((key) => filters[key] !== query[key]);
+    const delay = typing ? TYPING_DEBOUNCE_MS : 0;
     const timer = setTimeout(() => {
       setQuery(filters);
       setPage(1);
     }, delay);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `query.q` solo decide la espera
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- los textos de `query` solo deciden la espera
   }, [filters]);
 
   useEffect(() => {
@@ -569,9 +573,56 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
     return () => {
       active = false;
     };
-  }, [query, page, devUser]);
+  }, [query, page, devUser, reloadKey]);
+
+  // Los filtros aplicados viajan en la dirección, sin sumar una entrada al historial por cada tecla (2.3).
+  useEffect(() => {
+    const search = filtersToSearchParams(query).toString();
+    const url = search ? `${window.location.pathname}?${search}` : window.location.pathname;
+    if (url !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", url);
+  }, [query]);
 
   const names = useMemo(() => optionNames(options), [options]);
+  const destinations = useMemo(() => finalLocations(options.locationTree), [options.locationTree]);
+
+  // «Verificar»: una verificación física por pieza elegida, la operación de la antigua vista de depósito.
+  async function verifySelection() {
+    const pieces = [...selection.values()];
+    setActing(true);
+    setFeedback(null);
+    const results = await Promise.all(pieces.map((piece) => movePiece(piece.id, verificationBody(), devUser)));
+    setActing(false);
+    const failed = results.filter((result): result is LocationFailure => result.status !== "ok");
+    setFeedback(
+      failed.length === 0
+        ? { kind: "ok", text: `Verificación física registrada para ${pieces.length} pieza${pieces.length === 1 ? "" : "s"}.` }
+        : { kind: "error", text: `No se verificaron ${failed.length} de ${pieces.length} piezas: ${describeLocationFailure(failed[0])}` },
+    );
+    setReloadKey((key) => key + 1);
+  }
+
+  // «Mover a»: un solo lote, todo o nada, con la ubicación que se vio de cada pieza.
+  async function moveSelection(toLocationId: string, reason: string) {
+    setActing(true);
+    setFeedback(null);
+    const result = await batchMovePieces(batchMoveRequest(selection, toLocationId, reason), newIdempotencyKey(), devUser);
+    setActing(false);
+    if (result.status !== "ok") {
+      setFeedback({ kind: "error", text: describeLocationFailure(result) });
+      return;
+    }
+    const failures = result.value.failures ?? [];
+    if (failures.length > 0) {
+      const detail = failures.map((failure) => `${selection.get(failure.piece_id)?.denomination ?? failure.piece_id}: ${failure.message}`);
+      setFeedback({ kind: "error", text: `No se movió ninguna pieza: ${failures.length} con problemas. ${detail.join(" · ")}` });
+      return;
+    }
+    const moved = (result.value.registered ?? []).length;
+    const label = destinations.find((option) => option.id === toLocationId)?.label ?? "el destino elegido";
+    setFeedback({ kind: "ok", text: `${moved} pieza${moved === 1 ? "" : "s"} movida${moved === 1 ? "" : "s"} a ${label}.` });
+    setSelection(EMPTY_SELECTION);
+    setReloadKey((key) => key + 1);
+  }
   const chips = activeChips(query, names);
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
   const remove = (key: FilterChip["key"]) => setFilters((current) => removeFilter(current, key));
@@ -582,24 +633,54 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
         <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
         <p className="text-base text-gris-texto">
           Busque por cualquier código —vigente o histórico, con o sin formato (&quot;I 236&quot;, &quot;M.M.Z. 015&quot;, &quot;mmz 15&quot;)— o por
-          denominación, autor, procedencia, material o época, sin preocuparse por mayúsculas ni tildes.
+          denominación, autor, procedencia, material, época o descripción, sin preocuparse por mayúsculas ni tildes.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <SearchFiltersPanel filters={filters} options={options} onChange={update} onClear={() => setFilters(EMPTY_FILTERS)} />
+        <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
+          <SearchFiltersPanel
+            key={locationRevealKey}
+            filters={filters}
+            options={options}
+            onChange={update}
+            onClear={() => setFilters(EMPTY_FILTERS)}
+            openMore={locationRevealKey > 0}
+          />
+        </FiltersDrawer>
 
-        <section className="flex flex-col gap-4" aria-label="Resultados">
+        {/* En tableta la barra de la selección va fija abajo: el final de la lista queda a la vista. */}
+        <section className={cn("flex flex-col gap-4", canMove && (selection.size > 0 || feedback) && "pb-48 lg:pb-0")} aria-label="Resultados">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-base text-gris-texto" aria-live="polite">
               <strong className="text-tinta">{result?.total ?? 0}</strong> resultado{result?.total === 1 ? "" : "s"}
             </p>
+            <Button
+              variant="outline"
+              icon={MapPin}
+              onClick={() => {
+                setFiltersOpen(true);
+                setLocationRevealKey((key) => key + 1);
+              }}
+            >
+              Ver por ubicación
+            </Button>
             <Link href="/piezas/nueva" className={buttonClassName({})}>
               <Plus size={18} aria-hidden="true" />
               Nueva pieza
             </Link>
           </div>
           <ActiveFilterChips chips={chips} onRemove={remove} />
+          {canMove && (
+            <SelectionBar
+              selection={selection}
+              destinations={destinations}
+              busy={acting}
+              feedback={feedback}
+              onVerify={verifySelection}
+              onMove={moveSelection}
+            />
+          )}
           {error && (
             <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
               {error}
@@ -609,6 +690,9 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             <SearchResults
               page={result}
               onPage={setPage}
+              chips={chips}
+              onRemoveChip={remove}
+              {...(canMove ? { selection, onSelectionChange: setSelection } : {})}
               onSuggestion={(suggestion) => {
                 const key = filterOfSuggestion(suggestion);
                 if (key) remove(key);

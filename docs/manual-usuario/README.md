@@ -9,12 +9,12 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Acceso: iniciar sesión, contraseña, sesión expirada | `acceso.md` | `autenticacion-y-matriz-permisos` | escrita |
 | Catálogo: alta, edición, conflictos, eliminación, corrección de código I, conservación | `catalogo.md` | `ficha-pieza-crud`, `colecciones-y-vocabularios-admin` | parcial: «Conservación» (`colecciones-y-vocabularios-admin`) |
 | Fotografías | `fotografias.md` | `fotografias-multiples-por-pieza` | pendiente |
-| Depósito: vista móvil, movimientos y verificaciones | `deposito.md` | `ubicacion-jerarquica-y-movimientos` | escrita |
+| Depósito: ahora en la Búsqueda (nota con los enlaces) | `deposito.md` | `ubicacion-jerarquica-y-movimientos`, `fusion-busqueda-deposito` | escrita |
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |
 | Cargar el histórico del museo (formatos reales, orden de carga, qué revisar) | `carga-historico.md` | `formatos-reales-importacion` | escrita |
 | Importar el archivo fotográfico a piezas existentes | `importacion-fotos.md` | `importacion-fotos-a-catalogo` | escrita |
 | Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | escrita |
-| Búsqueda y exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion` | pendiente |
+| Búsqueda: filtros, verificar y mover piezas, exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion`, `fusion-busqueda-deposito` | escrita |
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | hecho (sin valorización) |
 | Auditoría, reversión y papelera | `auditoria.md` | `auditoria-y-soft-delete-transversal` | hecho |
 | Asistencia de IA | `ia.md` | `ia-extraccion-texto-libre`, `ia-sugerencia-terminos` | parcial: la pantalla de ejemplos de demostración (fuera del MVP, `rediseno-ux-sugerencias-ia`); falta el uso con un proveedor real |
@@ -22,7 +22,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 
 ## Cómo moverse por el sistema
 
-- **En computadora**: las secciones (Inicio, Búsqueda, Importación, Duplicados, Sugerencias IA, Reportes, Administración, Vista de depósito) están en la **barra lateral oscura** de la izquierda. La sección en la que está aparece resaltada.
+- **En computadora**: las secciones (Inicio, Búsqueda, Importación, Duplicados, Sugerencias IA, Reportes, Administración) están en la **barra lateral oscura** de la izquierda. La sección en la que está aparece resaltada. Para verificar o mover piezas use **Búsqueda**: la antigua Vista de depósito se unió a ella.
 - **En teléfono o tablet**: pulse **Menú** arriba a la izquierda para ver las secciones; el menú se cierra al elegir una sección, al pulsar **Cerrar menú** o con la tecla Escape.
 - Solo aparecen las secciones que su rol permite usar.
 - Los colores tienen siempre el mismo significado y van acompañados de texto: verde = correcto o aprobado; terracota claro = comodato o préstamo; ámbar = falta información o está pendiente de revisión; rojo = conflicto, rechazo o error.

@@ -21,11 +21,13 @@ describe("visibleNavItems", () => {
     expect(labelsFor("ADMIN")).toEqual(NAV_ITEMS.map((item) => item.label));
   });
 
-  it("el Personal auxiliar de depósito ve Inicio, Búsqueda y Vista de depósito, sin Administración", () => {
+  it("el Personal auxiliar de depósito ve Inicio y Búsqueda, donde verifica y mueve, sin Administración", () => {
     const labels = labelsFor("STORAGE_STAFF");
     expect(labels).toContain("Inicio");
     expect(labels).toContain("Búsqueda");
-    expect(labels).toContain("Vista de depósito");
+    // La vista de depósito se fusionó con la búsqueda (fusion-busqueda-deposito 4.1).
+    expect(labels).not.toContain("Vista de depósito");
+    expect(NAV_ITEMS.some((item) => item.href === "/deposito")).toBe(false);
     expect(labels).not.toContain("Administración");
     expect(labels).not.toContain("Importación");
   });

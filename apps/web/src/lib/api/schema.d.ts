@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1f436a16440ed1096e7d5170f1e9251678cdf889b9f46c63f9582f6b06671387
+ * openapi-sha256: 5756f71ddcedb6643ea77af1454e1e33f3424582ca98660f5042e7037f9853f9
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -7395,6 +7395,16 @@ export interface components {
          */
         SearchHit: {
             /**
+             * Last Seen At
+             * @description Último movimiento o verificación de la pieza («visto hace N días»), con la misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).
+             */
+            last_seen_at?: string | null;
+            /**
+             * Location Id
+             * @description Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover desde la búsqueda (fusion-busqueda-deposito 3.2).
+             */
+            location_id?: string | null;
+            /**
              * Match Reason
              * @description Detalle estructurado de la coincidencia (identificador o campos de texto).
              */
@@ -13076,6 +13086,10 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
+                /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                description?: string | null;
                 /** @description Año de fin de época. */
                 epoch_end_year?: number | null;
                 /** @description Año de inicio de época. */
@@ -15431,6 +15445,10 @@ export interface operations {
                 collection_id?: string | null;
                 conservation_state_id?: string | null;
                 conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
+                /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                description?: string | null;
                 /** @description Año de fin de época. */
                 epoch_end_year?: number | null;
                 /** @description Año de inicio de época. */

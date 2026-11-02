@@ -3,7 +3,8 @@
 Ranks search hits by:
 1. Exact match on current identifier (weight 1.0)
 2. Exact match on historical identifier (weight 0.9)
-3. Text matches across denomination, author, provenance, epoch and vocabulary terms.
+3. Text matches across denomination, author, provenance, epoch, vocabulary terms and, with the
+   lowest weight, the description (fusion-busqueda-deposito D1).
 Provides match_reason and zero-result suggestions.
 """
 
@@ -23,6 +24,8 @@ from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.params import session_params
 from app.modules.search.filters import ActiveFilter, PieceFilter
 from app.modules.search.schemas import SearchHit
+
+TEXT_FIELD_WEIGHTS = {"description": 2.0}
 
 
 def strip_accents(val: str | None) -> str:
@@ -93,6 +96,7 @@ def compute_match_reason(
     author_clean = strip_accents(piece.author)
     provenance_clean = strip_accents(piece.provenance)
     epoch_clean = strip_accents(piece.epoch_original_text)
+    description_clean = strip_accents(piece.description)
 
     # Check terms against Piece direct fields
     if any(t in denomination_clean for t in terms):
@@ -103,6 +107,8 @@ def compute_match_reason(
         matched_fields.append("provenance")
     if epoch_clean and any(t in epoch_clean for t in terms):
         matched_fields.append("epoch")
+    if description_clean and any(t in description_clean for t in terms):
+        matched_fields.append("description")
 
     # Check vocabulary terms (category, conservation state, materials)
     if piece.category_id:
@@ -131,8 +137,9 @@ def compute_match_reason(
     if not matched_fields:
         matched_fields.append("denomination")
 
-    # Scoring text match: denomination match gets higher score
-    score = 50.0 + len(matched_fields) * 5.0
+    # Scoring text match: denomination match gets higher score; the description, the longest text,
+    # weighs the least, so a match only there goes after any other text match (design D1).
+    score = 50.0 + sum(TEXT_FIELD_WEIGHTS.get(field, 5.0) for field in matched_fields)
     if "denomination" in matched_fields:
         score += 15.0
 
