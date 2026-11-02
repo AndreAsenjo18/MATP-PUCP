@@ -25,6 +25,7 @@ export type PieceMediaResult = { status: "ok"; media: PieceMedia[] } | { status:
 const CONNECTION_MESSAGE = "No se pudieron cargar las fotografías. Intente nuevamente.";
 const MOCK_MESSAGE = "Subir y ordenar fotografías solo funciona conectado a la API (NEXT_PUBLIC_API_MODE=live).";
 const VIEW_TYPE_VOCABULARY = "PHOTO_VIEW_TYPE";
+const HASH_FAILED_MESSAGE = "Este navegador no pudo preparar la foto. Abra el sistema por su dirección con conexión segura (https) e intente de nuevo.";
 
 /** Mensajes de pantalla para los errores conocidos; el resto usa el de la API, que ya explica el motivo. */
 const MEDIA_ERROR_MESSAGES: Record<string, string> = {
@@ -140,7 +141,13 @@ export async function uploadPiecePhotos(
     if (progress[index]!.status !== "pending") continue;
     if (!progress[index]!.sha256) {
       set(index, { status: "hashing" });
-      set(index, { sha256: await hash(photo.file), status: "pending" });
+      try {
+        set(index, { sha256: await hash(photo.file), status: "pending" });
+      } catch {
+        // Sin `crypto.subtle` (página sin https) no hay huella, y sin huella el servidor no puede verificar.
+        set(index, { status: "failed", reason: HASH_FAILED_MESSAGE });
+        continue;
+      }
     }
     const contentSha256 = progress[index]!.sha256!;
     const body = { content_type: photo.contentType, size_bytes: photo.file.size, content_sha256: contentSha256 };

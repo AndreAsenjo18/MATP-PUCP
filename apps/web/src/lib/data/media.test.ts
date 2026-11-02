@@ -192,6 +192,21 @@ describe("subida de fotos a la pieza", () => {
     expect(authorized.map((body) => body.filename)).toEqual(["falta.jpg"]);
   });
 
+  it("si el navegador no puede calcular la huella (página sin https), lo dice y no se queda colgado", async () => {
+    const { authorized } = liveApi();
+    const upload = run([photo("a.jpg"), photo("b.jpg")], {
+      options: {
+        hash: async () => {
+          throw new TypeError("crypto.subtle is undefined");
+        },
+      },
+    });
+
+    expect(await upload.done).toMatchObject({ status: "ok", value: { failed: 2, registered: 0 } });
+    expect(authorized).toEqual([]);
+    expect(upload.last()[0]).toMatchObject({ status: "failed", reason: expect.stringContaining("conexión segura") });
+  });
+
   it("en modo mock no llama a la API", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
