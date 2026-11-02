@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Edición y retiro de colecciones desde la interfaz
-Quien tiene el permiso de administrar colecciones MUST poder, desde Administración › Colecciones, editar el nombre, la sigla, la colección madre y el régimen por defecto de una colección, retirarla con un motivo obligatorio, ver las colecciones retiradas y restaurarlas. Cada cambio SHALL quedar en la auditoría con el valor anterior y el nuevo, y una colección retirada MUST NOT borrarse físicamente. El sistema MUST impedir retirar una colección con piezas o subcolecciones activas y explicar cuántas tiene. (RF-010, RN-005, RN-007, RN-010)
+Quien tiene el permiso de administrar colecciones MUST poder, desde Administración › Colecciones, editar el nombre, la sigla, la colección madre y el régimen por defecto de una colección, retirarla con un motivo obligatorio y ver las colecciones retiradas; el Administrador MUST poder restaurarlas, porque solo él restaura registros eliminados [SUPUESTO Ñ3]. Cada cambio SHALL quedar en la auditoría con el valor anterior y el nuevo, y una colección retirada MUST NOT borrarse físicamente. El sistema MUST impedir retirar una colección con piezas o subcolecciones activas y explicar cuántas tiene. (RF-010, RN-005, RN-007, RN-010)
 
 #### Scenario: Corregir la sigla de una colección
 - **WHEN** el Administrador cambia la sigla de la colección «ABC» a «ABD»

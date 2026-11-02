@@ -9,14 +9,15 @@
 import { Eraser, SlidersHorizontal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
+import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
+import { LocationTreeSelect, type LocationTreeActions } from "@/components/domain/LocationTreeSelect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import type { LocationNode } from "@/lib/data/locations";
-import type { TermOption } from "@/lib/data/pieces";
+import { fetchLocationsTree, type LocationNode } from "@/lib/data/locations";
+import { fetchPieceCatalogs, type TermOption } from "@/lib/data/pieces";
 import { TENURE_REGIMES, secondaryFiltersActive, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
 
 export interface SearchOptions {
@@ -31,6 +32,20 @@ export interface SearchOptions {
 }
 
 export const EMPTY_OPTIONS: SearchOptions = { collections: [], categories: [], materials: [], conservationStates: [], locations: [], locationTree: [] };
+
+/** Las listas de los filtros: los catálogos de la ficha y el árbol de ubicaciones. */
+export async function loadSearchOptions(devUser?: string): Promise<SearchOptions> {
+  const [catalogs, locations] = await Promise.all([fetchPieceCatalogs(), fetchLocationsTree(devUser)]);
+  const tree = locations.status === "ok" ? locations.value : [];
+  return {
+    collections: catalogs.status === "ok" ? catalogs.catalogs.collections : [],
+    categories: catalogs.status === "ok" ? catalogs.catalogs.categories : [],
+    materials: catalogs.status === "ok" ? catalogs.catalogs.materials : [],
+    conservationStates: catalogs.status === "ok" ? catalogs.catalogs.conservationStates : [],
+    locations: flattenLocationTree(tree),
+    locationTree: tree,
+  };
+}
 
 function toBoolean(value: string): boolean | null {
   return value === "" ? null : value === "true";
@@ -96,6 +111,8 @@ export function SearchFiltersPanel({
   onChange,
   onClear,
   openMore = false,
+  locationActions,
+  locationNotice = null,
 }: {
   filters: SearchFilters;
   options: SearchOptions;
@@ -103,6 +120,9 @@ export function SearchFiltersPanel({
   onClear: () => void;
   /** Abre «Más filtros» desde el inicio: el acceso «Ver por ubicación» (design D3). */
   openMore?: boolean;
+  /** Agregar, editar o desactivar lugares: solo para quien administra ubicaciones (`crud-manual-completo` 3.1). */
+  locationActions?: LocationTreeActions;
+  locationNotice?: string | null;
 }) {
   const secondary = secondaryFiltersActive(filters);
   const [moreOpen, setMoreOpen] = useState(secondary || openMore);
@@ -162,6 +182,8 @@ export function SearchFiltersPanel({
             nodes={options.locationTree}
             value={filters.locationId}
             onChange={(locationId) => onChange({ locationId })}
+            actions={locationActions}
+            notice={locationNotice}
           />
           <Select
             label="Régimen de tenencia"

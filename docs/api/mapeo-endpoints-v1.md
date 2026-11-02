@@ -10,7 +10,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 
 | # | Documento | Etiqueta del documento → catálogo | Hoy en la API | Acción |
 |---|---|---|---|---|
-| 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1) |
+| 1 | `POST /pieces` · `createPiece` | `RF-001/002` → RF-006, RN-003 | `POST /pieces` (stub) | Pendiente: esquema `PieceCreate` (tarea 4.1). Una colección retirada o inexistente responde `422 collection_not_available` (`crud-manual-completo`, tarea 4.3) |
 | 2 | `GET /pieces` · `listPieces` (`page`, `limit`) | `RF-014` → Pendiente¹ | `GET /pieces` (implementado, cursor + filtros) | Pendiente: paginación `page`/`limit` (tarea 4.1). Parámetros añadidos `description` y `denomination`, que comparte con `GET /search` por el filtro único (`fusion-busqueda-deposito` D1) |
 | 3 | `GET /pieces/{id}` · `getPieceById` | `RF-003` → RF-006 | `GET /pieces/{piece_id}` (implementado) | Hecho: `getPieceById`. Campo añadido `version` (concurrencia optimista, `ficha-pieza-crud` D2) |
 | 4 | `PUT /pieces/{id}` · `updatePiece` | `RF-004` → RF-006, RN-002 | `PATCH /pieces/{piece_id}` (stub) | Hecho: `PUT /pieces/{id}` (`updatePiece`). Cabecera `If-Match` con la `version` (`ficha-pieza-crud` D2). Campos añadidos al cuerpo `tenure_change_reason` y `supporting_document_ref`: el motivo y el documento de respaldo del cambio de régimen, que quedan en la auditoría y no en la ficha (`ficha-pieza-crud` D4) |
@@ -20,14 +20,14 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 8 | `GET /categories` · `listCategories` | `RF-007` → RF-011 | `GET /vocabularies/categoria/terms` | Hecho: `GET /categories` sobre el vocabulario CATEGORY |
 | 9 | `POST /categories` · `createCategory` | `RF-040` → RF-011 | `POST /vocabularies/{code}/terms` | Hecho: `POST /categories` |
 | 10 | `GET /conservation-states` · `listConservationStates` | `RF-008` → RF-012 | `GET /vocabularies/estado-conservacion/terms` | Hecho: `GET /conservation-states` |
-| 11 | `GET /locations/tree` · `getLocationsTree` | `RF-016` → RF-016, RF-041 | `GET /locations` (plano, implementado) | Hecho: `GET /locations/tree` con `LocationNode` |
+| 11 | `GET /locations/tree` · `getLocationsTree` | `RF-016` → RF-016, RF-041 | `GET /locations` (plano, implementado) | Hecho: `GET /locations/tree` con `LocationNode`. Campo añadido `allowed_child_types`: los tipos que admite cada lugar, para proponer el tipo al agregar uno (`crud-manual-completo`, tarea 1.3, diseño D3) |
 | 12 | `POST /pieces/{id}/move` · `movePiece` | `RF-017` → RF-017 | `POST /pieces/{piece_id}/movements` (stub) | Hecho: `POST /pieces/{id}/move` |
 | 13 | `GET /pieces/{id}/location-history` · `getPieceLocationHistory` | `RF-018` → RF-017 | `GET /pieces/{piece_id}/movements` (implementado) | Hecho: `GET /pieces/{id}/location-history` |
 | 14 | `POST /imports/upload` · `uploadImportBatch` | `RF-021/022` → RF-021 | `POST /imports` (stub) | Hecho: `POST /imports/upload` |
 | 15 | `GET /imports/{batch_id}/diffs` · `getImportBatchDiffs` | `RF-023` → RF-026 | `GET /imports/{batch_id}/preview` (stub) | Hecho: `GET /imports/{batch_id}/diffs` |
 | 16 | `POST /imports/{batch_id}/confirm` · `confirmImportBatch` | `RF-024` → RF-027 | `POST /imports/{batch_id}/approve` (stub) | Hecho: `POST /imports/{batch_id}/confirm` |
 | 17 | `GET /search` · `searchPieces` | `RF-031` → RF-031, RF-032 | `GET /search` (implementado) | Hecho: `collection_code`, `tenure_regime` y `page`/`limit` (tarea 4.5). Respuesta propia `SearchResultPage` (no la `Page[T]` compartida, que sigue usando `page_size`) para exponer `limit` tal como pide el documento. Parámetros añadidos `description` («Descripción contiene») y `denomination` («Denominación»), sin mayúsculas ni tildes y combinados por AND (`fusion-busqueda-deposito` D1). Campos añadidos en cada resultado (`SearchHit`), solo para quien tiene `sensitive.exact_location` (RF-041): `location_id`, la ubicación exacta que se envía como `expected_from_location_id` al verificar o mover desde la búsqueda, y `last_seen_at`, el último movimiento o verificación («visto hace N días») (tareas 3.2 y 3.3) |
-| 18 | `POST /media/upload` · `uploadMediaAsset` | `RF-032` → RF-013, RF-014, RN-008 | `POST /pieces/{piece_id}/media` + `.../media/upload-url` (stubs) | Hecho: `POST /media/upload` (stub) |
+| 18 | `POST /media/upload` · `uploadMediaAsset` | `RF-032` → RF-013, RF-014, RN-008 | `POST /pieces/{piece_id}/media` + `.../media/upload-url` (implementados) | Hecho: `POST /media/upload`. La galería de la ficha sube directo al almacenamiento, sin pasar el archivo por la API (ver las operaciones añadidas) |
 | 19 | `POST /auth/login` · `login` | `RF-041` → RNF-012 | `POST /auth/login` (implementado, ADR-009) | Hecho: cuerpo `username`/`password` (el nombre de usuario es el correo). Responde `200` con el usuario, `csrf_token` y `session_expires_at`; la sesión viaja en la cookie `HttpOnly` `matp_session`, no en un token JWT como dice la descripción del documento (ADR-009). Todo fallo es el mismo `401 invalid_credentials`; `429` por exceso de intentos desde una dirección |
 | 20 | `GET /auth/me` · `getMe` | `RF-042` → RF-039 | `GET /auth/me` (implementado) | Hecho: lee la sesión real y añade `must_change_password`. Se mantiene la matriz de roles (resolución C4-g) y `/auth/me` ya devuelve `roles` y `permissions`; no queda ningún «rol único» por implementar |
 
@@ -42,7 +42,7 @@ Rutas relativas al prefijo `/api/v1`. **Estado al 2026-09-22 (tras la primera ta
 | 23 | `GET /pieces/{id}/children` · `getPieceChildren` | `RF-011` → RF-009 | no existe (se resuelve con filtro) | Hecho: `GET /pieces/{id}/children` |
 | 24 | `POST /pieces/{id}/children` · `addPieceChild` | `RF-012` → RF-009 | no existe | Hecho: `POST /pieces/{id}/children` (stub) |
 | 25 | `POST /locations` · `createLocation` | `RF-019` → RF-016 | igual (stub) | Hecho: ruta ya conforme |
-| 26 | `PUT /locations/{id}` · `updateLocation` | `RF-020` → RF-016 | `PATCH /locations/{location_id}` (stub) | Hecho: `PUT /locations/{id}` |
+| 26 | `PUT /locations/{id}` · `updateLocation` | `RF-020` → RF-016 | `PATCH /locations/{location_id}` (stub) | Hecho: `PUT /locations/{id}`. Desactivar un lugar con piezas o con lugares activos dentro responde `409 location_in_use` con los conteos (`crud-manual-completo`, tarea 1.3, diseño D3) |
 | 27 | `GET /locations/{id}/pieces` · `getPiecesInLocation` | `RF-025` → RF-034, RF-016 | no existe (filtro en `/pieces`) | Hecho: `GET /locations/{id}/pieces` (stub) |
 | 28 | `GET /imports` · `listImportBatches` | `RF-026` → Pendiente² | igual (stub) | Hecho: `listImportBatches` |
 | 29 | `POST /imports/{batch_id}/rollback` · `rollbackImportBatch` | `RF-027` → RNF-007 | `POST /imports/{batch_id}/revert` (stub) | Hecho: `POST /imports/{batch_id}/rollback` |
@@ -88,6 +88,8 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `GET /identifier-types`, `POST /identifiers/normalize` | RF-023, RN-010: tipos de identificador y normalizador como datos |
 | `POST /identifier-types`, `PATCH /identifier-types/{code}`, `POST /identifier-types/{code}/normalization-preview` | RN-010, RF-023, RN-002: alta y edición de tipos de identificador, con los tipos del sistema protegidos y el cambio de regla de normalización ligado a una vista previa del impacto (`colecciones-y-vocabularios-admin`, tareas 2.2 a 2.4, diseño D1 y D2) |
 | `GET`/`POST /pieces/{id}/conservation-assessments` | RF-012, RN-005: historial de evaluaciones de conservación de solo inserción; el estado actual es el de la evaluación más reciente por fecha (`colecciones-y-vocabularios-admin`, tarea 3.1, diseño D3) |
+| `GET`/`POST /pieces/{id}/media`, `POST /pieces/{id}/media/upload-url`, `PATCH`/`DELETE /pieces/{id}/media/{id}`, `PUT /pieces/{id}/media/order`, `GET /pieces/{id}/media/{id}/download-url` | RF-013, RF-014, RF-042, RN-005, RN-008: galería de la ficha. Subida directa con URL prefirmada y registro con verificación del archivo; edición; orden completo en una sola operación; retiro con motivo; enlaces de corta duración con la restricción efectiva. El contrato solo trae `POST /media/upload`, que pasa el archivo por la API (`fotografias-multiples-por-pieza`, diseño D1, D4 y D5) |
+| `GET /media/storage-estimate` | RNF-003: volumen fotográfico actual y proyectado, para decidir el almacenamiento (`fotografias-multiples-por-pieza`, diseño D6) |
 | `POST /pieces/{id}/restore`, `POST /pieces/validate` | RN-005 (restaurar en lugar de borrar) y RF-043 (validación en tiempo real) |
 | `POST /pieces/{id}/identifiers/{id}/correction` | RN-002: corrección auditada del código I, en lugar de borrarlo |
 | `PUT /imports/{batch_id}/mapping`, `GET`/`POST /import-templates` | RF-022: plantillas de mapeo reutilizables; el mapeo de un lote acepta una plantilla guardada, transformaciones por columna y correspondencias con términos (`plantillas-mapeo-y-normalizacion`, tareas 3.1 y 3.5, diseño D1) |
@@ -95,6 +97,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `POST /import-templates/suggest` | RF-022: sugerir hasta 3 plantillas activas para las cabeceras de un archivo, con su puntaje, las columnas faltantes y las nuevas; es la única vía de sugerencia (`plantillas-mapeo-y-normalizacion`, tarea 3.2, diseño D3) |
 | `POST /import-templates/{template_id}/dry-run` | RF-023, RF-022 y RNF-010: vista previa de normalización por columna de una plantilla guardada sobre las primeras 200 filas [SUPUESTO T3] de un lote subido o mapeado, con los conteos `NORMALIZED`, `UNPARSEABLE`, `ABSENT` y `SPLIT_PROPOSED`, los 20 valores sin término más frecuentes [SUPUESTO T4] y ejemplos con su traza; no escribe nada (`plantillas-mapeo-y-normalizacion`, tarea 3.3, diseño D4) |
 | `GET`/`PUT /normalization-settings/{key}` | RN-010, RF-023 y RF-004: consultar y cambiar los marcadores de ausencia (`absence_markers`), los separadores de códigos concatenados (`concatenation_separators`) y, desde `ajustes-lectura-importacion` (tarea 1.4), las correspondencias forma de adquisición → régimen (`tenure_aliases`, con las etiquetas del contrato: Propiedad, Comodato, Préstamo Temporal) como datos auditados; sin valor guardado rige el del código. Permiso `vocabularies.manage` [SUPUESTO T8]. Un cambio que alteraría identificadores ya registrados responde 409 `normalization_change_requires_preview` con cuántos y ejemplos, sin guardar nada [SUPUESTO T10] (`plantillas-mapeo-y-normalizacion`, tarea 2.3, diseño D5) |
+| `PATCH /collections/{id}` | RF-010, RN-010: editar una colección desde Administración, con cada cambio en la auditoría. Campo añadido `default_tenure_regime`: el régimen por defecto, con las etiquetas de `CollectionItem` (`crud-manual-completo`, tarea 2.2, diseño D2) |
 | `GET`/`POST /collection-acronym-aliases`, `DELETE /collection-acronym-aliases/{alias_id}` | RF-023 y RN-010: siglas históricas de colección (alias normalizado → colección), únicas entre los alias activos y distintas de la sigla actual de toda colección; borrado lógico con motivo (RN-005). Mismo permiso y misma regla de impacto que los parámetros (`plantillas-mapeo-y-normalizacion`, tarea 2.3, diseño D5) |
 | `POST /imports/{batch_id}/images/{image_id}/associate` | RF-029: una imagen extraída del Excel se asocia a la pieza solo por acción explícita de una persona, después de aplicar el lote (`importacion-pipeline-reconciliacion`, tarea 5.1) |
 | `POST /imports/{batch_id}/photos/upload-urls` | RF-045: las fotos del lote se suben por tandas de hasta 100, directo al almacenamiento con URL prefirmada; una huella que ya está en el lote vuelve como `already_registered`, así que volver a soltar la carpeta reanuda la subida (`importacion-masiva-fotografias`, tarea 2.1, diseño D2) |
@@ -113,6 +116,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 | `GET /audit/sensitive-access` | RNF-014, RF-041: registro de los accesos a datos sensibles sin enmascarar (usuario, ruta, entidades y campos, nunca valores), consultable con `audit.read` (`autenticacion-y-matriz-permisos`, tarea 3.3) |
 | `POST /auth/logout` | RNF-012: cierre de sesión que revoca la sesión de servidor (ADR-009); el documento solo trae el inicio de sesión |
 | `POST /auth/change-password` | RNF-012, RNF-013: cambio de contraseña propio, obligatorio con una contraseña temporal; revoca todas las sesiones y abre una nueva (`autenticacion-y-matriz-permisos`, tarea 2.3) |
+| `GET /reports/{report_type}` | RF-033, RF-034, RF-036, RF-041 y RF-047: reportes de inventario, por colección, por ubicación, incompletas, valorización y agrupado por atributo, en JSON paginado o, con `format`, en archivo; los grandes responden 202 con un trabajo de exportación (`reportes-inventario`; ampliación de `reportes-por-atributo`, más abajo) |
 | `GET /health`, `GET /health/live` | RNF-004: verificación de salud del entorno |
 | `POST /movements/batch` | RF-017, RNF-001, RNF-005: mover o verificar varias piezas escaneadas hacia un mismo destino en una sola operación todo o nada, con `Idempotency-Key` para reintentos en conexión lenta desde la vista móvil de depósito (`ubicacion-jerarquica-y-movimientos`, tarea 3.3) |
 
@@ -185,3 +189,15 @@ Change `formatos-reales-importacion` (tarea 7.4; diseño D1, D3, D4 y D6). `Colu
 
 `GET /pieces/{piece_id}/source-records` suma `masked_keys`: las columnas que se muestran como «(dato restringido)» por falta del permiso.
 
+## Ampliación de los reportes por el pedido del museo (2026-11-02)
+
+Change `reportes-por-atributo` (tarea 4.1; diseño D1 y D3). `GET /reports/{report_type}` y `ReportType` no están en `endpoints-api-v1.yaml`: son un añadido (`ANADIDOS` en `test_contract_conformance.py`), así que esto amplía un añadido y no cambia ninguna operación del contrato del equipo. Es compatible con quien ya usa la ruta en JSON; el CSV cambia de forma:
+
+| Cambio | Uso |
+|---|---|
+| Valor `by-attribute` en `ReportType` | RF-047: piezas agrupadas por un atributo, con el subtotal de cada grupo y el total de piezas distintas |
+| `group_by` | Obligatorio en `by-attribute`: `provenance`, `denomination`, `author`, `material`, `conservation_state`, `category` o `collection`. Si falta o no se admite, responde 422 `invalid_report_parameter` con los admitidos en `details.allowed` |
+| Filtros de `GET /search` | Los mismos parámetros y el mismo `PieceFilter` (RF-032) en los reportes que listan piezas. `collection_id` y `location_id` se siguen aceptando. Filtrar por debajo del espacio sin permiso de ubicación exacta responde 403 `exact_location_required` |
+| Columna `Descripción` | Tras `Denominación` en `inventory`, `by-collection`, `by-location` y `by-attribute` |
+| Columna `Grupo` | Primera columna de `by-attribute`: una pieza puede repetirse, y el archivo debe decir a qué grupo pertenece cada fila |
+| Formato CSV | Encabezado (título, fecha, usuario y filtros), línea en blanco, columnas y filas, línea en blanco y la tabla `Grupo,Etiqueta,Piezas` con subtotales y total. Quien lea el CSV debe saltarse el encabezado |

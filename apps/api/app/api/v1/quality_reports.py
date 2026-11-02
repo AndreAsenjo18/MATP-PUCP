@@ -88,6 +88,7 @@ from app.modules.search.ranking import generate_search_suggestions, rank_and_des
 from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
+    GroupBy,
     ReportOut,
     ReportSubtotal,
     ReportType,
@@ -627,13 +628,16 @@ def export_excel_report(
             "también la valorización mientras `FEATURE_VALUATION_REPORT` está desactivada."
         },
     },
-    summary="Reportes: inventario general, por colección, por ubicación, incompletas y "
-    "valorización (RF-033, RF-037)",
+    summary="Reportes: inventario general, por colección, por ubicación, agrupado por "
+    "atributo, incompletas y valorización (RF-033, RF-037, RF-047)",
     description="Catálogo cerrado de reportes generados sobre una instantánea consistente: el "
     "total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, "
     "piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo "
     "`include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el "
-    "permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en "
+    "permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros "
+    "de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. `by-attribute` "
+    "agrupa por `group_by` (RF-047). Con `format` "
+    "descarga el archivo, o lo genera en "
     "segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza "
     "por colección y moneda la valorización más reciente de cada pieza: exige "
     "`sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada "
@@ -653,19 +657,28 @@ def get_report(
     ],
     session: SessionDep,
     user: ReportViewer,
-    collection_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
+    piece_filter: Annotated[PieceFilter, Depends(piece_filters)],
     include_loans_for_use: bool = True,
     not_verified_since_days: Annotated[int | None, Query(ge=0)] = None,
+    group_by: Annotated[
+        str | None,
+        Query(
+            description="Atributo del reporte `by-attribute`; otro valor responde 422 con los "
+            "admitidos.",
+            json_schema_extra={"enum": [item.value for item in GroupBy]},
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
     export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
 ) -> ReportOut | Response:
     params = reports.ReportParams(
-        collection_id=collection_id,
-        location_id=location_id,
+        collection_id=piece_filter.collection_id,
+        location_id=piece_filter.location_id,
         include_loans_for_use=include_loans_for_use,
         not_verified_since_days=not_verified_since_days,
+        group_by=group_by,
+        piece_filter=piece_filter,
     )
     permissions = frozenset(user.permissions)
     features = (

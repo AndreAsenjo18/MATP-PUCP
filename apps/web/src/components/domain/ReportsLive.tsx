@@ -3,13 +3,16 @@
 /**
  * Reportes de inventario en modo `live` (change `reportes-inventario`, tareas 3.1 y 3.2; RF-033,
  * RF-034, RF-041): tipo de reporte, parámetros (colección, ubicación, comodatos, días sin
- * verificar), vista previa paginada con subtotales y totales, exportación a Excel (directa o en
- * segundo plano) y vista imprimible.
+ * verificar, atributo y filtros de la búsqueda), vista previa paginada con subtotales y totales,
+ * exportación a Excel (directa o en segundo plano, con aviso al terminar) y vista imprimible.
  */
 import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { ReportPreview } from "@/components/domain/ReportPreview";
+import { EMPTY_OPTIONS, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
+import { MyExportsPanel } from "@/components/domain/SearchLive";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -18,172 +21,118 @@ import { useSession } from "@/lib/auth/session";
 import { fetchCollections, type CollectionOption } from "@/lib/data/normalization-admin";
 import { fetchLocations } from "@/lib/data/locations";
 import {
-  PRINT_LIMIT,
+  GROUP_BY_OPTIONS,
   downloadReport,
   fetchReport,
-  groupByCollection,
   missingParameter,
   printHref,
+  type ExportJob,
+  type GroupBy,
   type LiveReportType,
   type Report,
   type ReportParams,
 } from "@/lib/data/reports";
+import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, fetchExportJob, hasPendingJobs, type SearchFilters } from "@/lib/data/search";
 
-const PAGE_SIZE = 25;
+/** Filas por página de la vista previa (design D4). */
+const PAGE_SIZE = 50;
+/** Cada cuánto se consulta el reporte que se genera en segundo plano. */
+const JOB_POLL_MS = 3000;
 
-function cellText(value: unknown): string {
-  return value == null || value === "" ? "—" : String(value);
-}
+// ---------------------------------------------------------------------------------------------
+// Configuración de «Piezas agrupadas por…» (reportes-por-atributo, tarea 3.1)
+// ---------------------------------------------------------------------------------------------
 
-export function ReportTable({ columns, rows }: { columns: string[]; rows: unknown[][] }) {
+export function GroupBySelect({ value, onChange }: { value: GroupBy | null | undefined; onChange: (value: GroupBy | null) => void }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-gris-texto">
-          <tr>
-            {columns.map((column) => (
-              <th key={column} className="py-2 pr-3 font-medium">
-                {column}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="text-tinta">
-          {rows.map((row, index) => (
-            <tr key={index} className="border-t border-borde">
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="py-1 pr-3">
-                  {cellText(cell)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Select label="Agrupar por" value={value ?? ""} onChange={(event) => onChange((event.target.value || null) as GroupBy | null)}>
+      <option value="">Elija un atributo</option>
+      {GROUP_BY_OPTIONS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
   );
 }
 
-/** Subtotales y totales del reporte completo (no solo de la página). */
-export function ReportSummary({ report }: { report: Pick<Report, "subtotals" | "totals"> }) {
-  const subtotals = report.subtotals ?? [];
+/** Descargar e imprimir; un reporte sin piezas no ofrece ninguna de las dos. */
+export function ReportActions({
+  type,
+  params,
+  report,
+  canExport,
+  busy,
+  onExport,
+}: {
+  type: LiveReportType;
+  params: ReportParams;
+  report: Pick<Report, "total_rows">;
+  canExport: boolean;
+  busy: boolean;
+  onExport: () => void;
+}) {
+  if (report.total_rows === 0) return null;
   return (
-    <div className="flex flex-col gap-2 border-t border-borde pt-3">
-      {subtotals.length > 0 && (
-        <ul className="grid gap-1 text-sm text-tinta sm:grid-cols-2">
-          {subtotals.map((subtotal) => (
-            <li key={`${subtotal.group}-${subtotal.label}`} style={{ paddingLeft: `${(subtotal.level ?? 0) * 16}px` }}>
-              <span className="text-gris-texto">{subtotal.group}:</span> {subtotal.label} — {subtotal.count}
-            </li>
-          ))}
-        </ul>
+    <div className="flex flex-wrap gap-2">
+      {canExport && (
+        <Button variant="outline" icon={FileSpreadsheet} disabled={busy} onClick={onExport}>
+          Exportar a Excel
+        </Button>
       )}
-      <p className="text-base font-semibold text-tinta">
-        {Object.entries(report.totals)
-          .map(([label, value]) => `${label}: ${value}`)
-          .join(" · ")}
-      </p>
+      <Link href={printHref(type, params)} target="_blank" className={buttonClassName({ variant: "outline" })}>
+        <Printer size={18} aria-hidden="true" />
+        Vista imprimible
+      </Link>
     </div>
   );
 }
 
-export function ReportPreview({ report, onPage }: { report: Report; onPage?: (page: number) => void }) {
-  const pages = Math.max(1, Math.ceil(report.total_rows / Math.max(1, report.page_size)));
+/** Los filtros de la búsqueda, plegados para que la tabla quede a la vista (design D4). */
+export function ReportFilters({
+  filters,
+  options,
+  onChange,
+  onClear,
+}: {
+  filters: SearchFilters;
+  options: SearchOptions;
+  onChange: (next: Partial<SearchFilters>) => void;
+  onClear: () => void;
+}) {
+  const active = activeChips(filters).length;
   return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-        <p className="text-sm text-gris-texto">
-          Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
-          {report.generated_by ? ` por ${report.generated_by}` : ""}.
-        </p>
+    <details className="flex flex-col gap-3">
+      <summary className="flex min-h-11 cursor-pointer items-center text-base font-medium text-tinta">
+        Filtros{active > 0 && ` (${active} activo${active === 1 ? "" : "s"})`}
+      </summary>
+      <div className="max-w-xl">
+        <SearchFiltersPanel filters={filters} options={options} onChange={onChange} onClear={onClear} />
       </div>
-      {(report.masked_columns ?? []).length > 0 && (
-        <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">
-          Su rol ve limitadas estas columnas: {report.masked_columns?.join(", ")} (solo sede y espacio, RF-041).
-        </p>
-      )}
-      {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
-      {report.rows.length > 0 && <ReportTable columns={report.columns} rows={report.rows as unknown[][]} />}
-      {report.total_rows > report.page_size && onPage && (
-        <div className="flex items-center justify-between gap-3">
-          <Button variant="secondary" disabled={report.page <= 1} onClick={() => onPage(report.page - 1)}>
-            Anterior
-          </Button>
-          <span className="text-sm text-gris-texto">
-            Página {report.page} de {pages} ({report.total_rows} filas)
-          </span>
-          <Button variant="secondary" disabled={report.page >= pages} onClick={() => onPage(report.page + 1)}>
-            Siguiente
-          </Button>
-        </div>
-      )}
-      <ReportSummary report={report} />
-    </div>
+    </details>
   );
 }
 
-/** Vista imprimible (tarea 3.2): cabecera repetida en cada página y salto por colección. */
-export function PrintableReport({ report, tooLarge }: { report: Report; tooLarge: boolean }) {
-  const filters = Object.entries(report.filters ?? {});
-  const header = (
-    <div className="flex flex-col gap-1 border-b border-tinta pb-2">
-      <h1 className="text-xl font-bold text-tinta">{report.title}</h1>
-      <p className="text-sm text-tinta">
-        Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
-        {report.generated_by ? ` por ${report.generated_by}` : ""}
-      </p>
-      <p className="text-sm text-tinta">Filtros: {filters.length ? filters.map(([key, value]) => `${key}: ${String(value)}`).join("; ") : "sin filtros"}</p>
-    </div>
-  );
-  if (tooLarge) {
+/** Cómo va el reporte que se genera en segundo plano (escenario «Reporte muy grande»). */
+export function ReportJobNotice({ job }: { job: Pick<ExportJob, "status"> }) {
+  if (job.status === "FAILED") {
     return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <p role="alert" className="rounded-md bg-ambar-bg p-3 text-base text-ambar-texto">
-          El reporte tiene {report.total_rows.toLocaleString("es-PE")} filas y supera el límite de impresión ({PRINT_LIMIT.toLocaleString("es-PE")}).
-          Expórtelo a Excel desde la pantalla de Reportes, o filtre por colección.
-        </p>
-      </div>
+      <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
+        No se pudo generar el reporte. Intente de nuevo.
+      </p>
     );
   }
-  const groups = groupByCollection(report);
+  if (job.status === "READY") {
+    return (
+      <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
+        Su reporte ya está listo: descárguelo en «Mis exportaciones», aquí abajo.
+      </p>
+    );
+  }
   return (
-    <div className="flex flex-col gap-4 print:gap-0">
-      {groups.map((group, index) => (
-        <section key={`${group.label}-${index}`} className={index > 0 ? "print:break-before-page" : undefined}>
-          <table className="w-full text-left text-xs">
-            <thead className="table-header-group">
-              <tr>
-                <th colSpan={report.columns.length} className="pb-2 font-normal">
-                  {header}
-                  {group.label && <p className="pt-1 text-sm font-semibold text-tinta">Colección: {group.label}</p>}
-                </th>
-              </tr>
-              <tr>
-                {report.columns.map((column) => (
-                  <th key={column} className="border-b border-borde py-1 pr-2 font-semibold">
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {group.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b border-borde">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="py-0.5 pr-2 align-top">
-                      {cellText(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ))}
-      <ReportSummary report={report} />
-    </div>
+    <p role="status" className="rounded-md bg-crema px-3 py-2 text-base text-tinta">
+      El reporte es grande: se está generando en segundo plano. Le avisaremos aquí cuando esté listo. También lo encontrará en «Mis exportaciones».
+    </p>
   );
 }
 
@@ -194,11 +143,14 @@ export function PrintableReport({ report, tooLarge }: { report: Report; tooLarge
 export function ReportsLive({ type }: { type: LiveReportType }) {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
-  const [params, setParams] = useState<ReportParams>({ includeLoansForUse: true });
+  const [params, setParams] = useState<ReportParams>({ includeLoansForUse: true, filters: EMPTY_FILTERS });
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [page, setPage] = useState(1);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [job, setJob] = useState<ExportJob | null>(null);
   const [busy, setBusy] = useState(false);
   const [collections, setCollections] = useState<CollectionOption[]>([]);
   const [locations, setLocations] = useState<{ id: string; label: string }[]>([]);
@@ -216,10 +168,24 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
         if (active && result.status === "ok") setLocations(result.value.map((l) => ({ id: l.id, label: `${l.name} (${l.level})` })));
       });
     }
+    if (type === "by-attribute") {
+      loadSearchOptions(devUser).then((loaded) => {
+        if (active) setOptions(loaded);
+      });
+    }
     return () => {
       active = false;
     };
   }, [type, devUser]);
+
+  // Los textos esperan a que el usuario deje de escribir; los demás filtros se aplican al instante.
+  useEffect(() => {
+    if (filters === params.filters) return;
+    const typing = TEXT_FILTER_KEYS.some((key) => filters[key] !== params.filters?.[key]);
+    const timer = setTimeout(() => update({ filters }), typing ? TYPING_DEBOUNCE_MS : 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- los filtros aplicados solo deciden la espera
+  }, [filters]);
 
   useEffect(() => {
     let active = true;
@@ -239,6 +205,18 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
     };
   }, [type, params, page, devUser, missing]);
 
+  // Sigue el reporte en segundo plano hasta que termina, para avisar en esta pantalla.
+  useEffect(() => {
+    if (!job?.id || !hasPendingJobs([job])) return;
+    const jobId = job.id;
+    const timer = setTimeout(() => {
+      fetchExportJob(jobId, devUser).then((result) => {
+        setJob((current) => (result.status === "ok" ? result.value : current && { ...current }));
+      });
+    }, JOB_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [job, devUser]);
+
   function update(next: Partial<ReportParams>) {
     setParams((current) => ({ ...current, ...next }));
     setPage(1);
@@ -250,7 +228,8 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     if (result.value.kind === "job") {
-      setNotice("El reporte es grande: se está generando en segundo plano. Lo encontrará en «Mis exportaciones» cuando esté listo.");
+      setNotice(null);
+      setJob(result.value.job);
       return;
     }
     const url = URL.createObjectURL(result.value.blob);
@@ -263,67 +242,70 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
   }
 
   return (
-    <Card as="section" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        {type === "by-collection" && (
-          <Select label="Colección" value={params.collectionId ?? ""} onChange={(event) => update({ collectionId: event.target.value || null })}>
-            <option value="">Elija una colección</option>
-            {collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.name}
-              </option>
-            ))}
-          </Select>
-        )}
-        {type === "by-location" && (
-          <>
-            <Select label="Ubicación" value={params.locationId ?? ""} onChange={(event) => update({ locationId: event.target.value || null })}>
-              <option value="">Elija una ubicación</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.label}
+    <>
+      <Card as="section" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          {type === "by-attribute" && <GroupBySelect value={params.groupBy} onChange={(groupBy) => update({ groupBy })} />}
+          {type === "by-collection" && (
+            <Select label="Colección" value={params.collectionId ?? ""} onChange={(event) => update({ collectionId: event.target.value || null })}>
+              <option value="">Elija una colección</option>
+              {collections.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
                 </option>
               ))}
             </Select>
-            <Input
-              label="No verificadas en los últimos (días)"
-              type="number"
-              min={0}
-              value={params.notVerifiedSinceDays ?? ""}
-              onChange={(event) => update({ notVerifiedSinceDays: event.target.value === "" ? null : Number(event.target.value) })}
-            />
+          )}
+          {type === "by-location" && (
+            <>
+              <Select label="Ubicación" value={params.locationId ?? ""} onChange={(event) => update({ locationId: event.target.value || null })}>
+                <option value="">Elija una ubicación</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.label}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="No verificadas en los últimos (días)"
+                type="number"
+                min={0}
+                value={params.notVerifiedSinceDays ?? ""}
+                onChange={(event) => update({ notVerifiedSinceDays: event.target.value === "" ? null : Number(event.target.value) })}
+              />
+            </>
+          )}
+          {type !== "by-location" && (
+            <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
+              <input type="checkbox" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
+              Incluir comodatos
+            </label>
+          )}
+        </div>
+        {type === "by-attribute" && (
+          <ReportFilters
+            filters={filters}
+            options={options}
+            onChange={(next) => setFilters((current) => ({ ...current, ...next }))}
+            onClear={() => setFilters(EMPTY_FILTERS)}
+          />
+        )}
+        {missing && <p className="text-base text-gris-texto">{missing}</p>}
+        {error && (
+          <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
+            {error}
+          </p>
+        )}
+        {job && <ReportJobNotice job={job} />}
+        {report && !missing && (
+          <>
+            <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
+            {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
+            <ReportPreview report={report} onPage={setPage} />
           </>
         )}
-        {type !== "by-location" && (
-          <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
-            <input type="checkbox" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
-            Incluir comodatos
-          </label>
-        )}
-      </div>
-      {missing && <p className="text-base text-gris-texto">{missing}</p>}
-      {error && (
-        <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
-          {error}
-        </p>
-      )}
-      {report && !missing && (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {hasPermission("exports.run") && (
-              <Button variant="outline" icon={FileSpreadsheet} disabled={busy} onClick={handleExport}>
-                Exportar a Excel
-              </Button>
-            )}
-            <Link href={printHref(type, params)} target="_blank" className={buttonClassName({ variant: "outline" })}>
-              <Printer size={18} aria-hidden="true" />
-              Vista imprimible
-            </Link>
-          </div>
-          {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
-          <ReportPreview report={report} onPage={setPage} />
-        </>
-      )}
-    </Card>
+      </Card>
+      {job && <MyExportsPanel refreshKey={hasPendingJobs([job]) ? 0 : 1} />}
+    </>
   );
 }

@@ -2132,6 +2132,23 @@
             ],
             "title": "Acronym"
           },
+          "default_tenure_regime": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Propiedad",
+                  "Comodato",
+                  "Préstamo Temporal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).",
+            "title": "Default Tenure Regime"
+          },
           "description": {
             "anyOf": [
               {
@@ -5826,6 +5843,14 @@
           }
         ],
         "properties": {
+          "allowed_child_types": {
+            "description": "Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Child Types",
+            "type": "array"
+          },
           "children": {
             "items": {
               "$ref": "#/components/schemas/LocationNode"
@@ -10869,7 +10894,8 @@
           "by-collection",
           "by-location",
           "incomplete",
-          "valuation"
+          "valuation",
+          "by-attribute"
         ],
         "title": "ReportType",
         "type": "string"
@@ -24213,7 +24239,7 @@
     },
     "/api/v1/reports/{report_type}": {
       "get": {
-        "description": "Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).",
+        "description": "Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. `by-attribute` agrupa por `group_by` (RF-047). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).",
         "operationId": "getReport",
         "parameters": [
           {
@@ -24228,44 +24254,11 @@
                 "by-collection",
                 "by-location",
                 "incomplete",
-                "valuation"
+                "valuation",
+                "by-attribute"
               ],
               "title": "Report Type",
               "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "collection_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Collection Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "location_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Location Id"
             }
           },
           {
@@ -24293,6 +24286,33 @@
                 }
               ],
               "title": "Not Verified Since Days"
+            }
+          },
+          {
+            "description": "Atributo del reporte `by-attribute`; otro valor responde 422 con los admitidos.",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Atributo del reporte `by-attribute`; otro valor responde 422 con los admitidos.",
+              "enum": [
+                "provenance",
+                "denomination",
+                "author",
+                "material",
+                "conservation_state",
+                "category",
+                "collection"
+              ],
+              "title": "Group By"
             }
           },
           {
@@ -24332,6 +24352,401 @@
                 }
               ],
               "title": "Format"
+            }
+          },
+          {
+            "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031).",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "denomination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Denomination"
+            }
+          },
+          {
+            "description": "Incluye subcolecciones.",
+            "in": "query",
+            "name": "collection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Incluye subcolecciones.",
+              "title": "Collection Id"
+            }
+          },
+          {
+            "description": "true = piezas sueltas.",
+            "in": "query",
+            "name": "without_collection",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true = piezas sueltas.",
+              "title": "Without Collection"
+            }
+          },
+          {
+            "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+            "in": "query",
+            "name": "tenure_regime",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "Propiedad",
+                    "Comodato",
+                    "Préstamo Temporal"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal.",
+              "title": "Tenure Regime"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category_term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Term Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_state_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation State Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conservation_status_term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conservation Status Term Id"
+            }
+          },
+          {
+            "description": "Incluye sub-ubicaciones.",
+            "in": "query",
+            "name": "location_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Incluye sub-ubicaciones.",
+              "title": "Location Id"
+            }
+          },
+          {
+            "description": "false = piezas sin I.",
+            "in": "query",
+            "name": "has_inventory_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "false = piezas sin I.",
+              "title": "Has Inventory Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Author"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provenance",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provenance"
+            }
+          },
+          {
+            "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+            "in": "query",
+            "name": "description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1).",
+              "title": "Description"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_text",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Text"
+            }
+          },
+          {
+            "description": "Año de inicio de época.",
+            "in": "query",
+            "name": "epoch_start_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de inicio de época.",
+              "title": "Epoch Start Year"
+            }
+          },
+          {
+            "description": "Año de fin de época.",
+            "in": "query",
+            "name": "epoch_end_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Año de fin de época.",
+              "title": "Epoch End Year"
+            }
+          },
+          {
+            "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+            "in": "query",
+            "name": "has_alerts",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true = piezas con alguna alerta de completitud; false = sin alertas.",
+              "title": "Has Alerts"
+            }
+          },
+          {
+            "description": "Solo piezas con esa alerta de completitud.",
+            "in": "query",
+            "name": "alert_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AlertCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo piezas con esa alerta de completitud.",
+              "title": "Alert Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "denomination",
+              "enum": [
+                "denomination",
+                "-denomination",
+                "created_at",
+                "-created_at"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           }
         ],
@@ -24390,7 +24805,7 @@
             "cookieAuth": []
           }
         ],
-        "summary": "Reportes: inventario general, por colección, por ubicación, incompletas y valorización (RF-033, RF-037)",
+        "summary": "Reportes: inventario general, por colección, por ubicación, agrupado por atributo, incompletas y valorización (RF-033, RF-037, RF-047)",
         "tags": [
           "Reportes"
         ],

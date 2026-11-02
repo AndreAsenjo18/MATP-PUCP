@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 039453d0a0d9f711d3d606da7f5be1577a12b79136d51f6e084c820cd3eb9fd5
+ * openapi-sha256: c5508a8f8de2827ebd44789ca3d3f7ef6b657f41d4f4df37589a8a2d3e06bab6
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1768,8 +1768,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Reportes: inventario general, por colección, por ubicación, incompletas y valorización (RF-033, RF-037)
-         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).
+         * Reportes: inventario general, por colección, por ubicación, agrupado por atributo, incompletas y valorización (RF-033, RF-037, RF-047)
+         * @description Catálogo cerrado de reportes generados sobre una instantánea consistente: el total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo `include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. `by-attribute` agrupa por `group_by` (RF-047). Con `format` descarga el archivo, o lo genera en segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza por colección y moneda la valorización más reciente de cada pieza: exige `sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada generación queda en la auditoría (RNF-014).
          */
         get: operations["getReport"];
         put?: never;
@@ -3108,6 +3108,11 @@ export interface components {
         CollectionUpdate: {
             /** Acronym */
             acronym?: string | null;
+            /**
+             * Default Tenure Regime
+             * @description Régimen de tenencia por defecto en español: Propiedad, Comodato o Préstamo Temporal (crud-manual-completo 2.2).
+             */
+            default_tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
             /** Description */
             description?: string | null;
             /** Is Active */
@@ -4852,6 +4857,11 @@ export interface components {
          *     }
          */
         LocationNode: {
+            /**
+             * Allowed Child Types
+             * @description Niveles que el lugar admite dentro, en español y en orden; vacío para un contenedor. Propone el tipo de un lugar nuevo (crud-manual-completo D3).
+             */
+            allowed_child_types?: string[];
             /** Children */
             children?: components["schemas"]["LocationNode"][];
             /**
@@ -7016,7 +7026,7 @@ export interface components {
          * ReportType
          * @enum {string}
          */
-        ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
+        ReportType: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation" | "by-attribute";
         /**
          * RevertChangeSetOut
          * @description Resultado de una reversión aplicada.
@@ -15046,18 +15056,52 @@ export interface operations {
     getReport: {
         parameters: {
             query?: {
+                /** @description Solo piezas con esa alerta de completitud. */
+                alert_code?: components["schemas"]["AlertCode"] | null;
+                author?: string | null;
+                category_id?: string | null;
+                category_term_id?: string | null;
+                /** @description Incluye subcolecciones. */
                 collection_id?: string | null;
+                conservation_state_id?: string | null;
+                conservation_status_term_id?: string | null;
+                /** @description La denominación contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                denomination?: string | null;
+                /** @description La descripción contiene este texto, sin distinguir mayúsculas ni tildes (fusion-busqueda-deposito D1). */
+                description?: string | null;
+                /** @description Año de fin de época. */
+                epoch_end_year?: number | null;
+                /** @description Año de inicio de época. */
+                epoch_start_year?: number | null;
                 format?: components["schemas"]["ExportFormat"] | null;
+                /** @description Atributo del reporte `by-attribute`; otro valor responde 422 con los admitidos. */
+                group_by?: "provenance" | "denomination" | "author" | "material" | "conservation_state" | "category" | "collection";
+                /** @description true = piezas con alguna alerta de completitud; false = sin alertas. */
+                has_alerts?: boolean | null;
+                /** @description false = piezas sin I. */
+                has_inventory_code?: boolean | null;
                 include_loans_for_use?: boolean;
+                /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
+                material_id?: string | null;
+                material_term_id?: string | null;
                 not_verified_since_days?: number | null;
                 page?: number;
                 page_size?: number;
+                period_text?: string | null;
+                provenance?: string | null;
+                /** @description Cualquier código (vigente o histórico, con o sin puntos, espacios o ceros) o parte de la denominación (RF-031). */
+                q?: string | null;
+                sort?: "denomination" | "-denomination" | "created_at" | "-created_at";
+                /** @description Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal. */
+                tenure_regime?: ("Propiedad" | "Comodato" | "Préstamo Temporal") | null;
+                /** @description true = piezas sueltas. */
+                without_collection?: boolean | null;
             };
             header?: never;
             path: {
                 /** @description Tipo de reporte. */
-                report_type: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation";
+                report_type: "inventory" | "by-collection" | "by-location" | "incomplete" | "valuation" | "by-attribute";
             };
             cookie?: never;
         };

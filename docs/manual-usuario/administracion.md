@@ -65,7 +65,7 @@ Cada vez que el sistema entrega, sin ocultar, datos del comodante o la ubicació
 
 ## Ubicaciones
 
-Solo el rol **Administrador** puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito solo mueve o verifica piezas, desde la [Búsqueda](busqueda.md#4-verificar-y-mover-desde-los-resultados); no crea lugares nuevos.
+Quien administra ubicaciones (el **Administrador** y la **Gestora de colecciones**) puede crear, editar, desactivar o reubicar lugares del depósito. El personal de depósito solo mueve o verifica piezas, desde la [Búsqueda](busqueda.md#4-verificar-y-mover-desde-los-resultados); no crea lugares nuevos.
 
 ### La jerarquía
 
@@ -85,13 +85,24 @@ Un lugar solo puede crearse dentro del nivel inmediatamente superior (por ejempl
 
 Si el código ya existe, el sistema lo indica y no crea un lugar repetido.
 
+### Agregar o corregir un lugar desde la búsqueda
+
+No hace falta ir a Administración para agregar una caja que acaba de aparecer en un estante. Valen las mismas reglas, y todo queda en la auditoría.
+
+1. Vaya a **Búsqueda** y abra **Más filtros** (o pulse **Ver por ubicación**).
+2. En el árbol de **Ubicación**, elija el lugar. Debajo de su ruta aparecen **Agregar lugar aquí**, **Editar** y **Desactivar**.
+3. Para agregar, pulse **Agregar lugar aquí**. El sistema ya propone el **Tipo**, y solo ofrece los que ese lugar admite. Escriba el **Nombre**; el **Código** se propone a partir de la ruta y puede cambiarlo.
+4. Pulse **Agregar lugar**. El lugar aparece en el árbol y, si es un lugar final, ya se ofrece como destino de **Mover a**.
+
+Un contenedor no admite lugares dentro: **Agregar lugar aquí** aparece apagado y el sistema lo explica. **Editar** cambia solo el nombre. Quien no administra ubicaciones ve el mismo árbol para filtrar, sin estas acciones.
+
 ### Tipo de espacio
 
 A un **Depósito** se le puede asignar un tipo: depósito, sala de exhibición, taller u otro. Esto permite que, al mover una pieza a una sala, el sistema proponga automáticamente la disponibilidad «En sala»; al moverla a un depósito, «En depósito». Si alguien intenta marcar manualmente una disponibilidad que no corresponde a la ubicación actual de la pieza (por ejemplo, «En sala» mientras la pieza sigue en un depósito), el sistema lo rechaza y explica por qué.
 
 ### Desactivar un lugar
 
-Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
+Un lugar con piezas dentro (de forma directa o en cualquiera de sus muebles, niveles o contenedores) o con otros lugares activos dentro **no se puede desactivar**: el sistema indica cuántas piezas hay que reubicar y cuántos lugares hay que desactivar primero. Esto evita perder de vista piezas «escondidas» en un lugar desactivado.
 
 ### Reubicar un mueble o contenedor completo
 
@@ -225,12 +236,19 @@ En **Administración › Catálogo › Colecciones** está la lista de coleccion
 
 El sistema no acepta una sigla que ya tiene otra colección.
 
+Para **corregir una colección**, pulse **Editar** en su fila y cambie el nombre, la sigla, el régimen por defecto o la colección madre. Si cambia una sigla, el sistema ofrece guardar la anterior como sigla histórica, para que los Excel antiguos y las fotos la sigan reconociendo. Cada cambio queda en la auditoría.
+
+Para **retirar una colección**, pulse **Retirar** en su fila y escriba el motivo. Deja de ofrecerse en las fichas y en la importación, pero no se borra. Si todavía tiene piezas o subcolecciones, el sistema dice cuántas: reasígnelas primero.
+
+Pulse **Ver retiradas** para ver las colecciones retiradas. Solo el **Administrador** puede restaurarlas, con **Restaurar**.
+
 ### Listas de valores (vocabularios)
 
 Una **lista de valores** son las opciones que se eligen al llenar una ficha: materiales, técnicas, estados de conservación, categorías… En **Administración › Catálogo › Listas de valores** se elige la lista en el selector (dice cuántos términos tiene) y sus términos se ven como **etiquetas**: **verdes** las que se ofrecen en las fichas y **grises y tachadas** las desactivadas.
 
 - **Agregar un término:** escriba la etiqueta en **Nuevo término** (arriba) y pulse **Agregar**. El sistema propone el código estable a partir de la etiqueta («Arte plumario» → ARTE_PLUMARIO).
 - **Desactivar un término:** pulse su etiqueta. Deja de ofrecerse en las fichas nuevas, pero las fichas que ya lo usan lo conservan. Nunca se borra; pulsarla otra vez lo devuelve.
+- **Corregir una errata:** pulse **Corregir etiqueta** (arriba), elija el **Término** y escriba la **Etiqueta nueva**. El término es el mismo, así que todas las fichas que lo usan muestran la etiqueta nueva, y su código estable no cambia. Si ya existe otro término con esa etiqueta, el sistema lo dice y sugiere desactivar uno de los dos o usar otra etiqueta.
 - **Crear una lista:** pulse **Nueva lista**, escriba el **Nombre**; el **Código estable** se propone solo y no cambia después.
 
 Para cargar una lista completa (por ejemplo, la lista oficial de categorías cuando llegue), el equipo técnico usa la **precarga desde archivo**: primero muestra qué términos crearía o actualizaría sin escribir nada, y al aplicarla nunca desactiva los términos que no están en el archivo.

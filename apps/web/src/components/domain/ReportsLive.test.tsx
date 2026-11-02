@@ -1,81 +1,89 @@
 import { describe, expect, it } from "vitest";
 
-import type { Report } from "@/lib/data/reports";
+import { EMPTY_OPTIONS } from "@/components/domain/SearchFilters";
+import { EMPTY_FILTERS } from "@/lib/data/search";
 import { render, visibleText } from "@/test/render";
 
-import { PrintableReport, ReportPreview } from "./ReportsLive";
+import { GroupBySelect, ReportActions, ReportFilters, ReportJobNotice } from "./ReportsLive";
 
 // Datos sintéticos (RNF-014).
 
 const noop = () => {};
 
-function report(overrides: Partial<Report> = {}): Report {
-  return {
-    report_type: "inventory",
-    title: "Inventario general",
-    generated_at: "2026-10-25T12:00:00Z",
-    generated_by: "curadora@matp.local",
-    filters: { collection: "Colección RA (ficticia)" },
-    columns: ["Denominación", "Colección", "Ubicación"],
-    rows: [
-      ["Retablo de San Marcos", "Colección RA (ficticia)", "Sede Central › Depósito 1"],
-      ["Toro de Pucará", "Colección MMZ (ficticia)", "Sede Central › Depósito 2"],
-    ],
-    totals: { Piezas: 2, Propiedad: 2 },
-    subtotals: [
-      { group: "Colección", label: "Colección MMZ (ficticia)", count: 1, level: 0 },
-      { group: "Colección", label: "Colección RA (ficticia)", count: 1, level: 0 },
-      { group: "Régimen", label: "Propiedad", count: 2, level: 0 },
-    ],
-    masked_columns: [],
-    message: null,
-    download_url: null,
-    total_rows: 2,
-    page: 1,
-    page_size: 25,
-    ...overrides,
-  };
-}
-
-describe("vista previa del reporte", () => {
-  it("muestra quién lo generó, el detalle, los subtotales y los totales", () => {
-    const text = visibleText(render(<ReportPreview report={report()} onPage={noop} />));
-    expect(text).toContain("Inventario general");
-    expect(text).toContain("por curadora@matp.local");
-    expect(text).toContain("Retablo de San Marcos");
-    expect(text).toContain("Régimen: Propiedad — 2");
-    expect(text).toContain("Piezas: 2 · Propiedad: 2");
-    expect(text).not.toContain("Página");
+describe("configuración de «Piezas agrupadas por…»", () => {
+  it("ofrece los atributos que pidió el museo, sin elegir ninguno de antemano", () => {
+    const html = render(<GroupBySelect value={null} onChange={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Agrupar por");
+    expect(text).toContain("Elija un atributo");
+    for (const label of ["Procedencia", "Denominación", "Autor", "Material", "Estado de conservación", "Categoría", "Colección"]) {
+      expect(text).toContain(label);
+    }
+    expect(html).not.toMatch(/<option[^>]*selected=""[^>]*value="[a-z]/);
   });
 
-  it("avisa de las columnas limitadas, del reporte vacío y pagina", () => {
-    const masked = visibleText(render(<ReportPreview report={report({ masked_columns: ["Ubicación"] })} />));
-    expect(masked).toContain("Su rol ve limitadas estas columnas: Ubicación");
+  it("marca el atributo elegido", () => {
+    expect(render(<GroupBySelect value="material" onChange={noop} />)).toMatch(/<option[^>]*selected=""[^>]*>Material</);
+  });
 
-    const empty = visibleText(render(<ReportPreview report={report({ rows: [], total_rows: 0, totals: { Piezas: 0 }, message: "No hay piezas activas en el inventario con estos filtros: cero piezas." })} />));
-    expect(empty).toContain("cero piezas");
-    expect(empty).not.toContain("Denominación");
+  it("usa los mismos filtros de la búsqueda, plegados y con cuántos hay activos", () => {
+    const closed = render(<ReportFilters filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
+    expect(closed).toContain("<details");
+    expect(closed).not.toMatch(/<details[^>]*\sopen/);
+    expect(closed).toContain('aria-label="Filtros de búsqueda"');
+    expect(closed).toContain("Código o texto");
+    expect(visibleText(closed)).not.toContain("activo");
 
-    const paged = visibleText(render(<ReportPreview report={report({ total_rows: 60 })} onPage={noop} />));
-    expect(paged).toContain("Página 1 de 3 (60 filas)");
+    const one = visibleText(render(<ReportFilters filters={{ ...EMPTY_FILTERS, provenance: "Ayacucho" }} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />));
+    expect(one).toContain("Filtros (1 activo)");
+    const two = visibleText(render(<ReportFilters filters={{ ...EMPTY_FILTERS, provenance: "Ayacucho", author: "Anónimo" }} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />));
+    expect(two).toContain("Filtros (2 activos)");
   });
 });
 
-describe("vista imprimible", () => {
-  it("repite la cabecera por colección y salta de página entre colecciones", () => {
-    const html = render(<PrintableReport report={report()} tooLarge={false} />);
-    const text = visibleText(html);
-    expect(text.match(/Inventario general/g)).toHaveLength(2);
-    expect(text).toContain("Filtros: collection: Colección RA (ficticia)");
-    expect(text).toContain("Colección: Colección MMZ (ficticia)");
-    expect(html).toContain("print:break-before-page");
-    expect(html).toContain("table-header-group");
+describe("descargar e imprimir", () => {
+  const actions = (total_rows: number, canExport = true) => (
+    <ReportActions type="by-attribute" params={{ groupBy: "author" }} report={{ total_rows }} canExport={canExport} busy={false} onExport={noop} />
+  );
+
+  it("ofrece Excel y la vista imprimible con los mismos parámetros", () => {
+    const html = render(actions(3));
+    expect(visibleText(html)).toContain("Exportar a Excel");
+    expect(visibleText(html)).toContain("Vista imprimible");
+    expect(html).toContain("/reportes/imprimir/by-attribute?group_by=author");
   });
 
-  it("sugiere Excel cuando supera el límite de impresión", () => {
-    const text = visibleText(render(<PrintableReport report={report({ rows: [], total_rows: 9000 })} tooLarge />));
-    expect(text).toContain("supera el límite de impresión");
-    expect(text).toContain("Expórtelo a Excel");
-    expect(text).not.toContain("Retablo de San Marcos");
+  it("no ofrece nada si no hay piezas con esos filtros", () => {
+    expect(render(actions(0))).toBe("");
+  });
+
+  it("sin permiso de exportar deja solo la vista imprimible", () => {
+    const text = visibleText(render(actions(3, false)));
+    expect(text).not.toContain("Exportar a Excel");
+    expect(text).toContain("Vista imprimible");
+  });
+});
+
+describe("reporte en segundo plano", () => {
+  it("dice que se está generando mientras está en cola o en preparación", () => {
+    for (const status of ["PENDING", "RUNNING"] as const) {
+      const html = render(<ReportJobNotice job={{ status }} />);
+      expect(html).toContain('role="status"');
+      expect(visibleText(html)).toContain("se está generando en segundo plano");
+      expect(visibleText(html)).toContain("Mis exportaciones");
+    }
+  });
+
+  it("avisa al terminar, y dónde descargarlo", () => {
+    const html = render(<ReportJobNotice job={{ status: "READY" }} />);
+    expect(html).toContain('role="status"');
+    expect(visibleText(html)).toContain("ya está listo");
+    expect(visibleText(html)).toContain("Mis exportaciones");
+  });
+
+  it("avisa si falló, como una alerta", () => {
+    const html = render(<ReportJobNotice job={{ status: "FAILED" }} />);
+    expect(html).toContain('role="alert"');
+    expect(visibleText(html)).toContain("No se pudo generar el reporte");
   });
 });

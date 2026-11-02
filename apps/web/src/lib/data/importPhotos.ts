@@ -42,6 +42,8 @@ const PHOTO_STATES = new Set<ImportBatch["status"]>(["MAPPED", "VALIDATED", "IN_
 const PHOTO_BATCH_STATES = new Set<ImportBatch["status"]>(["UPLOADED", "IN_PREVIEW"]);
 
 export function acceptsPhotos(batch: Pick<ImportBatch, "status"> & { kind?: ImportBatch["kind"] }): boolean {
+  // Una hoja de observaciones no lleva fotos: la API las rechaza (`formatos-reales-importacion`, D8).
+  if (batch.kind === "OBSERVATIONS") return false;
   return (batch.kind === "PHOTOS" ? PHOTO_BATCH_STATES : PHOTO_STATES).has(batch.status);
 }
 
@@ -244,7 +246,7 @@ export const xhrPut: PutFile = (upload, file, onProgress) =>
     request.send(file);
   });
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+export const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Estado inicial de cada foto, conservando lo ya sabido de una pasada anterior (reanudar). */
 export function initialProgress(files: PhotoFile[], previous: PhotoProgress[] = []): PhotoProgress[] {
@@ -256,7 +258,7 @@ export function initialProgress(files: PhotoFile[], previous: PhotoProgress[] = 
   });
 }
 
-async function withRetries(attempt: () => Promise<void>, sleep: (ms: number) => Promise<void>): Promise<void> {
+export async function withRetries(attempt: () => Promise<void>, sleep: (ms: number) => Promise<void>): Promise<void> {
   for (let index = 0; ; index += 1) {
     try {
       return await attempt();

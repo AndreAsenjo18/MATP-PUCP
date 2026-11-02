@@ -99,6 +99,8 @@ export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
 export const MAIN_FILTER_KEYS: readonly (keyof SearchFilters)[] = ["q", "denomination", "categoryId", "materialId", "description"];
 /** Filtros que se escriben: la búsqueda espera a que se deje de teclear. */
 export const TEXT_FILTER_KEYS = ["q", "denomination", "description", "author", "provenance"] as const;
+/** Espera tras la última tecla antes de consultar. */
+export const TYPING_DEBOUNCE_MS = 300;
 
 function isActive(value: SearchFilters[keyof SearchFilters]): boolean {
   return value !== null && !(typeof value === "string" && value.trim() === "");
