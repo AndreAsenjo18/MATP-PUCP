@@ -67,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         upload_media=not args.no_media_upload,
         admin_email=os.environ.get("SEED_ADMIN_EMAIL", "admin@matp.local"),
         admin_password=os.environ.get("SEED_ADMIN_PASSWORD") or None,
+        dev_password=settings.seed_dev_password,
     )
     engine = make_engine(settings.database_url)
     factory = make_session_factory(engine)

@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from openpyxl import load_workbook
+from pwdlib import PasswordHash
 from sqlalchemy import Engine, create_engine, event, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -63,6 +64,56 @@ def seeded() -> Iterator[tuple[Session, Any]]:
     yield session, summary
     session.close()
     engine.dispose()
+
+
+def _password_hashes(options: SeedOptions) -> dict[str, str | None]:
+    engine, session = _new_session()
+    try:
+        run_seed(session, options)
+        return {user.email: user.password_hash for user in session.scalars(select(AppUser))}
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_the_dev_password_lets_the_synthetic_users_sign_in() -> None:
+    """SEED_DEV_PASSWORD (ADR-009, point 7): every role can be tried in development."""
+    hasher = PasswordHash.recommended()
+
+    hashes = _password_hashes(
+        SeedOptions(
+            upload_media=False,
+            piece_count=5,
+            duplicate_pairs=0,
+            sets=0,
+            components_per_set=0,
+            admin_password="clave-admin-1",
+            dev_password="clave-dev-1",
+        )
+    )
+
+    admin = hashes.pop("admin@matp.local")
+    assert admin and hasher.verify("clave-admin-1", admin)  # the admin keeps its own
+    assert len(hashes) == 5
+    for email, password_hash in hashes.items():
+        assert password_hash and hasher.verify("clave-dev-1", password_hash), email
+
+
+def test_without_a_dev_password_only_the_admin_has_one() -> None:
+    hashes = _password_hashes(
+        SeedOptions(
+            upload_media=False,
+            piece_count=5,
+            duplicate_pairs=0,
+            sets=0,
+            components_per_set=0,
+            admin_password="clave-admin-1",
+        )
+    )
+
+    assert [email for email, password_hash in hashes.items() if password_hash] == [
+        "admin@matp.local"
+    ]
 
 
 def _count(session: Session, statement: Any) -> int:
