@@ -1020,6 +1020,14 @@ def register_media(
     # 1. Pieza existe
     get_piece(session, piece_id)
 
+    # The object is deleted after the copy: any other key could destroy an original (RN-005).
+    if not body.storage_key.startswith(f"pieces/{piece_id}/pending/") or ".." in body.storage_key:
+        raise ValidationFailed(
+            "La clave no corresponde a una subida pendiente de esta pieza.",
+            code="invalid_storage_key",
+            details={"field": "storage_key"},
+        )
+
     # 2. HEAD object en storage (existe, tamaño, content-type)
     try:
         head = request.app.state.storage.head(body.storage_key)
