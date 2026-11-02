@@ -16,4 +16,5 @@
 
 - [x] 3.1 Actualizar L5 y A4 en `docs/preguntas-contraparte.md` y la sección de Lectura de códigos del manual de usuario
 - [x] 3.2 Verificación en PostgreSQL (`npm run test:api:pg`) de la migración de datos (verificado en el job «Migraciones (PostgreSQL)» de CI del PR #138)
-- [ ] 3.3 `npm run openapi:check` (el único cambio es la clave `tenure_aliases` de `/normalization-settings/{key}`, una operación añadida; registrado en `docs/api/mapeo-endpoints-v1.md`), `npm test`, `npm run lint` y `openspec validate ajustes-lectura-importacion --strict` en verde; tras aprobar el PR, `openspec archive ajustes-lectura-importacion -y`
+- [x] 3.3 `npm run openapi:check` (el único cambio es la clave `tenure_aliases` de `/normalization-settings/{key}`, una operación añadida; registrado en `docs/api/mapeo-endpoints-v1.md`), `npm test`, `npm run lint` y `openspec validate ajustes-lectura-importacion --strict` en verde; tras aprobar el PR, `openspec archive ajustes-lectura-importacion -y`
+  - Hecho (2026-11-01): PR #138 aprobado y fusionado (2026-10-31) con el CI en verde (lint, pruebas, PostgreSQL y `openspec validate --strict`); `openapi:check` en verde sobre `main`.
