@@ -22,15 +22,8 @@ export interface ProjectionParams {
   mb_per_photo?: number;
 }
 
-/** Proyección para las fotos esperadas (`expected_collection`). */
-export interface ExpectedCollection {
-  photos: number;
-  mb_per_photo: number;
-  original_bytes: number;
-  display_bytes: number;
-  thumb_bytes: number;
-  total_bytes: number;
-}
+/** Proyección para las fotos esperadas (`expected_collection`, con su esquema desde #145). */
+export type ExpectedCollection = ApiSchemas["ExpectedCollectionVolume"];
 
 /** Proyección a medida (`projection`). */
 export interface Projection {
@@ -52,20 +45,23 @@ const EXPECTED_PHOTOS = 25_000;
 const DEFAULT_MB_PER_PHOTO = 4;
 
 export function expectedCollection(estimate: StorageEstimate): ExpectedCollection {
-  return estimate.expected_collection as unknown as ExpectedCollection;
+  return estimate.expected_collection;
 }
 
 export function projectionOf(estimate: StorageEstimate): Projection | null {
   return (estimate.projection as unknown as Projection | null | undefined) ?? null;
 }
 
-/** Bytes en unidades decimales (GB = 10⁹), con el formato numérico de es-PE: «1.2 GB». */
+/**
+ * Bytes en unidades binarias (GB = 1024³), como el aviso de cuota de la aprobación de un lote y
+ * `MEDIA_QUOTA_BYTES`, con el formato numérico de es-PE: «1.2 GB».
+ */
 export function formatBytes(bytes: number): string {
   const units = ["B", "KB", "MB", "GB", "TB"];
   let value = bytes;
   let unit = 0;
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
     unit += 1;
   }
   const digits = unit === 0 || value >= 100 ? 0 : 1;

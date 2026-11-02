@@ -23,10 +23,11 @@ import {
   type StorageEstimate,
 } from "@/lib/data/storage-estimate";
 
+// Las piezas son enteras; los promedios admiten decimales con punto o coma («3,5 MB»).
 const FIELDS = [
-  { key: "pieces", label: "Piezas" },
-  { key: "photos_per_piece", label: "Fotos por pieza" },
-  { key: "mb_per_photo", label: "MB por foto" },
+  { key: "pieces", label: "Piezas", decimals: false },
+  { key: "photos_per_piece", label: "Fotos por pieza", decimals: true },
+  { key: "mb_per_photo", label: "MB por foto", decimals: true },
 ] as const;
 
 type Draft = Record<(typeof FIELDS)[number]["key"], string>;
@@ -37,14 +38,16 @@ function decimal(value: number | null | undefined): string {
   return value == null ? "—" : value.toLocaleString("es-PE", { maximumFractionDigits: 1 });
 }
 
-/** Lo que se proyecta: solo los campos escritos, como enteros no negativos. */
+/** Lo que se proyecta: solo los campos escritos, no negativos; las piezas, enteras. */
 export function paramsFromDraft(draft: Draft): ProjectionParams | string {
   const params: ProjectionParams = {};
-  for (const { key, label } of FIELDS) {
-    const raw = draft[key].trim();
+  for (const { key, label, decimals } of FIELDS) {
+    const raw = draft[key].trim().replace(",", ".");
     if (!raw) continue;
     const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0) return `${label}: escriba un número entero mayor o igual a cero.`;
+    if (!Number.isFinite(value) || value < 0 || (!decimals && !Number.isInteger(value))) {
+      return decimals ? `${label}: escriba un número mayor o igual a cero.` : `${label}: escriba un número entero mayor o igual a cero.`;
+    }
     params[key] = value;
   }
   return params;
@@ -145,11 +148,11 @@ export function StorageEstimateCard({ devUser }: { devUser?: string }) {
       )}
       {result?.status === "ok" && <StorageEstimateView estimate={result.estimate} />}
       <form className="flex flex-wrap items-end gap-3" onSubmit={handleSubmit} aria-label="Proyección a medida">
-        {FIELDS.map(({ key, label }) => (
+        {FIELDS.map(({ key, label, decimals }) => (
           <Input
             key={key}
             label={label}
-            inputMode="numeric"
+            inputMode={decimals ? "decimal" : "numeric"}
             value={draft[key]}
             onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}
             fieldClassName="w-36"

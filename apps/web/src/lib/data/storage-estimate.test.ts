@@ -26,10 +26,11 @@ afterEach(() => {
 });
 
 describe("formatBytes", () => {
-  it("usa unidades decimales y el formato de es-PE", () => {
+  it("usa unidades binarias, como el aviso de cuota, y el formato de es-PE", () => {
     expect(formatBytes(512)).toBe("512 B");
-    expect(formatBytes(20_480)).toBe("20.5 KB");
-    expect(formatBytes(419_430_400_000)).toBe("419 GB");
+    expect(formatBytes(20_480)).toBe("20.0 KB");
+    expect(formatBytes(10 * 1024 ** 3)).toBe("10.0 GB");
+    expect(formatBytes(419_430_400_000)).toBe("391 GB");
   });
 });
 
