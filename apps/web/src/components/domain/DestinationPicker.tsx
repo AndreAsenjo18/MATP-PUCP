@@ -17,10 +17,12 @@ export interface DestinationPickerProps {
   value: string;
   onChange: (id: string) => void;
   label?: string;
+  /** La opción sin destino. */
+  emptyLabel?: string;
 }
 
 /** «Mover a»: buscador y lista de lugares finales con su ruta completa. */
-export function DestinationPicker({ options, value, onChange, label = "Mover a" }: DestinationPickerProps) {
+export function DestinationPicker({ options, value, onChange, label = "Mover a", emptyLabel = "Seleccione un destino…" }: DestinationPickerProps) {
   const [query, setQuery] = useState("");
   if (options.length === 0) {
     return (
@@ -46,7 +48,7 @@ export function DestinationPicker({ options, value, onChange, label = "Mover a" 
         hint={DESTINATION_HINT}
       />
       <Select label={label} value={value} onChange={(event) => onChange(event.target.value)} className="p-3 lg:p-2 lg:text-sm">
-        <option value="">Seleccione un destino…</option>
+        <option value="">{emptyLabel}</option>
         {visible.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}

@@ -13,6 +13,8 @@ import {
   seenAgoText,
   updateLocation,
   type LocationNode,
+  fetchDestinations,
+  firstLocationBody,
 } from "./locations";
 
 const BASE_URL = "http://api.test";
@@ -262,5 +264,33 @@ describe("cuándo se vio la pieza (fusion-busqueda-deposito 3.3)", () => {
 
   it("una fecha posterior por un reloj adelantado se lee como hoy", () => {
     expect(seenAgoText(new Date(2026, 10, 2, 8, 0).toISOString(), now)).toBe("visto hoy");
+  });
+});
+
+describe("ubicación inicial de una pieza nueva (crud-manual-completo 4.1)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  function live(response: () => Response) {
+    vi.stubEnv("NEXT_PUBLIC_API_MODE", "live");
+    vi.stubEnv("API_INTERNAL_URL", "http://api.test");
+    vi.stubGlobal("fetch", vi.fn(async () => response()));
+  }
+
+  it("es un movimiento normal, que dice por qué se hizo", () => {
+    expect(firstLocationBody("caja-3")).toEqual({ movement_type: "MOVE", to_location_id: "caja-3", reason: "Ubicación inicial al registrar la pieza" });
+  });
+
+  it("solo ofrece lugares finales", async () => {
+    const tree = [{ id: "sede", name: "Sede", level_type: "Sede", children: [{ id: "caja", name: "Caja", level_type: "Contenedor", children: [] }] }];
+    live(() => new Response(JSON.stringify(tree), { status: 200, headers: { "content-type": "application/json" } }));
+    expect((await fetchDestinations())?.map((option) => option.id)).toEqual(["caja"]);
+  });
+
+  it("si no cargan, responde null y el formulario no ofrece el campo", async () => {
+    live(() => new Response(JSON.stringify({ code: "error", message: "Falla" }), { status: 500, headers: { "content-type": "application/json" } }));
+    expect(await fetchDestinations()).toBeNull();
   });
 });

@@ -134,3 +134,46 @@ def test_internal_viewer_sees_the_tree_but_cannot_change_it(
     assert tree.status_code == 200, tree.text
     assert added.status_code == 403
     assert edited.status_code == 403
+
+
+def test_a_new_piece_gets_its_first_location_as_a_movement(
+    seeded_api: SeededApi, level: str
+) -> None:
+    """The initial location of the creation form (crud-manual-completo 4.1)."""
+    client = seeded_api.login_as("ADMIN")
+    box = client.post(
+        "/api/v1/locations",
+        json={
+            "level": "Contenedor",
+            "code": f"CAJA-{uuid.uuid4().hex[:6]}",
+            "name": "Caja de ingreso",
+            "parent_id": level,
+        },
+    ).json()["id"]
+    piece = client.post(
+        "/api/v1/pieces",
+        json={
+            "denomination": "Pieza con ubicación inicial (sintética)",
+            "tenure_regime": "Propiedad",
+        },
+    ).json()["id"]
+
+    moved = client.post(
+        f"/api/v1/pieces/{piece}/move",
+        json={
+            "movement_type": "MOVE",
+            "to_location_id": box,
+            "reason": "Ubicación inicial al registrar la pieza",
+        },
+    )
+
+    assert moved.status_code in (200, 201), moved.text
+    detail = client.get(f"/api/v1/pieces/{piece}").json()
+    assert detail["location"]["path"][-1]["id"] == box
+    history = client.get(f"/api/v1/pieces/{piece}/location-history").json()
+    assert [entry["reason"] for entry in history] == ["Ubicación inicial al registrar la pieza"]
+
+    # The shared database counts active pieces in other tests.
+    removed = client.delete(f"/api/v1/pieces/{piece}", params={"reason": "Prueba terminada"})
+    assert removed.status_code == 204, removed.text
+    assert client.put(f"/api/v1/locations/{box}", json={"is_active": False}).status_code == 200

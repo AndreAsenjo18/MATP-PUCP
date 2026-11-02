@@ -331,6 +331,36 @@ describe("PieceForm: registrar piezas seguidas (crud-manual-completo 4.1)", () =
     expect(text).toContain("el sistema los revisará al guardar");
   });
 
+  describe("ubicación inicial", () => {
+    const PLACES = [{ id: "caja-3", label: "Sede › Depósito 2 › Caja 3", level: "Contenedor" }];
+
+    it("se ofrece en el alta a quien recibe lugares, y es opcional", () => {
+      const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, destinations: PLACES }));
+      expect(text).toContain("Ubicación inicial");
+      expect(text).toContain("Sin ubicación por ahora");
+      expect(text).toContain("Sede › Depósito 2 › Caja 3");
+    });
+
+    it("sin lugares, o al editar, no se ofrece", () => {
+      expect(visibleText(renderWithSession(memoryStorage(), ANOTHER_PROPS))).not.toContain("Ubicación inicial");
+      expect(visibleText(renderWithSession(memoryStorage(), { ...EDIT_PROPS, destinations: PLACES }))).not.toContain("Ubicación inicial");
+    });
+
+    it("copiada, se marca como las demás", () => {
+      const copy = repeatableCopy({ ...saved, initial_location_id: "caja-3" });
+      const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, destinations: PLACES });
+      expect(copy.fields).toContain("initial_location_id");
+      expect(html.match(/data-copied="true"/g)).toHaveLength(copy.fields.length);
+      expect(html).toMatch(/<option value="caja-3" selected/);
+    });
+
+    it("si ya no se ofrece, lo dice junto al campo", () => {
+      const copy = revalidateCopy(repeatableCopy({ ...saved, initial_location_id: "retirada" }), initialPieceCatalogs(), PLACES);
+      const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, destinations: PLACES }));
+      expect(text).toContain("la ubicación copiada ya no se ofrece como destino");
+    });
+  });
+
   it("sin datos copiados no hay aviso ni resaltado", () => {
     const html = renderWithSession(memoryStorage(), ANOTHER_PROPS);
     expect(visibleText(html)).not.toContain("Datos copiados");

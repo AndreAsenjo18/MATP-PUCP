@@ -53,6 +53,11 @@ export const LOCATION_ERROR_MESSAGES: Record<string, string> = {
   permission_denied: "Su rol no tiene permiso para esta operación.",
 };
 
+export function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
+}
+
 function client(devUser: string | undefined) {
   return createApiClient({ baseUrl: apiBaseUrl(), devUser });
 }
@@ -234,6 +239,17 @@ export function filterDestinations(items: readonly DestinationOption[], query: s
 }
 
 /** El camino desde la sede hasta el lugar `id`, o `null` si no está en el árbol. */
+/** Los lugares finales para la ubicación inicial de una pieza, o `null` si no se pudieron cargar. */
+export async function fetchDestinations(devUser?: string): Promise<DestinationOption[] | null> {
+  const tree = await fetchLocationsTree(devUser);
+  return tree.status === "ok" ? finalLocations(tree.value) : null;
+}
+
+/** La ubicación inicial es el primer movimiento de la pieza: queda en su historial y en la auditoría. */
+export function firstLocationBody(toLocationId: string): MovementCreateInput {
+  return { movement_type: "MOVE", to_location_id: toLocationId, reason: "Ubicación inicial al registrar la pieza" };
+}
+
 /** Qué se puede agregar dentro de un lugar, en lenguaje claro (`crud-manual-completo` D3). */
 export function allowedTypesSentence(node: Pick<LocationNode, "name" | "level_type" | "allowed_child_types">): string {
   const level = node.level_type.toLowerCase();

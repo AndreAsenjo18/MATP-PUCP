@@ -26,6 +26,7 @@ export const ALL_FORM_FIELDS: readonly PieceFormField[] = [
   "acquisition_method_term_id",
   "entry_date",
   "recorded_by",
+  "initial_location_id",
   "dimensions_text",
   "material_term_ids",
   "conservation_state_id",

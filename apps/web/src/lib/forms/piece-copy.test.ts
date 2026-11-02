@@ -248,3 +248,45 @@ describe("comprobar lo copiado antes de mostrar el formulario", () => {
     expect(catalogs).toBeUndefined();
   });
 });
+
+describe("la ubicación inicial se repite y se comprueba", () => {
+  const CATALOGS = initialPieceCatalogs();
+  const copy = repeatableCopy({ ...SAVED, collection_id: "", acquisition_method_term_id: "", initial_location_id: "caja-3" });
+
+  it("«Guardar y registrar otra» la repite y la marca como copiada", () => {
+    expect(copy.values.initial_location_id).toBe("caja-3");
+    expect(copy.fields).toContain("initial_location_id");
+  });
+
+  it("no viaja en el alta: es el primer movimiento de la pieza", () => {
+    expect(toCreateInput(copy.values)).not.toHaveProperty("initial_location_id");
+  });
+
+  it("si sigue siendo un destino, se conserva", () => {
+    const checked = revalidateCopy(copy, CATALOGS, [{ id: "caja-3" }]);
+    expect(checked.values.initial_location_id).toBe("caja-3");
+    expect(checked.dropped.initial_location_id).toBeUndefined();
+  });
+
+  it("si se desactivó entre una pieza y la siguiente, queda vacía y lo dice", () => {
+    const checked = revalidateCopy(copy, CATALOGS, [{ id: "otra" }]);
+    expect(checked.values.initial_location_id).toBe("");
+    expect(checked.fields).not.toContain("initial_location_id");
+    expect(checked.dropped.initial_location_id).toContain("la ubicación copiada ya no se ofrece");
+  });
+
+  it("sin lugares que ofrecer se quita sin aviso: el campo no se muestra", () => {
+    const checked = revalidateCopy(copy, CATALOGS, null);
+    expect(checked.values.initial_location_id).toBe("");
+    expect(checked.dropped.initial_location_id).toBeUndefined();
+  });
+
+  it("desde una ficha se copia solo si el rol ve la ubicación exacta", () => {
+    const base = getPieceDetail(PIECES[0]?.id ?? "") as ApiSchemas["PieceDetail"];
+    const place = { id: "caja-3", code: "C3", name: "Caja 3", level: "Contenedor" } as ApiSchemas["PieceDetail"]["location"]["path"][number];
+    const exact = similarPieceCopy({ ...base, location: { ...base.location, path: [place], is_exact: true } });
+    expect(exact.values.initial_location_id).toBe("caja-3");
+    const masked = similarPieceCopy({ ...base, location: { ...base.location, path: [place], is_exact: false } });
+    expect(masked.values.initial_location_id).toBe("");
+  });
+});

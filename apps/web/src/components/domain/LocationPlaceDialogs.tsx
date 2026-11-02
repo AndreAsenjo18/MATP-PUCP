@@ -12,13 +12,12 @@ import { FormDialog } from "@/components/domain/AdminShell";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
-  LOCATION_ERROR_MESSAGES,
   allowedTypesSentence,
   createLocation,
+  describeLocationFailure,
   locationTrail,
   proposedPlaceCode,
   updateLocation,
-  type LocationFailure,
   type LocationLevelLabel,
   type LocationNode,
 } from "@/lib/data/locations";
@@ -34,11 +33,6 @@ export interface NewPlaceForm {
 
 export function newPlaceForm(parent: Pick<LocationNode, "allowed_child_types">): NewPlaceForm {
   return { level: parent.allowed_child_types?.[0] ?? "", name: "", code: "" };
-}
-
-function failureText(failure: LocationFailure): string {
-  if (failure.status === "unavailable") return failure.message;
-  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
 }
 
 /** Campos del lugar nuevo: el tipo ya propuesto, entre los que admite el lugar; el código, a partir de la ruta. */
@@ -98,8 +92,8 @@ function AddPlaceDialog({ parent, nodes, devUser, onClose, onChanged }: { parent
         const code = form.code.trim() || proposedPlaceCode(trail, name);
         const result = await createLocation({ level: form.level as LocationLevelLabel, code, name, parent_id: parent.id }, devUser);
         if (result.status !== "ok") {
-          if (result.status === "rejected" && result.code === "duplicate_location_code") setErrors({ code: failureText(result) });
-          else setFailure(failureText(result));
+          if (result.status === "rejected" && result.code === "duplicate_location_code") setErrors({ code: describeLocationFailure(result) });
+          else setFailure(describeLocationFailure(result));
           return false;
         }
         await onChanged(`Lugar «${result.value.name}» agregado en «${parent.name}».`);
@@ -130,7 +124,7 @@ function EditPlaceDialog({ node, devUser, onClose, onChanged }: { node: Location
         if (!next) return false;
         const result = await updateLocation(node.id, { name: next }, devUser);
         if (result.status !== "ok") {
-          setFailure(failureText(result));
+          setFailure(describeLocationFailure(result));
           return false;
         }
         await onChanged(`Lugar «${node.name}» guardado como «${result.value.name}».`);
@@ -156,7 +150,7 @@ function DeactivatePlaceDialog({ node, devUser, onClose, onChanged }: { node: Lo
         setFailure(null);
         const result = await updateLocation(node.id, { is_active: false }, devUser);
         if (result.status !== "ok") {
-          setFailure(failureText(result));
+          setFailure(describeLocationFailure(result));
           return false;
         }
         await onChanged(`Lugar «${node.name}» desactivado.`, node.id);

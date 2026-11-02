@@ -7,13 +7,14 @@
  * interno al guardarse.
  */
 import type { ApiSchemas } from "@/lib/api/client";
+import type { DestinationOption } from "@/lib/data/locations";
 import { fetchPieceCatalogs, type PieceFormCatalogs } from "@/lib/data/pieces";
 
 import { EMPTY_PIECE_FORM, toFormValues, type PieceFormValues } from "./piece-form";
 import type { PieceFormField } from "./piece-issues";
 
 /** Lo que suele repetirse entre piezas de un mismo ingreso, como las de una donación. */
-const REPEATABLE_FIELDS = ["tenure_regime", "collection_id", "acquisition_method_term_id", "entry_date", "recorded_by"] as const satisfies readonly PieceFormField[];
+const REPEATABLE_FIELDS = ["tenure_regime", "collection_id", "acquisition_method_term_id", "entry_date", "recorded_by", "initial_location_id"] as const satisfies readonly PieceFormField[];
 
 /** Solo tienen sentido con régimen Comodato. */
 const LOAN_FIELDS = ["lender_name", "loan_agreement_ref"] as const satisfies readonly PieceFormField[];
@@ -69,10 +70,10 @@ export function repeatableCopy(saved: PieceFormValues): PieceCopy {
 
 /**
  * «Registrar a partir de esta pieza»: parte de la ficha tal como la ve el rol, así que un dato
- * restringido llega vacío y no se copia.
+ * restringido llega vacío y no se copia. La ubicación solo se copia si el rol la ve exacta.
  */
 export function similarPieceCopy(piece: ApiSchemas["PieceDetail"]): PieceCopy {
-  const from = toFormValues(piece);
+  const from = { ...toFormValues(piece), initial_location_id: piece.location.is_exact ? (piece.location.path.at(-1)?.id ?? "") : "" };
   return copyFields(from, `«${piece.denomination}»`, withLoanFields(from, DESCRIPTIVE_FIELDS));
 }
 
@@ -84,8 +85,11 @@ const COPIED_CHOICES = [
   { field: "acquisition_method_term_id", options: "acquisitionMethods", notice: "Aviso: la forma de adquisición copiada ya no se ofrece. Elija otra." },
 ] as const;
 
-/** Vacía lo copiado que se retiró o desactivó entre una pieza y la siguiente, y lo dice. */
-export function revalidateCopy(copy: PieceCopy, catalogs: PieceFormCatalogs): PieceCopy {
+/**
+ * Vacía lo copiado que se retiró o desactivó entre una pieza y la siguiente, y lo dice. Sin
+ * `destinations` no se ofrece la ubicación inicial, así que la copiada se quita sin aviso.
+ */
+export function revalidateCopy(copy: PieceCopy, catalogs: PieceFormCatalogs, destinations: readonly Pick<DestinationOption, "id">[] | null = null): PieceCopy {
   const values = { ...copy.values };
   const dropped: PieceCopy["dropped"] = {};
   for (const { field, options, notice } of COPIED_CHOICES) {
@@ -99,6 +103,10 @@ export function revalidateCopy(copy: PieceCopy, catalogs: PieceFormCatalogs): Pi
     values.material_term_ids = materials;
     dropped.material_term_ids = "Aviso: se quitaron materiales copiados que ya no se ofrecen.";
   }
+  if (values.initial_location_id && !destinations?.some((option) => option.id === values.initial_location_id)) {
+    values.initial_location_id = "";
+    if (destinations) dropped.initial_location_id = "Aviso: la ubicación copiada ya no se ofrece como destino. Elija otra o déjela vacía.";
+  }
   return { ...copy, values, dropped, fields: copy.fields.filter((field) => hasValue(values[field])) };
 }
 
@@ -109,10 +117,10 @@ export interface PreparedCopy {
 }
 
 /** Comprueba la colección y los términos copiados antes de mostrar el formulario (design D4). */
-export async function prepareCopy(copy: PieceCopy): Promise<PreparedCopy> {
+export async function prepareCopy(copy: PieceCopy, destinations: readonly Pick<DestinationOption, "id">[] | null = null): Promise<PreparedCopy> {
   const result = await fetchPieceCatalogs();
   if (result.status !== "ok") return { copy: { ...copy, unchecked: true } };
-  return { copy: revalidateCopy(copy, result.catalogs), catalogs: result.catalogs };
+  return { copy: revalidateCopy(copy, result.catalogs, destinations), catalogs: result.catalogs };
 }
 
 /**

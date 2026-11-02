@@ -28,12 +28,14 @@ import { CopyPlus, Save } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 
+import { DestinationPicker } from "@/components/domain/DestinationPicker";
 import { PieceEditConflict, computeConflictChanges, type ConflictChange } from "@/components/domain/PieceEditConflict";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
+import type { DestinationOption } from "@/lib/data/locations";
 import {
   createPieceValidator,
   fetchPieceCatalogs,
@@ -90,6 +92,8 @@ export interface PieceFormProps {
   copy?: PieceCopy | null;
   /** Listas ya cargadas al comprobar esos datos; sin ellas, el formulario las pide. */
   initialCatalogs?: PieceFormCatalogs;
+  /** Lugares para la ubicación inicial, en el alta; sin ellos (rol sin permiso de mover) no se ofrece. */
+  destinations?: readonly DestinationOption[] | null;
   /** Valores actuales de la ficha en el servidor, para «Ver cambios del otro usuario». */
   loadCurrentValues?: () => Promise<PieceFormValues | null>;
   /** Propietario legal de la ficha (solo lectura: el contrato de escritura no lo incluye, RN-006). Solo en edición. */
@@ -337,6 +341,7 @@ export function PieceForm({
   onRegisterAnother,
   copy = null,
   initialCatalogs,
+  destinations = null,
   loadCurrentValues,
   legalOwner = null,
   maskedFields = [],
@@ -642,6 +647,20 @@ export function PieceForm({
             copied={isCopied("entry_date")}
           />
           {mode === "create" && <TextControl control={control} grouped={grouped} name="recorded_by" label="Registrado por" copied={isCopied("recorded_by")} />}
+          {mode === "create" && destinations && (
+            <CopiedMark copied={isCopied("initial_location_id")}>
+              <Controller
+                control={control}
+                name="initial_location_id"
+                render={({ field }) => (
+                  <div className="flex flex-col gap-1" onBlur={field.onBlur}>
+                    <DestinationPicker options={destinations} value={field.value} onChange={field.onChange} label="Ubicación inicial" emptyLabel="Sin ubicación por ahora" />
+                    {droppedNotice("initial_location_id") && <p className="text-sm text-gris-texto">{droppedNotice("initial_location_id")}</p>}
+                  </div>
+                )}
+              />
+            </CopiedMark>
+          )}
         </FormSection>
 
         <FormSection title="Medidas y materiales">
