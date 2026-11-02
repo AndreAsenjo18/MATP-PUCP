@@ -456,3 +456,61 @@ export async function assignPhotos(batchId: string, photoIds: string[], rowId: s
   );
   return result.status === "ok" ? { status: "ok", value: result.value.photos } : result;
 }
+
+/** Cómo se emparejó la foto con su fila (diseño D3), en palabras de la previsualización. */
+export const MATCH_SOURCE_LABELS: Record<string, string> = {
+  FILENAME: "por el nombre del archivo",
+  FOLDER: "por la carpeta",
+  COLUMN: "por la columna de archivo",
+  MANUAL: "asignada a mano",
+  EMBEDDED: "imagen del Excel",
+};
+
+/** Fotos verificadas por fila, en su orden (tarea 6.3): la tira de miniaturas de «Revise las filas». */
+export function photosByRow(photos: readonly TrayPhoto[]): Record<string, TrayPhoto[]> {
+  const byRow: Record<string, TrayPhoto[]> = {};
+  for (const photo of photos) {
+    if (!photo.row_id) continue;
+    (byRow[photo.row_id] ??= []).push(photo);
+  }
+  for (const list of Object.values(byRow)) list.sort((a, b) => (a.sort_key ?? Number.MAX_SAFE_INTEGER) - (b.sort_key ?? Number.MAX_SAFE_INTEGER));
+  return byRow;
+}
+
+/** Resumen de las fotos de una fila: cuántas, por qué vía y cuántas están repetidas en la pieza. */
+export function rowPhotosText(photos: readonly TrayPhoto[]): string {
+  if (photos.length === 0) return "Sin fotos";
+  const count = photos.length === 1 ? "1 foto" : `${photos.length} fotos`;
+  const sources = [...new Set(photos.map((photo) => MATCH_SOURCE_LABELS[photo.match_source ?? ""] ?? null).filter(Boolean))];
+  const repeated = photos.filter((photo) => photo.duplicate_of_existing && !photo.duplicate_confirmed).length;
+  const parts = [sources.length > 0 ? `${count} ${sources.join(" y ")}` : count];
+  if (repeated > 0) parts.push(repeated === 1 ? "1 ya está en la pieza: no se aplica si no la confirma" : `${repeated} ya están en la pieza: no se aplican si no las confirma`);
+  return parts.join(" · ");
+}
+
+/** Fotos verificadas del lote con su fila, todas las páginas (lotes de la demo: hasta 2 000). */
+export async function fetchRowPhotos(batchId: string, devUser?: string): Promise<ImportResult<Record<string, TrayPhoto[]>>> {
+  const photos: TrayPhoto[] = [];
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const result = await call(() =>
+      client(devUser).GET("/api/v1/imports/{batch_id}/photos", {
+        params: { path: { batch_id: batchId }, query: { status: "VERIFIED", page, limit: 100 } },
+      }),
+    );
+    if (result.status !== "ok") return result;
+    photos.push(...result.value.items);
+    if (page * result.value.page_size >= result.value.total) break;
+  }
+  return { status: "ok", value: photosByRow(photos) };
+}
+
+/** `PATCH /imports/{batch_id}/photos` con `confirm_duplicate`: la foto repetida se aplica igual. */
+export async function confirmRepeatedPhotos(batchId: string, photoIds: string[], devUser?: string): Promise<ImportResult<TrayPhoto[]>> {
+  const result = await call(() =>
+    client(devUser).PATCH("/api/v1/imports/{batch_id}/photos", {
+      params: { path: { batch_id: batchId } },
+      body: { op: "confirm_duplicate", photo_ids: photoIds },
+    }),
+  );
+  return result.status === "ok" ? { status: "ok", value: result.value.photos } : result;
+}

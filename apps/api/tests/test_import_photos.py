@@ -87,20 +87,29 @@ class MemoryStorage:
 class Batch:
     """A batch of the real pipeline, ingested and mapped, with photos added as verified."""
 
-    def __init__(self, session: Session, engine: Engine, act_as: ActAs, user: AppUser) -> None:
+    def __init__(
+        self,
+        session: Session,
+        engine: Engine,
+        act_as: ActAs,
+        user: AppUser,
+        content: bytes = CONTENT,
+        spec: MappingSpec = SPEC,
+    ) -> None:
         self.session, self.engine, self.act_as, self.user_id = session, engine, act_as, user.id
         self.storage = MemoryStorage()
+        self.spec = spec
         with act_as("CATALOGUER"):
             batch = create_batch(
                 session,
                 self.storage,
                 file_name="sabana_fotos.csv",
-                content=CONTENT,
+                content=content,
                 uploaded_by_id=self.user_id,
             )
             session.commit()
         self.id = batch.id
-        self._stage(Stage.INGEST, ingest_stage(CONTENT, self.storage))
+        self._stage(Stage.INGEST, ingest_stage(content, self.storage))
         self.map()
 
     def _stage(self, stage: Stage, work) -> None:  # type: ignore[no-untyped-def]
@@ -113,7 +122,7 @@ class Batch:
 
     def map(self) -> None:
         with self.act_as("CATALOGUER"):
-            set_mapping(self.session, self.storage, self.id, SPEC)
+            set_mapping(self.session, self.storage, self.id, self.spec)
             self.session.commit()
 
     def validate(self) -> ImportBatch:
@@ -203,6 +212,40 @@ def test_validation_proposes_the_row_of_every_verified_photo(
     assert lot.photo(unmatched).match_status is PhotoMatchStatus.UNMATCHED
     # A photo still uploading is matched later, once verified (task 2.2).
     assert lot.photo(uploading).match_status is None
+
+
+def test_the_photo_file_column_matches_photos_without_a_code(
+    session: Session, engine: Engine, act_as: ActAs, users: dict[str, AppUser]
+) -> None:
+    """Scenario «Columna de archivo definida en el mapeo» (task 3.4)."""
+    content = (
+        "DENOMINACIÓN;CÓDIGO I;FOTO\n"
+        "Toro sintético;I-01234;IMG_0042.jpg, IMG_0043.JPG\n"
+        "Retablo sintético;I-01235;\n"
+    ).encode()
+    spec = MappingSpec(
+        columns=[
+            ColumnSpec("DENOMINACIÓN", "denomination"),
+            ColumnSpec("CÓDIGO I", "identifier", "I"),
+            ColumnSpec("FOTO", "photo_filename"),
+        ],
+        defaults={"tenure_regime": "Propiedad"},
+    )
+    lot = Batch(session, engine, act_as, users["CATALOGUER"], content, spec)
+    first = lot.add_photo("Fotos sueltas/IMG_0042.jpg")
+    second = lot.add_photo("Fotos sueltas/img_0043.jpg")
+    loose = lot.add_photo("Fotos sueltas/IMG_0099.jpg")
+
+    assert lot.validate().status == S.IN_PREVIEW, lot.batch.status_reason
+
+    toro = lot.row(2)
+    for photo_id in (first, second):
+        assert lot.photo(photo_id).row_id == toro
+        assert lot.photo(photo_id).match_source is PhotoMatchSource.COLUMN
+    assert lot.photo(loose).match_status is PhotoMatchStatus.UNMATCHED
+    # The file column is not a field of the record: it never reaches the diff nor the piece.
+    mapped = session.scalar(select(ImportRow.mapped_data).where(ImportRow.id == toro))
+    assert mapped["fields"]["photo_filename"] == "IMG_0042.jpg, IMG_0043.JPG"
 
 
 def test_running_the_matching_again_changes_nothing(
