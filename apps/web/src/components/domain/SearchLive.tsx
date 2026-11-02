@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LocationPlaceDialogs, type PlaceAction } from "@/components/domain/LocationPlaceDialogs";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
-import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, type SearchOptions } from "@/components/domain/SearchFilters";
+import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -30,7 +30,6 @@ import {
   seenAgoText,
   type LocationFailure,
 } from "@/lib/data/locations";
-import { fetchPieceCatalogs } from "@/lib/data/pieces";
 import {
   EMPTY_SELECTION,
   batchMoveRequest,
@@ -46,6 +45,7 @@ import {
   EXPORT_COLUMNS,
   SEARCH_PAGE_SIZE,
   TEXT_FILTER_KEYS,
+  TYPING_DEBOUNCE_MS,
   activeChips,
   filtersToSearchParams,
   canDownload,
@@ -69,8 +69,6 @@ import {
   type SearchPage,
 } from "@/lib/data/search";
 
-/** Espera tras la última tecla antes de buscar. */
-const TYPING_DEBOUNCE_MS = 300;
 /** Cada cuánto se consulta el estado de las exportaciones en preparación. */
 const JOBS_POLL_MS = 3000;
 const PERM_DONOR_DATA = "sensitive.donor_data";
@@ -534,17 +532,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchPieceCatalogs(), fetchLocationsTree(devUser)]).then(([catalogs, locations]) => {
-      if (!active) return;
-      const tree = locations.status === "ok" ? locations.value : [];
-      setOptions({
-        collections: catalogs.status === "ok" ? catalogs.catalogs.collections : [],
-        categories: catalogs.status === "ok" ? catalogs.catalogs.categories : [],
-        materials: catalogs.status === "ok" ? catalogs.catalogs.materials : [],
-        conservationStates: catalogs.status === "ok" ? catalogs.catalogs.conservationStates : [],
-        locations: flattenLocationTree(tree),
-        locationTree: tree,
-      });
+    loadSearchOptions(devUser).then((loaded) => {
+      if (active) setOptions(loaded);
     });
     return () => {
       active = false;

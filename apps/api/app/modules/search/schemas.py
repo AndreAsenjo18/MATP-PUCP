@@ -107,6 +107,19 @@ class ReportType(enum.StrEnum):
     BY_LOCATION = "by-location"
     INCOMPLETE = "incomplete"
     VALUATION = "valuation"
+    BY_ATTRIBUTE = "by-attribute"
+
+
+class GroupBy(enum.StrEnum):
+    """Attributes of the report of pieces grouped by attribute (reportes-por-atributo D1)."""
+
+    PROVENANCE = "provenance"
+    DENOMINATION = "denomination"
+    AUTHOR = "author"
+    MATERIAL = "material"
+    CONSERVATION_STATE = "conservation_state"
+    CATEGORY = "category"
+    COLLECTION = "collection"
 
 
 class ExportFormat(enum.StrEnum):

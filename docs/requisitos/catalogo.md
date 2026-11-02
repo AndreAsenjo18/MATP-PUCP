@@ -73,6 +73,9 @@
 | RF-037 | Reporte agregado de valorización/seguros | Could | busqueda-reportes |
 | RF-038 | Búsqueda resuelta en segundos | Must | busqueda-reportes |
 | RF-044 | Exportación completa de la BD en formato abierto (Excel/CSV) | Must | busqueda-reportes |
+| RF-047 | Reporte de piezas agrupadas por atributo de la ficha | Should | busqueda-reportes |
+
+> RF-047 no está en el Expediente original: lo pidió el museo en la reunión del 2026-10-31 y lo cubre el change `reportes-por-atributo`. Debe incorporarse al Expediente.
 
 ## 5. Usuarios y seguridad
 
