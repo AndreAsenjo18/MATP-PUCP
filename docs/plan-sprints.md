@@ -9,7 +9,7 @@
 
 1. **La validación con el cliente ya se hizo**, con el prototipo [`prototipo-v3/`](../prototipo-v3/), y al MATP le gustó. Desaparece la reunión de validación del sprint 3 y la decisión A/B de la versión 6.
 2. **Nuevo objetivo: un MVP a fines de octubre**, que es el **prototipo v3 funcionando de verdad** con Next.js (`apps/web`), FastAPI (`apps/api`) y servicios cloud (almacenamiento S3-compatible y el entorno de integración en AWS Academy). El prototipo es la **referencia de UX**: sus pantallas se construyen en `apps/web` contra la API, no se reutiliza su código.
-3. **Pedido nuevo del cliente:** importar las fotos junto con los Excel, sin subirlas una por una. Se cubre con el change nuevo [`importacion-masiva-fotografias`](../openspec/changes/importacion-masiva-fotografias/) (RF-045). Hay unas 10 000 piezas con varias fotos cada una, alrededor de 25 000 imágenes.
+3. **Pedido nuevo del cliente:** importar las fotos junto con los Excel, sin subirlas una por una. Se cubre con el change nuevo [`importacion-masiva-fotografias`](../openspec/changes/archive/2026-11-02-importacion-masiva-fotografias/) (RF-045). Hay unas 10 000 piezas con varias fotos cada una, alrededor de 25 000 imágenes.
 4. **Semana de parciales (lunes 12 a domingo 18 de octubre): no se trabaja.**
 5. **El sprint 1 (1 al 7 de octubre) casi no produjo integraciones.**
    - `alinear-api-endpoints-v1` sigue en 8/26.
