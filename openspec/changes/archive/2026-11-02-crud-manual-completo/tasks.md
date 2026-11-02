@@ -24,4 +24,5 @@
 
 - [x] 5.1 OpenAPI (si hubo operaciones nuevas): registrarlas como añadidas en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
 - [x] 5.2 Manual de usuario: «Registrar a mano después de la carga histórica» en `docs/manual-usuario/` (piezas seguidas, colecciones, listas de valores, lugares)
-- [ ] 5.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate crud-manual-completo --strict` en verde; tras aprobar el PR, `openspec archive crud-manual-completo -y`
+- [x] 5.3 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate crud-manual-completo --strict` en verde; tras aprobar el PR, `openspec archive crud-manual-completo -y`
+  - Hecho (2026-11-02). Proyecto Compose aislado con PostgreSQL y MinIO (variables de `.env.example`, sin `web`) sobre `main` con #156 a #162 fusionados: migraciones hasta `0024_observation_batches`, `pytest -m postgres` 15 de 15 sobre `matp_test`. No se probó desde un navegador. En esa pila: crear un lugar en un nivel que lo admite (201), Consulta interna no puede (403), y desactivar una sede con piezas responde `409 location_in_use` con los conteos. El registro continuo y la edición de colecciones quedan cubiertos por la suite automática, no por esta pila. PRs #156 y #157 aprobados y fusionados.

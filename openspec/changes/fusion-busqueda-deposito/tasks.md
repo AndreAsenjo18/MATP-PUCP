@@ -24,3 +24,4 @@
 - [x] 4.3 OpenAPI: parámetro `description`, registrado como añadido en `docs/api/mapeo-endpoints-v1.md`; `npm run openapi && npm run openapi:client` y `npm run openapi:check` en verde
 - [x] 4.4 Manual de usuario: unificar «Buscar» y «Depósito» en `docs/manual-usuario/` (filtros, selección, verificar, mover)
 - [ ] 4.5 `npm test`, `npm run lint`, `npm run test:api:pg` y `openspec validate fusion-busqueda-deposito --strict` en verde; tras aprobar el PR, `openspec archive fusion-busqueda-deposito -y`
+  - Parcial (2026-11-02). Proyecto Compose aislado con PostgreSQL y MinIO (variables de `.env.example`, sin `web`) sobre `main` con #156 a #162 fusionados: migraciones hasta `0024_observation_batches`, `pytest -m postgres` 15 de 15 sobre `matp_test`. No se probó desde un navegador. En esa pila, filtrar por debajo del espacio da `403 exact_location_required` a Consulta interna y 200 al Administrador. Sigue abierta: falta archivar, y eso espera a la tarea 1.3.
