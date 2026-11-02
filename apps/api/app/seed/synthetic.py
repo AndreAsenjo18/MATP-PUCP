@@ -170,6 +170,9 @@ class SeedOptions:
     upload_media: bool = True
     admin_email: str = "admin@matp.local"
     admin_password: str | None = None
+    # ``SEED_DEV_PASSWORD``: the other synthetic users, and the admin without a password of its own,
+    # sign in with it in development; the login rejects them in production (ADR-009, point 7).
+    dev_password: str | None = None
     duplicate_pairs: int = 10
     sets: int = 3
     components_per_set: int = 3
@@ -348,9 +351,9 @@ class SyntheticCatalogBuilder:
             ("INTERNAL_VIEWER", "consulta@matp.local", "Consulta interna (sintético)"),
         ]
         for role_code, email, name in people:
-            password_hash = None
-            if role_code == "ADMIN" and self.options.admin_password:
-                password_hash = hasher.hash(self.options.admin_password)
+            own = self.options.admin_password if role_code == "ADMIN" else None
+            password = own or self.options.dev_password
+            password_hash = hasher.hash(password) if password else None
             user = AppUser(
                 id=new_uuid(),
                 email=email,

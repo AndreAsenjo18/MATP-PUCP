@@ -2,7 +2,9 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la importación de datos históricos (Excel de la consultoría, exportaciones de Access, Word tabulado) como un pipeline de reconciliación con plantillas de mapeo, matching multi-código, clasificación de filas, previsualización con diferencias, aprobación humana y bitácora.
+
 ## Requirements
+
 ### Requirement: Pipeline de reconciliación
 El sistema MUST procesar toda importación masiva como un lote que pasa por las etapas ingesta, mapeo, normalización, validación y matching, previsualización, aprobación y bitácora, en ese orden; ningún dato del lote SHALL escribirse en el catálogo antes de la aprobación, y un lote SHALL poder abandonarse sin afectar el catálogo. (RF-021, RN-005)
 
@@ -310,6 +312,267 @@ El sistema MUST permitir asociar en el mapeo valores textuales de origen a térm
 - **WHEN** se guarda un mapeo que asocia un valor a un término desactivado
 - **THEN** el sistema rechaza el mapeo indicando el término inactivo
 
+### Requirement: Régimen deducido de la forma de adquisición
+El sistema SHALL mantener una tabla administrable de correspondencias entre valores de forma de adquisición y régimen de tenencia, y MUST usarla al importar: cuando una fila no trae un régimen explícito y sí una forma de adquisición, el régimen de la fila SHALL ser el que indica la correspondencia, y la forma de adquisición MUST guardarse además como término de la ficha. Los valores se comparan sin distinguir mayúsculas ni tildes. Por defecto, `Comodato`, `Cesión de uso` y `Custodia` corresponden a Comodato (respuesta L5, 2026-10-31); `Donación`, `Compra`, `Legado` y `Transferencia interna` corresponden a Propiedad [SUPUESTO]; `Préstamo temporal` corresponde a Préstamo temporal. (RF-005, RF-021, RN-003, RN-010)
+
+#### Scenario: Cesión de uso se importa como comodato
+- **WHEN** se importa una fila con forma de adquisición `Cesión de uso`, sin régimen explícito y con un código I
+- **THEN** la fila queda con régimen Comodato y forma de adquisición «Cesión de uso», y se marca con el error de comodato con código I, igual que una fila con régimen Comodato
+
+#### Scenario: Donación se importa como propiedad
+- **WHEN** se importa una fila con forma de adquisición `donacion`
+- **THEN** la fila queda con régimen Propiedad y forma de adquisición «Donación», sin error de régimen
+
+#### Scenario: Régimen explícito con forma de adquisición distinta
+- **WHEN** una fila trae régimen `Propiedad` en su propia columna y forma de adquisición `Custodia`
+- **THEN** se conserva el régimen explícito y la fila se marca con la advertencia «la forma de adquisición indica Comodato» para revisarla en la previsualización
+
+#### Scenario: Forma de adquisición sin correspondencia
+- **WHEN** una fila trae forma de adquisición `Permuta`, que no tiene correspondencia, y el lote no tiene régimen por defecto
+- **THEN** la fila queda con el error «no se puede deducir el régimen de "Permuta"» y el Administrador puede agregar la correspondencia y volver a validar el lote
+
+#### Scenario: Correspondencia editada por el Administrador
+- **WHEN** el Administrador agrega la correspondencia `Depósito` → Comodato en «Lectura de códigos»
+- **THEN** las validaciones siguientes la usan, el cambio queda en la auditoría y una correspondencia a un régimen inexistente se rechaza con un mensaje claro
+
+### Requirement: Subida guiada con formato elegido de antemano
+El asistente de importación MUST ofrecer, antes de subir el archivo, una zona donde arrastrar y soltar o seleccionar un archivo `.xlsx` o `.csv`, una guía de no más de cinco líneas sobre lo que debe traer el archivo (una fila por pieza, títulos en la primera fila, denominación y régimen de tenencia) y la elección del **formato**, que es la plantilla de mapeo que se aplicará. La opción «Detectar automáticamente» SHALL estar elegida por defecto; elegir un formato concreto MUST aplicarlo sin sugerir otro. La zona de subida SHALL rechazar en el momento, con un mensaje que indique qué tipos se admiten, cualquier archivo que no sea `.xlsx` o `.csv`, y MUST poder usarse con teclado y en una pantalla de 360 px de ancho. (RF-021, RF-022, RNF-001, RNF-010)
+
+#### Scenario: Arrastrar un Excel
+- **WHEN** una persona arrastra `lote_demo_sabana.xlsx` sobre la zona de subida
+- **THEN** la zona resalta mientras el archivo está encima y, al soltarlo, muestra el nombre y el tamaño del archivo y habilita el botón de subir
+
+#### Scenario: Archivo de otro tipo
+- **WHEN** una persona suelta un archivo `.docx` o `.pdf` sobre la zona de subida
+- **THEN** el archivo no se selecciona y la zona indica que solo se admiten archivos Excel (.xlsx) o CSV
+
+#### Scenario: Formato por defecto
+- **WHEN** la persona abre el asistente sin tocar la elección de formato
+- **THEN** «Detectar automáticamente» aparece elegido y el resto de los formatos muestra su nombre y una descripción de una línea
+
+### Requirement: Mapeo y validación automáticos tras la subida
+Cuando el lote termina de leerse, el sistema SHALL aplicar el formato elegido, o la plantilla de mayor coincidencia con las cabeceras si se eligió la detección automática y esa coincidencia alcanza el umbral de sugerencia, e iniciar la validación sin que la persona pase por un paso de mapeo. Si el formato elegido necesita columnas que el archivo no trae, o ninguna plantilla alcanza el umbral, el sistema MUST detenerse antes de validar, explicar el motivo en una frase y ofrecer elegir otro formato o ajustar las columnas a mano. El lote SHALL quedar en el mismo estado y con el mismo mapeo que si la persona hubiera usado el editor de columnas. (RF-021, RF-022, RNF-010)
+
+#### Scenario: Detección con una plantilla que coincide
+- **GIVEN** una plantilla guardada cuyas cabeceras coinciden al 100 % con las del archivo
+- **WHEN** la lectura del lote termina con «Detectar automáticamente» elegido
+- **THEN** el lote se mapea con esa plantilla, se valida y la persona llega a la revisión de filas, con un aviso breve de qué formato se aplicó
+
+#### Scenario: Ninguna plantilla reconoce el archivo
+- **WHEN** la lectura termina y ninguna plantilla alcanza el umbral de coincidencia
+- **THEN** el lote no se valida, se muestra «No reconocemos el formato de este archivo» con la lista de formatos disponibles y la opción «Ajustar columnas», y no se muestra ningún paso intermedio de mapeo vacío
+
+#### Scenario: Formato elegido que no encaja con el archivo
+- **WHEN** la persona eligió un formato cuyas columnas obligatorias no están en el archivo
+- **THEN** el sistema no valida, nombra las columnas que faltan y ofrece cambiar de formato sin volver a subir el archivo
+
+### Requirement: Ajuste de columnas como opción secundaria
+El sistema SHALL ofrecer el editor de columnas con el nombre «Ajustar columnas», como acción secundaria cuando el formato se aplicó solo y como acción principal cuando ninguna plantilla reconoció el archivo. Por cada columna MUST mostrarse solo el campo de destino; las transformaciones, las correspondencias con términos, la fila de cabeceras y la hoja SHALL estar plegadas bajo «Opciones avanzadas» y las vistas previas por columna bajo una acción explícita. El editor MUST NOT mostrar identificadores de requisitos ni más de dos frases de texto explicativo. (RF-022, RF-023, RNF-010)
+
+#### Scenario: Editor abierto de entrada
+- **WHEN** la persona abre «Ajustar columnas» para un archivo sin plantilla
+- **THEN** ve una fila por columna con un selector de destino y las opciones avanzadas plegadas, y puede validar sin abrirlas
+
+#### Scenario: Mapeo sin denominación
+- **WHEN** la persona intenta validar con ninguna columna asignada a la denominación
+- **THEN** el editor no valida, marca la lista de columnas y explica que falta indicar cuál es la denominación
+
+### Requirement: Corrección del régimen de tenencia desde la previsualización
+El sistema MUST permitir indicar un régimen de tenencia por defecto al subir el archivo. Cuando la previsualización contiene filas con el error de régimen faltante, SHALL mostrar un aviso con el número de filas afectadas y la acción de elegir un régimen para todas ellas y volver a validar el lote, sin volver a subir el archivo; como revalidar recalcula todas las filas, el aviso MUST decir antes de confirmar cuántas decisiones ya tomadas se descartarán, y el sistema SHALL indicar después cuántas filas dejaron de tener el error. El régimen elegido SHALL aplicar solo a las filas que no lo traen. (RF-022, RF-025, RF-026, RNF-010)
+
+#### Scenario: Archivo sin columna de régimen
+- **GIVEN** un lote validado en el que 30 filas muestran «Falta el régimen de tenencia.»
+- **WHEN** la persona elige «Propiedad» en el aviso y confirma
+- **THEN** el lote se revalida con ese régimen por defecto y la previsualización informa que 30 filas ya no tienen ese error
+
+#### Scenario: Decisiones tomadas antes de revalidar
+- **GIVEN** un lote en el que la persona ya dejó fuera 2 filas y rechazó 1
+- **WHEN** abre el aviso de régimen para asignarlo a las filas sin dato
+- **THEN** el aviso dice que las 3 decisiones que ya tomó se pierden al validar de nuevo, y no muestra ese texto si no hay decisiones
+
+#### Scenario: Régimen elegido incompatible con los códigos de una fila
+- **WHEN** la persona asigna «Comodato» a filas que traen código I
+- **THEN** esas filas pasan a mostrar el error de comodato con código I, con su explicación y sugerencia, y no se aceptan
+
+#### Scenario: Filas con régimen propio
+- **WHEN** el lote trae régimen en algunas filas y la persona asigna uno por defecto a las demás
+- **THEN** las filas que ya traían régimen conservan el suyo
+
+### Requirement: Avance del asistente en cuatro pasos
+El asistente MUST mostrar su avance en cuatro pasos —Archivo, Revisión, Aprobación y Resultado— con una barra de progreso continua que indica el paso actual y los completados; en pantallas menores de 768 px SHALL reducirse a «Paso x de 4», el nombre del paso y la barra. Debajo del título SHALL mostrarse el estado del lote en lenguaje llano (por ejemplo «Leyendo el archivo», «Listo para revisar», «Aplicado»), con el avance en filas mientras una etapa corre en segundo plano. Los pasos MUST NOT depender del color como único indicador. (RF-021, RNF-001, RNF-010)
+
+#### Scenario: Lote en revisión
+- **WHEN** el lote está validado y tiene filas por revisar
+- **THEN** la barra marca Archivo como completado y Revisión como paso actual, y el estado dice que el lote está listo para revisar
+
+#### Scenario: Etapa en segundo plano
+- **WHEN** el servidor valida un lote de 8 000 filas
+- **THEN** el estado muestra «Validando: 1 200 de 8 000 filas» y la barra de avance se actualiza sin recargar la página
+
+#### Scenario: Pantalla de móvil
+- **WHEN** el ancho de la pantalla es de 360 px
+- **THEN** la barra muestra «Paso 2 de 4 · Revisión» y no produce desplazamiento horizontal
+
+### Requirement: Lenguaje llano sin identificadores de requisitos
+Ningún texto que el asistente de importación muestre a la persona —incluidos los avisos, mensajes de error, diálogos, ayudas y las descripciones de las reglas de clasificación que entrega la API— MUST contener identificadores de requisitos (`RF-`, `RN-`, `RNF-`, `RIA-`). Las explicaciones MUST ser breves, describir qué ocurre y qué puede hacer la persona, y mantener los términos del dominio del museo. Las descripciones de las reglas de clasificación SHALL conservar su orden y su resultado. (RNF-010, RF-025)
+
+#### Scenario: Reglas de clasificación en lenguaje llano
+- **WHEN** la persona abre «Cómo se clasifican las filas» en la previsualización
+- **THEN** ve cinco reglas en el mismo orden que antes, redactadas sin identificadores de requisitos, por ejemplo que la fila «no se puede aceptar» mientras tenga errores y que un código I «ya pertenece a otra pieza»
+
+#### Scenario: Diálogo de rechazo
+- **WHEN** la persona pulsa «Rechazar» en una fila
+- **THEN** el diálogo explica que la fila queda en la bitácora con el motivo, sin mencionar identificadores de requisitos
+
+#### Scenario: Error de la API con identificador
+- **WHEN** la API devuelve un mensaje que incluye un identificador de requisito
+- **THEN** la pantalla muestra el mensaje con la referencia retirada y el resto del texto intacto
+
+### Requirement: Dejar fuera y rechazar filas con significado distinto
+En la previsualización, la acción «Dejar fuera» (decisión `EXCLUDED`) MUST excluir la fila del lote sin pedir motivo y poder deshacerse volviendo a decidir la fila, mientras que «Rechazar» (decisión `REJECTED`) MUST exigir un motivo que queda en la bitácora. Ambas acciones SHALL estar disponibles también para filas con errores de validación; solo «Aceptar» MUST permanecer bloqueada, y el motivo del bloqueo SHALL mostrarse junto a ese botón sin sugerir que las demás acciones están bloqueadas. Cada acción SHALL llevar una ayuda de una línea que explique su efecto. El diálogo de rechazo MUST ocupar al menos 36 rem de ancho en escritorio y ajustarse al ancho de la pantalla en móvil. (RF-026, RF-028, RN-003)
+
+#### Scenario: Dejar fuera una fila con errores
+- **GIVEN** una fila con el error «Falta el régimen de tenencia.»
+- **WHEN** la persona pulsa «Dejar fuera»
+- **THEN** la fila queda como excluida sin pedir motivo, y puede volver a decidirla después
+
+#### Scenario: Aceptar una fila con errores
+- **WHEN** la persona intenta aceptar una fila con errores de validación
+- **THEN** «Aceptar» está deshabilitada y junto a ella se explica qué corregir; «Dejar fuera» y «Rechazar» siguen habilitadas
+
+#### Scenario: Rechazar sin motivo
+- **WHEN** la persona confirma el rechazo con el motivo vacío
+- **THEN** el diálogo no se cierra y pide el motivo, indicando que quedará en la bitácora
+
+### Requirement: Errores de validación con sugerencia de solución
+Cada error de validación de una fila MUST mostrarse con su mensaje y, debajo, una sugerencia de una línea sobre cómo resolverlo, que SHALL ofrecer la acción directa cuando exista (por ejemplo asignar el régimen, o cambiar de formato) y, si el error se corrige en el archivo de origen, decir qué celda corregir y que puede volver a subir el archivo. (RF-025, RNF-010)
+
+#### Scenario: Comodato con código I
+- **WHEN** una fila en comodato trae código I
+- **THEN** el error indica que una pieza en comodato no recibe código I y la sugerencia propone quitar el código I de la fila o cambiar su régimen
+
+#### Scenario: Código I ilegible
+- **WHEN** el código I de una fila no tiene un formato reconocido
+- **THEN** el error nombra el valor leído y la sugerencia indica corregir esa celda en el archivo y subirlo de nuevo, o dejar la fila fuera
+
+### Requirement: Candidatos distinguibles en conflictos y posibles duplicados
+Para cada fila en conflicto o posible duplicado, el sistema MUST listar las piezas candidatas de modo que cada una se distinga de las demás por su denominación, su colección, su código I (o «sin código I») y el motivo de la coincidencia (código compartido vigente o histórico, o porcentaje de similitud), y MUST NOT listar dos veces la misma pieza. Para ello la API SHALL incluir, en cada candidato de `matches`, esos datos de la pieza como campos opcionales. Si dos candidatos distintos son indistinguibles por esos datos, el sistema SHALL añadir un identificador corto de la pieza para diferenciarlos. (RF-024, RF-026, RN-002)
+
+#### Scenario: Tres candidatos con la misma denominación
+- **GIVEN** tres piezas llamadas «Toro de Pucará», de colecciones o códigos I distintos
+- **WHEN** la persona abre la revisión de una fila que coincide con las tres
+- **THEN** cada candidato muestra su colección y su código I, y la persona puede elegir con certeza cuál es la pieza
+
+#### Scenario: Misma pieza por dos vías
+- **WHEN** una pieza coincide por código I vigente y por similitud de denominación
+- **THEN** aparece una sola vez con ambos motivos
+
+#### Scenario: Pieza candidata eliminada después de la validación
+- **WHEN** una pieza candidata fue eliminada lógicamente tras validar el lote
+- **THEN** la respuesta de la API conserva el candidato sin datos adicionales y la pantalla lo muestra como «pieza no disponible» sin fallar
+
+### Requirement: Presentación alineada de cambios y de la tarjeta de fila
+En las filas de actualización, el recuadro de cambios sobre la pieza del catálogo MUST mostrar cada campo en una fila alineada con tres columnas —campo, valor actual y valor de la fila— que se apilan en pantallas estrechas, y MUST ocupar el ancho de la tarjeta de la fila con su título alineado al borde izquierdo. Las tarjetas de fila SHALL mostrar primero la denominación y la clasificación y plegar los datos de origen bajo «Ver datos del archivo». (RF-026, RNF-001, RNF-010)
+
+#### Scenario: Actualización con dos cambios
+- **WHEN** una fila de actualización cambia la procedencia y la época
+- **THEN** el recuadro lista los dos campos con su valor actual y el nuevo, con una casilla para aceptar o no cada cambio, alineados entre sí
+
+#### Scenario: Pantalla estrecha
+- **WHEN** el ancho es de 360 px
+- **THEN** cada cambio apila el campo, el valor actual y el valor de la fila sin desplazamiento horizontal
+
+### Requirement: Plantillas de los formatos reales del museo con variantes
+El sistema SHALL traer predefinidas las plantillas «BD estandarizada 2025» y «Ficha de catalogación RN», con el destino de cada columna, y MUST reconocer un archivo de cualquiera de esas familias aunque tenga columnas de más, de menos o con otro nombre equivalente, usando una lista de **alias de encabezado** por columna. Las columnas del archivo que no corresponden a ninguna columna de la plantilla MUST quedar sin mapear y conservarse en los datos de origen. Los alias se comparan sin distinguir mayúsculas, tildes, espacios dobles ni saltos de línea. (RF-022, RF-021, RF-008)
+
+#### Scenario: Archivo de una colección con el formato estandarizado
+- **WHEN** se sube el Excel de una colección con las 44 columnas del formato estandarizado
+- **THEN** el asistente propone la plantilla «BD estandarizada 2025» con coincidencia completa y todas las columnas quedan mapeadas sin intervención
+
+#### Scenario: Variante con dos columnas de más
+- **WHEN** se sube un archivo del mismo formato con 46 columnas, que separa «Autor / Atribuido» y «Firmado» y añade «Estilo / Escuela»
+- **THEN** se propone la misma plantilla. «Autor / Atribuido» se reconoce por alias como el autor, y «Firmado» y «Estilo / Escuela» quedan sin mapear, visibles en el paso de mapeo y conservadas en los datos de origen
+
+#### Scenario: Ficha de catalogación con encabezado en la segunda fila
+- **WHEN** se sube una ficha de catalogación cuya primera fila agrupa columnas y la segunda tiene los nombres
+- **THEN** se detecta el encabezado en la fila 2 y se propone la plantilla «Ficha de catalogación RN»
+
+#### Scenario: Archivo de otro formato
+- **WHEN** se sube un Excel con encabezados que no se parecen a ninguna plantilla
+- **THEN** el asistente no propone plantilla y el usuario mapea las columnas a mano, como hoy
+
+### Requirement: Encabezados de grupo y filas que repiten el encabezado
+Cuando una celda del encabezado está vacía y la fila de grupos de arriba tiene un nombre que abarca esa columna, la columna MUST tomar el nombre del grupo con su número de orden («Procedencia (2)»). Las filas de datos cuyos valores repiten los del encabezado en al menos el 80 % de sus celdas no vacías [SUPUESTO] MUST omitirse como datos y contarse en la bitácora del lote. (RF-021, RF-028)
+
+#### Scenario: Grupo sin celdas combinadas
+- **WHEN** una ficha tiene «Procedencia» en la columna I del encabezado, celdas vacías en J y K, y «Procedencia» escrito en la fila de grupos sobre I a K
+- **THEN** las columnas se llaman «Procedencia», «Procedencia (2)» y «Procedencia (3)», no «Columna J» ni «Columna K»
+
+#### Scenario: Encabezado repetido a mitad de la hoja
+- **WHEN** una hoja que junta varias fichas repite la fila de encabezado en la fila 105
+- **THEN** esa fila no se carga como pieza y la bitácora indica «1 fila omitida por repetir el encabezado (fila 105)»
+
+#### Scenario: Fila parecida al encabezado pero con datos
+- **WHEN** una fila tiene «Procedencia» como texto en una sola celda y datos en las demás
+- **THEN** la fila se carga como datos
+
+### Requirement: Varias columnas en un mismo campo
+El formato de mapeo MUST permitir que un campo de la ficha se tome de **varias columnas** en un orden dado, con un separador definido en la plantilla; las columnas vacías se omiten sin dejar separadores sobrantes. Las columnas de medidas separadas (alto, ancho, espesor, diámetro, peso) SHALL formar las medidas estructuradas de la pieza, con su unidad, y su texto legible. El valor original de cada columna MUST conservarse en los datos de origen. (RF-021, RF-006, RF-008)
+
+#### Scenario: Procedencia en tres columnas
+- **WHEN** una fila trae «Perú», vacío y «Cusco» en «Procedencia», «Procedencia (2)» y «Procedencia (3)»
+- **THEN** la procedencia de la pieza queda «Perú, Cusco»
+
+#### Scenario: Medidas en columnas separadas
+- **WHEN** una fila trae Alto `23`, Ancho `15.5`, Espesor vacío y Peso `120`
+- **THEN** la pieza queda con alto 23 cm, ancho 15,5 cm y peso 120 g, y el texto de medidas «Alto 23 cm; Ancho 15,5 cm; Peso 120 g»
+
+#### Scenario: Medida que no es un número
+- **WHEN** la columna Alto trae «aprox. 20»
+- **THEN** la fila conserva el texto en las medidas y marca la advertencia «Alto no es un número» en la previsualización, sin rechazar la fila
+
+### Requirement: Fecha de ingreso y forma de adquisición desde la importación
+El mapeo MUST ofrecer como destinos la fecha de ingreso a la colección y la forma de adquisición. La forma de adquisición SHALL compararse con la lista «Formas de adquisición» y, cuando la fila no trae régimen explícito, deducir el régimen según las correspondencias de `ajustes-lectura-importacion`. Una fecha que no se puede interpretar MUST conservarse como texto en los datos de origen con una advertencia, sin rechazar la fila. (RF-006, RF-021, RN-003)
+
+#### Scenario: Fecha de ingreso como fecha de Excel
+- **WHEN** la columna «Fecha de ingreso a la colección» trae una fecha que el Excel guarda como fecha
+- **THEN** la pieza queda con esa fecha de ingreso
+
+#### Scenario: Fecha de ingreso solo con año
+- **WHEN** la celda trae `1985`
+- **THEN** la fecha de ingreso queda vacía (la ficha no guarda fechas parciales), el año se conserva en los datos de origen y la fila muestra la advertencia «solo año: 1985»
+
+#### Scenario: Fecha ilegible
+- **WHEN** la celda trae «antes de la mudanza»
+- **THEN** la fecha de ingreso queda vacía, el texto se conserva en los datos de origen y la fila muestra la advertencia «fecha no interpretable»
+
+### Requirement: Datos personales del propietario en la importación
+Las columnas con nombre, dirección o domicilio del propietario o del inmueble MUST NOT llevarse a campos visibles de la ficha. SHALL conservarse en los datos de origen de la pieza marcados como **sensibles**, visibles solo con el permiso de datos de donantes y comodantes, y MUST NOT aparecer en exportaciones ni reportes para quien no tiene ese permiso. Para una pieza en comodato, el nombre del propietario MAY mapearse al comodante, que ya es un dato sensible. (RNF-014, RF-041, RF-008)
+
+#### Scenario: Usuario sin permiso de datos de donantes
+- **WHEN** un usuario de Consulta interna abre los datos de origen de una pieza importada con «Nombre de propietario» y «Dirección de propietario»
+- **THEN** ve esas columnas como «(dato restringido)»
+
+#### Scenario: Exportación sin permiso
+- **WHEN** ese mismo usuario exporta los resultados de una búsqueda
+- **THEN** el archivo no incluye las columnas sensibles de los datos de origen
+
+#### Scenario: Comodato con propietario
+- **WHEN** se importa una pieza en comodato cuya fila trae el nombre del propietario
+- **THEN** la plantilla lo lleva al comodante de la pieza y no a un campo público
+
+### Requirement: Hojas de errores de la consultoría como observaciones
+Al importar un libro que tiene hojas de errores de la consultoría («Errores identificados», «Errores pendientes»), el sistema SHALL ofrecer cargarlas como **observaciones de calidad** de las piezas que identifican por sus códigos, y MUST NOT cargarlas como piezas. Una observación cuya pieza no se encuentra MUST quedar listada en la bitácora del lote. [SUPUESTO L8] (RF-028, RN-005)
+
+#### Scenario: Hoja de errores después del inventario
+- **GIVEN** el inventario general ya cargado
+- **WHEN** se elige la hoja «Errores pendientes» como hoja de observaciones
+- **THEN** cada fila agrega una observación a la pieza con su código I o de colección, con la fuente «Consultoría 2024/25 — errores pendientes», y no se crea ninguna pieza
+
+#### Scenario: Error de una pieza que no está en el catálogo
+- **WHEN** una fila de la hoja de errores tiene un código que no existe en el catálogo
+- **THEN** la fila queda en la bitácora como «pieza no encontrada», con su código, y las demás se cargan
+
 ### Requirement: Lote de solo fotografías para piezas existentes
 El sistema MUST permitir crear un lote de importación sin Excel, formado solo por fotografías, cuyas fotos se emparejan con piezas **ya registradas** en el catálogo usando sus identificadores vigentes, en lugar de filas de un lote. El lote SHALL reutilizar la subida reanudable, la verificación, la bandeja, la aprobación y la reversión de los lotes con Excel, y MUST NOT crear piezas: una foto sin pieza queda sin asignar y no se aplica. Ninguna asociación propuesta se registra en una ficha antes de aprobar el lote. (RF-046, RF-045, RN-009, RN-005)
 
@@ -552,4 +815,3 @@ Al aplicar un lote aprobado, el sistema MUST registrar las fotografías propuest
 #### Scenario: Reversión de un lote con fotos
 - **WHEN** un Administrador revierte un lote aplicado que creó 120 fotos
 - **THEN** las 120 fotos quedan retiradas lógicamente con el motivo de la reversión, dejan de mostrarse en las fichas y sus archivos se conservan
-
