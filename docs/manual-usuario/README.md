@@ -13,6 +13,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 | Importación de sábanas Excel/CSV y plantillas | `importacion.md` | `importacion-pipeline-reconciliacion`, `plantillas-mapeo-y-normalizacion` | parcial: asistente, aprobación, bitácora e imágenes (`importacion-pipeline-reconciliacion`); faltan plantillas y reversión |
 | Cargar el histórico del museo (formatos reales, orden de carga, qué revisar) | `carga-historico.md` | `formatos-reales-importacion` | escrita |
 | Importar el archivo fotográfico a piezas existentes | `importacion-fotos.md` | `importacion-fotos-a-catalogo` | escrita |
+| Descarga masiva de fotografías en un paquete ZIP | [`descarga-masiva-fotos.md`](descarga-masiva-fotos.md) | `descargas-masivas-y-enriquecimiento-lote` | parcial: la descarga de fotos, que aún no tiene pantalla; la revisión de borradores de IA por lote llegará con la sección 3 del change |
 | Calidad de datos: alertas, tablero, duplicados | `calidad-datos.md` | `alertas-y-reporte-incompletas`, `deteccion-duplicados-y-cola-revision` | escrita |
 | Búsqueda: filtros, verificar y mover piezas, exportación | `busqueda.md` | `busqueda-avanzada-y-exportacion`, `fusion-busqueda-deposito` | escrita |
 | Reportes e impresión | `reportes.md` | `reportes-inventario` | hecho (sin valorización) |
