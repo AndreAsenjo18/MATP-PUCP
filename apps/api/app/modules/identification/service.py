@@ -96,17 +96,27 @@ def current_identifiers(session: Session, piece: Piece, type_code: str) -> list[
     )
 
 
-def _check_tenure_allows(identifier_type: IdentifierType, piece: Piece) -> None:
-    not_owned = piece.tenure_regime is not TenureRegime.OWNED
-    temporary = piece.tenure_regime is TenureRegime.TEMPORARY_LOAN
+def tenure_rule_violation(
+    identifier_type: IdentifierType, tenure_regime: TenureRegime
+) -> BusinessRuleViolation | None:
+    """The error of a code that this regime cannot have (RN-003, RN-004), or ``None``."""
+    not_owned = tenure_regime is not TenureRegime.OWNED
+    temporary = tenure_regime is TenureRegime.TEMPORARY_LOAN
     if (identifier_type.owned_pieces_only and not_owned) or (
         temporary and not identifier_type.allowed_for_temporary_loan
     ):
-        raise BusinessRuleViolation(
-            f"Una pieza en {TENURE_LABELS[piece.tenure_regime]} no puede recibir "
+        return BusinessRuleViolation(
+            f"Una pieza en {TENURE_LABELS[tenure_regime]} no puede recibir "
             f"{identifier_type.label} (RN-003, RN-004).",
             code="identifier_not_allowed_for_tenure",
         )
+    return None
+
+
+def _check_tenure_allows(identifier_type: IdentifierType, piece: Piece) -> None:
+    violation = tenure_rule_violation(identifier_type, piece.tenure_regime)
+    if violation is not None:
+        raise violation
 
 
 def find_code_owner(

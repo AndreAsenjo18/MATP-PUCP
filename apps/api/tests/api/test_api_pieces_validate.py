@@ -6,6 +6,7 @@ shared, so every test checks that nothing was written. Synthetic data only (RNF-
 
 from typing import Any
 
+import pytest
 from sqlalchemy import func, select
 
 from app.modules.audit.models import AuditLog
@@ -103,3 +104,53 @@ def test_an_internal_viewer_cannot_validate(seeded_api: SeededApi) -> None:
     )
 
     assert response.status_code == 403
+
+
+# --- RN-003, RN-004: la validación aplica la misma regla que el guardado ----------------------
+@pytest.mark.parametrize("regime", ["Comodato", "Préstamo Temporal"])
+def test_a_code_i_outside_owned_pieces_is_the_same_error_as_saving(
+    seeded_api: SeededApi, regime: str
+) -> None:
+    client = seeded_api.login_as("CATALOGUER")
+    sheet = {"denomination": "Pieza sintética", "tenure_regime": regime, "code_i": "I-87001"}
+    before = _counts(seeded_api)
+
+    validated = client.post("/api/v1/pieces/validate", json=sheet)
+    saved = client.post("/api/v1/pieces", json=sheet)
+
+    assert validated.status_code == 200, validated.text
+    body = validated.json()
+    assert body["is_valid"] is False
+    issue = next(item for item in body["issues"] if item["field"] == "code_i")
+    assert issue["severity"] == "error"
+    assert saved.status_code == 409, saved.text
+    assert issue["code"] == saved.json()["code"] == "identifier_not_allowed_for_tenure"
+    assert issue["message"] == saved.json()["message"]
+    assert _counts(seeded_api) == before
+
+
+def test_an_owned_piece_can_have_a_code_i(seeded_api: SeededApi) -> None:
+    response = seeded_api.login_as("CATALOGUER").post(
+        "/api/v1/pieces/validate",
+        json={"denomination": "Pieza sintética", "tenure_regime": "Propiedad", "code_i": "I-87002"},
+    )
+
+    assert response.json() == {"is_valid": True, "issues": []}
+
+
+def test_a_loan_for_use_without_code_i_is_valid(seeded_api: SeededApi) -> None:
+    response = seeded_api.login_as("CATALOGUER").post(
+        "/api/v1/pieces/validate",
+        json={"denomination": "Pieza sintética", "tenure_regime": "Comodato"},
+    )
+
+    assert response.json()["is_valid"] is True
+
+
+def test_an_absence_marker_is_not_a_code_i_for_a_loan_for_use(seeded_api: SeededApi) -> None:
+    response = seeded_api.login_as("CATALOGUER").post(
+        "/api/v1/pieces/validate",
+        json={"denomination": "Pieza sintética", "tenure_regime": "Comodato", "code_i": "S/N"},
+    )
+
+    assert response.json()["is_valid"] is True
