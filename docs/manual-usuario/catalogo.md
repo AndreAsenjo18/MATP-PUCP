@@ -1,6 +1,80 @@
 # Catálogo
 
-> Secciones escritas por cada change: alta, edición, conflictos, eliminación y corrección del código I llegan con `ficha-pieza-crud`; la conservación, con `colecciones-y-vocabularios-admin`; el registro a mano de piezas seguidas, con `crud-manual-completo`.
+> Secciones escritas por cada change: alta, edición y conflictos llegan con `ficha-pieza-crud`; la conservación, con `colecciones-y-vocabularios-admin`; el registro a mano de piezas seguidas, con `crud-manual-completo`.
+
+## Registrar una pieza
+
+Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador.
+
+1. En **Búsqueda**, pulse **Nueva pieza**.
+2. Escriba la **Denominación** y elija el **Régimen de tenencia**. Son los únicos datos obligatorios: el resto puede completarse después.
+3. Si la pieza ya tiene código de inventario, escríbalo en **Código I**. Si no, déjelo vacío.
+4. Complete lo que conozca. Mientras escribe, el sistema revisa los datos y avisa junto a cada campo.
+5. Pulse **Registrar pieza**. Se abre la ficha de la pieza.
+
+![Formulario para registrar una pieza, con datos de ejemplo](capturas/ficha-alta.png)
+
+La ficha avisa de lo que falta, como la foto, la ubicación o los campos recomendados. Estos avisos no impiden guardar.
+
+![Ficha de una pieza recién registrada, con sus avisos de lo que falta](capturas/ficha-datos.png)
+
+Conviene saber:
+
+- **Comodato.** Al elegirlo aparecen **Comodante** y **Convenio de comodato**.
+- **Código I.** Es solo para piezas en propiedad, y una vez asignado no se cambia.
+- **Borrador.** Lo que escribe se guarda en este navegador. Si cierra la página sin registrar, al volver verá «Se recuperó un borrador sin guardar». Para empezar de cero, pulse **Descartar borrador**.
+
+### Si algo sale mal
+
+| Qué ve | Qué hacer |
+|---|---|
+| «La denominación es obligatoria» | Escriba la denominación. |
+| «El código … ya está asignado a otra pieza activa» | Ese código ya lo tiene otra pieza, y **Registrar pieza** queda apagado. Revise el código en la pieza física. |
+| «Una pieza en comodato no puede recibir Código de inventario general (I)» | Aparece al pulsar **Registrar pieza**. Borre el código I o revise el régimen de tenencia. |
+
+## Editar una pieza
+
+Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador.
+
+1. En la ficha, pulse **Editar ficha**.
+2. Cambie los datos.
+3. Pulse **Guardar cambios**. El formulario sigue abierto y muestra «Cambios guardados».
+4. Para salir, pulse **Volver a la ficha**.
+
+Cada cambio queda en la auditoría, con quién lo hizo y cuándo.
+
+Aquí no se cambian el **Régimen de tenencia**, el **Propietario legal** ni el **código I**.
+
+### Si otra persona guardó antes que usted
+
+Si dos personas editan la misma pieza, la segunda en guardar ve el aviso **Otra persona modificó esta pieza**. Lo que usted escribió no se pierde: sigue en el formulario.
+
+1. Pulse **Ver cambios del otro usuario**. La tabla muestra cada dato que la otra persona cambió, con su versión y la de esa persona.
+2. Si quiere conservar un cambio de la otra persona, escriba ese valor en su formulario.
+3. Pulse **Guardar cambios**.
+
+**Cuidado:** al guardar, todo lo que está en su formulario reemplaza a lo guardado. Un dato de la tabla que usted deje como está vuelve a su versión, y se pierde el cambio de la otra persona.
+
+![Aviso de que otra persona modificó la pieza, con la tabla de diferencias](capturas/ficha-conflicto.png)
+
+### Si algo sale mal
+
+| Qué ve | Qué hacer |
+|---|---|
+| «La denominación es obligatoria» | Una pieza no puede quedar sin denominación. Escríbala de nuevo. |
+| «Otra persona guardó cambios en esta ficha mientras usted la editaba» | Siga los pasos de arriba. |
+| «Se recuperó un borrador sin guardar» | Revise los datos antes de guardar: la ficha pudo cambiar después. Si no le sirve, pulse **Descartar borrador**. |
+
+## Lo que la ficha todavía no permite
+
+Estas acciones aún no están en la ficha. Si necesita alguna, pídala a quien administra el sistema:
+
+- eliminar una pieza;
+- corregir el código I;
+- registrar otros códigos de la pieza;
+- cambiar el régimen de tenencia.
+
+Una pieza ya eliminada se restaura desde **Administración › Papelera** (vea [Auditoría, reversión y papelera](auditoria.md)).
 
 ## Registrar a mano después de la carga histórica
 
