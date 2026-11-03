@@ -7,7 +7,7 @@
  * Las secciones visuales vienen de `components/domain/PieceSheet`; aquí quedan sesión, store y acciones.
  *
  * Tarea 4.4 de `ficha-pieza-crud` (diálogos de `components/domain/PieceActionDialogs`, operaciones de
- * `lib/data/pieces`):
+ * `lib/data/pieces`), en los dos modos:
  * - Eliminar la pieza (`pieces.delete`, motivo obligatorio). Tras eliminarla, la ficha muestra el aviso
  *   «Pieza eliminada» con «Restaurar pieza» (`pieces.restore`). Una pieza eliminada ya no se puede abrir
  *   (la API responde 404), así que restaurar solo se ofrece aquí, en la misma visita.
@@ -39,6 +39,7 @@ import {
   toDialogOutcome,
   type DialogOutcome,
 } from "@/components/domain/PieceActionDialogs";
+import { LiveIdentifierActions, LivePieceHeaderActions, inventoryIdentifierOf, pieceActionsCan } from "@/components/domain/LivePieceActions";
 import { MergeLinks } from "@/components/domain/MergedPieceLinks";
 import { ConservationLive } from "@/components/domain/ConservationPanel";
 import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
@@ -63,12 +64,13 @@ import type { ApiSchemas } from "@/lib/api/client";
 import { offerPieceCopy, similarPieceCopy } from "@/lib/forms/piece-copy";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { fetchIdentifierTypes, type IdentifierType } from "@/lib/data/admin";
 import { toEntryView } from "@/lib/data/audit";
 import { fetchPieceSheet, type PieceSheetResult } from "@/lib/data/duplicates";
 import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
 import { getApiMode } from "@/lib/data/mode";
-import { correctInventoryCode, deletePiece, restorePiece } from "@/lib/data/pieces";
+import { correctInventoryCode, deletePiece, fetchPieceIdentifierHistory, restorePiece, type IdentifierHistoryResult } from "@/lib/data/pieces";
 import { fetchPieceAlerts, type PieceAlert } from "@/lib/data/quality";
 import {
   alertsForPiece,
@@ -272,20 +274,30 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
 /**
  * Ficha en modo `live` de una pieza que no está en los fixtures, leída con la identidad de la sesión
- * (incluida una pieza fusionada, que la API devuelve con `merged_into`). Las demás pestañas se
- * conectan a la API en sus changes.
+ * (incluida una pieza fusionada, que la API devuelve con `merged_into`). Elimina, restaura, corrige
+ * el código I y registra identificadores con los mismos diálogos que el modo de ejemplo (tarea 4.4).
+ * Las demás pestañas se conectan a la API en sus changes.
  */
 function LiveFichaContent({ pieceId }: { pieceId: string }) {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const key = `${pieceId}|${devUser ?? ""}`;
-  const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult; history: IdentifierHistoryResult } | null>(null);
   const [alerts, setAlerts] = useState<PieceAlert[]>([]);
+  // Vuelve a leer la ficha tras una acción sin pasar por «Cargando», que desmontaría sus formularios.
+  const [reloads, setReloads] = useState(0);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [identifierTypes, setIdentifierTypes] = useState<IdentifierType[] | null>(null);
+  const [typesError, setTypesError] = useState<string | null>(null);
+  const canManageIdentifiers = hasPermission("identifiers.manage");
 
   useEffect(() => {
     let active = true;
-    fetchPieceSheet(pieceId, devUser).then((result) => {
-      if (active) setLoaded({ key, result });
+    // Juntas, para que la tabla no mezcle una ficha nueva con los códigos de la lectura anterior.
+    Promise.all([fetchPieceSheet(pieceId, devUser), fetchPieceIdentifierHistory(pieceId)]).then(([result, history]) => {
+      if (active) setLoaded({ key, result, history });
     });
     fetchPieceAlerts(pieceId, devUser).then((result) => {
       if (active && result.status === "ok") setAlerts(result.alerts);
@@ -293,7 +305,20 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
     return () => {
       active = false;
     };
-  }, [pieceId, devUser, key]);
+  }, [pieceId, devUser, key, reloads]);
+
+  useEffect(() => {
+    if (!canManageIdentifiers) return;
+    let active = true;
+    fetchIdentifierTypes(devUser).then((result) => {
+      if (!active) return;
+      if (result.status === "ok") setIdentifierTypes(result.value);
+      else setTypesError(result.message);
+    });
+    return () => {
+      active = false;
+    };
+  }, [canManageIdentifiers, devUser]);
 
   if (loaded?.key !== key) {
     return (
@@ -302,26 +327,51 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       </p>
     );
   }
-  const { result } = loaded;
+  const { result, history } = loaded;
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") return <PermissionNotice>{result.message}</PermissionNotice>;
   const piece = result.piece;
+  const can = pieceActionsCan(piece, hasPermission);
+
+  /** Eliminación lógica con motivo (design D7). La pieza ya no se puede volver a leer: la ficha muestra el aviso. */
+  async function handleDelete(reason: string): Promise<DialogOutcome> {
+    const outcome = await deletePiece(pieceId, reason);
+    if (outcome.status === "ok") setDeleted(true);
+    return toDialogOutcome(outcome);
+  }
+
+  /** Restauración (design D7). Un 409 por código I duplicado llega como mensaje y se muestra dentro del diálogo. */
+  async function handleRestore(reason: string | null): Promise<DialogOutcome> {
+    const outcome = await restorePiece(pieceId, reason);
+    if (outcome.status === "ok") {
+      setDeleted(false);
+      setReloads((count) => count + 1);
+    }
+    return toDialogOutcome(outcome);
+  }
+
+  /** Corrección auditada del código I (design D6): el anterior queda en el historial como no vigente. */
+  async function handleCorrect({ newValue, reason }: { newValue: string; reason: string }): Promise<DialogOutcome> {
+    const identifier = inventoryIdentifierOf(piece);
+    if (!identifier) return { ok: false, message: "La pieza no tiene un código I que corregir." };
+    const outcome = await correctInventoryCode(pieceId, identifier.id, { new_value: newValue, reason });
+    if (outcome.status === "ok") setReloads((count) => count + 1);
+    return toDialogOutcome(outcome);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PieceSheetHeader
         piece={piece}
         alerts={alerts}
         actions={
-          (hasPermission("pieces.update") || hasPermission("pieces.create")) && (
-            <div className="flex flex-wrap items-center gap-2">
-              {hasPermission("pieces.update") && (
-                <Link href={`/piezas/${pieceId}/editar`} className={buttonClassName({ variant: "primary" })}>
-                  <Pencil size={18} aria-hidden="true" />
-                  Editar ficha
-                </Link>
-              )}
-              {hasPermission("pieces.create") && <RegisterSimilarButton piece={piece} />}
-            </div>
+          !deleted && (
+            <LivePieceHeaderActions
+              pieceId={pieceId}
+              can={can}
+              registerSimilar={hasPermission("pieces.create") ? <RegisterSimilarButton piece={piece} /> : undefined}
+              onDelete={() => setDeleteOpen(true)}
+            />
           )
         }
         notices={
@@ -333,21 +383,39 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
           </>
         }
       />
-      <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
-      <PieceGeneralData piece={piece} />
-      <PieceIdentifiersTable piece={piece} />
-      <PieceGallery
-        pieceId={pieceId}
-        pieceTitle={piece.denomination}
-        onChanged={() => {
-          // La alerta «sin fotografía» depende de lo que acaba de cambiar.
-          fetchPieceAlerts(pieceId, devUser).then((result) => {
-            if (result.status === "ok") setAlerts(result.alerts);
-          });
-        }}
-      />
-      <ConservationLive pieceId={pieceId} />
-      <p className="text-sm text-gris-texto">Ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
+      <PieceDeleteDialog pieceName={piece.denomination} open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
+      <PieceRestoreDialog pieceName={piece.denomination} open={restoreOpen} onClose={() => setRestoreOpen(false)} onRestore={handleRestore} />
+      {deleted ? (
+        <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
+      ) : (
+        <>
+          <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
+          <PieceGeneralData piece={piece} />
+          <PieceIdentifiersTable piece={history.status === "ok" ? { ...piece, identifiers: history.identifiers } : piece}>
+            <LiveIdentifierActions
+              piece={piece}
+              can={can}
+              types={identifierTypes}
+              typesError={typesError}
+              historyError={history.status === "ok" || piece.merged_into ? null : history.message}
+              onRegistered={() => setReloads((count) => count + 1)}
+              onCorrect={handleCorrect}
+            />
+          </PieceIdentifiersTable>
+          <PieceGallery
+            pieceId={pieceId}
+            pieceTitle={piece.denomination}
+            onChanged={() => {
+              // La alerta «sin fotografía» depende de lo que acaba de cambiar.
+              fetchPieceAlerts(pieceId, devUser).then((result) => {
+                if (result.status === "ok") setAlerts(result.alerts);
+              });
+            }}
+          />
+          <ConservationLive pieceId={pieceId} />
+          <p className="text-sm text-gris-texto">Ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -359,9 +427,7 @@ function IdentifiersTab({ pieceId, piece }: { pieceId: string; piece: PieceDetai
   const canCorrect = hasPermission("identifiers.correct_inventory_code");
   const actorLabel = currentUser?.full_name ?? currentRole?.name ?? "Persona sintética";
   const actorId = currentUser?.id ?? "";
-  const inventoryIdentifier =
-    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I" && identifier.is_current) ??
-    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I");
+  const inventoryIdentifier = inventoryIdentifierOf(piece);
 
   /** Corrección auditada (design D6): código nuevo + motivo. El store de la maqueta refleja el cambio en la sesión. */
   async function handleCorrect({ newValue, reason }: { newValue: string; reason: string }): Promise<DialogOutcome> {

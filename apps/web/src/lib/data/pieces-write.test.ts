@@ -5,12 +5,17 @@ import { getPieceDetail, ids, toSummary } from "@/lib/fixtures";
 
 import {
   VALIDATION_DEBOUNCE_MS,
+  addIdentifier,
+  correctInventoryCode,
   createPiece,
   createPieceValidator,
+  deletePiece,
   fetchPieceCatalogs,
+  fetchPieceIdentifierHistory,
   initialPieceCatalogs,
   PRECONDITION_MESSAGE,
   registerSplitIdentifiers,
+  restorePiece,
   updatePiece,
   validatePiece,
   type PieceCreateInput,
@@ -555,5 +560,180 @@ describe("registerSplitIdentifiers (live)", () => {
       expect.objectContaining({ value: "I 2362", confirmed_split: true, split_from: "I 2362 / RA 28" }),
       expect.objectContaining({ value: "RA 28", confirmed_split: true, split_from: "I 2362 / RA 28" }),
     ]);
+  });
+});
+
+describe("acciones de la ficha contra la API (ficha-pieza-crud 4.4)", () => {
+  const PIECE = "01920000-0000-7000-8000-000000000101";
+  const IDENTIFIER = "01920000-0000-7000-8000-000000000201";
+  const denied = () => json(403, { code: "permission_denied", message: "Su rol no puede hacer esto.", details: {} });
+
+  describe("eliminar", () => {
+    it("manda el motivo como parámetro y da por buena la respuesta vacía", async () => {
+      const fetchMock = useLive(async () => new Response(null, { status: 204 }));
+
+      const result = await deletePiece(PIECE, "  Registro de prueba  ");
+
+      const request = lastRequest(fetchMock);
+      expect(request.method).toBe("DELETE");
+      const url = new URL(request.url);
+      expect(url.pathname).toBe(`/api/v1/pieces/${PIECE}`);
+      expect(url.searchParams.get("reason")).toBe("Registro de prueba");
+      expect(result).toEqual({ status: "ok" });
+    });
+
+    it("no llama a la API sin motivo", async () => {
+      const fetchMock = useLive(async () => new Response(null, { status: 204 }));
+
+      const result = await deletePiece(PIECE, "   ");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.status).toBe("rejected");
+    });
+
+    it("informa el rechazo de la API con su mensaje", async () => {
+      useLive(async () => denied());
+
+      const result = await deletePiece(PIECE, "Motivo");
+
+      expect(result).toMatchObject({ status: "rejected", code: "permission_denied", message: "Su rol no puede hacer esto." });
+    });
+
+    it("avisa si no hay conexión", async () => {
+      useLive(async () => {
+        throw new TypeError("sin red");
+      });
+
+      expect((await deletePiece(PIECE, "Motivo")).status).toBe("unavailable");
+    });
+  });
+
+  describe("restaurar", () => {
+    it("devuelve la ficha restaurada y manda el motivo si lo hay", async () => {
+      const detail = detailOf(1);
+      const fetchMock = useLive(async () => json(200, detail));
+
+      const result = await restorePiece(PIECE, " Fue un error ");
+
+      const request = lastRequest(fetchMock);
+      expect(request.method).toBe("POST");
+      const url = new URL(request.url);
+      expect(url.pathname).toBe(`/api/v1/pieces/${PIECE}/restore`);
+      expect(url.searchParams.get("reason")).toBe("Fue un error");
+      expect(result).toMatchObject({ status: "ok", piece: { id: detail.id } });
+    });
+
+    it("sin motivo no manda el parámetro", async () => {
+      const fetchMock = useLive(async () => json(200, detailOf(1)));
+
+      await restorePiece(PIECE, null);
+
+      expect(new URL(lastRequest(fetchMock).url).searchParams.has("reason")).toBe(false);
+    });
+
+    it("informa si el código I ya lo usa otra pieza, para mostrarlo en el diálogo", async () => {
+      useLive(async () => json(409, { code: "duplicate_inventory_code", message: "El código I ya lo usa otra pieza activa.", details: {} }));
+
+      const result = await restorePiece(PIECE);
+
+      expect(result).toMatchObject({ status: "rejected", code: "duplicate_inventory_code", message: "El código I ya lo usa otra pieza activa." });
+    });
+  });
+
+  describe("registrar un código", () => {
+    const created = { id: IDENTIFIER, identifier_type_code: "COLECCION", original_value: "MBB 901" };
+
+    it("manda el tipo, el valor y que aún no confirma una separación", async () => {
+      const fetchMock = useLive(async () => json(201, created));
+
+      const result = await addIdentifier(PIECE, { identifier_type_code: "COLECCION", value: "MBB 901", source: "Libro sintético" });
+
+      const request = lastRequest(fetchMock);
+      expect(request.method).toBe("POST");
+      expect(new URL(request.url).pathname).toBe(`/api/v1/pieces/${PIECE}/identifiers`);
+      expect(await request.json()).toEqual({ identifier_type_code: "COLECCION", value: "MBB 901", source: "Libro sintético", confirmed_split: false });
+      expect(result).toMatchObject({ status: "ok", identifier: { id: IDENTIFIER } });
+    });
+
+    it("pide confirmar si el valor junta varios códigos, sin separarlos por su cuenta", async () => {
+      const proposals = [
+        { identifier_type_code: "COLECCION", original_value: "MBB 901", normalized_value: "MBB 901" },
+        { identifier_type_code: "COLECCION", original_value: "RA 902", normalized_value: "RA 902" },
+      ];
+      const fetchMock = useLive(async () => json(422, { code: "concatenated_identifier", message: "El valor junta varios códigos.", details: { proposals } }));
+
+      const result = await addIdentifier(PIECE, { identifier_type_code: "COLECCION", value: "MBB 901 / RA 902" });
+
+      expect(result).toMatchObject({ status: "needs_split", proposals });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("informa si el régimen de la pieza no admite ese código (RN-003)", async () => {
+      useLive(async () => json(409, { code: "identifier_not_allowed_for_tenure", message: "Una pieza en Comodato no puede recibir ese código.", details: {} }));
+
+      const result = await addIdentifier(PIECE, { identifier_type_code: "I", value: "I-5000" });
+
+      expect(result).toMatchObject({ status: "rejected", code: "identifier_not_allowed_for_tenure" });
+    });
+  });
+
+  describe("leer el historial de códigos", () => {
+    it("pide también los no vigentes y los entrega tal cual", async () => {
+      const codes = [
+        { id: "anterior", identifier_type_code: "I", original_value: "I-5001", is_current: false },
+        { id: "vigente", identifier_type_code: "I", original_value: "I-5002", is_current: true },
+      ];
+      const fetchMock = useLive(async () => json(200, codes));
+
+      const result = await fetchPieceIdentifierHistory(PIECE);
+
+      const request = lastRequest(fetchMock);
+      expect(request.method).toBe("GET");
+      const url = new URL(request.url);
+      expect(url.pathname).toBe(`/api/v1/pieces/${PIECE}/identifiers`);
+      expect(url.searchParams.get("include_history")).toBe("true");
+      expect(result).toEqual({ status: "ok", identifiers: codes });
+    });
+
+    it("informa el rechazo de la API o la falta de conexión, sin lanzar", async () => {
+      useLive(async () => denied());
+      expect(await fetchPieceIdentifierHistory(PIECE)).toMatchObject({ status: "rejected", code: "permission_denied" });
+
+      useLive(async () => {
+        throw new TypeError("sin red");
+      });
+      expect((await fetchPieceIdentifierHistory(PIECE)).status).toBe("unavailable");
+    });
+  });
+
+  describe("corregir el código I", () => {
+    it("manda el código nuevo y el motivo al identificador vigente", async () => {
+      const fetchMock = useLive(async () => json(200, { id: "nuevo", identifier_type_code: "I", original_value: "I-5002" }));
+
+      const result = await correctInventoryCode(PIECE, IDENTIFIER, { new_value: " I-5002 ", reason: " Error de digitación " });
+
+      const request = lastRequest(fetchMock);
+      expect(request.method).toBe("POST");
+      expect(new URL(request.url).pathname).toBe(`/api/v1/pieces/${PIECE}/identifiers/${IDENTIFIER}/correction`);
+      expect(await request.json()).toEqual({ new_value: "I-5002", reason: "Error de digitación" });
+      expect(result).toMatchObject({ status: "ok", identifier: { id: "nuevo" } });
+    });
+
+    it("no llama a la API sin código o sin motivo", async () => {
+      const fetchMock = useLive(async () => json(200, {}));
+
+      await correctInventoryCode(PIECE, IDENTIFIER, { new_value: "", reason: "Motivo" });
+      await correctInventoryCode(PIECE, IDENTIFIER, { new_value: "I-5002", reason: "  " });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("informa si el código nuevo ya es de otra pieza, o si el rol no puede", async () => {
+      useLive(async () => json(409, { code: "duplicate_inventory_code", message: "Ese código ya pertenece a otra pieza.", details: {} }));
+      expect(await correctInventoryCode(PIECE, IDENTIFIER, { new_value: "I-1", reason: "Motivo" })).toMatchObject({ status: "rejected", code: "duplicate_inventory_code" });
+
+      useLive(async () => denied());
+      expect(await correctInventoryCode(PIECE, IDENTIFIER, { new_value: "I-1", reason: "Motivo" })).toMatchObject({ status: "rejected", code: "permission_denied" });
+    });
   });
 });

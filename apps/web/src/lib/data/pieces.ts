@@ -526,6 +526,7 @@ export type IdentifierAddResult =
   | { status: "needs_split"; message: string; proposals: SplitProposal[] }
   | PieceWriteFailure;
 export type InventoryCorrectionResult = { status: "ok"; identifier: IdentifierOut } | PieceWriteFailure;
+export type IdentifierHistoryResult = { status: "ok"; identifiers: IdentifierOut[] } | PieceWriteFailure;
 /**
  * Registro de varios identificadores confirmados por separado. No es atómico (cada uno es una
  * petición): si uno falla, `identifiers` trae los que ya quedaron registrados.
@@ -603,6 +604,26 @@ export async function restorePiece(id: string, reason?: string | null): Promise<
     });
     if (error) return failureFrom(error);
     return { status: "ok", piece: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/**
+ * `GET /pieces/{piece_id}/identifiers?include_history=true`: también los códigos no vigentes y los
+ * dados de baja, que nunca se borran (RN-005). La ficha de `GET /pieces/{piece_id}` solo trae los vigentes.
+ */
+export async function fetchPieceIdentifierHistory(pieceId: string): Promise<IdentifierHistoryResult> {
+  if (getApiMode() === "mock") {
+    const piece = getPieceDetail(pieceId);
+    return piece ? { status: "ok", identifiers: piece.identifiers } : PIECE_MISSING;
+  }
+  try {
+    const { data, error } = await client().GET("/api/v1/pieces/{piece_id}/identifiers", {
+      params: { path: { piece_id: pieceId }, query: { include_history: true } },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok", identifiers: data };
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };
   }
