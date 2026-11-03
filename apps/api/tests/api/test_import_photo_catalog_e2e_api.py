@@ -19,7 +19,7 @@ from app.modules.identification.models import PieceIdentifier
 from app.modules.media.models import MediaAsset
 from app.seed.catalog_photos import PHOTOS, correspondences_csv, picture
 from tests.api.conftest import Pipeline
-from tests.api.photo_batch_support import by_path, photo_batch
+from tests.api.photo_batch_support import by_path, collection, photo_batch, piece
 from tests.api.test_import_decisions_api import confirm, summary
 from tests.api.test_import_photos_api import _drain, _send, _verifiable
 from tests.api.test_import_pipeline_api import BASE, get_batch
@@ -104,3 +104,25 @@ def test_the_synthetic_archive_reaches_its_pieces(pipeline: Pipeline, storage: A
     altas = next(meta for meta in from_batch if meta["relative_path"] == "ALTAS/82LF4169 copy.jpg")
     assert altas["replaced_lower_resolution"] == ["82LF4169.jpg"]
     assert uuid.UUID(batch_id)
+
+
+def test_an_imported_photo_is_seen_in_the_search(
+    pipeline: Pipeline, storage: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The thumbnail the search signs exists: it sits next to the photo of the batch."""
+    monkeypatch.setattr(storage, "presign_get", lambda key, ttl=300: f"https://s3.local/{key}")
+    only_this = collection(pipeline, "Colección de miniaturas (ficticia)", "MNT")
+    piece_id = piece(pipeline, only_this, ("COLECCION", "MNT 1"))
+    batch_id = photo_batch(pipeline, "Lote de miniaturas")
+    _send(pipeline, batch_id, "MNT 1.jpg", picture(901, (640, 480)))
+    _drain(pipeline, storage)
+    assert by_path(pipeline, batch_id)["MNT 1.jpg"]["piece_id"] == str(piece_id)
+    token = summary(pipeline, batch_id)["summary_token"]
+    assert confirm(pipeline, batch_id, token).status_code == 200
+
+    page = pipeline.client.get("/api/v1/search", params={"q": "MNT 1"}).json()
+    hit = next(hit for hit in page["items"] if hit["piece"]["id"] == str(piece_id))
+
+    key = hit["thumbnail_url"].removeprefix("https://s3.local/")
+    assert key.endswith("/thumb.webp")
+    assert key in pipeline.stored

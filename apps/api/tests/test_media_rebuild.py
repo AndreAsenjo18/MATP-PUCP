@@ -121,6 +121,74 @@ def test_only_failed_does_not_look_at_the_storage_and_dry_run_writes_nothing(
     assert storage.objects == before
 
 
+def test_photos_saved_directly_in_their_piece_do_not_share_their_derivatives(
+    session: Session, act_as: ActAs, storage: Storage
+) -> None:
+    """The synthetic photos of the seed: ``pieces/{piece}/{asset}.jpg``, several per piece."""
+    with act_as("CATALOGUER"):
+        piece = create_piece(session, denomination="Olla", tenure_regime=TenureRegime.OWNED)
+        assets = []
+        for order in range(2):
+            asset_id = new_uuid()
+            key = f"pieces/{piece.id}/{asset_id}.jpg"
+            storage.objects[key] = _jpeg()
+            assets.append(
+                MediaAsset(
+                    id=asset_id,
+                    piece_id=piece.id,
+                    storage_key=key,
+                    original_filename=f"semilla-{order}.jpg",
+                    content_type="image/jpeg",
+                    size_bytes=len(storage.objects[key]),
+                    content_sha256=f"{order}" * 64,
+                    sort_order=order,
+                    is_primary=order == 0,
+                )
+            )
+        session.add_all(assets)
+        session.commit()
+
+    result = rebuild_derivatives(session, storage)  # type: ignore[arg-type]
+    session.commit()
+
+    assert set(result.rebuilt) == {asset.id for asset in assets}
+    for asset in assets:
+        folder = f"pieces/{piece.id}/{asset.id}"
+        assert {f"{folder}/thumb.webp", f"{folder}/display.webp"} <= set(storage.objects)
+        assert asset.extra_metadata == {"derivatives": "ok"}
+    assert f"pieces/{piece.id}/thumb.webp" not in storage.objects
+    # They are not regenerated each time.
+    assert rebuild_derivatives(session, storage).rebuilt == []  # type: ignore[arg-type]
+
+
+def test_a_photo_of_a_batch_keeps_its_derivatives_next_to_it(
+    session: Session, act_as: ActAs, storage: Storage
+) -> None:
+    with act_as("CATALOGUER"):
+        piece = create_piece(session, denomination="Mate", tenure_regime=TenureRegime.OWNED)
+        photo_id = new_uuid()
+        key = f"media/{photo_id}/upload.jpeg"
+        storage.objects[key] = _jpeg()
+        session.add(
+            MediaAsset(
+                id=new_uuid(),
+                piece_id=piece.id,
+                storage_key=key,
+                original_filename="lote.jpg",
+                content_type="image/jpeg",
+                size_bytes=len(storage.objects[key]),
+                content_sha256="9" * 64,
+                sort_order=0,
+                is_primary=True,
+            )
+        )
+        session.commit()
+
+    rebuild_derivatives(session, storage)  # type: ignore[arg-type]
+
+    assert f"media/{photo_id}/thumb.webp" in storage.objects
+
+
 def test_the_documented_command_exists() -> None:
     with pytest.raises(SystemExit) as exit_info:
         command.main(["--help"])

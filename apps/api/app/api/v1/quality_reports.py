@@ -41,7 +41,7 @@ from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.exports.results import masked_fields, resolve_columns, result_row
 from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
 from app.modules.locations.service import last_seen
-from app.modules.media.derivatives import thumb_key
+from app.modules.media.derivatives import derivative_keys
 from app.modules.media.models import MediaAsset
 from app.modules.quality.completeness import (
     list_completeness_rules,
@@ -454,14 +454,14 @@ def _thumbnail_urls(
     storage = getattr(request.app.state, "storage", None)
     if storage is None or not piece_ids:
         return {}
-    assets = session.execute(
-        select(MediaAsset.piece_id, MediaAsset.id)
+    assets = session.scalars(
+        select(MediaAsset)
         .where(MediaAsset.piece_id.in_(piece_ids), MediaAsset.deleted_at.is_(None))
         .order_by(MediaAsset.is_primary.desc(), MediaAsset.sort_order, MediaAsset.created_at)
     ).all()
     keys: dict[uuid.UUID, str] = {}
-    for piece_id, asset_id in assets:
-        keys.setdefault(piece_id, thumb_key(piece_id, asset_id))
+    for asset in assets:
+        keys.setdefault(asset.piece_id, derivative_keys(asset)[0])
     ttl = request.app.state.settings.media_url_ttl_seconds
     urls: dict[uuid.UUID, str] = {}
     for piece_id, key in keys.items():

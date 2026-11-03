@@ -30,6 +30,7 @@ from app.modules.identification.models import PieceIdentifier
 from app.modules.identification.normalization import TYPE_COLLECTION, TYPE_INVENTORY
 from app.modules.identification.service import add_identifier
 from app.modules.imports.models import ImportBatch, ImportImage, ImportRow
+from app.modules.media.derivatives import derivatives_prefix
 from app.modules.media.models import MediaAsset
 from app.modules.users.models import AppUser
 from tests.api.conftest import ADMIN, Pipeline
@@ -598,6 +599,8 @@ def test_associating_an_image_registers_it_as_a_photo_of_the_piece(
         assert piece is not None and asset is not None
         assert asset.piece_id == piece.id and asset.is_primary
         assert asset.content_type == "image/jpeg" and asset.width_px == 40
+        # Its thumbnail is where the search and the sheet look for it.
+        assert f"{derivatives_prefix(asset)}thumb.webp" in pipeline.stored
         assert asset.extra_metadata is not None
         assert asset.extra_metadata["import_batch_id"] == batch_id
         assert asset.extra_metadata["source_row_number"] == 2
