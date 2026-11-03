@@ -2,7 +2,9 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la ubicación física jerárquica de las piezas del MATP, el historial automático de movimientos, la participación en préstamos y exposiciones y el estado de disponibilidad de cada pieza.
+
 ## Requirements
+
 ### Requirement: Ubicación jerárquica
 El sistema MUST registrar la ubicación de cada pieza en una jerarquía de sede, espacio, mueble o rack, nivel y contenedor, donde solo sede y espacio son obligatorios, y SHALL administrar los lugares como catálogo con código de ubicación único. Los niveles reales y su codificación son [SUPUESTO]. (RF-016)
 
@@ -38,7 +40,7 @@ El sistema SHALL registrar automáticamente un movimiento cada vez que cambia la
 - **THEN** el sistema lo rechaza y solo permite registrar un movimiento correctivo nuevo
 
 ### Requirement: Préstamos y exposiciones
-El sistema SHALL registrar la participación de piezas en préstamos salientes y exposiciones (nombre, institución o sala, fechas, responsable, estado) y MUST actualizar la disponibilidad de las piezas participantes mientras dure la participación. (RF-018)
+El sistema SHALL registrar préstamos y exposiciones como expedientes separados de las piezas, con tipo, institución o sala de destino, responsable, referencia documental, fechas de inicio y fin, estado y una o más piezas participantes. MUST conservar la participación histórica de cada pieza, impedir confirmar participaciones activas con fechas superpuestas para una misma pieza y validar que la fecha de fin no sea anterior a la de inicio. Los valores de tipo y estado son [SUPUESTO] hasta su validación con la contraparte. (RF-018, RN-004, RN-005)
 
 #### Scenario: Registrar exposición temporal
 - **WHEN** un Gestor de colecciones registra una exposición con cinco piezas y fechas de inicio y fin
@@ -52,8 +54,13 @@ El sistema SHALL registrar la participación de piezas en préstamos salientes y
 - **WHEN** se registra una exposición con fecha de fin anterior a la de inicio
 - **THEN** el sistema rechaza el registro
 
+#### Scenario: Préstamo temporal fuera del inventario permanente
+- **GIVEN** una pieza registrada con régimen "préstamo temporal"
+- **WHEN** se la incorpora a un expediente de préstamo o exposición
+- **THEN** el sistema conserva su número temporal, no la incorpora al inventario permanente y no permite asignarle código I ni código de colección
+
 ### Requirement: Disponibilidad de la pieza
-El sistema SHALL mantener para cada pieza un estado de disponibilidad de un vocabulario controlado (en sala, en depósito, en préstamo, en exposición temporal, entre otros) coherente con su ubicación y sus préstamos vigentes. (RF-020, RN-010)
+El sistema SHALL mantener para cada pieza un estado de disponibilidad de un vocabulario controlado (en sala, en depósito, en préstamo, en exposición temporal, entre otros) coherente con su ubicación y sus participaciones vigentes en préstamos o exposiciones. MUST actualizar la disponibilidad al confirmar, cancelar o cerrar una participación, sin eliminar su historial, y SHALL rechazar cualquier cambio manual incompatible con una participación activa. (RF-020, RN-010, RN-005)
 
 #### Scenario: Retorno de préstamo
 - **WHEN** se registra la devolución de una pieza prestada y su nueva ubicación en depósito
@@ -62,6 +69,11 @@ El sistema SHALL mantener para cada pieza un estado de disponibilidad de un voca
 #### Scenario: Disponibilidad incoherente
 - **WHEN** se intenta marcar como "en sala" una pieza con préstamo saliente vigente
 - **THEN** el sistema rechaza el cambio e indica el préstamo vigente
+
+#### Scenario: Cancelación antes del inicio
+- **GIVEN** una participación futura confirmada en una exposición
+- **WHEN** un Gestor de colecciones la cancela indicando un motivo
+- **THEN** la participación conserva su historial y auditoría, y la pieza recupera la disponibilidad coherente con su ubicación actual
 
 ### Requirement: Condición de pieza sin ubicación
 El sistema MUST identificar como "sin ubicación" a toda pieza activa sin sede y espacio registrados, para que la capacidad de calidad de datos la incluya en sus alertas. (RF-019)
@@ -177,4 +189,3 @@ Quien tiene el permiso de administrar ubicaciones MUST poder, desde el árbol de
 #### Scenario: Usuario sin permiso
 - **WHEN** un usuario de Consulta interna abre el árbol de ubicaciones
 - **THEN** puede filtrar por lugar pero no ve «Agregar lugar aquí» ni «Editar»
-

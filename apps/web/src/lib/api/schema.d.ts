@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c5508a8f8de2827ebd44789ca3d3f7ef6b657f41d4f4df37589a8a2d3e06bab6
+ * openapi-sha256: 39616316f1387a80c4655c5f9a965bf21c95adc86e87c2e31efe7ba78d72ed78
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -12145,7 +12145,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            /** @description Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`. */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12201,7 +12201,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            /** @description Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`. */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12259,7 +12259,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `prestamos-y-exposiciones`. */
+            /** @description Stub del contrato; lo implementa el change `rutas-prestamos-y-exposiciones`. */
             501: {
                 headers: {
                     [name: string]: unknown;
