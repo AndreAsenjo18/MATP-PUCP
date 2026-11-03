@@ -18,11 +18,10 @@ THUMB_MAX_DIM = 320
 DISPLAY_MAX_DIM = 1600
 WEBP_QUALITY = 80
 REBUILD_ACTOR = "rebuild_derivatives"
-
-
-def thumb_key(piece_id: object, asset_id: object) -> str:
-    """Storage key of an asset's thumbnail (`generate_derivatives` writes it there)."""
-    return f"pieces/{piece_id}/{asset_id}/thumb.webp"
+#: Object names whose derivatives (thumb.webp, display.webp) sit in the same folder: a manual
+#: upload (``original.<ext>``), an imported photo (``upload.<ext>``) or one whose original was not
+#: kept (``display.webp``, task 5.4).
+DERIVED_OBJECTS = frozenset({"original", "upload", "display"})
 
 
 def _resize_image(data: bytes, max_dim: int) -> bytes:
@@ -89,10 +88,32 @@ class RebuildResult:
     failed: list[uuid.UUID] = field(default_factory=list)
 
 
+def _has_own_folder(asset: "MediaAsset") -> bool:
+    return asset.storage_key.rpartition("/")[2].split(".", 1)[0] in DERIVED_OBJECTS
+
+
 def derivatives_prefix(asset: "MediaAsset") -> str:
-    """The derivatives sit next to the file of the asset: ``pieces/{piece}/{asset}/`` for an
-    upload to the sheet and ``media/{photo}/`` for a photo of an import batch."""
-    return f"{asset.storage_key.rpartition('/')[0]}/"
+    """The derivatives sit next to the file of the asset when it has a folder of its own:
+    ``pieces/{piece}/{asset}/`` for an upload to the sheet and ``media/{photo}/`` for a photo of
+    an import batch. A photo saved directly in the folder of its piece (the synthetic photos of
+    the seed, ``pieces/{piece}/{asset}.jpg``) gets a folder named after it, because its piece may
+    have more photos."""
+    folder, _, name = asset.storage_key.rpartition("/")
+    return f"{folder}/" if _has_own_folder(asset) else f"{folder}/{name.split('.', 1)[0]}/"
+
+
+def derivative_keys(asset: "MediaAsset") -> tuple[str, str]:
+    """Keys of the thumbnail and the display copy that show ``asset``.
+
+    A photo with a folder of its own gets its derivatives when it is registered; one saved directly
+    only from ``rebuild_derivatives``, which marks it ``ok``. Without them (never generated, or
+    marked ``failed``) the photo is shown from its own object.
+    """
+    mark = (asset.extra_metadata or {}).get("derivatives")
+    if mark == "ok" or (mark != "failed" and _has_own_folder(asset)):
+        prefix = derivatives_prefix(asset)
+        return f"{prefix}thumb.webp", f"{prefix}display.webp"
+    return asset.storage_key, asset.storage_key
 
 
 def _needs_rebuild(storage: "ObjectStorage", asset: "MediaAsset", only_failed: bool) -> bool:

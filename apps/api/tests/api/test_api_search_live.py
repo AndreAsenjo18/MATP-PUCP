@@ -124,6 +124,83 @@ def test_search_hit_carries_the_primary_photo_thumbnail(
     assert all(hit["thumbnail_url"] is None for hit in others if hit["piece"]["media_count"] == 0)
 
 
+@pytest.mark.parametrize(
+    ("stored_as", "mark", "shown_from"),
+    [
+        pytest.param(
+            "pieces/{piece}/{asset}/original.jpg",
+            None,
+            "pieces/{piece}/{asset}/thumb.webp",
+            id="subida-a-la-ficha",
+        ),
+        pytest.param(
+            "media/{asset}/upload.jpeg", None, "media/{asset}/thumb.webp", id="lote-de-fotos"
+        ),
+        pytest.param(
+            "media/{asset}/display.webp", None, "media/{asset}/thumb.webp", id="lote-sin-original"
+        ),
+        pytest.param(
+            "pieces/{piece}/{asset}.jpg", None, "pieces/{piece}/{asset}.jpg", id="semilla"
+        ),
+        pytest.param(
+            "pieces/{piece}/{asset}.jpg",
+            "ok",
+            "pieces/{piece}/{asset}/thumb.webp",
+            id="semilla-tras-el-comando",
+        ),
+        pytest.param(
+            "pieces/{piece}/{asset}/original.jpg",
+            "failed",
+            "pieces/{piece}/{asset}/original.jpg",
+            id="derivados-fallidos",
+        ),
+    ],
+)
+def test_search_thumbnail_is_where_each_kind_of_photo_keeps_it(
+    pipeline: Pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+    stored_as: str,
+    mark: str | None,
+    shown_from: str,
+) -> None:
+    storage = pipeline.client.app.state.storage  # type: ignore[attr-defined]
+    monkeypatch.setattr(storage, "presign_get", lambda key, ttl=300: f"https://s3.local/{key}")
+    with pipeline.session() as session:
+        with_media = select(MediaAsset.piece_id)
+        piece = session.scalar(
+            select(Piece).where(Piece.id.not_in(with_media)).order_by(Piece.denomination)
+        )
+        assert piece is not None
+        piece_id, word = piece.id, piece.denomination.split()[0]
+    asset_id = uuid.uuid4()
+    with pipeline.session() as session:
+        from app.modules.audit.context import AuditContext, set_audit_context
+        from app.modules.audit.models import AuditOrigin
+
+        set_audit_context(session, AuditContext(origin=AuditOrigin.SYSTEM, actor_label="tests"))
+        session.add(
+            MediaAsset(
+                id=asset_id,
+                piece_id=piece_id,
+                storage_key=stored_as.format(piece=piece_id, asset=asset_id),
+                content_type="image/jpeg",
+                size_bytes=100,
+                content_sha256="b" * 64,
+                sort_order=0,
+                is_primary=True,
+                extra_metadata={"derivatives": mark} if mark else None,
+            )
+        )
+        session.commit()
+
+    page = pipeline.client.get("/api/v1/search", params={"q": word, "limit": 100}).json()
+    hit = next(hit for hit in page["items"] if hit["piece"]["id"] == str(piece_id))
+
+    assert hit["thumbnail_url"] == "https://s3.local/" + shown_from.format(
+        piece=piece_id, asset=asset_id
+    )
+
+
 def _sheet(response) -> list[tuple]:
     workbook = load_workbook(io.BytesIO(response.content))
     return list(workbook["Resultados"].iter_rows(values_only=True))

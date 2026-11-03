@@ -20,6 +20,7 @@ from app.modules.audit.models import AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection, Term, Vocabulary, VocabularyCode
+from app.modules.media.derivatives import derivative_keys
 from app.modules.media.models import MediaAsset
 
 if TYPE_CHECKING:
@@ -315,12 +316,6 @@ def register_from_import(
     return asset
 
 
-#: Object names whose derivatives (thumb.webp, display.webp) sit in the same folder: a manual
-#: upload (``original.<ext>``), an imported photo (``upload.<ext>``) or one whose original was not
-#: kept (``display.webp``, task 5.4).
-DERIVED_OBJECTS = frozenset({"original", "upload", "display"})
-
-
 def gallery_urls(
     storage: ObjectStorage, asset: MediaAsset, ttl_seconds: int
 ) -> tuple[str | None, str | None]:
@@ -330,16 +325,7 @@ def gallery_urls(
     is shown from its own object. Viewing inside the system is internal use: the restriction of
     a loan for use only blocks external downloads, which go through ``download-url`` (task 2.5).
     """
-    folder, _, name = asset.storage_key.rpartition("/")
-    derived = (
-        name.split(".", 1)[0] in DERIVED_OBJECTS
-        and (asset.extra_metadata or {}).get("derivatives") != "failed"
-    )
-    thumb, display = (
-        (f"{folder}/thumb.webp", f"{folder}/display.webp")
-        if derived
-        else (asset.storage_key, asset.storage_key)
-    )
+    thumb, display = derivative_keys(asset)
     try:
         return storage.presign_get(thumb, ttl_seconds), storage.presign_get(display, ttl_seconds)
     except (BotoCoreError, ClientError):  # a convenience: the photo stays listed without them
