@@ -2,8 +2,8 @@
 
 /**
  * Pantalla 5 — Editor de pieza con validación en tiempo real (RF-043). El código I no aparece
- * como editable (RN-002): su corrección vive en la pestaña Identificadores de la ficha, con
- * procedimiento auditado y solo para el rol Administrador.
+ * como editable (RN-002): se corrige desde la ficha, con procedimiento auditado y solo para el rol
+ * Administrador.
  *
  * Funciona en los dos modos (`NEXT_PUBLIC_API_MODE`): `mock` lee y actualiza el store de la
  * sesión de demostración; `live` carga la ficha con `fetchPieceDetail` y guarda con `updatePiece`
@@ -73,8 +73,7 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
         </Link>
         <h1 className="text-2xl font-bold text-tinta">Editar: {piece.denomination}</h1>
         <p className="text-base text-gris-texto">
-          El código I no se edita aquí (RN-002): use la pestaña Identificadores de la ficha si necesita una
-          corrección auditada.
+          El código I no se edita aquí (RN-002): se corrige desde la ficha, con el procedimiento auditado.
         </p>
       </header>
 

@@ -25,7 +25,7 @@ PREFIX = "/api/v1"
 
 # --- Diferencias congeladas ------------------------------------------------------------------
 # Operaciones del documento que la API todavía no expone. Vacía desde la tarea 5.2: las de la
-# fase 3 son stubs que citan `prestamos-y-exposiciones` y
+# fase 3 son stubs que citan `rutas-prestamos-y-exposiciones` y
 # `descargas-masivas-y-enriquecimiento-lote`.
 PENDIENTES: set[tuple[str, str]] = set()
 

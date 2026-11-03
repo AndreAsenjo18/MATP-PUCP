@@ -22,7 +22,12 @@ from app.modules.identification.models import NormalizationStatus
 from app.modules.identification.normalization import TYPE_INVENTORY, TYPE_OTHER, is_absence_marker
 from app.modules.identification.normalization import normalize as normalize_value
 from app.modules.identification.params import session_params
-from app.modules.identification.service import add_identifier, find_code_owner, get_identifier_type
+from app.modules.identification.service import (
+    add_identifier,
+    find_code_owner,
+    get_identifier_type,
+    tenure_rule_violation,
+)
 
 EDITABLE_FIELDS = frozenset(
     {
@@ -191,7 +196,7 @@ def _collect_findings(
                 error=ValidationFailed(issue.message, code="invalid_dimension"),
             )
         )
-    findings.extend(_inventory_code_findings(session, code_i, piece))
+    findings.extend(_inventory_code_findings(session, code_i, piece, tenure_regime))
     findings.extend(_collection_findings(session, collection_id, piece))
     if (
         parent_piece_id is not None
@@ -241,9 +246,13 @@ def _collection_findings(
 
 
 def _inventory_code_findings(
-    session: Session, code_i: str | None, piece: Piece | None
+    session: Session,
+    code_i: str | None,
+    piece: Piece | None,
+    tenure_regime: TenureRegime | None = None,
 ) -> list[_Finding]:
-    """Rules of the code I of the sheet: absence marker, format and duplicate (RN-002, RN-003)."""
+    """Rules of the code I of the sheet: absence marker, format, regime and duplicate (RN-002,
+    RN-003)."""
     if code_i is None or not code_i.strip():
         return []
     raw = code_i.strip()
@@ -275,6 +284,21 @@ def _inventory_code_findings(
                 error=ValidationFailed(message, code="unrecognized_format"),
             )
         ]
+    # Only when registering: that is when the code goes with the regime, an edit never sends it.
+    if piece is None and tenure_regime is not None:
+        violation = tenure_rule_violation(identifier_type, tenure_regime)
+        if violation is not None:
+            return [
+                _Finding(
+                    issue=FieldIssue(
+                        field="code_i",
+                        code=violation.code,
+                        message=violation.message,
+                        severity="error",
+                    ),
+                    error=violation,
+                )
+            ]
     owner = find_code_owner(
         session,
         identifier_type,
