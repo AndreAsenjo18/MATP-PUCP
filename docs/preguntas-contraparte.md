@@ -302,12 +302,12 @@ Detalle en `openspec/changes/plantillas-mapeo-y-normalizacion/design.md` (D1–D
 
 **Pendiente interno (no es pregunta al museo), revisado el 2026-11-02:** al escribir las pruebas de punta a punta de la tarea 2.2 de `plantillas-mapeo-y-normalizacion` se encontraron tres puntos que corresponden a `ficha-pieza-crud`. `POST /pieces/validate` y `POST /pieces/{piece_id}/identifiers` ya están implementadas. Sigue abierto el tercero: `POST /pieces` acepta el campo `identifiers` (`PieceCreate`), pero no guarda esos identificadores ni avisa, y la pieza queda creada sin ellos. La web no usa ese campo.
 
-**Pendiente interno (no es pregunta al museo):** al cerrar `ficha-pieza-crud` (2026-11-02) se recorrió la ficha en un navegador, con la API en Compose y PostgreSQL:
+**Pendiente interno (no es pregunta al museo):** al cerrar `ficha-pieza-crud` (2026-11-02) se recorrió la ficha en un navegador, con la API y PostgreSQL. Las acciones de la ficha conectada (eliminar, restaurar, corregir el código I y registrar códigos), el texto del editor y la regla RN-003 de `POST /pieces/validate` se resolvieron en `fix/ficha-acciones-conectadas`. Quedan estos puntos, que no bloquean el archivo del change:
 
-1. La ficha conectada (`LiveFichaContent`) no ofrece eliminar, restaurar, corregir el código I ni registrar identificadores. Los diálogos existen (tarea 4.4), pero solo están en la rama del modo de ejemplo; la API sí tiene esas operaciones. Tampoco hay pantalla para cambiar el régimen de tenencia.
-2. El editor remite a «la pestaña Identificadores de la ficha», que en modo conectado no existe.
-3. `POST /pieces/validate` no aplica la regla de `identifier_not_allowed_for_tenure` (RN-003): responde `is_valid: true` para un comodato con código I, y al guardar responde 409. Los datos quedan protegidos, pero el spec pide las mismas reglas en la validación y en el guardado.
-4. Tras un conflicto, «Guardar cambios» envía todo el formulario, así que un dato que la otra persona cambió vuelve al valor del formulario si no se copia. El manual lo advierte.
+1. No hay pantalla para cambiar el régimen de tenencia, y la API sí tiene la operación.
+2. La ficha no ofrece dar de baja un código secundario, y la API sí tiene la operación (`DELETE /pieces/{piece_id}/identifiers/{identifier_id}`).
+3. Tras un conflicto, «Guardar cambios» envía todo el formulario, así que un dato que la otra persona cambió vuelve al valor del formulario si no se copia. El manual lo advierte.
+4. Con un motivo de menos de 3 caracteres, los diálogos de eliminar y de corregir el código I no guardan nada, pero muestran el mensaje general «Revise los datos enviados». El manual lo explica.
 
 **Pendiente interno (no es pregunta al museo):** en el menú lateral, «Administración» exige `users.manage` (`apps/web/src/components/layout/navigation.ts`), así que el Gestor de colecciones y el Catalogador no la ven, aunque la página les abre las pestañas que su rol permite (plantillas de mapeo con `imports.prepare`, parámetros y siglas con `vocabularies.manage`). Mientras tanto, el editor de mapeo del asistente enlaza «Administrar plantillas» (`/administracion?pestana=plantillas`). Ajustar el permiso del menú corresponde al dueño de la estructura de pantalla (`navigation.ts`), no a `plantillas-mapeo-y-normalizacion` (tarea 4.2).
 
