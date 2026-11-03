@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import random
+import uuid
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -20,7 +21,14 @@ from app.modules.audit.models import AuditOrigin
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.collections.models import Collection, Term
-from app.modules.identification.models import NormalizationStatus, PieceIdentifier
+from app.modules.identification.models import PieceIdentifier
+from app.modules.identification.normalization import (
+    TYPE_COLLECTION,
+    TYPE_INVENTORY,
+    NormalizationParams,
+    normalize_for_type,
+)
+from app.modules.identification.params import session_params
 from app.seed.synthetic import PERIODS, REGIONS, TITLES
 
 # Sentences of the synthetic descriptions: the description is the longest text of a piece and the
@@ -39,6 +47,23 @@ DESCRIPTION_SENTENCES = [
 ]
 # Share of pieces without description, as in the historical records.
 WITHOUT_DESCRIPTION = 0.15
+
+
+def _identifier(
+    piece_id: uuid.UUID, type_code: str, raw: str, params: NormalizationParams, *, is_current: bool
+) -> PieceIdentifier:
+    """The code as the application stores it, so that the search finds it (N1-N7)."""
+    result = normalize_for_type(type_code, raw, params=params)
+    return PieceIdentifier(
+        id=new_uuid(),
+        piece_id=piece_id,
+        identifier_type_code=type_code,
+        original_value=raw,
+        normalized_value=result.normalized,
+        normalization_status=result.status,
+        detected_format=result.detected_format,
+        is_current=is_current,
+    )
 
 
 def generate_catalog(
@@ -79,6 +104,19 @@ def generate_catalog(
         all_titles.extend(cat_titles)
     if not all_titles:
         all_titles = ["Pieza Arqueológica", "Objeto Cerámico", "Textil Ceremonial", "Tumi de Oro"]
+
+    params = session_params(session)
+    # RN-002: a current I is unique, and the catalog may already have some.
+    inventory_codes_in_use = set(
+        session.scalars(
+            select(PieceIdentifier.normalized_value).where(
+                PieceIdentifier.identifier_type_code == TYPE_INVENTORY,
+                PieceIdentifier.is_current.is_(True),
+                PieceIdentifier.deleted_at.is_(None),
+            )
+        )
+    )
+    without_inventory_code = 0
 
     total_created = 0
     print(f"Iniciando generación de {count} piezas en lotes de {batch_size}...")
@@ -125,32 +163,19 @@ def generate_catalog(
             )
             pieces.append(piece)
 
-            # Standard inventory identifier
-            code = f"I-{num:06d}"
-            ident = PieceIdentifier(
-                id=new_uuid(),
-                piece_id=p_id,
-                identifier_type_code="I",
-                original_value=code,
-                normalized_value=code,
-                normalization_status=NormalizationStatus.NORMALIZED,
-                is_current=True,
-            )
-            identifiers.append(ident)
+            # Standard inventory identifier, written with zeros as in the historical records
+            ident = _identifier(p_id, TYPE_INVENTORY, f"I-{num:06d}", params, is_current=True)
+            if ident.normalized_value in inventory_codes_in_use:
+                without_inventory_code += 1
+            else:
+                identifiers.append(ident)
 
             # Historical / collection code for 40% of pieces
             if rng.random() < 0.4:
                 alt_code = f"COL-{region[:3].upper()}-{num:04d}"
-                alt_ident = PieceIdentifier(
-                    id=new_uuid(),
-                    piece_id=p_id,
-                    identifier_type_code="COLECCION",
-                    original_value=alt_code,
-                    normalized_value=alt_code,
-                    normalization_status=NormalizationStatus.NORMALIZED,
-                    is_current=False,
+                identifiers.append(
+                    _identifier(p_id, TYPE_COLLECTION, alt_code, params, is_current=False)
                 )
-                identifiers.append(alt_ident)
 
         session.add_all(pieces)
         session.add_all(identifiers)
@@ -162,6 +187,8 @@ def generate_catalog(
             print(f"Progreso: {total_created} / {count} piezas creadas.")
 
     print(f"Finalizado: {total_created} piezas generadas exitosamente.")
+    if without_inventory_code:
+        print(f"Sin código I, porque ese número ya estaba en uso: {without_inventory_code}.")
     return total_created
 
 
@@ -188,8 +215,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    settings = Settings()
-    db_url = args.database_url or settings.database_url
+    # Settings() asks for the whole configuration, which a given URL doesn't need.
+    db_url = args.database_url or Settings().database_url
     engine = make_engine(db_url)
     factory = make_session_factory(engine)
 
