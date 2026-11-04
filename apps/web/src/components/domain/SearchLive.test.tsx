@@ -127,8 +127,9 @@ describe("resultados de la búsqueda", () => {
     expect(html).toContain('aria-checked="mixed"');
     const text = visibleText(html);
     expect(text).toContain("Seleccionar toda la página");
-    expect(text).toContain("2 piezas seleccionadas");
-    expect(text).toContain("Quitar la selección");
+    // El conteo y «Quitar la selección» pasaron a la barra de acciones (rediseno-ux-busqueda D4).
+    expect(text).not.toContain("seleccionadas");
+    expect(text).not.toContain("Quitar la selección");
   });
 
   it("en tableta las tarjetas son compactas y la casilla es grande", () => {
@@ -168,7 +169,7 @@ describe("filtros", () => {
       "Categoría",
       "Material",
       "Estado de conservación",
-      "Ubicación (con lo que contiene)",
+      "Ubicación",
       "Régimen de tenencia",
       "Código I",
       "Época desde (año)",
@@ -194,7 +195,7 @@ describe("filtros", () => {
     );
     expect(order.every((position) => position >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    for (const secondary of ["Colección (con subcolecciones)", "Ubicación (con lo que contiene)", "Autor", "Procedencia", "Completitud de la ficha"]) {
+    for (const secondary of ["Colección (con subcolecciones)", "Ubicación", "Autor", "Procedencia", "Completitud de la ficha"]) {
       expect(text.indexOf(secondary)).toBeGreaterThan(text.indexOf("Más filtros"));
     }
     expect(html).toContain("<details>");
