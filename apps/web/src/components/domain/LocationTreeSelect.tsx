@@ -119,20 +119,20 @@ export function LocationTreeSelect({ nodes, value, onChange, label = "Ubicación
                     type="button"
                     aria-expanded={row.expanded}
                     aria-label={`${row.expanded ? "Cerrar" : "Abrir"} ${row.node.name}`}
-                    className="flex size-6 items-center justify-center rounded text-gris-texto hover:bg-crema-light"
+                    className="flex size-11 shrink-0 items-center justify-center rounded text-gris-texto hover:bg-crema-light focus-visible:outline-2 focus-visible:outline-terracota lg:size-6"
                     onClick={() => toggle(row.node.id, !row.expanded)}
                   >
                     {row.expanded ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
                   </button>
                 ) : (
-                  <span aria-hidden className="size-6" />
+                  <span aria-hidden className="size-11 shrink-0 lg:size-6" />
                 )}
                 <button
                   type="button"
                   aria-pressed={selected}
                   title={row.path.join(" › ")}
                   className={cn(
-                    "flex flex-1 items-center gap-2 rounded px-1 py-0.5 text-left text-sm text-tinta hover:bg-crema-light",
+                    "flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left text-sm text-tinta hover:bg-crema-light focus-visible:outline-2 focus-visible:outline-terracota lg:min-h-0",
                     selected && "bg-crema font-medium",
                   )}
                   onClick={() => onChange(row.node.id)}
