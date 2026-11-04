@@ -29,6 +29,7 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
 
+import { AiSuggestPanel } from "@/components/domain/AiSuggestPanel";
 import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { IdentifierAddForm } from "@/components/domain/IdentifierAddForm";
@@ -413,7 +414,13 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
             }}
           />
           <ConservationLive pieceId={pieceId} />
-          <p className="text-sm text-gris-texto">Ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
+          <AiSuggestPanel
+            pieceId={pieceId}
+            devUser={devUser}
+            canRequest={hasPermission("ai.request")}
+            canReview={hasPermission("ai.review")}
+          />
+          <p className="text-sm text-gris-texto">Ubicación, datos de origen y auditoría de esta ficha se conectan a la API en sus changes.</p>
         </>
       )}
     </div>

@@ -12,6 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { AI_PURPOSE, AI_TITLE, dataView, FieldList, functionLabel, ScopeNotice } from "@/components/domain/AiSuggestionParts";
+import { AiSuggestionsLive } from "@/components/domain/AiSuggestionsLive";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { suggestionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
@@ -21,6 +22,7 @@ import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { getApiMode } from "@/lib/data/mode";
 import { useMockStore } from "@/lib/data/mock-store";
 import { getPieceDetail } from "@/lib/fixtures";
 
@@ -123,10 +125,14 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
 }
 
 function SugerenciasContent() {
-  const { hasPermission } = useSession();
+  const { hasPermission, currentUser } = useSession();
   const store = useMockStore();
   const searchParams = useSearchParams();
   const highlighted = searchParams.get("resaltar");
+
+  if (getApiMode() === "live") {
+    return <AiSuggestionsLive devUser={currentUser?.email} canReview={hasPermission("ai.review")} />;
+  }
 
   if (!hasPermission("ai.review")) {
     return <PermissionNotice>Su rol no puede revisar sugerencias de la IA. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;

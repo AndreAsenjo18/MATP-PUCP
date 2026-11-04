@@ -13373,15 +13373,15 @@
             },
             "description": "Datos no válidos."
           },
-          "501": {
+          "503": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
+            "description": "El servicio de IA no respondió."
           }
         },
         "security": [
@@ -13393,8 +13393,7 @@
         "tags": [
           "IA asistiva"
         ],
-        "x-change": "ia-extraccion-texto-libre",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/ai/suggestions": {
@@ -13677,16 +13676,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
           }
         },
         "security": [
@@ -13698,8 +13687,7 @@
         "tags": [
           "IA asistiva"
         ],
-        "x-change": "ia-extraccion-texto-libre",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/ai/suggestions/{suggestion_id}/reject": {
@@ -13767,16 +13755,6 @@
               }
             },
             "description": "Datos no válidos."
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotImplementedResponse"
-                }
-              }
-            },
-            "description": "Stub del contrato; lo implementa el change `ia-extraccion-texto-libre`."
           }
         },
         "security": [
@@ -13788,8 +13766,7 @@
         "tags": [
           "IA asistiva"
         ],
-        "x-change": "ia-extraccion-texto-libre",
-        "x-status": "stub"
+        "x-status": "implemented"
       }
     },
     "/api/v1/ai/validate-data": {

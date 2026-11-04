@@ -1,5 +1,8 @@
 """Spec ia-asistiva — Contrato del proveedor de IA (RIA-01, RIA-03, RIA-04, RN-009)."""
 
+import os
+from typing import Any
+
 import pytest
 
 from matp_ai.config import load_settings
@@ -78,13 +81,111 @@ def test_suggest_terms_and_describe() -> None:
     assert description == MockProvider().describe(piece)
 
 
-def test_llm_stub_is_unavailable() -> None:
+def test_llm_without_base_url_is_unavailable() -> None:
+    """RIA-03/04 stay unimplemented regardless of configuration."""
     settings = load_settings(ai_provider="llm", llm_api_key="clave-ficticia", llm_model="modelo-x")
     provider = LLMProvider(settings)
     with pytest.raises(ProviderUnavailable):
         provider.extract_structured(TEXT)
     with pytest.raises(ProviderUnavailable):
         provider.describe(PieceContext(title="x"))
+
+
+class _FakeResponse:
+    def __init__(self, status_code: int, body: Any) -> None:
+        self.status_code = status_code
+        self._body = body
+        self.text = str(body)
+
+    def json(self) -> Any:
+        return self._body
+
+
+def _llm_provider(
+    monkeypatch: pytest.MonkeyPatch, content: str, status_code: int = 200
+) -> LLMProvider:
+    settings = load_settings(
+        ai_provider="llm",
+        llm_base_url="https://example-llm.test/v1",
+        llm_api_key="clave-ficticia",
+        llm_model="modelo-x",
+    )
+    provider = LLMProvider(settings)
+
+    def fake_post(
+        self: Any, url: str, *, headers: dict[str, str], json: dict[str, Any]
+    ) -> _FakeResponse:
+        if status_code != 200:
+            return _FakeResponse(status_code, {"error": "boom"})
+        return _FakeResponse(200, {"choices": [{"message": {"content": content}}]})
+
+    import httpx2
+
+    monkeypatch.setattr(httpx2.Client, "post", fake_post)
+    return provider
+
+
+def test_llm_extract_structured_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"fields": [{"field": "dimensions", '
+        '"value": {"dimension": "alto", "value": 35, "unit": "cm"}, '
+        '"source_fragment": "Alto 35 cm", "confidence": 0.9}]}'
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.extract_structured(TEXT)
+    assert len(result.fields) == 1
+    assert result.fields[0].value == {"dimension": "alto", "value": 35, "unit": "cm"}
+    assert result.fields[0].source_fragment == "Alto 35 cm"
+
+
+def test_llm_extract_structured_drops_hallucinated_fragment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = (
+        '{"fields": [{"field": "dimensions", '
+        '"value": {"dimension": "alto", "value": 99, "unit": "cm"}, '
+        '"source_fragment": "texto que no está en el original", "confidence": 0.9}]}'
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.extract_structured(TEXT)
+    assert result.fields == []
+    assert result.message
+
+
+def test_llm_extract_structured_no_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _llm_provider(monkeypatch, '{"fields": []}')
+    result = provider.extract_structured("Pieza donada por la familia (sintético).")
+    assert result.fields == []
+    assert result.message
+
+
+def test_llm_extract_structured_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _llm_provider(monkeypatch, "", status_code=500)
+    with pytest.raises(ProviderUnavailable):
+        provider.extract_structured(TEXT)
+
+
+def test_llm_extract_structured_invalid_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _llm_provider(monkeypatch, "esto no es JSON")
+    with pytest.raises(ProviderUnavailable):
+        provider.extract_structured(TEXT)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("MATP_LLM_LIVE_TEST_API_KEY"),
+    reason="Prueba en vivo: requiere MATP_LLM_LIVE_TEST_API_KEY, MATP_LLM_LIVE_TEST_BASE_URL y "
+    "MATP_LLM_LIVE_TEST_MODEL (nunca corre en CI, consume cuota real del proveedor).",
+)
+def test_llm_extract_structured_live() -> None:
+    settings = load_settings(
+        ai_provider="llm",
+        llm_base_url=os.environ["MATP_LLM_LIVE_TEST_BASE_URL"],
+        llm_api_key=os.environ["MATP_LLM_LIVE_TEST_API_KEY"],
+        llm_model=os.environ["MATP_LLM_LIVE_TEST_MODEL"],
+    )
+    provider = LLMProvider(settings)
+    result = provider.extract_structured(TEXT)
+    assert any(f.field == "dimensions" for f in result.fields)
 
 
 def test_piece_context_rejects_sensitive_fields() -> None:

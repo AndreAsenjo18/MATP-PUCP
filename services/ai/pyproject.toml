@@ -14,12 +14,12 @@ dependencies = [
     "uvicorn[standard]>=0.53.0,<1",
     "pydantic>=2.13.5,<3",
     "pydantic-settings>=2.15.0,<3",
+    "httpx2>=2.13.0,<3",  # also the LLMProvider's HTTP client (AI_PROVIDER=llm)
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1,<10",
-    "httpx2>=2.13.0,<3",  # Starlette TestClient backend (httpx is deprecated there)
     "ruff>=0.16.8,<1",
 ]
 

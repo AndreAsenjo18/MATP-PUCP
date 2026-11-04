@@ -28,8 +28,12 @@ from app.api.stubs import (
     not_implemented,
     stub,
 )
-from app.core.errors import NotFound
+from app.core.errors import ConflictError, NotFound, ValidationFailed
+from app.core.models_base import new_uuid, utcnow
+from app.modules.ai_suggestions.apply import apply_approved
+from app.modules.ai_suggestions.client import AiServiceClient
 from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
+from app.modules.ai_suggestions.privacy import extraction_text
 from app.modules.ai_suggestions.schemas import (
     AiBatchOut,
     AiSuggestionApproval,
@@ -53,6 +57,7 @@ from app.modules.audit.query import (
     stream_entries_csv,
 )
 from app.modules.audit.schemas import AuditEntryOut
+from app.modules.catalog.queries import get_piece
 from app.modules.users import admin as users_admin
 from app.modules.users import auth
 from app.modules.users.admin import user_roles
@@ -491,12 +496,37 @@ def get_ai_suggestion(
     "/ai/suggest-cataloging",
     response_model=AiSuggestionOut,
     status_code=status.HTTP_201_CREATED,
+    responses={503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."}},
     summary="Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009)",
     tags=["IA asistiva"],
-    **stub(CHANGE_AI_EXTRACTION),
+    **implemented(),
 )
-def suggest_cataloging(body: CatalogingSuggestionRequest, user: AiRequester) -> AiSuggestionOut:
-    raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
+def suggest_cataloging(
+    body: CatalogingSuggestionRequest, user: AiRequester, session: SessionDep, request: Request
+) -> AiSuggestionOut:
+    piece = get_piece(session, body.piece_id)
+    text = (body.text or "").strip() or extraction_text(piece, body.field)
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    envelope = client.extract_structured(text, source_field=body.field)
+    suggestion_id = new_uuid()
+    suggestion = AiSuggestion(
+        id=suggestion_id,
+        function_code=AiFunction.RIA_01_EXTRACT_STRUCTURED,
+        status=SuggestionStatus.PENDING,
+        provider=envelope["provider"],
+        model=envelope["model"],
+        piece_id=piece.id,
+        input_data={"field": body.field or "notes", "text": text},
+        output_data=envelope["result"],
+        requested_by_id=user.id,
+    )
+    with audit_context(
+        session,
+        AuditContext(origin=AuditOrigin.AI, user_id=user.id, origin_ref=str(suggestion_id)),
+    ):
+        session.add(suggestion)
+        session.commit()
+    return AiSuggestionOut.model_validate(suggestion)
 
 
 @router.post(
@@ -504,12 +534,40 @@ def suggest_cataloging(body: CatalogingSuggestionRequest, user: AiRequester) -> 
     response_model=AiSuggestionOut,
     summary="Aprobar (total, parcial o editada) y aplicar con auditoría de origen IA",
     tags=["IA asistiva"],
-    **stub(CHANGE_AI_EXTRACTION),
+    **implemented(),
 )
 def approve_ai_suggestion(
-    suggestion_id: uuid.UUID, body: AiSuggestionApproval, user: AiReviewer
+    suggestion_id: uuid.UUID, body: AiSuggestionApproval, user: AiReviewer, session: SessionDep
 ) -> AiSuggestionOut:
-    raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
+    suggestion = session.get(AiSuggestion, suggestion_id)
+    if suggestion is None:
+        raise NotFound("La sugerencia no existe.")
+    if suggestion.status != SuggestionStatus.PENDING:
+        raise ConflictError(
+            "Esta sugerencia ya fue revisada; no puede revisarse de nuevo.",
+            code="suggestion_already_reviewed",
+        )
+    approved_fields = body.approved_data.get("fields", [])
+    if not approved_fields:
+        raise ValidationFailed("Debe aprobar al menos un dato propuesto.", code="empty_approval")
+    total_fields = len(suggestion.output_data.get("fields", []))
+    suggestion.approved_data = body.approved_data
+    suggestion.status = (
+        SuggestionStatus.APPROVED
+        if len(approved_fields) >= total_fields
+        else SuggestionStatus.PARTIALLY_APPROVED
+    )
+    suggestion.reviewed_by_id = user.id
+    suggestion.reviewed_at = utcnow()
+    with audit_context(
+        session,
+        AuditContext(origin=AuditOrigin.AI, user_id=user.id, origin_ref=str(suggestion.id)),
+    ):
+        if suggestion.piece_id is not None:
+            piece = get_piece(session, suggestion.piece_id)
+            apply_approved(session, suggestion, piece)
+        session.commit()
+    return AiSuggestionOut.model_validate(suggestion)
 
 
 @router.post(
@@ -517,12 +575,29 @@ def approve_ai_suggestion(
     response_model=AiSuggestionOut,
     summary="Rechazar una sugerencia con motivo",
     tags=["IA asistiva"],
-    **stub(CHANGE_AI_EXTRACTION),
+    **implemented(),
 )
 def reject_ai_suggestion(
-    suggestion_id: uuid.UUID, body: AiSuggestionRejection, user: AiReviewer
+    suggestion_id: uuid.UUID, body: AiSuggestionRejection, user: AiReviewer, session: SessionDep
 ) -> AiSuggestionOut:
-    raise not_implemented(CHANGE_AI_EXTRACTION, AiSuggestionOut)
+    suggestion = session.get(AiSuggestion, suggestion_id)
+    if suggestion is None:
+        raise NotFound("La sugerencia no existe.")
+    if suggestion.status != SuggestionStatus.PENDING:
+        raise ConflictError(
+            "Esta sugerencia ya fue revisada; no puede revisarse de nuevo.",
+            code="suggestion_already_reviewed",
+        )
+    suggestion.status = SuggestionStatus.REJECTED
+    suggestion.rejection_reason = body.reason
+    suggestion.reviewed_by_id = user.id
+    suggestion.reviewed_at = utcnow()
+    with audit_context(
+        session,
+        AuditContext(origin=AuditOrigin.AI, user_id=user.id, origin_ref=str(suggestion.id)),
+    ):
+        session.commit()
+    return AiSuggestionOut.model_validate(suggestion)
 
 
 # -------------------------------------------------------------------------- audit
