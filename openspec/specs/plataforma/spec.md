@@ -2,7 +2,9 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define los atributos transversales de plataforma del sistema del MATP: diseño responsive, operación en free tier y en la VM institucional, documentación para terceros, tolerancia a conexión lenta, independencia de servicios productivos, API documentada, usabilidad, respaldos y capacidad.
+
 ## Requirements
+
 ### Requirement: Interfaz responsive
 El sistema MUST ser plenamente usable en escritorio como dispositivo principal y SHALL ofrecer en tablet y móvil al menos búsqueda por código, consulta de ficha con fotos y ubicación, y registro de movimientos y verificaciones físicas en depósito. (RNF-001)
 
@@ -407,3 +409,71 @@ En escritorio (768 px o más), la barra lateral de `MainLayout` MUST poder contr
 - **WHEN** la persona recorre el riel con la tecla Tab
 - **THEN** cada icono recibe el foco con un indicador visible y su nombre se anuncia y se muestra como ayuda
 
+### Requirement: Administración agrupada por funciones
+La pantalla de Administración MUST organizar sus secciones en áreas por función —Personas, Catálogo, Importación y Control— en lugar de una sola fila de pestañas: una fila para elegir el área y debajo las secciones de esa área. Solo SHALL mostrarse una sección si el rol activo tiene el permiso que la gobierna, y un área sin secciones permitidas MUST ocultarse. Las direcciones con `?pestana=` que ya existen SHALL seguir abriendo su sección, y la sección y el área actuales MUST poder identificarse sin depender del color. En pantallas de 360 px la navegación SHALL ajustarse sin desplazamiento horizontal de la página. (RF-039, RNF-001, RNF-010)
+
+#### Scenario: Rol con permisos parciales
+- **GIVEN** un rol que puede administrar ubicaciones y plantillas pero no usuarios
+- **WHEN** abre Administración
+- **THEN** ve las áreas Catálogo e Importación, no ve Personas y la sección inicial es la primera que puede usar
+
+#### Scenario: Dirección antigua de una pestaña
+- **WHEN** se abre `/administracion?pestana=plantillas`
+- **THEN** se muestra el área Importación con la sección «Formatos de archivo» seleccionada
+
+#### Scenario: Pantalla de móvil
+- **WHEN** el ancho es de 360 px
+- **THEN** las áreas y las secciones se reparten en varias líneas y la página no se desplaza horizontalmente
+
+#### Scenario: Rol sin ningún permiso de administración
+- **WHEN** un rol sin permisos de administración abre la pantalla
+- **THEN** se muestra el aviso de que su rol no puede administrar el sistema y ninguna área
+
+### Requirement: Barra superior con filtros y alta en diálogo
+Cada listado de Administración que se puede ampliar —usuarios, colecciones, ubicaciones, listas de valores y tipos de código— MUST ofrecer sobre el listado una barra con sus filtros o su búsqueda a la izquierda y un botón «Nuevo …» a la derecha que abre un diálogo con el formulario de alta; el formulario MUST NOT ir al final de la página. El diálogo SHALL cerrarse al guardar con éxito y mostrar los errores sin perder lo escrito, y el botón solo MUST mostrarse a quien tiene el permiso de crear. (RF-039, RNF-010)
+
+#### Scenario: Crear desde la barra
+- **WHEN** la persona pulsa «Nueva colección», completa el nombre y guarda
+- **THEN** el diálogo se cierra, aparece el aviso de que la colección se creó y el listado la incluye
+
+#### Scenario: Error al guardar
+- **WHEN** la API rechaza el alta por una sigla repetida
+- **THEN** el diálogo sigue abierto con el mensaje y los campos como estaban
+
+#### Scenario: Sin permiso para crear
+- **WHEN** un rol puede ver el listado pero no crear
+- **THEN** la barra muestra los filtros y no muestra el botón «Nuevo …»
+
+### Requirement: Controles compactos con color e icono en Administración
+Las tablas y listas de Administración MUST usar texto de tamaño pequeño y botones compactos de al menos 32 px de alto, e indicar los estados y las acciones por fila con color, icono y etiqueta accesible: activo o desactivado, tipo del sistema, rol y contraseña temporal como etiquetas; desactivar, reactivar y restablecer como botones de icono con su nombre en un texto de ayuda y para los lectores de pantalla. El color MUST NOT ser el único portador del significado. (RNF-001, RNF-010)
+
+#### Scenario: Acciones de un usuario
+- **WHEN** la persona mira la fila de un usuario
+- **THEN** ve su estado como etiqueta de color con texto y las acciones como botones de icono cuyo nombre incluye al usuario
+
+#### Scenario: Navegación con teclado
+- **WHEN** la persona recorre una tabla con Tab
+- **THEN** cada botón de icono recibe un foco visible y su nombre se anuncia
+
+### Requirement: Cierre de sesión dentro del menú en pantallas angostas
+En pantallas de menos de 768 px el encabezado MUST NOT mostrar el botón de cerrar sesión (ni «Cambiar de rol» en modo demostración); la acción SHALL estar al final del panel del menú, con el nombre y el rol de la persona, y ejecutar lo mismo que en escritorio. Desde 768 px el botón MUST seguir en el encabezado con tamaño normal. (RNF-001, RNF-010)
+
+#### Scenario: Celular con el menú cerrado
+- **GIVEN** una sesión iniciada en una pantalla de 375 px
+- **WHEN** la persona ve cualquier pantalla con el menú cerrado
+- **THEN** el encabezado muestra el botón «Menú», la marca y su rol, pero no un botón de cerrar sesión
+
+#### Scenario: Cerrar sesión desde el menú
+- **WHEN** la persona abre el menú en el celular y pulsa «Cerrar sesión»
+- **THEN** la sesión se cierra y vuelve a la pantalla de acceso
+
+#### Scenario: Escritorio
+- **WHEN** la pantalla mide 1280 px
+- **THEN** «Cerrar sesión» está en el encabezado y el panel del menú móvil no se muestra
+
+### Requirement: Botones que se adaptan al dispositivo
+El botón del sistema de diseño MUST ofrecer un tamaño que sea grande y táctil (44 px de alto como mínimo) en pantallas angostas y compacto desde 768 px, para pantallas que se usan en ambos dispositivos. (RNF-001, RNF-010)
+
+#### Scenario: Mismo botón en celular y escritorio
+- **WHEN** una pantalla usa el tamaño adaptable
+- **THEN** en 375 px el botón mide al menos 44 px de alto y en 1280 px es compacto, con la misma etiqueta
