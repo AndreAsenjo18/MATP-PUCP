@@ -82,6 +82,12 @@ export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
         <PieceField label="Procedencia" value={piece.provenance ?? "Sin registrar"} />
         <PieceField label="Época (texto original)" value={piece.period.text ?? "Sin registrar"} />
         <PieceField label="Medidas" value={piece.dimensions_text ?? "Sin registrar"} />
+        {piece.dimensions && piece.dimensions.length > 0 && (
+          <PieceField
+            label="Medidas detalladas"
+            value={piece.dimensions.map((d) => `${d.dimension}: ${d.value} ${d.unit}`).join(", ")}
+          />
+        )}
         <PieceField label="Fecha de ingreso" value={piece.entry_date ?? "Sin registrar"} />
         <PieceField label="Registrado por" value={piece.recorded_by ?? "Sin registrar"} />
         <PieceField label="Propietario legal" value={piece.legal_owner ?? "PUCP"} />

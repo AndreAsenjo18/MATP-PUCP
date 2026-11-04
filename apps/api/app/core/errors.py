@@ -76,3 +76,9 @@ class PreconditionRequired(DomainError):
     """A write that needs the version the client read (If-Match) arrived without it (428)."""
 
     code = "precondition_required"
+
+
+class ServiceUnavailable(DomainError):
+    """A dependency the request needs (e.g. the AI provider) is down; the catalog is untouched."""
+
+    code = "service_unavailable"

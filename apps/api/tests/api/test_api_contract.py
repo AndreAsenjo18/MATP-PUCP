@@ -2,7 +2,6 @@
 
 import inspect
 import json
-import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -154,9 +153,9 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
     # el historial de la pieza; importacion-pipeline-reconciliacion la reversión del lote y
     # colecciones-y-vocabularios-admin los vocabularios y tipos de identificador;
     # ficha-pieza-crud la validación, la restauración, los componentes, los identificadores y la
-    # corrección del código I); el umbral solo detecta un vaciado accidental de la lista, no fija
-    # cuántos quedan.
-    assert len(stubs) >= 9
+    # corrección del código I; ia-extraccion-texto-libre RIA-01: suggest-cataloging, approve y
+    # reject); el umbral solo detecta un vaciado accidental de la lista, no fija cuántos quedan.
+    assert len(stubs) >= 6
     for route in stubs:
         params = inspect.signature(route.endpoint).parameters
         with pytest.raises(NotImplementedEndpoint) as raised:
@@ -169,10 +168,7 @@ def test_each_stub_raises_not_implemented_with_a_valid_example() -> None:
 
 def test_stub_over_http_returns_501_with_change_and_example(login_as: LoginAs) -> None:
     client = login_as("ADMIN")
-    response = client.post(
-        f"/api/v1/ai/suggestions/{uuid.uuid4()}/reject",
-        json={"reason": "Sugerencia sintética"},
-    )
+    response = client.post("/api/v1/ai/validate-data", json={"function_code": "RIA_01"})
     assert response.status_code == 501
     body = response.json()
     assert body["code"] == "not_implemented"
