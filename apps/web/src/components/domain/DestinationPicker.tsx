@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { filterDestinations, type DestinationOption } from "@/lib/data/locations";
 
 /** Explica que solo se listan lugares finales; las rutas completas dan el contexto. */
-export const DESTINATION_HINT = "Solo lugares finales (nivel o contenedor): ahí es donde queda guardada la pieza.";
+export const DESTINATION_HINT = "Solo lugares finales (niveles y contenedores), donde queda guardada la pieza.";
 
 export interface DestinationPickerProps {
   options: readonly DestinationOption[];
