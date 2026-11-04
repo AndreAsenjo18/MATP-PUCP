@@ -4,7 +4,7 @@
 
 ## Registrar una pieza
 
-Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador.
+Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador; los demás roles no ven el botón **Nueva pieza**.
 
 1. En **Búsqueda**, pulse **Nueva pieza**.
 2. Escriba la **Denominación** y elija el **Régimen de tenencia**. Son los únicos datos obligatorios: el resto puede completarse después.
@@ -34,7 +34,7 @@ Conviene saber:
 
 ## Editar una pieza
 
-Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador.
+Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador; los demás roles no ven el botón **Nueva pieza**.
 
 1. En la ficha, pulse **Editar ficha**.
 2. Cambie los datos.
@@ -67,7 +67,7 @@ Si dos personas editan la misma pieza, la segunda en guardar ve el aviso **Otra 
 
 ## Registrar otros códigos de la pieza
 
-Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador.
+Pueden hacerlo el Catalogador, la Gestora de colecciones y el Administrador; los demás roles no ven el botón **Nueva pieza**.
 
 La tabla de la ficha muestra todos los códigos de la pieza. Los que ya no se usan dicen **Histórico**: no se borran, y la búsqueda sigue encontrando la pieza por ellos.
 

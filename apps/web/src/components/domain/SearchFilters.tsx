@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Filtros de la búsqueda (change `fusion-busqueda-deposito`, tarea 2.1; RF-032, RNF-010): primero los
- * cinco que el museo usa más —código o texto, denominación, categoría, material y descripción— y el
- * resto en «Más filtros», que se abre solo cuando alguno de esos filtros está activo (un enlace, una
+ * Filtros de la búsqueda (change `fusion-busqueda-deposito`, tarea 2.1; RF-032, RNF-010): el buscador
+ * «Código o texto» va aparte y siempre a la vista (`SearchBox`, rediseno-ux-busqueda D1; Reportes lo
+ * conserva en el panel con `withQuery`); luego denominación, categoría, material y descripción, y el resto en «Más filtros», que se abre solo cuando alguno de esos filtros está activo (un enlace, una
  * sugerencia) y nunca se cierra solo.
  */
 import { Eraser, SlidersHorizontal } from "lucide-react";
@@ -105,6 +105,29 @@ export function FiltersDrawer({
   );
 }
 
+/** Ayuda única del buscador (rediseno-ux-busqueda D2): reemplaza al subtítulo de la pantalla. */
+export const SEARCH_BOX_HINT = "Cualquier código, vigente o histórico, con o sin formato. No distingue mayúsculas ni tildes.";
+
+/** Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1). */
+export function SearchBox({ value, onChange }: { value: string; onChange: (q: string) => void }) {
+  return (
+    <div role="search" className="max-w-3xl">
+      <Input
+        id="q"
+        type="search"
+        label="Código o texto"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
+        hint={SEARCH_BOX_HINT}
+        autoComplete="off"
+        spellCheck={false}
+        className="p-3 lg:p-2.5"
+      />
+    </div>
+  );
+}
+
 export function SearchFiltersPanel({
   filters,
   options,
@@ -113,6 +136,7 @@ export function SearchFiltersPanel({
   openMore = false,
   locationActions,
   locationNotice = null,
+  withQuery = true,
 }: {
   filters: SearchFilters;
   options: SearchOptions;
@@ -123,6 +147,11 @@ export function SearchFiltersPanel({
   /** Agregar, editar o desactivar lugares: solo para quien administra ubicaciones (`crud-manual-completo` 3.1). */
   locationActions?: LocationTreeActions;
   locationNotice?: string | null;
+  /**
+   * Incluye el buscador «Código o texto» dentro del panel (Reportes). Búsqueda lo pasa en `false`
+   * porque lo muestra arriba y siempre a la vista (`SearchBox`, rediseno-ux-busqueda D1).
+   */
+  withQuery?: boolean;
 }) {
   const secondary = secondaryFiltersActive(filters);
   const [moreOpen, setMoreOpen] = useState(secondary || openMore);
@@ -135,15 +164,17 @@ export function SearchFiltersPanel({
 
   return (
     <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
-      <Input
-        id="q"
-        label="Código o texto"
-        value={filters.q}
-        onChange={(event) => onChange({ q: event.target.value })}
-        placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
-        hint="Sin distinguir mayúsculas ni tildes."
-        className="p-2.5"
-      />
+      {withQuery && (
+        <Input
+          id="q"
+          label="Código o texto"
+          value={filters.q}
+          onChange={(event) => onChange({ q: event.target.value })}
+          placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
+          hint="Sin distinguir mayúsculas ni tildes."
+          className="p-2.5"
+        />
+      )}
       <Input
         id="denomination"
         label="Denominación"
@@ -178,7 +209,7 @@ export function SearchFiltersPanel({
             onChange={(conservationStateId) => onChange({ conservationStateId })}
           />
           <LocationTreeSelect
-            label="Ubicación (con lo que contiene)"
+            label="Ubicación"
             nodes={options.locationTree}
             value={filters.locationId}
             onChange={(locationId) => onChange({ locationId })}

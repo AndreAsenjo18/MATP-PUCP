@@ -67,19 +67,31 @@ describe("barra de acciones de la selección", () => {
     expect(html).toContain(">Sede Central (ficticia) › Depósito 2 › Estante C › Nivel 1</option>");
     expect(html).not.toContain(">Sede Central (ficticia) › Depósito 2 › Estante C</option>");
     expect(visibleText(html)).toContain("Mover 2 piezas a");
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Revisar el traslado/);
+    // Sin destino, el botón de mover está desactivado (rediseno-ux-busqueda, escenario «Sin destino»).
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>.*?Mover 2 piezas<\/button>/);
   });
 
-  it("confirma con la lista de piezas, dónde están ahora y el destino", () => {
-    const text = visibleText(
-      render(
-        <SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} initialStage="confirm" initialDestination="est-c-1" />,
-      ),
+  // Antes había una etapa aparte («Revisar el traslado» → «Confirmar el traslado»); desde
+  // rediseno-ux-busqueda (D3) la lista y el destino están en el mismo panel que el botón.
+  it("mueve en una sola etapa: destino, lista de piezas con su ubicación actual y el botón con la consecuencia", () => {
+    const html = render(
+      <SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} initialStage="choose" initialDestination="est-c-1" />,
     );
-    expect(text).toContain("¿Mover 2 piezas a Sede Central (ficticia) › Depósito 2 › Estante C › Nivel 1?");
+    const text = visibleText(html);
     expect(text).toContain("I-101 Manta sintética · ahora en Sede Central (ficticia) › Depósito 2 › Estante B › Nivel 1");
     expect(text).toContain("I-102 Faja sintética");
-    expect(text).toContain("Confirmar el traslado");
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>.*?Mover 2 piezas<\/button>/);
+    expect(text).toContain("Mover 2 piezas");
+    for (const old of ["Revisar el traslado", "Confirmar el traslado", "¿Mover"]) expect(text).not.toContain(old);
+  });
+
+  it("el conteo y «Quitar la selección» están en la barra", () => {
+    const text = visibleText(render(<SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} onClear={noop} />));
+    expect(text).toContain("2 piezas seleccionadas");
+    expect(text).toContain("Quitar la selección");
+    expect(visibleText(render(<SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} />))).not.toContain(
+      "Quitar la selección",
+    );
   });
 
   it("muestra el resultado de la última acción, también cuando la selección ya se vació", () => {
