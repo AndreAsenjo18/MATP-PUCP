@@ -1,5 +1,5 @@
-"""Script de Generación de Evidencias de QA para Persona 5.
-Ejecuta la batería de pruebas sobre los insumos de Persona 1 y genera evidencia empírica.
+"""Script de Generación de Evidencias Técnicas de QA (Área de Calidad).
+Ejecuta la batería de pruebas sobre los insumos de prueba sintéticos y genera evidencia empírica.
 """
 
 import csv
@@ -34,7 +34,8 @@ def separator(title=""):
         print("=" * 80)
 
 def main():
-    out_file_path = Path(__file__).resolve().parent.parent.parent / "Evidencia_Ejecucion_Pruebas_Persona5.txt"
+    out_file_path = Path(__file__).resolve().parent.parent / "docs" / "pruebas" / "Evidencia_Ejecucion_Pruebas.txt"
+    out_file_path.parent.mkdir(parents=True, exist_ok=True)
     log_file = open(out_file_path, "w", encoding="utf-8")
 
     def log(msg=""):
@@ -50,7 +51,7 @@ def main():
     fotos_dir = fixture_dir / "fotos"
 
     log("=" * 80)
-    log(" REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA (PERSONA 5)")
+    log(" REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA")
     log(" Sistema de Gestión y Digitalización MATP - PUCP | DP2 1INF47 Grupo 04")
     log("=" * 80)
     log(f"Fecha y Hora: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -75,7 +76,7 @@ def main():
     rows = list(ws.iter_rows(values_only=True))[1:]
 
     log("Comparativa directa: Sigla esperada en Fotos vs Código real en el Excel:")
-    log(f"{'Fila':<5} | {'Colección':<10} | {'Código en Excel (Persona 1)':<30} | {'Nombre de Foto en Disco':<35}")
+    log(f"{'Fila':<5} | {'Colección':<10} | {'Código en Catálogo Excel':<30} | {'Nombre de Foto en Disco':<35}")
     log("-" * 86)
     
     sample_mappings = [

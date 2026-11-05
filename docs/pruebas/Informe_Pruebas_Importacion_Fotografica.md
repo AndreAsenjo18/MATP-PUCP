@@ -1,25 +1,25 @@
 # Informe de Pruebas de Calidad: Importación de Fotografías al Catálogo
-**Entregable Oficial — Rol: Persona 5 (Aseguramiento de la Calidad / QA Lead)**  
+**Entregable Oficial — Área de Aseguramiento de la Calidad (QA)**  
 **Proyecto:** Sistema de Gestión y Digitalización de Colecciones Museográficas — MATP (PUCP)  
 **Curso:** 1INF47 — Desarrollo de Proyectos 2 (DP2)  
 **Fecha de ejecución y entrega:** Miércoles 4 de noviembre de 2026  
-**Responsable:** Persona 5 (Mathias Medina Vivanco)  
+**Responsable de Calidad:** Mathias Medina Vivanco  
 **Destinatarios:** Equipo de Desarrollo (André, Sergio, Yessica, Manuel, José) / Profesores y JPs de DP2  
 
 ---
 
 ## 1. Alcance de la Tarea y Contexto
 
-En el cronograma del equipo para la semana previa a la presentación final, a la **Persona 5** se le asignó:
-> **Tarea:** *Probar la importación con fotos*  
+En el cronograma del equipo para la semana previa a la presentación final, se definió la actividad de aseguramiento de calidad:
+> **Actividad:** *Probar la importación con fotos*  
 > **Días:** *Mar 3 – Mié 4 de noviembre*  
-> **Entregable:** *Lista de errores encontrados, realizar prueba usando los datos de prueba de la Persona 1*  
+> **Entregable:** *Lista de errores encontrados tras realizar pruebas sobre los datos de prueba sintéticos*  
 
-El objetivo fundamental de esta actividad es someter a prueba exhaustiva el flujo de importación masiva de fotografías (**RF-046**: *Carga masiva de fotografías a piezas existentes* y **RF-045**: *Importación con fotografías*) utilizando los insumos preparados por la **Persona 1** (Yessica Ochante) en `data/fixtures/Datos_de_prueba_sintetico/`.
+El objetivo fundamental de esta actividad es someter a prueba exhaustiva el flujo de importación masiva de fotografías (**RF-046**: *Carga masiva de fotografías a piezas existentes* y **RF-045**: *Importación con fotografías*) utilizando los insumos preparados en `data/fixtures/Datos_de_prueba_sintetico/`.
 
 ---
 
-## 2. Descripción del Dataset Sintético Evaluado (Insumos de Persona 1)
+## 2. Descripción del Dataset Sintético Evaluado
 
 El dataset de prueba reproduce la casuística de las 19 carpetas reales observadas en el Google Drive del museo (`docs/capturas de pantalla de carpetas con fotos/`), respetando estrictamente la Ley 29733 de Protección de Datos Personales y el requerimiento **RNF-014** (datos 100% inventados):
 
@@ -51,24 +51,24 @@ El dataset de prueba reproduce la casuística de las 19 carpetas reales observad
 
 Durante la ejecución de las pruebas se identificaron **4 errores concretos** y **3 observaciones técnicas**:
 
-### 🔴 Error ERR-01 [Severidad ALTA — Desincronización Crítica en el Fixture de Persona 1]
+### 🔴 Error ERR-01 [Severidad ALTA — Desincronización Crítica en el Catálogo de Fixtures]
 * **Ubicación:** `data/fixtures/Datos_de_prueba_sintetico/catalogo_prueba_codigos.xlsx` frente a la carpeta `fotos/`.
-* **Detalle del Error:** En el `README.md` del fixture, Persona 1 indicó:
+* **Detalle del Error:** En el `README.md` del fixture sintético se indicó:
   > *"Las carpetas de colección del fixture fueron renombradas para usar siglas válidas del ambiente: MMZ, AJB, LRM, MBB y RAB. Las fotos y CSV fueron actualizados para conservar las correspondencias."*
-  Sin embargo, **Persona 1 olvidó actualizar el archivo Excel `catalogo_prueba_codigos.xlsx`**. En el Excel, las piezas siguen teniendo las siglas viejas:
+  Sin embargo, **el archivo Excel `catalogo_prueba_codigos.xlsx` no fue actualizado**. En el Excel, las piezas siguen teniendo las siglas viejas:
   * Filas 1–4: `H.Z.A. 001`, `hza 2`, `HZA 003` (en vez de `MMZ 001..004`).
   * Filas 5–8: `VCL 1`, `v.c.l. 002`, `VCL 03` (en vez de `AJB 001..004`).
   * Filas 9–11: `L.D.B. 204`, `LDB 207`, `ldb 213` (en vez de `LRM 204..213`).
   * Filas 12–16: `C.D.M. 001` .. `c.d.m. 5` (en vez de `MBB 001..005`).
   * Filas 24–27: `K.O.R. 301` .. `K O R 304` (en vez de `RAB 301..304`).
 * **Impacto:** Si un usuario importa primero el catálogo desde el Excel y luego sube la carpeta de fotos, **las fotos no encontrarán sus piezas en el catálogo** (por ejemplo, la foto `MMZ 002 - PUCP 4728` busca la pieza `MMZ 2` pero en la BD existe como `HZA 2`), a menos que se hayan configurado previamente los 5 alias en la tabla `collection_acronym_alias`.
-* **Acción Correctiva:** Persona 1 debe homogeneizar las siglas de `catalogo_prueba_codigos.xlsx` para que coincidan con los nombres de las fotos (`MMZ`, `AJB`, `LRM`, `MBB`, `RAB`).
+* **Acción Correctiva:** Homogeneizar las siglas de `catalogo_prueba_codigos.xlsx` para que coincidan con los nombres de las fotos (`MMZ`, `AJB`, `LRM`, `MBB`, `RAB`).
 
 ---
 
 ### 🔴 Error ERR-02 [Severidad ALTA — 100% de Fallas en `correspondencias.csv` por Rutas Rotas y Siglas Desincronizadas]
 * **Ubicación:** `data/fixtures/Datos_de_prueba_sintetico/correspondencias.csv` (13 líneas).
-* **Detalle del Error:** Al procesar `correspondencias.csv` contra el lote y catálogo de Persona 1 con la lógica oficial del backend (`resolve_lines`), **fallaron el 100% de las filas (13 de 13)**:
+* **Detalle del Error:** Al procesar `correspondencias.csv` contra el lote y catálogo sintético con la lógica oficial del backend (`resolve_lines`), **fallaron el 100% de las filas (13 de 13)**:
   1. **Líneas 2 a 6 (Colección MBB — 5 filas): Fallan con `no_photo` ("La foto no está en el lote"):**
      ```csv
      fotos/Fotos MBB/1.JPG,MBB-001
@@ -148,12 +148,12 @@ Efectividad Final de Emparejamiento tras configuración:            33 de 33 (10
 
 ## 6. Recomendaciones para el Equipo antes de la Exposición del Jueves
 
-1. **Para Persona 1 (Yessica):**
+1. **Para el Módulo de Datos y Fixtures (Yessica):**
    * Corregir las rutas de MBB en `correspondencias.csv`.
    * Unificar las siglas en `catalogo_prueba_codigos.xlsx` para que coincidan con las fotos (`MMZ`, `AJB`, `LRM`, `MBB`, `RAB`).
 2. **Para Sergio (Backend):**
    * Añadir `unicodedata.normalize('NFC', path)` en la lectura de carpetas y correspondencias para evitar problemas con tildes.
-3. **Para José y Persona 6/7 (Exposición del Jueves):**
+3. **Para el Equipo de Presentación (José y expositores):**
    * Mostrar en la demo que el sistema es capaz de resolver carpetas complejas de Google Drive, descartar fotos de baja resolución automáticamente y proteger al museo contra falsos positivos.
 
 ---
@@ -182,7 +182,7 @@ node scripts/py.mjs apps/api ../../scripts/generar_evidencias_qa.py
 
 > [!NOTE]
 > El log crudo y completo de la ejecución queda registrado en texto plano en:  
-> 📄 [`docs/pruebas/Evidencia_Ejecucion_Pruebas_Persona5.txt`](file:///c:/Users/Mathias/Documents/DP2/MATP-PUCP/docs/pruebas/Evidencia_Ejecucion_Pruebas_Persona5.txt)
+> 📄 [`docs/pruebas/Evidencia_Ejecucion_Pruebas.txt`](file:///c:/Users/Mathias/Documents/DP2/MATP-PUCP/docs/pruebas/Evidencia_Ejecucion_Pruebas.txt)
 
 ---
 
@@ -196,7 +196,7 @@ node scripts/py.mjs apps/api ../../scripts/generar_evidencias_qa.py
 
 ![Desincronización de Siglas Excel vs Fotos](capturas/captura_2_desincronizacion_excel_fotos.png)
 
-| Fila en Excel | Colección Declarada | Código en Excel (Persona 1) | Nombre Real de la Foto en Disco | Impacto en Algoritmo de Matching |
+| Fila en Excel | Colección Declarada | Código en Catálogo Excel | Nombre Real de la Foto en Disco | Impacto en Algoritmo de Matching |
 |:---:|:---:|:---:|:---:|---|
 | **1** | MMZ | `H.Z.A. 001 / PUCP 4721` | `MMZ 001 - PUCP 4721 (1).JPG` | Coincide por PUCP secundario, pero falla correlativo primario. |
 | **2** | MMZ | `hza 2` | `MMZ 002 - PUCP 4728 (1).JPG` | 🔴 **Fallo Total:** `MMZ 2` no empareja con `HZA 2` (0 candidatos). |

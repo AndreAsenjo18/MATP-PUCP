@@ -1,8 +1,8 @@
 ================================================================================
- REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA (PERSONA 5)
+ REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA
  Sistema de Gestión y Digitalización MATP - PUCP | DP2 1INF47 Grupo 04
 ================================================================================
-Fecha y Hora: 2026-11-04 22:59:02
+Fecha y Hora: 2026-11-04 23:28:35
 Plataforma:   Windows 10 (64bit)
 Python:       3.13.2
 Directorio:   C:\Users\Mathias\Documents\DP2\MATP-PUCP\data\fixtures\Datos_de_prueba_sintetico
@@ -12,7 +12,7 @@ Total imágenes detectadas en disco: 34
  EVIDENCIA ERR-01: DESINCRONIZACIÓN DE SIGLAS EN CATÁLOGO EXCEL
 ================================================================================
 Comparativa directa: Sigla esperada en Fotos vs Código real en el Excel:
-Fila  | Colección  | Código en Excel (Persona 1)    | Nombre de Foto en Disco            
+Fila  | Colección  | Código en Catálogo Excel       | Nombre de Foto en Disco            
 --------------------------------------------------------------------------------------
 1     | MMZ        | H.Z.A. 001 / PUCP 4721         | MMZ 001 - PUCP 4721 (1).JPG        
 2     | MMZ        | hza 2                          | MMZ 002 - PUCP 4728 (1).JPG        

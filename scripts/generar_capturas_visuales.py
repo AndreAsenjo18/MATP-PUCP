@@ -42,8 +42,8 @@ def create_terminal_screenshot(out_path):
     lines = [
         ("PS C:\\Users\\Mathias\\Documents\\DP2\\MATP-PUCP> node scripts/py.mjs apps/api ../../scripts/generar_evidencias_qa.py", "#e6e6e6", fonts["mono"]),
         ("================================================================================", "#555555", fonts["mono_sm"]),
-        ("  REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA (PERSONA 5)", "#00ffff", fonts["mono_bold"]),
-        ("  Sistema de Gestión MATP - PUCP | DP2 1INF47 Grupo 04 | 2026-11-04 22:59", "#888888", fonts["mono_sm"]),
+        ("  REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA", "#00ffff", fonts["mono_bold"]),
+        ("  Sistema de Gestión MATP - PUCP | DP2 1INF47 Grupo 04 | 2026-11-04 23:25", "#888888", fonts["mono_sm"]),
         ("================================================================================", "#555555", fonts["mono_sm"]),
         ("Total imágenes detectadas en disco: 34", "#cccccc", fonts["mono"]),
         ("", "#ffffff", fonts["mono"]),
@@ -92,7 +92,7 @@ def create_excel_mismatch_screenshot(out_path):
     draw.text((20, 10), "Excel — catalogo_prueba_codigos.xlsx [SABANA] vs Carpetas de Fotos (Disco)", fill="#ffffff", font=fonts["subtitle"])
     
     # Tabla Excel
-    headers = ["N°", "CÓDIGOS (En Excel de Persona 1)", "COLECCIÓN", "NOMBRE FOTO EN DISCO", "ESTADO AUDITORÍA"]
+    headers = ["N°", "CÓDIGOS EN CATÁLOGO EXCEL", "COLECCIÓN", "NOMBRE FOTO EN DISCO", "ESTADO AUDITORÍA"]
     col_widths = [60, 310, 120, 350, 240]
     
     x_start, y_start = 20, 60
@@ -132,8 +132,8 @@ def create_excel_mismatch_screenshot(out_path):
     draw.rectangle([(20, alert_box_y), (w - 20, alert_box_y + 85)], fill="#fde7e9", outline="#a80000", width=2)
     draw.text((35, alert_box_y + 12), "🔴 DETALLE DEL HALLAZGO ERR-01 (Severidad Alta):", fill="#a80000", font=fonts["subtitle"])
     explanation = (
-        "Persona 1 renombró las carpetas del Drive para usar siglas del ambiente (MMZ, AJB, LRM, MBB, RAB),\n"
-        "pero olvidó actualizar el Excel catalogo_prueba_codigos.xlsx, que mantiene siglas obsoletas (HZA, VCL, LDB, CDM, KOR).\n"
+        "En los fixtures del Drive se renombraron las carpetas con siglas del ambiente (MMZ, AJB, LRM, MBB, RAB),\n"
+        "pero el archivo catalogo_prueba_codigos.xlsx mantiene siglas obsoletas (HZA, VCL, LDB, CDM, KOR).\n"
         "Impacto: Las fotos no pueden enlazarse a sus piezas por código de colección principal."
     )
     draw.text((35, alert_box_y + 35), explanation, fill="#323130", font=fonts["body"])
@@ -261,8 +261,8 @@ def create_dhash_resolution_screenshot(out_path):
     print(f"Generado: {out_path}")
 
 def main():
-    out_dir = Path(__file__).resolve().parent.parent.parent / "evidencias_capturas"
-    out_dir.mkdir(exist_ok=True)
+    out_dir = Path(__file__).resolve().parent.parent / "docs" / "pruebas" / "capturas"
+    out_dir.mkdir(parents=True, exist_ok=True)
     
     create_terminal_screenshot(out_dir / "captura_1_terminal_ejecucion_qa.png")
     create_excel_mismatch_screenshot(out_dir / "captura_2_desincronizacion_excel_fotos.png")
