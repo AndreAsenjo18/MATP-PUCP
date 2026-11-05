@@ -419,6 +419,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
             devUser={devUser}
             canRequest={hasPermission("ai.request")}
             canReview={hasPermission("ai.review")}
+            onChanged={() => setReloads((count) => count + 1)}
           />
           <p className="text-sm text-gris-texto">Ubicación, datos de origen y auditoría de esta ficha se conectan a la API en sus changes.</p>
         </>

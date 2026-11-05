@@ -14,10 +14,10 @@ import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { Card } from "@/components/ui/Card";
 import {
   approveAiSuggestion,
-  fieldsOf,
   listPendingAiSuggestions,
   rejectAiSuggestion,
   type AiSuggestion,
+  type ProposedField,
 } from "@/lib/data/ai";
 
 export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; canReview: boolean }) {
@@ -51,9 +51,9 @@ export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; ca
     };
   }, [devUser]);
 
-  async function handleApprove(suggestion: AiSuggestion) {
+  async function handleApprove(suggestion: AiSuggestion, fields: ProposedField[], dimensionsText?: string) {
     setBusyId(suggestion.id);
-    const result = await approveAiSuggestion(suggestion.id, fieldsOf(suggestion.output_data), devUser);
+    const result = await approveAiSuggestion(suggestion.id, fields, devUser, dimensionsText);
     setBusyId(null);
     if (result.status === "ok") await reload();
     else setError(result.message);
@@ -98,7 +98,7 @@ export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; ca
               suggestion={suggestion}
               canReview={canReview}
               busy={busyId === suggestion.id}
-              onApprove={() => handleApprove(suggestion)}
+              onApprove={(fields, dimensionsText) => handleApprove(suggestion, fields, dimensionsText)}
               onReject={(reason) => handleReject(suggestion, reason)}
               footer={
                 suggestion.piece_id && (

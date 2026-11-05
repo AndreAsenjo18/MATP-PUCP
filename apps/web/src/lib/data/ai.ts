@@ -49,6 +49,7 @@ export const AI_ERROR_MESSAGES: Record<string, string> = {
   invalid_conservation_term: "Ese estado de conservación no es un término activo: elija uno vigente.",
   invalid_conservation_value: "El estado de conservación propuesto tiene un formato no válido.",
   invalid_dimension_value: "La medida propuesta tiene un formato no válido.",
+  invalid_dimensions_text: "El texto de Medidas no puede quedar vacío.",
   unknown_suggestion_field: "Hay un dato propuesto con un tipo que esta pantalla no reconoce.",
 };
 
@@ -64,6 +65,47 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function fieldsOf(data: Record<string, unknown> | null | undefined): ProposedField[] {
   const raw = data?.fields;
   return Array.isArray(raw) ? (raw as ProposedField[]) : [];
+}
+
+/**
+ * Por qué no hay nada que aprobar: "campo vacío" ya se rechaza antes de llamar a la IA
+ * (`source_field_empty`); esto cubre las otras dos razones, calculadas con reglas en el backend,
+ * no por la IA (decisión del equipo, 2026-11-05): el texto no tenía nada reconocible, o lo que
+ * detectó ya coincide con el dato vigente de la pieza.
+ */
+export function explanationOf(data: Record<string, unknown> | null | undefined): string | null {
+  const message = data?.message;
+  return typeof message === "string" && message.trim() ? message : null;
+}
+
+/** Forma de `value` cuando `field === "dimensions"`. */
+export interface DimensionValue {
+  dimension: string;
+  value: number;
+  unit: string;
+}
+
+export function isDimensionField(
+  item: Pick<ProposedField, "field" | "value">,
+): item is ProposedField & { value: DimensionValue } {
+  return (
+    item.field === "dimensions" &&
+    isRecord(item.value) &&
+    typeof item.value.dimension === "string" &&
+    typeof item.value.value === "number"
+  );
+}
+
+/**
+ * Texto de "Medidas" (`dimensions_text`) a partir de las medidas propuestas, en el mismo formato
+ * que ya usan los datos existentes ("alto 58 cm x ancho 37 cm") — punto de partida editable para
+ * quien revisa, si decide también actualizar ese campo manual (decisión del equipo, 2026-11-04).
+ */
+export function dimensionsTextFrom(fields: ProposedField[]): string {
+  return fields
+    .filter(isDimensionField)
+    .map((item) => `${item.value.dimension} ${item.value.value} ${item.value.unit || "cm"}`)
+    .join(" x ");
 }
 
 /** El valor propuesto en una línea, en español llano (RNF-010). */
@@ -99,17 +141,24 @@ export async function suggestCataloging(
   );
 }
 
-/** Aprueba (total o parcialmente, con o sin ediciones) los ítems indicados. */
+/**
+ * Aprueba (total o parcialmente, con o sin ediciones) los ítems indicados. `dimensionsText`,
+ * cuando se manda, reemplaza también el texto libre de "Medidas" (`dimensions_text`) — la IA
+ * nunca lo toca por sí sola, es una decisión explícita de quien revisa.
+ */
 export async function approveAiSuggestion(
   suggestionId: string,
   approvedFields: ProposedField[],
   devUser?: string,
+  dimensionsText?: string,
 ): Promise<ImportResult<AiSuggestion>> {
+  const approvedData: Record<string, unknown> = { fields: approvedFields };
+  if (dimensionsText) approvedData.dimensions_text = dimensionsText;
   return call(
     () =>
       client(devUser).POST("/api/v1/ai/suggestions/{suggestion_id}/approve", {
         params: { path: { suggestion_id: suggestionId } },
-        body: { approved_data: { fields: approvedFields }, acknowledge_current_values: false },
+        body: { approved_data: approvedData, acknowledge_current_values: false },
       }) as Promise<{ data?: AiSuggestion; error?: unknown }>,
     AI_ERROR_MESSAGES,
   );
