@@ -178,7 +178,7 @@ function InicioContent() {
 
       <section aria-labelledby="kpis" className="flex flex-col gap-3">
         <h2 id="kpis" className="text-lg font-semibold text-tinta">
-          Completitud del catálogo (RF-035)
+          Completitud del catálogo
         </h2>
         <CompletenessDashboard />
       </section>

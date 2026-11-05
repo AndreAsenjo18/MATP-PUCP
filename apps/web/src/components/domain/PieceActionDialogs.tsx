@@ -23,6 +23,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button, type ButtonVariant } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { identifierTypeLabel } from "./status-intents";
 
 /** Resultado de la acción que ejecuta un diálogo: `message` es el texto que verá la persona. */
 export type DialogOutcome = { ok: true } | { ok: false; message: string };
@@ -424,7 +425,7 @@ export function ConcatenatedCodesDialog({ originalValue, proposals, open, onClos
       description={
         <>
           El valor <strong>{originalValue}</strong> parece reunir {proposals.length === 1 ? "un código" : `${proposals.length} códigos`}. El sistema
-          no los separa solo (RF-023): revise la propuesta y confirme que cada uno se registre por separado.
+          no los separa solo: revise la propuesta y confirme que cada uno se registre por separado.
         </>
       }
       submitLabel={splitConfirmLabel(proposals.length)}
@@ -439,7 +440,7 @@ export function ConcatenatedCodesDialog({ originalValue, proposals, open, onClos
       <ol aria-label="Códigos propuestos" className="flex flex-col gap-2">
         {proposals.map((proposal, index) => (
           <li key={`${proposal.identifier_type_code}-${proposal.original_value}-${index}`} className="rounded-md bg-crema-light p-3 text-base text-tinta">
-            <span className="font-medium">{proposal.identifier_type_code}</span> — <span className="font-mono">{proposal.original_value}</span>
+            <span className="font-medium">{identifierTypeLabel(proposal.identifier_type_code)}</span> — <span className="font-mono">{proposal.original_value}</span>
             <p className="text-sm text-gris-texto">
               {proposal.normalized_value ? (
                 <>

@@ -483,6 +483,8 @@ const FIELD_LABELS: Record<string, string> = Object.fromEntries(
     ["temporary_inventory_number", "Inventario temporal"],
     ["acquisition_method", "Forma de adquisición"],
     ["identifiers", "Códigos"],
+    ["inventory_code", "Código I"],
+    ["location_label", "Ubicación"],
   ],
 );
 

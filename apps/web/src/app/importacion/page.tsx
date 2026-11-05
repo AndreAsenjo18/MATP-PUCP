@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
+import { fieldLabel } from "@/lib/data/imports";
 import { getApiMode } from "@/lib/data/mode";
 import { IMPORT_TEMPLATES, rowsForBatch } from "@/lib/fixtures";
 
@@ -240,7 +241,7 @@ function PreviewStep({ rows }: { rows: ReturnType<typeof rowsForBatch> }) {
               <div className="mt-2 rounded-md bg-ambar-bg p-2 text-sm text-ambar-texto">
                 {row.diff.map((d) => (
                   <p key={d.field}>
-                    <strong>{d.field}</strong>: {String(d.current_value ?? "—")} → {String(d.incoming_value ?? "—")}
+                    <strong>{fieldLabel(d.field)}</strong>: {String(d.current_value ?? "—")} → {String(d.incoming_value ?? "—")}
                   </p>
                 ))}
               </div>

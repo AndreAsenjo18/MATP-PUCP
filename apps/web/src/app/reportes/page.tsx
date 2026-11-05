@@ -55,7 +55,7 @@ function ReportesContent() {
 
       {selected === "incomplete" ? (
         <Card as="section" className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-tinta">Piezas con información incompleta (RF-035)</h2>
+          <h2 className="text-lg font-semibold text-tinta">Piezas con información incompleta</h2>
           <IncompleteReportPanel devUser={currentUser?.email} canDownload={hasPermission("exports.run")} />
         </Card>
       ) : live ? (
@@ -72,7 +72,7 @@ function ReportesContent() {
           </div>
           {exported && (
             <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
-              Descarga simulada de <code>{report.report_type}.xlsx</code> (RF-036). En modo conectado se generaría un
+              Descarga simulada de <code>{report.report_type}.xlsx</code>. En modo conectado se generaría un
               archivo real.
             </p>
           )}
@@ -116,7 +116,7 @@ function ReportesContent() {
       {hasPermission("exports.full") && live && <FullExportPanel />}
       {hasPermission("exports.full") && !live && (
         <Card as="section">
-          <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base (RF-044)</h2>
+          <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base</h2>
           <p className="mt-1 text-base text-gris-texto">
             Genera un archivo abierto (Excel/CSV) con todas las piezas y sus identificadores, para no depender de
             este sistema.

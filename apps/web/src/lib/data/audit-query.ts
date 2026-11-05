@@ -29,7 +29,7 @@ export const AUDIT_PAGE_SIZE = 20;
 /** Filas campo a campo que se cargan cada vez al abrir el detalle de un conjunto. */
 export const AUDIT_DETAIL_PAGE_SIZE = 50;
 
-export const AUDIT_FORBIDDEN_MESSAGE = "Su rol no tiene permiso para consultar la auditoría (RF-040).";
+export const AUDIT_FORBIDDEN_MESSAGE = "Su rol no tiene permiso para consultar la auditoría.";
 
 function client() {
   return createApiClient({ baseUrl: apiBaseUrl() });

@@ -172,3 +172,14 @@ export function auditActionStatus(action: AuditAction | string | null | undefine
 export function identifierCurrencyStatus(isCurrent: boolean): StatusStyle {
   return isCurrent ? { label: "Vigente", intent: "success" } : { label: "Histórico", intent: "default" };
 }
+
+const IDENTIFIER_TYPE_LABELS: Record<string, string> = {
+  COLLECTION: "Colección",
+  OWNER: "Propietario",
+  OTHER: "Otro",
+};
+
+/** Nombre visible del tipo de identificador; la clave se conserva y un tipo sin traducción se muestra tal cual. */
+export function identifierTypeLabel(code: string): string {
+  return IDENTIFIER_TYPE_LABELS[code] ?? code;
+}

@@ -15,7 +15,7 @@ export const IMPORT_TEMPLATES: MappingTemplateOut[] = [
   {
     id: ids.importBatch(900),
     name: "Sábana consultoría 2024/25 (columnas estándar)",
-    description: "Plantilla reutilizable para las sábanas Excel con el formato de la consultoría 2024/25 (RF-022).",
+    description: "Plantilla reutilizable para las sábanas Excel con el formato de la consultoría 2024/25.",
     source_name: "Sábana consultoría 2024/25 (sintética)",
     header_signature: "sha256-sintetico-encabezados-sabana-v1",
     columns: [

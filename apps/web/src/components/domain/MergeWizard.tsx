@@ -48,6 +48,7 @@ import {
 import { useSubmit } from "./DuplicateReview";
 import type { DialogOutcome } from "./PieceActionDialogs";
 import { TenureBadge } from "./StatusBadges";
+import { identifierTypeLabel } from "./status-intents";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 type DuplicateCandidate = ApiSchemas["DuplicateCandidateOut"];
@@ -95,7 +96,7 @@ export function PieceCodes({ piece }: { piece: PieceDetail }) {
       <span className="font-mono font-bold text-terracota">{piece.code_i ? `Código I ${piece.code_i}` : "Sin código I"}</span>
       {others.map((identifier) => (
         <span key={identifier.id} className="rounded bg-crema px-1.5 py-0.5 font-mono text-tinta">
-          {identifier.identifier_type_code} {identifier.original_value}
+          {identifierTypeLabel(identifier.identifier_type_code)} {identifier.original_value}
           {identifier.is_current ? "" : " · histórico"}
         </span>
       ))}
@@ -356,7 +357,7 @@ export function MergeSummaryStep({
         <SummarySection title={`Pasa de ${a} a ${s}`}>
           {moving.map(({ identifier, fate }) => (
             <li key={identifier.id}>
-              Código {identifier.identifier_type_code} {identifier.original_value}
+              Código {identifierTypeLabel(identifier.identifier_type_code)} {identifier.original_value}
               {fate === "moves_not_current" && " (como no vigente: ya lo tiene la conservada)"}
             </li>
           ))}
@@ -373,7 +374,7 @@ export function MergeSummaryStep({
               <li key={identifier.id}>
                 {fate === "stays_inventory_code"
                   ? `Código I ${identifier.original_value}: un código I nunca cambia de pieza.`
-                  : `Identificador bloqueado ${identifier.identifier_type_code} ${identifier.original_value}.`}
+                  : `Identificador bloqueado ${identifierTypeLabel(identifier.identifier_type_code)} ${identifier.original_value}.`}
               </li>
             ))}
             {materials.stays.length > 0 && <li>Materiales que la conservada ya tiene: {materials.stays.map((m) => m.label).join(", ")}.</li>}

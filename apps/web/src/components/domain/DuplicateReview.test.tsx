@@ -121,8 +121,8 @@ describe("DuplicateCandidateCard", () => {
     // Las filas que motivan la sospecha (denominación, colección y otros códigos) son «igual».
     expect(html.match(/data-mark="match"/g)?.length).toBeGreaterThanOrEqual(3);
     expect(text).toContain("igual");
-    expect(text).toContain("Identificador COLLECTION igual 100 %"); // etiqueta de la señal, junto a la similitud
-    expect(text).toContain("Identificador COLLECTION igual · similitud 100 %"); // detalle plegado
+    expect(text).toContain("Identificador Colección igual 100 %"); // etiqueta de la señal, junto a la similitud
+    expect(text).toContain("Identificador Colección igual · similitud 100 %"); // detalle plegado
     expect(text).toContain("Normalizado MMZ-015: A «M.M.Z. 015» · B «mmz 15»");
     expect(html).toContain(`href="/piezas/${ids.piece(1)}"`);
   });

@@ -158,7 +158,7 @@ function MockLogin() {
         <Select
           id="user"
           label="Ingresar como (persona sintética)"
-          hint="Cada persona demuestra un rol de la matriz de permisos (RF-039). Puede cambiar de rol en cualquier momento desde la cabecera."
+          hint="Cada persona demuestra un rol de la matriz de permisos. Puede cambiar de rol en cualquier momento desde la cabecera."
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           className="p-3"
@@ -183,7 +183,7 @@ function MockLogin() {
             {ROLES.map((role) => (
               <li key={role.code} className="flex items-center justify-between gap-2">
                 <span className={role.is_enabled ? "" : "text-gris-texto line-through"}>{role.name}</span>
-                {!role.is_enabled && <Badge className="shrink-0 whitespace-nowrap">Desactivado en fase 1 (RF-042)</Badge>}
+                {!role.is_enabled && <Badge className="shrink-0 whitespace-nowrap">Desactivado en fase 1</Badge>}
               </li>
             ))}
           </ul>

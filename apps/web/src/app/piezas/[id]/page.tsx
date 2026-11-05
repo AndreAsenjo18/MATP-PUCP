@@ -182,7 +182,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
               <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">
-                Su rol ({currentUser?.full_name}) no ve todos los campos: {piece.masked_fields.join(", ")} (RF-041).
+                Su rol ({currentUser?.full_name}) no ve todos los campos: {piece.masked_fields.join(", ")}.
               </p>
             )}
             {parent && (
@@ -190,8 +190,8 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                 Componente de{" "}
                 <Link href={`/piezas/${parent.id}`} className="text-terracota underline">
                   {parent.denomination}
-                </Link>{" "}
-                (RF-009).
+                </Link>
+                .
               </p>
             )}
             <MergeLinks piece={piece} />
@@ -380,7 +380,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
         notices={
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
-              <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">Su rol no ve todos los campos: {piece.masked_fields.join(", ")} (RF-041).</p>
+              <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">Su rol no ve todos los campos: {piece.masked_fields.join(", ")}.</p>
             )}
             <MergeLinks piece={piece} />
           </>
@@ -548,7 +548,7 @@ function LocationTab({
       )}
 
       <Card as="section" aria-label="Historial de movimientos">
-        <h3 className="text-base font-semibold text-tinta">Historial de movimientos (RF-017)</h3>
+        <h3 className="text-base font-semibold text-tinta">Historial de movimientos</h3>
         <ul className="mt-2 flex flex-col gap-2">
           {movements
             .slice()
@@ -576,7 +576,7 @@ function SourceTab({ records }: { records: ReturnType<typeof getPieceSourceRecor
   if (records.length === 0) {
     return (
       <Card className="border-dashed text-center text-base text-gris-texto">
-        Esta pieza no proviene de una carga masiva: no hay columnas de origen sin mapear que preservar (RF-008).
+        Esta pieza no proviene de una carga masiva: no hay columnas de origen sin mapear que preservar.
       </Card>
     );
   }
@@ -607,7 +607,7 @@ function AuditTab({ pieceId, demoEntries }: { pieceId: string; demoEntries: Retu
   const entries = useMemo(() => (live ? undefined : demoEntries.map(toEntryView)), [live, demoEntries]);
 
   if (!hasPermission("audit.read")) {
-    return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría.</PermissionNotice>;
   }
   return (
     <AuditTrailPanel

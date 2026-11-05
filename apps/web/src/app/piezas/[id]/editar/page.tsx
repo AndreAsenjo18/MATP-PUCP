@@ -40,7 +40,7 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
   const [version, setVersion] = useState(piece.version);
 
   if (!hasPermission("pieces.update")) {
-    return <PermissionNotice>Su rol no tiene permiso para editar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para editar piezas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
   async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {

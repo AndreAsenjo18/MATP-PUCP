@@ -130,7 +130,7 @@ export function formatAuditValue(value: unknown): string {
   return "(valor compuesto: ábralo en la consulta de auditoría)";
 }
 
-export const MASKED_VALUE_NOTICE = "Su rol no puede ver los valores de este campo; sí queda registrado que cambió, quién y cuándo (RF-041).";
+export const MASKED_VALUE_NOTICE = "Su rol no puede ver los valores de este campo; sí queda registrado que cambió, quién y cuándo.";
 
 /** Una fila campo a campo en una sola frase. */
 export function fieldChangeSentence(entry: AuditEntryView): string {
@@ -184,7 +184,7 @@ export function revertAvailability(summary: AuditChangeSetSummary, access: Rever
   if (access.hasPermission(permission)) return { state: "available" };
   return {
     state: "denied",
-    reason: `Su rol no puede revertir los cambios que vienen de ${originLabel(summary.origin)}: falta el permiso «${permission}» (RF-039).`,
+    reason: `Su rol no puede revertir los cambios que vienen de ${originLabel(summary.origin)}: falta el permiso «${permission}».`,
   };
 }
 
