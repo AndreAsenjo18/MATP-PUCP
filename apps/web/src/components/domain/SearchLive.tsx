@@ -13,10 +13,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LocationPlaceDialogs, type PlaceAction } from "@/components/domain/LocationPlaceDialogs";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
-import { EMPTY_OPTIONS, FiltersDrawer, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
+import { EMPTY_OPTIONS, FiltersDrawer, SearchBox, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { Button, buttonClassName } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, cardClassName } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
@@ -105,7 +105,10 @@ export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; on
   );
 }
 
-/** «Seleccionar toda la página» y cuántas piezas hay elegidas, también de otras páginas. */
+/**
+ * «Seleccionar toda la página». El conteo y «Quitar la selección» están en la barra de acciones, que
+ * también cuenta las piezas de otras páginas (rediseno-ux-busqueda D4).
+ */
 function PageSelection({
   hits,
   selection,
@@ -117,26 +120,16 @@ function PageSelection({
 }) {
   const state = pageSelectionState(selection, hits);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-tinta">
-      <label className="flex min-h-11 items-center gap-2">
-        <input
-          type="checkbox"
-          checked={state === "all"}
-          aria-checked={state === "some" ? "mixed" : state === "all"}
-          onChange={() => onSelectionChange(setPageSelected(selection, hits, state !== "all"))}
-          className="size-6 accent-terracota"
-        />
-        Seleccionar toda la página
-      </label>
-      {selection.size > 0 && (
-        <span className="flex items-center gap-2" aria-live="polite">
-          {selection.size} pieza{selection.size === 1 ? "" : "s"} seleccionada{selection.size === 1 ? "" : "s"}
-          <Button variant="outline" size="sm" onClick={() => onSelectionChange(EMPTY_SELECTION)}>
-            Quitar la selección
-          </Button>
-        </span>
-      )}
-    </div>
+    <label className="flex min-h-11 items-center gap-2 self-start text-sm text-tinta">
+      <input
+        type="checkbox"
+        checked={state === "all"}
+        aria-checked={state === "some" ? "mixed" : state === "all"}
+        onChange={() => onSelectionChange(setPageSelected(selection, hits, state !== "all"))}
+        className="size-6 accent-terracota"
+      />
+      Seleccionar toda la página
+    </label>
   );
 }
 
@@ -365,6 +358,9 @@ export function MyExportsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
     return () => clearTimeout(timer);
   }, [pending, tick]);
 
+  // Sin exportaciones el panel no aporta nada: aparece con la primera (rediseno-ux-busqueda D5).
+  if (jobs.length === 0 && !error) return null;
+
   async function handleDownload(job: ExportJob) {
     if (!job.id) return;
     const result = await fetchExportDownloadUrl(job.id, devUser);
@@ -384,7 +380,6 @@ export function MyExportsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           Actualizar
         </Button>
       </div>
-      <p className="text-sm text-gris-texto">Los archivos se conservan 72 horas; después puede generarlos de nuevo.</p>
       {error && (
         <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
           {error}
@@ -396,7 +391,7 @@ export function MyExportsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 }
 
 /** Exportación de los resultados con los filtros de la pantalla (tarea 4.2). */
-function ExportResultsPanel({ filters, onJobCreated }: { filters: SearchFilters; onJobCreated: () => void }) {
+export function ExportResultsPanel({ filters, onJobCreated }: { filters: SearchFilters; onJobCreated: () => void }) {
   const { currentUser, hasPermission } = useSession();
   const [columns, setColumns] = useState<string[]>(DEFAULT_EXPORT_COLUMNS);
   const [format, setFormat] = useState<ExportFormat>("xlsx");
@@ -414,19 +409,22 @@ function ExportResultsPanel({ filters, onJobCreated }: { filters: SearchFilters;
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     if (result.value.kind === "job") {
-      setNotice("La exportación es grande: se está preparando en segundo plano. Aparecerá en «Mis exportaciones» cuando esté lista.");
+      setNotice("Es una exportación grande: aparecerá en «Mis exportaciones» cuando esté lista.");
       onJobCreated();
       return;
     }
     saveBlob(result.value.blob, result.value.fileName);
-    setNotice(
-      `Archivo descargado con las mismas piezas y el mismo orden que la búsqueda${format === "xlsx" ? ", más una hoja con los filtros y la fecha" : ""}.`,
-    );
+    setNotice(`Archivo descargado: ${result.value.fileName}.`);
   }
 
+  // Plegado por defecto: las columnas ocupaban media pantalla debajo de los resultados (D5).
   return (
-    <Card as="section" aria-label="Exportar resultados" className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-tinta">Exportar resultados</h2>
+    <details aria-label="Exportar resultados" className={cardClassName({ className: "flex flex-col gap-3" })}>
+      <summary className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md text-lg font-semibold text-tinta focus-visible:outline-2 focus-visible:outline-terracota">
+        <FileSpreadsheet size={20} aria-hidden="true" className="text-terracota" />
+        Exportar resultados
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
       <ExportColumnsPicker selected={columns} canSeeSensitive={canSeeSensitive} onChange={setColumns} />
       <div className="flex flex-wrap items-end gap-3">
         <Select label="Formato" value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)}>
@@ -437,13 +435,18 @@ function ExportResultsPanel({ filters, onJobCreated }: { filters: SearchFilters;
           {busy ? "Exportando…" : "Exportar"}
         </Button>
       </div>
-      {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
+      {notice && (
+        <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
+          {notice}
+        </p>
+      )}
       {error && (
         <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
           {error}
         </p>
       )}
-    </Card>
+      </div>
+    </details>
   );
 }
 
@@ -482,10 +485,9 @@ export function FullExportPanel() {
 
   return (
     <Card as="section" aria-label="Exportación completa" className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base (RF-044)</h2>
+      <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base</h2>
       <p className="text-base text-gris-texto">
-        Prepara un paquete ZIP con un CSV por tabla, un libro Excel, un diccionario de columnas y un manifiesto con las huellas de cada
-        archivo. Incluye las piezas eliminadas con su motivo; nunca incluye contraseñas.
+        Un archivo ZIP con toda la base en Excel y CSV, para respaldo. Incluye las piezas eliminadas; nunca las contraseñas.
       </p>
       <Button icon={Download} disabled={busy || pending} onClick={request} className="self-start">
         {pending ? "Preparando el paquete…" : "Preparar exportación completa"}
@@ -515,6 +517,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [jobsKey, setJobsKey] = useState(0);
   const canExport = hasPermission("exports.run");
+  // «Nueva pieza» solo a quien puede registrar piezas: sin el permiso llevaba a una pantalla sin salida.
+  const canCreate = hasPermission("pieces.create");
   // Verificar y mover desde los resultados: solo con el permiso de la antigua vista de depósito (3.1).
   const canMove = hasPermission("movements.register");
   const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
@@ -630,18 +634,17 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col gap-3">
         <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
-        <p className="text-base text-gris-texto">
-          Busque por cualquier código —vigente o histórico, con o sin formato (&quot;I 236&quot;, &quot;M.M.Z. 015&quot;, &quot;mmz 15&quot;)— o por
-          denominación, autor, procedencia, material, época o descripción, sin preocuparse por mayúsculas ni tildes.
-        </p>
+        {/* El buscador queda a la vista en todos los tamaños, fuera de «Filtros» (rediseno-ux-busqueda D1). */}
+        <SearchBox value={filters.q} onChange={(q) => update({ q })} />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
           <SearchFiltersPanel
             key={locationRevealKey}
+            withQuery={false}
             filters={filters}
             options={options}
             onChange={update}
@@ -677,10 +680,12 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             >
               Ver por ubicación
             </Button>
-            <Link href="/piezas/nueva" className={buttonClassName({})}>
-              <Plus size={18} aria-hidden="true" />
-              Nueva pieza
-            </Link>
+            {canCreate && (
+              <Link href="/piezas/nueva" className={buttonClassName({})}>
+                <Plus size={18} aria-hidden="true" />
+                Nueva pieza
+              </Link>
+            )}
           </div>
           <ActiveFilterChips chips={chips} onRemove={remove} />
           {canMove && (
@@ -691,6 +696,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
               feedback={feedback}
               onVerify={verifySelection}
               onMove={moveSelection}
+              onClear={() => setSelection(EMPTY_SELECTION)}
             />
           )}
           {error && (

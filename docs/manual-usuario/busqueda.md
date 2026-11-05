@@ -8,7 +8,7 @@ La antigua **Vista de depósito** se unió a esta pantalla: lo que antes se hac�
 
 ## 1. Buscar por código o por texto
 
-El campo **Código o texto** acepta cualquier código de la pieza o palabras de su ficha.
+El buscador **Código o texto**, arriba de la pantalla, acepta cualquier código de la pieza o palabras de su ficha. Está siempre a la vista, también en el teléfono: no hace falta abrir **Filtros** para buscar.
 
 ### Sin preocuparse por tildes ni mayúsculas
 - Buscar `ceramica` encuentra piezas catalogadas como `Cerámica`, `CERÁMICA` o `ceramica`.
@@ -29,8 +29,7 @@ Cada resultado dice qué coincidió, por ejemplo *«Coincide por código de cole
 
 ## 2. Filtros
 
-Arriba están los cinco filtros que el museo usa más:
-- **Código o texto** (la sección anterior).
+En el panel de filtros, primero están los que el museo usa más:
 - **Denominación**: la denominación contiene lo que escriba.
 - **Categoría** y **Material**: términos de los vocabularios del museo.
 - **Descripción contiene**: la descripción de la pieza contiene lo que escriba. Las piezas sin descripción no aparecen.
@@ -38,7 +37,7 @@ Arriba están los cinco filtros que el museo usa más:
 Los demás filtros están en **Más filtros**, plegado para no ocupar la pantalla:
 - **Colección**: incluye las piezas de sus subcolecciones.
 - **Estado de conservación**.
-- **Ubicación (con lo que contiene)**: se elige en un árbol (sede › espacio › mueble › nivel › contenedor). Escriba en **Buscar lugar** parte del nombre (por ejemplo «estante b») para ver solo los lugares que coinciden, con los lugares que los contienen. Al elegir un lugar se incluye todo lo que contiene: un depósito con sus muebles, niveles y contenedores. El lugar elegido se ve arriba con su ruta completa y se quita con el botón **Quitar la ubicación**.
+- **Ubicación**: incluye lo que contiene el lugar elegido. Se elige en un árbol (sede › espacio › mueble › nivel › contenedor). Escriba en **Buscar lugar** parte del nombre (por ejemplo «estante b») para ver solo los lugares que coinciden, con los lugares que los contienen. Al elegir un lugar se incluye todo lo que contiene: un depósito con sus muebles, niveles y contenedores. El lugar elegido se ve arriba con su ruta completa y se quita con el botón **Quitar la ubicación**.
 - **Régimen de tenencia**: *Propiedad*, *Comodato* o *Préstamo Temporal*.
 - **Código I**: solo piezas con código I o solo piezas sin él.
 - **Época desde / hasta (año)**: rango de años. Si una pieza tiene la época escrita solo como texto (por ejemplo, «colonial tardío»), no se puede comparar con el rango; la pantalla le avisa cuántas piezas quedaron fuera por eso.
@@ -73,9 +72,9 @@ Solo los roles que registran movimientos (por ejemplo, **Personal auxiliar de de
 ### Elegir piezas
 - Cada resultado tiene una **casilla** a su lado. Marque una o varias piezas.
 - **Seleccionar toda la página** marca o desmarca las piezas de la página que está viendo.
-- La selección se mantiene al cambiar de página: puede elegir piezas de varias páginas. La pantalla dice cuántas piezas lleva elegidas, y **Quitar la selección** la vacía.
+- La selección se mantiene al cambiar de página: puede elegir piezas de varias páginas.
 
-Con piezas elegidas aparece la **barra de acciones**.
+Con piezas elegidas aparece la **barra de acciones**: dice cuántas piezas lleva elegidas (también de otras páginas) y tiene **Verificar**, **Mover a…** y **Quitar la selección**, que la vacía.
 
 ### Verificar que las piezas siguen donde dice el sistema
 Presione **Verificar** cuando confirmó, en persona, que las piezas elegidas están en la ubicación que muestra la pantalla. No cambia la ubicación: deja constancia de que alguien las vio en su lugar, con fecha y responsable. Después, cada resultado muestra *«visto hoy»*.
@@ -86,8 +85,10 @@ Si una pieza en realidad está en otro lugar, **no** use verificación: muévala
 1. Presione **Mover a…**.
 2. Escriba en **Buscar destino** parte del lugar (por ejemplo «rack a») o abra la lista. Cada opción muestra la ruta completa, como «Sede central › Depósito 1 › Rack A › Nivel 2». La lista incluye **solo lugares finales** (niveles y contenedores, donde la pieza queda guardada); las sedes, depósitos y muebles que contienen otros lugares no aparecen. Si falta un lugar, créelo en **Administración › Catálogo › Ubicaciones**.
 3. Si quiere, escriba un motivo (por ejemplo «reorganización del depósito 2»).
-4. Presione **Revisar el traslado**. La pantalla le muestra la lista de piezas, dónde está cada una ahora y el destino.
-5. Presione **Confirmar el traslado**, o **Volver** para cambiar el destino.
+4. Revise la lista que aparece debajo: cada pieza elegida con dónde está ahora.
+5. Presione **Mover N piezas** (por ejemplo **Mover 2 piezas**). El botón se activa cuando elige el destino. **Cancelar** cierra el panel sin mover nada.
+
+Si se equivocó de destino, vuelva a mover las piezas: cada movimiento queda en el historial.
 
 Todas las piezas se mueven juntas o no se mueve ninguna. El sistema guarda quién, cuándo, desde dónde y hacia dónde se movió cada pieza; ese historial nunca se borra ni se edita. Al terminar, los resultados se actualizan con la ubicación nueva.
 
@@ -104,7 +105,7 @@ Para quien puede ver la ubicación exacta, cada resultado muestra junto a su ubi
 ## 5. En tableta o teléfono
 
 La pantalla se adapta para usarse de pie, en el depósito:
-- Los filtros se abren con el botón **Filtros**, que indica cuántos hay activos, y se cierran con **Ocultar los filtros**.
+- El buscador queda arriba, siempre a la vista. Los demás filtros se abren con el botón **Filtros**, que indica cuántos hay activos, y se cierran con **Ocultar los filtros**.
 - Las tarjetas de los resultados son más compactas y las casillas, más grandes.
 - La barra de acciones queda fija abajo, con botones grandes, para no perderla al recorrer la lista.
 
@@ -123,7 +124,7 @@ En una computadora, los filtros están siempre a la izquierda y la barra de acci
 
 ## 7. Exportar resultados
 
-Debajo de los resultados está el panel **Exportar resultados** (requiere permiso de exportación):
+Debajo de los resultados está **Exportar resultados** (requiere permiso de exportación), plegado para no ocupar la pantalla. Ábralo con un clic:
 1. Marque las **columnas** que quiere en el archivo. Las columnas con datos restringidos (comodante, convenio de préstamo) solo aparecen si su rol puede verlas.
 2. Elija el **formato**: Excel (`.xlsx`) o CSV.
 3. Presione **Exportar**. El archivo tiene exactamente las mismas piezas que la búsqueda, con los mismos filtros.
@@ -139,7 +140,7 @@ Cada exportación queda registrada en la auditoría (quién, cuándo, con qué f
 
 ## 8. Mis exportaciones
 
-El panel **Mis exportaciones**, debajo del panel de exportación, lista sus archivos recientes:
+El panel **Mis exportaciones**, debajo de **Exportar resultados**, aparece cuando tiene al menos una exportación y lista sus archivos recientes:
 - El estado de cada uno: *En cola*, *Preparándose*, *Lista*, *Falló* o *Caducada*. Mientras haya alguna en preparación, el estado se actualiza solo; también puede presionar **Actualizar**.
 - Cuando está lista, aparece el botón **Descargar**.
-- **Caducidad**: los archivos se conservan **72 horas**. Después, la exportación figura como *Caducada* y debe generarla de nuevo. El registro de la exportación se conserva.
+- **Caducidad**: los archivos se conservan **72 horas**; cada fila dice hasta cuándo está disponible. Después, la exportación figura como *Caducada* y debe generarla de nuevo. El registro de la exportación se conserva.
