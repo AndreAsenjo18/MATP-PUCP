@@ -38,7 +38,10 @@ def _set_dimensions_and_conservation(
         term = db.scalars(
             select(Term)
             .join(Vocabulary, Vocabulary.id == Term.vocabulary_id)
-            .where(Vocabulary.code == VocabularyCode.CONSERVATION_STATUS, Term.code == conservation_code)
+            .where(
+                Vocabulary.code == VocabularyCode.CONSERVATION_STATUS,
+                Term.code == conservation_code,
+            )
         ).one()
         piece.dimensions = dimensions
         piece.conservation_state_id = term.id
@@ -203,7 +206,9 @@ def test_suggest_cataloging_says_so_when_nothing_actually_changed(seeded_api: Se
     assert len(output["unchanged_fields"]) == 2
 
 
-def test_suggest_cataloging_keeps_only_the_dimension_that_actually_changed(seeded_api: SeededApi) -> None:
+def test_suggest_cataloging_keeps_only_the_dimension_that_actually_changed(
+    seeded_api: SeededApi,
+) -> None:
     piece_id = _any_piece_id(seeded_api)
     _set_dimensions_and_conservation(
         seeded_api,
@@ -219,7 +224,8 @@ def test_suggest_cataloging_keeps_only_the_dimension_that_actually_changed(seede
     )
     output = created.json()["output_data"]
     assert output["message"] is None
-    assert [f["value"] for f in output["fields"]] == [{"dimension": "ancho", "value": 40, "unit": "cm"}]
+    proposed_values = [f["value"] for f in output["fields"]]
+    assert proposed_values == [{"dimension": "ancho", "value": 40, "unit": "cm"}]
     assert len(output["unchanged_fields"]) == 2  # alto (igual) y el estado de conservación
 
 
