@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5ad470aa7c1f2a555e152cfec3109d8117bc6006eb7966ba71a16843bb4b0d41
+ * openapi-sha256: 794bb6b9f5f4525a920f5285b442d357d5c00b019079867e4ec4d23297b4ef55
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2199,6 +2199,7 @@ export interface components {
          * @example {
          *       "acknowledge_current_values": false,
          *       "approved_data": {
+         *         "dimensions_text": "alto 36 cm x ancho 40 cm",
          *         "fields": [
          *           {
          *             "field": "dimensions",
@@ -2221,7 +2222,7 @@ export interface components {
             acknowledge_current_values: boolean;
             /**
              * Approved Data
-             * @description Datos aprobados (pueden estar editados; parcial = APPROVED parcial).
+             * @description Datos aprobados (pueden estar editados; parcial = APPROVED parcial). `dimensions_text` es opcional: si se envía, reemplaza también el texto libre de "Medidas" (decisión del equipo, 2026-11-04; la IA nunca lo toca por sí sola).
              */
             approved_data: {
                 [key: string]: unknown;

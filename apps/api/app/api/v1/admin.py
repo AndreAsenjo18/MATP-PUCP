@@ -33,6 +33,7 @@ from app.core.models_base import new_uuid, utcnow
 from app.modules.ai_suggestions.apply import apply_approved
 from app.modules.ai_suggestions.client import AiServiceClient
 from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
+from app.modules.ai_suggestions.novelty import explain_result, split_unchanged_fields
 from app.modules.ai_suggestions.privacy import extraction_text
 from app.modules.ai_suggestions.schemas import (
     AiBatchOut,
@@ -508,6 +509,17 @@ def suggest_cataloging(
     text = (body.text or "").strip() or extraction_text(piece, body.field)
     client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
     envelope = client.extract_structured(text, source_field=body.field)
+    result = envelope["result"]
+    original_fields = result.get("fields") or []
+    novel_fields, unchanged_fields = split_unchanged_fields(session, piece, original_fields)
+    output_data = {
+        "fields": novel_fields,
+        "message": explain_result(original_fields, novel_fields, result.get("message")),
+    }
+    if unchanged_fields:
+        # No se descartan en silencio (RN-005 es sobre el catálogo, pero el mismo espíritu
+        # aplica aquí): quedan en la sugerencia aunque no se muestren como aprobables todavía.
+        output_data["unchanged_fields"] = unchanged_fields
     suggestion_id = new_uuid()
     suggestion = AiSuggestion(
         id=suggestion_id,
@@ -517,7 +529,7 @@ def suggest_cataloging(
         model=envelope["model"],
         piece_id=piece.id,
         input_data={"field": body.field or "notes", "text": text},
-        output_data=envelope["result"],
+        output_data=output_data,
         requested_by_id=user.id,
     )
     with audit_context(
