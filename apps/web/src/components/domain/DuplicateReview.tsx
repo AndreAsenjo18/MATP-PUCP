@@ -42,7 +42,7 @@ import {
 } from "@/lib/data/duplicates";
 
 import type { DialogOutcome } from "./PieceActionDialogs";
-import { duplicateStatus, qualityJobStatus } from "./status-intents";
+import { duplicateStatus, identifierTypeLabel, qualityJobStatus } from "./status-intents";
 import { StatusBadge, TenureBadge } from "./StatusBadges";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
@@ -92,7 +92,7 @@ export function signalLabel(signal: DuplicateSignal): string {
   const type = identifierType(signal.field);
   switch (signal.signal) {
     case "identifier":
-      return `Identificador ${type ?? ""} igual`.replace(/\s+/g, " ");
+      return `Identificador ${type ? identifierTypeLabel(type) : ""} igual`.replace(/\s+/g, " ");
     case "inventory_code_conflict":
       return "Códigos I vigentes distintos";
     case "denomination":
@@ -106,7 +106,7 @@ export function signalLabel(signal: DuplicateSignal): string {
     case "dimensions":
       return "Medidas compatibles";
     default:
-      return type ? `Identificador ${type}` : signal.field;
+      return type ? `Identificador ${identifierTypeLabel(type)}` : signal.field;
   }
 }
 
@@ -154,7 +154,7 @@ export interface ComparisonRow {
 
 function otherCodes(p: PieceDetail): string {
   const others = p.identifiers.filter((i) => i.identifier_type_code !== "I");
-  return others.length ? others.map((i) => `${i.identifier_type_code} ${i.original_value}${i.is_current ? "" : " (histórico)"}`).join(" · ") : "—";
+  return others.length ? others.map((i) => `${identifierTypeLabel(i.identifier_type_code)} ${i.original_value}${i.is_current ? "" : " (histórico)"}`).join(" · ") : "—";
 }
 
 export const COMPARISON_ROWS: ComparisonRow[] = [

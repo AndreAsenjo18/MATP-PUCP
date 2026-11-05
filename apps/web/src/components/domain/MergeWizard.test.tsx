@@ -109,7 +109,7 @@ describe("MergeWizard: paso 3, resumen y confirmación", () => {
     expect(text).toContain("Procedencia : «Puno» → «Cusco (sintético)» Elegido");
     expect(text).toContain("Autor : «Sin registrar» → «Taller sintético» Se completa");
     expect(text).toContain("Pasa de «Toro de Pucará (3 cuernos)» a «Toro de Pucará»");
-    expect(text).toContain("Código COLLECTION mmz 15 (como no vigente: ya lo tiene la conservada)");
+    expect(text).toContain("Código Colección mmz 15 (como no vigente: ya lo tiene la conservada)");
     expect(text).toContain("2 fotografías.");
     expect(text).toContain("Sus componentes, préstamos y sugerencias de IA.");
     expect(text).toContain("Qué se queda en «Toro de Pucará (3 cuernos)»");
@@ -174,7 +174,7 @@ describe("códigos a la vista durante la fusión", () => {
   it("muestra el código I y los demás códigos de la pieza, con los históricos marcados", () => {
     const text = visibleText(render(<PieceCodes piece={historic(toro)} />));
     expect(text).toContain("Código I I-0236");
-    expect(text).toContain("COLLECTION M.M.Z. 015");
+    expect(text).toContain("Colección M.M.Z. 015");
     expect(text).toContain("INC_RN 4521 · histórico");
   });
 
@@ -187,7 +187,7 @@ describe("códigos a la vista durante la fusión", () => {
 
   it("los tres pasos muestran los códigos de las dos piezas", () => {
     expect(visibleText(wizard(1))).toContain("Código I I-0236");
-    expect(visibleText(wizard(1))).toContain("COLLECTION M.M.Z. 015");
+    expect(visibleText(wizard(1))).toContain("Colección M.M.Z. 015");
     for (const step of [2, 3] as const) {
       const text = visibleText(wizard(step));
       expect(text).toContain("Se conserva");

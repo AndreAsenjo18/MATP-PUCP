@@ -60,6 +60,18 @@ describe("catálogo sintético de la maqueta (maqueta-ui-navegable)", () => {
     expect(onlyIncomplete.items.every((summary) => alertsForPiece(getPieceDetail(summary.id)!).some((a) => a.applies))).toBe(true);
   });
 
+  it("filtra las piezas sin código I vigente, incluidas las de comodato y préstamo temporal", () => {
+    const withoutCode = listPieces({ hasInventoryCode: false, pageSize: 50 });
+    const withCode = listPieces({ hasInventoryCode: true, pageSize: 50 });
+    const hasCurrentCode = (id: string) => getPieceDetail(id)!.identifiers.some((i) => i.identifier_type_code === "I" && i.is_current);
+
+    expect(withoutCode.total).toBeGreaterThan(0);
+    expect(withoutCode.total + withCode.total).toBe(listPieces({}).total);
+    expect(withoutCode.items.some((summary) => hasCurrentCode(summary.id))).toBe(false);
+    expect(withCode.items.every((summary) => hasCurrentCode(summary.id))).toBe(true);
+    expect(withoutCode.items.map((summary) => summary.denomination)).toEqual(expect.arrayContaining(["Virgen de la Puerta", "Quena"]));
+  });
+
   it("busca por un código tal como está escrito en la fuente (sucio) y por el código normalizado (RF-023)", () => {
     const byDirtyCode = listPieces({ q: "mmz 15" });
     expect(byDirtyCode.items).toHaveLength(1);

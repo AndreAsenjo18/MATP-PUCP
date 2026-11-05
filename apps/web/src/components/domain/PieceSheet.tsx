@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import type { ApiSchemas } from "@/lib/api/client";
 
-import { identifierCurrencyStatus } from "./status-intents";
+import { identifierCurrencyStatus, identifierTypeLabel } from "./status-intents";
 import { AlertBadge, LockBadge, StatusBadge, TenureBadge } from "./StatusBadges";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
@@ -66,7 +66,7 @@ export function PieceField({ label, value, wide = false }: { label: string; valu
   );
 }
 
-const RESTRICTED = "Restringido para su rol (RF-041)";
+const RESTRICTED = "Restringido para su rol";
 
 export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
   return (
@@ -123,7 +123,7 @@ export function PieceIdentifiersTable({ piece, children }: { piece: PieceDetail;
               <tr key={identifier.id} className="border-t border-borde align-top">
                 <td className="py-2 pr-4 font-medium text-tinta">
                   <span className="inline-flex items-center gap-1">
-                    {identifier.identifier_type_code}
+                    {identifierTypeLabel(identifier.identifier_type_code)}
                     {identifier.is_locked && <Lock size={16} role="img" aria-label="Bloqueado" className="text-gris-texto" />}
                   </span>
                 </td>
@@ -207,7 +207,7 @@ export function PieceCurrentLocation({ location }: { location: PieceDetail["loca
       </h3>
       <p className="mt-1 text-base text-tinta">
         {location.path.length > 0 ? location.path.map((l) => l.name).join(" / ") : "Sin ubicación registrada"}
-        {!location.is_exact && <span className="ml-2 text-sm text-gris-texto">(ubicación exacta restringida para su rol, RF-041)</span>}
+        {!location.is_exact && <span className="ml-2 text-sm text-gris-texto">(ubicación exacta restringida para su rol)</span>}
       </p>
     </Card>
   );

@@ -66,8 +66,10 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
 
       {suggestion.status === "PENDING" && (
         <>
-          <details className="rounded-md border border-borde px-3 py-2">
-            <summary className="cursor-pointer text-sm font-medium text-tinta">Corregir antes de aprobar</summary>
+          <details className="rounded-md border border-borde px-3">
+            <summary className="cursor-pointer rounded-sm py-3 text-sm font-medium text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota">
+              Corregir antes de aprobar
+            </summary>
             <Textarea
               label="Propuesta (JSON)"
               value={editedJson}
@@ -80,10 +82,10 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
                   setJsonError("JSON inválido: revise la sintaxis antes de aprobar.");
                 }
               }}
-              rows={5}
+              rows={8}
               error={jsonError ?? undefined}
               className="font-mono text-sm"
-              fieldClassName="mt-2"
+              fieldClassName="mb-3"
             />
           </details>
           <div className="flex flex-wrap gap-3">

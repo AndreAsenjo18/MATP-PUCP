@@ -42,7 +42,7 @@ const ALERT_LABELS: Record<AlertType, string> = {
 function KpiCard({ label, value, href, tone = "neutral" }: { label: string; value: number | string; href?: string; tone?: "neutral" | "warning" }) {
   const className = cardClassName({
     interactive: Boolean(href),
-    className: cn("flex flex-col gap-1", tone === "warning" && "border-ambar-alerta bg-ambar-bg"),
+    className: cn("flex flex-col gap-1", tone === "warning" && "border-ambar-alerta! bg-ambar-bg!"),
   });
   const content = (
     <>
@@ -178,7 +178,7 @@ function InicioContent() {
 
       <section aria-labelledby="kpis" className="flex flex-col gap-3">
         <h2 id="kpis" className="text-lg font-semibold text-tinta">
-          Completitud del catálogo (RF-035)
+          Completitud del catálogo
         </h2>
         <CompletenessDashboard />
       </section>

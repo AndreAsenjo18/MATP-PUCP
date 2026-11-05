@@ -92,7 +92,7 @@ export const ROLES: ApiSchemas["RoleOut"][] = [
   { code: "CONSERVATION", name: "Conservación", is_enabled: true, description: "Evaluaciones de estado de conservación y registro fotográfico.", permissions: ROLE_PERMISSIONS.CONSERVATION },
   { code: "STORAGE_STAFF", name: "Personal auxiliar de depósito", is_enabled: true, description: "Consulta y registro de movimientos/verificaciones desde el depósito, incluida la vista móvil.", permissions: ROLE_PERMISSIONS.STORAGE_STAFF },
   { code: "INTERNAL_VIEWER", name: "Consulta interna", is_enabled: true, description: "Solo lectura de fichas y reportes, sin campos sensibles ni exportación.", permissions: ROLE_PERMISSIONS.INTERNAL_VIEWER },
-  { code: "EXTERNAL_RESEARCHER", name: "Consulta externa / investigador (desactivado en fase 1)", is_enabled: false, description: "Modelado para una fase futura; RF-042 lo mantiene desactivado en fase 1.", permissions: ROLE_PERMISSIONS.EXTERNAL_RESEARCHER },
+  { code: "EXTERNAL_RESEARCHER", name: "Consulta externa / investigador (desactivado en fase 1)", is_enabled: false, description: "Modelado para una fase futura; se mantiene desactivado en fase 1.", permissions: ROLE_PERMISSIONS.EXTERNAL_RESEARCHER },
 ];
 
 export const USERS: ApiSchemas["UserOut"][] = [

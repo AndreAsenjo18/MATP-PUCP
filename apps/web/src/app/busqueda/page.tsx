@@ -36,6 +36,7 @@ function BusquedaContent() {
   const [conservationStatusCode, setConservationStatusCode] = useState("");
   const [tenureRegime, setTenureRegime] = useState("");
   const [incompleteOnly, setIncompleteOnly] = useState(() => searchParams.get("incompleteOnly") === "1");
+  const [withoutInventoryCode, setWithoutInventoryCode] = useState(() => filtersFromSearchParams(searchParams).hasInventoryCode === false);
   const [exported, setExported] = useState(false);
 
   const result = useMemo(
@@ -48,9 +49,10 @@ function BusquedaContent() {
         conservationStatusCode: conservationStatusCode || undefined,
         tenureRegime: tenureRegime || undefined,
         incompleteOnly,
+        hasInventoryCode: withoutInventoryCode ? false : undefined,
         pageSize: 50,
       }),
-    [q, collectionId, categoryCode, materialCode, conservationStatusCode, tenureRegime, incompleteOnly],
+    [q, collectionId, categoryCode, materialCode, conservationStatusCode, tenureRegime, incompleteOnly, withoutInventoryCode],
   );
 
   const categories = termsByVocabulary("CATEGORY");
@@ -65,6 +67,7 @@ function BusquedaContent() {
     setConservationStatusCode("");
     setTenureRegime("");
     setIncompleteOnly(false);
+    setWithoutInventoryCode(false);
   };
 
   return (
@@ -94,6 +97,11 @@ function BusquedaContent() {
           <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
             <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} className="size-5 accent-terracota" />
             Solo piezas incompletas
+          </label>
+
+          <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
+            <input type="checkbox" checked={withoutInventoryCode} onChange={(event) => setWithoutInventoryCode(event.target.checked)} className="size-5 accent-terracota" />
+            Solo piezas sin código I
           </label>
 
           <Button variant="secondary" icon={Eraser} onClick={clearFilters}>

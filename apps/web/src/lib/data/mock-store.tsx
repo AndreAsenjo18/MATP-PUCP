@@ -202,7 +202,7 @@ function reducer(state: MockState, action: Action): MockState {
         actor_label: action.actor,
         origin: "MANUAL",
         origin_ref: null,
-        reason: "Aprobación explícita de carga masiva por rol autorizado (RF-027).",
+        reason: "Aprobación explícita de carga masiva por rol autorizado.",
       });
       return {
         ...state,
@@ -294,7 +294,7 @@ function reducer(state: MockState, action: Action): MockState {
             actor_label: action.actor,
             origin: "MANUAL",
             origin_ref: null,
-            reason: action.originalValue ? `Separación confirmada del valor «${action.originalValue}» (RF-023).` : null,
+            reason: action.originalValue ? `Separación confirmada del valor «${action.originalValue}».` : null,
           },
         );
         audit = pushed.auditLog;

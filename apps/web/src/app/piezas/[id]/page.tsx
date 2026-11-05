@@ -169,9 +169,11 @@ function FichaContent({ pieceId }: { pieceId: string }) {
               )}
               {hasPermission("pieces.create") && <RegisterSimilarButton piece={piece} />}
               {hasPermission("pieces.delete") && (
-                <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
-                  Eliminar pieza
-                </Button>
+                <div className="sm:ml-2 sm:border-l sm:border-borde sm:pl-4">
+                  <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
+                    Eliminar pieza
+                  </Button>
+                </div>
               )}
             </div>
           )
@@ -180,7 +182,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
               <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">
-                Su rol ({currentUser?.full_name}) no ve todos los campos: {piece.masked_fields.join(", ")} (RF-041).
+                Su rol ({currentUser?.full_name}) no ve todos los campos: {piece.masked_fields.join(", ")}.
               </p>
             )}
             {parent && (
@@ -188,8 +190,8 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                 Componente de{" "}
                 <Link href={`/piezas/${parent.id}`} className="text-terracota underline">
                   {parent.denomination}
-                </Link>{" "}
-                (RF-009).
+                </Link>
+                .
               </p>
             )}
             <MergeLinks piece={piece} />
@@ -206,7 +208,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
         <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
       ) : (
         <>
-          <div role="tablist" aria-label="Pestañas de la ficha" className="flex flex-wrap gap-1 border-b border-borde">
+          <div role="tablist" aria-label="Pestañas de la ficha" className="flex overflow-x-auto border-b border-borde">
             {TABS.map((t) => (
               <button
                 key={t}
@@ -215,7 +217,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                 aria-selected={tab === t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex min-h-11 items-center gap-1 rounded-t-md px-3 py-2 text-base font-medium focus-visible:outline-2 focus-visible:outline-terracota",
+                  "flex min-h-11 shrink-0 items-center gap-1 rounded-t-md px-2.5 py-2 text-base font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-terracota",
                   tab === t ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
                 )}
               >
@@ -378,7 +380,7 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
         notices={
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
-              <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">Su rol no ve todos los campos: {piece.masked_fields.join(", ")} (RF-041).</p>
+              <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">Su rol no ve todos los campos: {piece.masked_fields.join(", ")}.</p>
             )}
             <MergeLinks piece={piece} />
           </>
@@ -513,19 +515,21 @@ function LocationTab({
               );
             }}
           >
-            <Select label="Nueva ubicación" value={targetLocationId} onChange={(event) => setTargetLocationId(event.target.value)} fieldClassName="min-w-0 flex-1">
+            <Select label="Nueva ubicación" value={targetLocationId} onChange={(event) => setTargetLocationId(event.target.value)} fieldClassName="w-full min-w-0 lg:w-auto lg:flex-1">
               {LOCATIONS.map((location) => (
                 <option key={location.id} value={location.id}>
                   {locationPath(location.id).map((l) => l.name).join(" / ")}
                 </option>
               ))}
             </Select>
-            <Button type="submit" icon={Truck}>
+            <Button type="submit" size="lg" icon={Truck} className="w-full sm:w-auto">
               Registrar movimiento
             </Button>
             <Button
               variant="outline"
+              size="lg"
               icon={ShieldCheck}
+              className="w-full sm:w-auto"
               onClick={() =>
                 store.registerMovement(
                   pieceId,
@@ -544,7 +548,7 @@ function LocationTab({
       )}
 
       <Card as="section" aria-label="Historial de movimientos">
-        <h3 className="text-base font-semibold text-tinta">Historial de movimientos (RF-017)</h3>
+        <h3 className="text-base font-semibold text-tinta">Historial de movimientos</h3>
         <ul className="mt-2 flex flex-col gap-2">
           {movements
             .slice()
@@ -572,7 +576,7 @@ function SourceTab({ records }: { records: ReturnType<typeof getPieceSourceRecor
   if (records.length === 0) {
     return (
       <Card className="border-dashed text-center text-base text-gris-texto">
-        Esta pieza no proviene de una carga masiva: no hay columnas de origen sin mapear que preservar (RF-008).
+        Esta pieza no proviene de una carga masiva: no hay columnas de origen sin mapear que preservar.
       </Card>
     );
   }
@@ -603,7 +607,7 @@ function AuditTab({ pieceId, demoEntries }: { pieceId: string; demoEntries: Retu
   const entries = useMemo(() => (live ? undefined : demoEntries.map(toEntryView)), [live, demoEntries]);
 
   if (!hasPermission("audit.read")) {
-    return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría.</PermissionNotice>;
   }
   return (
     <AuditTrailPanel

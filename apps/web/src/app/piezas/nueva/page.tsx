@@ -70,7 +70,7 @@ function NewPieceContent() {
   }, [formKey]);
 
   if (!hasPermission("pieces.create")) {
-    return <PermissionNotice>Su rol no tiene permiso para registrar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para registrar piezas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
 
   async function handleRegisterAnother(saved: PieceFormValues) {

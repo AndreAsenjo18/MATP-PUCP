@@ -62,6 +62,8 @@ export interface PieceFilters {
   conservationStatusCode?: string;
   tenureRegime?: string;
   incompleteOnly?: boolean;
+  /** `false` = piezas sin código I vigente, igual que `has_inventory_code=false` en la API. */
+  hasInventoryCode?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -87,6 +89,10 @@ function matchesFilters(piece: PieceDetail, filters: PieceFilters): boolean {
   if (filters.tenureRegime && piece.tenure_regime !== filters.tenureRegime) return false;
   if (filters.periodType && piece.period.type !== filters.periodType) return false;
   if (filters.incompleteOnly && !alertsForPiece(piece).some((a) => a.applies)) return false;
+  if (filters.hasInventoryCode !== undefined) {
+    const hasCode = piece.identifiers.some((i) => i.identifier_type_code === "I" && i.is_current);
+    if (hasCode !== filters.hasInventoryCode) return false;
+  }
   return true;
 }
 
