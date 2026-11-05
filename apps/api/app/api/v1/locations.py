@@ -27,6 +27,7 @@ from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import CatalogReader, Viewer
 from app.modules.catalog.schemas import PieceSummary
 from app.modules.identification.normalization import is_absence_marker, propose_identifiers
+from app.modules.identification.params import session_params
 from app.modules.identification.schemas import (
     NormalizedProposal,
     NormalizeRequest,
@@ -109,6 +110,10 @@ def get_locations_tree(session: SessionDep, user: Reader) -> list[LocationNode]:
             id=location.id,
             name=location.name,
             level_type=label_of(LOCATION_LEVEL_LABELS, location.level) or str(location.level),
+            allowed_child_types=[
+                label_of(LOCATION_LEVEL_LABELS, child) or str(child)
+                for child in location_hierarchy.allowed_children(location.level)
+            ],
         )
         for location in locations
     }
@@ -356,11 +361,15 @@ def move_pieces_batch(
     tags=["Identificadores"],
     **implemented(),
 )
-def normalize_identifiers(body: NormalizeRequest, user: Reader) -> NormalizeResponse:
-    proposals = propose_identifiers(body.value, default_type=body.default_type)
+def normalize_identifiers(
+    body: NormalizeRequest, session: SessionDep, user: Reader
+) -> NormalizeResponse:
+    # Current markers, separators and aliases, as the import applies them (design D5).
+    params = session_params(session)
+    proposals = propose_identifiers(body.value, default_type=body.default_type, params=params)
     return NormalizeResponse(
         value=body.value,
-        is_absence_marker=is_absence_marker(body.value),
+        is_absence_marker=is_absence_marker(body.value, params=params),
         proposals=[
             NormalizedProposal(
                 type_code=proposal.type_code,

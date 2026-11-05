@@ -304,7 +304,16 @@ def test_loan_for_use_becomes_owned_and_then_accepts_inventory_code(
         piece = _piece(session, TenureRegime.LOAN_FOR_USE)
         with pytest.raises(ValidationFailed):
             change_tenure(session, piece, TenureRegime.OWNED, None)
-        change_tenure(session, piece, TenureRegime.OWNED, "Donación posterior, acta sintética 01")
+        with pytest.raises(ValidationFailed) as excinfo:
+            change_tenure(session, piece, TenureRegime.OWNED, "Donación posterior")
+        assert excinfo.value.code == "supporting_document_required"
+        change_tenure(
+            session,
+            piece,
+            TenureRegime.OWNED,
+            "Donación posterior",
+            supporting_document_ref="Acta sintética 01",
+        )
         identifier = add_identifier(session, piece, "I", "I-801")
         session.commit()
     assert identifier.is_locked
@@ -316,4 +325,4 @@ def test_loan_for_use_becomes_owned_and_then_accepts_inventory_code(
         )
     ).one()
     assert (entry.old_value, entry.new_value) == ("LOAN_FOR_USE", "OWNED")
-    assert entry.reason == "Donación posterior, acta sintética 01"
+    assert entry.reason == "Donación posterior | documento: Acta sintética 01"

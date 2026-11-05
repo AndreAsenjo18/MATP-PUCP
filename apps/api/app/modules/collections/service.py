@@ -12,18 +12,25 @@ from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
 from app.modules.collections.models import Collection
 from app.modules.identification.normalization import normalize_acronym
+from app.modules.identification.params import session_params
 
 
 def find_collection_by_code(session: Session, code: str) -> Collection | None:
     """Colección cuya sigla normalizada coincide con ``code`` (ej. "M.M.Z." y "mmz" -> MMZ).
 
     Usado por la búsqueda avanzada (`GET /search`, RF-031) para resolver `collection_code`
-    a un `collection_id` sin obligar al cliente a conocer el UUID.
+    a un `collection_id` sin obligar al cliente a conocer el UUID. Si ninguna colección tiene
+    esa sigla, se busca entre los alias vigentes (sigla histórica, design D5 de
+    plantillas-mapeo-y-normalizacion).
     """
     normalized = normalize_acronym(code)
     if not normalized:
         return None
-    return session.scalar(select(Collection).where(Collection.acronym_normalized == normalized))
+    found = session.scalar(select(Collection).where(Collection.acronym_normalized == normalized))
+    if found is not None:
+        return found
+    alias_collection_id = session_params(session).alias_collection_ids.get(normalized)
+    return session.get(Collection, alias_collection_id) if alias_collection_id else None
 
 
 def create_collection(
@@ -118,6 +125,8 @@ def update_collection(session: Session, collection: Collection, changes: dict[st
     for key in ("description", "origin_description", "is_active"):
         if key in changes:
             setattr(collection, key, changes[key])
+    if changes.get("default_tenure_regime") is not None:
+        collection.default_tenure_regime = changes["default_tenure_regime"]  # type: ignore[assignment]
     if "parent_id" in changes and changes["parent_id"] != collection.parent_id:
         parent_id = changes["parent_id"]
         move_collection(

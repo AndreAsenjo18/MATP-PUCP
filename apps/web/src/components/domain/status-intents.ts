@@ -36,11 +36,12 @@ export function tenureStatus(regime: TenureRegimeLabel | string | null | undefin
 }
 
 const ALERTS: Record<AlertType, StatusStyle> = {
-  WITHOUT_INVENTORY_CODE: { label: "Sin código I", intent: "warning" },
-  WITHOUT_PHOTO: { label: "Sin foto", intent: "warning" },
-  WITHOUT_LOCATION: { label: "Sin ubicación", intent: "warning" },
+  MISSING_INVENTORY_CODE: { label: "Sin código I", intent: "warning" },
+  MISSING_PHOTO: { label: "Sin foto", intent: "warning" },
+  MISSING_LOCATION: { label: "Sin ubicación", intent: "warning" },
   MISSING_REQUIRED_FIELDS: { label: "Campos obligatorios incompletos", intent: "warning" },
-  UNPARSEABLE_CODE: { label: "Código no normalizable", intent: "danger" },
+  MISSING_RECOMMENDED_FIELDS: { label: "Campos recomendados incompletos", intent: "default" },
+  UNNORMALIZABLE_IDENTIFIER: { label: "Código no normalizable", intent: "danger" },
 };
 
 /** Alertas de completitud: información incompleta `warning`; código no normalizable `danger`. */
@@ -63,7 +64,7 @@ export function importClassificationStatus(classification: RowClassification | s
 const DECISION: Record<RowDecision, StatusStyle> = {
   PENDING: { label: "Pendiente", intent: "warning" },
   ACCEPTED: { label: "Aceptada", intent: "success" },
-  EXCLUDED: { label: "Excluida", intent: "default" },
+  EXCLUDED: { label: "Dejada fuera", intent: "default" },
   REJECTED: { label: "Rechazada", intent: "danger" },
 };
 
@@ -88,6 +89,31 @@ const BATCH: Record<ImportBatchStatus, StatusStyle> = {
 
 export function importBatchStatus(status: ImportBatchStatus | string | null | undefined): StatusStyle {
   return lookup(BATCH, status, "Estado");
+}
+
+type DryRunStatus = ApiSchemas["DryRunExample"]["status"];
+
+const DRY_RUN: Record<DryRunStatus, StatusStyle> = {
+  NORMALIZED: { label: "Normalizado", intent: "success" },
+  UNPARSEABLE: { label: "No normalizable", intent: "danger" },
+  ABSENT: { label: "Marcador de ausencia", intent: "default" },
+  SPLIT_PROPOSED: { label: "Separación propuesta", intent: "warning" },
+};
+
+/** Estado de una celda en la vista previa de normalización (design D4 de plantillas-mapeo). */
+export function dryRunValueStatus(status: DryRunStatus | string | null | undefined): StatusStyle {
+  return lookup(DRY_RUN, status, "Estado");
+}
+
+const MAPPING_DRAFT: Record<"unchanged" | "modified" | "new", StatusStyle> = {
+  unchanged: { label: "Plantilla sin cambios", intent: "success" },
+  modified: { label: "Plantilla modificada", intent: "warning" },
+  new: { label: "Mapeo nuevo sin guardar", intent: "info" },
+};
+
+/** Estado del borrador del editor de mapeo frente a su plantilla (4.1B de plantillas-mapeo). */
+export function mappingDraftStatus(status: "unchanged" | "modified" | "new" | string | null | undefined): StatusStyle {
+  return lookup(MAPPING_DRAFT, status, "Estado");
 }
 
 const SUGGESTION: Record<SuggestionStatus, StatusStyle> = {
@@ -135,6 +161,7 @@ const AUDIT: Record<AuditAction, StatusStyle> = {
   CORRECTION: { label: "Corrección", intent: "danger" },
   MERGE: { label: "Fusión", intent: "info" },
   REVERT: { label: "Reversión", intent: "info" },
+  EXPORT: { label: "Exportación", intent: "default" },
 };
 
 export function auditActionStatus(action: AuditAction | string | null | undefined): StatusStyle {

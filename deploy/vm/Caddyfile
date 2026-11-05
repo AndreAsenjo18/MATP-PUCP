@@ -1,0 +1,67 @@
+# MATP - Proxy inverso de producción (change despliegue-vm-y-respaldos, tarea 1.3; ADR-011).
+# Caddy 2.11.4 (versión estable consultada el 2026-10-22).
+#
+# MATP_DOMAIN llega por entorno (por ejemplo matp.example.pucp.edu.pe); media.<dominio> debe
+# resolver a la misma VM.
+#
+# - HTTP se redirige a HTTPS de forma automática; HSTS se envía en toda respuesta HTTPS.
+# - Web y API cuelgan del MISMO dominio: las cookies de sesión (ADR-009) lo requieren.
+# - La IA asistiva no se publica: solo se invoca dentro del proceso de la API (ADR-008), por eso
+#   no hay ninguna ruta /ai/*.
+# - Certificado: automático (ACME) por defecto. Con el certificado institucional de la DTI, cree
+#   deploy/vm/certs/tls.caddy con la línea
+#       tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
+#   y copie los dos archivos junto a él. No se toca ningún otro archivo (spec: «Certificado
+#   institucional»).
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}
+
+(certificate) {
+	# Un glob sin coincidencias no es error: sin tls.caddy se usa el certificado automático.
+	import /etc/caddy/certs/tls*.caddy
+}
+
+{$MATP_DOMAIN} {
+	import certificate
+	import security_headers
+	encode zstd gzip
+
+	# Coherente con IMPORT_MAX_BYTES (50 MB por defecto) más el sobre del formulario.
+	request_body {
+		max_size 60MB
+	}
+
+	header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://media.{$MATP_DOMAIN}; connect-src 'self' https://media.{$MATP_DOMAIN}; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /health* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# Fotografías: las URL prefirmadas de S3 firman host y ruta exactos, así que el almacenamiento se
+# publica en su propio subdominio y el Host llega intacto (Caddy lo conserva por defecto).
+media.{$MATP_DOMAIN} {
+	import certificate
+	import security_headers
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy storage:9000
+}

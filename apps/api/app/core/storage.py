@@ -14,8 +14,10 @@ if TYPE_CHECKING:
 
 
 class ObjectStorage:
-    def __init__(self, client: Any, bucket: str) -> None:
+    def __init__(self, client: Any, bucket: str, presign_client: Any | None = None) -> None:
         self._client = client
+        # Presigned URLs are opened by the browser: they must name the endpoint it can reach.
+        self._presign_client = presign_client or client
         self.bucket = bucket
 
     @classmethod
@@ -29,19 +31,31 @@ class ObjectStorage:
                 "aws_access_key_id": settings.s3_access_key_id,
                 "aws_secret_access_key": settings.s3_secret_access_key,
             }
-        client = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint_url,
-            region_name=settings.s3_region,
-            config=Config(
-                connect_timeout=timeout,
-                read_timeout=max(timeout, 5),
-                retries={"max_attempts": 1},
-                s3={"addressing_style": "path"},
-            ),
-            **credentials,
+        config = Config(
+            connect_timeout=timeout,
+            read_timeout=max(timeout, 5),
+            retries={"max_attempts": 1},
+            # SigV4 always: R2 rejects SigV2, which botocore still uses for presigned URLs in
+            # us-east-1 with a custom endpoint, and MinIO accepts both.
+            signature_version="s3v4",
+            s3={"addressing_style": "path"},
         )
-        return cls(client, settings.s3_bucket)
+
+        def client_for(endpoint_url: str | None) -> Any:
+            return boto3.client(
+                "s3",
+                endpoint_url=endpoint_url,
+                region_name=settings.s3_region,
+                config=config,
+                **credentials,
+            )
+
+        client = client_for(settings.s3_endpoint_url)
+        # S3_PUBLIC_ENDPOINT_URL: the storage as the browser sees it (``localhost:9000`` in
+        # compose, where the API reaches it as ``storage:9000``); empty = the same endpoint.
+        public = settings.s3_public_endpoint_url
+        presign_client = client_for(public) if public else None
+        return cls(client, settings.s3_bucket, presign_client)
 
     def check(self) -> None:
         """Raise if the bucket is not reachable."""
@@ -71,7 +85,7 @@ class ObjectStorage:
         ttl_seconds: int = 900,
     ) -> dict[str, Any]:
         """URL prefirmada PUT para subida directa del navegador."""
-        url = self._client.generate_presigned_url(
+        url = self._presign_client.generate_presigned_url(
             "put_object",
             Params={"Bucket": self.bucket, "Key": key, "ContentType": content_type},
             ExpiresIn=ttl_seconds,
@@ -84,7 +98,7 @@ class ObjectStorage:
         ttl_seconds: int = 300,
     ) -> str:
         """URL prefirmada GET para descarga/visualización."""
-        return self._client.generate_presigned_url(
+        return self._presign_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self.bucket, "Key": key},
             ExpiresIn=ttl_seconds,

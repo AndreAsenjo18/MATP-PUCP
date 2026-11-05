@@ -21,6 +21,8 @@ from app.core.errors import (
     DomainError,
     NotFound,
     PermissionDenied,
+    PreconditionRequired,
+    ServiceUnavailable,
     TooManyAttempts,
     ValidationFailed,
 )
@@ -84,7 +86,9 @@ STATUS_BY_ERROR: list[tuple[type[DomainError], int]] = [
     (AuthenticationRequired, status.HTTP_401_UNAUTHORIZED),
     (TooManyAttempts, status.HTTP_429_TOO_MANY_REQUESTS),
     (NotFound, status.HTTP_404_NOT_FOUND),
+    (PreconditionRequired, status.HTTP_428_PRECONDITION_REQUIRED),
     (PermissionDenied, status.HTTP_403_FORBIDDEN),
+    (ServiceUnavailable, status.HTTP_503_SERVICE_UNAVAILABLE),
     (ValidationFailed, status.HTTP_422_UNPROCESSABLE_CONTENT),
     (BusinessRuleViolation, status.HTTP_409_CONFLICT),
 ]
@@ -96,6 +100,7 @@ HTTP_CODES = {
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
+    410: "gone",
     413: "payload_too_large",
     415: "unsupported_media_type",
     422: "request_validation_failed",

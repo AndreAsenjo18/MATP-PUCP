@@ -25,6 +25,7 @@ export const PERMISSIONS: Record<string, string> = {
   "pieces.update": "Editar fichas de piezas",
   "pieces.delete": "Eliminar piezas lógicamente",
   "pieces.restore": "Restaurar piezas eliminadas",
+  "trash.read": "Abrir la papelera de registros eliminados",
   "identifiers.manage": "Registrar identificadores",
   "identifiers.correct_inventory_code": "Corregir código I (procedimiento auditado)",
   "collections.manage": "Administrar colecciones",
@@ -57,7 +58,8 @@ const READ_ONLY = ["pieces.read", "reports.view"];
 const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
   ADMIN: ALL_PERMISSIONS,
   COLLECTIONS_MANAGER: ALL_PERMISSIONS.filter(
-    (code) => !["users.manage", "exports.full", "imports.revert"].includes(code),
+    (code) =>
+      !["users.manage", "exports.full", "imports.revert", "pieces.restore", "identifiers.correct_inventory_code"].includes(code),
   ),
   CATALOGUER: [
     ...READ_ONLY,
@@ -94,22 +96,22 @@ export const ROLES: ApiSchemas["RoleOut"][] = [
 ];
 
 export const USERS: ApiSchemas["UserOut"][] = [
-  { id: ids.user(1), full_name: "Administrador MATP (sintético)", email: "admin@matp.local", roles: ["ADMIN"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T14:05:00Z", locked_until: null },
-  { id: ids.user(2), full_name: "Gabriela Curadora (sintética)", email: "curadora@matp.local", roles: ["COLLECTIONS_MANAGER"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T11:40:00Z", locked_until: null },
-  { id: ids.user(3), full_name: "Practicante Catalogador (sintético)", email: "catalogador@matp.local", roles: ["CATALOGUER"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-15T16:20:00Z", locked_until: null },
-  { id: ids.user(4), full_name: "Especialista de Conservación (sintético)", email: "conservacion@matp.local", roles: ["CONSERVATION"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-10T10:00:00Z", locked_until: null },
-  { id: ids.user(5), full_name: "Auxiliar de Depósito (sintético)", email: "deposito@matp.local", roles: ["STORAGE_STAFF"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-09-16T08:15:00Z", locked_until: null },
-  { id: ids.user(6), full_name: "Consulta Interna (sintético)", email: "consulta@matp.local", roles: ["INTERNAL_VIEWER"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-08-20T09:00:00Z", locked_until: null },
-  { id: ids.user(7), full_name: "Ex practicante (sintético, desactivado)", email: "exbecario@matp.local", roles: ["CATALOGUER"], is_active: false, created_at: "2026-01-20T09:00:00Z", last_login_at: "2026-04-01T09:00:00Z", locked_until: null },
+  { id: ids.user(1), full_name: "Administrador MATP (sintético)", email: "admin@matp.local", roles: ["ADMIN"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T14:05:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(2), full_name: "Gabriela Curadora (sintética)", email: "curadora@matp.local", roles: ["COLLECTIONS_MANAGER"], is_active: true, created_at: "2026-01-12T09:00:00Z", last_login_at: "2026-09-16T11:40:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(3), full_name: "Practicante Catalogador (sintético)", email: "catalogador@matp.local", roles: ["CATALOGUER"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-15T16:20:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(4), full_name: "Especialista de Conservación (sintético)", email: "conservacion@matp.local", roles: ["CONSERVATION"], is_active: true, created_at: "2026-02-03T09:00:00Z", last_login_at: "2026-09-10T10:00:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(5), full_name: "Auxiliar de Depósito (sintético)", email: "deposito@matp.local", roles: ["STORAGE_STAFF"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-09-16T08:15:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(6), full_name: "Consulta Interna (sintético)", email: "consulta@matp.local", roles: ["INTERNAL_VIEWER"], is_active: true, created_at: "2026-03-01T09:00:00Z", last_login_at: "2026-08-20T09:00:00Z", locked_until: null, must_change_password: false },
+  { id: ids.user(7), full_name: "Ex practicante (sintético, desactivado)", email: "exbecario@matp.local", roles: ["CATALOGUER"], is_active: false, created_at: "2026-01-20T09:00:00Z", last_login_at: "2026-04-01T09:00:00Z", locked_until: null, must_change_password: false },
 ];
 
 export const IDENTIFIER_TYPES: ApiSchemas["IdentifierTypeOut"][] = [
-  { code: "I", label: "Código de inventario general (I)", description: "Columna vertebral del inventario; una vez asignado no cambia salvo corrección auditada (RN-002).", normalization_rule: "INVENTORY", is_unique_when_current: true, locks_on_assignment: true, owned_pieces_only: true, allowed_for_temporary_loan: false, is_active: true, sort_order: 0 },
-  { code: "COLLECTION", label: "Código de colección", description: "Correlativo con siglas de colección (p. ej. MMZ, RA).", normalization_rule: "COLLECTION", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: false, is_active: true, sort_order: 1 },
-  { code: "INC_RN", label: "Código INC / Registro Nacional", description: "Formato cambió de 4 a 6 dígitos según el año de registro.", normalization_rule: "INC_RN", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 2 },
-  { code: "PUCP", label: "Código PUCP", description: "Identificador institucional PUCP.", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 3 },
-  { code: "OWNER", label: "Código del propietario o comodante", description: "Código asignado por el propietario original o el comodante (p. ej. AJB).", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 4 },
-  { code: "OTHER", label: "Otro código histórico", description: "Cualquier otro código histórico que deba conservarse.", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 5 },
+  { code: "I", label: "Código de inventario general (I)", description: "Columna vertebral del inventario; una vez asignado no cambia salvo corrección auditada (RN-002).", normalization_rule: "INVENTORY", is_unique_when_current: true, locks_on_assignment: true, owned_pieces_only: true, allowed_for_temporary_loan: false, is_active: true, sort_order: 0, is_system: true },
+  { code: "COLLECTION", label: "Código de colección", description: "Correlativo con siglas de colección (p. ej. MMZ, RA).", normalization_rule: "COLLECTION", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: false, is_active: true, sort_order: 1, is_system: true },
+  { code: "INC_RN", label: "Código INC / Registro Nacional", description: "Formato cambió de 4 a 6 dígitos según el año de registro.", normalization_rule: "INC_RN", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 2, is_system: false },
+  { code: "PUCP", label: "Código PUCP", description: "Identificador institucional PUCP.", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 3, is_system: false },
+  { code: "OWNER", label: "Código del propietario o comodante", description: "Código asignado por el propietario original o el comodante (p. ej. AJB).", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 4, is_system: false },
+  { code: "OTHER", label: "Otro código histórico", description: "Cualquier otro código histórico que deba conservarse.", normalization_rule: "GENERIC", is_unique_when_current: false, locks_on_assignment: false, owned_pieces_only: false, allowed_for_temporary_loan: true, is_active: true, sort_order: 5, is_system: false },
 ];
 
 interface VocabularyDef {

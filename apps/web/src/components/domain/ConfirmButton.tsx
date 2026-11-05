@@ -10,6 +10,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { cn } from "@/lib/cn";
 
 export interface ConfirmButtonProps {
   label: string;
@@ -22,7 +23,11 @@ export interface ConfirmButtonProps {
   icon?: LucideIcon;
   requireReason?: boolean;
   reasonLabel?: string;
+  /** Mínimo de caracteres del motivo, si la operación pide más que uno. */
+  minReasonLength?: number;
   onConfirm: (reason: string) => void;
+  /** Ancho del diálogo: `lg` para los que piden un motivo o muestran más texto. */
+  dialogSize?: "md" | "lg";
   disabled?: boolean;
   className?: string;
 }
@@ -33,8 +38,8 @@ export function confirmVariant(variant: ButtonVariant): ButtonVariant {
 }
 
 /** Motivo válido para confirmar: obligatorio (no vacío) cuando `requireReason`. */
-export function canConfirm(requireReason: boolean, reason: string): boolean {
-  return !requireReason || reason.trim().length > 0;
+export function canConfirm(requireReason: boolean, reason: string, minLength = 1): boolean {
+  return !requireReason || reason.trim().length >= minLength;
 }
 
 export function ConfirmButton({
@@ -48,7 +53,9 @@ export function ConfirmButton({
   icon,
   requireReason = false,
   reasonLabel = "Motivo",
+  minReasonLength = 1,
   onConfirm,
+  dialogSize = "md",
   disabled,
   className,
 }: ConfirmButtonProps) {
@@ -62,14 +69,14 @@ export function ConfirmButton({
       </Button>
       <dialog
         ref={dialogRef}
-        className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40"
+        className={cn("m-auto w-[calc(100%-2rem)] rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40", dialogSize === "lg" ? "max-w-xl" : "max-w-md")}
         onClose={() => setReason("")}
       >
         <form
           method="dialog"
           className="flex flex-col gap-4 p-6"
           onSubmit={(event) => {
-            if (!canConfirm(requireReason, reason)) {
+            if (!canConfirm(requireReason, reason, minReasonLength)) {
               event.preventDefault();
               return;
             }
@@ -79,7 +86,7 @@ export function ConfirmButton({
           <h2 className="text-lg font-semibold text-tinta">{confirmTitle}</h2>
           <div className="text-base text-gris-texto">{confirmDescription}</div>
           {requireReason && (
-            <Textarea label={reasonLabel} required value={reason} onChange={(event) => setReason(event.target.value)} rows={2} />
+            <Textarea label={reasonLabel} required minLength={minReasonLength} value={reason} onChange={(event) => setReason(event.target.value)} rows={dialogSize === "lg" ? 4 : 2} />
           )}
           <div className="flex flex-wrap justify-end gap-3">
             <Button variant="secondary" onClick={() => dialogRef.current?.close()}>

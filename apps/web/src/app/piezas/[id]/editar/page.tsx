@@ -2,8 +2,8 @@
 
 /**
  * Pantalla 5 — Editor de pieza con validación en tiempo real (RF-043). El código I no aparece
- * como editable (RN-002): su corrección vive en la pestaña Identificadores de la ficha, con
- * procedimiento auditado y solo para el rol Administrador.
+ * como editable (RN-002): se corrige desde la ficha, con procedimiento auditado y solo para el rol
+ * Administrador.
  *
  * Funciona en los dos modos (`NEXT_PUBLIC_API_MODE`): `mock` lee y actualiza el store de la
  * sesión de demostración; `live` carga la ficha con `fetchPieceDetail` y guarda con `updatePiece`
@@ -36,6 +36,8 @@ interface EditorViewProps {
 function EditorView({ piece, afterSave }: EditorViewProps) {
   const router = useRouter();
   const { hasPermission } = useSession();
+  // Versión de la ficha contra la que se guarda (If-Match, design D2 de ficha-pieza-crud).
+  const [version, setVersion] = useState(piece.version);
 
   if (!hasPermission("pieces.update")) {
     return <PermissionNotice>Su rol no tiene permiso para editar piezas (RF-039). Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
@@ -43,7 +45,8 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
 
   async function handleSave(values: PieceFormValues): Promise<SaveOutcome> {
     const input = toUpdateInput(values, piece.period, piece.masked_fields ?? []);
-    const result = await updatePiece(piece.id, input);
+    const result = await updatePiece(piece.id, input, version);
+    if (result.status === "ok") setVersion(result.piece.version);
     const outcome = outcomeFromUpdate(
       result,
       getApiMode() === "live" ? "Cambios guardados." : "Cambios guardados en esta sesión de demostración.",
@@ -55,7 +58,10 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
   /** Versión actual de la ficha en el servidor: solo se pide tras un 409, para «Ver cambios del otro usuario». */
   async function loadCurrentValues(): Promise<PieceFormValues | null> {
     const current = await fetchPieceDetail(piece.id);
-    return current.status === "ok" ? toFormValues(current.piece) : null;
+    if (current.status !== "ok") return null;
+    // Quien vio los cambios del otro usuario guarda contra esa versión, no contra la que abrió.
+    setVersion(current.piece.version);
+    return toFormValues(current.piece);
   }
 
   return (
@@ -67,8 +73,7 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
         </Link>
         <h1 className="text-2xl font-bold text-tinta">Editar: {piece.denomination}</h1>
         <p className="text-base text-gris-texto">
-          El código I no se edita aquí (RN-002): use la pestaña Identificadores de la ficha si necesita una
-          corrección auditada.
+          El código I no se edita aquí (RN-002): se corrige desde la ficha, con el procedimiento auditado.
         </p>
       </header>
 

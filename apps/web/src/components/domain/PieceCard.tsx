@@ -6,6 +6,7 @@ import { ImageOff, MapPin } from "lucide-react";
 import Link from "next/link";
 
 import { cardClassName } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 import type { ApiSchemas } from "@/lib/api/client";
 
 import { AlertBadge, TenureBadge } from "./StatusBadges";
@@ -22,6 +23,14 @@ export interface PieceCardProps {
   tenureRegime: TenureRegimeLabel | string;
   alerts?: PieceAlert[];
   hasPhoto: boolean;
+  /** Miniatura de la foto principal (búsqueda en modo `live`). */
+  thumbnailUrl?: string | null;
+  /** Qué coincidió con la búsqueda, en lenguaje claro (RF-031). */
+  matchReason?: string | null;
+  /** «visto hace N días», solo para quien puede ver la ubicación (fusion-busqueda-deposito 3.3). */
+  seenText?: string | null;
+  /** Más apretada por debajo de lg, para ver más resultados en tableta (fusion-busqueda-deposito D4). */
+  compact?: boolean;
 }
 
 /** Props de la tarjeta a partir del resumen de pieza del contrato de la API. */
@@ -38,19 +47,48 @@ export function pieceCardProps(piece: ApiSchemas["PieceSummary"], alerts: PieceA
   };
 }
 
-export function PieceCard({ href, title, inventoryCode, collectionName, locationLabel, tenureRegime, alerts = [], hasPhoto }: PieceCardProps) {
+export function PieceCard({
+  href,
+  title,
+  inventoryCode,
+  collectionName,
+  locationLabel,
+  tenureRegime,
+  alerts = [],
+  hasPhoto,
+  thumbnailUrl,
+  matchReason,
+  seenText,
+  compact = false,
+}: PieceCardProps) {
   // «Sin foto» se muestra en el pie de la tarjeta; no se repite como badge.
-  const badges = alerts.filter((alert) => alert.applies && alert.type !== "WITHOUT_PHOTO");
+  const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
   return (
-    <Link href={href} className={cardClassName({ interactive: true, className: "flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota" })}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-sm font-bold text-terracota">{inventoryCode ?? "Sin código I"}</span>
-        <TenureBadge regime={tenureRegime} />
+    <Link
+      href={href}
+      className={cardClassName({
+        interactive: true,
+        padded: !compact,
+        className: cn("flex flex-col gap-2 focus-visible:outline-2 focus-visible:outline-terracota", compact && "p-3 lg:p-4"),
+      })}
+    >
+      <div className="flex items-start gap-3">
+        {thumbnailUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- URL prefirmada del almacenamiento
+          <img src={thumbnailUrl} alt="" loading="lazy" className={cn("shrink-0 rounded-md bg-crema object-cover", compact ? "size-14 lg:size-20" : "size-20")} />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="font-mono text-sm font-bold text-terracota">{inventoryCode ?? "Sin código I"}</span>
+            <TenureBadge regime={tenureRegime} />
+          </div>
+          <h3 className="line-clamp-2 text-lg font-semibold text-tinta" title={title}>
+            {title}
+          </h3>
+          <p className="text-sm text-gris-texto">{collectionName ?? "Sin colección"}</p>
+        </div>
       </div>
-      <h3 className="line-clamp-2 text-lg font-semibold text-tinta" title={title}>
-        {title}
-      </h3>
-      <p className="text-sm text-gris-texto">{collectionName ?? "Sin colección"}</p>
+      {matchReason && <p className="rounded-md bg-crema px-2 py-1 text-sm text-tinta">{matchReason}</p>}
       {badges.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {badges.map((alert) => (
@@ -62,6 +100,7 @@ export function PieceCard({ href, title, inventoryCode, collectionName, location
         <span className="flex items-center gap-1">
           <MapPin size={16} aria-hidden="true" className="text-terracota" />
           {locationLabel ?? "Sin ubicación"}
+          {seenText && <span className="text-gris-texto"> · {seenText}</span>}
         </span>
         {!hasPhoto && (
           <span className="flex items-center gap-1 font-medium text-ambar-texto" title="Requiere fotografía">

@@ -1,15 +1,34 @@
 """Database engine and session factory (SQLAlchemy 2)."""
 
+import unicodedata
 from collections.abc import Iterator
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
+
+
+def sqlite_unaccent(val: str | None) -> str | None:
+    """Strip accents and diacritics for SQLite unit tests (unicodedata NFKD)."""
+    if val is None:
+        return None
+    nfkd = unicodedata.normalize("NFKD", str(val))
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
+@event.listens_for(Engine, "connect")
+def _register_sqlite_functions(dbapi_connection, _connection_record) -> None:  # type: ignore[no-untyped-def]
+    if hasattr(dbapi_connection, "create_function"):
+        dbapi_connection.create_function("unaccent", 1, sqlite_unaccent)
+        dbapi_connection.create_function("immutable_unaccent", 1, sqlite_unaccent)
 
 
 def make_engine(database_url: str, *, connect_timeout: float = 2.0, echo: bool = False) -> Engine:
     connect_args: dict[str, object] = {}
     if database_url.startswith("postgresql"):
         connect_args["connect_timeout"] = max(1, int(connect_timeout))
+        # JIT off for every connection (ADR-018): on these short OLTP queries compiling costs more
+        # than running them (KPI 714 → 266 ms, incomplete report page 2.6 s → 92 ms, 20 000 pieces).
+        connect_args["options"] = "-c jit=off"
     return create_engine(database_url, pool_pre_ping=True, echo=echo, connect_args=connect_args)
 
 

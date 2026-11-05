@@ -1,7 +1,5 @@
 # Calidad de datos
 
-> Sección en construcción. Por ahora solo está escrita «Posibles duplicados» (change `deteccion-duplicados-y-cola-revision`). Las alertas de completitud de cada pieza y el tablero los añade el change `alertas-y-reporte-incompletas`.
-
 ## Posibles duplicados
 
 Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de inventario y en una sábana de Excel, con la denominación escrita de otra forma («Retablo ayacuchano» y «Retablo Ayacuchano (3 pisos)») o con el código en otro formato («M.M.Z. 015» y «mmz 15»). El sistema busca esos casos y los propone como **pares** para que una persona decida qué hacer con cada uno.
@@ -14,7 +12,7 @@ Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de in
 
 1. En la barra lateral, pulse **Duplicados**.
 2. Se abre **Cola de posibles duplicados**. Muestra primero los pares pendientes, del más parecido al menos parecido, de diez en diez.
-3. Para ver más pares, pulse **Siguiente** al final de la página; para volver, **Anterior**.
+3. Para ver más pares, use **Siguiente** y **Anterior**: los controles están **arriba y abajo** de la lista, con «Página 1 de 2». Al cambiar de página desde abajo, la pantalla vuelve al principio.
 
 ### Filtrar la cola
 
@@ -29,13 +27,13 @@ Arriba de la cola hay cuatro filtros. Al cambiar uno, la cola se actualiza sola:
 
 Cada par se muestra en una tarjeta:
 
-1. Arriba a la izquierda está la **Similitud** del par (por ejemplo, «Similitud 87 %») y, a la derecha, su estado.
-2. La tabla compara las dos fichas lado a lado: denominación, colección, régimen, código I, otros códigos, autor, procedencia, época y medidas.
-3. Las filas que hacen pensar que es la misma pieza aparecen en ámbar con la etiqueta **Coincide**. Si las dos piezas tienen códigos I distintos, la fila del código I aparece en rojo con la etiqueta **Conflicto**.
-4. Debajo, **Por qué se propone** explica cada motivo: qué se comparó, cuánto se parece y los dos valores, el de la pieza A y el de la pieza B.
+1. Arriba a la izquierda, un anillo muestra la **similitud** del par en cifra grande («90 %») y su nivel en palabras: **alta** (85 % o más), **media** (70 % o más) o **baja**. A su lado están el estado del par y etiquetas cortas con los motivos («Denominación parecida 100 %»).
+2. La tabla compara las dos fichas con el **nombre del campo en el centro**: la pieza A a la izquierda y la B a la derecha. Campos: denominación, colección, régimen, código I, otros códigos, autor, procedencia, época y medidas. En el celular, cada campo apila sus dos valores.
+3. Cada fila dice si es **igual** (en verde), **distinto** (con fondo ámbar) o **conflicto** (con fondo rojo, cuando las dos piezas tienen códigos I distintos). Un campo vacío en las dos piezas no se marca.
+4. Debajo, **Ver por qué se propone** despliega cada motivo: qué se comparó, cuánto se parece y los dos valores, el de la pieza A y el de la B.
 5. Pulse la denominación de una pieza para abrir su ficha.
 
-En un par con una **fila de importación**, la fila todavía no forma parte del catálogo: se decide en su carga. Pulse **Ver en el asistente de importación**.
+En un par con una **fila de importación**, la fila todavía no forma parte del catálogo: se decide en su carga. Pulse **Ver en Importación**.
 
 ### Marcar dos piezas como distintas
 
@@ -73,9 +71,9 @@ Solo puede haber una búsqueda completa a la vez. Si alguien ya lanzó una, se m
 Fusionar deja **una sola ficha**. La pieza que se conserva recibe los datos de la otra; la otra queda **fusionada**: se da de baja (no se borra), se puede seguir consultando y enlaza a la que se conservó.
 
 1. En la tarjeta del par, pulse **Fusionar**. Se abre el asistente de fusión con tres pasos.
-2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Si solo una de las dos tiene código I, se conserva esa: la otra opción aparece desactivada con el motivo, porque un código I nunca pasa a otra pieza.
+2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Cada opción muestra su **código I y los demás códigos** (los históricos, marcados «histórico»), o «Sin código I». Si solo una de las dos tiene código I, se conserva esa: la otra opción aparece desactivada con el motivo, porque un código I nunca pasa a otra pieza.
 3. Pulse **Siguiente**.
-4. **Paso 2, Valores de la ficha**: en cada campo en el que las dos piezas tienen datos distintos, elija qué valor queda. Si no cambia nada, queda el de la pieza que se conserva.
+4. **Paso 2, Valores de la ficha**: arriba se repiten los códigos de las dos piezas. En cada campo en el que las dos piezas tienen datos distintos, elija qué valor queda. Si no cambia nada, queda el de la pieza que se conserva.
    - La **época** y las **medidas** se eligen completas de una sola pieza.
    - Los campos que la pieza que se conserva tiene vacíos se completan solos con los de la otra; el asistente los lista.
    - La ubicación actual y la pieza de la que es componente son siempre las de la pieza que se conserva.
@@ -83,12 +81,12 @@ Fusionar deja **una sola ficha**. La pieza que se conserva recibe los datos de l
 6. **Paso 3, Resumen y confirmación**: revise el resumen antes de confirmar.
    - **La ficha de … después de fusionar**: cada dato que cambia, con su valor anterior y el nuevo.
    - **Pasa de … a …**: los códigos de la otra pieza (si alguno repite un código de la pieza que se conserva, pasa como no vigente; no se borra), sus fotografías, sus materiales, sus componentes, sus préstamos y sus sugerencias de IA.
-   - **Se queda en …**: sus movimientos, sus datos de origen y sus evaluaciones de conservación, sin cambios, y su código I si lo tiene.
-7. Escriba el **Motivo de la fusión (obligatorio)**, de al menos 3 caracteres.
+   - **Qué se queda en …** (plegado): sus movimientos, sus datos de origen y sus evaluaciones de conservación, sin cambios, y su código I si lo tiene.
+7. Escriba el **Motivo de la fusión (obligatorio)**, de al menos 3 caracteres. Está **al lado del resumen** en la computadora y **arriba** en el celular, sin bajar hasta el final.
 8. Pulse **Fusionar piezas**.
 9. Aparece el aviso verde «Piezas fusionadas: … quedó fusionada en …». La cola se actualiza: el par pasa a **Fusionados** y los demás pares de la pieza fusionada pasan a **Reemplazados**.
 
-Para volver a un paso anterior sin perder lo elegido, pulse **Anterior**. Para salir sin fusionar, pulse **Cancelar**: no se cambia nada.
+El asistente cabe en la pantalla: el contenido se desplaza dentro del cuadro y los botones **Cancelar**, **Anterior** y **Siguiente** siempre se ven. Para volver a un paso anterior sin perder lo elegido, pulse **Anterior**. Para salir sin fusionar, pulse **Cancelar**: no se cambia nada.
 
 #### Consultar una fusión
 
@@ -100,7 +98,7 @@ Para volver a un paso anterior sin perder lo elegido, pulse **Anterior**. Para s
 
 El botón **Fusionar** aparece desactivado y, debajo, se explica el motivo:
 
-- **Las dos piezas tienen códigos I distintos.** La tarjeta muestra además la etiqueta roja **Códigos I distintos: fusión bloqueada (RN-002)**. Una de las dos tiene el código I equivocado: pida al Administrador que lo corrija con el procedimiento de corrección del código I y vuelva a la cola.
+- **Las dos piezas tienen códigos I distintos.** La tarjeta muestra además la etiqueta roja **Códigos I distintos: no se puede fusionar**. Una de las dos tiene el código I equivocado: pida al Administrador que lo corrija con el procedimiento de corrección del código I y vuelva a la cola.
 - **Las piezas tienen regímenes de tenencia distintos** (por ejemplo, una en propiedad y otra en comodato). Primero corrija el régimen de la pieza equivocada: en su ficha, pulse **Editar ficha** y cambie **Régimen de tenencia**.
 - **Es una fila de importación.** No se fusiona desde la cola: se decide en su carga (aceptar, excluir o rechazar).
 
@@ -117,3 +115,44 @@ Mientras tanto, el par sigue en la cola: puede marcarlo como distinto o posponer
 - **«Ya hay una detección completa en curso: se muestra su avance.»**: espere a que termine la búsqueda que ya está en marcha.
 - **«No se pudieron leer las dos fichas: recargue la cola para poder fusionar.»**: recargue la página. Si sigue igual, avise al equipo técnico.
 - **«Su rol no tiene permiso para resolver duplicados.»**: solo la Gestora de colecciones y el Administrador pueden resolver pares.
+
+## Alertas de completitud, tablero e incompletas
+
+El sistema avisa cuando a una pieza le falta algo, para que no quede pendiente sin que nadie lo note. Hay **6 alertas**, siempre con la misma definición en la ficha, el tablero y el reporte: si una se corrige, desaparece de los tres sitios a la vez.
+
+| Alerta | Cuándo se dispara | A qué piezas aplica |
+|---|---|---|
+| **Sin código I** | No tiene un código de inventario general vigente | Solo piezas **en propiedad** (RN-003, RN-004: comodato y préstamo temporal nunca reciben código I, así que nunca disparan esta alerta) |
+| **Sin foto** | No tiene ninguna fotografía registrada | Todas |
+| **Sin ubicación** | No tiene sede y espacio registrados | Todas |
+| **Campos obligatorios incompletos** | Le falta algún campo marcado como obligatorio | Todas |
+| **Campos recomendados incompletos** | Le falta algún campo marcado como recomendado | Todas |
+| **Código no normalizable** | Tiene un identificador vigente que no se pudo interpretar automáticamente | Todas |
+
+Qué campos son obligatorios o recomendados lo decide el Administrador (hoy solo por la API; esta pantalla llegará en otro change). Un campo que deja de ser obligatorio o recomendado deja de generar esa alerta sin tocar ninguna pieza.
+
+### Alertas en la ficha de la pieza
+
+Al abrir la ficha de una pieza con alguna alerta activa, aparece un recuadro ámbar debajo del título, **Alertas de completitud**, con cada alerta, su explicación en lenguaje claro y una acción para resolverla:
+
+- **Sin código I**, **Sin foto**, **Sin ubicación** y **Código no normalizable** llevan a la pestaña de la misma ficha donde se resuelven (Identificadores, Fotografías o Ubicación e historial).
+- **Campos obligatorios incompletos** y **Campos recomendados incompletos** llevan al editor de la pieza, porque esos campos se completan ahí.
+
+En cuanto se corrige el dato (por ejemplo, se sube una foto), la alerta desaparece de la ficha sin recargar la página a mano.
+
+### Tablero de completitud (Inicio)
+
+En **Inicio**, la sección **Completitud del catálogo** muestra:
+
+- **Piezas registradas**, **Sin código I**, **Sin fotografía** y **Sin ubicación**: el número de piezas afectadas por cada alerta hoy. Pulse una tarjeta para ir a la búsqueda.
+- Una **tabla por colección**, con el porcentaje de completitud de cada alerta en cada colección (incluidas sus subcolecciones). Cuando una colección no tiene ninguna pieza a la que la alerta aplique —por ejemplo, el porcentaje de «Sin código I» en una colección que está entera en comodato—, la celda dice **No aplica** en vez de un número o un error.
+- Un **gráfico de evolución** de los últimos 14 días para el indicador que elija en **Indicador**. Si ningún día del rango tiene piezas a las que la alerta aplique, el gráfico se reemplaza por el mismo aviso «No aplica».
+
+### Reporte de piezas incompletas (Reportes)
+
+En **Reportes**, la pestaña **Información incompleta** lista las piezas que tienen alguna alerta activa, ordenadas de la que tiene más alertas a la que tiene menos:
+
+1. **Filtrar por alerta**: marque una o varias. Varias marcadas se combinan con **«y»** (la pieza debe tener todas las marcadas, no solo una).
+2. **Colección**: limita el reporte a una colección y sus subcolecciones.
+3. La tabla pagina de 20 en 20; use **Anterior**/**Siguiente**.
+4. **Excel**/**CSV** descargan el reporte completo con los filtros aplicados (no solo la página que se ve en pantalla), con la fecha y los filtros en la cabecera del archivo. Solo puede descargar quien tiene permiso de exportar; conectado al servidor real (no en la maqueta de demostración).

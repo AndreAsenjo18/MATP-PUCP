@@ -37,6 +37,9 @@ TRIGRAM_INDEXES = {
     "ix_piece_denomination_trgm",
     "ix_piece_identifier_normalized_trgm",
     "ix_piece_identifier_original_trgm",
+    "ix_piece_author_unaccent_trgm",
+    "ix_piece_denomination_unaccent_trgm",
+    "ix_piece_provenance_unaccent_trgm",
 }
 
 # Unique indexes whose uniqueness only applies to the rows that are still active: removing their
@@ -136,6 +139,7 @@ def test_search_extension_is_installed(migrated: Engine) -> None:
             for (extension,) in connection.execute(text("SELECT extname FROM pg_extension"))
         }
     assert "pg_trgm" in installed, f"Extensiones instaladas: {sorted(installed)}"
+    assert "unaccent" in installed, f"Extensiones instaladas: {sorted(installed)}"
 
 
 def test_trigram_search_indexes_exist(migrated: Engine) -> None:

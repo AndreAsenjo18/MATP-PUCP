@@ -2,7 +2,9 @@
 
 The log gathers the file, sheet, mapping, uploader, approver, stage timestamps, counts per
 classification and decision, skipped empty rows and, for every row that is not applied, its
-source row number and reason. Rows a person resolved are listed too, with the resolution.
+source row number and reason. Rows a person resolved are listed too, with the resolution, and
+the decisions of a person on the photos of the batch (who, when, what and on how many photos;
+change importacion-fotos-a-catalogo, task 4.1), read from the audit log by the batch.
 It is offered as JSON and as a spreadsheet with one sheet for the summary and one per list.
 """
 
@@ -11,9 +13,10 @@ import uuid
 from typing import Any
 
 from openpyxl import Workbook
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.modules.audit.models import AuditLog
 from app.modules.imports.decisions import RowAction, row_action
 from app.modules.imports.models import ImportBatch, ImportRow
 from app.modules.imports.models import ImportBatchStatus as S
@@ -24,11 +27,51 @@ APPLIED_STATUSES = frozenset({S.APPLIED, S.REVERTED})
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
+def _header_rows_text(numbers: Any) -> str | None:
+    """«1 fila omitida por repetir el encabezado (fila 105)» (formatos-reales-importacion, D7)."""
+    if not numbers:
+        return None
+    rows = ", ".join(str(number) for number in numbers[:20]) + (" …" if len(numbers) > 20 else "")
+    count = len(numbers)
+    noun = "fila omitida" if count == 1 else "filas omitidas"
+    where = "fila" if count == 1 else "filas"
+    return f"{count} {noun} por repetir el encabezado ({where} {rows})"
+
+
 def _user_name(session: Session, user_id: uuid.UUID | None) -> str | None:
     if user_id is None:
         return None
     user = session.get(AppUser, user_id)
     return user.full_name if user is not None else None
+
+
+def photo_decisions(session: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Decisions of a person on the photos of the batch, one per change set (task 4.1)."""
+    rows = session.execute(
+        select(
+            AuditLog.change_set_id,
+            func.min(AuditLog.occurred_at),
+            AuditLog.user_id,
+            AuditLog.reason,
+            func.count(func.distinct(AuditLog.entity_id)),
+        )
+        .where(
+            AuditLog.entity_type == "import_photo",
+            AuditLog.origin_ref == str(batch_id),
+            AuditLog.user_id.is_not(None),
+        )
+        .group_by(AuditLog.change_set_id, AuditLog.user_id, AuditLog.reason)
+        .order_by(func.min(AuditLog.occurred_at))
+    ).all()
+    return [
+        {
+            "at": occurred_at.isoformat(),
+            "user": _user_name(session, user_id),
+            "operation": reason,
+            "photos": int(count),
+        }
+        for _, occurred_at, user_id, reason, count in rows
+    ]
 
 
 def build_log(session: Session, batch: ImportBatch) -> dict[str, Any]:
@@ -83,6 +126,9 @@ def build_log(session: Session, batch: ImportBatch) -> dict[str, Any]:
             if has_rows
             else {},
             "skipped_empty_rows": raw.get("skipped_empty_rows") if has_rows else None,
+            "skipped_header_rows": _header_rows_text(raw.get("skipped_header_row_numbers"))
+            if has_rows
+            else None,
         },
         "applied_rows": (
             int(raw.get("APPLIED_CREATED", 0)) + int(raw.get("APPLIED_UPDATED", 0))
@@ -91,6 +137,7 @@ def build_log(session: Session, batch: ImportBatch) -> dict[str, Any]:
         ),
         "rejected_rows": skipped if has_rows else None,
         "entries": entries,
+        "photo_decisions": photo_decisions(session, batch.id),
     }
 
 
@@ -105,6 +152,7 @@ _SUMMARY_LABELS = (
     ("approved_by", "Aprobado por"),
     ("approved_at", "Fecha de aprobación"),
     ("skipped_empty_rows", "Filas vacías omitidas"),
+    ("skipped_header_rows", "Filas omitidas por repetir el encabezado"),
 )
 _ROW_HEADERS = ("Fila", "Clasificación", "Decisión", "Acción", "Motivo", "Pieza")
 
@@ -153,6 +201,13 @@ def log_workbook(log: dict[str, Any]) -> bytes:
                 else None
             )
             resolved.append([*_entry_values(entry), detail])
+    if log.get("photo_decisions"):
+        decisions = workbook.create_sheet("Decisiones sobre fotos")
+        decisions.append(["Fecha", "Usuario", "Decisión", "Fotos"])
+        for decision in log["photo_decisions"]:
+            decisions.append(
+                [decision["at"], decision["user"], decision["operation"], decision["photos"]]
+            )
     stream = io.BytesIO()
     workbook.save(stream)
     return stream.getvalue()

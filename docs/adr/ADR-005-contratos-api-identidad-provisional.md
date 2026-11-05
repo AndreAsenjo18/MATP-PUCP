@@ -1,6 +1,6 @@
 # ADR-005 — Convenciones de la API REST, stubs explícitos e identidad provisional de desarrollo
 
-- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26)
+- **Estado**: Aceptado (ratificado por el Arquitecto de Software, 2026-09-26); **reemplazado parcialmente por [ADR-009](ADR-009-autenticacion-sesiones.md)** en lo referente a la identidad provisional (decisión 6): `X-MATP-User` solo se acepta con `APP_ENV=test`, ya no es un esquema del contrato y la autenticación real es la sesión de servidor. El resto (convenciones REST, stubs explícitos, errores) sigue vigente
 - **Fecha**: 2026-09-17
 - **Change de origen**: `contratos-api-borrador`
 

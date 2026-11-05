@@ -10,6 +10,7 @@
  */
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
 
+import { suggestCode } from "./admin";
 import { apiBaseUrl, getApiMode } from "./mode";
 
 export type LocationOut = ApiSchemas["LocationOut"];
@@ -35,7 +36,6 @@ const CONNECTION_MESSAGE = "No se pudo conectar con el servidor. Intente nuevame
 export const LOCATION_ERROR_MESSAGES: Record<string, string> = {
   invalid_location_parent: "Ese nivel no puede ubicarse ahí: revise el padre elegido.",
   duplicate_location_code: "Ya existe una ubicación activa con ese código.",
-  location_not_empty: "Debe reubicar las piezas antes de desactivar esta ubicación.",
   location_cycle: "No se puede ubicar un lugar dentro de uno de sus propios niveles.",
   confirm_affected_count_mismatch: "El número de piezas afectadas cambió: confirme el número actual.",
   space_kind_not_applicable: "El tipo de espacio solo aplica al nivel Depósito.",
@@ -52,6 +52,11 @@ export const LOCATION_ERROR_MESSAGES: Record<string, string> = {
   idempotency_key_reused: "La clave de reintento ya se usó con una petición distinta.",
   permission_denied: "Su rol no tiene permiso para esta operación.",
 };
+
+export function describeLocationFailure(failure: LocationFailure): string {
+  if (failure.status === "unavailable") return failure.message;
+  return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
+}
 
 function client(devUser: string | undefined) {
   return createApiClient({ baseUrl: apiBaseUrl(), devUser });
@@ -127,19 +132,24 @@ export async function movePiece(pieceId: string, body: MovementCreateInput, devU
 
 /**
  * `POST /movements/batch` (design D3): todo o nada; `idempotencyKey` evita duplicar el lote si
- * el móvil reenvía la misma petición por una conexión lenta (RNF-005).
+ * el móvil reenvía la misma petición por una conexión lenta (RNF-005). Si alguna pieza no se puede
+ * mover, la API responde 409 o 422 con el detalle por pieza: es la respuesta del lote, no un error de
+ * conexión, así que vuelve como `ok` con sus `failures` para decir qué pieza lo impidió.
  */
 export async function batchMovePieces(
   body: BatchMovementRequest,
   idempotencyKey: string,
   devUser?: string,
 ): Promise<LocationResult<BatchMovementResponse>> {
-  return call(() =>
-    client(devUser).POST("/api/v1/movements/batch", {
+  return call(async () => {
+    const response = await client(devUser).POST("/api/v1/movements/batch", {
       params: { header: { "Idempotency-Key": idempotencyKey } },
       body,
-    }),
-  );
+    });
+    const error: unknown = response.error;
+    if (isRecord(error) && Array.isArray(error.failures)) return { data: error as BatchMovementResponse };
+    return response;
+  });
 }
 
 /** Clave de reintento nueva por lote (crypto.randomUUID, disponible en navegadores modernos). */
@@ -150,7 +160,151 @@ export function newIdempotencyKey(): string {
 
 export type LocationRef = ApiSchemas["LocationRef"];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Cuándo se vio la pieza en su lugar por última vez, en días de calendario: «visto hoy», «visto ayer»
+ * o «visto hace N días» (fusion-busqueda-deposito 3.3).
+ */
+export function seenAgoText(lastSeenAt: string, now: Date = new Date()): string {
+  const seen = new Date(lastSeenAt);
+  const startOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.max(0, Math.round((startOf(now) - startOf(seen)) / DAY_MS));
+  if (days === 0) return "visto hoy";
+  if (days === 1) return "visto ayer";
+  return `visto hace ${days} días`;
+}
+
 /** Ruta completa de una ubicación como texto, p. ej. «Sede › Depósito 1 › Rack A». */
 export function locationPathLabel(path: readonly Pick<LocationRef, "name">[]): string {
   return path.map((node) => node.name).join(" › ");
+}
+
+export interface LocationFilters {
+  query: string;
+  /** `""` = todos los niveles. */
+  level: "" | LocationLevelLabel;
+}
+
+function foldName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * El árbol reducido a las ubicaciones cuyo nombre contiene la búsqueda y que son del nivel elegido,
+ * con sus ascendientes como contexto (aunque no coincidan). Sin filtros devuelve el árbol entero.
+ */
+export function filterLocationTree(nodes: readonly LocationNode[], filters: LocationFilters): LocationNode[] {
+  const query = foldName(filters.query);
+  if (!query && !filters.level) return [...nodes];
+  const visit = (node: LocationNode): LocationNode | null => {
+    const children = (node.children ?? []).map(visit).filter((child): child is LocationNode => child !== null);
+    const matches = (!query || foldName(node.name).includes(query)) && (!filters.level || node.level_type === filters.level);
+    return matches || children.length > 0 ? { ...node, children } : null;
+  };
+  return nodes.map(visit).filter((node): node is LocationNode => node !== null);
+}
+
+/** Un lugar donde puede quedar guardada una pieza, con su ruta completa desde la sede. */
+export interface DestinationOption {
+  id: string;
+  label: string;
+  /** Nivel jerárquico, para el texto de ayuda (p. ej. «Nivel»). */
+  level: string;
+}
+
+/**
+ * Lugares finales del árbol (los que no tienen otros dentro), con la ruta completa como etiqueta.
+ * «Mover a» en la búsqueda solo ofrece estos: una pieza queda en un nivel o un contenedor,
+ * no en una sede o un mueble con niveles. La API acepta cualquier destino activo que no sea sede;
+ * la restricción es de interfaz (`rediseno-ux-deposito`, D1).
+ */
+export function finalLocations(nodes: readonly LocationNode[], prefix: readonly string[] = []): DestinationOption[] {
+  return nodes.flatMap((node) => {
+    const path = [...prefix, node.name];
+    const children = node.children ?? [];
+    return children.length === 0 ? [{ id: node.id, label: path.join(" › "), level: node.level_type }] : finalLocations(children, path);
+  });
+}
+
+/** Destinos cuya ruta contiene la búsqueda, sin distinguir mayúsculas ni acentos. */
+export function filterDestinations(items: readonly DestinationOption[], query: string): DestinationOption[] {
+  const needle = foldName(query);
+  if (!needle) return [...items];
+  return items.filter((item) => foldName(item.label).includes(needle));
+}
+
+/** El camino desde la sede hasta el lugar `id`, o `null` si no está en el árbol. */
+/** Los lugares finales para la ubicación inicial de una pieza, o `null` si no se pudieron cargar. */
+export async function fetchDestinations(devUser?: string): Promise<DestinationOption[] | null> {
+  const tree = await fetchLocationsTree(devUser);
+  return tree.status === "ok" ? finalLocations(tree.value) : null;
+}
+
+/** La ubicación inicial es el primer movimiento de la pieza: queda en su historial y en la auditoría. */
+export function firstLocationBody(toLocationId: string): MovementCreateInput {
+  return { movement_type: "MOVE", to_location_id: toLocationId, reason: "Ubicación inicial al registrar la pieza" };
+}
+
+/** Qué se puede agregar dentro de un lugar, en lenguaje claro (`crud-manual-completo` D3). */
+export function allowedTypesSentence(node: Pick<LocationNode, "name" | "level_type" | "allowed_child_types">): string {
+  const level = node.level_type.toLowerCase();
+  const types = node.allowed_child_types ?? [];
+  if (types.length === 0) return `En «${node.name}» (${level}) no se pueden agregar lugares.`;
+  return `Dentro de «${node.name}» (${level}) se puede agregar: ${types.map((type) => type.toLowerCase()).join(" o ")}.`;
+}
+
+/**
+ * Código propuesto para un lugar nuevo: su ruta sin la sede, porque un mismo nombre («Caja 14») puede
+ * repetirse en otro estante y el código no. Mismo tope que la API.
+ */
+export function proposedPlaceCode(trail: readonly Pick<LocationNode, "name">[], name: string): string {
+  return suggestCode([...trail.slice(1).map((node) => node.name), name].join(" ")).slice(0, 80);
+}
+
+export function locationTrail(nodes: readonly LocationNode[], id: string): LocationNode[] | null {
+  for (const node of nodes) {
+    if (node.id === id) return [node];
+    const below = locationTrail(node.children ?? [], id);
+    if (below) return [node, ...below];
+  }
+  return null;
+}
+
+/** Una fila visible del selector de ubicaciones en árbol. */
+export interface LocationTreeRow {
+  node: LocationNode;
+  depth: number;
+  /** Nombres desde la sede hasta este lugar. */
+  path: string[];
+  hasChildren: boolean;
+  expanded: boolean;
+}
+
+/**
+ * Filas visibles del selector de ubicaciones (`fusion-busqueda-deposito`, tarea 2.2): sin búsqueda,
+ * las ramas abiertas en `expanded`; con búsqueda, los lugares cuyo nombre la contiene con sus
+ * ascendientes como contexto, todo abierto.
+ */
+export function locationTreeRows(
+  nodes: readonly LocationNode[],
+  { query = "", expanded = new Set<string>() }: { query?: string; expanded?: ReadonlySet<string> } = {},
+): LocationTreeRow[] {
+  const searching = foldName(query) !== "";
+  const rows: LocationTreeRow[] = [];
+  const walk = (list: readonly LocationNode[], depth: number, prefix: readonly string[]) => {
+    for (const node of list) {
+      const children = node.children ?? [];
+      const path = [...prefix, node.name];
+      const open = children.length > 0 && (searching || expanded.has(node.id));
+      rows.push({ node, depth, path, hasChildren: children.length > 0, expanded: open });
+      if (open) walk(children, depth + 1, path);
+    }
+  };
+  walk(searching ? filterLocationTree(nodes, { query, level: "" }) : nodes, 0, []);
+  return rows;
 }

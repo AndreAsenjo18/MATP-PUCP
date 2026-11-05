@@ -1,0 +1,119 @@
+# Versión de PRODUCCIÓN por tag (change pipeline-despliegue-ambientes, design D4; reemplaza la versión
+# de despliegue-vm-y-respaldos, tarea 2.1, que reconstruía las imágenes).
+#
+# Al crear un tag vX.Y.Z: valida el formato, comprueba que el commit está en main y que «Publicar
+# imágenes» (publish-images.yml) ya publicó `sha-<commit>` de la API y del frontend, y las
+# REETIQUETA como vX.Y.Z sin reconstruir: producción ejecuta exactamente el mismo digest que se
+# probó en el ambiente de pruebas. Termina con un GitHub Release con las notas de los PR y la tabla
+# de digests.
+#
+# No toca la VM: no hay secretos ni acceso a ella en GitHub (despliegue-vm-y-respaldos, D3). Quien
+# despliega ejecuta `scripts/deploy.sh vX.Y.Z` en la VM (docs/despliegue/vm.md).
+name: Publicar versión
+
+on:
+  push:
+    # Cualquier tag que empiece con «v»: un formato inválido falla diciendo cuál es el correcto, en
+    # lugar de que el tag pase sin que nadie se entere.
+    tags: ["v*"]
+
+permissions:
+  contents: write # GitHub Release
+  packages: write # nueva etiqueta de las imágenes en GHCR
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Versión ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+      IMAGES: matp-api matp-web
+    steps:
+      - name: Formato vMAYOR.MENOR.PARCHE
+        run: |
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::«$VERSION» no es una versión: use el formato vMAYOR.MENOR.PARCHE (por ejemplo, v0.1.0)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # El commit del tag (también si el tag es anotado) tiene que estar en main.
+      - name: El commit está en main
+        id: commit
+        run: |
+          commit="$(git rev-list -n 1 "$VERSION")"
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::El tag $VERSION apunta al commit $commit, que no está en main: una versión solo puede salir de main."
+            exit 1
+          fi
+
+      # GHCR exige nombres en minúsculas y el propietario del repositorio puede tenerlas.
+      - name: Registro de imágenes
+        id: registry
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Las imágenes del commit existen
+        env:
+          PREFIX: ${{ steps.registry.outputs.prefix }}
+          COMMIT: ${{ steps.commit.outputs.sha }}
+        run: |
+          missing=0
+          for image in $IMAGES; do
+            if ! docker buildx imagetools inspect "$PREFIX/$image:sha-$COMMIT" > /dev/null 2>&1; then
+              echo "::error::No existe $image:sha-$COMMIT. El CI de ese commit en main no terminó en verde o «Publicar imágenes» todavía no termina: no hay nada probado que publicar."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      # Mismo manifiesto, otra etiqueta: no se reconstruye nada.
+      - name: Reetiquetar sin reconstruir
+        env:
+          PREFIX: ${{ steps.registry.outputs.prefix }}
+          COMMIT: ${{ steps.commit.outputs.sha }}
+        run: |
+          {
+            echo "## Imágenes"
+            echo ""
+            echo "Mismo digest que las imágenes probadas del commit \`$COMMIT\`."
+            echo ""
+            echo "| Imagen | Etiqueta | Digest |"
+            echo "|---|---|---|"
+          } > release-notes.md
+          for image in $IMAGES; do
+            docker buildx imagetools create --tag "$PREFIX/$image:$VERSION" "$PREFIX/$image:sha-$COMMIT"
+            tested="$(docker buildx imagetools inspect "$PREFIX/$image:sha-$COMMIT" --format '{{json .Manifest}}' | jq -r .digest)"
+            released="$(docker buildx imagetools inspect "$PREFIX/$image:$VERSION" --format '{{json .Manifest}}' | jq -r .digest)"
+            if [[ "$tested" != "$released" ]]; then
+              echo "::error::$image:$VERSION ($released) no tiene el digest de sha-$COMMIT ($tested)."
+              exit 1
+            fi
+            echo "| \`$image\` | \`$VERSION\` | \`$released\` |" >> release-notes.md
+          done
+          {
+            echo ""
+            echo "Despliegue en la VM: \`scripts/deploy.sh $VERSION\` (docs/despliegue/vm.md)."
+          } >> release-notes.md
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Las notas generadas (PR desde la versión anterior) van después de la tabla de digests.
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$VERSION" --verify-tag --title "$VERSION" --notes-file release-notes.md --generate-notes

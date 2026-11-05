@@ -5,6 +5,8 @@ Options:
   --random-seed N       random seed (default SEED_RANDOM_SEED or 20260917)
   --no-media-upload     do not upload placeholder photos to object storage
   --fixtures DIR        only write the synthetic Excel and CSV fixtures into DIR and exit
+  --templates           only create the templates of the museum's real formats and retire the
+                        illustrative ones, on a database already seeded
 """
 
 import argparse
@@ -19,6 +21,20 @@ from app.seed.fixtures import write_all_fixtures
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 
 
+def _sync_templates(factory) -> int:  # type: ignore[no-untyped-def]
+    from app.modules.audit.context import AuditContext, audit_context
+    from app.modules.audit.models import AuditOrigin
+    from app.seed.import_templates import sync_predefined_templates
+
+    context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label="seed: plantillas")
+    with factory() as session, audit_context(session, context):
+        created, retired = sync_predefined_templates(session)
+        session.commit()
+    print(f"Plantillas creadas: {', '.join(created) or 'ninguna'}.")
+    print(f"Plantillas ilustrativas retiradas: {', '.join(retired) or 'ninguna'}.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.seed", description="Datos semilla sintéticos"
@@ -31,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--no-media-upload", action="store_true")
     parser.add_argument("--fixtures", type=Path)
+    parser.add_argument("--templates", action="store_true")
     args = parser.parse_args(argv)
 
     if args.fixtures:
@@ -50,9 +67,12 @@ def main(argv: list[str] | None = None) -> int:
         upload_media=not args.no_media_upload,
         admin_email=os.environ.get("SEED_ADMIN_EMAIL", "admin@matp.local"),
         admin_password=os.environ.get("SEED_ADMIN_PASSWORD") or None,
+        dev_password=settings.seed_dev_password,
     )
     engine = make_engine(settings.database_url)
     factory = make_session_factory(engine)
+    if args.templates:
+        return _sync_templates(factory)
     storage = ObjectStorage.from_settings(settings) if options.upload_media else None
     with factory() as session:
         try:

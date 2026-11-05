@@ -9,7 +9,7 @@ was ingested and every human decision.
 import hashlib
 import uuid
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import PurePath
 from typing import Any
 
@@ -21,6 +21,7 @@ from app.core.errors import ConflictError, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
 from app.modules.catalog.models import Piece
+from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.modules.imports.classify import (
     ClassifiedRow,
@@ -37,6 +38,8 @@ from app.modules.imports.ingest import (
     ingest,
 )
 from app.modules.imports.mapping import (
+    ACQUISITION_TARGET,
+    ACQUISITION_VOCABULARY,
     IDENTIFIER_TARGET,
     PIECE_FIELDS,
     MappedRow,
@@ -47,12 +50,26 @@ from app.modules.imports.mapping import (
 )
 from app.modules.imports.models import (
     ImportBatch,
+    ImportBatchKind,
     ImportImage,
+    ImportPhoto,
+    ImportPhotoStatus,
     ImportRow,
     RowClassification,
     RowDecision,
 )
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.observations import (
+    classify_observations,
+    is_observations,
+    observation_diff,
+    observation_line,
+)
+from app.modules.imports.photos import (
+    detach_photos_from_rows,
+    match_batch_photos,
+    reset_automatic_proposals,
+)
 from app.modules.imports.state import STATUS_LABELS, lock_batch, transition
 from app.modules.imports.worker import Progress, StageWork
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
@@ -125,9 +142,29 @@ def create_batch(
     return batch
 
 
+def create_photo_batch(session: Session, *, name: str, uploaded_by_id: uuid.UUID) -> ImportBatch:
+    """A batch of photos only, for pieces already in the catalogue (importacion-fotos-a-catalogo,
+    D1): no workbook, so ``file_name`` keeps the name the user gives it and there is no file."""
+    name = name.strip()
+    batch = ImportBatch(
+        id=new_uuid(),
+        kind=ImportBatchKind.PHOTOS,
+        source_name=name[:200],
+        file_name=name[:300],
+        status=S.UPLOADED,
+        uploaded_by_id=uploaded_by_id,
+        stage_timestamps={S.UPLOADED.value: utcnow().isoformat()},
+        counts={},
+    )
+    session.add(batch)
+    session.flush()
+    return batch
+
+
 def clear_rows(session: Session, batch: ImportBatch) -> None:
     """Remove the staging rows of a batch, its extracted images and the pending review links."""
     row_ids = select(ImportRow.id).where(ImportRow.batch_id == batch.id)
+    detach_photos_from_rows(session, batch.id)  # importacion-masiva-fotografias, 3.3
     session.execute(delete(ImportImage).where(ImportImage.batch_id == batch.id))
     session.execute(delete(DuplicateCandidate).where(DuplicateCandidate.import_row_id.in_(row_ids)))
     session.execute(delete(ImportRow).where(ImportRow.batch_id == batch.id))
@@ -164,6 +201,8 @@ def store_ingested_rows(
     counts.update(
         rows=total,
         skipped_empty_rows=result.skipped_empty_rows,
+        skipped_header_rows=len(result.skipped_header_rows),
+        skipped_header_row_numbers=result.skipped_header_rows,
         headers=result.headers,
         sheet_names=result.sheet_names,
     )
@@ -228,6 +267,7 @@ def reset_validation(session: Session, batch: ImportBatch, *, reset_counts: bool
             resolution=None,
         )
     )
+    reset_automatic_proposals(session, batch.id)  # importacion-masiva-fotografias, 3.3
     if reset_counts:
         batch.counts = {
             key: value
@@ -245,11 +285,14 @@ def set_mapping(
     sheet_name: str | None = None,
     header_row: int | None = None,
     max_rows: int | None = None,
+    observations: bool | None = None,
 ) -> ImportBatch:
     """Check the mapping against the headers and move the batch to ``MAPPED``.
 
     Choosing another sheet or header row reads the original file again (D2). Re-mapping a batch
-    in preview discards its validation.
+    in preview discards its validation. ``observations`` loads the sheet as observations of
+    existing pieces (``True``) or as pieces again (``False``); ``None`` keeps the kind
+    (formatos-reales-importacion, D8).
     """
     batch = lock_batch(session, batch_id)
     ensure_idle(batch)
@@ -283,7 +326,14 @@ def set_mapping(
         )
         store_ingested_rows(session, batch, result)
         store_images(session, storage, batch, content)
-    errors = validate_mapping(spec, list((batch.counts or {})["headers"]), MappingContext(session))
+    if observations is not None:
+        _set_observations(session, batch, observations)
+    errors = validate_mapping(
+        spec,
+        list((batch.counts or {})["headers"]),
+        MappingContext(session),
+        observations=is_observations(batch),
+    )
     if errors:
         raise ValidationFailed(
             "El mapeo de columnas tiene errores; corríjalos y vuelva a enviarlo.",
@@ -295,6 +345,24 @@ def set_mapping(
     batch.mapping = spec.as_json()
     session.flush()
     return transition(session, batch.id, S.MAPPED)
+
+
+def _set_observations(session: Session, batch: ImportBatch, observations: bool) -> None:
+    kind = ImportBatchKind.OBSERVATIONS if observations else ImportBatchKind.SPREADSHEET
+    if kind is ImportBatchKind.OBSERVATIONS and session.scalar(
+        select(ImportPhoto.id)
+        .where(
+            ImportPhoto.batch_id == batch.id,
+            ImportPhoto.status.not_in((ImportPhotoStatus.DISCARDED, ImportPhotoStatus.REJECTED)),
+        )
+        .limit(1)
+    ):
+        raise ConflictError(
+            "El lote tiene fotos: una hoja de observaciones no lleva fotos. Quite las fotos o "
+            "cargue la hoja en otro lote.",
+            code="observations_with_photos",
+        )
+    batch.kind = kind
 
 
 # --- Validación, matching y clasificación (D4, D5) ------------------------------------------------
@@ -315,6 +383,7 @@ def field_diff(
     mapped: MappedRow,
     spec: MappingSpec,
     identifiers: Sequence[tuple[str, str, str]],
+    acquisition_codes: Mapping[uuid.UUID, str] | None = None,
 ) -> dict[str, Any]:
     """``{field: {current, incoming, default_action}}`` for the fields the row would change.
 
@@ -322,7 +391,10 @@ def field_diff(
     ``identifiers`` are ``(type, normalized, original)`` of the piece, current and historical;
     only codes the piece does not have yet appear, as ``identifier:<TYPE>``.
     """
-    targets = {column.target for column in spec.columns} | set(spec.defaults)
+    # A default of the mapping only fills new pieces, never an existing one.
+    targets = ({column.target for column in spec.columns} | set(spec.defaults)) - set(
+        mapped.defaulted
+    )
     incoming_values: dict[str, Any] = {
         name: mapped.fields.get(name) for name in PIECE_FIELDS if name in targets
     }
@@ -332,6 +404,11 @@ def field_diff(
     if "collection" in targets:
         incoming_values["collection_id"] = mapped.collection_id
         current_values["collection_id"] = piece.collection_id
+    if ACQUISITION_TARGET in targets:  # compared by term code (ajustes-lectura-importacion)
+        incoming_values["acquisition_method"] = mapped.acquisition_method
+        current_values["acquisition_method"] = (acquisition_codes or {}).get(
+            piece.acquisition_method_term_id  # type: ignore[arg-type]
+        )
 
     diff: dict[str, Any] = {}
     for name, incoming in incoming_values.items():
@@ -386,6 +463,17 @@ def _update_targets(
     return pieces, identifiers
 
 
+def _acquisition_codes(session: Session) -> dict[uuid.UUID, str]:
+    """Code of every ``ACQUISITION_METHOD`` term by id, to compare a piece's current method."""
+    return dict(
+        session.execute(
+            select(Term.id, Term.code)
+            .join(Vocabulary, Term.vocabulary_id == Vocabulary.id)
+            .where(Vocabulary.code == ACQUISITION_VOCABULARY)
+        ).all()
+    )
+
+
 def validate_stage() -> StageWork:
     """Stage work: map, match and classify every row, then leave the batch in preview.
 
@@ -405,13 +493,24 @@ def validate_stage() -> StageWork:
         ).all()
         total = len(rows)
         reset_validation(session, batch, reset_counts=False)  # counts are replaced at the end
+        acquisition_codes = _acquisition_codes(session)
 
         mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
+        # An observations batch only finds pieces: no similarity (formatos-reales-importacion, D8).
+        observations = is_observations(batch)
         classified = classify_batch(
             session,
             [mapped[number].row_input(number) for _id, number, _raw in rows],
-            ProvisionalSimilarityScorer(session),
+            None if observations else ProvisionalSimilarityScorer(session),
         )
+        lines: dict[int, str | None] = {}
+        if observations:
+            lines = {number: observation_line(batch, mapped[number]) for _id, number, _raw in rows}
+            classify_observations(
+                [mapped[number] for _id, number, _raw in rows],
+                classified,
+                [lines[number] for _id, number, _raw in rows],
+            )
         by_number: dict[int, ClassifiedRow] = {item.row_number: item for item in classified}
         pieces, identifiers = _update_targets(
             session,
@@ -441,9 +540,13 @@ def validate_stage() -> StageWork:
                     **result.row_values(),
                     "mapped_data": row.as_json(),
                     "diff": (
-                        field_diff(target, row, spec, identifiers[target.id])
-                        if target is not None and is_update
-                        else None
+                        None
+                        if target is None or not is_update
+                        else observation_diff(target, lines[number])
+                        if observations
+                        else field_diff(
+                            target, row, spec, identifiers[target.id], acquisition_codes
+                        )
                     ),
                 }
             )
@@ -454,6 +557,7 @@ def validate_stage() -> StageWork:
             if result.classification == RowClassification.POSSIBLE_DUPLICATE:
                 record_duplicate_candidates(session, row_id, result.similar)
 
+        match_batch_photos(session, batch, ctx.identifier_rules)  # importacion-masiva-fotografias
         batch.counts = {**(batch.counts or {}), **counts}
         session.flush()
         transition(session, batch.id, S.VALIDATED)

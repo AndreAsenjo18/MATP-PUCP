@@ -42,6 +42,7 @@ from app.modules.identification.normalization import (
     TYPE_PUCP,
 )
 from app.modules.identification.service import add_identifier, correct_locked_identifier
+from app.modules.imports.mapping import MappingSpecV1
 from app.modules.imports.models import (
     ImportBatch,
     ImportBatchStatus,
@@ -49,15 +50,112 @@ from app.modules.imports.models import (
     ImportRow,
     RowClassification,
 )
+from app.modules.imports.templates import header_signature
 from app.modules.locations.models import Location, LocationLevel, SpaceKind
 from app.modules.locations.service import create_location, move_piece
 from app.modules.media.models import MediaAsset
 from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, UserRole
+from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
+from app.seed.fixtures import HEADERS as SABANA_HEADERS
 from app.seed.images import placeholder_photo
-from app.seed.reference import ReferenceData, seed_reference_data
+from app.seed.import_templates import sync_predefined_templates
+from app.seed.reference import UNSPECIFIED_VIEW_TYPE, ReferenceData, seed_reference_data
 
 SOURCE_NAME = "Sábana consultoría 2024/25 (sintética)"
+DEMO_SOURCE_NAME = "Lote de demostración (sintético)"
+# Mapping v1 of the seed template for ``data/fixtures/lote_demo/lote_demo_sabana.xlsx``: with it the
+# import wizard recognizes the demo batch by its headers and the "RÉGIMEN" column reaches the
+# validation (change rediseno-ux-importacion). Illustrative column names [SUPUESTO A1].
+DEMO_BATCH_TEMPLATE_MAPPING: dict[str, object] = {
+    "version": 1,
+    "columns": [
+        {"source": "N°", "target": {"kind": "source_payload"}},
+        {
+            "source": "CÓDIGOS",
+            "target": {"kind": "identifiers", "default_type": None},
+            "transforms": ["trim", "absence_markers", "split_concatenated"],
+        },
+        {
+            "source": "COLECCIÓN",
+            "target": {"kind": "field", "name": "collection"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "RÉGIMEN",
+            "target": {"kind": "field", "name": "tenure_regime"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "DENOMINACIÓN",
+            "target": {"kind": "field", "name": "denomination"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "ÉPOCA",
+            "target": {"kind": "field", "name": "epoch_original_text"},
+            "transforms": ["trim"],
+        },
+        {"source": "MATERIAL", "target": {"kind": "source_payload"}},
+        {"source": "MEDIDAS", "target": {"kind": "source_payload"}},
+        {
+            "source": "PROCEDENCIA",
+            "target": {"kind": "field", "name": "provenance"},
+            "transforms": ["trim"],
+        },
+        {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
+        # The photo file column (importacion-masiva-fotografias, task 3.4).
+        {"source": "FOTO", "target": {"kind": "field", "name": "photo_filename"}},
+    ],
+}
+# Mapping v1 of the seed template for ``data/fixtures/sabana_sintetica_v1.xlsx`` (task 3.4 of
+# plantillas-mapeo-y-normalizacion). Column names are illustrative [SUPUESTO A1]; materials are
+# matched by code or label against the seeded ``MATERIAL`` vocabulary, with no correspondence
+# table, so nothing about the museum is assumed beyond that vocabulary [SUPUESTO T6].
+SABANA_TEMPLATE_MAPPING: dict[str, object] = {
+    "version": 1,
+    "columns": [
+        {"source": "N°", "target": {"kind": "source_payload"}},
+        {
+            "source": "CÓDIGOS",
+            "target": {"kind": "identifiers", "default_type": None},
+            "transforms": ["trim", "absence_markers", "split_concatenated"],
+        },
+        {
+            "source": "COLECCIÓN",
+            "target": {"kind": "field", "name": "collection"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "DENOMINACIÓN",
+            "target": {"kind": "field", "name": "denomination"},
+            "transforms": ["trim"],
+        },
+        {
+            "source": "ÉPOCA",
+            "target": {"kind": "field", "name": "epoch_original_text"},
+            "transforms": ["trim", "propose_period"],
+        },
+        {
+            "source": "MATERIAL",
+            "target": {"kind": "terms", "vocabulary": "MATERIAL"},
+            "transforms": ["trim", "split:,"],
+        },
+        {
+            "source": "MEDIDAS",
+            "target": {"kind": "field", "name": "dimensions_text"},
+            "transforms": ["trim", "propose_dimensions"],
+        },
+        {
+            "source": "PROCEDENCIA",
+            "target": {"kind": "field", "name": "provenance"},
+            "transforms": ["trim"],
+        },
+        {"source": "UBICACIÓN", "target": {"kind": "source_payload"}},
+        {"source": "OBS. CONSULTORÍA", "target": {"kind": "source_payload"}},
+        {"source": "FOTO", "target": {"kind": "source_payload"}},
+    ],
+}
 SEED_ACTOR = "seed"
 
 
@@ -72,6 +170,9 @@ class SeedOptions:
     upload_media: bool = True
     admin_email: str = "admin@matp.local"
     admin_password: str | None = None
+    # ``SEED_DEV_PASSWORD``: the other synthetic users, and the admin without a password of its own,
+    # sign in with it in development; the login rejects them in production (ADR-009, point 7).
+    dev_password: str | None = None
     duplicate_pairs: int = 10
     sets: int = 3
     components_per_set: int = 3
@@ -250,9 +351,9 @@ class SyntheticCatalogBuilder:
             ("INTERNAL_VIEWER", "consulta@matp.local", "Consulta interna (sintético)"),
         ]
         for role_code, email, name in people:
-            password_hash = None
-            if role_code == "ADMIN" and self.options.admin_password:
-                password_hash = hasher.hash(self.options.admin_password)
+            own = self.options.admin_password if role_code == "ADMIN" else None
+            password = own or self.options.dev_password
+            password_hash = hasher.hash(password) if password else None
             user = AppUser(
                 id=new_uuid(),
                 email=email,
@@ -507,8 +608,14 @@ class SyntheticCatalogBuilder:
     def _attach_photos(self, piece: Piece, acronym: str | None) -> None:
         if self.rng.random() >= 0.6:
             return
+        # A synthetic photo always has a view: «Sin especificar» is only for imported photos.
         views = self.rng.sample(
-            list(self.reference.terms[VocabularyCode.PHOTO_VIEW_TYPE]), k=self.rng.randint(1, 4)
+            [
+                code
+                for code in self.reference.terms[VocabularyCode.PHOTO_VIEW_TYPE]
+                if code != UNSPECIFIED_VIEW_TYPE
+            ],
+            k=self.rng.randint(1, 4),
         )
         restriction = "NO_PUBLICAR" if acronym == "AJB" else "SIN_RESTRICCION"
         for order, view in enumerate(views):
@@ -624,17 +731,24 @@ class SyntheticCatalogBuilder:
             id=new_uuid(),
             name="Plantilla sábana sintética v1",
             source_name=SOURCE_NAME,
-            header_signature="sintetica-v1",
-            mapping={
-                "DENOMINACIÓN": {"target": "denomination"},
-                "CÓDIGOS": {"target": "identifiers:auto"},
-                "ÉPOCA": {"target": "epoch_original_text"},
-                "PROCEDENCIA": {"target": "provenance"},
-                "OBS. CONSULTORÍA": {"target": "payload"},
-            },
-            description="[SUPUESTO] Columnas ilustrativas hasta recibir el Excel real.",
+            header_signature=header_signature(SABANA_HEADERS),
+            mapping=MappingSpecV1.model_validate(SABANA_TEMPLATE_MAPPING).as_json(),
+            description="[SUPUESTO] Columnas ilustrativas de data/fixtures/sabana_sintetica_v1.xlsx "
+            "hasta recibir el Excel real (A1).",
         )
         self.session.add(template)
+        self.session.add(
+            ImportMappingTemplate(
+                id=new_uuid(),
+                name="Lote de demostración v1",
+                source_name=DEMO_SOURCE_NAME,
+                header_signature=header_signature(DEMO_BATCH_HEADERS),
+                mapping=MappingSpecV1.model_validate(DEMO_BATCH_TEMPLATE_MAPPING).as_json(),
+                description="[SUPUESTO] Columnas del lote de demostración sintético "
+                "(data/fixtures/lote_demo/).",
+            )
+        )
+        sync_predefined_templates(self.session)  # the real formats (formatos-reales-importacion)
         self.session.flush()
         batch = ImportBatch(
             id=new_uuid(),

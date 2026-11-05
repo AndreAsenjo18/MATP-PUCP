@@ -12,3 +12,9 @@ build/
 .next/
 coverage/
 *.tsbuildinfo
+
+# Worktrees temporales de los subagentes de Claude Code
+.claude/worktrees/
+
+# Excel reales del museo: uso autorizado, fuera de git porque el repo es público (ADR-019)
+data/real/

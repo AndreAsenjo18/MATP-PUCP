@@ -91,6 +91,7 @@ const P1: PieceDetail = {
   masked_fields: [],
   created_at: "2026-01-15T09:00:00Z",
   updated_at: "2026-06-02T10:30:00Z",
+  version: 1,
 };
 
 // --- 2. Toro de Pucará (3 cuernos) — posible duplicado de la #1, código sucio en minúscula ---
@@ -108,6 +109,7 @@ const P2: PieceDetail = {
   media_count: 1,
   created_at: "2020-03-02T09:00:00Z",
   updated_at: "2026-08-05T09:00:00Z",
+  version: 1,
 };
 
 // --- 3. Retablo ayacuchano (RA) — dos códigos en una celda ---
@@ -147,6 +149,7 @@ const P3: PieceDetail = {
   masked_fields: [],
   created_at: "2018-11-20T09:00:00Z",
   updated_at: "2026-05-11T09:00:00Z",
+  version: 1,
 };
 
 // --- 4. Cajón San Marcos (RAB) — sin código I, sin foto, sin ubicación (3 alertas) ---
@@ -183,6 +186,7 @@ const P4: PieceDetail = {
   masked_fields: [],
   created_at: "2026-02-01T09:00:00Z",
   updated_at: "2026-02-01T09:00:00Z",
+  version: 1,
 };
 
 // --- 5. Niño Manuelito (AJB, comodato) — nunca recibe código I (RN-003); fotos restringidas ---
@@ -219,6 +223,7 @@ const P5: PieceDetail = {
   masked_fields: [],
   created_at: "2021-12-01T09:00:00Z",
   updated_at: "2026-04-18T09:00:00Z",
+  version: 1,
 };
 
 // --- 6. Virgen de la Puerta (AJB, comodato) — código I asignado por error y corregido (RN-003) ---
@@ -258,6 +263,7 @@ const P6: PieceDetail = {
   masked_fields: [],
   created_at: "2021-12-01T09:00:00Z",
   updated_at: "2026-07-01T09:00:00Z",
+  version: 1,
 };
 
 // --- 7/8. Conjunto de mates burilados (MBB) — pieza padre + componente ---
@@ -294,6 +300,7 @@ const P7: PieceDetail = {
   masked_fields: [],
   created_at: "2017-05-09T09:00:00Z",
   updated_at: "2026-03-20T09:00:00Z",
+  version: 1,
 };
 const P8_ID = ids.piece(8);
 const P8: PieceDetail = {
@@ -348,6 +355,7 @@ const P9: PieceDetail = {
   masked_fields: [],
   created_at: "2016-08-30T09:00:00Z",
   updated_at: "2026-01-05T09:00:00Z",
+  version: 1,
 };
 
 // --- 10. Máscara de chuncho — pieza suelta, sin colección ni ningún código (s/c) ---
@@ -384,6 +392,7 @@ const P10: PieceDetail = {
   masked_fields: [],
   created_at: "2026-02-10T09:00:00Z",
   updated_at: "2026-02-10T09:00:00Z",
+  version: 1,
 };
 
 // --- 11. Tabla pintada de Sarhua (LRM) — código ilegible, no normalizable ---
@@ -420,6 +429,7 @@ const P11: PieceDetail = {
   masked_fields: [],
   created_at: "2026-02-10T09:00:00Z",
   updated_at: "2026-02-10T09:00:00Z",
+  version: 1,
 };
 
 // --- 12. Manta tejida (MBB) — pieza completa adicional ---
@@ -456,6 +466,7 @@ const P12: PieceDetail = {
   masked_fields: [],
   created_at: "2015-04-02T09:00:00Z",
   updated_at: "2026-02-14T09:00:00Z",
+  version: 1,
 };
 
 // --- 13. Quena (LRM) — préstamo temporal: no entra al inventario permanente (RN-004) ---
@@ -492,6 +503,7 @@ const P13: PieceDetail = {
   masked_fields: [],
   created_at: "2026-08-01T09:00:00Z",
   updated_at: "2026-08-01T09:00:00Z",
+  version: 1,
 };
 
 // --- 14. Cántaro decorado (MMZ) — llegó por importación reciente, con sugerencia de IA pendiente ---
@@ -528,6 +540,7 @@ const P14: PieceDetail = {
   masked_fields: [],
   created_at: "2026-09-10T09:00:00Z",
   updated_at: "2026-09-10T09:00:00Z",
+  version: 1,
 };
 
 export const PIECES: PieceDetail[] = [P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14];
@@ -544,8 +557,9 @@ export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
   const alerts: PieceAlert[] = [];
   const withoutCode = piece.tenure_regime === "Propiedad" && !piece.code_i;
   alerts.push({
-    type: "WITHOUT_INVENTORY_CODE",
+    type: "MISSING_INVENTORY_CODE",
     applies: withoutCode,
+    suggested_action: "Asignar código de inventario general",
     message: withoutCode
       ? "Pieza propia sin código I asignado."
       : piece.tenure_regime === "Comodato"
@@ -555,26 +569,36 @@ export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
           : "Tiene código I vigente.",
   });
   alerts.push({
-    type: "WITHOUT_PHOTO",
+    type: "MISSING_PHOTO",
     applies: piece.media_count === 0,
+    suggested_action: "Subir al menos una fotografía",
     message: piece.media_count === 0 ? "Sin fotografías registradas." : "Tiene al menos una fotografía.",
   });
   alerts.push({
-    type: "WITHOUT_LOCATION",
+    type: "MISSING_LOCATION",
     applies: piece.location.path.length === 0,
+    suggested_action: "Registrar sede y espacio",
     message: piece.location.path.length === 0 ? "Sin ubicación registrada." : "Tiene ubicación registrada.",
   });
   const missing = MISSING_FIELDS[piece.id] ?? [];
   alerts.push({
     type: "MISSING_REQUIRED_FIELDS",
     applies: missing.length > 0,
+    suggested_action: "Completar los campos obligatorios marcados en el editor",
     fields: missing,
     message: missing.length > 0 ? `Faltan campos: ${missing.join(", ")}.` : "Campos obligatorios completos.",
   });
+  alerts.push({
+    type: "MISSING_RECOMMENDED_FIELDS",
+    applies: false,
+    suggested_action: "Completar los campos recomendados marcados en el editor",
+    message: "Campos recomendados completos.",
+  });
   const unparseable = piece.identifiers.some((i) => i.normalization_status === "UNPARSEABLE");
   alerts.push({
-    type: "UNPARSEABLE_CODE",
+    type: "UNNORMALIZABLE_IDENTIFIER",
     applies: unparseable,
+    suggested_action: "Revisar y corregir el identificador en la sección de códigos",
     message: unparseable ? "Al menos un código de origen no se pudo normalizar." : "Todos los códigos se normalizaron.",
   });
   return alerts;
@@ -597,6 +621,9 @@ function photo(n: number, pieceId: string, title: string, viewCode: string, opts
     content_sha256: "sha256-sintetico-" + n,
     download_url: placeholderPhotoDataUrl(title, view.label),
     usage_restriction: opts.usage_restriction ?? termRef("USAGE_RESTRICTION", "SIN_RESTRICCION"),
+    // Las fotos sintéticas tienen restricción propia: la efectiva es esa, con origen «foto».
+    effective_restriction: opts.usage_restriction ?? termRef("USAGE_RESTRICTION", "SIN_RESTRICCION"),
+    restriction_origin: "foto",
     restriction_note: opts.restriction_note ?? null,
     photographer: "Equipo MATP (sintético)",
     taken_on: opts.taken_on ?? "2026-01-15",

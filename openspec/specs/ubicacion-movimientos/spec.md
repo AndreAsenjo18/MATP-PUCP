@@ -2,7 +2,9 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la ubicación física jerárquica de las piezas del MATP, el historial automático de movimientos, la participación en préstamos y exposiciones y el estado de disponibilidad de cada pieza.
+
 ## Requirements
+
 ### Requirement: Ubicación jerárquica
 El sistema MUST registrar la ubicación de cada pieza en una jerarquía de sede, espacio, mueble o rack, nivel y contenedor, donde solo sede y espacio son obligatorios, y SHALL administrar los lugares como catálogo con código de ubicación único. Los niveles reales y su codificación son [SUPUESTO]. (RF-016)
 
@@ -38,7 +40,7 @@ El sistema SHALL registrar automáticamente un movimiento cada vez que cambia la
 - **THEN** el sistema lo rechaza y solo permite registrar un movimiento correctivo nuevo
 
 ### Requirement: Préstamos y exposiciones
-El sistema SHALL registrar la participación de piezas en préstamos salientes y exposiciones (nombre, institución o sala, fechas, responsable, estado) y MUST actualizar la disponibilidad de las piezas participantes mientras dure la participación. (RF-018)
+El sistema SHALL registrar préstamos y exposiciones como expedientes separados de las piezas, con tipo, institución o sala de destino, responsable, referencia documental, fechas de inicio y fin, estado y una o más piezas participantes. MUST conservar la participación histórica de cada pieza, impedir confirmar participaciones activas con fechas superpuestas para una misma pieza y validar que la fecha de fin no sea anterior a la de inicio. Los valores de tipo y estado son [SUPUESTO] hasta su validación con la contraparte. (RF-018, RN-004, RN-005)
 
 #### Scenario: Registrar exposición temporal
 - **WHEN** un Gestor de colecciones registra una exposición con cinco piezas y fechas de inicio y fin
@@ -52,8 +54,13 @@ El sistema SHALL registrar la participación de piezas en préstamos salientes y
 - **WHEN** se registra una exposición con fecha de fin anterior a la de inicio
 - **THEN** el sistema rechaza el registro
 
+#### Scenario: Préstamo temporal fuera del inventario permanente
+- **GIVEN** una pieza registrada con régimen "préstamo temporal"
+- **WHEN** se la incorpora a un expediente de préstamo o exposición
+- **THEN** el sistema conserva su número temporal, no la incorpora al inventario permanente y no permite asignarle código I ni código de colección
+
 ### Requirement: Disponibilidad de la pieza
-El sistema SHALL mantener para cada pieza un estado de disponibilidad de un vocabulario controlado (en sala, en depósito, en préstamo, en exposición temporal, entre otros) coherente con su ubicación y sus préstamos vigentes. (RF-020, RN-010)
+El sistema SHALL mantener para cada pieza un estado de disponibilidad de un vocabulario controlado (en sala, en depósito, en préstamo, en exposición temporal, entre otros) coherente con su ubicación y sus participaciones vigentes en préstamos o exposiciones. MUST actualizar la disponibilidad al confirmar, cancelar o cerrar una participación, sin eliminar su historial, y SHALL rechazar cualquier cambio manual incompatible con una participación activa. (RF-020, RN-010, RN-005)
 
 #### Scenario: Retorno de préstamo
 - **WHEN** se registra la devolución de una pieza prestada y su nueva ubicación en depósito
@@ -62,6 +69,11 @@ El sistema SHALL mantener para cada pieza un estado de disponibilidad de un voca
 #### Scenario: Disponibilidad incoherente
 - **WHEN** se intenta marcar como "en sala" una pieza con préstamo saliente vigente
 - **THEN** el sistema rechaza el cambio e indica el préstamo vigente
+
+#### Scenario: Cancelación antes del inicio
+- **GIVEN** una participación futura confirmada en una exposición
+- **WHEN** un Gestor de colecciones la cancela indicando un motivo
+- **THEN** la participación conserva su historial y auditoría, y la pieza recupera la disponibilidad coherente con su ubicación actual
 
 ### Requirement: Condición de pieza sin ubicación
 El sistema MUST identificar como "sin ubicación" a toda pieza activa sin sede y espacio registrados, para que la capacidad de calidad de datos la incluya en sus alertas. (RF-019)
@@ -158,3 +170,67 @@ El sistema SHALL clasificar los espacios por tipo (depósito, sala de exhibició
 - **WHEN** un usuario marca como "en sala" una pieza cuya ubicación actual está en un depósito
 - **THEN** la API responde 409 indicando la ubicación actual
 
+### Requirement: Alta y edición de lugares desde el árbol de ubicaciones
+Quien tiene el permiso de administrar ubicaciones MUST poder, desde el árbol de ubicaciones de la vista de búsqueda, agregar un lugar dentro del lugar seleccionado y editar el nombre o desactivar un lugar, con las mismas reglas de jerarquía y auditoría que Administración › Ubicaciones. Un lugar con piezas, o con lugares activos dentro, MUST NOT desactivarse, ni desde aquí ni desde Administración. El tipo del lugar nuevo SHALL proponerse según el nivel en que se agrega. Quien no tiene el permiso SHALL ver el árbol sin esas acciones. (RF-016, RN-005, RNF-010)
+
+#### Scenario: Agregar una caja en un nivel
+- **GIVEN** un usuario con permiso de administrar ubicaciones en la búsqueda
+- **WHEN** selecciona «Depósito 2 › Estante C › Nivel 1» y elige «Agregar lugar aquí» con el nombre «Caja 14»
+- **THEN** «Caja 14» aparece dentro del nivel como contenedor, queda disponible como destino de «Mover a» y la auditoría registra el alta
+
+#### Scenario: Lugar que la jerarquía no admite
+- **WHEN** el usuario intenta agregar una sede dentro de un nivel
+- **THEN** el sistema no ofrece ese tipo y explica qué tipos admite el nivel
+
+#### Scenario: Desactivar un lugar con piezas
+- **WHEN** se intenta desactivar un estante que tiene piezas
+- **THEN** el sistema lo impide, aquí y en Administración, indicando cuántas piezas hay que mover antes
+
+#### Scenario: Usuario sin permiso
+- **WHEN** un usuario de Consulta interna abre el árbol de ubicaciones
+- **THEN** puede filtrar por lugar pero no ve «Agregar lugar aquí» ni «Editar»
+
+### Requirement: Destinos de movimiento limitados a lugares finales
+El selector «Mover a» de Depósito, tanto para un movimiento individual como para el lote, MUST ofrecer solo las ubicaciones que no tienen ubicaciones dentro (lugares finales, como un nivel o un contenedor), identificadas por su ruta completa desde la sede, y SHALL incluir un buscador que filtra por cualquier parte de la ruta sin distinguir mayúsculas ni acentos. La pantalla MUST explicar en una línea por qué no se listan los lugares intermedios y, si no existe ningún lugar final, indicar cómo crearlos. (RF-016, RF-017, RNF-010)
+
+#### Scenario: Solo lugares finales
+- **GIVEN** un árbol con sede, depósitos, muebles, niveles y cajas
+- **WHEN** la persona abre «Mover a»
+- **THEN** ve únicamente los niveles y cajas que no contienen otros lugares, cada uno con su ruta completa
+
+#### Scenario: Buscar un destino
+- **WHEN** la persona escribe «rack a» en el buscador de destinos
+- **THEN** la lista muestra solo los lugares finales cuya ruta contiene «Rack A»
+
+#### Scenario: Sin lugares finales
+- **GIVEN** un árbol en que todo lugar tiene otros dentro
+- **WHEN** la persona abre «Mover a»
+- **THEN** la pantalla dice que no hay lugares finales disponibles y remite a Administración
+
+### Requirement: Nombre y código de la pieza destacados en Depósito
+En los resultados de búsqueda y en la cabecera de la pieza elegida, Depósito MUST mostrar el nombre de la pieza como el texto principal (más grande y en negrita) y el código de inventario junto a él en una etiqueta visible; la ubicación actual SHALL verse como dato secundario. Una pieza sin código de inventario MUST indicarlo con el texto «Sin código I» en la misma posición. (RF-017, RNF-010)
+
+#### Scenario: Resultado de búsqueda
+- **WHEN** la búsqueda devuelve una pieza con código I
+- **THEN** su fila muestra el nombre en grande y en negrita y, a su lado, el código en una etiqueta destacada
+
+#### Scenario: Pieza sin código I
+- **WHEN** la pieza no tiene código de inventario
+- **THEN** en lugar de la etiqueta del código se lee «Sin código I»
+
+### Requirement: Depósito aprovecha el ancho del escritorio
+Desde 1024 px Depósito MUST usar el ancho disponible en dos columnas —búsqueda y resultados a la izquierda, panel de la pieza y lote a la derecha— con letra, campos y botones de tamaño de escritorio, y los resultados SHALL permanecer visibles al elegir una pieza. Por debajo de 1024 px MUST usar una sola columna con controles táctiles, mostrar el panel de la pieza al elegirla y ofrecer «Buscar otra pieza» para volver a los resultados, sin desplazamiento horizontal de la página desde 360 px. (RNF-001, RNF-010)
+
+#### Scenario: Escritorio con una pieza elegida
+- **GIVEN** una pantalla de 1280 px
+- **WHEN** la persona elige una pieza de los resultados
+- **THEN** los resultados siguen a la izquierda y a la derecha aparecen su ubicación, verificar y mover
+
+#### Scenario: Escritorio sin pieza elegida
+- **WHEN** la persona entra a Depósito en 1280 px y aún no elige una pieza
+- **THEN** el panel derecho indica que debe buscar y elegir una pieza
+
+#### Scenario: Celular
+- **GIVEN** una pantalla de 375 px
+- **WHEN** la persona elige una pieza
+- **THEN** ve su panel a todo el ancho con «Buscar otra pieza» arriba, y la página no se desplaza horizontalmente

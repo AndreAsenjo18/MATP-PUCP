@@ -19,6 +19,9 @@ from app.modules.identification.normalization import (
     TYPE_OWNER,
     TYPE_PUCP,
 )
+from app.modules.media.service import UNSPECIFIED_VIEW_LABEL, UNSPECIFIED_VIEW_TYPE
+from app.modules.quality.completeness import DEFAULT_RECOMMENDED_FIELDS, DEFAULT_REQUIRED_FIELDS
+from app.modules.quality.models import CompletenessFieldKind, CompletenessRule
 from app.modules.users.models import Permission, Role, RolePermission
 
 IDENTIFIER_TYPES = [
@@ -34,6 +37,10 @@ IDENTIFIER_TYPES = [
      False, False, False, True),
     (TYPE_OTHER, "Otro código histórico", NormalizationRule.GENERIC, False, False, False, True),
 ]  # fmt: skip
+
+#: Types whose code and structural rules are fixed (colecciones-y-vocabularios-admin, D1).
+SYSTEM_IDENTIFIER_TYPES = frozenset({TYPE_INVENTORY, TYPE_COLLECTION})
+
 
 VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
     VocabularyCode.CATEGORY: (
@@ -93,6 +100,9 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("COMPRA", "Compra"),
             ("TRANSFERENCIA", "Transferencia interna"),
             ("COMODATO", "Comodato"),
+            # The museum's files use them; they are comodato (answer to L5, 2026-10-31).
+            ("CESION_USO", "Cesión de uso"),
+            ("CUSTODIA", "Custodia"),
             ("LEGADO", "Legado"),
             ("DESCONOCIDA", "Desconocida"),
         ],
@@ -107,6 +117,7 @@ VOCABULARIES: dict[str, tuple[str, list[tuple[str, str]]]] = {
             ("DETALLE", "Detalle"),
             ("ABIERTA", "Abierta"),
             ("CERRADA", "Cerrada"),
+            (UNSPECIFIED_VIEW_TYPE, UNSPECIFIED_VIEW_LABEL),  # never drawn for the synthetic photos
         ],
     ),
     VocabularyCode.OBJECT_TYPE: (
@@ -178,6 +189,7 @@ PERMISSIONS = {
     "pieces.update": "Editar fichas de piezas",
     "pieces.delete": "Eliminar piezas lógicamente",
     "pieces.restore": "Restaurar piezas eliminadas",
+    "trash.read": "Abrir la papelera de registros eliminados",
     "identifiers.manage": "Registrar identificadores",
     "identifiers.correct_inventory_code": "Corregir código I (procedimiento auditado)",
     "collections.manage": "Administrar colecciones",
@@ -198,6 +210,7 @@ PERMISSIONS = {
     "exports.full": "Exportación completa de la base",
     "audit.read": "Consultar auditoría",
     "users.manage": "Administrar usuarios y roles",
+    "quality.completeness_rules.manage": "Administrar campos obligatorios y recomendados",
     "sensitive.valuation": "Ver valorización",
     "sensitive.exact_location": "Ver ubicación exacta",
     "sensitive.loan_terms": "Ver condiciones de comodato",
@@ -208,7 +221,17 @@ _ALL = set(PERMISSIONS)
 _READ = {"pieces.read", "reports.view"}
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "ADMIN": _ALL,
-    "COLLECTIONS_MANAGER": _ALL - {"users.manage", "exports.full", "imports.revert"},
+    # Restaurar y corregir el código I quedan solo en el Administrador, igual que el servicio
+    # (ficha-pieza-crud 1.4); el Gestor abre la papelera con `trash.read` [SUPUESTO Ñ3, B7].
+    "COLLECTIONS_MANAGER": _ALL
+    - {
+        "users.manage",
+        "exports.full",
+        "imports.revert",
+        "quality.completeness_rules.manage",
+        "pieces.restore",
+        "identifiers.correct_inventory_code",
+    },
     "CATALOGUER": _READ
     | {
         "pieces.create",
@@ -249,6 +272,7 @@ def seed_reference_data(session: Session) -> ReferenceData:
             owned_pieces_only=owned,
             allowed_for_temporary_loan=temporary,
             sort_order=order,
+            is_system=code in SYSTEM_IDENTIFIER_TYPES,
             description="[SUPUESTO] Tipo inicial; ajustar con la contraparte.",
         )
     session.add_all(identifier_types.values())
@@ -293,5 +317,21 @@ def seed_reference_data(session: Session) -> ReferenceData:
                     id=new_uuid(), role_id=role.id, permission_id=permissions[permission_code].id
                 )
             )
+    for field in DEFAULT_REQUIRED_FIELDS:
+        session.add(
+            CompletenessRule(
+                id=new_uuid(), field=field, kind=CompletenessFieldKind.REQUIRED, is_active=True
+            )
+        )
+    for field in DEFAULT_RECOMMENDED_FIELDS:
+        session.add(
+            CompletenessRule(
+                id=new_uuid(),
+                field=field,
+                kind=CompletenessFieldKind.RECOMMENDED,
+                is_active=True,
+            )
+        )
+
     session.flush()
     return ReferenceData(identifier_types=identifier_types, terms=terms, roles=roles)

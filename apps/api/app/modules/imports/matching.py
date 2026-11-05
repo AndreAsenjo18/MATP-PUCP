@@ -26,7 +26,11 @@ from app.modules.identification.models import (
     NormalizationStatus,
     PieceIdentifier,
 )
-from app.modules.identification.normalization import normalize, normalize_for_type
+from app.modules.identification.normalization import (
+    NormalizationParams,
+    normalize,
+    normalize_for_type,
+)
 
 QUERY_CHUNK = 500
 
@@ -45,10 +49,20 @@ class RowIdentifier:
 
     @classmethod
     def from_raw(
-        cls, type_code: str, raw_value: str, rule: NormalizationRule | None = None
+        cls,
+        type_code: str,
+        raw_value: str,
+        rule: NormalizationRule | None = None,
+        *,
+        params: NormalizationParams | None = None,
     ) -> "RowIdentifier":
-        """Normalize ``raw_value`` with the rule of its type (the seeded default if not given)."""
-        result = normalize(rule, raw_value) if rule else normalize_for_type(type_code, raw_value)
+        """Normalize ``raw_value`` with the rule of its type (the seeded default if not given)
+        and the normalization parameters, if given (design D5 of plantillas-mapeo)."""
+        result = (
+            normalize(rule, raw_value, params=params)
+            if rule
+            else normalize_for_type(type_code, raw_value, params=params)
+        )
         return cls(type_code, raw_value, result.normalized, result.status, result.is_absent)
 
     @property

@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define cómo se identifica de forma única cada pieza del MATP y cómo se gestionan sus múltiples códigos históricos (I, colección, INC/RN, PUCP, propietario, otros), incluida la inmutabilidad del código I y la normalización de formatos.
-
 ## Requirements
-
 ### Requirement: Identificador interno único
 El sistema MUST asignar a cada pieza un identificador interno único, generado por el sistema, inmutable e independiente de cualquier código del museo; ningún código externo SHALL usarse como clave primaria ni como referencia entre entidades. (RF-001, RN-001)
 
@@ -104,3 +102,81 @@ El sistema MUST calcular un valor normalizado para cada identificador aplicando 
 #### Scenario: Formatos de código INC de 4 y 6 dígitos
 - **WHEN** se registran códigos INC con 4 dígitos (formato antiguo) y con 6 dígitos (formato vigente)
 - **THEN** el sistema acepta ambos formatos y registra qué formato se detectó [SUPUESTO: estructura exacta pendiente de validar]
+
+### Requirement: Parámetros de normalización administrables
+El sistema MUST administrar como datos auditados, sin cambios de código, los marcadores de ausencia de código, los separadores de códigos concatenados y los alias históricos de siglas de colección usados por la normalización, SHALL aplicar los valores vigentes tanto al ingreso manual como a la importación y a la búsqueda, y MUST impedir que un alias apunte a dos colecciones. Los valores iniciales son los que hoy aplica el normalizador, de modo que su comportamiento no cambia hasta que se editen [SUPUESTO] (A3, A5, A8). Solo el Gestor de colecciones y el Administrador administran estos parámetros [SUPUESTO T8]. (RF-023, RF-004, RN-010)
+
+#### Scenario: Nuevo marcador de ausencia
+- **WHEN** un Administrador agrega `NO REGISTRA` a los marcadores de ausencia, que no figura entre los valores iniciales [SUPUESTO A5: marcador ilustrativo]
+- **THEN** en adelante un código I con valor `NO REGISTRA` se trata como pieza sin código I en el ingreso manual y en la importación
+
+#### Scenario: Alias de sigla histórica
+- **WHEN** un Administrador registra que la sigla histórica `REP`, distinta de la sigla actual, corresponde a la colección `LRM` [SUPUESTO A3: `REP` → `LRM` es un dato sintético de prueba, no una sigla real del museo]
+- **THEN** la búsqueda y el matching de importación reconocen `REP 12` como código de colección de `LRM`
+
+#### Scenario: Alias duplicado
+- **WHEN** se intenta registrar un alias cuyo valor normalizado ya apunta a otra colección
+- **THEN** el sistema rechaza el alias indicando la colección existente
+
+#### Scenario: Cambio de separador con identificadores afectados
+- **WHEN** se quita la coma de los separadores y existen identificadores registrados cuya separación dependía de ella
+- **THEN** el sistema exige revisar la vista previa del impacto antes de confirmar el cambio
+
+### Requirement: Código INC / RN de 5 dígitos
+La regla de normalización INC/RN MUST aceptar, además de 4 y 6 dígitos, números de 5 dígitos con los mismos prefijos y separadores, y SHALL registrar el formato detectado `INC_5_DIGITOS`. El valor normalizado de 5 dígitos MUST NOT rellenarse con ceros, para no confundirlo con un código de 6 dígitos distinto. [SUPUESTO A4: los RN de 5 dígitos vistos en las bases del museo son un formato válido y no un error de digitación] (RF-023, RN-010)
+
+#### Scenario: RN de 5 dígitos
+- **WHEN** se registra el código INC/RN `RN 12345`
+- **THEN** obtiene el valor normalizado `12345`, el formato `INC_5_DIGITOS` y queda normalizado
+
+#### Scenario: Cinco dígitos no se confunden con seis
+- **WHEN** se registran `RN 12345` y `RN 012345` en piezas distintas
+- **THEN** obtienen los valores normalizados `12345` y `012345`, distintos, y no se proponen como el mismo código
+
+#### Scenario: Otra cantidad de dígitos
+- **WHEN** se registra el código INC/RN `RN 123`
+- **THEN** el valor original se conserva y el identificador queda «no normalizable», como hoy
+
+### Requirement: Formas reales de código de colección
+La regla de código de colección MUST aceptar, además de sigla + correlativo, tres formas encontradas en los archivos del museo:
+- una **sigla compuesta con guiones** seguida del correlativo (`AMM-IN-V-1234`) [SUPUESTO FR2];
+- un **sufijo de letras** después del correlativo (`ELA 123 CEL`), que forma parte del valor normalizado [SUPUESTO FR1];
+- un **número sin sigla** en la columna del código de colección, que se completa con la sigla de la colección de la fila cuando esta se conoce [SUPUESTO FR3].
+
+Cuando un valor de una de estas formas aparece en la columna de otro tipo de código (por ejemplo, en la del código I), la detección de tipo MUST proponerlo como código de colección. (RF-023, RF-004, RN-010)
+
+#### Scenario: Sigla compuesta en la columna del código I
+- **WHEN** la columna «N° Inventario MATP (I)» de una colección sin inventario trae `AMM-IN-V-0195`
+- **THEN** el valor se propone como código de colección `AMM-IN-V 195` y no como código I, y la fila no recibe código I
+
+#### Scenario: Sufijo después del correlativo
+- **WHEN** se normaliza el código de colección `ela 012 cel`
+- **THEN** obtiene el valor normalizado `ELA 12 CEL`, distinto de `ELA 12`
+
+#### Scenario: Número sin sigla con la colección de la fila
+- **WHEN** una fila trae `45` en «Código de la colección» y su colección es la de sigla `MMZ`
+- **THEN** el código de colección queda `MMZ 45` y la previsualización indica que la sigla se tomó de la colección de la fila
+
+#### Scenario: Número sin sigla y sin colección
+- **WHEN** una fila trae `45` en «Código de la colección» y no tiene colección
+- **THEN** el identificador queda «no normalizable» con el motivo «número sin sigla ni colección», y el valor original se conserva
+
+#### Scenario: Componente de un juego
+- **WHEN** una fila de la colección `MMZ` trae `40.1` en «Código de la colección»
+- **THEN** el código queda `MMZ 40.1`, como componente de `MMZ 40`
+
+### Requirement: Marcas de vacío y texto que no es un código
+Las marcas «No presenta», «No registra», «Sin código» y «Sin codigo» MUST tratarse por defecto como ausencia de código, en cualquier columna de códigos, y formar parte de la lista administrable de marcas de vacío. Un texto en una columna de códigos que no tiene forma de código y tiene más de tres palabras [SUPUESTO] SHALL proponerse como **observación** de la pieza en lugar de identificador, conservando el valor original en los datos de origen. (RF-023, RF-008, RN-005, RN-010)
+
+#### Scenario: No presenta en el registro nacional
+- **WHEN** la columna «N° Inscripción Registro Nacional» trae `No presenta`
+- **THEN** la pieza queda sin código RN, sin alerta de «identificador no normalizable», y la celda se ve como «sin dato» en la previsualización
+
+#### Scenario: Nota en la columna del código I
+- **WHEN** la columna del código I trae «número de inventario mal asignado, revisar»
+- **THEN** la fila no recibe código I, la nota se propone como observación de la pieza y la previsualización lo indica
+
+#### Scenario: Marca agregada por el Administrador
+- **WHEN** el Administrador agrega «S/R» a las marcas de vacío
+- **THEN** las importaciones siguientes la tratan como ausencia de código
+

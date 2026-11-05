@@ -69,3 +69,165 @@ El sistema MUST permitir administrar como datos, sin cambios de código, los voc
 #### Scenario: Intento de borrar un término
 - **WHEN** un Administrador intenta borrar un término usado en fichas
 - **THEN** el sistema solo permite desactivarlo y registra la acción en auditoría
+
+### Requirement: Administración de vocabularios y tipos de identificador por API
+La API MUST permitir a usuarios con el permiso de administrar vocabularios crear vocabularios con código estable y crear o editar tipos de identificador (etiqueta, descripción, regla de normalización elegida entre las reglas disponibles, orden y estado activo), y SHALL registrar cada cambio en auditoría. (RN-010, RF-023, RF-040)
+
+#### Scenario: Crear un tipo de identificador
+- **WHEN** un Administrador crea el tipo "Código del propietario anterior" con la regla de normalización de texto simple
+- **THEN** la API responde 201 y el tipo queda disponible para registrar identificadores y para plantillas de mapeo
+
+#### Scenario: Regla de normalización inexistente
+- **WHEN** se intenta crear un tipo de identificador con una regla de normalización que no existe
+- **THEN** la API responde 422 con la lista de reglas disponibles
+
+#### Scenario: Catalogador sin permiso
+- **WHEN** un Catalogador intenta crear un vocabulario
+- **THEN** la API responde 403 [SUPUESTO: administran vocabularios Gestor de colecciones y Administrador, B7]
+
+### Requirement: Protección de los tipos de identificador del sistema
+El sistema MUST impedir que se modifiquen por API el código y las reglas estructurales de los tipos de identificador del sistema (en particular, que el código I se bloquee al asignarse, que sea único cuando está vigente y que solo aplique a piezas en propiedad), permitiendo cambiar solo su etiqueta, descripción y orden. (RN-002, RN-003, RF-003)
+
+#### Scenario: Intento de desbloquear el código I
+- **WHEN** un Administrador intenta desactivar el bloqueo al asignar del tipo de identificador código I
+- **THEN** la API responde 409 indicando que es un tipo del sistema y la regla no cambia
+
+#### Scenario: Cambio de etiqueta permitido
+- **WHEN** un Administrador cambia la etiqueta del código I a "Número de inventario general (I)"
+- **THEN** el cambio se guarda y queda en auditoría
+
+### Requirement: Cambio controlado de la regla de normalización
+El sistema MUST exigir, antes de cambiar la regla de normalización de un tipo de identificador que ya tiene identificadores registrados, una vista previa del impacto (cuántos valores normalizados cambian, colisiones nuevas y valores que dejan de ser normalizables) y una confirmación explícita ligada a esa vista previa; SHALL rechazar la confirmación si la nueva regla produce colisiones entre códigos I vigentes de piezas distintas. (RF-023, RN-002, RNF-007)
+
+#### Scenario: Cambio sin vista previa
+- **WHEN** un Administrador cambia la regla de normalización de un tipo con identificadores registrados sin confirmar una vista previa
+- **THEN** la API responde 409 indicando que primero debe revisar el impacto
+
+#### Scenario: Confirmación tras la vista previa
+- **GIVEN** una vista previa que informa 120 identificadores con valor normalizado nuevo y ninguna colisión
+- **WHEN** el Administrador confirma con esa vista previa y los datos no cambiaron desde entonces
+- **THEN** los 120 valores normalizados se recalculan, los valores originales no cambian y la auditoría registra cada cambio con origen "sistema"
+
+#### Scenario: Colisión de códigos I
+- **WHEN** la vista previa detecta que dos piezas distintas quedarían con el mismo código I normalizado vigente
+- **THEN** la confirmación se rechaza y la respuesta lista las piezas en colisión
+
+#### Scenario: Datos modificados después de la vista previa
+- **WHEN** se registran identificadores nuevos del tipo entre la vista previa y la confirmación
+- **THEN** la confirmación se rechaza y se pide generar una vista previa nueva
+
+### Requirement: Historial de evaluaciones de conservación por API
+La API MUST permitir registrar evaluaciones de conservación de una pieza con término activo del vocabulario de estado de conservación, fecha de evaluación, responsable y notas, SHALL conservar todas las evaluaciones como historial de solo inserción y MUST mostrar como estado actual el de la evaluación con fecha más reciente. (RF-012, RN-010, RN-005)
+
+#### Scenario: Evaluación nueva
+- **WHEN** un usuario de Conservación registra el estado "regular" con fecha de hoy para una pieza evaluada antes como "bueno"
+- **THEN** el estado actual de la pieza pasa a "regular" y el historial muestra ambas evaluaciones
+
+#### Scenario: Evaluación antigua registrada después
+- **WHEN** se registra hoy una evaluación con fecha de hace dos años
+- **THEN** se agrega al historial sin cambiar el estado actual de la pieza
+
+#### Scenario: Término inactivo
+- **WHEN** se intenta registrar una evaluación con un término de conservación desactivado
+- **THEN** la API responde 422 con los términos activos
+
+### Requirement: Precarga idempotente de vocabularios desde archivo
+El sistema SHALL ofrecer un procedimiento de carga de términos desde un archivo de referencia versionado que por defecto solo informe lo que haría, que al aplicarse inserte términos nuevos y actualice los existentes con auditoría, y que MUST NOT desactivar ni eliminar términos ausentes del archivo. El contenido oficial de las listas es [SUPUESTO] hasta recibirlo (B4, B5). (RF-011, RN-010, RN-005)
+
+#### Scenario: Ejecución en modo informe
+- **WHEN** un Administrador ejecuta la carga de un archivo con 40 categorías sin la opción de aplicar
+- **THEN** obtiene cuántos términos se crearían y actualizarían y no se escribe nada
+
+#### Scenario: Ejecución repetida
+- **WHEN** se aplica dos veces el mismo archivo
+- **THEN** la segunda ejecución no crea ni modifica ningún término
+
+#### Scenario: Término ausente del archivo
+- **WHEN** el archivo no incluye un término que existe y está en uso
+- **THEN** el término permanece activo y el informe lo lista como ausente del archivo
+
+#### Scenario: Archivo con columnas incorrectas
+- **WHEN** el archivo no tiene la columna de código de término
+- **THEN** la carga se rechaza indicando las columnas esperadas
+
+### Requirement: Edición y retiro de colecciones desde la interfaz
+Quien tiene el permiso de administrar colecciones MUST poder, desde Administración › Colecciones, editar el nombre, la sigla, la colección madre y el régimen por defecto de una colección, retirarla con un motivo obligatorio y ver las colecciones retiradas; el Administrador MUST poder restaurarlas, porque solo él restaura registros eliminados [SUPUESTO Ñ3]. Cada cambio SHALL quedar en la auditoría con el valor anterior y el nuevo, y una colección retirada MUST NOT borrarse físicamente. El sistema MUST impedir retirar una colección con piezas o subcolecciones activas y explicar cuántas tiene. (RF-010, RN-005, RN-007, RN-010)
+
+#### Scenario: Corregir la sigla de una colección
+- **WHEN** el Administrador cambia la sigla de la colección «ABC» a «ABD»
+- **THEN** la colección muestra la nueva sigla, la auditoría registra «ABC» → «ABD» y la sigla anterior se ofrece para guardarla como sigla histórica
+
+#### Scenario: Retirar una colección vacía y restaurarla
+- **WHEN** el Administrador retira con motivo una colección sin piezas y luego la restaura desde «Ver retiradas»
+- **THEN** la colección deja de ofrecerse en los formularios mientras está retirada y vuelve a ofrecerse al restaurarla, con ambos pasos en la auditoría
+
+#### Scenario: Retirar una colección con piezas
+- **WHEN** se intenta retirar una colección que tiene 35 piezas activas
+- **THEN** el sistema lo impide con el mensaje «La colección tiene 35 piezas activas; reasígnalas antes de retirarla» y no cambia nada
+
+#### Scenario: Sigla repetida
+- **WHEN** se edita una colección con una sigla que ya usa otra colección activa
+- **THEN** el formulario muestra el error junto al campo y no guarda
+
+### Requirement: Edición de términos de las listas de valores
+Quien administra vocabularios MUST poder editar la etiqueta de un término desde Administración › Listas de valores. El término conserva su identidad, así que las fichas que lo usan SHALL mostrar la nueva etiqueta sin otro cambio; la edición MUST quedar en la auditoría. Dos términos activos de la misma lista MUST NOT tener la misma etiqueta. (RF-011, RN-010)
+
+#### Scenario: Corregir una errata
+- **WHEN** el Administrador cambia el término «Ceramica» por «Cerámica» en la lista de materiales
+- **THEN** todas las fichas con ese material muestran «Cerámica» y la auditoría registra el cambio
+
+#### Scenario: Etiqueta repetida
+- **WHEN** se intenta cambiar un término a «Madera» y ya existe «Madera» activo en la misma lista
+- **THEN** el sistema rechaza el cambio y sugiere desactivar uno de los dos
+
+### Requirement: Listas de valores explicadas y fáciles de mantener
+La interfaz MUST llamar «Listas de valores» a lo que antes llamaba vocabularios y explicar en una frase qué son: las opciones que se eligen al llenar una ficha, como materiales, técnicas o estados de conservación. La lista se elige en un selector que muestra cuántos términos tiene; sus términos MUST verse como etiquetas —verdes con un icono de visto los que se ofrecen en las fichas y grises y tachadas los demás, cada una con su estado «activo» o «desactivado» como texto accesible y una leyenda visible— que se activan o desactivan al pulsarlas, sin un botón por término. Agregar un término y crear una lista SHALL estar en la barra superior, y desactivar un término MUST aclarar que las fichas que ya lo usan lo conservan. (RF-010, RF-011, RNF-010)
+
+#### Scenario: Entender qué es una lista
+- **WHEN** la persona abre la sección «Listas de valores»
+- **THEN** ve la explicación de una frase y un selector con la lista elegida y su número de términos
+
+#### Scenario: Desactivar un término
+- **WHEN** la persona pulsa la etiqueta de un término activo
+- **THEN** pasa a gris y tachada con el texto «desactivado» y el aviso aclara que las fichas que lo usan lo conservan
+
+#### Scenario: Agregar un término desde arriba
+- **WHEN** la persona escribe un nombre en «Nuevo término» de la barra superior y pulsa «Agregar»
+- **THEN** el término aparece como etiqueta activa y se muestra su código estable
+
+#### Scenario: Lista sin términos
+- **WHEN** la lista elegida no tiene términos
+- **THEN** la pantalla lo dice e invita a agregar el primero desde la barra
+
+### Requirement: Filtros y alta arriba en el listado de colecciones
+El listado de colecciones MUST ofrecer arriba una búsqueda por nombre o sigla, un filtro por estado (todas, activas o inactivas) y un filtro por tipo (todas, principales o subcolecciones), y el alta de una colección o subcolección SHALL hacerse desde el botón «Nueva colección» de esa barra, en un diálogo. Las subcolecciones MUST distinguirse de las principales en el listado. (RF-010, RNF-010)
+
+#### Scenario: Filtrar por estado
+- **WHEN** la persona elige «Inactivas»
+- **THEN** el listado muestra solo las colecciones inactivas y el conteo de resultados se actualiza
+
+#### Scenario: Sin resultados
+- **WHEN** la búsqueda no coincide con ninguna colección
+- **THEN** la pantalla dice que no hay colecciones con esos filtros y ofrece limpiarlos
+
+### Requirement: Tipos de código con alta desde la barra superior
+La sección de tipos de código (antes «tipos de identificador») MUST crear tipos desde un botón «Nuevo tipo» de la barra superior, en un diálogo, mantener la edición de etiqueta y regla de un tipo ya existente en un panel junto a la tabla y señalar los tipos del sistema con un candado y texto. (RN-010, RNF-010)
+
+#### Scenario: Crear un tipo
+- **WHEN** la persona pulsa «Nuevo tipo», escribe la etiqueta y guarda
+- **THEN** el diálogo se cierra y el tipo aparece en la tabla
+
+#### Scenario: Tipo del sistema
+- **WHEN** la persona elige un tipo del sistema para editarlo
+- **THEN** el panel dice qué reglas no cambian y solo ofrece cambiar la etiqueta
+
+### Requirement: Árbol de ubicaciones filtrable con alta desde la barra superior
+La sección de ubicaciones MUST mostrar arriba una búsqueda por nombre y un filtro por nivel (sede, depósito, mueble, nivel o contenedor), conservar en el árbol los ascendientes de cada resultado, y crear ubicaciones desde un botón «Nueva ubicación» en un diálogo; los niveles SHALL distinguirse con etiquetas de color y texto. (RF-016, RNF-010)
+
+#### Scenario: Buscar un mueble
+- **WHEN** la persona escribe «Rack» en la búsqueda
+- **THEN** el árbol muestra los muebles que coinciden con su sede y depósito como contexto
+
+#### Scenario: Crear con padre
+- **WHEN** la persona crea un contenedor eligiendo su mueble padre en el diálogo
+- **THEN** el contenedor aparece dentro de ese mueble en el árbol

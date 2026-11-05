@@ -5,33 +5,67 @@
  */
 import type { ApiSchemas } from "@/lib/api/client";
 
-import { alertsForPiece, MEDIA_BY_PIECE, PIECES } from "./pieces";
+import { alertsForPiece, PIECES } from "./pieces";
 
 type CompletenessKpis = ApiSchemas["CompletenessKpis"];
+type AlertKpi = ApiSchemas["AlertKpi"];
 type IncompletePiece = ApiSchemas["IncompletePiece"];
 type ReportOut = ApiSchemas["ReportOut"];
 
+type Piece = (typeof PIECES)[number];
+
+const ALERT_DENOMINATOR: Record<AlertKpi["alert"], (piece: Piece) => boolean> = {
+  MISSING_INVENTORY_CODE: (p) => p.tenure_regime === "Propiedad",
+  MISSING_PHOTO: () => true,
+  MISSING_LOCATION: () => true,
+  MISSING_REQUIRED_FIELDS: () => true,
+  MISSING_RECOMMENDED_FIELDS: () => true,
+  UNNORMALIZABLE_IDENTIFIER: () => true,
+};
+
+function alertKpi(pieces: Piece[], alert: AlertKpi["alert"]): AlertKpi {
+  const applicable = pieces.filter(ALERT_DENOMINATOR[alert]);
+  const affected = applicable.filter((p) => alertsForPiece(p).find((a) => a.type === alert)?.applies);
+  const denominator = applicable.length;
+  const numerator = affected.length;
+  return {
+    alert,
+    numerator,
+    denominator,
+    completeness_ratio: denominator === 0 ? null : Number((1 - numerator / denominator).toFixed(2)),
+  };
+}
+
+const ALERT_CODES = Object.keys(ALERT_DENOMINATOR) as AlertKpi["alert"][];
+
 export function computeCompletenessKpis(): CompletenessKpis {
-  const total = PIECES.length;
-  const withoutInventory = PIECES.filter((p) => alertsForPiece(p).find((a) => a.type === "WITHOUT_INVENTORY_CODE")?.applies).length;
-  const withoutPhoto = PIECES.filter((p) => (MEDIA_BY_PIECE[p.id]?.length ?? 0) === 0).length;
-  const withoutLocation = PIECES.filter((p) => p.location.path.length === 0).length;
-  const missingRequired = PIECES.filter((p) => alertsForPiece(p).find((a) => a.type === "MISSING_REQUIRED_FIELDS")?.applies).length;
+  const byCollectionMap = new Map<string, { id: string; name: string; pieces: Piece[] }>();
+  for (const piece of PIECES) {
+    const key = piece.collection?.id ?? "sin-coleccion";
+    const name = piece.collection?.name ?? "Piezas sueltas (sin colección)";
+    const entry = byCollectionMap.get(key) ?? { id: key, name, pieces: [] };
+    entry.pieces.push(piece);
+    byCollectionMap.set(key, entry);
+  }
+  return {
+    computed_at: "2026-09-17T07:00:00Z",
+    total_pieces: PIECES.length,
+    alerts: ALERT_CODES.map((alert) => alertKpi(PIECES, alert)),
+    by_collection: [...byCollectionMap.values()].map((group) => ({
+      collection_id: group.id,
+      collection_name: group.name,
+      alerts: ALERT_CODES.map((alert) => alertKpi(group.pieces, alert)),
+    })),
+  };
+}
+
+export function countPiecesByCollection(): { collection: string; count: number }[] {
   const byCollectionMap = new Map<string, number>();
   for (const piece of PIECES) {
     const key = piece.collection?.name ?? "Piezas sueltas (sin colección)";
     byCollectionMap.set(key, (byCollectionMap.get(key) ?? 0) + 1);
   }
-  return {
-    computed_at: "2026-09-17T07:00:00Z",
-    total_pieces: total,
-    without_inventory_code: withoutInventory,
-    without_photo: withoutPhoto,
-    without_location: withoutLocation,
-    missing_required_fields: missingRequired,
-    completeness_ratio: Number((1 - (withoutInventory + withoutPhoto + withoutLocation) / (total * 3)).toFixed(2)),
-    by_collection: [...byCollectionMap.entries()].map(([collection, count]) => ({ collection, count })),
-  };
+  return [...byCollectionMap.entries()].map(([collection, count]) => ({ collection, count }));
 }
 
 export function computeIncompletePieces(): IncompletePiece[] {
@@ -48,39 +82,45 @@ export function computeIncompletePieces(): IncompletePiece[] {
   }).filter((p) => p.alerts.length > 0);
 }
 
+/** Un reporte de demostración en una sola página: `rows` es el reporte completo. */
+function singlePage(report: Omit<ReportOut, "page" | "page_size" | "total_rows">): ReportOut {
+  return { ...report, page: 1, page_size: report.rows.length, total_rows: report.rows.length };
+}
+
 export function computeInventoryReport(): ReportOut {
   const rows = PIECES.map((p) => [
     p.denomination,
+    p.description ?? "",
     p.collection?.name ?? "Sin colección",
     p.code_i ?? "Sin código I",
     p.tenure_regime,
     p.conservation_status?.label ?? "Sin registrar",
     p.location.path.length > 0 ? p.location.path.map((l) => l.name).join(" / ") : "Sin ubicación",
   ]);
-  return {
+  return singlePage({
     report_type: "inventory",
     title: "Inventario general (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
     filters: {},
-    columns: ["Denominación", "Colección", "Código I", "Régimen de tenencia", "Estado de conservación", "Ubicación"],
+    columns: ["Denominación", "Descripción", "Colección", "Código I", "Régimen de tenencia", "Estado de conservación", "Ubicación"],
     rows,
     totals: { piezas: PIECES.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeByCollectionReport(): ReportOut {
-  const kpis = computeCompletenessKpis();
-  return {
+  const counts = countPiecesByCollection();
+  return singlePage({
     report_type: "by-collection",
     title: "Inventario por colección (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
     filters: {},
     columns: ["Colección", "N.º de piezas"],
-    rows: kpis.by_collection.map((row) => [row.collection as string, row.count as number]),
-    totals: { colecciones: kpis.by_collection.length },
+    rows: counts.map((row) => [row.collection, row.count]),
+    totals: { colecciones: counts.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeByLocationReport(): ReportOut {
@@ -89,7 +129,7 @@ export function computeByLocationReport(): ReportOut {
     const key = piece.location.path.length > 0 ? piece.location.path[0].name : "Sin ubicación";
     byLocation.set(key, (byLocation.get(key) ?? 0) + 1);
   }
-  return {
+  return singlePage({
     report_type: "by-location",
     title: "Inventario por ubicación (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -98,12 +138,12 @@ export function computeByLocationReport(): ReportOut {
     rows: [...byLocation.entries()].map(([location, count]) => [location, count]),
     totals: { piezas: PIECES.length },
     download_url: null,
-  };
+  });
 }
 
 export function computeIncompleteReport(): ReportOut {
   const incomplete = computeIncompletePieces();
-  return {
+  return singlePage({
     report_type: "incomplete",
     title: "Piezas con información incompleta (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
@@ -112,5 +152,5 @@ export function computeIncompleteReport(): ReportOut {
     rows: incomplete.map((p) => [p.title, p.collection_name ?? "Sin colección", p.alerts.join(", ")]),
     totals: { piezas_incompletas: incomplete.length },
     download_url: null,
-  };
+  });
 }

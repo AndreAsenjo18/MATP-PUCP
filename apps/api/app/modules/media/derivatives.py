@@ -1,18 +1,27 @@
 """Derivatives generation for media assets (spec multimedia: D3)."""
 
 import io
-import sys
+import uuid
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from PIL import Image
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from app.core.storage import ObjectStorage
+    from app.modules.media.models import MediaAsset
 
 # Derivative specifications
 THUMB_MAX_DIM = 320
 DISPLAY_MAX_DIM = 1600
 WEBP_QUALITY = 80
+REBUILD_ACTOR = "rebuild_derivatives"
+#: Object names whose derivatives (thumb.webp, display.webp) sit in the same folder: a manual
+#: upload (``original.<ext>``), an imported photo (``upload.<ext>``) or one whose original was not
+#: kept (``display.webp``, task 5.4).
+DERIVED_OBJECTS = frozenset({"original", "upload", "display"})
 
 
 def _resize_image(data: bytes, max_dim: int) -> bytes:
@@ -27,7 +36,7 @@ def _resize_image(data: bytes, max_dim: int) -> bytes:
             new_height = int(image.height * max_dim / image.width)
         else:
             new_height = max_dim
-            new_width = int(image.width * max_dim / image.width)
+            new_width = int(image.width * max_dim / image.height)
         image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     output = io.BytesIO()
@@ -51,12 +60,21 @@ def generate_derivatives(
     """
     # Download source
     source_data = storage.get_bytes(source_key)
+    return store_derivatives(storage, f"pieces/{piece_id}/{asset_id}/", source_data)
 
-    thumb_data = _resize_image(source_data, THUMB_MAX_DIM)
-    display_data = _resize_image(source_data, DISPLAY_MAX_DIM)
 
-    thumb_key = f"pieces/{piece_id}/{asset_id}/thumb.webp"
-    display_key = f"pieces/{piece_id}/{asset_id}/display.webp"
+def store_derivatives(storage: "ObjectStorage", prefix: str, data: bytes) -> dict[str, str]:
+    """Write thumb.webp and display.webp of the image ``data`` under ``prefix``.
+
+    Shared by the photos of a piece (``pieces/{piece_id}/{asset_id}/``) and the photos of an
+    import batch (``media/{photo_id}/``, change importacion-masiva-fotografias). Both images are
+    computed before anything is written.
+    """
+    thumb_data = _resize_image(data, THUMB_MAX_DIM)
+    display_data = _resize_image(data, DISPLAY_MAX_DIM)
+
+    thumb_key = f"{prefix}thumb.webp"
+    display_key = f"{prefix}display.webp"
 
     storage.put_bytes(thumb_key, thumb_data, "image/webp")
     storage.put_bytes(display_key, display_data, "image/webp")
@@ -64,106 +82,90 @@ def generate_derivatives(
     return {"thumb_key": thumb_key, "display_key": display_key}
 
 
-def rebuild_derivatives_cli() -> int:
-    """CLI command: python -m app.media.rebuild_derivatives
+@dataclass
+class RebuildResult:
+    rebuilt: list[uuid.UUID] = field(default_factory=list)
+    failed: list[uuid.UUID] = field(default_factory=list)
 
-    Re-generates missing derivatives for all media assets.
+
+def _has_own_folder(asset: "MediaAsset") -> bool:
+    return asset.storage_key.rpartition("/")[2].split(".", 1)[0] in DERIVED_OBJECTS
+
+
+def derivatives_prefix(asset: "MediaAsset") -> str:
+    """The derivatives sit next to the file of the asset when it has a folder of its own:
+    ``pieces/{piece}/{asset}/`` for an upload to the sheet and ``media/{photo}/`` for a photo of
+    an import batch. A photo saved directly in the folder of its piece (the synthetic photos of
+    the seed, ``pieces/{piece}/{asset}.jpg``) gets a folder named after it, because its piece may
+    have more photos."""
+    folder, _, name = asset.storage_key.rpartition("/")
+    return f"{folder}/" if _has_own_folder(asset) else f"{folder}/{name.split('.', 1)[0]}/"
+
+
+def derivative_keys(asset: "MediaAsset") -> tuple[str, str]:
+    """Keys of the thumbnail and the display copy that show ``asset``.
+
+    A photo with a folder of its own gets its derivatives when it is registered; one saved directly
+    only from ``rebuild_derivatives``, which marks it ``ok``. Without them (never generated, or
+    marked ``failed``) the photo is shown from its own object.
     """
-    import argparse
-    from pathlib import Path
+    mark = (asset.extra_metadata or {}).get("derivatives")
+    if mark == "ok" or (mark != "failed" and _has_own_folder(asset)):
+        prefix = derivatives_prefix(asset)
+        return f"{prefix}thumb.webp", f"{prefix}display.webp"
+    return asset.storage_key, asset.storage_key
 
-    from dotenv import load_dotenv
 
-    # Load .env from project root
-    project_root = Path(__file__).resolve().parents[3]
-    load_dotenv(project_root / ".env")
+def _needs_rebuild(storage: "ObjectStorage", asset: "MediaAsset", only_failed: bool) -> bool:
+    if (asset.extra_metadata or {}).get("derivatives") == "failed":
+        return True
+    if only_failed:
+        return False
+    try:
+        storage.head(f"{derivatives_prefix(asset)}thumb.webp")
+    except FileNotFoundError:
+        return True
+    return False
 
+
+def rebuild_derivatives(
+    session: "Session",
+    storage: "ObjectStorage",
+    *,
+    only_failed: bool = False,
+    dry_run: bool = False,
+) -> RebuildResult:
+    """Regenerate the derivatives that failed or are missing (fotografias-multiples 2.3).
+
+    The mark of each asset (``extra_metadata.derivatives``) is audited with origin system, like
+    any other change of the catalogue. A photo whose derivatives fail again stays registered and
+    keeps the ``failed`` mark, so the sheet goes on warning that it has no preview.
+    """
     from sqlalchemy import select
 
-    from app.core.config import ConfigurationError, load_settings
-    from app.core.db import make_engine, make_session_factory
-    from app.core.storage import ObjectStorage
+    from app.modules.audit.context import AuditContext, audit_context
+    from app.modules.audit.models import AuditOrigin
     from app.modules.media.models import MediaAsset
 
-    parser = argparse.ArgumentParser(
-        prog="python -m app.media.rebuild_derivatives",
-        description="Regenera derivados faltantes o fallidos de fotos",
-    )
-    parser.add_argument(
-        "--only-failed",
-        action="store_true",
-        help="Solo regenera assets con extra_metadata.derivatives='failed'",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Solo lista qué se haría, sin ejecutar",
-    )
-    args = parser.parse_args()
-
-    try:
-        from app.core.config import ConfigurationError, load_settings
-
-        settings = load_settings()
-    except ConfigurationError as exc:
-        print(exc, file=sys.stderr)
-        return 2
-
-    engine = make_engine(settings.database_url)
-    factory = make_session_factory(engine)
-    storage = ObjectStorage.from_settings(settings)
-
-    with factory() as session:
-        # Buscar assets que necesitan derivados
-        stmt = select(MediaAsset).where(MediaAsset.deleted_at.is_(None))
-        if args.only_failed:
-            stmt = stmt.where(MediaAsset.extra_metadata.op("->>")("derivatives") == "failed")
-        else:
-            # Buscar assets sin thumb.webp ni display.webp en storage
-            # (simplificación: regenerar todos si no se pasa --only-failed)
-            pass
-
-        assets = list(session.scalars(stmt))
-        print(f"Encontrados {len(assets)} assets para regenerar")
-
-        if args.dry_run:
-            for asset in assets:
-                print(f"  {asset.id} (piece {asset.piece_id}) -> regeneraría thumb/display")
-            return 0
-
-        success = 0
-        failed = 0
-        for asset in assets:
+    result = RebuildResult()
+    assets = session.scalars(select(MediaAsset).order_by(MediaAsset.created_at)).all()
+    pending = [asset for asset in assets if _needs_rebuild(storage, asset, only_failed)]
+    if dry_run:
+        result.rebuilt = [asset.id for asset in pending]
+        return result
+    context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label=REBUILD_ACTOR)
+    with audit_context(session, context):
+        for asset in pending:
             try:
-                from app.modules.media import derivatives
-
-                derivatives.generate_derivatives(
-                    storage, str(asset.piece_id), str(asset.id), asset.storage_key
+                store_derivatives(
+                    storage, derivatives_prefix(asset), storage.get_bytes(asset.storage_key)
                 )
-                # Marcar éxito
-                asset.extra_metadata = {
-                    **(asset.extra_metadata or {}),
-                    "derivatives": "ok",
-                }
-                session.add(asset)
-                success += 1
-            except (OSError, ValueError, RuntimeError) as exc:
-                print(f"  Error en {asset.id}: {exc}", file=sys.stderr)
-                asset.extra_metadata = {
-                    **(asset.extra_metadata or {}),
-                    "derivatives": "failed",
-                }
-                session.add(asset)
-                failed += 1
-            if success + failed % 50 == 0:
-                session.commit()
-
-        session.commit()
-        print(f"Completado: {success} ok, {failed} fallidos")
-        return 0 if failed == 0 else 1
-
-
-if __name__ == "__main__":
-    import sys
-
-    raise SystemExit(rebuild_derivatives_cli())
+            except (OSError, ValueError, Image.DecompressionBombError):
+                mark = "failed"
+                result.failed.append(asset.id)
+            else:
+                mark = "ok"
+                result.rebuilt.append(asset.id)
+            asset.extra_metadata = {**(asset.extra_metadata or {}), "derivatives": mark}
+        session.flush()
+    return result

@@ -31,6 +31,7 @@ BOILERPLATE = {"created_at", "updated_at", "deleted_at", "deleted_by_id", "delet
 # Tablas de solo inserción (ADR-004, triggers en BD).
 APPEND_ONLY = {
     "audit_log",
+    "audit_digest",
     "piece_movement",
     "piece_source_record",
     "conservation_assessment",
@@ -50,6 +51,7 @@ GROUPS = [
             "identifier_type",
             "piece_material",
             "conservation_assessment",
+            "piece_valuation",
             "piece_source_record",
             "media_asset",
         ],
@@ -65,14 +67,19 @@ GROUPS = [
         "#EEF6EC",
         [
             "import_mapping_template",
+            "normalization_setting",
+            "collection_acronym_alias",
             "import_batch",
             "import_row",
             "import_image",
+            "import_photo",
             "duplicate_candidate",
             "quality_setting",
             "quality_job",
             "quality_job_item",
             "ai_suggestion",
+            "completeness_rule",
+            "completeness_snapshot",
         ],
     ),
     (
@@ -88,7 +95,13 @@ GROUPS = [
             "auth_event",
             "sensitive_access_log",
             "audit_log",
+            "audit_digest",
         ],
+    ),
+    (
+        "Búsqueda y Exportación",
+        "#E8F4F8",
+        ["export_job", "media_bulk_download"],
     ),
 ]
 
@@ -132,6 +145,9 @@ LABELS = {
     ("import_image", "batch_id"): "imágenes del lote",
     ("import_image", "import_row_id"): "anclada en",
     ("import_image", "media_asset_id"): "registrada como",
+    ("import_photo", "batch_id"): "fotos del lote",
+    ("import_photo", "row_id"): "propuesta para",
+    ("import_photo", "media_asset_id"): "aplicada como",
     ("duplicate_candidate", "piece_a_id"): "pieza A",
     ("duplicate_candidate", "piece_b_id"): "pieza B",
     ("duplicate_candidate", "import_row_id"): "fila vs pieza",
@@ -140,6 +156,7 @@ LABELS = {
     ("quality_job_item", "piece_id"): "detección incremental",
     ("ai_suggestion", "piece_id"): "sugerencias",
     ("ai_suggestion", "import_batch_id"): "sobre lote",
+    ("completeness_snapshot", "collection_id"): "indicador por colección",
     ("ai_suggestion", "reviewed_by_id"): "revisa",
     ("ai_suggestion", "requested_by_id"): "solicita",
     ("role_permission", "role_id"): "",
@@ -148,9 +165,12 @@ LABELS = {
     ("user_role", "role_id"): "",
     ("user_session", "user_id"): "sesiones abiertas",
     ("auth_event", "user_id"): "eventos de autenticación",
+    ("export_job", "requested_by_id"): "solicita",
+    ("media_bulk_download", "requested_by_id"): "solicita",
     ("sensitive_access_log", "user_id"): "accesos a datos sensibles",
     ("audit_log", "user_id"): "autor del cambio",
     ("conservation_assessment", "assessed_by_user_id"): "evalúa",
+    ("piece_valuation", "piece_id"): "valorizaciones",
 }
 
 

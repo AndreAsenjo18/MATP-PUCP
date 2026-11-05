@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la búsqueda del catálogo del MATP por cualquier código y atributo, los filtros combinados, los reportes de inventario y ubicación, y las exportaciones de resultados y de la base completa en formatos abiertos.
-
 ## Requirements
-
 ### Requirement: Búsqueda por cualquier código y atributo
 El sistema MUST ofrecer una búsqueda única que acepte cualquier código (vigente o histórico, en cualquiera de sus variantes de formato) y texto libre sobre colección, procedencia, autor, material o tipología, época y estado de conservación, aplicando la misma normalización que los identificadores. (RF-031, RF-023)
 
@@ -114,3 +112,137 @@ El sistema MUST permitir a un Administrador exportar la base de datos completa (
 #### Scenario: Usuario no Administrador
 - **WHEN** un Gestor de colecciones solicita la exportación completa
 - **THEN** el sistema rechaza la solicitud [SUPUESTO: solo Administrador]
+
+### Requirement: Filtro de piezas único para búsqueda, exportación y reportes
+El sistema MUST usar una única definición de filtros de piezas para la búsqueda, la exportación de resultados y los reportes, de modo que un mismo filtro devuelva siempre las mismas piezas en el mismo orden; SHALL describir cada filtro activo en lenguaje claro y MUST rechazar filtros sobre campos sensibles que el rol no puede ver. (RF-032, RF-036, RF-041, RNF-010)
+
+#### Scenario: Exportación idéntica a la pantalla
+- **WHEN** un usuario busca `retablo` con filtros colección `RA` y material "madera" y luego exporta los resultados
+- **THEN** el archivo contiene exactamente las mismas piezas, en el mismo orden, que la búsqueda
+
+#### Scenario: Filtro por ubicación con descendientes
+- **WHEN** un usuario filtra por el espacio "Depósito 2"
+- **THEN** los resultados incluyen las piezas ubicadas en sus muebles, niveles y contenedores
+
+#### Scenario: Filtro sensible sin permiso
+- **WHEN** un Catalogador envía un filtro por rango de valorización
+- **THEN** la API responde 403 sin revelar valores ni cuántas piezas cumplirían el filtro
+
+### Requirement: Búsqueda sin tildes con explicación de la coincidencia
+El sistema MUST buscar texto sin distinguir mayúsculas ni tildes sobre denominación, autor, procedencia, material, categoría, época y estado de conservación, SHALL combinarlo con la búsqueda por cualquier identificador normalizado vigente o histórico, MUST indicar por cada resultado qué identificador o campos coincidieron y SHALL ordenar por relevancia, dando prioridad a las coincidencias exactas de código vigente. (RF-031, RF-023)
+
+#### Scenario: Código exacto primero
+- **GIVEN** una pieza con código de colección `MMZ 15` y otra con la palabra "mmz15" en sus observaciones
+- **WHEN** un usuario busca `M.M.Z. 15`
+- **THEN** la pieza con el código aparece primero indicando la coincidencia por código de colección
+
+#### Scenario: Texto con y sin tildes
+- **WHEN** un usuario busca `CERAMICA huanuco`
+- **THEN** encuentra piezas con "Cerámica" y "Huánuco" e indica que coincidieron en denominación y procedencia
+
+#### Scenario: Sin resultados con sugerencias
+- **WHEN** una búsqueda con tres filtros activos no devuelve piezas
+- **THEN** la respuesta indica los filtros activos y sugiere acciones concretas, como quitar un filtro o revisar el formato del código
+
+### Requirement: Trabajos de exportación con caducidad y auditoría
+El sistema MUST generar en segundo plano las exportaciones que superan un umbral configurable de filas [SUPUESTO C8], permitir al solicitante consultar su estado y descargar el archivo mediante un enlace de corta duración hasta su caducidad, y SHALL registrar en auditoría cada exportación con usuario, fecha, filtros, número de filas y si incluyó campos sensibles. (RF-036, RNF-014, RNF-005)
+
+#### Scenario: Exportación grande
+- **WHEN** un Gestor de colecciones exporta 12 000 piezas
+- **THEN** la API responde que la exportación está en preparación con un identificador de trabajo y el usuario puede descargarla al terminar
+
+#### Scenario: Descarga por otro usuario
+- **WHEN** un Catalogador intenta descargar la exportación preparada por el Gestor de colecciones
+- **THEN** la API responde 403
+
+#### Scenario: Archivo caducado
+- **WHEN** se intenta descargar una exportación después de su caducidad
+- **THEN** la API responde que el archivo ya no está disponible y ofrece generarla de nuevo, y el registro del trabajo se conserva
+
+#### Scenario: Registro de la exportación
+- **WHEN** un usuario con permiso de ver ubicación exacta exporta resultados
+- **THEN** la auditoría registra la exportación indicando que incluyó ubicación exacta
+
+### Requirement: Paquete de exportación completa verificable
+La exportación completa MUST producir un paquete comprimido con un archivo CSV por entidad y un libro Excel cuando el volumen lo permita, un diccionario de columnas en español y un manifiesto con la fecha, la versión del esquema y el número de filas y la huella de cada archivo; SHALL incluir los registros eliminados lógicamente con su marca y la auditoría, y MUST NOT incluir contraseñas ni sus hashes. (RF-044, RNF-004, RN-005, RNF-013)
+
+#### Scenario: Verificación del paquete
+- **WHEN** un Administrador descarga la exportación completa y recalcula las huellas de los archivos
+- **THEN** coinciden con las del manifiesto y los conteos coinciden con los registros de la base
+
+#### Scenario: Registros eliminados incluidos
+- **WHEN** el catálogo tiene 2 piezas eliminadas lógicamente
+- **THEN** el CSV de piezas las incluye con fecha, usuario y motivo de eliminación
+
+#### Scenario: Credenciales excluidas
+- **WHEN** se revisa el CSV de usuarios del paquete
+- **THEN** no contiene ninguna columna de contraseña ni de hash
+
+#### Scenario: Exportación completa ya en curso
+- **WHEN** un Administrador solicita otra exportación completa mientras una está en preparación
+- **THEN** la API devuelve el trabajo en curso en lugar de iniciar otro
+
+### Requirement: Prueba de rendimiento reproducible de la búsqueda
+El proyecto MUST contar con un procedimiento reproducible que genere un catálogo sintético de 20 000 piezas y ejecute búsquedas por código, texto y filtros combinados con 10 usuarios concurrentes, reportando percentiles 50, 95 y 99 y errores, y SHALL registrar el resultado de cada medición en la documentación del proyecto. (RF-038, RNF-015)
+
+#### Scenario: Medición dentro del objetivo
+- **WHEN** se ejecuta la prueba contra el entorno de contenedores de referencia
+- **THEN** el informe muestra un percentil 95 menor o igual a 2 segundos y cero errores [SUPUESTO C4]
+
+#### Scenario: Medición fuera del objetivo
+- **WHEN** el percentil 95 supera el objetivo
+- **THEN** el informe identifica el tipo de consulta más lento para priorizar la optimización y el resultado queda registrado igualmente
+
+### Requirement: Reporte de piezas agrupadas por atributo
+El sistema SHALL ofrecer un reporte de piezas agrupadas por un atributo que elige el usuario: procedencia, denominación, autor, material, estado de conservación, categoría o colección. El reporte MUST aceptar los mismos filtros que la búsqueda, mostrar el subtotal de cada grupo y un total de piezas distintas, y agrupar en «Sin dato» las piezas que no tienen el atributo. Los valores de texto libre (procedencia, denominación, autor) MUST agruparse sin distinguir mayúsculas, tildes ni espacios sobrantes, mostrando la forma más frecuente. Como los demás reportes, excluye préstamos temporales y piezas retiradas o fusionadas, y oculta lo que el rol no puede ver. (RF-047, RF-033, RF-036, RF-041)
+
+#### Scenario: Agrupar por estado de conservación con un filtro de colección
+- **WHEN** un usuario genera el reporte agrupado por estado de conservación con el filtro de colección «ABC»
+- **THEN** ve un grupo por estado («Bueno», «Regular», «Malo», «En restauración», «Sin dato») con sus piezas de la colección ABC y el subtotal de cada grupo, y el total es la suma de los subtotales
+
+#### Scenario: Pieza con dos materiales
+- **WHEN** se agrupa por material y una pieza tiene «Madera» y «Metal»
+- **THEN** la pieza aparece en ambos grupos, cada subtotal la cuenta, y el total de piezas distintas la cuenta una sola vez, con una nota que lo explica
+
+#### Scenario: Procedencias escritas de distinta forma
+- **WHEN** hay piezas con procedencia `Ayacucho`, `ayacucho ` y `AYACUCHO`
+- **THEN** forman un solo grupo «Ayacucho»
+
+#### Scenario: Atributo no admitido
+- **WHEN** se pide el reporte con `group_by=valorizacion`
+- **THEN** la API responde 422 indicando los atributos admitidos
+
+#### Scenario: Sin piezas con esos filtros
+- **WHEN** los filtros no dejan ninguna pieza
+- **THEN** el reporte se muestra vacío con el mensaje «No hay piezas con estos filtros» y no ofrece descargar
+
+### Requirement: Descripción de la pieza como columna fija de los reportes
+Todo reporte que lista piezas (inventario general, inventario por colección, piezas por ubicación y piezas agrupadas por atributo) MUST incluir la columna «Descripción» con la descripción completa de la pieza, a continuación de «Denominación», en la vista previa y en todos los formatos de descarga e impresión. (RF-033, RF-034, RF-036; pedido del museo, 2026-10-31)
+
+#### Scenario: Descripción en el Excel del inventario
+- **WHEN** se descarga el inventario general en Excel
+- **THEN** la columna «Descripción» aparece después de «Denominación» con el texto completo de cada pieza
+
+#### Scenario: Pieza sin descripción
+- **WHEN** una pieza no tiene descripción
+- **THEN** la celda queda vacía, sin texto de relleno, y la pieza no se excluye del reporte
+
+#### Scenario: Descripción larga en la impresión
+- **WHEN** se imprime un reporte con una descripción de 2 000 caracteres
+- **THEN** el texto se ajusta en varias líneas dentro de su columna sin cortarse ni desbordar la página
+
+### Requirement: Vista previa del reporte fiel a la descarga
+Antes de descargar, la vista previa de un reporte SHALL mostrar un encabezado con el título, la fecha y hora de generación, el usuario y los filtros aplicados; los totales arriba; una tabla paginada con encabezado fijo; los grupos con su subtotal y la posibilidad de plegarlos; y la descripción recortada que se expande al pulsarla. La vista previa MUST mostrar las mismas filas, columnas, subtotales y totales que el archivo descargado, e indicar qué columnas se ocultaron por permisos. (RF-033, RF-036, RF-041, RNF-010)
+
+#### Scenario: Vista previa y Excel coinciden
+- **WHEN** un usuario revisa la vista previa del reporte agrupado por autor y luego descarga el Excel
+- **THEN** el Excel tiene los mismos grupos, filas, subtotales y total que la vista previa, y el mismo encabezado con los filtros
+
+#### Scenario: Columna oculta por permisos
+- **WHEN** un usuario sin permiso de ubicación exacta genera el inventario
+- **THEN** la vista previa indica «Ubicación limitada a sede y espacio por tus permisos», igual que la descarga
+
+#### Scenario: Reporte muy grande
+- **WHEN** el reporte supera el límite de filas de la generación inmediata
+- **THEN** la vista previa muestra los totales y las primeras páginas, y la descarga se genera en segundo plano con aviso al terminar
+

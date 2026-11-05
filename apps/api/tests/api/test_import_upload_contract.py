@@ -1,11 +1,11 @@
 """Change alinear-api-endpoints-v1, tarea 4.4 — forma y firma de la importación del contrato.
 
 Solo se verifica el OpenAPI generado (design D8). `upload` declara 202 con
-`ImportBatchSummary` y solo `file` en el formulario. `upload`, `diffs` y `confirm` ya los
-implementa `importacion-pipeline-reconciliacion` (tareas 2.1, 3.4 y 4.2; su comportamiento se
-prueba en `test_import_pipeline_api.py` y `test_import_decisions_api.py`); `rollback` sigue en
-501 hasta su tarea 5.2 (Req: Conformidad con el contrato de interfaces del equipo; Valores de
-enumerado del contrato en la API; RF-021, RF-026, RF-027).
+`ImportBatchSummary` y solo `file` en el formulario. `upload`, `diffs`, `confirm` y `rollback`
+los implementa `importacion-pipeline-reconciliacion` (tareas 2.1, 3.4, 4.2 y 5.2; su
+comportamiento se prueba en `test_import_pipeline_api.py` y `test_import_decisions_api.py`)
+(Req: Conformidad con el contrato de interfaces del equipo; Valores de enumerado del contrato
+en la API; RF-021, RF-026, RF-027).
 """
 
 from pathlib import Path
@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 import yaml
 
-from app.api.stubs import STATUS_IMPLEMENTED, STATUS_STUB, X_CHANGE, X_STATUS
+from app.api.stubs import STATUS_IMPLEMENTED, X_STATUS
 from app.openapi_export import build_spec
 
 CONTRACT = Path(__file__).resolve().parents[4] / "docs" / "fuentes" / "endpoints-api-v1.yaml"
@@ -23,8 +23,8 @@ IMPLEMENTED = [
     ("post", UPLOAD),
     ("get", "/api/v1/imports/{batch_id}/diffs"),
     ("post", "/api/v1/imports/{batch_id}/confirm"),
+    ("post", "/api/v1/imports/{batch_id}/rollback"),
 ]
-STUBS = [("post", "/api/v1/imports/{batch_id}/rollback")]
 
 
 @pytest.fixture(scope="module")
@@ -39,14 +39,6 @@ def contract() -> dict[str, Any]:
 
 def _schema(spec: dict[str, Any], ref: str) -> dict[str, Any]:
     return spec["components"]["schemas"][ref.rsplit("/", 1)[-1]]
-
-
-@pytest.mark.parametrize(("method", "path"), STUBS)
-def test_import_routes_remain_stubs(spec: dict[str, Any], method: str, path: str) -> None:
-    operation = spec["paths"][path][method]
-    assert operation[X_STATUS] == STATUS_STUB
-    assert operation[X_CHANGE] == "importacion-pipeline-reconciliacion"
-    assert "501" in operation["responses"]
 
 
 @pytest.mark.parametrize(("method", "path"), IMPLEMENTED)

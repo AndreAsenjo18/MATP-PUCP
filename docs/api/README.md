@@ -15,13 +15,13 @@ Generados por el change `contratos-api-borrador` (ADR-005). **No se editan a man
   - `implemented`: funciona contra la base de datos.
   - `stub`: responde **501** con `{code: "not_implemented", message, change, example}`; `x-change` indica el change de OpenSpec del backlog que la implementa y `example` es un cuerpo sintético válido que la maqueta puede usar.
 - Errores: `{code, message, details}`; `code` estable (inglés), `message` en español.
-- Paginación: `?page=1&page_size=20` (máx. 100) → `{items, total, page, page_size}`.
+- Paginación: `?page=1&page_size=20` (máx. 100) → `{items, total, page, page_size}`. Excepción: `GET /search` usa `?page=1&limit=20` → `{items, total, page, limit}`, tal como lo pide `endpoints-api-v1.yaml` (tarea 4.5 de `alinear-api-endpoints-v1`); no comparte el modelo `Page[T]` de los demás listados.
 - Autenticación (ADR-009): sesión de servidor en la cookie `matp_session` (`HttpOnly`) que entrega `POST /auth/login`. Las escrituras con cookie exigen además la cabecera `X-CSRF-Token` (el valor de la cookie `matp_csrf`). La cabecera `X-MATP-User` (ADR-005) **solo existe con `APP_ENV=test`**; en desarrollo, demostración y producción responde `401 authentication_required`.
 - Campos sensibles (RF-041, `[SUPUESTO]`): se devuelven en `null` y se listan en `masked_fields` cuando el rol no tiene el permiso `sensitive.*`.
 
 ## Implementado hoy
 
-Colecciones (CRUD con eliminación lógica), vocabularios y términos (lectura, alta, edición, desactivación, eliminación lógica si no están en uso), tipos de identificador, ubicaciones (lectura), piezas (listado con filtros AND, ficha, identificadores, fotos, movimientos, datos de origen), búsqueda básica por cualquier código o denominación, vista previa del normalizador, `/auth/me`, roles y permisos, sugerencias de IA (lectura) y auditoría (lectura). El resto es stub; la tabla completa está en `openspec/changes/archive/2026-10-19-contratos-api-borrador/design.md` (D2).
+Colecciones (CRUD con eliminación lógica), vocabularios y términos (lectura, alta, edición, desactivación, eliminación lógica si no están en uso), tipos de identificador, ubicaciones (lectura), piezas (listado con filtros AND, ficha, identificadores, fotos, movimientos, datos de origen), búsqueda avanzada por código o denominación con filtros combinados de colección (`collection_code`) y régimen de tenencia (`tenure_regime`) y paginación propia (`page`/`limit`), vista previa del normalizador, `/auth/me`, roles y permisos, sugerencias de IA (lectura) y auditoría (lectura). El resto es stub; la tabla completa está en `openspec/changes/archive/2026-10-19-contratos-api-borrador/design.md` (D2).
 
 ## Autenticación en las pruebas (fixture `login_as`)
 

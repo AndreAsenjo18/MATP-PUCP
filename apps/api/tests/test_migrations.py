@@ -58,6 +58,14 @@ def test_migration_history_has_a_single_head() -> None:
     )
 
 
+def test_revision_ids_fit_the_alembic_version_column() -> None:
+    """PostgreSQL stores the revision in alembic_version.version_num, a VARCHAR(32); SQLite
+    does not enforce the length, so a longer id only fails in the PostgreSQL job."""
+    script = ScriptDirectory.from_config(_config("sqlite://"))
+    too_long = [rev.revision for rev in script.walk_revisions() if len(rev.revision) > 32]
+    assert not too_long, f"Revision ids longer than 32 characters: {', '.join(too_long)}"
+
+
 def test_upgrade_creates_every_model_table(migrated) -> None:  # type: ignore[no-untyped-def]
     tables = set(inspect(migrated).get_table_names())
     assert set(Base.metadata.tables) <= tables
@@ -341,3 +349,34 @@ def test_duplicate_detection_on_postgresql(
     ):
         assert statement in sql
     assert "DROP TABLE" not in sql
+
+
+def test_search_unaccent_and_trigram_indexes_on_postgresql(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """0009 enables unaccent, creates immutable_unaccent and adds GIN indexes on PostgreSQL."""
+    url = "postgresql+psycopg://matp:unused@localhost:5432/matp"
+    monkeypatch.setenv("DATABASE_URL", url)
+    command.upgrade(
+        _config(url),
+        "0008_locations_idempotency:0009_search_unaccent_trigram",
+        sql=True,
+    )
+    sql = capsys.readouterr().out
+    for statement in (
+        "CREATE EXTENSION IF NOT EXISTS unaccent",
+        "CREATE OR REPLACE FUNCTION immutable_unaccent",
+        "CREATE INDEX IF NOT EXISTS ix_piece_denomination_unaccent_trgm",
+        "CREATE INDEX IF NOT EXISTS ix_piece_author_unaccent_trgm",
+        "CREATE INDEX IF NOT EXISTS ix_piece_provenance_unaccent_trgm",
+    ):
+        assert statement in sql
+
+
+def test_sqlite_unaccent_function_registered(migrated) -> None:  # type: ignore[no-untyped-def]
+    """SQLite engines register unaccent and immutable_unaccent for unit tests."""
+    with migrated.connect() as connection:
+        result = connection.execute(
+            text("SELECT immutable_unaccent('Cerámica Huánuco'), unaccent('Árbol Niño')")
+        ).fetchone()
+        assert result == ("Ceramica Huanuco", "Arbol Nino")

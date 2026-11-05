@@ -18,6 +18,7 @@ approving with a token that no longer matches is rejected with ``409 summary_cha
 import enum
 import hashlib
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -28,11 +29,21 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
+from app.modules.imports.catalog_photos import mark_duplicates, photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
-from app.modules.imports.models import ImportBatch, ImportRow, RowClassification, RowDecision
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportBatchKind,
+    ImportPhoto,
+    ImportPhotoStatus,
+    ImportRow,
+    RowClassification,
+    RowDecision,
+)
 from app.modules.imports.models import ImportBatchStatus as S
+from app.modules.imports.observations import is_observations, observation_diff, observation_line
 from app.modules.imports.service import ensure_idle, field_diff
-from app.modules.imports.state import ensure_transition, lock_batch, transition
+from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
 
 FieldAction = Literal["accept", "exclude"]
 RESOLVABLE = frozenset({RowClassification.CONFLICT, RowClassification.POSSIBLE_DUPLICATE})
@@ -57,7 +68,7 @@ def row_action(row: ImportRow) -> tuple[RowAction, str | None]:
     if row.decision == RowDecision.REJECTED:
         return RowAction.SKIP, row.decision_reason or "Rechazada."
     if row.decision == RowDecision.EXCLUDED:
-        return RowAction.SKIP, row.decision_reason or "Excluida en la previsualización."
+        return RowAction.SKIP, row.decision_reason or "Dejada fuera en la previsualización."
     if row.has_validation_errors:
         messages = "; ".join(error.get("message", "") for error in row.validation_errors or [])
         return RowAction.SKIP, f"Errores de validación: {messages}"
@@ -90,18 +101,32 @@ class ApprovalSummary:
     create: int
     update: int
     skip: int
+    # A ``PHOTOS`` batch (importacion-fotos-a-catalogo, task 6.2): what it applies and leaves out.
+    photos: Mapping[str, int] | None = None
 
     @property
     def token(self) -> str:
-        return hashlib.sha256(f"{self.create}:{self.update}:{self.skip}".encode()).hexdigest()[:32]
+        text = f"{self.create}:{self.update}:{self.skip}"
+        if self.photos is not None:
+            text += ":" + ",".join(f"{key}={value}" for key, value in sorted(self.photos.items()))
+        return hashlib.sha256(text.encode()).hexdigest()[:32]
+
+    @property
+    def nothing_to_apply(self) -> bool:
+        if self.photos is not None:
+            return self.photos.get("to_apply", 0) == 0
+        return self.create + self.update == 0
 
     def as_json(self) -> dict[str, Any]:
-        return {
+        value: dict[str, Any] = {
             "create": self.create,
             "update": self.update,
             "skip": self.skip,
             "summary_token": self.token,
         }
+        if self.photos is not None:
+            value["photos"] = dict(self.photos)
+        return value
 
 
 # Columns ``row_action`` reads: the summary never loads the raw or mapped data of the rows.
@@ -117,6 +142,9 @@ ACTION_COLUMNS = (
 
 
 def approval_summary(session: Session, batch_id: uuid.UUID) -> ApprovalSummary:
+    batch = session.get(ImportBatch, batch_id)
+    if batch is not None and batch_kind(batch) is ImportBatchKind.PHOTOS:
+        return ApprovalSummary(0, 0, 0, photo_approval_counts(session, batch))
     counts = dict.fromkeys(RowAction, 0)
     for row in session.execute(select(*ACTION_COLUMNS).where(ImportRow.batch_id == batch_id)):
         counts[row_action(row)[0]] += 1  # type: ignore[arg-type]  # a Row with the same names
@@ -184,10 +212,12 @@ def _resolve_to_piece(
     if current and incoming and not incoming & current:
         raise ValidationFailed(
             "La fila trae un código I distinto del de la pieza elegida; el código I no se "
-            "cambia en una importación (RN-002).",
+            "cambia en una importación.",
             code="inventory_code_mismatch",
             details={"current": sorted(current), "incoming": sorted(incoming)},
         )
+    if is_observations(batch):  # formatos-reales-importacion, D8
+        return observation_diff(piece, observation_line(batch, mapped))
     assert batch.mapping is not None
     spec = MappingSpec.from_json(batch.mapping)
     return field_diff(piece, mapped, spec, _piece_identifiers(session, piece.id))
@@ -227,7 +257,7 @@ def decide_row(
     reason = reason.strip() if reason and reason.strip() else None
     if decision == RowDecision.REJECTED and reason is None:
         raise ValidationFailed(
-            "Indique el motivo del rechazo: queda en la bitácora del lote (RF-028).",
+            "Indique el motivo del rechazo: queda en la bitácora del lote.",
             code="reason_required",
         )
     if target_piece_id is not None and as_new:
@@ -244,6 +274,12 @@ def decide_row(
             )
         resolution.pop("field_decisions", None)
         if as_new:
+            if is_observations(batch):
+                raise ValidationFailed(
+                    "Una observación no crea piezas: elija la pieza a la que corresponde o "
+                    "rechace la fila.",
+                    code="observation_creates_no_piece",
+                )
             _check_as_new(row)
             resolution.pop("target_piece_id", None)
             resolution["as_new"] = True
@@ -255,6 +291,17 @@ def decide_row(
             row.target_piece_id = target_piece_id
             resolution.pop("as_new", None)
             resolution["target_piece_id"] = str(target_piece_id)
+        # Its photos may be repeated on the new target, or no longer (task 4.3 of
+        # importacion-masiva-fotografias).
+        session.flush()
+        mark_duplicates(
+            session,
+            session.scalars(
+                select(ImportPhoto).where(
+                    ImportPhoto.row_id == row.id, ImportPhoto.status == ImportPhotoStatus.VERIFIED
+                )
+            ),
+        )
 
     if field_decisions:
         unknown = sorted(set(field_decisions) - set(row.diff or {}))
@@ -303,8 +350,13 @@ def check_summary(session: Session, batch_id: uuid.UUID, summary_token: str) -> 
             code="summary_changed",
             details={"summary": summary.as_json()},
         )
-    if summary.create + summary.update == 0:
-        raise ValidationFailed("El lote no tiene filas para aplicar.", code="nothing_to_apply")
+    if summary.nothing_to_apply:
+        message = (
+            "El lote no tiene fotos asignadas a una pieza para aplicar."
+            if summary.photos is not None
+            else "El lote no tiene filas para aplicar."
+        )
+        raise ValidationFailed(message, code="nothing_to_apply")
     return summary
 
 

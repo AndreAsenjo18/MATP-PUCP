@@ -1,0 +1,21 @@
+# Dueños de archivos cuya edición exige revisión específica (propuesta del change
+# `auditoria-y-soft-delete-transversal`, tarea 1.2; asignación según docs/ownership.md).
+#
+# PENDIENTE DE DOS COSAS para que surta efecto:
+#   1. Activar "Require review from Code Owners" en la protección de la rama `main`.
+#   2. Confirmar los usuarios de GitHub que faltan (Manuel Barrantes, célula Plataforma);
+#      un usuario inexistente aquí hace que GitHub ignore la línea.
+#
+# Los usuarios listados salen del historial de commits del repositorio.
+
+# Reglas transversales de "nunca se borra información": las excepciones a RN-005 y RF-040
+# solo se agregan con revisión del Arquitecto de Software.
+/apps/api/app/core/cross_cutting.py          @SergioCB20 @amvz1704
+/apps/api/tests/test_cross_cutting_rules.py  @SergioCB20 @amvz1704
+
+# Auditoría y trazabilidad (capacidad de Plataforma).
+/apps/api/app/modules/audit/                 @amvz1704 @SergioCB20
+
+# Contrato de interfaces y migraciones: frontera de todas las células (ADR-010, regla 3).
+/docs/fuentes/endpoints-api-v1.yaml          @SergioCB20
+/apps/api/alembic/versions/                  @SergioCB20

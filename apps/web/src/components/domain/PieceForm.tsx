@@ -20,17 +20,22 @@
  * campo que nombran (`lib/forms/piece-issues.ts`); un 409 de edición muestra
  * `PieceEditConflict` con la opción «Ver cambios del otro usuario»; y el borrador se conserva en
  * `sessionStorage` (`lib/forms/piece-draft.ts`).
+ *
+ * `crud-manual-completo` D4: en el alta, «Guardar y registrar otra» abre un formulario nuevo con los
+ * datos repetibles (`lib/forms/piece-copy.ts`), avisando de dónde vienen y resaltándolos hasta que se tocan.
  */
-import { Save } from "lucide-react";
+import { CopyPlus, Save } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 
+import { DestinationPicker } from "@/components/domain/DestinationPicker";
 import { PieceEditConflict, computeConflictChanges, type ConflictChange } from "@/components/domain/PieceEditConflict";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
+import type { DestinationOption } from "@/lib/data/locations";
 import {
   createPieceValidator,
   fetchPieceCatalogs,
@@ -40,6 +45,7 @@ import {
   type PieceUpdateResult,
   type TermOption,
 } from "@/lib/data/pieces";
+import type { PieceCopy } from "@/lib/forms/piece-copy";
 import { TENURE_REGIMES, pieceFormResolver, toCreateInput, type PieceFormValues } from "@/lib/forms/piece-form";
 import {
   DRAFT_SAVE_DELAY_MS,
@@ -69,6 +75,9 @@ export function outcomeFromUpdate(result: PieceUpdateResult, okMessage: string):
   return { status: "error", message: result.message };
 }
 
+/** «another»: la persona pidió seguir registrando; quien guarda no debe abrir la ficha. */
+export type SaveIntent = "open" | "another";
+
 export interface PieceFormProps {
   mode: "create" | "edit";
   /** Pieza en edición: se envía como `piece_id` a la validación. */
@@ -76,7 +85,15 @@ export interface PieceFormProps {
   initialValues: PieceFormValues;
   /** `updated_at` de la ficha abierta; se guarda con el borrador para avisar si luego cambió. */
   draftBase?: string | null;
-  onSave: (values: PieceFormValues) => Promise<SaveOutcome>;
+  onSave: (values: PieceFormValues, intent: SaveIntent) => Promise<SaveOutcome>;
+  /** Con él aparece «Guardar y registrar otra»; se llama con lo guardado, ya limpio el borrador. */
+  onRegisterAnother?: (saved: PieceFormValues) => Promise<void> | void;
+  /** Datos copiados de otra pieza que trae `initialValues`. */
+  copy?: PieceCopy | null;
+  /** Listas ya cargadas al comprobar esos datos; sin ellas, el formulario las pide. */
+  initialCatalogs?: PieceFormCatalogs;
+  /** Lugares para la ubicación inicial, en el alta; sin ellos (rol sin permiso de mover) no se ofrece. */
+  destinations?: readonly DestinationOption[] | null;
   /** Valores actuales de la ficha en el servidor, para «Ver cambios del otro usuario». */
   loadCurrentValues?: () => Promise<PieceFormValues | null>;
   /** Propietario legal de la ficha (solo lectura: el contrato de escritura no lo incluye, RN-006). Solo en edición. */
@@ -121,6 +138,7 @@ type TextFieldName =
   | "provenance"
   | "period_text"
   | "entry_date"
+  | "recorded_by"
   | "dimensions_text"
   | "notes";
 
@@ -136,6 +154,17 @@ function feedbackFor(grouped: GroupedIssues, field: PieceFormField, localError?:
   };
 }
 
+/** Un dato copiado se resalta hasta que la persona lo toca, y lo dice en texto: el color no basta (RNF-010). */
+function CopiedMark({ copied, children }: { copied: boolean; children: ReactNode }) {
+  if (!copied) return <>{children}</>;
+  return (
+    <div data-copied="true" className="flex flex-col gap-1 border-l-4 border-terracota pl-3">
+      <span className="text-sm font-medium text-gris-texto">Copiado</span>
+      {children}
+    </div>
+  );
+}
+
 /** Una sección del editor (design D8): título visible y sus campos. */
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -147,6 +176,23 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
 }
 
 /** Campo de texto de una línea o de varias (`rows`), con el error local y los mensajes del servidor. */
+/** Asterisco de campo obligatorio; la leyenda del formulario lo explica en texto (RNF-010). */
+function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="text-carmin-texto">
+      *
+    </span>
+  );
+}
+
+function RequiredLabel({ children }: { children: ReactNode }) {
+  return (
+    <>
+      {children} <RequiredMark />
+    </>
+  );
+}
+
 function TextControl({
   control,
   grouped,
@@ -155,6 +201,8 @@ function TextControl({
   rows,
   hint,
   type,
+  required,
+  copied = false,
 }: {
   control: Control<PieceFormValues>;
   grouped: GroupedIssues;
@@ -164,45 +212,53 @@ function TextControl({
   hint?: ReactNode;
   /** Tipo de `<input>` (p. ej. `date` para la fecha de ingreso); se ignora si hay `rows`. */
   type?: string;
+  /** Campo que el servidor exige para guardar: lleva asterisco y `aria-required`. */
+  required?: boolean;
+  copied?: boolean;
 }) {
+  const shownLabel = required ? <RequiredLabel>{label}</RequiredLabel> : label;
   return (
-    <Controller
-      control={control}
-      name={name}
-      render={({ field, fieldState }) => {
-        const feedback = feedbackFor(grouped, name, fieldState.error?.message, hint);
-        if (rows !== undefined) {
+    <CopiedMark copied={copied}>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field, fieldState }) => {
+          const feedback = feedbackFor(grouped, name, fieldState.error?.message, hint);
+          if (rows !== undefined) {
+            return (
+              <Textarea
+                id={name}
+                label={shownLabel}
+                aria-required={required || undefined}
+                name={field.name}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                error={feedback.error}
+                hint={feedback.hint}
+                rows={rows}
+                className="p-2.5"
+              />
+            );
+          }
           return (
-            <Textarea
+            <Input
               id={name}
-              label={label}
+              label={shownLabel}
+              aria-required={required || undefined}
               name={field.name}
+              type={type}
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
               error={feedback.error}
               hint={feedback.hint}
-              rows={rows}
               className="p-2.5"
             />
           );
-        }
-        return (
-          <Input
-            id={name}
-            label={label}
-            name={field.name}
-            type={type}
-            value={field.value}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            error={feedback.error}
-            hint={feedback.hint}
-            className="p-2.5"
-          />
-        );
-      }}
-    />
+        }}
+      />
+    </CopiedMark>
   );
 }
 
@@ -219,6 +275,7 @@ function ChoiceControl({
   options,
   emptyLabel,
   baseHint,
+  copied = false,
 }: {
   control: Control<PieceFormValues>;
   grouped: GroupedIssues;
@@ -227,37 +284,40 @@ function ChoiceControl({
   options: readonly TermOption[];
   emptyLabel: string;
   baseHint?: ReactNode;
+  copied?: boolean;
 }) {
   return (
-    <Controller
-      control={control}
-      name={name}
-      render={({ field, fieldState }) => {
-        const feedback = feedbackFor(grouped, name, fieldState.error?.message, baseHint);
-        const known = field.value === "" || options.some((option) => option.id === field.value);
-        return (
-          <Select
-            id={name}
-            label={label}
-            name={field.name}
-            value={field.value}
-            onChange={field.onChange}
-            onBlur={field.onBlur}
-            error={feedback.error}
-            hint={feedback.hint}
-            className="p-2.5"
-          >
-            <option value="">{emptyLabel}</option>
-            {!known && <option value={field.value}>Valor actual de la ficha</option>}
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        );
-      }}
-    />
+    <CopiedMark copied={copied}>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field, fieldState }) => {
+          const feedback = feedbackFor(grouped, name, fieldState.error?.message, baseHint);
+          const known = field.value === "" || options.some((option) => option.id === field.value);
+          return (
+            <Select
+              id={name}
+              label={label}
+              name={field.name}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              error={feedback.error}
+              hint={feedback.hint}
+              className="p-2.5"
+            >
+              <option value="">{emptyLabel}</option>
+              {!known && <option value={field.value}>Valor actual de la ficha</option>}
+              {options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          );
+        }}
+      />
+    </CopiedMark>
   );
 }
 
@@ -278,6 +338,10 @@ export function PieceForm({
   initialValues,
   draftBase = null,
   onSave,
+  onRegisterAnother,
+  copy = null,
+  initialCatalogs,
+  destinations = null,
   loadCurrentValues,
   legalOwner = null,
   maskedFields = [],
@@ -293,7 +357,7 @@ export function PieceForm({
 
   const form = useForm<PieceFormValues>({ resolver: pieceFormResolver, defaultValues: draft?.values ?? initialValues, mode: "onTouched" });
   const { control, handleSubmit, getValues, reset } = form;
-  const { isDirty, isSubmitting } = form.formState;
+  const { isDirty, isSubmitting, dirtyFields, touchedFields } = form.formState;
   const values = useWatch({ control });
 
   const [validator] = useState(() => createPieceValidator());
@@ -302,7 +366,7 @@ export function PieceForm({
   const [saveMessage, setSaveMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   // Listas de materiales y estados de conservación (en modo mock ya vienen en el primer render).
-  const [catalogs, setCatalogs] = useState<PieceFormCatalogs>(() => initialPieceCatalogs());
+  const [catalogs, setCatalogs] = useState<PieceFormCatalogs>(() => initialCatalogs ?? initialPieceCatalogs());
   const [catalogNote, setCatalogNote] = useState<string | null>(null);
 
   const [conflict, setConflict] = useState<{ message: string } | null>(null);
@@ -314,6 +378,7 @@ export function PieceForm({
   useEffect(() => () => validator.cancel(), [validator]);
 
   useEffect(() => {
+    if (initialCatalogs) return;
     let active = true;
     void fetchPieceCatalogs().then((result) => {
       if (!active) return;
@@ -327,7 +392,7 @@ export function PieceForm({
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialCatalogs]);
 
   // Valida con el servidor cada vez que cambia algún campo (el validador agrupa y cancela).
   // Con un borrador recuperado también se valida al abrir, aunque aún no haya cambios nuevos.
@@ -367,13 +432,23 @@ export function PieceForm({
   const showLender = regime === "Comodato" && !maskedFields.includes("lender_name");
   const showLoanAgreement = regime === "Comodato" && !maskedFields.includes("loan_agreement_ref");
 
-  const submit = handleSubmit(async (formValues) => {
+  // Un borrador recuperado ya no son los datos copiados: su aviso explica cómo volver a ellos.
+  const showCopy = copy !== null && draft === null;
+  const untouched = (field: PieceFormField) => !dirtyFields[field] && !touchedFields[field];
+  const isCopied = (field: PieceFormField) => showCopy && copy.fields.includes(field) && untouched(field);
+  const droppedNotice = (field: PieceFormField) => (showCopy && untouched(field) ? copy.dropped[field] : undefined);
+
+  const saveWith = (intent: SaveIntent) => handleSubmit(async (formValues) => {
     setSaveMessage(null);
     setConflict(null);
     saveDraft(storageKey, formValues, draftBase); // ADR-015 punto 5: antes del envío
-    const outcome = await onSave(formValues);
+    const outcome = await onSave(formValues, intent);
     if (outcome.status === "ok") {
       clearDraft(storageKey);
+      if (intent === "another" && onRegisterAnother) {
+        await onRegisterAnother(formValues);
+        return;
+      }
       setDraft(null);
       reset(formValues);
       setSaveMessage({ kind: "ok", text: outcome.message });
@@ -387,6 +462,7 @@ export function PieceForm({
       setSaveMessage({ kind: "error", text: outcome.message });
     }
   });
+  const submit = saveWith("open");
 
   async function handleViewChanges() {
     if (conflictOpen) {
@@ -435,12 +511,21 @@ export function PieceForm({
             <p>
               Se recuperó un borrador sin guardar ({new Date(draft.savedAt).toLocaleString("es-PE")}).
               {draftIsStale && " La ficha cambió después de escribirlo: revise los datos antes de guardar."}
+              {copy && ` Descártelo para usar los datos copiados de ${copy.source}.`}
             </p>
             <div>
               <Button variant="secondary" onClick={discardDraft}>
                 Descartar borrador
               </Button>
             </div>
+          </div>
+        )}
+
+        {showCopy && (
+          <div role="status" className="flex flex-col gap-1 rounded-lg border border-borde bg-crema p-3 text-base text-tinta">
+            <p>Datos copiados de {copy.source}. Revise que correspondan a esta pieza: los marcados como «Copiado» siguen sin tocar. No se copian códigos, fotos ni historial.</p>
+            {Object.keys(copy.dropped).length > 0 && <p>Algunos datos copiados ya no están disponibles y quedaron vacíos: vea el aviso junto a cada campo.</p>}
+            {copy.unchecked && <p>No se pudo comprobar que los datos copiados sigan vigentes: el sistema los revisará al guardar.</p>}
           </div>
         )}
 
@@ -455,45 +540,50 @@ export function PieceForm({
           />
         )}
 
+        <p className="text-sm text-gris-texto">
+          Los campos marcados con <span className="text-carmin-texto">*</span> son obligatorios; el resto puede completarse después.
+        </p>
+
         <FormSection title="Identificación">
           <TextControl
             control={control}
             grouped={grouped}
             name="denomination"
-            label={
-              <>
-                Denominación <span className="text-carmin-texto">*</span>
-              </>
-            }
+            label="Denominación"
+            required
+            copied={isCopied("denomination")}
           />
           {mode === "create" ? (
             <>
-              <Controller
-                control={control}
-                name="tenure_regime"
-                render={({ field, fieldState }) => {
-                  const feedback = feedbackFor(grouped, "tenure_regime", fieldState.error?.message);
-                  return (
-                    <Select
-                      id="tenure_regime"
-                      label="Régimen de tenencia"
-                      name={field.name}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      error={feedback.error}
-                      hint={feedback.hint}
-                      className="p-2.5"
-                    >
-                      {TENURE_REGIMES.map((tenure) => (
-                        <option key={tenure} value={tenure}>
-                          {tenure}
-                        </option>
-                      ))}
-                    </Select>
-                  );
-                }}
-              />
+              <CopiedMark copied={isCopied("tenure_regime")}>
+                <Controller
+                  control={control}
+                  name="tenure_regime"
+                  render={({ field, fieldState }) => {
+                    const feedback = feedbackFor(grouped, "tenure_regime", fieldState.error?.message);
+                    return (
+                      <Select
+                        id="tenure_regime"
+                        label={<RequiredLabel>Régimen de tenencia</RequiredLabel>}
+                        aria-required
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        error={feedback.error}
+                        hint={feedback.hint}
+                        className="p-2.5"
+                      >
+                        {TENURE_REGIMES.map((tenure) => (
+                          <option key={tenure} value={tenure}>
+                            {tenure}
+                          </option>
+                        ))}
+                      </Select>
+                    );
+                  }}
+                />
+              </CopiedMark>
               <TextControl
                 control={control}
                 grouped={grouped}
@@ -512,13 +602,14 @@ export function PieceForm({
             label="Colección"
             options={catalogs.collections}
             emptyLabel="Sin colección (pieza suelta)"
-            baseHint={catalogNote ?? undefined}
+            baseHint={droppedNotice("collection_id") ?? catalogNote ?? undefined}
+            copied={isCopied("collection_id")}
           />
-          <ChoiceControl control={control} grouped={grouped} name="category_id" label="Categoría" options={catalogs.categories} emptyLabel="Sin registrar" />
-          <ChoiceControl control={control} grouped={grouped} name="object_type_term_id" label="Tipo de bien" options={catalogs.objectTypes} emptyLabel="Sin registrar" />
+          <ChoiceControl control={control} grouped={grouped} name="category_id" label="Categoría" options={catalogs.categories} emptyLabel="Sin registrar" baseHint={droppedNotice("category_id")} copied={isCopied("category_id")} />
+          <ChoiceControl control={control} grouped={grouped} name="object_type_term_id" label="Tipo de bien" options={catalogs.objectTypes} emptyLabel="Sin registrar" baseHint={droppedNotice("object_type_term_id")} copied={isCopied("object_type_term_id")} />
           <ChoiceControl control={control} grouped={grouped} name="availability_term_id" label="Disponibilidad" options={catalogs.availabilities} emptyLabel="Sin registrar" />
-          {showLender && <TextControl control={control} grouped={grouped} name="lender_name" label="Comodante" />}
-          {showLoanAgreement && <TextControl control={control} grouped={grouped} name="loan_agreement_ref" label="Convenio de comodato" />}
+          {showLender && <TextControl control={control} grouped={grouped} name="lender_name" label="Comodante" copied={isCopied("lender_name")} />}
+          {showLoanAgreement && <TextControl control={control} grouped={grouped} name="loan_agreement_ref" label="Convenio de comodato" copied={isCopied("loan_agreement_ref")} />}
           {mode === "edit" && (
             <ReadOnlyFact
               label="Propietario legal"
@@ -529,13 +620,13 @@ export function PieceForm({
         </FormSection>
 
         <FormSection title="Descripción">
-          <TextControl control={control} grouped={grouped} name="description" label="Descripción" rows={3} />
-          <TextControl control={control} grouped={grouped} name="author" label="Autor" />
+          <TextControl control={control} grouped={grouped} name="description" label="Descripción" rows={3} copied={isCopied("description")} />
+          <TextControl control={control} grouped={grouped} name="author" label="Autor" copied={isCopied("author")} />
         </FormSection>
 
         <FormSection title="Procedencia y época">
-          <TextControl control={control} grouped={grouped} name="provenance" label="Procedencia" />
-          <TextControl control={control} grouped={grouped} name="period_text" label="Época (texto original)" />
+          <TextControl control={control} grouped={grouped} name="provenance" label="Procedencia" copied={isCopied("provenance")} />
+          <TextControl control={control} grouped={grouped} name="period_text" label="Época (texto original)" copied={isCopied("period_text")} />
           <ChoiceControl
             control={control}
             grouped={grouped}
@@ -543,6 +634,8 @@ export function PieceForm({
             label="Forma de adquisición"
             options={catalogs.acquisitionMethods}
             emptyLabel="Sin registrar"
+            baseHint={droppedNotice("acquisition_method_term_id")}
+            copied={isCopied("acquisition_method_term_id")}
           />
           <TextControl
             control={control}
@@ -551,49 +644,67 @@ export function PieceForm({
             type="date"
             label="Fecha de ingreso"
             hint="Formato año-mes-día. Déjela vacía si no se conoce."
+            copied={isCopied("entry_date")}
           />
+          {mode === "create" && <TextControl control={control} grouped={grouped} name="recorded_by" label="Registrado por" copied={isCopied("recorded_by")} />}
+          {mode === "create" && destinations && (
+            <CopiedMark copied={isCopied("initial_location_id")}>
+              <Controller
+                control={control}
+                name="initial_location_id"
+                render={({ field }) => (
+                  <div className="flex flex-col gap-1" onBlur={field.onBlur}>
+                    <DestinationPicker options={destinations} value={field.value} onChange={field.onChange} label="Ubicación inicial" emptyLabel="Sin ubicación por ahora" />
+                    {droppedNotice("initial_location_id") && <p className="text-sm text-gris-texto">{droppedNotice("initial_location_id")}</p>}
+                  </div>
+                )}
+              />
+            </CopiedMark>
+          )}
         </FormSection>
 
         <FormSection title="Medidas y materiales">
-          <TextControl control={control} grouped={grouped} name="dimensions_text" label="Medidas (texto original)" />
+          <TextControl control={control} grouped={grouped} name="dimensions_text" label="Medidas (texto original)" copied={isCopied("dimensions_text")} />
           <Controller
             control={control}
             name="material_term_ids"
             render={({ field }) => {
-              const feedback = feedbackFor(grouped, "material_term_ids");
+              const feedback = feedbackFor(grouped, "material_term_ids", undefined, droppedNotice("material_term_ids"));
               return (
-                <fieldset className="flex flex-col gap-2">
-                  <legend className="text-base font-medium text-tinta">Materiales</legend>
-                  {catalogs.materials.length === 0 ? (
-                    <p className="text-sm text-gris-texto">{catalogNote ?? "No hay materiales en la lista."}</p>
-                  ) : (
-                    <div className="grid gap-x-6 sm:grid-cols-2">
-                      {catalogs.materials.map((option) => {
-                        const checked = field.value.includes(option.id);
-                        return (
-                          <label key={option.id} className="flex min-h-11 items-center gap-2 text-base text-tinta">
-                            <input
-                              type="checkbox"
-                              className="h-5 w-5 accent-terracota"
-                              name={field.name}
-                              value={option.id}
-                              checked={checked}
-                              onChange={() => field.onChange(checked ? field.value.filter((id) => id !== option.id) : [...field.value, option.id])}
-                              onBlur={field.onBlur}
-                            />
-                            {option.label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {feedback.error && (
-                    <p role="alert" className="text-sm font-medium text-carmin-texto">
-                      {feedback.error}
-                    </p>
-                  )}
-                  {feedback.hint && <p className="text-sm text-gris-texto">{feedback.hint}</p>}
-                </fieldset>
+                <CopiedMark copied={isCopied("material_term_ids")}>
+                  <fieldset className="flex flex-col gap-2">
+                    <legend className="text-base font-medium text-tinta">Materiales</legend>
+                    {catalogs.materials.length === 0 ? (
+                      <p className="text-sm text-gris-texto">{catalogNote ?? "No hay materiales en la lista."}</p>
+                    ) : (
+                      <div className="grid gap-x-6 sm:grid-cols-2">
+                        {catalogs.materials.map((option) => {
+                          const checked = field.value.includes(option.id);
+                          return (
+                            <label key={option.id} className="flex min-h-11 items-center gap-2 text-base text-tinta">
+                              <input
+                                type="checkbox"
+                                className="h-5 w-5 accent-terracota"
+                                name={field.name}
+                                value={option.id}
+                                checked={checked}
+                                onChange={() => field.onChange(checked ? field.value.filter((id) => id !== option.id) : [...field.value, option.id])}
+                                onBlur={field.onBlur}
+                              />
+                              {option.label}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {feedback.error && (
+                      <p role="alert" className="text-sm font-medium text-carmin-texto">
+                        {feedback.error}
+                      </p>
+                    )}
+                    {feedback.hint && <p className="text-sm text-gris-texto">{feedback.hint}</p>}
+                  </fieldset>
+                </CopiedMark>
               );
             }}
           />
@@ -630,7 +741,7 @@ export function PieceForm({
         </FormSection>
 
         <FormSection title="Observaciones">
-          <TextControl control={control} grouped={grouped} name="notes" label="Observaciones" rows={3} />
+          <TextControl control={control} grouped={grouped} name="notes" label="Observaciones" rows={3} copied={isCopied("notes")} />
         </FormSection>
 
         {(grouped.general.length > 0 || validationNote) && (
@@ -652,6 +763,11 @@ export function PieceForm({
           <Button type="submit" icon={Save} disabled={isSubmitting || hasBlockingIssue}>
             {mode === "create" ? "Registrar pieza" : "Guardar cambios"}
           </Button>
+          {onRegisterAnother && (
+            <Button variant="outline" icon={CopyPlus} disabled={isSubmitting || hasBlockingIssue} onClick={saveWith("another")}>
+              Guardar y registrar otra
+            </Button>
+          )}
           <Button variant="secondary" onClick={onCancel}>
             Cancelar
           </Button>

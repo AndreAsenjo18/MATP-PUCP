@@ -126,6 +126,14 @@ def test_upload_url_duplicate_sha256_warning(seeded_api: SeededApi, fake_storage
     assert response.headers.get("X-Warning") == "duplicate_content"
 
 
+def test_the_repeated_photo_warning_is_readable_from_another_origin(seeded_api: SeededApi) -> None:
+    """Browsers hide response headers across origins unless they are exposed."""
+    response = seeded_api.client.get("/health", headers={"Origin": "http://localhost:3000"})
+
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "X-Warning" in response.headers["access-control-expose-headers"]
+
+
 def test_upload_url_viewer_without_permission(seeded_api: SeededApi) -> None:
     piece_id = _piece_id(seeded_api)
     response = seeded_api.client.post(

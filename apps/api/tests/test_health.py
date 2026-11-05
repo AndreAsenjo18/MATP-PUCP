@@ -40,7 +40,7 @@ def test_health_identifies_a_local_build_as_development(settings: Settings) -> N
     assert body["commit"] == "dev"
     assert body["release"] is None
     # Only service metadata and dependency status: no catalog data.
-    assert set(body) == {"status", "service", "version", "commit", "release", "checks"}
+    assert set(body) == {"status", "service", "version", "commit", "release", "checks", "backup"}
 
 
 def test_health_reports_the_deployed_commit_and_release(settings: Settings) -> None:

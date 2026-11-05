@@ -1,12 +1,19 @@
 """Quality, search, reports and exports (calidad-datos, busqueda-reportes)."""
 
+import csv
+import tempfile
 import uuid
-from typing import Annotated
+from datetime import date, datetime
+from pathlib import Path
+from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response, status
+from fastapi import Path as FastAPIPath
+from fastapi.responses import JSONResponse
+from sqlalchemy import and_, func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
-from app.api.enums import TENURE_REGIME_LABELS, TenureRegimeLabel, code_of
 from app.api.errors import COMMON_ERROR_RESPONSES
 from app.api.pagination import (
     DEFAULT_PAGE_SIZE,
@@ -17,18 +24,38 @@ from app.api.pagination import (
     paginate,
 )
 from app.api.stubs import (
-    CHANGE_INCOMPLETE,
     CHANGE_REPORTS,
-    CHANGE_SEARCH_EXPORT,
     implemented,
     not_implemented,
-    page_example,
     stub,
 )
+from app.api.v1.pieces import piece_filters
 from app.core.errors import NotFound
 from app.core.jobs import run_in_background
-from app.modules.catalog.queries import CatalogReader, PieceFilters, Viewer, build_piece_query
-from app.modules.collections.service import find_collection_by_code
+from app.core.models_base import new_uuid, utcnow
+from app.core.xlsx import write_table
+from app.modules.audit.context import AuditContext, set_audit_context
+from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
+from app.modules.catalog.models import Piece
+from app.modules.catalog.queries import CatalogReader, Viewer
+from app.modules.exports.results import masked_fields, resolve_columns, result_row
+from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
+from app.modules.locations.service import last_seen
+from app.modules.media.derivatives import derivative_keys
+from app.modules.media.models import MediaAsset
+from app.modules.quality.completeness import (
+    list_completeness_rules,
+    load_active_rules,
+    replace_completeness_rules,
+)
+from app.modules.quality.incomplete_report import (
+    XLSX_CONTENT_TYPE,
+    build_incomplete_query,
+    incomplete_report_csv,
+    incomplete_report_workbook,
+    rows_for_pieces,
+)
+from app.modules.quality.kpis import compute_dashboard_kpis
 from app.modules.quality.models import DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
@@ -38,57 +65,205 @@ from app.modules.quality.queue import (
 )
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
+    AlertKpi,
     AlertType,
+    CollectionKpis,
     CompletenessKpis,
+    CompletenessRuleOut,
+    CompletenessRulesUpdate,
+    DashboardHistory,
     DuplicateCandidateOut,
     DuplicateOrigin,
     DuplicateResolution,
     IncompletePiece,
     QualityJobOut,
+    SnapshotPointOut,
 )
+from app.modules.quality.snapshot import dashboard_history
+from app.modules.reports import registry as reports
+from app.modules.reports.files import report_file
+from app.modules.search.filters import PieceFilter
+from app.modules.search.models import ExportJobKind, ExportJobModel, ExportJobStatus
+from app.modules.search.ranking import generate_search_suggestions, rank_and_describe_pieces
 from app.modules.search.schemas import (
     ExportFormat,
     ExportJob,
+    GroupBy,
     ReportOut,
+    ReportSubtotal,
     ReportType,
     SearchExportRequest,
+    SearchHit,
     SearchResultPage,
 )
-from app.modules.search.service import describe_matches
+from app.modules.users.sensitive import PERM_EXACT_LOCATION
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES)
 
 Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 ReportViewer = Annotated[CurrentUser, Depends(require_permission("reports.view"))]
 Exporter = Annotated[CurrentUser, Depends(require_permission("exports.run"))]
+CompletenessRulesManager = Annotated[
+    CurrentUser, Depends(require_permission("quality.completeness_rules.manage"))
+]
 
 
-# ------------------------------------------------------------------------ quality
+# ------------------------------------------------------------------------- quality
 @router.get(
     "/quality/incomplete",
     response_model=Page[IncompletePiece],
-    summary="Piezas con información incompleta (RF-019, RF-035)",
+    summary="Listado de piezas con alertas de incompletitud (RF-019)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    responses={
+        200: {
+            "content": {"text/csv": {}, XLSX_CONTENT_TYPE: {}},
+            "description": "Lista en JSON o, con `format=xlsx|csv`, como archivo descargable "
+            "(sin paginar: incluye todas las piezas que cumplen los filtros).",
+        }
+    },
+    **implemented(),
 )
 def list_incomplete_pieces(
+    session: SessionDep,
     user: ReportViewer,
     params: Annotated[PageParams, Depends(page_params)],
     alert: Annotated[list[AlertType] | None, Query(description="Tipos de alerta (AND).")] = None,
     collection_id: uuid.UUID | None = None,
-) -> Page[IncompletePiece]:
-    raise not_implemented(CHANGE_INCOMPLETE, page_example(IncompletePiece))
+    include_subcollections: Annotated[
+        bool, Query(description="Con `collection_id`, incluye sus subcolecciones.")
+    ] = True,
+    export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
+) -> Page[IncompletePiece] | Response:
+    rules = load_active_rules(session)
+    statement = build_incomplete_query(
+        session,
+        rules,
+        alert_codes=alert,
+        collection_id=collection_id,
+        include_subcollections=include_subcollections,
+    )
+    filters = {
+        "alert": ", ".join(alert) if alert else None,
+        "collection_id": str(collection_id) if collection_id else None,
+        "include_subcollections": include_subcollections if collection_id else None,
+    }
+    if export_format is not None:
+        pieces = list(session.scalars(statement))
+        rows = rows_for_pieces(session, pieces, rules)
+        if export_format == ExportFormat.CSV:
+            return Response(
+                content=incomplete_report_csv(rows, filters),
+                media_type="text/csv",
+                headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.csv"'},
+            )
+        return Response(
+            content=incomplete_report_workbook(rows, filters),
+            media_type=XLSX_CONTENT_TYPE,
+            headers={"Content-Disposition": 'attachment; filename="piezas-incompletas.xlsx"'},
+        )
+    pieces, total = paginate(session, statement, params)
+    rows = rows_for_pieces(session, pieces, rules)
+    return Page[IncompletePiece](
+        items=[
+            IncompletePiece(
+                piece_id=row.piece_id,
+                title=row.title,
+                collection_name=row.collection_name,
+                alerts=row.alerts,
+            )
+            for row in rows
+        ],
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+    )
 
 
 @router.get(
     "/reports/dashboard-stats",
     response_model=CompletenessKpis,
-    summary="KPI de completitud general y por colección (RF-035)",
+    summary="KPI de completitud general y por coleccin (RF-035)",
     tags=["Calidad"],
-    **stub(CHANGE_INCOMPLETE),
+    **implemented(),
 )
-def get_dashboard_stats(user: ReportViewer) -> CompletenessKpis:
-    raise not_implemented(CHANGE_INCOMPLETE, CompletenessKpis)
+def get_dashboard_stats(
+    session: SessionDep,
+    user: ReportViewer,
+    by_collection: Annotated[
+        bool, Query(description="Incluye el desglose por colección raíz con subcolecciones.")
+    ] = False,
+) -> CompletenessKpis:
+    kpis = compute_dashboard_kpis(session, by_collection=by_collection)
+    return CompletenessKpis(
+        total_pieces=kpis.total_pieces,
+        alerts=[AlertKpi.model_validate(alert, from_attributes=True) for alert in kpis.alerts],
+        by_collection=[
+            CollectionKpis(
+                collection_id=group.collection_id,
+                collection_name=group.collection_name,
+                alerts=[
+                    AlertKpi.model_validate(alert, from_attributes=True) for alert in group.alerts
+                ],
+            )
+            for group in kpis.by_collection
+        ],
+        computed_at=kpis.computed_at,
+    )
+
+
+@router.get(
+    "/reports/dashboard-stats/history",
+    response_model=DashboardHistory,
+    summary="Evolución diaria de los indicadores de completitud (RF-035)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_dashboard_stats_history(
+    session: SessionDep,
+    user: ReportViewer,
+    date_from: Annotated[date, Query(alias="from", description="Fecha inicial, incluida.")],
+    date_to: Annotated[date, Query(alias="to", description="Fecha final, incluida.")],
+    collection_id: Annotated[
+        uuid.UUID | None, Query(description="Omitido: indicadores globales.")
+    ] = None,
+) -> DashboardHistory:
+    points = dashboard_history(session, date_from, date_to, collection_id)
+    return DashboardHistory(
+        collection_id=collection_id,
+        points=[SnapshotPointOut.model_validate(point, from_attributes=True) for point in points],
+    )
+
+
+@router.get(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Campos obligatorios y recomendados vigentes para las alertas de completitud",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_completeness_rules(
+    session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    rules = list_completeness_rules(session)
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
+
+
+@router.put(
+    "/quality/completeness-rules",
+    response_model=list[CompletenessRuleOut],
+    summary="Reemplazar los campos obligatorios y recomendados (RF-019, RN-010)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def put_completeness_rules(
+    body: CompletenessRulesUpdate, session: SessionDep, user: CompletenessRulesManager
+) -> list[CompletenessRuleOut]:
+    writer(session, user)
+    rules = replace_completeness_rules(
+        session, [(rule.field, rule.kind, rule.is_active) for rule in body.rules]
+    )
+    session.commit()
+    return [CompletenessRuleOut.model_validate(rule, from_attributes=True) for rule in rules]
 
 
 @router.get(
@@ -109,7 +284,7 @@ def list_duplicate_candidates(
     min_score: Annotated[float | None, Query(ge=0, le=1)] = None,
     origin: Annotated[
         DuplicateOrigin | None,
-        Query(description="CATALOG: dos piezas del catálogo; IMPORT: fila de importación."),
+        Query(description="CATALOG: dos piezas del catlogo; IMPORT: fila de importacin."),
     ] = None,
 ) -> Page[DuplicateCandidateOut]:
     if reopen_expired_postponements(session):  # design D5: no cron, reopened on read
@@ -156,7 +331,7 @@ def resolve_duplicate_candidate(
             field_choices=body.field_choices,
         )
     except StaleCandidate:
-        session.commit()  # the pair stays SUPERSEDED (spec: «Candidato obsoleto»)
+        session.commit()  # the pair stays SUPERSEDED (spec: Candidato obsoleto)
         raise
     session.commit()
     return DuplicateCandidateOut.model_validate(candidate)
@@ -167,7 +342,7 @@ def resolve_duplicate_candidate(
     response_model=QualityJobOut,
     status_code=status.HTTP_202_ACCEPTED,
     summary=(
-        "Lanzar la detección completa de duplicados en segundo plano; 409 si ya hay una en curso "
+        "Lanzar la deteccin completa de duplicados en segundo plano; 409 si ya hay una en curso "
         "(RF-030)"
     ),
     tags=["Calidad"],
@@ -189,14 +364,14 @@ def scan_duplicates(
 @router.get(
     "/quality/jobs/{job_id}",
     response_model=QualityJobOut,
-    summary="Estado y avance de una detección de duplicados (RF-030, RNF-015)",
+    summary="Estado y avance de una deteccin de duplicados (RF-030, RNF-015)",
     tags=["Calidad"],
     **implemented(),
 )
 def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> QualityJobOut:
     job = session.get(QualityJob, job_id)
     if job is None:
-        raise NotFound("No existe esa detección de duplicados.")
+        raise NotFound("No existe esa deteccin de duplicados.")
     return QualityJobOut.model_validate(job)
 
 
@@ -204,48 +379,97 @@ def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> Qua
 @router.get(
     "/search",
     response_model=SearchResultPage,
-    summary="Búsqueda avanzada con filtros combinados (RF-031, RF-032)",
-    tags=["Búsqueda"],
+    response_model_exclude_unset=True,
+    summary="Bsqueda avanzada con filtros combinados (RF-031, RF-032)",
+    tags=["Bsqueda"],
     **implemented(),
 )
 def search_pieces(
-    q: Annotated[str, Query(min_length=1, max_length=200, description="Código o texto.")],
     session: SessionDep,
     user: Reader,
+    request: Request,
+    filters: Annotated[PieceFilter, Depends(piece_filters)],
     collection_code: Annotated[
         str | None, Query(description="Sigla de la colección, con o sin puntos (ej. MMZ, M.M.Z.).")
-    ] = None,
-    tenure_regime: Annotated[
-        TenureRegimeLabel | None,
-        Query(description="Régimen de tenencia: Propiedad, Comodato o Préstamo Temporal."),
     ] = None,
     page: Annotated[int, Query(ge=1, description="Número de página (desde 1).")] = 1,
     limit: Annotated[
         int, Query(ge=1, le=MAX_PAGE_SIZE, description="Resultados por página (máx. 100).")
     ] = DEFAULT_PAGE_SIZE,
 ) -> SearchResultPage:
-    collection_id: uuid.UUID | None = None
-    if collection_code is not None:
-        collection = find_collection_by_code(session, collection_code)
-        if collection is None:
-            return SearchResultPage(items=[], total=0, page=page, limit=limit)
-        collection_id = collection.id
-
-    regime = (
-        code_of(TENURE_REGIME_LABELS, tenure_regime, "tenure_regime")
-        if tenure_regime is not None
-        else None
-    )
-    filters = PieceFilters(q=q, collection_id=collection_id, tenure_regime=regime)
+    """Sin `q`, lista las piezas que cumplen los filtros en orden alfabético, sin `match_reason`."""
+    piece_filter = filters.model_copy(update={"collection_code": collection_code})
+    q = (piece_filter.q or "").strip()
+    viewer = Viewer(user.permissions)
+    where_clause = piece_filter.to_where(session, viewer)
     params = PageParams(page=page, page_size=limit)
-    pieces, total = paginate(session, build_piece_query(session, filters), params)
-    summaries = CatalogReader(session, Viewer(user.permissions)).summaries(pieces)
+    query = select(Piece).where(where_clause).order_by(Piece.denomination)
+    pieces, total = paginate(session, query, params)
+    summaries = CatalogReader(session, viewer).summaries(pieces)
+    if q:
+        hits = rank_and_describe_pieces(session, pieces, summaries, q)
+    else:
+        hits = [SearchHit(piece=summary, match_type="TITLE") for summary in summaries]
+    thumbnails = _thumbnail_urls(session, request, [hit.piece.id for hit in hits])
+    # The exact location only for whoever can see it (RF-041): it checks a move or a verification
+    # made from the results, like the old depósito view (fusion-busqueda-deposito 3.2).
+    # When it was last seen goes with it (3.3).
+    exact_locations: dict[uuid.UUID, uuid.UUID | None] = {}
+    seen_at: dict[uuid.UUID, datetime] = {}
+    if viewer.can(PERM_EXACT_LOCATION):
+        exact_locations = {piece.id: piece.current_location_id for piece in pieces}
+        seen_at = last_seen(session, [piece.id for piece in pieces])
+    for hit in hits:
+        hit.thumbnail_url = thumbnails.get(hit.piece.id)
+        if hit.piece.id in exact_locations:
+            hit.location_id = exact_locations[hit.piece.id]
+            hit.last_seen_at = seen_at.get(hit.piece.id)
+
+    extra_kwargs: dict[str, Any] = {}
+    active_other_filters = [f for f in piece_filter.describe() if f.key != "q"]
+    if total == 0 and len(active_other_filters) >= 2:
+        suggestions, active_f = generate_search_suggestions(piece_filter, q, total)
+        if suggestions:
+            extra_kwargs["suggestions"] = suggestions
+        if active_f:
+            extra_kwargs["active_filters"] = [a.model_dump() for a in active_f]
+    if piece_filter.epoch_start_year is not None or piece_filter.epoch_end_year is not None:
+        extra_kwargs["excluded_uninterpreted_period"] = (
+            piece_filter.count_excluded_uninterpreted_period(session, viewer)
+        )
+
     return SearchResultPage(
-        items=describe_matches(session, q, summaries),
+        items=hits,
         total=total,
         page=page,
         limit=limit,
+        **extra_kwargs,
     )
+
+
+def _thumbnail_urls(
+    session: SessionDep, request: Request, piece_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """URL prefirmada de la miniatura de la foto principal de cada pieza (o de la primera)."""
+    storage = getattr(request.app.state, "storage", None)
+    if storage is None or not piece_ids:
+        return {}
+    assets = session.scalars(
+        select(MediaAsset)
+        .where(MediaAsset.piece_id.in_(piece_ids), MediaAsset.deleted_at.is_(None))
+        .order_by(MediaAsset.is_primary.desc(), MediaAsset.sort_order, MediaAsset.created_at)
+    ).all()
+    keys: dict[uuid.UUID, str] = {}
+    for asset in assets:
+        keys.setdefault(asset.piece_id, derivative_keys(asset)[0])
+    ttl = request.app.state.settings.media_url_ttl_seconds
+    urls: dict[uuid.UUID, str] = {}
+    for piece_id, key in keys.items():
+        try:
+            urls[piece_id] = storage.presign_get(key, ttl)
+        except (BotoCoreError, ClientError):  # sin miniatura, la tarjeta muestra un marcador
+            continue
+    return urls
 
 
 @router.post(
@@ -253,34 +477,284 @@ def search_pieces(
     response_model=ExportJob,
     summary="Exportar a Excel los resultados de la consulta actual (RF-036)",
     tags=["Reportes"],
-    **stub(CHANGE_SEARCH_EXPORT),
+    **implemented(),
 )
-def export_excel_report(body: SearchExportRequest, user: Exporter) -> ExportJob:
-    raise not_implemented(CHANGE_SEARCH_EXPORT, ExportJob)
+def export_excel_report(
+    body: SearchExportRequest,
+    user: Exporter,
+    session: SessionDep,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> Any:
+    # 1. Parse unified filter
+    piece_filter = PieceFilter(**(body.filters or {}))
+    viewer = Viewer(user.permissions)
+    where_clause = piece_filter.to_where(session, viewer)
+
+    # 2. Count matching rows
+    count = session.scalar(select(func.count(Piece.id)).where(where_clause)) or 0
+    fmt = body.format.value if hasattr(body.format, "value") else str(body.format).lower()
+
+    columns = resolve_columns(body.columns, user.permissions)
+    masked = masked_fields(user.permissions)
+
+    # 3. Synchronous export if count <= EXPORT_SYNC_MAX_ROWS (5 000)
+    if count <= EXPORT_SYNC_MAX_ROWS:
+        pieces = session.scalars(
+            select(Piece).where(where_clause).order_by(Piece.denomination)
+        ).all()
+        reader = CatalogReader(session, viewer)
+        summaries = {s.id: s for s in reader.summaries(pieces)}
+        headers = [column.header for column in columns]
+        rows = [result_row(session, piece, summaries.get(piece.id), columns) for piece in pieces]
+
+        with tempfile.NamedTemporaryFile(suffix=f".{fmt}", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            if fmt == "xlsx":
+                write_table(
+                    tmp_path,
+                    rows,
+                    headers,
+                    sheet_title="Resultados",
+                    active_filters=piece_filter.describe(session),
+                    user_label=user.email or "usuario",
+                    omitted_columns=masked or None,
+                )
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            else:
+                with open(tmp_path, "w", encoding="utf-8-sig", newline="") as csv_f:
+                    csv_w = csv.writer(csv_f)
+                    csv_w.writerow(headers)
+                    for r in rows:
+                        csv_w.writerow(r)
+                media_type = "text/csv"
+
+            file_bytes = tmp_path.read_bytes()
+
+            ctx = AuditContext(
+                origin=AuditOrigin.MANUAL,
+                user_id=user.id,
+                actor_label=user.email or "usuario",
+                action=AuditAction.EXPORT,
+            )
+            set_audit_context(session, ctx)
+
+            # Record audit
+            audit_entry = AuditLog(
+                change_set_id=new_uuid(),
+                entity_type="export_job",
+                entity_id=new_uuid(),
+                field=None,
+                old_value=None,
+                new_value={
+                    "kind": "results",
+                    "format": fmt,
+                    "row_count": count,
+                    "filters": body.filters,
+                    "includes_sensitive_fields": any(c.permission for c in columns),
+                    "masked_fields": masked,
+                    "columns": [c.key for c in columns],
+                },
+                action=AuditAction.EXPORT,
+                origin=AuditOrigin.MANUAL,
+                user_id=user.id,
+                actor_label=user.email or "usuario",
+                reason=f"Exportacin sncrona de resultados ({fmt}) con {count} filas",
+            )
+            session.add(audit_entry)
+            session.commit()
+
+            resp_headers = {"Content-Disposition": f'attachment; filename="reporte_catalogo.{fmt}"'}
+            if masked:
+                resp_headers["X-Omited-Columns"] = ", ".join(masked)
+
+            return Response(
+                content=file_bytes,
+                media_type=media_type,
+                headers=resp_headers,
+            )
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+
+    # 4. Asynchronous export job if count > EXPORT_SYNC_MAX_ROWS
+    job = ExportJobModel(
+        kind=ExportJobKind.RESULTS,
+        requested_by_id=user.id,
+        format=fmt,
+        params=body.model_dump(),
+        status=ExportJobStatus.PENDING,
+        row_count=count,
+    )
+    session.add(job)
+    session.commit()
+
+    run_in_background(
+        background_tasks,
+        run_export_job,
+        request.app.state.session_factory,
+        job.id,
+        getattr(request.app.state, "storage", None),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=ExportJob(
+            id=job.id,
+            status="PENDING",
+            format=body.format,
+            row_count=count,
+        ).model_dump(mode="json"),
+    )
 
 
 # ------------------------------------------------------------------------ reports
 @router.get(
     "/reports/{report_type}",
     response_model=ReportOut,
-    summary="Reportes: inventario, por colección, por ubicación, incompletas, valorización",
+    responses={
+        200: {
+            "content": {XLSX_CONTENT_TYPE: {}, "text/csv": {}},
+            "description": "El reporte en JSON (una página) o, con `format`, el archivo.",
+        },
+        202: {"model": ExportJob, "description": "Reporte grande: se genera en segundo plano."},
+        403: {
+            "description": "`exact_location_required`: detalle por debajo del espacio; "
+            "`permission_denied`: reporte sin su permiso (valorización)."
+        },
+        404: {
+            "description": "`report_not_found`, con los reportes disponibles para su rol; "
+            "también la valorización mientras `FEATURE_VALUATION_REPORT` está desactivada."
+        },
+    },
+    summary="Reportes: inventario general, por colección, por ubicación, agrupado por "
+    "atributo, incompletas y valorización (RF-033, RF-037, RF-047)",
+    description="Catálogo cerrado de reportes generados sobre una instantánea consistente: el "
+    "total coincide con la suma de subtotales y con las filas. Excluye préstamos temporales, "
+    "piezas eliminadas y fusionadas; incluye los comodatos con subtotal propio salvo "
+    "`include_loans_for_use=false` [SUPUESTO]. La ubicación se limita a sede y espacio sin el "
+    "permiso de ubicación exacta (RF-041). Los reportes que listan piezas aceptan los filtros "
+    "de `GET /search` (RF-032); los de `incomplete` y `valuation` no los usan. `by-attribute` "
+    "agrupa por `group_by` (RF-047). Con `format` "
+    "descarga el archivo, o lo genera en "
+    "segundo plano (202) si supera el límite de la exportación síncrona. `valuation` totaliza "
+    "por colección y moneda la valorización más reciente de cada pieza: exige "
+    "`sensitive.valuation`, solo existe con `FEATURE_VALUATION_REPORT=true` [SUPUESTO] y cada "
+    "generación queda en la auditoría (RNF-014).",
     tags=["Reportes"],
-    **stub(CHANGE_REPORTS),
+    **implemented(),
 )
 def get_report(
-    report_type: ReportType,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    report_type: Annotated[
+        str,
+        FastAPIPath(
+            description="Tipo de reporte.",
+            json_schema_extra={"enum": [item.value for item in ReportType]},
+        ),
+    ],
+    session: SessionDep,
     user: ReportViewer,
-    collection_id: uuid.UUID | None = None,
-    location_id: uuid.UUID | None = None,
+    piece_filter: Annotated[PieceFilter, Depends(piece_filters)],
+    include_loans_for_use: bool = True,
+    not_verified_since_days: Annotated[int | None, Query(ge=0)] = None,
+    group_by: Annotated[
+        str | None,
+        Query(
+            description="Atributo del reporte `by-attribute`; otro valor responde 422 con los "
+            "admitidos.",
+            json_schema_extra={"enum": [item.value for item in GroupBy]},
+        ),
+    ] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
     export_format: Annotated[ExportFormat | None, Query(alias="format")] = None,
-) -> ReportOut:
-    raise not_implemented(CHANGE_REPORTS, ReportOut)
+) -> ReportOut | Response:
+    params = reports.ReportParams(
+        collection_id=piece_filter.collection_id,
+        location_id=piece_filter.location_id,
+        include_loans_for_use=include_loans_for_use,
+        not_verified_since_days=not_verified_since_days,
+        group_by=group_by,
+        piece_filter=piece_filter,
+    )
+    permissions = frozenset(user.permissions)
+    features = (
+        frozenset({reports.VALUATION_FEATURE})
+        if request.app.state.settings.feature_valuation_report
+        else frozenset()
+    )
+    data = reports.build(report_type, session, permissions, params, features)
+    generated_at = utcnow()
+    generated_by = user.email or "usuario"
+    if export_format is not None:
+        fmt = export_format.value
+        if len(data.rows) > EXPORT_SYNC_MAX_ROWS:
+            job = ExportJobModel(
+                kind=ExportJobKind.REPORT,
+                requested_by_id=user.id,
+                format=fmt,
+                params={
+                    "report_type": report_type,
+                    "features": sorted(features),
+                    **reports.serialize_params(params),
+                },
+                status=ExportJobStatus.PENDING,
+                row_count=len(data.rows),
+            )
+            session.add(job)
+            session.commit()
+            run_in_background(
+                background_tasks,
+                run_export_job,
+                request.app.state.session_factory,
+                job.id,
+                getattr(request.app.state, "storage", None),
+            )
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content=ExportJob(
+                    id=job.id, status="PENDING", format=export_format, row_count=len(data.rows)
+                ).model_dump(mode="json"),
+            )
+        content, media_type = report_file(
+            data, fmt, generated_at=generated_at, generated_by=generated_by
+        )
+        reports.record_report_export(session, user.id, generated_by, report_type, fmt, data)
+        session.commit()
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="reporte-{report_type}.{fmt}"'},
+        )
+    if reports.REPORTS[report_type].audit_every_generation:
+        reports.record_report_export(session, user.id, generated_by, report_type, "json", data)
+        session.commit()
+    start = (page - 1) * page_size
+    return ReportOut(
+        report_type=ReportType(report_type),
+        title=data.title,
+        generated_at=generated_at,
+        generated_by=generated_by,
+        filters=data.filters,
+        columns=data.columns,
+        rows=data.rows[start : start + page_size],
+        totals=data.totals,
+        subtotals=[ReportSubtotal(**vars(subtotal)) for subtotal in data.subtotals],
+        masked_columns=data.masked_columns,
+        message=data.message,
+        total_rows=len(data.rows),
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
     "/reports/piece-card/{piece_id}/pdf",
     response_model=ExportJob,
-    summary="Generar la ficha museográfica imprimible de una pieza en PDF (RF-006)",
+    summary="Generar la ficha museogrfica imprimible de una pieza en PDF (RF-006)",
     tags=["Reportes"],
     **stub(CHANGE_REPORTS),
 )
@@ -291,12 +765,75 @@ def export_piece_pdf(piece_id: uuid.UUID, user: ReportViewer) -> ExportJob:
 @router.get(
     "/exports/full",
     response_model=ExportJob,
-    summary="Exportación completa de la base en formato abierto (RF-044)",
+    summary="Exportacin completa de la base en formato abierto (RF-044)",
     tags=["Reportes"],
-    **stub(CHANGE_SEARCH_EXPORT),
+    **implemented(),
 )
 def export_full_database(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
     user: Annotated[CurrentUser, Depends(require_permission("exports.full"))],
     export_format: Annotated[ExportFormat, Query(alias="format")] = ExportFormat.XLSX,
-) -> ExportJob:
-    raise not_implemented(CHANGE_SEARCH_EXPORT, ExportJob)
+) -> Any:
+    # Check if a full export is already in progress (RF-044:
+    # devuelve el trabajo en curso en lugar de iniciar otro)
+    now = utcnow()
+    existing_job = session.scalar(
+        select(ExportJobModel)
+        .where(
+            ExportJobModel.kind == ExportJobKind.FULL,
+            or_(
+                ExportJobModel.status.in_([ExportJobStatus.PENDING, ExportJobStatus.RUNNING]),
+                and_(
+                    ExportJobModel.status == ExportJobStatus.READY,
+                    ExportJobModel.expires_at > now,
+                ),
+            ),
+        )
+        .order_by(ExportJobModel.created_at.desc())
+    )
+    if existing_job:
+        status_code = (
+            status.HTTP_200_OK
+            if existing_job.status == ExportJobStatus.READY
+            else status.HTTP_202_ACCEPTED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content=ExportJob(
+                id=existing_job.id,
+                status=existing_job.status.value,
+                format=ExportFormat.XLSX,
+                row_count=existing_job.row_count,
+                expires_at=existing_job.expires_at,
+            ).model_dump(mode="json"),
+        )
+
+    # Create new full export job
+    job = ExportJobModel(
+        kind=ExportJobKind.FULL,
+        requested_by_id=user.id,
+        format=export_format.value,
+        params={"format": export_format.value},
+        status=ExportJobStatus.PENDING,
+    )
+    session.add(job)
+    session.commit()
+
+    run_in_background(
+        background_tasks,
+        run_export_job,
+        request.app.state.session_factory,
+        job.id,
+        getattr(request.app.state, "storage", None),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content=ExportJob(
+            id=job.id,
+            status="PENDING",
+            format=export_format,
+        ).model_dump(mode="json"),
+    )

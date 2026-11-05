@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { initialPieceCatalogs, type PieceUpdateResult } from "@/lib/data/pieces";
+import { initialPieceCatalogs, PRECONDITION_MESSAGE, type PieceUpdateResult } from "@/lib/data/pieces";
+import { repeatableCopy, revalidateCopy } from "@/lib/forms/piece-copy";
 import { draftKey, saveDraft, type DraftStorage } from "@/lib/forms/piece-draft";
 import { EMPTY_PIECE_FORM, type PieceFormValues } from "@/lib/forms/piece-form";
 import { memoryStorage } from "@/test/memory-storage";
@@ -62,6 +63,12 @@ describe("outcomeFromUpdate", () => {
 
     expect(outcomeFromUpdate(immutable, "x")).toEqual({ status: "error", message: "El código I está bloqueado." });
     expect(outcomeFromUpdate(offline, "x")).toEqual({ status: "error", message: "No se pudo conectar con el servidor." });
+  });
+
+  it("el 428 (la ficha abierta no indica su versión) pide recargar antes de guardar", () => {
+    const precondition: PieceUpdateResult = { status: "rejected", code: "precondition_required", message: PRECONDITION_MESSAGE };
+
+    expect(outcomeFromUpdate(precondition, "x")).toEqual({ status: "error", message: PRECONDITION_MESSAGE });
   });
 });
 
@@ -210,6 +217,22 @@ describe("PieceForm: campos de catalogación y tenencia", () => {
     expect(visibleText(html)).not.toContain("Propietario legal");
   });
 
+  it("marca con asterisco y aria-required solo los campos obligatorios, y explica la marca", () => {
+    const create = renderWithSession(memoryStorage(), CREATE_PROPS);
+    const edit = renderWithSession(memoryStorage(), EDIT_PROPS);
+    const marked = (html: string) =>
+      [...html.matchAll(/<label[^>]*>(.*?)<\/label>/g)].map((m) => visibleText(m[1] ?? "")).filter((l) => l.endsWith("*"));
+
+    expect(marked(create)).toEqual(["Denominación *", "Régimen de tenencia *"]);
+    expect(marked(edit)).toEqual(["Denominación *"]);
+    expect(create).toMatch(/<input[^>]*id="denomination"[^>]*aria-required="true"|<input[^>]*aria-required="true"[^>]*id="denomination"/);
+    expect(create).toMatch(/<select[^>]*id="tenure_regime"[^>]*aria-required="true"|<select[^>]*aria-required="true"[^>]*id="tenure_regime"/);
+    expect(create).not.toMatch(/<select[^>]*id="collection_id"[^>]*aria-required/);
+    for (const html of [create, edit]) {
+      expect(visibleText(html)).toContain("Los campos marcados con * son obligatorios");
+    }
+  });
+
   it("comodante y convenio solo aparecen con régimen Comodato", () => {
     const owned = visibleText(renderWithSession(memoryStorage(), EDIT_PROPS));
     const loan = renderWithSession(memoryStorage(), { ...EDIT_PROPS, initialValues: COMODATO });
@@ -234,14 +257,125 @@ describe("PieceForm: campos de catalogación y tenencia", () => {
     expect(onlyAgreement).not.toContain("Convenio de comodato");
   });
 
-  it("no ofrece campos derivados ni de otros changes (registrado por, ubicación, fotos, número temporal)", () => {
+  it("no ofrece campos derivados ni de otros changes (ubicación, fotos, número temporal)", () => {
     for (const props of [EDIT_PROPS, CREATE_PROPS]) {
       const text = visibleText(renderWithSession(memoryStorage(), props));
 
-      for (const label of ["Registrado por", "Ubicación", "Fotograf", "Número de inventario temporal"]) {
+      for (const label of ["Ubicación", "Fotograf", "Número de inventario temporal"]) {
         expect(text).not.toContain(label);
       }
     }
+  });
+
+  it("«Registrado por» solo se escribe en el alta", () => {
+    const create: PieceFormProps = { mode: "create", initialValues: EMPTY_PIECE_FORM, onSave: EDIT_PROPS.onSave, onCancel: noop };
+    expect(visibleText(renderWithSession(memoryStorage(), create))).toContain("Registrado por");
+    expect(visibleText(renderWithSession(memoryStorage(), EDIT_PROPS))).not.toContain("Registrado por");
+  });
+});
+
+describe("PieceForm: registrar piezas seguidas (crud-manual-completo 4.1)", () => {
+  const ANOTHER_PROPS: PieceFormProps = { mode: "create", initialValues: EMPTY_PIECE_FORM, onSave: async () => ({ status: "ok", message: "Guardado." }), onRegisterAnother: noop, onCancel: noop };
+  const saved: PieceFormValues = {
+    ...EMPTY_PIECE_FORM,
+    denomination: "Retablo (ficticio)",
+    collection_id: "col-abc",
+    entry_date: "2026-10-15",
+    recorded_by: "Registrador sintético",
+    description: "No se repite",
+  };
+
+  it("ofrece «Guardar y registrar otra» solo a quien lo pide", () => {
+    expect(visibleText(renderWithSession(memoryStorage(), ANOTHER_PROPS))).toContain("Guardar y registrar otra");
+    expect(visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, onRegisterAnother: undefined }))).not.toContain("Guardar y registrar otra");
+    expect(visibleText(renderWithSession(memoryStorage(), EDIT_PROPS))).not.toContain("Guardar y registrar otra");
+  });
+
+  it("el formulario nuevo avisa de dónde vienen los datos y que no se copian códigos, fotos ni historial", () => {
+    const copy = repeatableCopy(saved);
+    const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy }));
+    expect(text).toContain("Datos copiados de la pieza anterior.");
+    expect(text).toContain("No se copian códigos, fotos ni historial.");
+  });
+
+  it("resalta con texto solo los campos copiados, y deja vacíos los demás", () => {
+    const copy = repeatableCopy(saved);
+    const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy });
+    expect(html.match(/data-copied="true"/g)).toHaveLength(copy.fields.length);
+    expect(copy.fields).toEqual(["tenure_regime", "collection_id", "entry_date", "recorded_by"]);
+    expect(visibleText(html)).toContain("Copiado");
+    expect(html).not.toContain("No se repite");
+    expect(html).toContain('value="Registrador sintético"');
+  });
+
+  it("«Comodato copiado»: trae el comodante y el código I sigue vacío", () => {
+    const copy = repeatableCopy({ ...saved, tenure_regime: "Comodato", lender_name: "Comodante sintético" });
+    const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy });
+    expect(html).toContain('value="Comodante sintético"');
+    expect(html).toMatch(/name="code_i"[^>]*value=""|value=""[^>]*name="code_i"/);
+  });
+
+  it("«Datos copiados que ya no son válidos»: la colección queda vacía y lo dice junto al campo", () => {
+    const copy = revalidateCopy(repeatableCopy(saved), { ...initialPieceCatalogs(), collections: [] });
+    const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, initialCatalogs: { ...initialPieceCatalogs(), collections: [] } });
+    const text = visibleText(html);
+    expect(text).toContain("la colección copiada fue retirada o desactivada");
+    expect(text).toContain("Algunos datos copiados ya no están disponibles");
+    expect(text).not.toContain("Valor actual de la ficha");
+    expect(html).not.toContain('value="col-abc"');
+  });
+
+  it("avisa si no pudo comprobar los datos copiados", () => {
+    const copy = { ...repeatableCopy(saved), unchecked: true };
+    const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy }));
+    expect(text).toContain("el sistema los revisará al guardar");
+  });
+
+  describe("ubicación inicial", () => {
+    const PLACES = [{ id: "caja-3", label: "Sede › Depósito 2 › Caja 3", level: "Contenedor" }];
+
+    it("se ofrece en el alta a quien recibe lugares, y es opcional", () => {
+      const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, destinations: PLACES }));
+      expect(text).toContain("Ubicación inicial");
+      expect(text).toContain("Sin ubicación por ahora");
+      expect(text).toContain("Sede › Depósito 2 › Caja 3");
+    });
+
+    it("sin lugares, o al editar, no se ofrece", () => {
+      expect(visibleText(renderWithSession(memoryStorage(), ANOTHER_PROPS))).not.toContain("Ubicación inicial");
+      expect(visibleText(renderWithSession(memoryStorage(), { ...EDIT_PROPS, destinations: PLACES }))).not.toContain("Ubicación inicial");
+    });
+
+    it("copiada, se marca como las demás", () => {
+      const copy = repeatableCopy({ ...saved, initial_location_id: "caja-3" });
+      const html = renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, destinations: PLACES });
+      expect(copy.fields).toContain("initial_location_id");
+      expect(html.match(/data-copied="true"/g)).toHaveLength(copy.fields.length);
+      expect(html).toMatch(/<option value="caja-3" selected/);
+    });
+
+    it("si ya no se ofrece, lo dice junto al campo", () => {
+      const copy = revalidateCopy(repeatableCopy({ ...saved, initial_location_id: "retirada" }), initialPieceCatalogs(), PLACES);
+      const text = visibleText(renderWithSession(memoryStorage(), { ...ANOTHER_PROPS, initialValues: copy.values, copy, destinations: PLACES }));
+      expect(text).toContain("la ubicación copiada ya no se ofrece como destino");
+    });
+  });
+
+  it("sin datos copiados no hay aviso ni resaltado", () => {
+    const html = renderWithSession(memoryStorage(), ANOTHER_PROPS);
+    expect(visibleText(html)).not.toContain("Datos copiados");
+    expect(html).not.toContain("data-copied");
+  });
+
+  it("un borrador guardado no se pisa: avisa cómo volver a los datos copiados", () => {
+    const storage = memoryStorage();
+    saveDraft(draftKey({ kind: "new" }), { ...EMPTY_PIECE_FORM, denomination: "Borrador sin guardar" }, null, storage);
+    const copy = repeatableCopy(saved);
+    const html = renderWithSession(storage, { ...ANOTHER_PROPS, initialValues: copy.values, copy });
+    const text = visibleText(html);
+    expect(html).toContain('value="Borrador sin guardar"');
+    expect(text).toContain("Descártelo para usar los datos copiados de la pieza anterior.");
+    expect(html).not.toContain("data-copied");
   });
 });
 

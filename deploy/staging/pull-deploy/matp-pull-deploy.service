@@ -1,0 +1,15 @@
+[Unit]
+Description=MATP - Comprobar nuevas imágenes y desplegar staging
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=ec2-user
+Group=docker
+WorkingDirectory=/opt/matp/MATP-PUCP
+Environment=MATP_ENV=staging
+Environment=MATP_ENV_FILE=/opt/matp/.env.pruebas
+EnvironmentFile=/opt/matp/.env.pruebas
+ExecStart=/usr/bin/bash /opt/matp/MATP-PUCP/deploy/staging/pull-deploy/pull-deploy.sh
+TimeoutStartSec=900

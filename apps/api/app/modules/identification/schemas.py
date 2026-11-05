@@ -67,6 +67,18 @@ class IdentifierCreate(BaseModel):
         None, description="Identificador no bloqueado del mismo tipo que pasa a histórico."
     )
     notes: str | None = None
+    confirmed_split: bool = Field(
+        False,
+        description="La persona confirmó la separación de un valor concatenado (RF-023). Sin "
+        "ella, un valor con varios códigos responde 422 `concatenated_identifier` con la "
+        "propuesta y no registra nada (ficha-pieza-crud D5).",
+    )
+    split_from: str | None = Field(
+        None,
+        max_length=500,
+        description="Valor concatenado del que sale este código, tal como estaba escrito; queda "
+        "en el motivo de la auditoría. Solo junto con `confirmed_split`.",
+    )
 
 
 class InventoryCodeCorrection(BaseModel):
@@ -98,6 +110,7 @@ class IdentifierTypeOut(ORMModel):
                     "allowed_for_temporary_loan": False,
                     "sort_order": 0,
                     "is_active": True,
+                    "is_system": True,
                 }
             ]
         },
@@ -113,6 +126,10 @@ class IdentifierTypeOut(ORMModel):
     allowed_for_temporary_loan: bool
     sort_order: int
     is_active: bool
+    is_system: bool = Field(
+        False,
+        description="Tipo del sistema (I, COLECCION): solo cambian etiqueta, descripción y orden.",
+    )
 
 
 class IdentifierTypeCreate(BaseModel):
@@ -128,6 +145,77 @@ class IdentifierTypeUpdate(BaseModel):
     description: str | None = None
     sort_order: int | None = None
     is_active: bool | None = None
+    normalization_rule: NormalizationRule | None = Field(
+        None,
+        description="Si el tipo ya tiene identificadores, exige `confirm_token` de "
+        "`normalization-preview` (409 `normalization_change_requires_preview`).",
+    )
+    is_unique_when_current: bool | None = None
+    locks_on_assignment: bool | None = None
+    owned_pieces_only: bool | None = None
+    allowed_for_temporary_loan: bool | None = Field(
+        None,
+        description="Las reglas estructurales no cambian en un tipo del sistema (409 "
+        "`system_identifier_type`).",
+    )
+    confirm_token: str | None = Field(
+        None, description="Huella de la vista previa del cambio de regla que se confirma."
+    )
+
+
+class NormalizationPreviewRequest(BaseModel):
+    normalization_rule: NormalizationRule
+
+
+class RecalculatedIdentifierOut(BaseModel):
+    identifier_id: uuid.UUID
+    piece_id: uuid.UUID
+    original_value: str
+    normalized_value: str | None
+    proposed_value: str | None
+
+
+class NormalizationCollisionOut(BaseModel):
+    normalized_value: str
+    piece_ids: list[uuid.UUID]
+
+
+class NormalizationPreviewOut(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "type_code": "PUCP",
+                    "current_rule": "GENERIC",
+                    "proposed_rule": "INC_RN",
+                    "total_identifiers": 140,
+                    "changed_count": 120,
+                    "unparseable_count": 3,
+                    "collisions": [],
+                    "changed_examples": [],
+                    "unparseable_examples": [],
+                    "can_confirm": True,
+                    "confirm_token": "9f2c" + "0" * 60,
+                    "notes": [],
+                }
+            ]
+        }
+    )
+
+    type_code: str
+    current_rule: NormalizationRule
+    proposed_rule: NormalizationRule
+    total_identifiers: int
+    changed_count: int = Field(description="Identificadores cuyo valor normalizado cambia.")
+    unparseable_count: int = Field(description="Valores que dejan de ser normalizables.")
+    collisions: list[NormalizationCollisionOut] = Field(
+        description="Mismo código vigente en piezas distintas: impiden confirmar (RN-002)."
+    )
+    changed_examples: list[RecalculatedIdentifierOut]
+    unparseable_examples: list[RecalculatedIdentifierOut]
+    can_confirm: bool
+    confirm_token: str = Field(description="Se envía en el `PATCH` para confirmar este informe.")
+    notes: list[str]
 
 
 class NormalizeRequest(BaseModel):

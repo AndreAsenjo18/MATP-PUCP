@@ -113,6 +113,9 @@ export type PieceUpdateResult =
 
 /** Código de error de la edición concurrente (design D2 de `ficha-pieza-crud`). */
 export const EDIT_CONFLICT_CODE = "edit_conflict";
+/** Código del `428`: la edición no indicó en `If-Match` qué versión de la ficha tenía abierta. */
+export const PRECONDITION_CODE = "precondition_required";
+export const PRECONDITION_MESSAGE = "La ficha abierta no indica su versión: recárguela antes de guardar los cambios.";
 /** `aborted`: la validación fue reemplazada o cancelada; quien llama debe ignorarla. */
 export type PieceValidationOutcome =
   | { status: "ok"; result: PieceValidationResult }
@@ -255,12 +258,11 @@ export async function createPiece(input: PieceCreateInput): Promise<PieceCreateR
 }
 
 /**
- * `PUT /pieces/{piece_id}` (actualización parcial). Un 409 `edit_conflict` se informa como
- * `conflict`. Todavía no envía `If-Match`: la columna `version` y la precondición (409/428) llegan
- * con las tareas 1.1 y 2.2 del backend, y `PieceDetail` aún no expone `version`. En modo mock
- * nunca hay conflicto (una sola sesión).
+ * `PUT /pieces/{piece_id}` (actualización parcial) con la versión de la ficha abierta en
+ * `If-Match` (design D2). Un 409 `edit_conflict` se informa como `conflict`; un 428 (sin versión)
+ * como `rejected` con `precondition_required`. En modo mock nunca hay conflicto (una sola sesión).
  */
-export async function updatePiece(id: string, input: PieceUpdateInput): Promise<PieceUpdateResult> {
+export async function updatePiece(id: string, input: PieceUpdateInput, version?: number): Promise<PieceUpdateResult> {
   if (getApiMode() === "mock") {
     const current = getPieceDetail(id);
     if (!current) return { status: "rejected", code: "not_found", message: "La pieza no existe." };
@@ -269,10 +271,12 @@ export async function updatePiece(id: string, input: PieceUpdateInput): Promise<
   try {
     const { data, error } = await client().PUT("/api/v1/pieces/{piece_id}", {
       params: { path: { piece_id: id } },
+      headers: version === undefined ? undefined : { "If-Match": String(version) },
       body: input,
     });
     if (error) {
       if (isEditConflict(error)) return { status: "conflict", message: apiErrorMessage(error) };
+      if (isRecord(error) && error.code === PRECONDITION_CODE) return { status: "rejected", code: PRECONDITION_CODE, message: PRECONDITION_MESSAGE };
       return failureFrom(error);
     }
     return { status: "ok", piece: data };
@@ -412,7 +416,7 @@ export function initialPieceCatalogs(): PieceFormCatalogs {
 
 export type PieceCatalogsResult = { status: "ok"; catalogs: PieceFormCatalogs } | { status: "unavailable"; message: string };
 
-async function fetchTermOptions(vocabularyCode: string): Promise<TermOption[] | null> {
+export async function fetchTermOptions(vocabularyCode: string): Promise<TermOption[] | null> {
   const { data, error } = await client().GET("/api/v1/vocabularies/{vocabulary_code}/terms", {
     params: { path: { vocabulary_code: vocabularyCode } },
   });
@@ -470,11 +474,11 @@ export async function fetchPieceCatalogs(): Promise<PieceCatalogsResult> {
 type IdentifierOut = ApiSchemas["IdentifierOut"];
 
 /**
- * Cuerpo de `POST /pieces/{id}/identifiers`. `confirmed_split` (design D5) todavía no figura en
- * `IdentifierCreate` del contrato: el tipo lo añade aquí y el cuerpo lo envía igualmente. Pendiente
- * de backend/OpenAPI (tareas 3.1 y 5.2).
+ * Cuerpo de `POST /pieces/{id}/identifiers`. `confirmed_split` tiene valor por defecto en el
+ * servidor (`false`), así que aquí es opcional; `split_from` lleva el valor concatenado original a
+ * la auditoría (design D5).
  */
-export type IdentifierCreateInput = ApiSchemas["IdentifierCreate"] & { confirmed_split?: boolean };
+export type IdentifierCreateInput = Omit<ApiSchemas["IdentifierCreate"], "confirmed_split"> & { confirmed_split?: boolean };
 /** Cuerpo de `POST .../identifiers/{identifier_id}/correction` (design D6). */
 export type InventoryCodeCorrectionInput = ApiSchemas["InventoryCodeCorrection"];
 
@@ -522,6 +526,7 @@ export type IdentifierAddResult =
   | { status: "needs_split"; message: string; proposals: SplitProposal[] }
   | PieceWriteFailure;
 export type InventoryCorrectionResult = { status: "ok"; identifier: IdentifierOut } | PieceWriteFailure;
+export type IdentifierHistoryResult = { status: "ok"; identifiers: IdentifierOut[] } | PieceWriteFailure;
 /**
  * Registro de varios identificadores confirmados por separado. No es atómico (cada uno es una
  * petición): si uno falla, `identifiers` trae los que ya quedaron registrados.
@@ -605,6 +610,26 @@ export async function restorePiece(id: string, reason?: string | null): Promise<
 }
 
 /**
+ * `GET /pieces/{piece_id}/identifiers?include_history=true`: también los códigos no vigentes y los
+ * dados de baja, que nunca se borran (RN-005). La ficha de `GET /pieces/{piece_id}` solo trae los vigentes.
+ */
+export async function fetchPieceIdentifierHistory(pieceId: string): Promise<IdentifierHistoryResult> {
+  if (getApiMode() === "mock") {
+    const piece = getPieceDetail(pieceId);
+    return piece ? { status: "ok", identifiers: piece.identifiers } : PIECE_MISSING;
+  }
+  try {
+    const { data, error } = await client().GET("/api/v1/pieces/{piece_id}/identifiers", {
+      params: { path: { piece_id: pieceId }, query: { include_history: true } },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok", identifiers: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/**
  * `POST /pieces/{piece_id}/identifiers`. Un 422 `concatenated_identifier` con propuestas legibles se
  * informa como `needs_split`; el cliente nunca separa por su cuenta (RF-023). En modo mock la
  * detección es una simulación simple y no se conserva nada.
@@ -624,7 +649,7 @@ export async function addIdentifier(pieceId: string, input: IdentifierCreateInpu
   try {
     const { data, error } = await client().POST("/api/v1/pieces/{piece_id}/identifiers", {
       params: { path: { piece_id: pieceId } },
-      body: input,
+      body: { ...input, confirmed_split: input.confirmed_split ?? false },
     });
     if (error) {
       if ((error as { code?: unknown }).code === CONCATENATED_IDENTIFIER_CODE) {
@@ -642,11 +667,12 @@ export async function addIdentifier(pieceId: string, input: IdentifierCreateInpu
 /**
  * Registra **cada** propuesta por separado con `confirmed_split: true` (design D5), en orden y
  * deteniéndose en el primer fallo. Solo se llama tras la confirmación explícita de la persona.
+ * `splitFrom` es el valor concatenado original: viaja en `split_from` y queda en la auditoría.
  */
 export async function registerSplitIdentifiers(
   pieceId: string,
   proposals: readonly SplitProposal[],
-  extras: { source?: string | null; notes?: string | null } = {},
+  extras: { source?: string | null; notes?: string | null; splitFrom?: string | null } = {},
 ): Promise<SplitIdentifiersResult> {
   const identifiers: IdentifierOut[] = [];
   for (const proposal of proposals) {
@@ -656,6 +682,7 @@ export async function registerSplitIdentifiers(
       source: extras.source ?? null,
       notes: extras.notes ?? null,
       confirmed_split: true,
+      split_from: extras.splitFrom ?? null,
     });
     if (result.status === "ok") {
       identifiers.push(result.identifier);

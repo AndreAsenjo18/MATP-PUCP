@@ -65,6 +65,7 @@ entity PIECE {
     merged_into_id : uuid <<FK>>
     availability_term_id : uuid <<FK>>
     current_location_id : uuid <<FK>>
+  * version : integer
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -99,6 +100,7 @@ entity IDENTIFIER_TYPE {
   * allowed_for_temporary_loan : boolean
   * sort_order : integer
   * is_active : boolean
+  * is_system : boolean
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -120,6 +122,18 @@ entity CONSERVATION_ASSESSMENT <<solo inserción>> {
     assessed_by_label : varchar(200)
     notes : text
 }
+entity PIECE_VALUATION {
+  * id : uuid <<PK>>
+  --
+  * piece_id : uuid <<FK>>
+  * amount : numeric(14, 2)
+  * currency : varchar(3)
+  * valued_on : date
+  * source : varchar(200)
+    notes : text
+  * recorded_at : timestamptz
+    recorded_by_label : varchar(200)
+}
 entity PIECE_SOURCE_RECORD <<solo inserción>> {
   * id : uuid <<PK>>
   --
@@ -130,6 +144,7 @@ entity PIECE_SOURCE_RECORD <<solo inserción>> {
     source_row_number : integer
   * payload : jsonb
   * recorded_at : timestamptz
+    sensitive_keys : jsonb
 }
 entity MEDIA_ASSET {
   * id : uuid <<PK>>
@@ -262,10 +277,28 @@ entity IMPORT_MAPPING_TEMPLATE {
   ..
   <i>+ timestamps + soft-delete</i>
 }
+entity NORMALIZATION_SETTING {
+  * id : uuid <<PK>>
+  --
+  * key : varchar(80) <<UK>>
+  * value : jsonb
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
+entity COLLECTION_ACRONYM_ALIAS {
+  * id : uuid <<PK>>
+  --
+  * alias : varchar(40)
+  * alias_normalized : varchar(40) <<UK>>
+  * collection_id : uuid <<FK>>
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 entity IMPORT_BATCH {
   * id : uuid <<PK>>
   --
   * source_name : varchar(200)
+  * kind : varchar(40)
   * file_name : varchar(300)
     file_storage_key : varchar(500)
     file_sha256 : varchar(64)
@@ -283,6 +316,7 @@ entity IMPORT_BATCH {
     heartbeat_at : timestamptz
     mapping : jsonb
     change_set_id : uuid
+    photo_reading : jsonb
   ..
   <i>+ timestamps + soft-delete</i>
 }
@@ -318,6 +352,36 @@ entity IMPORT_IMAGE {
     import_row_id : uuid <<FK>>
   * status : varchar(40)
     media_asset_id : uuid <<FK>>
+  ..
+  <i>+ timestamps</i>
+}
+entity IMPORT_PHOTO {
+  * id : uuid <<PK>>
+  --
+  * batch_id : uuid <<FK>>
+  * relative_path : varchar(1000)
+  * original_filename : varchar(300)
+  * content_sha256 : varchar(64)
+  * size_bytes : bigint
+  * content_type : varchar(100)
+  * storage_prefix : varchar(500)
+  * status : varchar(40)
+    rejection_reason : text
+    row_id : uuid <<FK>>
+    match_status : varchar(40)
+    match_source : varchar(40)
+    candidate_row_ids : jsonb
+    sort_key : integer
+  * duplicate_of_existing : boolean
+  * duplicate_confirmed : boolean
+    media_asset_id : uuid <<FK>>
+    piece_id : uuid <<FK>>
+    candidate_piece_ids : jsonb
+    match_reason : varchar(60)
+    width_px : integer
+    height_px : integer
+    perceptual_hash : varchar(16)
+    same_as_photo_id : uuid <<FK>>
   ..
   <i>+ timestamps</i>
 }
@@ -397,6 +461,26 @@ entity AI_SUGGESTION {
     reviewed_by_id : uuid <<FK>>
     reviewed_at : timestamptz
     rejection_reason : text
+  ..
+  <i>+ timestamps</i>
+}
+entity COMPLETENESS_RULE {
+  * id : uuid <<PK>>
+  --
+  * field : varchar(80) <<UK>>
+  * kind : varchar(40)
+  * is_active : boolean
+  ..
+  <i>+ timestamps</i>
+}
+entity COMPLETENESS_SNAPSHOT {
+  * id : uuid <<PK>>
+  --
+  * taken_on : date
+    collection_id : uuid <<FK>>
+  * alert_code : varchar(40)
+  * numerator : integer
+  * denominator : integer
   ..
   <i>+ timestamps</i>
 }
@@ -505,12 +589,63 @@ entity AUDIT_LOG <<solo inserción>> {
     actor_label : varchar(100)
     reason : text
 }
+entity AUDIT_DIGEST <<solo inserción>> {
+  * id : uuid <<PK>>
+  --
+  * day : date <<UK>>
+  * row_count : integer
+    first_entry_id : uuid
+    last_entry_id : uuid
+  * sha256 : varchar(64)
+    previous_day : date
+    previous_sha256 : varchar(64)
+  * algorithm : varchar(40)
+  * computed_at : timestamptz
+}
+}
+
+package "Búsqueda y Exportación" #E8F4F8 {
+entity EXPORT_JOB {
+  * id : uuid <<PK>>
+  --
+  * kind : varchar(40)
+  * requested_by_id : uuid <<FK>>
+  * format : varchar(20)
+  * params : jsonb
+  * status : varchar(40)
+    row_count : integer
+    storage_key : varchar(500)
+    sha256 : varchar(64)
+    expires_at : timestamptz
+    error : text
+    heartbeat_at : timestamptz
+  * masked_fields : jsonb
+  ..
+  <i>+ timestamps</i>
+}
+entity MEDIA_BULK_DOWNLOAD {
+  * id : uuid <<PK>>
+  --
+  * requested_by_id : uuid <<FK>>
+  * piece_ids : jsonb
+  * status : varchar(40)
+    included_photos : integer
+  * omitted : jsonb
+    storage_key : varchar(500)
+    expires_at : timestamptz
+    error : text
+    heartbeat_at : timestamptz
+  ..
+  <i>+ timestamps + soft-delete</i>
+}
 }
 
 APP_USER |o--o{ AUDIT_LOG : "autor del cambio"
 APP_USER |o--o{ AUTH_EVENT : "eventos de autenticación"
+APP_USER ||--o{ EXPORT_JOB : "solicita"
 APP_USER |o--o{ IDEMPOTENCY_KEY : "solicita"
 LOCATION |o--o{ LOCATION : "jerarquía espacial"
+APP_USER ||--o{ MEDIA_BULK_DOWNLOAD : "solicita"
 APP_USER |o--o{ QUALITY_JOB : "lanza"
 APP_USER ||--o{ SENSITIVE_ACCESS_LOG : "accesos a datos sensibles"
 APP_USER ||--o{ USER_SESSION : "sesiones abiertas"
@@ -529,6 +664,8 @@ TERM ||--o{ LOAN : "type_term_id"
 APP_USER |o--o{ LOAN : "responsible_user_id"
 TERM ||--o{ LOAN : "status_term_id"
 TERM |o--o{ LOAN : "active_availability_term_id"
+COLLECTION ||--o{ COLLECTION_ACRONYM_ALIAS : "collection_id"
+COLLECTION |o--o{ COMPLETENESS_SNAPSHOT : "indicador por colección"
 COLLECTION |o--o{ PIECE : "contiene"
 TERM |o--o{ PIECE : "forma de adquisición"
 TERM |o--o{ PIECE : "tipo de bien"
@@ -564,6 +701,7 @@ APP_USER |o--o{ PIECE_MOVEMENT : "ejecuta"
 PIECE_MOVEMENT |o--o{ PIECE_MOVEMENT : "corrige"
 PIECE ||--o{ PIECE_SOURCE_RECORD : "datos de origen"
 IMPORT_BATCH |o--o{ PIECE_SOURCE_RECORD : "originado en"
+PIECE ||--o{ PIECE_VALUATION : "valorizaciones"
 PIECE ||--o{ QUALITY_JOB_ITEM : "detección incremental"
 PIECE ||--o{ DUPLICATE_CANDIDATE : "pieza A"
 PIECE |o--o{ DUPLICATE_CANDIDATE : "pieza B"
@@ -572,6 +710,11 @@ APP_USER |o--o{ DUPLICATE_CANDIDATE : "resuelve"
 IMPORT_BATCH ||--o{ IMPORT_IMAGE : "imágenes del lote"
 IMPORT_ROW |o--o{ IMPORT_IMAGE : "anclada en"
 MEDIA_ASSET |o--o{ IMPORT_IMAGE : "registrada como"
+IMPORT_BATCH ||--o{ IMPORT_PHOTO : "fotos del lote"
+IMPORT_ROW |o--o{ IMPORT_PHOTO : "propuesta para"
+MEDIA_ASSET |o--o{ IMPORT_PHOTO : "aplicada como"
+PIECE |o--o{ IMPORT_PHOTO : "piece_id"
+IMPORT_PHOTO |o--o{ IMPORT_PHOTO : "same_as_photo_id"
 
 note as N1
   <b>Convenciones</b>

@@ -7,7 +7,7 @@
  * Las secciones visuales vienen de `components/domain/PieceSheet`; aquí quedan sesión, store y acciones.
  *
  * Tarea 4.4 de `ficha-pieza-crud` (diálogos de `components/domain/PieceActionDialogs`, operaciones de
- * `lib/data/pieces`):
+ * `lib/data/pieces`), en los dos modos:
  * - Eliminar la pieza (`pieces.delete`, motivo obligatorio). Tras eliminarla, la ficha muestra el aviso
  *   «Pieza eliminada» con «Restaurar pieza» (`pieces.restore`). Una pieza eliminada ya no se puede abrir
  *   (la API responde 404), así que restaurar solo se ofrece aquí, en la misma visita.
@@ -15,15 +15,22 @@
  * - Registrar identificadores (`identifiers.manage`); si el valor junta varios códigos, se pide
  *   confirmar la separación antes de registrarlos.
  *
+ * Tarea 5.1 de `auditoria-y-soft-delete-transversal`: la pestaña «Auditoría» muestra el historial
+ * agrupado por conjunto de cambios con vista previa de reversión, conflictos y confirmación en
+ * lenguaje claro (`components/domain/AuditTrailPanel`). En modo `live` todo viene de la API; en
+ * modo demostración se agrupan las filas del store de la sesión.
+ *
  * Tarea 4.2 de `deteccion-duplicados-y-cola-revision`: la cabecera muestra los enlaces de fusión
  * (`merged_into`, `merged_from`). En modo `live`, una pieza que no está en los fixtures se lee de la
  * API (`LiveFichaContent`: datos generales, identificadores y enlaces de fusión).
  */
-import { ArrowRight, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
+import { ArrowRight, CopyPlus, Pencil, ShieldCheck, Trash2, Truck } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { notFound, useRouter } from "next/navigation";
+import { use, useEffect, useMemo, useState } from "react";
 
+import { AiSuggestPanel } from "@/components/domain/AiSuggestPanel";
+import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { IdentifierAddForm } from "@/components/domain/IdentifierAddForm";
 import {
@@ -33,8 +40,12 @@ import {
   toDialogOutcome,
   type DialogOutcome,
 } from "@/components/domain/PieceActionDialogs";
+import { LiveIdentifierActions, LivePieceHeaderActions, inventoryIdentifierOf, pieceActionsCan } from "@/components/domain/LivePieceActions";
 import { MergeLinks } from "@/components/domain/MergedPieceLinks";
+import { ConservationLive } from "@/components/domain/ConservationPanel";
+import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
+import { PieceGallery } from "@/components/domain/PieceGallery";
 import {
   PieceCurrentLocation,
   PieceGeneralData,
@@ -42,7 +53,7 @@ import {
   PieceMediaGallery,
   PieceSheetHeader,
 } from "@/components/domain/PieceSheet";
-import { auditActionStatus, suggestionStatus } from "@/components/domain/status-intents";
+import { suggestionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -51,13 +62,17 @@ import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import type { ApiSchemas } from "@/lib/api/client";
+import { offerPieceCopy, similarPieceCopy } from "@/lib/forms/piece-copy";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
+import { fetchIdentifierTypes, type IdentifierType } from "@/lib/data/admin";
+import { toEntryView } from "@/lib/data/audit";
 import { fetchPieceSheet, type PieceSheetResult } from "@/lib/data/duplicates";
 import { useMockStore } from "@/lib/data/mock-store";
 import { maskPieceForRole } from "@/lib/data/masking";
 import { getApiMode } from "@/lib/data/mode";
-import { correctInventoryCode, deletePiece, restorePiece } from "@/lib/data/pieces";
+import { correctInventoryCode, deletePiece, fetchPieceIdentifierHistory, restorePiece, type IdentifierHistoryResult } from "@/lib/data/pieces";
+import { fetchPieceAlerts, type PieceAlert } from "@/lib/data/quality";
 import {
   alertsForPiece,
   getPieceMedia,
@@ -70,6 +85,23 @@ import {
 import { IDENTIFIER_TYPES } from "@/lib/fixtures/reference-data";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
+
+/** Abre el alta con los datos descriptivos de esta pieza; la copia no pasa por la URL (`crud-manual-completo` D4). */
+function RegisterSimilarButton({ piece }: { piece: PieceDetail }) {
+  const router = useRouter();
+  return (
+    <Button
+      variant="outline"
+      icon={CopyPlus}
+      onClick={() => {
+        offerPieceCopy(similarPieceCopy(piece));
+        router.push("/piezas/nueva");
+      }}
+    >
+      Registrar a partir de esta pieza
+    </Button>
+  );
+}
 type MovementOut = ApiSchemas["MovementOut"];
 
 const TABS = [
@@ -77,6 +109,7 @@ const TABS = [
   "Identificadores",
   "Fotografías",
   "Ubicación e historial",
+  "Conservación",
   "Datos de origen",
   "Auditoría",
   "Sugerencias IA",
@@ -134,6 +167,7 @@ function FichaContent({ pieceId }: { pieceId: string }) {
                   Editar ficha
                 </Link>
               )}
+              {hasPermission("pieces.create") && <RegisterSimilarButton piece={piece} />}
               {hasPermission("pieces.delete") && (
                 <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
                   Eliminar pieza
@@ -165,6 +199,8 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
       <PieceDeleteDialog pieceName={piece.denomination} open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
       <PieceRestoreDialog pieceName={piece.denomination} open={restoreOpen} onClose={() => setRestoreOpen(false)} onRestore={handleRestore} />
+
+      {!deleted && <PieceAlertsPanel pieceId={pieceId} alerts={alerts} onNavigateToTab={(t) => setTab(t as Tab)} />}
 
       {deleted ? (
         <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
@@ -219,9 +255,16 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
           {tab === "Ubicación e historial" && <LocationTab pieceId={pieceId} piece={piece} movements={movements} />}
 
+          {tab === "Conservación" &&
+            (getApiMode() === "live" ? (
+              <ConservationLive pieceId={pieceId} />
+            ) : (
+              <p className="text-base text-gris-texto">El historial de conservación está disponible con la API (modo live).</p>
+            ))}
+
           {tab === "Datos de origen" && <SourceTab records={sourceRecords} />}
 
-          {tab === "Auditoría" && <AuditTab entries={audit} />}
+          {tab === "Auditoría" && <AuditTab pieceId={pieceId} demoEntries={audit} />}
 
           {tab === "Sugerencias IA" && <SuggestionsTab suggestions={suggestions} />}
         </>
@@ -232,24 +275,51 @@ function FichaContent({ pieceId }: { pieceId: string }) {
 
 /**
  * Ficha en modo `live` de una pieza que no está en los fixtures, leída con la identidad de la sesión
- * (incluida una pieza fusionada, que la API devuelve con `merged_into`). Las demás pestañas se
- * conectan a la API en sus changes.
+ * (incluida una pieza fusionada, que la API devuelve con `merged_into`). Elimina, restaura, corrige
+ * el código I y registra identificadores con los mismos diálogos que el modo de ejemplo (tarea 4.4).
+ * Las demás pestañas se conectan a la API en sus changes.
  */
 function LiveFichaContent({ pieceId }: { pieceId: string }) {
-  const { currentUser } = useSession();
+  const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const key = `${pieceId}|${devUser ?? ""}`;
-  const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult } | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; result: PieceSheetResult; history: IdentifierHistoryResult } | null>(null);
+  const [alerts, setAlerts] = useState<PieceAlert[]>([]);
+  // Vuelve a leer la ficha tras una acción sin pasar por «Cargando», que desmontaría sus formularios.
+  const [reloads, setReloads] = useState(0);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [identifierTypes, setIdentifierTypes] = useState<IdentifierType[] | null>(null);
+  const [typesError, setTypesError] = useState<string | null>(null);
+  const canManageIdentifiers = hasPermission("identifiers.manage");
 
   useEffect(() => {
     let active = true;
-    fetchPieceSheet(pieceId, devUser).then((result) => {
-      if (active) setLoaded({ key, result });
+    // Juntas, para que la tabla no mezcle una ficha nueva con los códigos de la lectura anterior.
+    Promise.all([fetchPieceSheet(pieceId, devUser), fetchPieceIdentifierHistory(pieceId)]).then(([result, history]) => {
+      if (active) setLoaded({ key, result, history });
+    });
+    fetchPieceAlerts(pieceId, devUser).then((result) => {
+      if (active && result.status === "ok") setAlerts(result.alerts);
     });
     return () => {
       active = false;
     };
-  }, [pieceId, devUser, key]);
+  }, [pieceId, devUser, key, reloads]);
+
+  useEffect(() => {
+    if (!canManageIdentifiers) return;
+    let active = true;
+    fetchIdentifierTypes(devUser).then((result) => {
+      if (!active) return;
+      if (result.status === "ok") setIdentifierTypes(result.value);
+      else setTypesError(result.message);
+    });
+    return () => {
+      active = false;
+    };
+  }, [canManageIdentifiers, devUser]);
 
   if (loaded?.key !== key) {
     return (
@@ -258,15 +328,53 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
       </p>
     );
   }
-  const { result } = loaded;
+  const { result, history } = loaded;
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") return <PermissionNotice>{result.message}</PermissionNotice>;
   const piece = result.piece;
+  const can = pieceActionsCan(piece, hasPermission);
+
+  /** Eliminación lógica con motivo (design D7). La pieza ya no se puede volver a leer: la ficha muestra el aviso. */
+  async function handleDelete(reason: string): Promise<DialogOutcome> {
+    const outcome = await deletePiece(pieceId, reason);
+    if (outcome.status === "ok") setDeleted(true);
+    return toDialogOutcome(outcome);
+  }
+
+  /** Restauración (design D7). Un 409 por código I duplicado llega como mensaje y se muestra dentro del diálogo. */
+  async function handleRestore(reason: string | null): Promise<DialogOutcome> {
+    const outcome = await restorePiece(pieceId, reason);
+    if (outcome.status === "ok") {
+      setDeleted(false);
+      setReloads((count) => count + 1);
+    }
+    return toDialogOutcome(outcome);
+  }
+
+  /** Corrección auditada del código I (design D6): el anterior queda en el historial como no vigente. */
+  async function handleCorrect({ newValue, reason }: { newValue: string; reason: string }): Promise<DialogOutcome> {
+    const identifier = inventoryIdentifierOf(piece);
+    if (!identifier) return { ok: false, message: "La pieza no tiene un código I que corregir." };
+    const outcome = await correctInventoryCode(pieceId, identifier.id, { new_value: newValue, reason });
+    if (outcome.status === "ok") setReloads((count) => count + 1);
+    return toDialogOutcome(outcome);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PieceSheetHeader
         piece={piece}
-        alerts={[]}
+        alerts={alerts}
+        actions={
+          !deleted && (
+            <LivePieceHeaderActions
+              pieceId={pieceId}
+              can={can}
+              registerSimilar={hasPermission("pieces.create") ? <RegisterSimilarButton piece={piece} /> : undefined}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          )
+        }
         notices={
           <>
             {piece.masked_fields && piece.masked_fields.length > 0 && (
@@ -276,9 +384,45 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
           </>
         }
       />
-      <PieceGeneralData piece={piece} />
-      <PieceIdentifiersTable piece={piece} />
-      <p className="text-sm text-gris-texto">Fotografías, ubicación, datos de origen, auditoría y sugerencias de IA de esta ficha se conectan a la API en sus changes.</p>
+      <PieceDeleteDialog pieceName={piece.denomination} open={deleteOpen} onClose={() => setDeleteOpen(false)} onDelete={handleDelete} />
+      <PieceRestoreDialog pieceName={piece.denomination} open={restoreOpen} onClose={() => setRestoreOpen(false)} onRestore={handleRestore} />
+      {deleted ? (
+        <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
+      ) : (
+        <>
+          <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
+          <PieceGeneralData piece={piece} />
+          <PieceIdentifiersTable piece={history.status === "ok" ? { ...piece, identifiers: history.identifiers } : piece}>
+            <LiveIdentifierActions
+              piece={piece}
+              can={can}
+              types={identifierTypes}
+              typesError={typesError}
+              historyError={history.status === "ok" || piece.merged_into ? null : history.message}
+              onRegistered={() => setReloads((count) => count + 1)}
+              onCorrect={handleCorrect}
+            />
+          </PieceIdentifiersTable>
+          <PieceGallery
+            pieceId={pieceId}
+            pieceTitle={piece.denomination}
+            onChanged={() => {
+              // La alerta «sin fotografía» depende de lo que acaba de cambiar.
+              fetchPieceAlerts(pieceId, devUser).then((result) => {
+                if (result.status === "ok") setAlerts(result.alerts);
+              });
+            }}
+          />
+          <ConservationLive pieceId={pieceId} />
+          <AiSuggestPanel
+            pieceId={pieceId}
+            devUser={devUser}
+            canRequest={hasPermission("ai.request")}
+            canReview={hasPermission("ai.review")}
+          />
+          <p className="text-sm text-gris-texto">Ubicación, datos de origen y auditoría de esta ficha se conectan a la API en sus changes.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -290,9 +434,7 @@ function IdentifiersTab({ pieceId, piece }: { pieceId: string; piece: PieceDetai
   const canCorrect = hasPermission("identifiers.correct_inventory_code");
   const actorLabel = currentUser?.full_name ?? currentRole?.name ?? "Persona sintética";
   const actorId = currentUser?.id ?? "";
-  const inventoryIdentifier =
-    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I" && identifier.is_current) ??
-    piece.identifiers.find((identifier) => identifier.identifier_type_code === "I");
+  const inventoryIdentifier = inventoryIdentifierOf(piece);
 
   /** Corrección auditada (design D6): código nuevo + motivo. El store de la maqueta refleja el cambio en la sesión. */
   async function handleCorrect({ newValue, reason }: { newValue: string; reason: string }): Promise<DialogOutcome> {
@@ -447,33 +589,27 @@ function SourceTab({ records }: { records: ReturnType<typeof getPieceSourceRecor
   );
 }
 
-function AuditTab({ entries }: { entries: ReturnType<typeof useMockStore>["auditLog"] }) {
-  const { hasPermission } = useSession();
+/**
+ * Pestaña «Auditoría»: historial agrupado por conjunto de cambios y reversión con vista previa
+ * (RF-040, RF-041, RNF-007). Los permisos salen de la sesión aquí, no dentro del componente:
+ * `pieces.update` para los cambios manuales, `imports.revert` para las cargas y Administrador
+ * para el resto (design D1, [SUPUESTO B7]). El servidor los vuelve a comprobar.
+ */
+function AuditTab({ pieceId, demoEntries }: { pieceId: string; demoEntries: ReturnType<typeof useMockStore>["auditLog"] }) {
+  const { hasPermission, currentRole } = useSession();
+  const live = getApiMode() === "live";
+  // En modo demostración el historial son las filas del store de la sesión; en `live` las trae la API.
+  const entries = useMemo(() => (live ? undefined : demoEntries.map(toEntryView)), [live, demoEntries]);
+
   if (!hasPermission("audit.read")) {
     return <PermissionNotice>Su rol no tiene permiso para consultar la auditoría (RF-040).</PermissionNotice>;
   }
   return (
-    <ol className="flex flex-col gap-3">
-      {entries
-        .slice()
-        .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
-        .map((entry) => (
-          <Card as="li" key={entry.id} className="p-3 text-base">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={auditActionStatus(entry.action)} />
-              <span className="text-sm text-gris-texto">{new Date(entry.occurred_at).toLocaleString("es-PE")}</span>
-              <span className="text-sm text-gris-texto">· {entry.actor_label ?? "Sistema"} · origen {entry.origin}</span>
-            </div>
-            {entry.field && (
-              <p className="mt-1 text-tinta">
-                <strong>{entry.field}</strong>: {String(entry.old_value ?? "—")} → {String(entry.new_value ?? "—")}
-              </p>
-            )}
-            {entry.reason && <p className="mt-1 text-sm text-gris-texto">{entry.reason}</p>}
-          </Card>
-        ))}
-      {entries.length === 0 && <li className="text-base text-gris-texto">Sin registros de auditoría para esta pieza.</li>}
-    </ol>
+    <AuditTrailPanel
+      pieceId={pieceId}
+      access={{ hasPermission, isAdmin: currentRole?.code === "ADMIN" }}
+      demoEntries={entries}
+    />
   );
 }
 

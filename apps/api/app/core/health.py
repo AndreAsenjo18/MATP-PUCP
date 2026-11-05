@@ -6,6 +6,8 @@ from typing import Literal
 from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel
 
+from app.core.backup_status import BackupStatus, read_backup_status
+
 HealthCheck = Callable[[], None]
 
 
@@ -21,6 +23,7 @@ class HealthResponse(BaseModel):
     commit: str
     release: str | None
     checks: dict[str, DependencyStatus]
+    backup: BackupStatus
 
 
 class LivenessResponse(BaseModel):
@@ -57,6 +60,7 @@ def health(request: Request, response: Response) -> HealthResponse:
         commit=settings.app_commit,
         release=settings.app_release,
         checks=results,
+        backup=read_backup_status(settings.backup_status_file, settings.backup_max_age_hours),
     )
 
 

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Registro de identificadores con confirmación de códigos concatenados
-La API MUST permitir registrar identificadores externos en una pieza existente calculando su valor normalizado, y cuando el valor contenga varios códigos concatenados SHALL devolver una propuesta de separación sin registrar nada hasta que el usuario confirme cada identificador por separado. (RF-002, RF-023, RN-010)
+La API MUST permitir registrar identificadores externos en una pieza existente calculando su valor normalizado, y cuando el valor contenga varios códigos concatenados SHALL devolver una propuesta de separación sin registrar nada hasta que el usuario confirme cada identificador por separado. La propuesta se expone en `details.proposals`, con una entrada por código y los campos `identifier_type_code`, `original_value` y `normalized_value`, y la confirmación se marca con `confirmed_split`. (RF-002, RF-023, RN-010)
 
 #### Scenario: Registro de un código de colección
 - **WHEN** un Catalogador registra el código de colección `M.M.Z. 15` en una pieza
@@ -9,10 +9,10 @@ La API MUST permitir registrar identificadores externos en una pieza existente c
 
 #### Scenario: Celda concatenada
 - **WHEN** un Catalogador intenta registrar `I 2362 / RA 28` como un único identificador
-- **THEN** la API responde 422 con la propuesta de dos identificadores (tipo I 2362 y colección RA 28) y la pieza no cambia
+- **THEN** la API responde 422 con la propuesta de dos identificadores en `details.proposals` (tipo I 2362 y colección RA 28) y la pieza no cambia
 
 #### Scenario: Confirmación de la propuesta
-- **WHEN** el Catalogador reenvía los dos identificadores propuestos marcando la separación como confirmada
+- **WHEN** el Catalogador reenvía los dos identificadores propuestos marcando la separación como confirmada con `confirmed_split`
 - **THEN** ambos quedan registrados y la auditoría referencia el valor original concatenado
 
 #### Scenario: Código I en pieza en comodato
@@ -20,14 +20,14 @@ La API MUST permitir registrar identificadores externos en una pieza existente c
 - **THEN** la API responde 409 citando RN-003
 
 ### Requirement: Operación de corrección auditada del código I
-La API MUST exponer la corrección del código I como una operación separada de la edición, disponible solo para usuarios con el permiso de corrección de código I, que en una única transacción SHALL marcar el código anterior como no vigente enlazado al nuevo, bloquear el nuevo y registrar motivo, usuario y ambos valores en auditoría. (RF-003, RN-002, RF-040)
+La API MUST exponer la corrección del código I como una operación separada de la edición, disponible solo para el Administrador, que en una única transacción SHALL marcar el código anterior como no vigente enlazado al nuevo, bloquear el nuevo y registrar motivo, usuario y ambos valores en auditoría. (RF-003, RN-002, RF-040)
 
 #### Scenario: Corrección exitosa
 - **WHEN** un Administrador corrige el código I `I-263` de una pieza a `I-236` con motivo "transposición de dígitos en la sábana 2024"
 - **THEN** la pieza tiene `I-236` vigente y bloqueado, `I-263` queda no vigente y buscable, y la auditoría registra la corrección con el motivo
 
-#### Scenario: Corrección por usuario sin permiso
-- **WHEN** un Gestor de colecciones sin el permiso de corrección intenta corregir un código I
+#### Scenario: Corrección por un usuario que no es Administrador
+- **WHEN** un Catalogador intenta corregir un código I
 - **THEN** la API responde 403 y ningún identificador cambia
 
 #### Scenario: Nuevo valor usado por otra pieza

@@ -25,7 +25,7 @@ PREFIX = "/api/v1"
 
 # --- Diferencias congeladas ------------------------------------------------------------------
 # Operaciones del documento que la API todavía no expone. Vacía desde la tarea 5.2: las de la
-# fase 3 son stubs que citan `prestamos-y-exposiciones` y
+# fase 3 son stubs que citan `rutas-prestamos-y-exposiciones` y
 # `descargas-masivas-y-enriquecimiento-lote`.
 PENDIENTES: set[tuple[str, str]] = set()
 
@@ -38,28 +38,74 @@ BLOQUEADAS: set[tuple[str, str]] = {("get", "/public/catalog")}
 # Vacía desde la tarea 1.4: `operation_id()` convierte el nombre del handler a camelCase.
 PENDIENTES_OPERATION_ID: set[tuple[str, str]] = set()
 
+# Campos propios que extienden un esquema sin cambiar rutas ni `operationId`, justificados en el
+# mapeo (`ficha-pieza-crud` 5.2): la versión de la ficha (D2), el motivo y el documento del cambio
+# de régimen (D4) y la confirmación de un valor concatenado con su original (D5).
+CAMPOS_ANADIDOS: set[tuple[str, str]] = {
+    ("PieceDetail", "version"),
+    ("PieceUpdate", "tenure_change_reason"),
+    ("PieceUpdate", "supporting_document_ref"),
+    ("IdentifierCreate", "confirmed_split"),
+    ("IdentifierCreate", "split_from"),
+}
+
 # Operaciones propias que el documento no contempla, justificadas en el mapeo.
 ANADIDOS: set[tuple[str, str]] = {
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),
     ("post", "/ai/suggestions/{}/reject"),
+    ("get", "/audit/sensitive-access"),
     ("post", "/audit/change-sets/{}/revert"),
+    ("get", "/audit/change-sets/{}"),
+    ("post", "/audit/change-sets/{}/revert-preview"),
     ("post", "/auth/change-password"),
     ("post", "/auth/logout"),
     ("delete", "/collections/{}"),
     ("get", "/collections/{}"),
     ("patch", "/collections/{}"),
     ("get", "/exports/full"),
+    ("get", "/media/bulk-download/{}"),
+    ("get", "/exports/jobs"),
+    ("get", "/exports/jobs/{}"),
+    ("get", "/exports/jobs/{}/download-url"),
     ("get", "/identifier-types"),
     ("post", "/identifier-types"),
     ("patch", "/identifier-types/{}"),
+    # Vista previa del cambio de regla (change colecciones-y-vocabularios-admin, diseño D2).
+    ("post", "/identifier-types/{}/normalization-preview"),
     ("post", "/identifiers/normalize"),
     ("get", "/import-templates"),
     ("post", "/import-templates"),
+    # Plantillas por id (change plantillas-mapeo-y-normalizacion, tarea 3.1).
+    ("get", "/import-templates/{}"),
+    ("patch", "/import-templates/{}"),
+    ("delete", "/import-templates/{}"),
+    # Sugerencia por cabeceras (change plantillas-mapeo-y-normalizacion, tarea 3.2).
+    ("post", "/import-templates/suggest"),
+    # Vista previa de normalización por columna (change plantillas-mapeo-y-normalizacion, 3.3).
+    ("post", "/import-templates/{}/dry-run"),
+    # Parámetros de normalización y alias de siglas (change plantillas-mapeo-y-normalizacion, 2.3).
+    ("get", "/normalization-settings/{}"),
+    ("put", "/normalization-settings/{}"),
+    ("get", "/collection-acronym-aliases"),
+    ("post", "/collection-acronym-aliases"),
+    ("delete", "/collection-acronym-aliases/{}"),
     ("get", "/imports/{}"),
     ("post", "/imports/{}/images/{}/associate"),
     ("get", "/imports/{}/log"),
+    # Fotos del lote (change importacion-masiva-fotografias, diseño D2).
+    ("post", "/imports/{}/photos/complete"),
+    ("get", "/imports/{}/photos"),
+    ("get", "/imports/{}/photos/summary"),
+    ("patch", "/imports/{}/photos"),
+    ("post", "/imports/{}/photos/upload-urls"),
+    # Lote de solo fotografías (change importacion-fotos-a-catalogo, diseño D1).
+    ("post", "/imports/photo-batches"),
+    ("get", "/imports/{}/photos/folders"),
+    ("post", "/imports/{}/photos/reading-preview"),
+    ("put", "/imports/{}/photos/reading"),
+    ("post", "/imports/{}/photos/correspondences"),
     ("put", "/imports/{}/mapping"),
     ("patch", "/imports/{}/rows/{}"),
     ("post", "/imports/{}/validate"),
@@ -78,17 +124,26 @@ ANADIDOS: set[tuple[str, str]] = {
     ("patch", "/pieces/{}/media/{}"),
     ("put", "/pieces/{}/media/order"),
     ("get", "/pieces/{}/media/{}/download-url"),
-    ("get", "/pieces/media/storage-estimate"),
+    ("get", "/media/storage-estimate"),
     ("post", "/pieces/{}/restore"),
+    # Historial de conservación (change colecciones-y-vocabularios-admin, diseño D3).
+    ("get", "/pieces/{}/conservation-assessments"),
+    ("post", "/pieces/{}/conservation-assessments"),
     ("get", "/pieces/{}/source-records"),
+    ("get", "/quality/completeness-rules"),
+    ("put", "/quality/completeness-rules"),
     ("get", "/quality/duplicates"),
     ("post", "/quality/duplicates/{}/resolve"),
     ("post", "/quality/duplicates/scan"),
     ("get", "/quality/incomplete"),
     ("get", "/quality/jobs/{}"),
+    ("get", "/reports/dashboard-stats/history"),
     ("get", "/reports/{}"),
     ("get", "/roles"),
     ("put", "/roles/{}/permissions"),
+    # Papelera (change auditoria-y-soft-delete-transversal, diseño D2).
+    ("get", "/trash"),
+    ("post", "/trash/{}/{}/restore"),
     ("get", "/users/{}"),
     ("patch", "/users/{}"),
     ("get", "/vocabularies"),
@@ -219,3 +274,19 @@ def test_documented_schema_fields_are_not_silently_renamed(
         "Los campos del contrato (denomination, code_i) deben aparecer en el esquema de la API "
         "(tarea 4.1 del change alinear-api-endpoints-v1)."
     )
+
+
+def test_added_schema_fields_exist_and_are_declared_in_the_mapping() -> None:
+    """`CAMPOS_ANADIDOS`: cada extensión existe en la API y figura en el mapeo."""
+    schemas = build_spec()["components"]["schemas"]
+    missing = {
+        (schema, field)
+        for schema, field in CAMPOS_ANADIDOS
+        if field not in schemas.get(schema, {}).get("properties", {})
+    }
+    assert not missing, f"CAMPOS_ANADIDOS cita campos que la API ya no tiene: {sorted(missing)}"
+    mapping = (REPO_ROOT / MAPPING_DOC).read_text(encoding="utf-8")
+    undeclared = {
+        (schema, field) for schema, field in CAMPOS_ANADIDOS if f"`{field}`" not in mapping
+    }
+    assert not undeclared, f"Campos añadidos sin justificar en {MAPPING_DOC}: {sorted(undeclared)}"

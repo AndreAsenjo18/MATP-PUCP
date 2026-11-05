@@ -3,19 +3,24 @@
 /**
  * Pantalla 3 — Búsqueda: barra única que acepta cualquier código (vigente o histórico,
  * normalizado o tal como está escrito) o denominación (RF-031), filtros combinados en AND
- * (RF-032) y exportación de resultados a Excel (RF-036).
+ * (RF-032) y exportación de resultados a Excel (RF-036). En modo `live`, `SearchLive` usa `GET /search`
+ * con el filtro único, las exportaciones reales y «Mis exportaciones» (change
+ * `busqueda-avanzada-y-exportacion`, tareas 4.1 y 4.2).
  */
 import { Eraser, FileSpreadsheet, Plus, SearchX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
+import { SearchBox } from "@/components/domain/SearchFilters";
+import { SearchLive } from "@/components/domain/SearchLive";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
+import { getApiMode } from "@/lib/data/mode";
+import { filtersFromSearchParams } from "@/lib/data/search";
 import { alertsForPiece, COLLECTIONS, getPieceDetail, listPieces, termsByVocabulary } from "@/lib/fixtures";
 import Link from "next/link";
 
@@ -64,25 +69,13 @@ function BusquedaContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
+      <header className="flex flex-col gap-3">
         <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
-        <p className="text-base text-gris-texto">
-          Busque por cualquier código —vigente o histórico, con o sin formato (&quot;I 236&quot;, &quot;M.M.Z. 015&quot;,
-          &quot;mmz 15&quot;)— o por denominación.
-        </p>
+        <SearchBox value={q} onChange={setQ} />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
-          <Input
-            id="q"
-            label="Código o denominación"
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="p. ej. I-0236, mmz 15, &quot;Toro de Pucará&quot;"
-            className="p-2.5"
-          />
-
           <FilterSelect label="Colección" value={collectionId} onChange={setCollectionId} options={COLLECTIONS.map((c) => ({ value: c.id, label: c.name }))} />
           <FilterSelect label="Categoría" value={categoryCode} onChange={setCategoryCode} options={categories.map((c) => ({ value: c.code, label: c.label }))} />
           <FilterSelect label="Material" value={materialCode} onChange={setMaterialCode} options={materials.map((c) => ({ value: c.code, label: c.label }))} />
@@ -114,24 +107,22 @@ function BusquedaContent() {
               <strong className="text-tinta">{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
             </p>
             <div className="flex flex-wrap gap-2">
-  <Link href="/piezas/nueva">
-    <Button icon={Plus}>
-      Nueva pieza
-    </Button>
-  </Link>
-
-  {hasPermission("exports.run") && (
-    <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-      Exportar a Excel
-    </Button>
-  )}
-</div>
+              {hasPermission("pieces.create") && (
+                <Link href="/piezas/nueva" className={buttonClassName({})}>
+                  <Plus size={18} aria-hidden="true" />
+                  Nueva pieza
+                </Link>
+              )}
+              {hasPermission("exports.run") && (
+                <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+                  Exportar a Excel
+                </Button>
+              )}
+            </div>
           </div>
           {exported && (
-            <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
-              Descarga simulada: en modo mock no se genera un archivo real; en modo conectado se descargaría
-              {" "}
-              <code>resultados-busqueda.xlsx</code> (RF-036).
+            <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
+              En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con estos resultados.
             </p>
           )}
 
@@ -176,11 +167,18 @@ function FilterSelect({
   );
 }
 
+function BusquedaSwitch() {
+  const searchParams = useSearchParams();
+  if (getApiMode() !== "live") return <BusquedaContent />;
+  // Los filtros de la dirección (enlaces compartidos, volver atrás y los del tablero de inicio).
+  return <SearchLive initialFilters={filtersFromSearchParams(searchParams)} />;
+}
+
 export default function BusquedaPage() {
   return (
     <RequireSession>
       <Suspense fallback={null}>
-        <BusquedaContent />
+        <BusquedaSwitch />
       </Suspense>
     </RequireSession>
   );

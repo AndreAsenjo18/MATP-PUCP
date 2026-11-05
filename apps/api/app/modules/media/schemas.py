@@ -28,9 +28,28 @@ _MEDIA_EXAMPLE = {
     "taken_on": "2025-03-10",
     "usage_restriction": None,
     "restriction_note": None,
-    "download_url": None,
+    "download_url": "http://localhost:9000/matp-media/pieces/.../display.webp?X-Amz-Signature=...",
+    "thumbnail_url": "http://localhost:9000/matp-media/pieces/.../thumb.webp?X-Amz-Signature=...",
     "created_at": EX_DATETIME,
 }
+
+
+class MediaProvenance(BaseModel):
+    """Where a photo came from, read only (spec multimedia, «Procedencia visible de las
+    fotografías importadas»; change importacion-fotos-a-catalogo, task 6.3; RN-005)."""
+
+    source: Literal["import", "manual"] = Field(
+        description="`import`: aplicada desde un lote de importación; `manual`: subida desde la "
+        "ficha."
+    )
+    original_filename: str | None = None
+    relative_path: str | None = Field(None, description="Carpeta y nombre con que se subió.")
+    import_batch_id: uuid.UUID | None = None
+    import_batch_name: str | None = None
+    replaced_lower_resolution: list[str] = Field(
+        default_factory=list,
+        description="Rutas de las versiones de menor resolución que se descartaron en su lugar.",
+    )
 
 
 class MediaAssetOut(ORMModel):
@@ -52,12 +71,30 @@ class MediaAssetOut(ORMModel):
     photographer: str | None
     taken_on: date | None
     usage_restriction: TermRef | None = Field(description="Restricción de uso (RF-014, RN-008).")
+    effective_restriction: TermRef | None = Field(
+        None,
+        description="Restricción que se aplica: la propia, la de la pieza (en comodato, «No "
+        "publicar») o la de su colección, en ese orden.",
+    )
+    restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
+        default="ninguna", description="De dónde viene la restricción efectiva (RN-008)."
+    )
     restriction_note: str | None
     download_url: str | None = Field(
         None,
-        description="URL prefirmada temporal; null hasta fotografias-multiples-por-pieza.",
+        description="En el listado de la galería, URL prefirmada temporal de la copia de "
+        "visualización (`display.webp`) para ver la foto dentro del sistema. La descarga externa "
+        "va por `GET .../media/{media_id}/download-url`, que aplica la restricción de uso.",
+    )
+    thumbnail_url: str | None = Field(
+        None,
+        description="En el listado de la galería, URL prefirmada temporal de la miniatura "
+        "(`thumb.webp`, 320 px).",
     )
     created_at: datetime
+    provenance: MediaProvenance | None = Field(
+        None, description="Procedencia de la foto; no se puede editar (RF-046, RN-005)."
+    )
 
 
 class UploadUrlRequest(BaseModel):
@@ -123,24 +160,6 @@ class MediaAssetUpdate(BaseModel):
     restriction_note: str | None = None
 
 
-class DownloadUrlRequest(BaseModel):
-    """Request for download URL with purpose."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {"purpose": "internal"},
-                {"purpose": "external"},
-            ]
-        }
-    )
-
-    purpose: Literal["internal", "external"] = Field(
-        default="internal",
-        description="Uso previsto: internal (visualización) o external (descarga).",
-    )
-
-
 class DownloadUrlResponse(BaseModel):
     """Response with pre-signed download URL."""
 
@@ -171,23 +190,38 @@ class DownloadUrlResponse(BaseModel):
     )
 
 
-restriction_origin: Literal["foto", "pieza", "colección", "ninguna"] = Field(
-    default="ninguna", description="Origen de la restricción efectiva."
-)
-
-
 class StorageEstimateRequest(BaseModel):
     """Query parameters for storage estimation."""
 
     pieces: int | None = Field(
         default=None, ge=0, description="Número de piezas para la proyección."
     )
-    photos_per_piece: int | None = Field(
+    # Averages: decimals are allowed (2.5 photos per piece, 3.5 MB per photo).
+    photos_per_piece: float | None = Field(
         default=None, ge=0, description="Fotos promedio por pieza para la proyección."
     )
-    mb_per_photo: int | None = Field(
+    mb_per_photo: float | None = Field(
         default=None, ge=0, description="MB promedio por foto para la proyección."
     )
+
+
+class FileTypeVolume(BaseModel):
+    """Volume by file type (importacion-masiva-fotografias D6)."""
+
+    original_bytes: int = Field(description="Originales conservados.")
+    display_bytes: int = Field(description="Versiones de visualización (1600 px).")
+    thumb_bytes: int = Field(description="Miniaturas (320 px).")
+
+
+class ExpectedCollectionVolume(FileTypeVolume):
+    """Projection for the photos the museum expects (importacion-masiva-fotografias D6)."""
+
+    photos: int = Field(description="Fotos esperadas (≈ 25 000 [SUPUESTO L2]).")
+    mb_per_photo: float = Field(
+        description="Promedio real de MB por foto con original, o 4 MB si aún no hay fotos "
+        "[SUPUESTO L3]."
+    )
+    total_bytes: int = Field(description="Originales, visualización y miniaturas.")
 
 
 class StorageEstimateResponse(BaseModel):
@@ -202,6 +236,22 @@ class StorageEstimateResponse(BaseModel):
                     "current_derivatives_bytes": 246913569,
                     "avg_photos_per_piece": 3.5,
                     "avg_mb_per_photo": 2.1,
+                    "keeps_originals": True,
+                    "by_file_type": {
+                        "original_bytes": 987654321,
+                        "display_bytes": 230000000,
+                        "thumb_bytes": 16913569,
+                    },
+                    "expected_collection": {
+                        "photos": 25000,
+                        "mb_per_photo": 4,
+                        "original_bytes": 104857600000,
+                        "display_bytes": 7680000000,
+                        "thumb_bytes": 512000000,
+                        "total_bytes": 113049600000,
+                    },
+                    "quota_bytes": None,
+                    "exceeds_quota": None,
                     "projection": {
                         "pieces": 20000,
                         "photos_per_piece": 5,
@@ -231,10 +281,21 @@ class StorageEstimateResponse(BaseModel):
     projection: dict | None = Field(
         default=None, description="Proyección de volumen según parámetros indicados."
     )
-
-
-# Limits of the bulk operations: [SUPUESTO M1] of descargas-masivas-y-enriquecimiento-lote.
-MAX_BULK_DOWNLOAD_PIECES = 200
+    keeps_originals: bool = Field(
+        description="`MEDIA_KEEP_ORIGINALS`: si las fotos importadas conservan su original; las "
+        "proyecciones lo respetan (importacion-masiva-fotografias D6)."
+    )
+    by_file_type: FileTypeVolume = Field(description="Volumen actual por tipo de archivo.")
+    expected_collection: ExpectedCollectionVolume = Field(
+        description="Proyección para las fotos que espera el museo (≈ 25 000 [SUPUESTO L2]) con "
+        "el promedio real de MB por foto, o 4 MB si aún no hay fotos [SUPUESTO L3]."
+    )
+    quota_bytes: int | None = Field(
+        default=None, description="`MEDIA_QUOTA_BYTES`; vacío = sin cuota configurada."
+    )
+    exceeds_quota: bool | None = Field(
+        default=None, description="Si el volumen actual supera la cuota; vacío sin cuota."
+    )
 
 
 class BulkDownloadRequest(BaseModel):
@@ -244,8 +305,9 @@ class BulkDownloadRequest(BaseModel):
 
     piece_ids: list[uuid.UUID] = Field(
         min_length=1,
-        max_length=MAX_BULK_DOWNLOAD_PIECES,
-        description="Piezas cuyas fotografías se empaquetan [SUPUESTO M1: máximo 200].",
+        description="Piezas cuyas fotografías se empaquetan; como máximo "
+        "`MEDIA_BULK_DOWNLOAD_MAX_PIECES` (200 por defecto) [SUPUESTO AA1], si no 422 "
+        "`batch_too_large`.",
     )
 
 

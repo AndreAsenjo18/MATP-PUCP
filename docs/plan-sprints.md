@@ -1,5 +1,7 @@
 # Plan de sprints
 
+> **Aviso (24 oct):** redistribución propuesta en [`redistribucion-v8.md`](redistribucion-v8.md); mientras no se acuerde, rige esta versión, salvo las asignaciones de desarrollo, que ya reemplaza [`plan-mvp-dos-desarrolladores.md`](plan-mvp-dos-desarrolladores.md).
+
 > **Estado: versión 7 (2026-10-07), propuesta para la planificación del jueves 8 de octubre.** Reemplaza la versión 6. Se ajusta en cada planificación (ver «Cómo se modifica este plan»).
 > Asignaciones basadas en [`ownership.md`](ownership.md), con refuerzos temporales a Importación y Catálogo indicados en cada sprint.
 
@@ -7,7 +9,7 @@
 
 1. **La validación con el cliente ya se hizo**, con el prototipo [`prototipo-v3/`](../prototipo-v3/), y al MATP le gustó. Desaparece la reunión de validación del sprint 3 y la decisión A/B de la versión 6.
 2. **Nuevo objetivo: un MVP a fines de octubre**, que es el **prototipo v3 funcionando de verdad** con Next.js (`apps/web`), FastAPI (`apps/api`) y servicios cloud (almacenamiento S3-compatible y el entorno de integración en AWS Academy). El prototipo es la **referencia de UX**: sus pantallas se construyen en `apps/web` contra la API, no se reutiliza su código.
-3. **Pedido nuevo del cliente:** importar las fotos junto con los Excel, sin subirlas una por una. Se cubre con el change nuevo [`importacion-masiva-fotografias`](../openspec/changes/importacion-masiva-fotografias/) (RF-045). Hay unas 10 000 piezas con varias fotos cada una, alrededor de 25 000 imágenes.
+3. **Pedido nuevo del cliente:** importar las fotos junto con los Excel, sin subirlas una por una. Se cubre con el change nuevo [`importacion-masiva-fotografias`](../openspec/changes/archive/2026-11-02-importacion-masiva-fotografias/) (RF-045). Hay unas 10 000 piezas con varias fotos cada una, alrededor de 25 000 imágenes.
 4. **Semana de parciales (lunes 12 a domingo 18 de octubre): no se trabaja.**
 5. **El sprint 1 (1 al 7 de octubre) casi no produjo integraciones.**
    - `alinear-api-endpoints-v1` sigue en 8/26.
@@ -232,7 +234,7 @@ El trabajo de cada semana está en la tabla «Carga por persona».
 
 **Lo que ya existe:**
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) corre en cada PR y en cada push a main con los jobs API, IA, Web y OpenSpec, más el job de **migraciones en PostgreSQL** (`ci-migraciones-postgresql`, PR #41 y #46).
-- **CD 1**: imágenes en GHCR en cada merge a main con CI en verde, y `/health` con commit y release (PR #37 y #38, [ADR-014](adr/ADR-014-pipeline-despliegue-ambientes.md)).
+- **CD 1**: imágenes en GHCR en cada merge a main con CI en verde, y `/health` con commit y release (PR #37 y #38, [ADR-014](adr/ADR-014-pipeline-despliegue-ambientes.md); `pipeline-despliegue-ambientes` 2.1–2.4). Las versiones `vX.Y.Z` reetiquetan esas imágenes sin reconstruir (`pipeline-despliegue-ambientes` 4.1, design D4).
 
 **Lo que falta:**
 
@@ -304,3 +306,4 @@ Un change cuenta como hecho en su sprint solo si:
 | 5 | 2026-09-28 | Sprints de jueves a miércoles 23:59; tareas del sprint 0 independientes entre sí; fin del desarrollo el 4 de noviembre y demo el 23 de noviembre [SUPUESTO] |
 | 6 | 2026-09-28 | Sprint 0 centrado en aprender el flujo: reglas paso a paso, acompañantes; `develop` → `main` pasa a preparación del Arquitecto; `ci-migraciones-postgresql` repartido entre Josué Moreno y Sergio Huamán |
 | 7 | 2026-10-07 | Validación hecha con el prototipo v3; MVP = prototipo v3 funcional al 31 de octubre; semana de parciales sin trabajo (12 al 18 de octubre); S3 y S4 de lunes a domingo; change nuevo `importacion-masiva-fotografias`; IA y préstamos fuera del MVP (por confirmar); refuerzo de Importación con la célula de IA; ambiente de calidad (staging AWS Academy) con hitos por sprint, revisiones sobre calidad y despliegue en calidad como parte de la definición de «hecho»; Camilo Gomez sin trabajo en S2 y con carga doble en S3 (2.2 → Sergio Chumbimuni, 4.1 → Josué Moreno, 6.3 → Germán Asenjo); regla explícita de trabajo semanal para todos, alternativas en S5 y S6, S7 y S8 detallados por semana |
+| 8 | 2026-10-24 | **Propuesta, pendiente de acuerdo del equipo:** redistribución en [`redistribucion-v8.md`](redistribucion-v8.md). El código, para André Asenjo y Sergio Chumbimuni, como ya fija `plan-mvp-dos-desarrolladores.md`; la documentación, las pruebas y la UI/UX, la demo y la exposición, para el resto del equipo. Esta versión sigue vigente hasta que se acuerde |

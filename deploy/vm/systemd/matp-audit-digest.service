@@ -1,0 +1,14 @@
+[Unit]
+Description=Resumen diario de integridad de la auditoría de MATP
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/matp/app
+EnvironmentFile=/opt/matp/.env.production
+# Sella los días cerrados y verifica la cadena (python -m app.modules.audit.digest, change
+# auditoria-y-soft-delete-transversal); avisa por webhook si algo no cuadra.
+ExecStart=/opt/matp/app/deploy/vm/audit-digest.sh
+NoNewPrivileges=true
+PrivateTmp=true

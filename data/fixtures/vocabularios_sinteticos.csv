@@ -1,0 +1,10 @@
+# [SUPUESTO B5] Lista sintética de ejemplo para `npm run vocabularies:load`: NO es la lista oficial del MATP.
+# Reemplazar por el archivo de la contraparte cuando llegue (B4, B5). Columnas: vocabulary_code,term_code,label,description,sort_order,external_uri,is_active
+vocabulary_code,term_code,label,description,sort_order,external_uri,is_active
+CATEGORY,RETABLO,Retablo,,0,,true
+CATEGORY,TEXTIL,Textil,,1,,true
+CATEGORY,CERAMICA,Cerámica,,2,,true
+CATEGORY,ARTE_PLUMARIO,Arte plumario,Categoría sintética de ejemplo,10,,true
+CATEGORY,CESTERIA,Cestería,Categoría sintética de ejemplo,11,,true
+TECHNIQUE,PIROGRABADO,Pirograbado,Técnica sintética de ejemplo,10,,true
+TECHNIQUE,REPUJADO,Repujado,Técnica sintética de ejemplo,11,,true

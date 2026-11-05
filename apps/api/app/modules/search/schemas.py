@@ -1,6 +1,7 @@
 """API schemas for search, reports and exports (spec busqueda-reportes; RF-031..RF-037, RF-044)."""
 
 import enum
+import uuid
 from datetime import datetime
 from typing import Any, Literal
 
@@ -22,6 +23,12 @@ class SearchHit(BaseModel):
                         "original_value": "I-0236",
                         "normalized_value": "I-236",
                     },
+                    "match_reason": {
+                        "kind": "identifier",
+                        "type": "I",
+                        "original": "I-0236",
+                        "historical": False,
+                    },
                 }
             ]
         }
@@ -29,17 +36,36 @@ class SearchHit(BaseModel):
 
     piece: PieceSummary
     match_type: Literal["IDENTIFIER", "TITLE"] = Field(
-        description="IDENTIFIER: coincide un código (vigente o histórico); TITLE: la denominación."
+        description="IDENTIFIER: coincide un cdigo (vigente o histrico); TITLE: la denominacin."
     )
     matched_identifier: CodeBrief | None = None
+    match_reason: dict[str, Any] | None = Field(
+        default=None,
+        description="Detalle estructurado de la coincidencia (identificador o campos de texto).",
+    )
+    thumbnail_url: str | None = Field(
+        default=None,
+        description="URL prefirmada de la miniatura de la foto principal; null si no tiene fotos.",
+    )
+    location_id: uuid.UUID | None = Field(
+        default=None,
+        description="Ubicación actual exacta de la pieza, solo para quien puede verla (RF-041; "
+        "ausente para los demás). Se envía como `expected_from_location_id` al verificar o mover "
+        "desde la búsqueda (fusion-busqueda-deposito 3.2).",
+    )
+    last_seen_at: datetime | None = Field(
+        default=None,
+        description="Último movimiento o verificación de la pieza («visto hace N días»), con la "
+        "misma restricción que `location_id` (RF-041; fusion-busqueda-deposito 3.3).",
+    )
 
 
 class SearchResultPage(BaseModel):
     """Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
 
-    A diferencia de `Page[T]` (usada por los demás listados, `{..., page_size}`), el contrato de
-    `/search` pide el campo de tamaño de página como `limit` — se modela aparte en vez de tocar
-    la paginación compartida que usan otros endpoints (`app/api/pagination.py`).
+    A diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de
+    `/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar
+    la paginacin compartida que usan otros endpoints (`app/api/pagination.py`).
     """
 
     model_config = ConfigDict(
@@ -50,6 +76,8 @@ class SearchResultPage(BaseModel):
                     "total": 1,
                     "page": 1,
                     "limit": 20,
+                    "suggestions": ["remove_filter:collection_code"],
+                    "excluded_uninterpreted_period": 0,
                 }
             ]
         }
@@ -59,6 +87,18 @@ class SearchResultPage(BaseModel):
     total: int = Field(ge=0)
     page: int = Field(ge=1)
     limit: int = Field(ge=1)
+    suggestions: list[str] | None = Field(
+        default=None,
+        description="Sugerencias de accin cuando no hay resultados (RF-031).",
+    )
+    active_filters: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Filtros activos descritos en lenguaje claro.",
+    )
+    excluded_uninterpreted_period: int | None = Field(
+        default=None,
+        description="Piezas con poca solo en texto excluidas por filtro de rango (RF-032).",
+    )
 
 
 class ReportType(enum.StrEnum):
@@ -67,11 +107,31 @@ class ReportType(enum.StrEnum):
     BY_LOCATION = "by-location"
     INCOMPLETE = "incomplete"
     VALUATION = "valuation"
+    BY_ATTRIBUTE = "by-attribute"
+
+
+class GroupBy(enum.StrEnum):
+    """Attributes of the report of pieces grouped by attribute (reportes-por-atributo D1)."""
+
+    PROVENANCE = "provenance"
+    DENOMINATION = "denomination"
+    AUTHOR = "author"
+    MATERIAL = "material"
+    CONSERVATION_STATE = "conservation_state"
+    CATEGORY = "category"
+    COLLECTION = "collection"
 
 
 class ExportFormat(enum.StrEnum):
     XLSX = "xlsx"
     CSV = "csv"
+
+
+class ReportSubtotal(BaseModel):
+    group: str
+    label: str
+    count: int
+    level: int = 0
 
 
 class ReportOut(BaseModel):
@@ -80,11 +140,11 @@ class ReportOut(BaseModel):
             "examples": [
                 {
                     "report_type": "by-collection",
-                    "title": "Inventario por colección",
+                    "title": "Inventario por coleccin",
                     "generated_at": EX_DATETIME,
                     "filters": {},
-                    "columns": ["Colección", "Piezas", "Sin código I"],
-                    "rows": [["Colección MMZ (ficticia)", 54, 30]],
+                    "columns": ["Coleccin", "Piezas", "Sin cdigo I"],
+                    "rows": [["Coleccin MMZ (ficticia)", 54, 30]],
                     "totals": {"Piezas": 298},
                     "download_url": None,
                 }
@@ -100,6 +160,18 @@ class ReportOut(BaseModel):
     rows: list[list[Any]]
     totals: dict[str, Any]
     download_url: str | None = None
+    generated_by: str | None = Field(None, description="Usuario que generó el reporte.")
+    subtotals: list[ReportSubtotal] = Field(
+        default_factory=list,
+        description="Subtotales por colección (con `level` de subcolección), régimen o espacio.",
+    )
+    masked_columns: list[str] = Field(
+        default_factory=list, description="Columnas limitadas por el rol (RF-041)."
+    )
+    message: str | None = Field(None, description="Aviso en lenguaje claro (p. ej. sin piezas).")
+    total_rows: int = Field(0, description="Filas del reporte completo; `rows` es una página.")
+    page: int = 1
+    page_size: int = 0
 
 
 class SearchExportRequest(BaseModel):
@@ -113,7 +185,13 @@ class SearchExportRequest(BaseModel):
 
     filters: dict[str, Any] = Field(default_factory=dict)
     format: ExportFormat = ExportFormat.XLSX
-    columns: list[str] | None = None
+    columns: list[str] | None = Field(
+        default=None,
+        description="Columnas y su orden, por clave: code_i, denomination, collection, "
+        "tenure_regime, category, conservation_state, location, author, provenance, period, "
+        "lender_name, loan_agreement_ref. Sin selección, todas las que el rol puede ver; las "
+        "sensibles sin permiso se omiten (RF-041).",
+    )
 
 
 class ExportJob(BaseModel):
@@ -121,6 +199,7 @@ class ExportJob(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "id": "00000000-0000-0000-0000-000000000001",
                     "status": "READY",
                     "format": "xlsx",
                     "row_count": 298,
@@ -132,9 +211,16 @@ class ExportJob(BaseModel):
         }
     )
 
-    status: Literal["PENDING", "READY", "FAILED"]
+    id: uuid.UUID | None = None
+    kind: Literal["results", "full", "report"] | None = Field(
+        default=None, description="Resultados de búsqueda, base completa o reporte."
+    )
+    status: Literal["PENDING", "RUNNING", "READY", "FAILED"]
     format: ExportFormat
-    row_count: int | None
-    download_url: str | None
-    expires_at: datetime | None
+    row_count: int | None = None
+    created_at: datetime | None = None
+    download_url: str | None = None
+    expires_at: datetime | None = None
     masked_fields: list[str] = Field(default_factory=list)
+    sha256: str | None = None
+    error: str | None = None

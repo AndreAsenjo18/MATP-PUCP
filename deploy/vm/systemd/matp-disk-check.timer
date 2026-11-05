@@ -1,0 +1,10 @@
+[Unit]
+Description=Programación: Chequeo de espacio en disco de la VM de MATP
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

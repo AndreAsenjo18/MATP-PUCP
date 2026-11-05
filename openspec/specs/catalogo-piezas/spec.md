@@ -2,9 +2,7 @@
 
 ## Purpose
 Borrador sujeto a aprobación de alcance (S7) y validación con la contraparte. Define la ficha estandarizada de cada pieza del MATP, su régimen de tenencia y las reglas asociadas, la representación de época, la preservación de datos de origen, los conjuntos y la validación en tiempo real del ingreso manual.
-
 ## Requirements
-
 ### Requirement: Régimen de tenencia
 El sistema MUST registrar para cada pieza un régimen de tenencia obligatorio con los valores propiedad, comodato/consignación y préstamo temporal, y SHALL aplicar las reglas de cada régimen: la PUCP figura siempre como única propietaria legal de las piezas en propiedad y el museo como localización; las piezas en comodato no reciben código I; las piezas en préstamo temporal no forman parte del inventario permanente. (RF-005, RN-003, RN-004, RN-006)
 
@@ -124,3 +122,38 @@ El sistema MUST validar los datos del formulario de ingreso y edición de piezas
 #### Scenario: Validación del servidor ante cliente omitido
 - **WHEN** una petición llega al servidor con datos que incumplen las reglas (por ejemplo, código I en pieza en comodato) sin pasar por el formulario
 - **THEN** el servidor rechaza la operación con los mismos mensajes de validación
+
+### Requirement: Campos obligatorios marcados en el formulario de pieza
+El formulario de registro y edición de pieza MUST marcar con un asterisco (`*`) junto a su etiqueta cada campo editable que el sistema exige para guardar (denominación y, al registrar, régimen de tenencia), y MUST mostrar al inicio del formulario una leyenda en texto que explique que los campos con `*` son obligatorios y el resto puede completarse después. Los campos opcionales MUST NOT llevar asterisco, y los controles obligatorios SHALL declarar `aria-required` para no depender solo del símbolo. (RF-006, RNF-010)
+
+#### Scenario: Registrar una pieza
+- **WHEN** una persona con permiso de registrar piezas abre el formulario de alta
+- **THEN** ve «Denominación *» y «Régimen de tenencia *», y la leyenda que explica el asterisco
+
+#### Scenario: Editar una pieza
+- **WHEN** la persona abre el formulario de edición de una pieza
+- **THEN** «Denominación» lleva `*` y el régimen de tenencia se muestra como dato de solo lectura, sin asterisco
+
+#### Scenario: Campos opcionales sin marca
+- **WHEN** se muestra el formulario
+- **THEN** campos como «Colección», «Categoría» o «Descripción» no llevan asterisco
+
+### Requirement: Registro manual continuo de piezas
+El formulario de registro de pieza SHALL ofrecer «Guardar y registrar otra», que guarda la pieza y abre un formulario nuevo con los datos repetibles de la anterior ya llenos (colección, régimen de tenencia, forma de adquisición, fecha de ingreso, registrador y ubicación) y los demás vacíos. Desde la ficha de una pieza SHALL ofrecerse «Registrar a partir de esta pieza», que abre el formulario con sus datos descriptivos copiados. En ambos casos MUST NOT copiarse códigos externos, fotos, historial de movimientos ni evaluaciones de conservación, y todas las validaciones del ingreso manual MUST aplicarse igual. (RF-006, RF-043, RF-001, RN-001, RNF-010)
+
+#### Scenario: Registrar varias piezas de una donación
+- **WHEN** un Catalogador guarda una pieza de la colección «ABC», en Propiedad, por Donación, y elige «Guardar y registrar otra»
+- **THEN** el formulario nuevo trae colección «ABC», Propiedad y Donación, con denominación, códigos y descripción vacíos, y un aviso «Datos copiados de la pieza anterior»
+
+#### Scenario: Registrar a partir de una pieza similar
+- **WHEN** el Catalogador elige «Registrar a partir de esta pieza» en la ficha de un mate burilado con código I `I-0236`
+- **THEN** el formulario trae denominación, autor, procedencia, materiales y medidas copiados, sin el código I, sin fotos y sin historial, y al guardar se crea una pieza nueva con su propio identificador interno
+
+#### Scenario: Datos copiados que ya no son válidos
+- **WHEN** la colección copiada fue retirada entre una pieza y la siguiente
+- **THEN** el formulario deja la colección vacía, lo indica junto al campo y no permite guardar con ella
+
+#### Scenario: Comodato copiado
+- **WHEN** se usa «Guardar y registrar otra» después de una pieza en comodato
+- **THEN** el formulario nuevo conserva el régimen Comodato y el comodante, y sigue sin permitir un código I
+

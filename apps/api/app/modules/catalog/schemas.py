@@ -213,6 +213,7 @@ class PieceDetail(BaseModel):
                     "media_count": 0,
                     "created_at": EX_DATETIME,
                     "updated_at": EX_DATETIME,
+                    "version": 3,
                     "masked_fields": ["lender_name", "loan_agreement_ref", "location.path"],
                 }
             ]
@@ -258,6 +259,10 @@ class PieceDetail(BaseModel):
     media_count: int
     created_at: datetime
     updated_at: datetime
+    version: int = Field(
+        description="Versión de la ficha: se envía en `If-Match` al editarla (control de "
+        "concurrencia, ficha-pieza-crud D2)."
+    )
     masked_fields: list[str] = Field(default_factory=list)
     merged_into: MergedInto | None = Field(
         None,
@@ -273,6 +278,18 @@ class PieceDetail(BaseModel):
             "evaluaciones siguen en ellas (calidad-datos; RF-030)."
         ),
     )
+
+
+def canonical_tenure_label(value: object) -> str | None:
+    """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
+    if value is None:
+        return None
+    code = (
+        value
+        if isinstance(value, TenureRegime)
+        else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
+    )
+    return TENURE_REGIME_LABELS[code]
 
 
 class PieceWrite(BaseModel):
@@ -331,15 +348,7 @@ class PieceCreate(PieceWrite):
     @field_validator("tenure_regime", mode="before")
     @classmethod
     def _tenure_from_label(cls, value: object) -> str | None:
-        """Acepta la etiqueta del contrato (o el código interno) y devuelve la canónica."""
-        if value is None:
-            return None
-        code = (
-            value
-            if isinstance(value, TenureRegime)
-            else code_of(TENURE_REGIME_LABELS, str(value), "tenure_regime")
-        )
-        return TENURE_REGIME_LABELS[code]
+        return canonical_tenure_label(value)
 
 
 class PieceUpdate(PieceWrite):
@@ -352,6 +361,26 @@ class PieceUpdate(PieceWrite):
         None,
         description="Código I a verificar o asignar (RN-002, RN-003); omitir para no tocarlo.",
     )
+    tenure_regime: TenureRegimeLabel | None = Field(
+        None,
+        description="Nuevo régimen de tenencia; sigue la tabla de transiciones (RF-005, RN-003, "
+        "RN-004). Omitir para no tocarlo.",
+    )
+    tenure_change_reason: str | None = Field(
+        None,
+        description="Motivo del cambio de régimen, obligatorio en las transiciones que lo piden. "
+        "Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+    )
+    supporting_document_ref: str | None = Field(
+        None,
+        description="Referencia del documento de respaldo, obligatoria de Comodato a Propiedad. "
+        "Queda en la auditoría, no en la ficha (ficha-pieza-crud D4).",
+    )
+
+    @field_validator("tenure_regime", mode="before")
+    @classmethod
+    def _tenure_from_label(cls, value: object) -> str | None:
+        return canonical_tenure_label(value)
 
 
 class FieldIssue(BaseModel):
@@ -413,7 +442,58 @@ class SourceRecordOut(ORMModel):
     source_row_number: int | None
     payload: dict[str, Any] = Field(description="Columnas de origen sin mapeo (RF-008).")
     recorded_at: datetime
+    masked_keys: list[str] = Field(
+        default_factory=list,
+        description="Columnas con datos personales del propietario que se muestran como "
+        "«(dato restringido)» porque falta el permiso `sensitive.donor_data` (RF-041).",
+    )
 
 
 class DeletionRequest(BaseModel):
     reason: str = Field(min_length=3, description="Motivo obligatorio (RN-005).")
+
+
+class ConservationAssessmentCreate(BaseModel):
+    status_term_id: uuid.UUID = Field(
+        description="Término activo del vocabulario CONSERVATION_STATUS (422 si no lo es)."
+    )
+    assessed_at: datetime | None = Field(
+        None,
+        description="Fecha de la evaluación (hoy si se omite). Una evaluación con fecha anterior "
+        "a la más reciente se agrega al historial sin cambiar el estado actual.",
+    )
+    assessed_by_label: str | None = Field(
+        None, max_length=200, description="Responsable de la evaluación, si no es el usuario."
+    )
+    notes: str | None = None
+
+
+class ConservationAssessmentOut(ORMModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000121",
+                    "piece_id": EX_PIECE_ID,
+                    "status": _STATUS_REF,
+                    "assessed_at": EX_DATETIME,
+                    "assessed_by_user_id": None,
+                    "assessed_by_label": "Especialista de Conservación (sintético)",
+                    "notes": "Desprendimiento leve de pintura en la base.",
+                    "is_current": True,
+                }
+            ]
+        },
+    )
+
+    id: uuid.UUID
+    piece_id: uuid.UUID
+    status: TermRef
+    assessed_at: datetime
+    assessed_by_user_id: uuid.UUID | None
+    assessed_by_label: str | None
+    notes: str | None
+    is_current: bool = Field(
+        description="Es la evaluación más reciente por fecha: define el estado actual."
+    )
