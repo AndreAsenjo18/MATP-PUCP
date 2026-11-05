@@ -69,6 +69,16 @@ describe("AiSuggestionCard sin datos propuestos", () => {
     expect(text).not.toContain("Motivo del rechazo");
   });
 
+  it("muestra el motivo calculado por el backend, no un texto genérico fijo", () => {
+    const noChange: AiSuggestion = {
+      ...EMPTY_SUGGESTION,
+      output_data: { fields: [], message: "No se notó ningún cambio con respecto a la versión actual de la pieza." },
+    };
+    const html = render(<AiSuggestionCard suggestion={noChange} canReview busy={false} onApprove={() => {}} onReject={() => {}} />);
+
+    expect(visibleText(html)).toContain("No se notó ningún cambio con respecto a la versión actual de la pieza.");
+  });
+
   it("con datos propuestos sí pide motivo para rechazar", () => {
     const withFields: AiSuggestion = {
       ...EMPTY_SUGGESTION,
@@ -77,9 +87,49 @@ describe("AiSuggestionCard sin datos propuestos", () => {
     const html = render(<AiSuggestionCard suggestion={withFields} canReview busy={false} onApprove={() => {}} onReject={() => {}} />);
     const text = visibleText(html);
 
-    expect(text).toContain("Aprobar todo");
+    expect(text).toContain("Aprobar");
     expect(text).toContain("Motivo del rechazo");
     expect(text).not.toContain("Descartar");
+  });
+});
+
+describe("AiSuggestionCard con medidas propuestas", () => {
+  const WITH_DIMENSIONS: AiSuggestion = {
+    ...EMPTY_SUGGESTION,
+    output_data: {
+      fields: [
+        { field: "dimensions", value: { dimension: "alto", value: 35, unit: "cm" }, source_fragment: "Alto 35 cm", confidence: 0.9 },
+        { field: "dimensions", value: { dimension: "ancho", value: 20, unit: "cm" }, source_fragment: "ancho 20 cm", confidence: 0.9 },
+      ],
+    },
+  };
+
+  it("deja editar el valor y la unidad de cada medida, con el valor propuesto precargado", () => {
+    const html = render(<AiSuggestionCard suggestion={WITH_DIMENSIONS} canReview busy={false} onApprove={() => {}} onReject={() => {}} />);
+
+    expect(html).toContain('value="35"');
+    expect(html).toContain('value="20"');
+    expect(visibleText(html)).toContain("Valor");
+    expect(visibleText(html)).toContain("Unidad");
+  });
+
+  it('ofrece actualizar "Medidas", pero el texto solo aparece si se marca la casilla', () => {
+    const html = render(<AiSuggestionCard suggestion={WITH_DIMENSIONS} canReview busy={false} onApprove={() => {}} onReject={() => {}} />);
+    const text = visibleText(html);
+
+    expect(text).toContain("Actualizar también el campo");
+    expect(text).not.toContain("Medidas (texto)");
+    expect(html).not.toContain("alto 35 cm x ancho 20 cm");
+  });
+
+  it("sin medidas propuestas no ofrece actualizar el campo Medidas", () => {
+    const withoutDimensions: AiSuggestion = {
+      ...EMPTY_SUGGESTION,
+      output_data: { fields: [{ field: "conservation_status", value: "BUENO", source_fragment: "bueno", confidence: 0.9 }] },
+    };
+    const html = render(<AiSuggestionCard suggestion={withoutDimensions} canReview busy={false} onApprove={() => {}} onReject={() => {}} />);
+
+    expect(visibleText(html)).not.toContain("Medidas");
   });
 });
 

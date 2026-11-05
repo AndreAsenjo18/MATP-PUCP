@@ -3,8 +3,11 @@
 /**
  * Sugerencias de IA en la ficha, modo `live` (change `ia-extraccion-texto-libre`, tarea 3.1;
  * RIA-01, RN-009). Pide una sugerencia sobre el texto de la pieza y, para quien tiene
- * `ai.review`, deja aprobar (todos los ítems) o rechazar (con motivo) las pendientes de esta
- * pieza — nunca escribe el catálogo por sí solo, eso lo hace la API tras la aprobación.
+ * `ai.review`, deja aprobar (con o sin editar los valores propuestos, p. ej. una medida) o
+ * rechazar (con motivo) las pendientes de esta pieza — nunca escribe el catálogo por sí solo,
+ * eso lo hace la API tras la aprobación. Al aprobar una medida, quien revisa puede además optar
+ * por actualizar el texto libre de "Medidas" (`dimensions_text`) con su propia redacción —
+ * decisión del equipo, 2026-11-04; la IA nunca lo toca por sí sola.
  */
 import { Check, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -14,17 +17,22 @@ import { suggestionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
   AI_SOURCE_FIELDS,
   FIELD_LABELS,
   approveAiSuggestion,
+  dimensionsTextFrom,
+  explanationOf,
   fieldValueText,
   fieldsOf,
+  isDimensionField,
   listPendingAiSuggestions,
   rejectAiSuggestion,
   suggestCataloging,
   type AiSuggestion,
+  type ProposedField,
 } from "@/lib/data/ai";
 
 export function AiSuggestPanel({
@@ -32,11 +40,15 @@ export function AiSuggestPanel({
   devUser,
   canRequest,
   canReview,
+  onChanged,
 }: {
   pieceId: string;
   devUser?: string;
   canRequest: boolean;
   canReview: boolean;
+  /** Tras aprobar: la pieza cambió de verdad (medidas, conservación, observaciones) — quien la
+   * muestra debe releerla, no solo esta lista de sugerencias. */
+  onChanged?: () => void;
 }) {
   const [sourceField, setSourceField] = useState(AI_SOURCE_FIELDS[0].value);
   const [requesting, setRequesting] = useState(false);
@@ -78,19 +90,23 @@ export function AiSuggestPanel({
     setRequesting(false);
     if (result.status === "ok") {
       const fields = fieldsOf(result.value.output_data);
-      setRequestMessage(fields.length === 0 ? "La IA no reconoció datos reconocibles en ese texto." : null);
+      setRequestMessage(fields.length === 0 ? explanationOf(result.value.output_data) : null);
       await reload();
     } else {
       setRequestMessage(result.message);
     }
   }
 
-  async function handleApprove(suggestion: AiSuggestion) {
+  async function handleApprove(suggestion: AiSuggestion, fields: ProposedField[], dimensionsText?: string) {
     setBusyId(suggestion.id);
-    const result = await approveAiSuggestion(suggestion.id, fieldsOf(suggestion.output_data), devUser);
+    const result = await approveAiSuggestion(suggestion.id, fields, devUser, dimensionsText);
     setBusyId(null);
-    if (result.status === "ok") await reload();
-    else setListError(result.message);
+    if (result.status === "ok") {
+      await reload();
+      onChanged?.();
+    } else {
+      setListError(result.message);
+    }
   }
 
   async function handleReject(suggestion: AiSuggestion, reason: string) {
@@ -145,7 +161,7 @@ export function AiSuggestPanel({
               suggestion={suggestion}
               canReview={canReview}
               busy={busyId === suggestion.id}
-              onApprove={() => handleApprove(suggestion)}
+              onApprove={(fields, dimensionsText) => handleApprove(suggestion, fields, dimensionsText)}
               onReject={(reason) => handleReject(suggestion, reason)}
             />
           ))}
@@ -171,12 +187,30 @@ export function AiSuggestionCard({
   suggestion: AiSuggestion;
   canReview: boolean;
   busy: boolean;
-  onApprove: () => void;
+  onApprove: (fields: ProposedField[], dimensionsText?: string) => void;
   onReject: (reason: string) => void;
   /** Enlace a la pieza, cuando la tarjeta no está ya dentro de su ficha. */
   footer?: ReactNode;
 }) {
-  const fields = fieldsOf(suggestion.output_data);
+  const original = fieldsOf(suggestion.output_data);
+  // Copia editable: la persona revisora puede corregir un valor (p. ej. una medida) antes de
+  // aprobar — lo que se aplica es esto, no lo que propuso la IA (design: "con edición").
+  const [fields, setFields] = useState<ProposedField[]>(original);
+  const hasDimensions = fields.some(isDimensionField);
+  const [syncDimensionsText, setSyncDimensionsText] = useState(false);
+  const [dimensionsText, setDimensionsText] = useState(() => dimensionsTextFrom(original));
+
+  function updateDimension(index: number, patch: Partial<{ value: number; unit: string }>) {
+    setFields((current) =>
+      current.map((item, i) => (i === index && isDimensionField(item) ? { ...item, value: { ...item.value, ...patch } } : item)),
+    );
+  }
+
+  function toggleSyncDimensionsText(checked: boolean) {
+    setSyncDimensionsText(checked);
+    if (checked) setDimensionsText(dimensionsTextFrom(fields));
+  }
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-terracota/30 bg-terracota-light/20 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -185,23 +219,74 @@ export function AiSuggestionCard({
       </div>
       {footer}
       {fields.length === 0 ? (
-        <p className="text-sm text-gris-texto">La IA no propuso datos en esta solicitud.</p>
+        <p className="text-sm text-gris-texto">{explanationOf(suggestion.output_data) ?? "La IA no propuso datos en esta solicitud."}</p>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {fields.map((field, index) => (
-            <li key={index} className="text-sm text-tinta">
-              <span className="font-medium">{FIELD_LABELS[field.field] ?? field.field}:</span> {fieldValueText(field)}
-              {field.source_fragment && <span className="text-gris-texto"> — «{field.source_fragment}»</span>}
-            </li>
-          ))}
+        <ul className="flex flex-col gap-2">
+          {fields.map((field, index) =>
+            isDimensionField(field) ? (
+              <li key={index} className="flex flex-wrap items-end gap-2 text-sm text-tinta">
+                <span className="font-medium">{FIELD_LABELS.dimensions}: {field.value.dimension}</span>
+                <Input
+                  label="Valor"
+                  type="number"
+                  value={field.value.value}
+                  disabled={!canReview}
+                  onChange={(event) => updateDimension(index, { value: Number(event.target.value) })}
+                  className="w-24"
+                  fieldClassName="mb-0"
+                />
+                <Input
+                  label="Unidad"
+                  type="text"
+                  value={field.value.unit}
+                  disabled={!canReview}
+                  onChange={(event) => updateDimension(index, { unit: event.target.value })}
+                  className="w-20"
+                  fieldClassName="mb-0"
+                />
+                {field.source_fragment && <span className="text-gris-texto">— propuesto desde «{field.source_fragment}»</span>}
+              </li>
+            ) : (
+              <li key={index} className="text-sm text-tinta">
+                <span className="font-medium">{FIELD_LABELS[field.field] ?? field.field}:</span> {fieldValueText(field)}
+                {field.source_fragment && <span className="text-gris-texto"> — «{field.source_fragment}»</span>}
+              </li>
+            ),
+          )}
         </ul>
+      )}
+      {canReview && hasDimensions && (
+        <div className="flex flex-col gap-2 rounded-md border border-borde bg-white p-2">
+          <label className="flex items-center gap-2 text-sm text-tinta">
+            <input
+              type="checkbox"
+              checked={syncDimensionsText}
+              onChange={(event) => toggleSyncDimensionsText(event.target.checked)}
+            />
+            Actualizar también el campo &quot;Medidas&quot; de la ficha con este texto
+          </label>
+          {syncDimensionsText && (
+            <Input
+              label="Medidas (texto)"
+              value={dimensionsText}
+              onChange={(event) => setDimensionsText(event.target.value)}
+              hint="Editable: por ejemplo «35cmx20cm» en vez del formato propuesto."
+              fieldClassName="mb-0"
+            />
+          )}
+        </div>
       )}
       {canReview && (
         <div className="flex flex-wrap gap-2">
           {fields.length > 0 ? (
             <>
-              <Button variant="primary" icon={Check} disabled={busy} onClick={onApprove}>
-                Aprobar todo
+              <Button
+                variant="primary"
+                icon={Check}
+                disabled={busy}
+                onClick={() => onApprove(fields, syncDimensionsText ? dimensionsText : undefined)}
+              >
+                Aprobar
               </Button>
               <ConfirmButton
                 label="Rechazar"

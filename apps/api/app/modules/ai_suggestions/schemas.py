@@ -101,7 +101,8 @@ class AiSuggestionApproval(BaseModel):
                                 "field": "dimensions",
                                 "value": {"dimension": "alto", "value": 36, "unit": "cm"},
                             }
-                        ]
+                        ],
+                        "dimensions_text": "alto 36 cm x ancho 40 cm",
                     },
                     "acknowledge_current_values": False,
                 }
@@ -110,7 +111,11 @@ class AiSuggestionApproval(BaseModel):
     )
 
     approved_data: dict[str, Any] = Field(
-        description="Datos aprobados (pueden estar editados; parcial = APPROVED parcial)."
+        description=(
+            "Datos aprobados (pueden estar editados; parcial = APPROVED parcial). "
+            "`dimensions_text` es opcional: si se envía, reemplaza también el texto libre de "
+            '"Medidas" (decisión del equipo, 2026-11-04; la IA nunca lo toca por sí sola).'
+        )
     )
     acknowledge_current_values: bool = Field(
         False,

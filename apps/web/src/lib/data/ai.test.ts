@@ -5,6 +5,7 @@ import { ids } from "@/lib/fixtures";
 import {
   AI_ERROR_MESSAGES,
   approveAiSuggestion,
+  explanationOf,
   fieldValueText,
   fieldsOf,
   listPendingAiSuggestions,
@@ -160,6 +161,21 @@ describe("fieldsOf", () => {
     expect(fieldsOf(null)).toEqual([]);
     expect(fieldsOf(undefined)).toEqual([]);
     expect(fieldsOf({})).toEqual([]);
+  });
+});
+
+describe("explanationOf", () => {
+  it("lee el mensaje de por qué no hay nada que aprobar, calculado por reglas en el backend", () => {
+    expect(explanationOf({ fields: [], message: "No se notó ningún cambio con respecto a la versión actual de la pieza." })).toBe(
+      "No se notó ningún cambio con respecto a la versión actual de la pieza.",
+    );
+    expect(explanationOf({ fields: [], message: "No se reconocieron datos estructurados en el texto." })).toBe(
+      "No se reconocieron datos estructurados en el texto.",
+    );
+    expect(explanationOf({ fields: [], message: null })).toBeNull();
+    expect(explanationOf({ fields: [] })).toBeNull();
+    expect(explanationOf(null)).toBeNull();
+    expect(explanationOf(undefined)).toBeNull();
   });
 });
 

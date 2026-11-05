@@ -5,9 +5,15 @@ Only called after a suggestion is APPROVED or PARTIALLY_APPROVED with a reviewer
 ``decision_requires_reviewer`` backs it up. Covers RIA-01's ``dimensions``, ``conservation_status``
 and ``review_marks``. ``exhibitions`` has no destination yet (RF-018 not built) so it is kept on
 the suggestion only, never applied [SUPUESTO].
+
+``approved_data.fields`` may differ from ``output_data.fields``: the reviewer can edit a value
+before approving (design: "revisión total, parcial o con edición"), and ``apply_approved``
+applies whatever was approved, not what the AI originally proposed. An optional
+``approved_data.dimensions_text`` lets the reviewer also replace the free-text "Medidas" field
+with their own wording when approving — the AI never writes to it on its own (decisión del
+equipo, 2026-11-04).
 """
 
-from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -34,6 +40,7 @@ def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> 
             code="missing_reviewer",
         )
     approved_fields: list[dict[str, Any]] = (suggestion.approved_data or {}).get("fields", [])
+    dimensions_text = (suggestion.approved_data or {}).get("dimensions_text")
     new_dimensions: list[dict[str, Any]] = []
     extra_notes: list[str] = []
     for item in approved_fields:
@@ -57,6 +64,14 @@ def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> 
         for dimension in new_dimensions:
             by_name[dimension["dimension"]] = dimension
         changes["dimensions"] = list(by_name.values())
+    if dimensions_text is not None:
+        # A reviewer can opt in, at approval time, to also replace the free-text "Medidas" field
+        # (`dimensions_text`) with their own wording — the AI never touches it on its own.
+        if not isinstance(dimensions_text, str) or not dimensions_text.strip():
+            raise ValidationFailed(
+                "El texto de Medidas no puede quedar vacío.", code="invalid_dimensions_text"
+            )
+        changes["dimensions_text"] = dimensions_text.strip()
     if extra_notes:
         existing = (piece.notes or "").rstrip()
         existing_lines = set(existing.splitlines())
@@ -117,6 +132,9 @@ def _apply_conservation_status(
 
 
 def _review_mark_note(value: Any) -> str:
+    # Sin la fecha de hoy en el texto: dos aprobaciones del mismo año quedan como la misma línea
+    # (deduplicadas más abajo) en vez de acumularse — la fecha exacta ya vive en la auditoría
+    # (AuditOrigin.AI, origin_ref=suggestion.id), no hace falta repetirla aquí.
     year = value.get("year") if isinstance(value, dict) else None
     when = f" en {year}" if year else ""
-    return f"Marca de revisión (IA aprobada): texto revisado{when} ({date.today().isoformat()})."
+    return f"Marca de revisión (IA aprobada): texto revisado{when}."
