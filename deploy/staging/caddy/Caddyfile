@@ -1,4 +1,4 @@
-54-237-95-196.sslip.io {
+54-237-95-196.sslip.io, matp-pucp.is-pro.dev {
     encode zstd gzip
 
     @api path /api /api/*
