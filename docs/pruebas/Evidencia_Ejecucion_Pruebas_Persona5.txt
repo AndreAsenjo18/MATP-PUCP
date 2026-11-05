@@ -1,0 +1,111 @@
+================================================================================
+ REPORTE AUTOMATIZADO DE EVIDENCIAS TECNICAS DE QA (PERSONA 5)
+ Sistema de Gestión y Digitalización MATP - PUCP | DP2 1INF47 Grupo 04
+================================================================================
+Fecha y Hora: 2026-11-04 22:59:02
+Plataforma:   Windows 10 (64bit)
+Python:       3.13.2
+Directorio:   C:\Users\Mathias\Documents\DP2\MATP-PUCP\data\fixtures\Datos_de_prueba_sintetico
+Total imágenes detectadas en disco: 34
+
+================================================================================
+ EVIDENCIA ERR-01: DESINCRONIZACIÓN DE SIGLAS EN CATÁLOGO EXCEL
+================================================================================
+Comparativa directa: Sigla esperada en Fotos vs Código real en el Excel:
+Fila  | Colección  | Código en Excel (Persona 1)    | Nombre de Foto en Disco            
+--------------------------------------------------------------------------------------
+1     | MMZ        | H.Z.A. 001 / PUCP 4721         | MMZ 001 - PUCP 4721 (1).JPG        
+2     | MMZ        | hza 2                          | MMZ 002 - PUCP 4728 (1).JPG        
+5     | AJB        | VCL 1 / INC 2814               | AJB 1 - INC 2814.jpg               
+6     | AJB        | v.c.l. 002                     | AJB 2 - INC 2820.jpg               
+9     | LRM        | I-7421 / L.D.B. 204            | I-7421 LRM-204(1).jpg              
+12    | MBB        | C.D.M. 001                     | Fotos Coleccion MBB/1.JPG          
+24    | RAB        | K.O.R. 301                     | 93QX5821.jpg -> RAB-301 (CSV)      
+
+[CONCLUSION ERR-01]: El catálogo Excel conserva siglas antiguas (HZA, VCL, LDB, CDM, KOR)
+mientras que las fotos físicas y los CSV usan las siglas del ambiente (MMZ, AJB, LRM, MBB, RAB).
+
+================================================================================
+ EVIDENCIA ERR-02: FALLAS EN CARGA DE CORRESPONDENCIAS.CSV (RESOLVE_LINES)
+================================================================================
+Header en bytes (Hex Dump primeras 30 bytes): ef bb bf 61 72 63 68 69 76 6f 2c 63 6f 64 69 67 6f 0a 66 6f 74 6f 73 2f 46 6f 74 6f 73 20
+  -> DETECTADO: Marcador Windows UTF-8 BOM (\xef\xbb\xbf).
+
+Resultado de la ejecución de resolve_lines() sobre las 13 líneas de correspondencias.csv:
+Línea  | Archivo en CSV                           | Código     | Resultado    | Motivo / Detalle                   
+--------------------------------------------------------------------------------------------------------------
+2      | fotos/Fotos MBB/1.JPG                    | MBB-001    | no_photo     | La foto no está en el lote.        
+3      | fotos/Fotos MBB/2.JPG                    | MBB-002    | no_photo     | La foto no está en el lote.        
+4      | fotos/Fotos MBB/3.JPG                    | MBB-003    | no_photo     | La foto no está en el lote.        
+5      | fotos/Fotos MBB/4.JPG                    | MBB-004    | no_photo     | La foto no está en el lote.        
+6      | fotos/Fotos MBB/5.JPG                    | MBB-005    | no_photo     | La foto no está en el lote.        
+7      | fotos/Fotos RAB/93QX5821.jpg             | RAB-301    | no_piece     | Ninguna pieza tiene ese código.    
+8      | fotos/Fotos RAB/ALTAS/93QX5821 copy.jpg  | RAB-301    | no_piece     | Ninguna pieza tiene ese código.    
+9      | fotos/Fotos RAB/93QX5824.jpg             | RAB-302    | no_piece     | Ninguna pieza tiene ese código.    
+10     | fotos/Fotos RAB/ALTAS/93QX5824 copy.jpg  | RAB-302    | no_piece     | Ninguna pieza tiene ese código.    
+11     | fotos/Fotos RAB/93QX5830.jpg             | RAB-303    | no_piece     | Ninguna pieza tiene ese código.    
+12     | fotos/Fotos RAB/ALTAS/93QX5830 copy.jpg  | RAB-303    | no_piece     | Ninguna pieza tiene ese código.    
+13     | fotos/Fotos RAB/93QX5842.jpg             | RAB-304    | no_piece     | Ninguna pieza tiene ese código.    
+14     | fotos/Fotos RAB/ALTAS/93QX5842 copy.jpg  | RAB-304    | no_piece     | Ninguna pieza tiene ese código.    
+
+[CONCLUSION ERR-02]: 13 de 13 líneas fallaron (100% tasa de fallos).
+  - 5 fallaron por ruta inexistente (Fotos MBB vs Fotos Coleccion MBB).
+  - 8 fallaron porque el código RAB-30X no existe en el catálogo Excel (está como K.O.R.).
+
+================================================================================
+ EVIDENCIA ERR-03: MISMATCH EN RESULTADO_ESPERADO.CSV FRENTE AL DISCO
+================================================================================
+Línea  | Ruta en resultado_esperado.csv                | ¿Existe en disco?    | Ruta Real en Disco                           
+------------------------------------------------------------------------------------------------------------------------
+11     | fotos/Fotos LRM/I-7421 LRM-204(1).jpg         | NO (FALLA)           | fotos/FOTOS COLECCIÓN LRM/I-7421 LRM-204(1).jpg
+12     | fotos/Fotos LRM/I-7421 LRM-204(2).jpg         | NO (FALLA)           | fotos/FOTOS COLECCIÓN LRM/I-7421 LRM-204(2).jpg
+13     | fotos/Fotos LRM/I-7430 LRM-207(2).jpg         | NO (FALLA)           | fotos/FOTOS COLECCIÓN LRM/I-7430 LRM-207(2).jpg
+14     | fotos/Fotos LRM/I-7438 LRM-213(1).jpg         | NO (FALLA)           | fotos/FOTOS COLECCIÓN LRM/I-7438 LRM-213(1).jpg
+15     | fotos/Fotos MBB/1.JPG                         | NO (FALLA)           | fotos/Fotos Coleccion MBB/1.JPG              
+16     | fotos/Fotos MBB/2.JPG                         | NO (FALLA)           | fotos/Fotos Coleccion MBB/2.JPG              
+17     | fotos/Fotos MBB/3.JPG                         | NO (FALLA)           | fotos/Fotos Coleccion MBB/3.JPG              
+18     | fotos/Fotos MBB/4.JPG                         | NO (FALLA)           | fotos/Fotos Coleccion MBB/4.JPG              
+19     | fotos/Fotos MBB/5.JPG                         | NO (FALLA)           | fotos/Fotos Coleccion MBB/5.JPG              
+
+[CONCLUSION ERR-03]: 9 de 34 rutas (26.5%) no existen físicamente en disco.
+
+================================================================================
+ EVIDENCIA ERR-04: SENSIBILIDAD A TILDES EN NOMBRES DE CARPETA
+================================================================================
+Texto original:    'FOTOS COLECCIÓN LRM'
+Forma NFC:         'FOTOS COLECCIÓN LRM' (Longitud: 19 chars, Bytes UTF-8: 46 4f 54 4f 53 20 43 4f 4c 45 43 43 49 c3 93 4e 20 4c 52 4d)
+Forma NFD:         'FOTOS COLECCIO\u0301N LRM' (Longitud: 20 chars, Bytes UTF-8: 46 4f 54 4f 53 20 43 4f 4c 45 43 43 49 4f cc 81 4e 20 4c 52 4d)
+Comparación (NFC == NFD): False
+
+[CONCLUSION ERR-04]: En macOS/Linux o subidas por navegador multipart, la tilde 'Ó' puede
+descomponerse en 'O' + '\u0301', rompiendo la búsqueda de carpeta si no se normaliza a NFC.
+Prueba de impacto: La consola Windows (CP1252) arroja UnicodeEncodeError si intenta
+procesar el caracter NFD combinado sin normalización previa a NFC.
+
+================================================================================
+ EVIDENCIA DE ROBUSTEZ: ALGORITMO DHASH Y CASO TRAMPA VALIDADOS
+================================================================================
+1. Análisis de Duplicados Perceptuales en Fotos RAB:
+Archivo                                  | Resolución   | Tamaño     | Hash dHash         | Distancia  | Acción         
+-------------------------------------------------------------------------------------------------------------------
+Fotos RAB/93QX5821.jpg                   | 160x120      | 3.8 KB   | a013716969710b80 | dist=2     | DESCARTAR (Baja)
+Fotos RAB/ALTAS/93QX5821 copy.jpg        | 960x720      | 26.3 KB  | 8013716969710380 | dist=2     | CONSERVAR (Alta)
+-------------------------------------------------------------------------------------------------------------------
+Fotos RAB/93QX5824.jpg                   | 160x120      | 3.8 KB   | a013716969710380 | dist=3     | DESCARTAR (Baja)
+Fotos RAB/ALTAS/93QX5824 copy.jpg        | 960x720      | 26.4 KB  | 8013716969712b80 | dist=3     | CONSERVAR (Alta)
+-------------------------------------------------------------------------------------------------------------------
+Fotos RAB/93QX5830.jpg                   | 160x120      | 4.0 KB   | 8033716969710380 | dist=1     | DESCARTAR (Baja)
+Fotos RAB/ALTAS/93QX5830 copy.jpg        | 960x720      | 27.1 KB  | 8013716969710380 | dist=1     | CONSERVAR (Alta)
+-------------------------------------------------------------------------------------------------------------------
+Fotos RAB/93QX5842.jpg                   | 160x120      | 3.5 KB   | a013716969710f80 | dist=5     | DESCARTAR (Baja)
+Fotos RAB/ALTAS/93QX5842 copy.jpg        | 960x720      | 25.1 KB  | 8013716969710340 | dist=5     | CONSERVAR (Alta)
+-------------------------------------------------------------------------------------------------------------------
+
+2. Evaluación del Caso Trampa:
+Archivo: Fotos RAB/ALTAS/Nueva carpeta/173-8451.jpg
+Existe en disco: True
+Comportamiento: Ninguna coincidencia generada. Cero falsos positivos.
+
+================================================================================
+ FIN DEL REPORTE DE EVIDENCIAS
+================================================================================
