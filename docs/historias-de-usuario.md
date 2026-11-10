@@ -222,11 +222,11 @@ Cada persona recibe **al menos una historia** (en esta propuesta, un paquete ent
 
 | Paquete | Historias | Persona |
 |---|---|---|
-| **P1 · Ficha** | HU-12, 13, 15, 16, 17, 18, 19 | por asignar |
-| **P2 · Búsqueda, pendientes y reportes** | HU-04, 07, 08, 21, 22, 29 | por asignar |
-| **P3 · Inicio, importación y ubicación** | HU-01, 02, 05, 06, 09, 10, 11, 23, 28, 34 | por asignar |
-| **P4 · IA y ayuda** | HU-14, 30, 33 | por asignar |
-| **P5 · Fotos, administración y evidencia** | HU-03, 20, 24, 25, 26, 27, 32, y la prueba de usabilidad real (C30) | por asignar |
+| **P1 · Ficha** | HU-12, 13, 15, 16, 17, 18, 19 | Manuel |
+| **P2 · Búsqueda, pendientes y reportes** | HU-04, 07, 08, 21, 22, 29 | Franz |
+| **P3 · Inicio, importación y ubicación** | HU-01, 02, 05, 06, 09, 10, 11, 23, 28, 34 | Josue |
+| **P4 · IA y ayuda** | HU-14, 30, 33 | Sergio Guitarra |
+| **P5 · Fotos, administración y evidencia** | HU-03, 20, 24, 25, 26, 27, 32, y la prueba de usabilidad real (C30) | Álvaro |
 | **Base (antes de repartir lo demás)** | HU-31, estándar de legibilidad (C28) | por asignar |
 
 Las historias HU-35, HU-36 y HU-37 no se reparten: dos están fuera de fase 1 y la tercera es una propuesta que primero hay que validar con el museo.
@@ -245,13 +245,13 @@ Orden de dependencias: `revisar-pendientes-unificado` (HU-29) antes de `inicio-g
 
 ## 7. Exposición: resumen del avance de la semana
 
-La exposición la hacen 3 personas, una por acto, y muestran **un resumen del avance de esta semana**. La estructura es fija y **no depende de cuánto haya avanzado cada desarrollador**: si un acto tuvo poco avance, se cuenta eso, con el estado real de cada historia (sección 3). Cada expositor reúne el avance con quienes tienen las historias de su acto.
+La exposición la hacen 3 personas, una por acto (Camilo, Yessica y Mathias), y muestran **un resumen del avance de esta semana**. La estructura es fija y **no depende de cuánto haya avanzado cada desarrollador**: si un acto tuvo poco avance, se cuenta eso, con el estado real de cada historia (sección 3). Cada expositor reúne el avance con quienes tienen las historias de su acto.
 
-| Acto | Épicas | Historias | Qué cuenta el expositor |
-|---|---|---|---|
-| **1. Del caos al catálogo** | A | HU-01 a 06 | Cómo se migra el histórico: qué se avanzó esta semana en importación, duplicados y fotos, y qué sigue. |
-| **2. El trabajo de todos los días** | B, C, E | HU-07 a 20, HU-28 a 31 | Cómo se busca, ubica y registra: qué mejoró en búsqueda, ficha, IA y ayuda, y qué cambió para quien lo usa. |
-| **3. Confiar en el sistema** | D, F y transversales | HU-21 a 27, HU-32 a 37 | Reportes, auditoría, permisos y aprobación humana de la IA: qué se avanzó y qué queda pendiente con el museo. |
+| Acto | Expositor | Épicas | Historias | Qué cuenta el expositor |
+|---|---|---|---|---|
+| **1. Del caos al catálogo** | Camilo | A | HU-01 a 06 | Cómo se migra el histórico: qué se avanzó esta semana en importación, duplicados y fotos, y qué sigue. |
+| **2. El trabajo de todos los días** | Yessica | B, C, E | HU-07 a 20, HU-28 a 31, HU-33 | Cómo se busca, ubica y registra: qué mejoró en búsqueda, ficha, ayuda y **toda la IA** (describir la pieza, revisarla y aprobarla, con la regla de que nada se guarda sin aprobación humana), y qué cambió para quien lo usa. |
+| **3. Confiar en el sistema** | Mathias | D, F y transversales | HU-21 a 27, HU-32, HU-34 a 37 | Reportes, auditoría, permisos y datos restringidos: qué se avanzó y qué queda pendiente con el museo. Menciona la IA en una sola frase («la IA nunca decide sola»), sin repetir la demo del acto 2. |
 
 Para cada acto, el expositor presenta lo mismo: **dónde estábamos, qué cambió esta semana, qué quedó pendiente**. Las historias HU-35, 36 y 37 se mencionan en el cierre como lo que viene.
 
@@ -262,8 +262,8 @@ Es solo una guía para saber a quién preguntar; no define la estructura.
 | Acto | Preguntar a |
 |---|---|
 | 1 | P3 (importación), P2 (duplicados), P5 (fotos) |
-| 2 | P1 (ficha), P2 (búsqueda), P3 (ubicación, inicio), P4 (IA, ayuda), P5 (catálogos) |
-| 3 | P2 (reportes), P3 (incompletas, préstamos), P5 (auditoría, roles, exportación), P4 (IA con aprobación humana) |
+| 2 | P1 (ficha), P2 (búsqueda), P3 (ubicación, inicio), P4 (IA completa y ayuda), P5 (catálogos) |
+| 3 | P2 (reportes), P3 (incompletas, préstamos), P5 (auditoría, roles, exportación) |
 
 ---
 
@@ -289,9 +289,10 @@ Cada persona es dueña de sus historias **y** de las vistas donde viven. En la e
 | Menú lateral, diseño general y estilos | **Base** (legibilidad) | Entradas nuevas: las pide cada dueño a la Base | HU-31 |
 | Botón y asistente de ayuda | **P4** | — | HU-30 |
 
-### Decisiones que conviene confirmar
+### Reglas y decisiones
 
 1. **Decidido: Administración › Control pasa de P3 a P5.** La corrección C23 (que mide 5 500 px) estaba en P3 en la lista maestra, pero la pestaña donde vive es de P5 por HU-24 y HU-26. La lista maestra ya quedó alineada.
-2. **La ficha es un solo archivo de 654 líneas** (`apps/web/src/app/piezas/[id]/page.tsx`). Antes de que P3, P4 y P5 agreguen sus secciones, P1 debería partirlo en componentes por sección (identificadores, fotos, ubicación, conservación, IA, auditoría). Así cada dueño de sección edita su propio archivo y no hay conflictos de merge. Es un primer PR pequeño de P1.
-3. **El menú lateral lo toca una sola persona** (la Base). P2 (Revisar pendientes), P4 (la IA sale del menú) y P3 (Inicio) piden sus cambios en vez de editarlo.
-4. **Búsqueda, Verificar y Mover a:** P2 es dueño de la vista y P3 de esas acciones (`DestinationPicker`, `LocationTreeSelect`). Si les resulta incómodo, HU-09 puede pasar a P2 y P3 se queda con HU-10 y HU-11.
+2. **Regla: la ficha es un solo archivo de 654 líneas** (`apps/web/src/app/piezas/[id]/page.tsx`). Antes de que P3, P4 y P5 agreguen sus secciones, P1 debería partirlo en componentes por sección (identificadores, fotos, ubicación, conservación, IA, auditoría). Así cada dueño de sección edita su propio archivo y no hay conflictos de merge. Es un primer PR pequeño de P1.
+3. **Regla: el menú lateral lo toca una sola persona** (la Base). P2 (Revisar pendientes), P4 (la IA sale del menú) y P3 (Inicio) piden sus cambios en vez de editarlo.
+4. **Decidido: Búsqueda, Verificar y Mover a.** P2 es dueño de la vista y P3 de esas acciones (`DestinationPicker`, `LocationTreeSelect`); HU-09 se queda en P3.
+5. **Decidido: la IA se cuenta completa en el acto 2.** HU-33 (aprobación humana) se expone junto a HU-14; el acto 3 solo la menciona.
