@@ -147,7 +147,7 @@ export function AuditLogFilterBar({ filters, people, disabled = false, onApply }
               onChange={(event) => change({ entityId: event.target.value })}
             />
             <Input
-              label="Conjunto de cambios concreto"
+              label="Cambio concreto"
               hint="Identificador de la operación completa."
               value={draft.changeSetId}
               error={errors.changeSetId}

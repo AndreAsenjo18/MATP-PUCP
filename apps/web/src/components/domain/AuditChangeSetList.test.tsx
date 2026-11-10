@@ -77,7 +77,7 @@ describe("textos del historial", () => {
     expect(entityLabel("piece", 1)).toBe("pieza");
     expect(entityLabel("piece", 54)).toBe("piezas");
     expect(entityLabel("media_asset", 2)).toBe("fotografías");
-    expect(entityLabel("tabla_nueva", 2)).toBe("registros de tipo tabla_nueva");
+    expect(entityLabel("tabla_nueva", 2)).toBe("otros registros");
   });
 
   it("une las partes con «y» y resume el alcance del conjunto", () => {

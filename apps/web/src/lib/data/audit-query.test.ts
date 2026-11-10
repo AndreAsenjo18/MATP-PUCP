@@ -113,9 +113,10 @@ describe("filtros de la consulta de auditoría", () => {
     expect(auditEntityLabel("piece", 1)).toBe("pieza");
     expect(auditEntityLabel("piece", 54)).toBe("piezas");
     expect(auditEntityLabel("media_asset", 2)).toBe("fotografías o documentos");
-    expect(auditEntityLabel("term", 1)).toBe("término de vocabulario");
+    expect(auditEntityLabel("term", 1)).toBe("valor de una lista");
     expect(auditEntityLabel("piece_media", 1)).toBe("fotografía o documento");
-    expect(auditEntityLabel("tabla_nueva", 3)).toBe("registros de tipo tabla_nueva");
+    // Un tipo desconocido ya no muestra su nombre técnico (administracion-control D2).
+    expect(auditEntityLabel("tabla_nueva", 3)).toBe("otros registros");
   });
 
   it("valida los identificadores y el rango de fechas antes de enviarlos", () => {

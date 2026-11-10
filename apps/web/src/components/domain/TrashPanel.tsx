@@ -42,7 +42,7 @@ import { TrashFilterBar } from "./TrashFilterBar";
 import { TrashRestorePanel, type TrashRestoreState } from "./TrashRestorePanel";
 
 export const TRASH_INTRO =
-  "Aquí están los registros eliminados. Nada se borra de forma definitiva (RN-005): un Administrador puede restaurarlos, siempre que lo que necesitan siga activo.";
+  "Nada se borra de forma definitiva: un Administrador puede restaurar estos registros si lo que necesitan sigue activo.";
 export const TRASH_VIEW_ONLY_NOTICE = "Su rol puede ver la papelera, pero solo un Administrador puede restaurar registros.";
 export const TRASH_FOCUS_MISSING = "No se encontró ese registro en esta página de la papelera: puede estar en otra página o ya haber sido restaurado.";
 

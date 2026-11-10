@@ -30,13 +30,13 @@ describe("TrashFilterBar", () => {
 
     for (const label of [
       "Pieza",
-      "Identificador de pieza",
+      "Código de pieza",
       "Fotografía o documento",
       "Colección",
-      "Término de vocabulario",
-      "Vocabulario",
+      "Valor de una lista",
+      "Lista de valores",
       "Ubicación",
-      "Plantilla de mapeo",
+      "Formato de archivo",
     ]) {
       expect(text).toContain(label);
     }

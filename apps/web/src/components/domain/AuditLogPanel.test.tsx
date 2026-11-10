@@ -42,7 +42,7 @@ describe("AuditLogPanel", () => {
     const html = render(<AuditLogPanel demoEntries={[entry()]} />);
     const text = visibleText(html);
 
-    expect(text).toContain("Consulta de auditoría");
+    expect(text).toContain("Auditoría");
     expect(text).toContain(AUDIT_INTRO);
     expect(text).toContain("Tipo de registro");
     expect(text).toContain("Cargando la auditoría…");

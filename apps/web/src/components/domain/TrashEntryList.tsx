@@ -14,8 +14,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import type { TrashEntry } from "@/lib/data/trash";
+import { Card, cardClassName } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
+import { TRASH_ENTITY_TYPES, trashTypeLabel, type TrashEntry } from "@/lib/data/trash";
 
 import { formatMoment } from "./AuditChangeSetList";
 
@@ -55,7 +56,7 @@ export function TrashEntryList({ entries, canRestore, hasFilters = false, highli
     return <Card className="border-dashed text-center text-base text-gris-texto">{hasFilters ? TRASH_NO_MATCH_MESSAGE : TRASH_EMPTY_MESSAGE}</Card>;
   }
   return (
-    <ul aria-label="Registros eliminados" className="flex flex-col gap-3">
+    <ul aria-label="Registros eliminados" className={cardClassName({ padded: false, className: "flex flex-col divide-y divide-borde" })}>
       {entries.map((entry) => (
         <TrashEntryRow
           key={`${entry.entity_type}-${entry.entity_id}`}
@@ -82,39 +83,52 @@ interface TrashEntryRowProps {
 
 function TrashEntryRow({ entry, canRestore, highlighted, open, restorePanel, onRestore }: TrashEntryRowProps) {
   const rowRef = useRef<HTMLLIElement>(null);
+  const typeLabel = TRASH_ENTITY_TYPES.some((type) => type.value === entry.entity_type) ? trashTypeLabel(entry.entity_type) : entry.type_label;
+  const reason = entry.deletion_reason?.trim() ? entry.deletion_reason : NO_REASON_MESSAGE;
 
   useEffect(() => {
     if (highlighted) rowRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
   }, [highlighted]);
 
+  // Una fila desde lg (qué · cuándo y quién · motivo · acción) y una tarjeta corta debajo (design D1).
   return (
-    <li ref={rowRef} id={trashAnchor(entry.entity_id)}>
-      <Card className={highlighted ? "flex flex-col gap-2 border-2 border-terracota" : "flex flex-col gap-2"}>
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-base font-semibold text-tinta">{entry.entity_label}</h3>
-          <Badge>{entry.type_label}</Badge>
-          {highlighted && <Badge intent="warning">{DEPENDENCY_FIRST_BADGE}</Badge>}
+    <li
+      ref={rowRef}
+      id={trashAnchor(entry.entity_id)}
+      className={cn("flex flex-col gap-2 px-3 py-2.5", highlighted && "rounded-md border-2 border-terracota")}
+    >
+      <div className="flex flex-col gap-1 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.5fr)_auto] lg:items-center lg:gap-4">
+        {/* En celular «Restaurar» va a la derecha del nombre; desde lg, al final de la fila (`lg:contents`). */}
+        <div className="flex items-start justify-between gap-2 lg:contents">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="min-w-0 truncate text-base font-semibold text-tinta" title={entry.entity_label}>
+              {entry.entity_label}
+            </h3>
+            <Badge>{typeLabel}</Badge>
+            {highlighted && <Badge intent="warning">{DEPENDENCY_FIRST_BADGE}</Badge>}
+          </div>
+          {!open && (
+            <Button
+              variant="outline"
+              size="touch"
+              icon={RotateCcw}
+              className="shrink-0 lg:order-last"
+              disabled={!canRestore}
+              title={canRestore ? undefined : "Solo un Administrador puede restaurar registros eliminados."}
+              aria-label={`Restaurar ${typeLabel.toLowerCase()} «${entry.entity_label}»`}
+              onClick={() => onRestore(entry)}
+            >
+              Restaurar
+            </Button>
+          )}
         </div>
         <p className="text-sm text-gris-texto">{deletedBySentence(entry)}</p>
-        <p className="text-base text-tinta">
+        <p className="min-w-0 text-sm text-tinta lg:truncate" title={reason}>
           <span className="font-medium">Motivo: </span>
-          {entry.deletion_reason?.trim() ? entry.deletion_reason : NO_REASON_MESSAGE}
+          {reason}
         </p>
-        {!open && (
-          <Button
-            variant="outline"
-            icon={RotateCcw}
-            className="self-start"
-            disabled={!canRestore}
-            title={canRestore ? undefined : "Solo un Administrador puede restaurar registros eliminados."}
-            aria-label={`Restaurar ${entry.type_label.toLowerCase()} «${entry.entity_label}»`}
-            onClick={() => onRestore(entry)}
-          >
-            Restaurar
-          </Button>
-        )}
-        {open && restorePanel}
-      </Card>
+      </div>
+      {open && restorePanel}
     </li>
   );
 }

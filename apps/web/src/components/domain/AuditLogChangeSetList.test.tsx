@@ -65,7 +65,7 @@ describe("textos de la consulta global", () => {
   it("resume el alcance con los nombres que escribe la API", () => {
     expect(auditScopeSentence(summary())).toBe("54 piezas · 486 campos registrados");
     expect(auditScopeSentence(summary({ entity_counts: { piece: 1, media_asset: 2, term: 1 }, field_count: 1 }))).toBe(
-      "1 pieza, 2 fotografías o documentos y 1 término de vocabulario · 1 campo registrado",
+      "1 pieza, 2 fotografías o documentos y 1 valor de una lista · 1 campo registrado",
     );
     expect(auditScopeSentence(summary({ entity_counts: {}, entity_count: 3, field_count: 0 }))).toBe("3 registros · 0 campos registrados");
   });
@@ -83,14 +83,14 @@ describe("AuditLogChangeSetList", () => {
     const html = render(<AuditLogChangeSetList changeSets={[summary()]} onToggleDetail={() => {}} />);
     const text = visibleText(html);
 
-    expect(html).toContain('aria-label="Conjuntos de cambios"');
+    expect(html).toContain('aria-label="Cambios registrados"');
     expect(text).toContain("Creación");
     expect(text).toContain("Practicante Catalogador (sintético)");
     expect(text).toContain("carga masiva de Excel");
     expect(text).toContain("54 piezas · 486 campos registrados");
     expect(text).toContain("Carga de la sábana 2024");
-    expect(text).toContain("Lote o sugerencia de origen: Lote de importación 2026-09-10 (sintético)");
-    expect(text).toContain("Ver los campos cambiados");
+    expect(text).toContain("Carga o sugerencia de origen: Lote de importación 2026-09-10 (sintético)");
+    expect(text).toContain("Ver cambios");
     expect(html).toContain('aria-expanded="false"');
   });
 
@@ -117,7 +117,7 @@ describe("AuditLogChangeSetList", () => {
     const text = visibleText(html);
 
     expect(text).toContain("Detalle del conjunto");
-    expect(text).toContain("Ocultar los campos cambiados");
+    expect(text).toContain("Ocultar cambios");
     expect(html).toContain('aria-expanded="true"');
     // Solo el conjunto abierto lleva detalle.
     expect(html.match(/Detalle del conjunto/g)).toHaveLength(1);
@@ -184,7 +184,7 @@ describe("AuditLogEntryList", () => {
       render(<AuditLogEntryList entries={[entry({ entity_type: "piece_identifier", entity_id: ids.identifier(108), field: "is_current" }), entry({ id: ids.audit(2), entity_type: "media_asset", entity_id: ids.media(1) })]} total={2} />),
     );
 
-    expect(text).toContain("Identificador de pieza");
+    expect(text).toContain("Código de pieza");
     expect(text).toContain("Fotografía o documento");
   });
 

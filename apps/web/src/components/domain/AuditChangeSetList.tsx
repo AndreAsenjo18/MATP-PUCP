@@ -49,26 +49,27 @@ export function originLabel(origin: AuditOrigin | string): string {
  */
 const ENTITY_LABELS: Record<string, [string, string]> = {
   piece: ["pieza", "piezas"],
-  piece_identifier: ["identificador", "identificadores"],
+  piece_identifier: ["código de pieza", "códigos de pieza"],
   media_asset: ["fotografía", "fotografías"],
   piece_material: ["material de la pieza", "materiales de la pieza"],
   piece_movement: ["movimiento de ubicación", "movimientos de ubicación"],
   piece_source_record: ["dato de origen", "datos de origen"],
   collection: ["colección", "colecciones"],
-  term: ["término de vocabulario", "términos de vocabulario"],
-  vocabulary: ["vocabulario", "vocabularios"],
+  term: ["valor de una lista", "valores de listas"],
+  vocabulary: ["lista de valores", "listas de valores"],
   location: ["ubicación", "ubicaciones"],
   conservation_assessment: ["evaluación de conservación", "evaluaciones de conservación"],
-  import_mapping_template: ["plantilla de importación", "plantillas de importación"],
+  import_mapping_template: ["formato de archivo", "formatos de archivo"],
   import_batch: ["lote de importación", "lotes de importación"],
   loan: ["préstamo", "préstamos"],
   loan_item: ["pieza del préstamo", "piezas del préstamo"],
   app_user: ["usuario", "usuarios"],
+  user_session: ["sesión", "sesiones"],
 };
 
 export function entityLabel(entityType: string, count: number): string {
   const labels = ENTITY_LABELS[entityType];
-  if (!labels) return count === 1 ? `registro de tipo ${entityType}` : `registros de tipo ${entityType}`;
+  if (!labels) return count === 1 ? "otro registro" : "otros registros";
   return count === 1 ? labels[0] : labels[1];
 }
 

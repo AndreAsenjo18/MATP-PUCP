@@ -123,7 +123,7 @@ Un código I, una vez asignado, no cambia (está marcado físicamente en la piez
 
 ## Papelera
 
-Aquí están los registros eliminados: piezas, identificadores, fotografías o documentos, colecciones, términos de vocabulario, vocabularios, ubicaciones y plantillas de mapeo. Se abre en **Administración**, pestaña **Papelera**.
+Aquí están los registros eliminados: piezas, códigos de pieza, fotografías o documentos, colecciones, valores de listas, listas de valores, ubicaciones y formatos de archivo. Se abre en **Administración › Control › Papelera** (dirección `/administracion?pestana=papelera`).
 
 El Administrador puede abrirla y restaurar. El Gestor de colecciones puede abrirla y ver, pero el botón **Restaurar** le aparece apagado. Los demás roles no la ven (ver la tabla final).
 
@@ -131,27 +131,27 @@ El Administrador puede abrirla y restaurar. El Gestor de colecciones puede abrir
 
 1. Entre a **Administración** y pulse la pestaña **Papelera**.
 2. Si lo necesita, ajuste los filtros:
-   - **Tipo de registro**: por ejemplo «Término de vocabulario». Por defecto, «Todos los tipos».
+   - **Tipo de registro**: por ejemplo «Valor de una lista». Por defecto, «Todos los tipos».
    - **Eliminado por**: la persona que lo eliminó. La lista se llena con las personas que ya aparecen en los registros cargados.
    - **Eliminado desde** y **Eliminado hasta**: rango de fechas. La fecha «hasta» incluye todo ese día.
 3. Pulse **Filtrar**. Para volver a ver todo, pulse **Quitar filtros**.
 4. Lea el total («N registros eliminados») y, si hay más de 20, use **Anterior** y **Siguiente** (el pie dice «Página 1 de 3»).
 
-Cada tarjeta muestra:
+Cada registro ocupa una fila (en el teléfono, una tarjeta corta) con:
 
-- El **nombre** del registro y una etiqueta con su tipo (por ejemplo, «Término de vocabulario»).
+- El **nombre** del registro y una etiqueta con su tipo (por ejemplo, «Valor de una lista»), y a la derecha el botón **Restaurar**.
 - «**Eliminado el** 14/10/2026, 09:15:00 **por** Administradora de prueba (sintética)».
-- **Motivo:** la razón que escribió quien lo eliminó, por ejemplo «Duplicado del término Totora». Si no escribió ninguna, dice **Sin motivo registrado.** Lea el motivo antes de restaurar: puede avisarle que fue una decisión consciente.
+- **Motivo:** la razón que escribió quien lo eliminó, por ejemplo «Duplicado del término Totora». Si no escribió ninguna, dice **Sin motivo registrado.** En la computadora, un motivo largo se corta en una línea: deje el puntero encima para leerlo completo. Lea el motivo antes de restaurar: puede avisarle que fue una decisión consciente.
 
 Si no hay nada, verá «La papelera está vacía: no hay registros eliminados.» o, con filtros, «Ningún registro eliminado coincide con estos filtros.»
 
 ### Restaurar un registro
 
-1. En la tarjeta del registro, pulse **Restaurar**. Si el botón está apagado, su rol solo puede ver: la tarjeta lo explica («Solo un Administrador puede restaurar registros eliminados.»).
+1. En la fila del registro, pulse **Restaurar**. Si el botón está apagado, su rol solo puede ver: la tarjeta lo explica («Solo un Administrador puede restaurar registros eliminados.»).
 2. En el panel que se abre, lea qué pasará: el registro vuelve a estar disponible y la restauración queda anotada con su nombre.
 3. Si quiere, escriba el **Motivo de la restauración (opcional)**.
 4. Pulse **Restaurar** en el panel. Para dejarlo como estaba, pulse **Cancelar**.
-5. Verá en verde: «Se restauró «Totora» (término de vocabulario). Ya está disponible y la restauración quedó en la auditoría.» El registro sale de la lista.
+5. Verá en verde: «Se restauró «Totora» (valor de una lista). Ya está disponible y la restauración quedó en la auditoría.» El registro sale de la lista.
 
 ### Cuando primero hay que restaurar otra cosa
 
@@ -177,34 +177,34 @@ Otra variante: «Antes de restaurar, revise la pieza «…»: sigue activa y ya 
 
 ## Consultar toda la auditoría
 
-La consulta global muestra los conjuntos de cambios de todo el catálogo, no solo los de una pieza. Está en **Administración**, pestaña **Auditoría**, y exige el permiso de consultar la auditoría.
+La consulta global muestra los cambios de todo el catálogo, no solo los de una pieza; cada fila es una operación completa (lo que en la ficha se llama «conjunto de cambios»). Está en **Administración › Control › Auditoría** (dirección `/administracion?pestana=auditoria`) y exige el permiso de consultar la auditoría.
 
 1. Entre a **Administración** y pulse la pestaña **Auditoría**.
 2. Elija los filtros que necesite:
-   - **Tipo de registro**: pieza, identificador de pieza, fotografía o documento, colección, etc.
+   - **Tipo de registro**: pieza, código de pieza, fotografía o documento, colección, sesión, etc.
    - **Origen del cambio**: edición manual, carga masiva de Excel, sugerencia de inteligencia artificial o proceso del sistema.
    - **Acción**: Creación, Modificación, Baja lógica, Restauración, Corrección, Fusión o Reversión.
    - **Desde** y **Hasta**: rango de fechas.
-   - Dentro de **Más filtros**: **Persona que hizo el cambio**, **Lote de importación o sugerencia de IA**, **Registro concreto** y **Conjunto de cambios concreto**. Los dos últimos piden el identificador completo; si está mal escrito, el campo lo indica.
+   - Dentro de **Más filtros**: **Persona que hizo el cambio**, **Lote de importación o sugerencia de IA**, **Registro concreto** y **Cambio concreto**. Los dos últimos piden el identificador completo; si está mal escrito, el campo lo indica.
 3. Pulse **Filtrar**. Para empezar de nuevo, pulse **Quitar filtros**.
-4. Lea las tarjetas. Son iguales a las de la ficha, más el dato **Lote o sugerencia de origen** cuando lo hay. Por ejemplo, filtrando por origen «carga masiva de Excel» y un lote verá una sola tarjeta con el número de piezas y de campos afectados.
-5. Pulse **Ver los campos cambiados** para abrir el detalle campo por campo. Si el conjunto tiene muchos, pulse **Mostrar más campos**. Pulse **Ocultar los campos cambiados** para cerrarlo.
+4. Lea las filas: la acción (por ejemplo, **Creación**), qué alcanzó («54 piezas · 486 campos registrados»), cuándo, quién y el origen, y debajo el motivo y, cuando lo hay, la **carga o sugerencia de origen**. Por ejemplo, filtrando por origen «carga masiva de Excel» y un lote verá una sola fila con el número de piezas y de campos afectados. Los procesos automáticos aparecen con un nombre legible, como **Inicio de sesión** o **Resumen diario de auditoría**.
+5. Pulse **Ver cambios** para abrir el detalle campo por campo. Si tiene muchos, pulse **Mostrar más campos**. Pulse **Ocultar cambios** para cerrarlo.
 6. Use **Anterior** y **Siguiente** para pasar de página.
 
-Si un conjunto fue revertido, la tarjeta dice «Este cambio ya fue revertido.» con el botón **Ver la reversión**, que filtra la consulta para mostrar ese conjunto.
+Si un cambio fue revertido, la fila dice «Este cambio ya fue revertido.» con el botón **Ver la reversión**, que filtra la consulta para mostrar esa reversión.
 
 Esta pantalla es de consulta: **no tiene botón para revertir**. Para revertir, abra la ficha de una pieza afectada y use su pestaña **Auditoría**.
 
-Si no hay resultados, verá «Ningún conjunto de cambios coincide con estos filtros.» (o «Todavía no hay registros de auditoría.» si el sistema está vacío).
+Si no hay resultados, verá «Ningún cambio coincide con estos filtros. Quite algún filtro.» (o «Todavía no hay registros de auditoría.» si el sistema está vacío).
 
 ### Descargar la consulta en CSV
 
 El CSV es un archivo que se abre en Excel.
 
 1. Aplique los filtros que quiera y pulse **Filtrar**. El archivo lleva los mismos filtros que está viendo.
-2. Pulse una de las dos descargas:
-   - **Descargar conjuntos de cambios (CSV)**: una fila por conjunto (quién, cuándo, origen, motivo, alcance).
-   - **Descargar campo por campo (CSV)**: una fila por cada campo cambiado, con valor anterior y valor nuevo.
+2. Abra **Descargar en CSV**, debajo de los filtros (está plegado), y pulse una de las dos descargas:
+   - **Un cambio por fila**: quién, cuándo, origen, motivo y alcance de cada operación.
+   - **Un campo por fila**: cada campo cambiado, con valor anterior y valor nuevo.
 3. Abra el archivo con Excel. Las tildes se ven bien.
 
 Dos cosas que conviene saber:

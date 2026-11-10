@@ -30,8 +30,10 @@ describe("AuditLogExport", () => {
     const [grouped, entries] = downloadUrls(html);
     const text = visibleText(html);
 
-    expect(text).toContain("Descargar conjuntos de cambios (CSV)");
-    expect(text).toContain("Descargar campo por campo (CSV)");
+    // Plegado bajo «Descargar en CSV» (administracion-control D3).
+    expect(text).toContain("Descargar en CSV");
+    expect(text).toContain("Un cambio por fila");
+    expect(text).toContain("Un campo por fila");
     expect(grouped.pathname).toBe("/api/v1/audit-logs");
     expect(grouped.searchParams.get("format")).toBe("csv");
     expect(grouped.searchParams.get("group_by")).toBe("change_set");
@@ -50,9 +52,9 @@ describe("AuditLogExport", () => {
     const text = visibleText(render(<AuditLogExport filters={EMPTY_AUDIT_FILTERS} available />));
 
     expect(text).toContain(CSV_INTRO);
-    expect(CSV_INTRO).toContain("ocultos");
+    // Texto acortado en `administracion-control`: se quitó la nota de las tildes, se conserva lo oculto y el inglés.
+    expect(CSV_INTRO).toContain("oculto");
     expect(CSV_INTRO).toContain("inglés");
-    expect(CSV_INTRO).toContain("tildes");
   });
 
   it("la descarga es un enlace al servidor: la pantalla no llama a la red ni arma el archivo", () => {
