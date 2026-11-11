@@ -7,22 +7,24 @@
  * (RIA-01/02); en modo `live`, `LiveImportWizard` trabaja contra la API
  * (`importacion-pipeline-reconciliacion`, tareas 6.1 y 6.2).
  */
-import { ArrowLeft, ArrowRight, Check, Download, FileSpreadsheet, Images, MinusCircle, SearchCheck } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, ArrowRight, Check, Download, FileSpreadsheet, MinusCircle, SearchCheck } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportConflictModal } from "@/components/domain/ImportConflictModal";
+import { ImportOriginPicker } from "@/components/domain/ImportOriginPicker";
 import { LiveImportWizard } from "@/components/domain/LiveImportWizard";
 import { importClassificationStatus, importDecisionStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { Button, buttonClassName } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import { useMockStore } from "@/lib/data/mock-store";
+import { importScreen } from "@/lib/data/import-origin";
 import { fieldLabel } from "@/lib/data/imports";
 import { getApiMode } from "@/lib/data/mode";
 import { IMPORT_TEMPLATES, rowsForBatch } from "@/lib/fixtures";
@@ -296,39 +298,27 @@ function PreviewStep({ rows }: { rows: ReturnType<typeof rowsForBatch> }) {
   );
 }
 
-function LiveImportacion() {
+/**
+ * Sin lote ni origen válido en la dirección: la elección «¿Qué desea importar?». Con un lote en
+ * curso (`?lote=`) o un origen, el asistente (change `importacion-elegir-origen`, D1/D6).
+ */
+function ImportacionRouter() {
   const { hasPermission } = useSession();
+  const params = useSearchParams();
   if (!hasPermission("imports.prepare")) {
     return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
   }
-  return <LiveImportWizard />;
-}
-
-/** Segunda entrada de «Importación»: el archivo fotográfico, sin Excel (importacion-fotos-a-catalogo, D10). */
-export function PhotoImportEntry() {
-  return (
-    <Card as="section" aria-label="Otras importaciones" className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-base text-gris-texto">¿Solo fotos de piezas que ya están en el catálogo, sin Excel?</p>
-      <Link href="/importacion/fotos" className={buttonClassName({ variant: "outline" })}>
-        <Images size={18} aria-hidden="true" />
-        Importar fotografías al catálogo
-      </Link>
-    </Card>
-  );
+  if (importScreen(params) === "picker") return <ImportOriginPicker />;
+  return getApiMode() === "live" ? <LiveImportWizard /> : <ImportacionContent />;
 }
 
 export default function ImportacionPage() {
   return (
     <RequireSession>
       <div className="flex flex-col gap-6">
-        <PhotoImportEntry />
-        {getApiMode() === "live" ? (
-          <Suspense fallback={null}>
-            <LiveImportacion />
-          </Suspense>
-        ) : (
-          <ImportacionContent />
-        )}
+        <Suspense fallback={null}>
+          <ImportacionRouter />
+        </Suspense>
       </div>
     </RequireSession>
   );

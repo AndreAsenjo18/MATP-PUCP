@@ -9,26 +9,30 @@ El asistente de importación carga en el catálogo las piezas de una hoja de cá
 - **Nada llega al catálogo hasta que se aprueba.** Mientras tanto, el lote es una propuesta que se puede revisar, corregir o abandonar.
 - El archivo original se guarda sin cambios y cada decisión queda en la **bitácora** del lote, con su usuario y la fecha.
 - Para los Excel históricos del museo (BD estandarizada y fichas de catalogación), vea antes [Cargar el histórico del museo](carga-historico.md).
-- ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Use **Importar fotografías al catálogo**: ver [Importar el archivo fotográfico](importacion-fotos.md).
+- ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Elija **Solo imágenes** al abrir Importación: ver [Importar el archivo fotográfico](importacion-fotos.md).
 
 ## 1. Preparar el archivo
 
 - Formatos admitidos: **Excel (.xlsx)** y **CSV**. Un archivo de Access o de Word se convierte antes a Excel.
 - Cada fila es una pieza y la primera fila con títulos son las **cabeceras** (si los títulos están más abajo, se indica en el paso 3).
-- La **denominación** es obligatoria en cada fila. El **régimen de tenencia** (Propiedad, Comodato o Préstamo temporal) también; si el archivo no tiene esa columna, se puede elegir un valor para todas las filas.
+- La **denominación** es obligatoria en cada fila. El **régimen de tenencia** (Propiedad, Comodato o Préstamo temporal) también; si el archivo no tiene esa columna, el asistente lo avisa al revisar las filas y permite elegir un valor para todas.
 - Una celda puede traer **varios códigos** a la vez («I-0236 / M.M.Z. 015»): el sistema separa cada código y reconoce su tipo.
 - Escriba «S/N» o deje la celda vacía si la pieza no tiene código. La lista de textos que significan «sin código» (S/N, s/c, -, 0…) la mantienen la Gestora de colecciones y el Administrador (ver [Administración › Normalización](administracion.md#normalización-de-códigos)).
 - Hay un tamaño máximo por archivo y un máximo de filas por lote. Si su archivo es más grande, divídalo en varios.
 - Las fotos pegadas dentro del Excel se extraen y se revisan al final (ver «Asociar las imágenes del Excel»).
 
-## 2. Subir el archivo y elegir su formato
+## 2. Elegir qué importar y subir el archivo
 
 1. En la barra lateral, pulse **Importación**. La barra se puede **contraer** a una columna de iconos con **Contraer menú**; el navegador recuerda su elección.
-2. Arrastre el archivo a la zona **Arrastre aquí su archivo** o haga clic en ella para elegirlo. Solo se admiten archivos Excel (.xlsx) o CSV; con otro tipo, la zona lo avisa y no lo selecciona.
-3. Junto a la zona, **Antes de subir** resume en cinco líneas lo que debe traer el archivo.
-4. En **Formato del archivo**, deje **Detectar automáticamente** (lo reconocemos por los títulos de las columnas) o elija uno de los formatos guardados. Un **formato** es la forma de leer las columnas de una misma fuente, por ejemplo, todas las sábanas de la consultoría.
-5. Si el archivo no trae columna de régimen de tenencia, abra **Más opciones** y elija el régimen de las filas sin dato (Propiedad, Comodato o Préstamo temporal). Las filas que sí lo traen conservan el suyo.
-6. Pulse **Subir y revisar**.
+2. Responda **¿Qué desea importar?** con una de las tres tarjetas:
+   - **Solo Excel**: sábanas de piezas en Excel o CSV.
+   - **Solo imágenes**: fotos de piezas que ya están registradas. Una foto sin pieza no crea una pieza (ver [Importar el archivo fotográfico](importacion-fotos.md)).
+   - **Excel e imágenes**: las piezas en Excel y sus fotos. Las fotos se suben **después** del Excel, porque se emparejan con sus filas.
+3. Arrastre el archivo a la zona **Arrastre aquí su archivo** o haga clic en ella para elegirlo. Solo se admiten archivos Excel (.xlsx) o CSV; con otro tipo, la zona lo avisa y no lo selecciona.
+4. Pulse **Subir y revisar**. No hay que elegir un formato: se reconoce por los títulos de las columnas.
+5. ¿Duda sobre cómo debe venir el archivo? Abra **¿Cómo preparo mi Excel?**, que resume en cinco líneas lo que debe traer.
+
+La elección queda en la dirección de la página, así que recargarla o compartir el enlace conserva el mismo camino. Un lote que ya empezó se abre directamente donde quedó, sin pasar por las tarjetas.
 
 Mientras se lee el archivo aparece el avance en filas. Puede salir de la pantalla: el proceso continúa en el servidor. Para volver al lote, use la dirección de la página, que lleva el lote.
 
@@ -36,7 +40,7 @@ El avance se ve en la barra de cuatro pasos —**Archivo**, **Revisión**, **Apr
 
 ## 3. El formato se aplica solo
 
-Al terminar la lectura, el sistema aplica el formato que eligió, o el que mejor coincide con las columnas del archivo, y valida el lote: no hay un paso de mapeo que completar. Llega directo a **Revise las filas**, donde arriba dice con qué formato se leyó («Formato aplicado: …»). Si no es el correcto, pulse **Cambiar formato**: el archivo se lee de nuevo con otro formato, sin volver a subirlo.
+Al terminar la lectura, el sistema aplica el formato que mejor coincide con las columnas del archivo, y valida el lote: no hay un paso de mapeo que completar. Llega directo a **Revise las filas**, donde arriba dice con qué formato se leyó («Formato aplicado: …»). Si no es el correcto, pulse **Cambiar formato**: el archivo se lee de nuevo con otro formato, sin volver a subirlo.
 
 El sistema se detiene antes de validar solo en estos casos, y siempre explica por qué:
 

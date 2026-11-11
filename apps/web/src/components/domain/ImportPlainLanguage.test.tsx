@@ -60,7 +60,7 @@ const DRY_RUN = { sampled_rows: 1, total_rows: 1, missing_columns: [], columns: 
 function texts(): Record<string, string> {
   const problem = { loading: false, busy: false, error: null, onUse: noop, onAdjust: noop, suggestions: [], templates: [TEMPLATE] };
   return {
-    subida: visibleText(render(<UploadPanel busy={false} templates={[TEMPLATE]} loadingTemplates={false} onUpload={noop} />)),
+    subida: visibleText(render(<UploadPanel busy={false} onUpload={noop} />)),
     pasos: visibleText(render(<ImportSteps current={1} />)),
     estado: visibleText(render(<BatchHeader batch={BATCH} />)) + visibleText(render(<ProgressPanel batch={BATCH} />)),
     formato: visibleText(render(<FormatBar formatName="Sábana" busy={false} onChange={noop} />)),

@@ -419,3 +419,15 @@ Supuestos provisionales para poder desarrollar la bandeja única de pendientes (
 | RP2 | ¿Cómo prefieren que se llame la pantalla y cómo se describe qué tan parecidas son dos piezas? | **[SUPUESTO]** «Revisar pendientes»; niveles «Muy parecidas», «Parecidas» y «Poco parecidas» tomados de los niveles alta, media y baja que ya calcula el sistema, sin un porcentaje nuevo. Se ajusta tras la prueba humana | calidad-datos (RNF-010) | B |
 | RP3 | ¿Quién del museo revisa las sugerencias que propone la IA? | **[SUPUESTO]** El curador (permiso `ai.review`); nada se guarda sin su aprobación (RN-009) | ia-asistiva (RIA-01, RN-009) | A |
 | RP4 | ¿El usuario típico tiene 60 años o más y poca práctica con computadoras? | **[SUPUESTO]** Sí: se diseña con letra de 16 px o más, botones de 44 px o más y pocas opciones por pantalla (HU-31). Se valida con el museo | RNF-010 | A |
+
+## IO. Elegir qué importar (change `importacion-elegir-origen`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IO1 | ¿Los textos de las tres tarjetas de Importación («Solo Excel», «Solo imágenes», «Excel e imágenes») se entienden? | [SUPUESTO] «Sábanas de piezas en Excel o CSV», «Fotos de piezas que ya están registradas. Una foto sin pieza no crea una pieza», «Piezas en Excel y sus fotos. Las fotos se suben después del Excel». | Solo textos de la interfaz | Media |
+| IO2 | ¿Prefiere el museo entrar directo al asistente de Excel, sin la elección? | [SUPUESTO] No: se muestra la elección cada vez; si prefieren entrar directo, el Inicio puede enlazar a `/importacion?origen=excel`. | Un clic más para quien siempre sube un Excel | Baja |
+| IO3 | ¿Debe «Excel e imágenes» pedir la carpeta de fotos antes de validar el Excel? | [SUPUESTO] No: las fotos se suben con el lote ya leído, porque se emparejan con sus filas. | Orden del recorrido | Baja |
+| IO4 | Y1 sigue abierta: ¿«formato» o «plantilla» para los paneles posteriores a la subida? | [SUPUESTO] «Formato». | Solo textos | Baja |
+

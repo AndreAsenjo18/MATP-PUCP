@@ -33,10 +33,11 @@ import {
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { PHOTO_STEP_NOTE, importHref, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
-import { UploadPanel, type UploadOptions } from "@/components/domain/ImportUpload";
+import { UploadPanel } from "@/components/domain/ImportUpload";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
@@ -109,6 +110,7 @@ export function LiveImportWizard() {
   const router = useRouter();
   const params = useSearchParams();
   const batchId = params.get("lote");
+  const origin = originFromParams(params);
 
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -141,8 +143,7 @@ export function LiveImportWizard() {
   // Términos activos por vocabulario de las columnas `terms:` del borrador (4.1C).
   const [termsByVocabulary, setTermsByVocabulary] = useState<Record<string, TermOption[]>>({});
 
-  // Formato: opciones de la subida, lo que impidió aplicarlo solo y el último mapeo aplicado.
-  const [uploadOptions, setUploadOptions] = useState<UploadOptions>({ templateId: null, tenureDefault: "" });
+  // Formato: siempre se detecta solo al subir; aquí, lo que impidió aplicarlo y el último mapeo aplicado.
   const [formatIssue, setFormatIssue] = useState<FormatIssue | null>(null);
   const [changingFormat, setChangingFormat] = useState(false);
   const [appliedSource, setAppliedSource] = useState<BatchMappingSource | null>(null);
@@ -237,18 +238,17 @@ export function LiveImportWizard() {
     if (!batch || batch.status !== "UPLOADED" || processing || suggestions === null || templates === null) return;
     if (autoApplied.current === batch.id) return;
     autoApplied.current = batch.id;
-    const chosen = uploadOptions.templateId ? templates.find((template) => template.id === uploadOptions.templateId) : undefined;
-    const suggestion = uploadOptions.templateId ? undefined : suggestions[0];
-    const candidate = chosen ?? suggestion?.template;
+    const suggestion = suggestions[0];
+    const candidate = suggestion?.template;
     const missing = !candidate ? [] : suggestion ? suggestion.missing_columns : missingColumns(candidate, batch.headers ?? []);
     void (async () => {
       if (!candidate) return setFormatIssue({ kind: "unrecognized" });
       if (missing.length > 0) return setFormatIssue({ kind: "missing", template: candidate, missing });
-      await applyFormat(candidate, uploadOptions.tenureDefault);
+      await applyFormat(candidate, "");
     })();
     // `applyFormat` depende de `batch`, que ya es una dependencia; se ejecuta una vez por lote.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch, processing, suggestions, templates, uploadOptions]);
+  }, [batch, processing, suggestions, templates]);
 
   function resetTemplates() {
     setFormatIssue(null);
@@ -335,15 +335,14 @@ export function LiveImportWizard() {
 
   const counts = useMemo(() => (batch?.counts ?? {}) as Record<string, number>, [batch]);
 
-  async function handleUpload(file: File, options: UploadOptions) {
+  async function handleUpload(file: File) {
     setBusy(true);
     const result = await uploadImportFile(file, file.name, devUser);
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
     resetTemplates();
-    setUploadOptions(options);
-    router.replace(`/importacion?lote=${result.value.batch_id}`);
+    router.replace(importHref({ batchId: result.value.batch_id, origin }));
   }
 
   /** Guarda el mapeo y valida el lote; `onFailure` recibe el motivo si algo no se pudo. */
@@ -382,7 +381,7 @@ export function LiveImportWizard() {
     const missing = missingColumns(template, batch.headers ?? []);
     if (missing.length > 0) return setFormatIssue({ kind: "missing", template, missing });
     setError(null);
-    await applySourceAndValidate({ kind: "template", templateId: template.id, tenureDefault: uploadOptions.tenureDefault || null }, setError);
+    await applySourceAndValidate({ kind: "template", templateId: template.id, tenureDefault: null }, setError);
   }
 
   /** Mismo mapeo con un régimen por defecto, para las filas que no lo traen; luego a validar. */
@@ -573,7 +572,7 @@ export function LiveImportWizard() {
       {batch && <BatchHeader batch={batch} />}
       <ErrorNotice message={error} />
 
-      {!batchId && <UploadPanel busy={busy} templates={templates} loadingTemplates={templates === null} onUpload={handleUpload} />}
+      {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
       {batch && processing && <ProgressPanel batch={batch} />}
       {batch && !processing && !adjusting && formatPanel && (
         <FormatProblemPanel
@@ -648,8 +647,13 @@ export function LiveImportWizard() {
           </Button>
         </Card>
       )}
-      {batch && !processing && !adjusting && !formatPanel && <ImportPhotosPanel batch={batch} devUser={devUser} />}
-      {batch && !processing && !adjusting && !formatPanel && <ImportPhotoTray batch={batch} devUser={devUser} />}
+      {batch && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && (
+        <>
+          {origin === "excel-fotos" && <p className="text-base font-medium text-tinta">{PHOTO_STEP_NOTE}</p>}
+          <ImportPhotosPanel batch={batch} devUser={devUser} />
+        </>
+      )}
+      {batch && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && <ImportPhotoTray batch={batch} devUser={devUser} />}
 
       {reviewing && (
         <FormatBar
@@ -761,9 +765,8 @@ export function LiveImportWizard() {
             setRollbackConflicts(null);
             setRollbackReason(null);
             resetTemplates();
-            setUploadOptions({ templateId: null, tenureDefault: "" });
             autoApplied.current = null;
-            router.replace("/importacion");
+            router.replace(importHref({ origin }));
           }}
         >
           Importar otro archivo
