@@ -30,6 +30,9 @@
   - Cinco pruebas ajustadas al texto nuevo (`AuditChangeSetList`, `AuditTrailPanel`, `AuditLogChangeSetList`, `RevertChangeSetPanel` ×2) y `audit.test.ts`. Pruebas de API de auditoría y reversión: 163 en verde.
 - [ ] 5.5 Verificación en el navegador de 5.1 a 5.4 a 1280 y 375 px
   - Pendiente (2026-11-11): Docker Desktop se apagó antes de reconstruir la API y la web.
+- [ ] 5.6 `npm run test:api:pg` (PostgreSQL en Docker) con la condición nueva `entity_type <> valor` de `exclude_entity_type`
+  - Pendiente: las pruebas de API corrieron con la base de pruebas local, no con PostgreSQL. Requiere Docker.
+- [ ] 5.7 Avisar a los dueños de lo que este change toca fuera de Control: P1 (pestaña de auditoría y reversión de la ficha: textos «cambio»), P2 (`FiltersDrawer` de `SearchFilters.tsx` ganó la prop opcional `id`, sin cambio de comportamiento) y Sergio y André (`exclude_entity_type` es un parámetro añadido al contrato, pendiente de su visto bueno como los demás añadidos)
 
 ## 4. Cierre
 
