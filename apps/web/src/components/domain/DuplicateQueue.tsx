@@ -61,7 +61,17 @@ type DialogState =
   | null;
 type Notice = { tone: "success" | "warning"; text: string; link?: { href: string; label: string } } | null;
 
-export function DuplicateQueue() {
+export interface DuplicateQueueProps {
+  /**
+   * Dentro de la bandeja «Revisar pendientes» el título lo pone la bandeja: se omite el `h1` propio
+   * y queda la línea de ayuda (change `revisar-pendientes-unificado`, tarea 2.5).
+   */
+  embedded?: boolean;
+  /** Se llama cada vez que la cola se recarga tras resolver un par o terminar una detección. */
+  onQueueChanged?: () => void;
+}
+
+export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQueueProps = {}) {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const canResolve = hasPermission("duplicates.resolve");
@@ -120,6 +130,11 @@ export function DuplicateQueue() {
       active = false;
     };
   }, [query, requestKey, devUser]);
+
+  // Toda recarga posterior a la primera viene de una resolución o de una detección terminada.
+  useEffect(() => {
+    if (reload > 0) onQueueChanged?.();
+  }, [reload, onQueueChanged]);
 
   const runningJobId = scan.job?.status === "RUNNING" ? scan.job.id : null;
   useEffect(() => {
@@ -208,7 +223,7 @@ export function DuplicateQueue() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>
+        {!embedded && <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>}
         <p className="text-base text-gris-texto">Compare cada par y decida. No se borra ninguna pieza.</p>
       </header>
 
