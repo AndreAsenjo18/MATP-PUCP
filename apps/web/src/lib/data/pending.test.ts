@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetMockDuplicates } from "./duplicates";
 import {
+  LEGACY_PENDING_ROUTES,
   PENDING_TABS,
   UNKNOWN_COUNTS,
   fetchPendingCounts,
   initialTab,
+  legacyPendingTarget,
   pendingTabs,
   tabForPath,
   tabLabel,
@@ -187,5 +189,27 @@ describe("contadores en modo demostración (design D3)", () => {
 
   it("sin número de sugerencias, la pestaña queda sin número", async () => {
     expect((await fetchPendingCounts(["suggestions"])).suggestions).toBeNull();
+  });
+});
+
+describe("direcciones antiguas (Req: Redirección de las direcciones antiguas a la bandeja)", () => {
+  it("cada una lleva a su pestaña", () => {
+    expect(LEGACY_PENDING_ROUTES["/duplicados"]).toBe("/pendientes/duplicados");
+    expect(LEGACY_PENDING_ROUTES["/ia/sugerencias"]).toBe("/pendientes/sugerencias");
+  });
+
+  it("sin parámetros, la pestaña sola", () => {
+    expect(legacyPendingTarget("/pendientes/duplicados", new URLSearchParams())).toBe("/pendientes/duplicados");
+  });
+
+  it("conserva el que resalta una sugerencia", () => {
+    expect(legacyPendingTarget("/pendientes/sugerencias", new URLSearchParams("resaltar=abc"))).toBe("/pendientes/sugerencias?resaltar=abc");
+  });
+
+  it("conserva todos los parámetros, en su orden y con su codificación", () => {
+    const params = new URLSearchParams("status=POSTPONED&collection_id=c%201&origen=importaci%C3%B3n&x=1&x=2");
+    expect(legacyPendingTarget("/pendientes/duplicados", params)).toBe(
+      "/pendientes/duplicados?status=POSTPONED&collection_id=c+1&origen=importaci%C3%B3n&x=1&x=2",
+    );
   });
 });

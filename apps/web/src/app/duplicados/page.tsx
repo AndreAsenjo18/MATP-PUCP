@@ -1,28 +1,25 @@
 "use client";
 
 /**
- * Pantalla 7 — Cola de posibles duplicados (RF-030, calidad-datos; change
- * `deteccion-duplicados-y-cola-revision`, tareas 4.1 y 4.2). La cola vive en
- * `components/domain/DuplicateQueue` (change `revisar-pendientes-unificado`, tarea 1.2); esta
- * página exige la sesión y el permiso `duplicates.resolve` y la monta igual que antes.
+ * La antigua cola de duplicados lleva a su pestaña de la bandeja «Revisar pendientes», con todos los
+ * parámetros de la dirección (change `revisar-pendientes-unificado`, tarea 4.2; mismo patrón que
+ * `app/deposito/page.tsx`). La bandeja exige la sesión y muestra el aviso si falta el permiso. La
+ * página se prerenderiza estática y `useSearchParams` la deja para el navegador, así que la
+ * redirección ocurre en el cliente: el servidor responde 200 (tarea 4.2).
  */
-import { DuplicateQueue } from "@/components/domain/DuplicateQueue";
-import { PermissionNotice } from "@/components/layout/PermissionNotice";
-import { RequireSession } from "@/components/layout/RequireSession";
-import { useSession } from "@/lib/auth/session";
+import { redirect, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-function DuplicadosContent() {
-  const { hasPermission } = useSession();
-  if (!hasPermission("duplicates.resolve")) {
-    return <PermissionNotice>Su rol no tiene permiso para resolver duplicados. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
-  }
-  return <DuplicateQueue />;
+import { LEGACY_PENDING_ROUTES, legacyPendingTarget } from "@/lib/data/pending";
+
+function RedirectToPending(): null {
+  redirect(legacyPendingTarget(LEGACY_PENDING_ROUTES["/duplicados"], useSearchParams()));
 }
 
 export default function DuplicadosPage() {
   return (
-    <RequireSession>
-      <DuplicadosContent />
-    </RequireSession>
+    <Suspense fallback={null}>
+      <RedirectToPending />
+    </Suspense>
   );
 }

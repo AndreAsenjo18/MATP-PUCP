@@ -118,3 +118,18 @@ export async function fetchPendingCounts(keys: readonly PendingTabKey[], options
   });
   return counts;
 }
+
+/** Direcciones antiguas que ahora son pestañas de la bandeja (spec: «Redirección de las direcciones antiguas a la bandeja»). */
+export const LEGACY_PENDING_ROUTES = {
+  "/duplicados": "/pendientes/duplicados",
+  "/ia/sugerencias": "/pendientes/sugerencias",
+} as const;
+
+/**
+ * Adónde lleva una dirección antigua: su pestaña, con **todos** los parámetros tal cual (filtros,
+ * `resaltar` y los que se añadan después). Mismo patrón que `depositoRedirectTarget`.
+ */
+export function legacyPendingTarget(target: string, params: { toString(): string }): string {
+  const query = params.toString();
+  return query ? `${target}?${query}` : target;
+}
