@@ -40,7 +40,7 @@ La línea usa solo cantidades («318 piezas · 117 sin código I · 138 sin foto
 
 | Se retira | Dónde sigue |
 |---|---|
-| Tabla por colección | Reportes › Información incompleta (indicadores por colección) |
+| Tabla por colección | La API (`GET /reports/dashboard-stats?by_collection=true`); **sin pantalla por ahora**: Reportes › Información incompleta lista piezas, no usa esos indicadores (se verificó al aplicar la tarea 2.5) |
 | Evolución de 14 días | La serie sigue en la API y en las instantáneas; sin pantalla por ahora |
 | Últimas cargas de importación | Cargar datos (la lista de lotes del asistente) |
 | Tabla de piezas incompletas | Revisar pendientes › Piezas incompletas |
@@ -65,7 +65,7 @@ Aplicar después de `revisar-pendientes-unificado`. Si se aplicara antes, «Revi
 
 ## Risks / Trade-offs
 
-- **[Se pierde el tablero de completitud en la primera pantalla]** → La línea de estado y el enlace a piezas incompletas conservan lo esencial; el detalle por colección sigue en Reportes.
+- **[Se pierde el tablero de completitud en la primera pantalla]** → La línea de estado y el enlace a piezas incompletas conservan lo esencial. El detalle por colección **no** tiene hoy otra pantalla: solo la API. Si el museo lo necesita, se ofrece como un reporte nuevo (pregunta abierta).
 - **[Un rol con pocos permisos ve pocas tarjetas]** → Es lo esperado; si no hay ninguna, un aviso de que su rol no tiene tareas disponibles y a quién pedir acceso.
 - **[Los nombres de tarea pueden no coincidir con cómo habla el museo]** → Se validan con la prueba de 5 segundos y se registran como `[SUPUESTO]`; son constantes de una sola tabla.
 - **[Quitar la evolución]** → Decisión reversible; la API y las instantáneas no cambian.

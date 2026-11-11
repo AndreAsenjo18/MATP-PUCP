@@ -140,13 +140,11 @@ Al abrir la ficha de una pieza con alguna alerta activa, aparece un recuadro ám
 
 En cuanto se corrige el dato (por ejemplo, se sube una foto), la alerta desaparece de la ficha sin recargar la página a mano.
 
-### Tablero de completitud (Inicio)
+### Estado del catálogo (Inicio)
 
-En **Inicio**, la sección **Completitud del catálogo** muestra:
+En **Inicio**, bajo las tarjetas de tareas, una sola línea resume el catálogo: por ejemplo, «318 piezas · 117 sin código I · 138 sin foto». Cada cantidad es un enlace que lleva a la búsqueda ya filtrada. Si el estado no se puede leer, la línea se reemplaza por un aviso breve y las tarjetas siguen funcionando.
 
-- **Piezas registradas**, **Sin código I**, **Sin fotografía** y **Sin ubicación**: el número de piezas afectadas por cada alerta hoy. Pulse una tarjeta para ir a la búsqueda.
-- Una **tabla por colección**, con el porcentaje de completitud de cada alerta en cada colección (incluidas sus subcolecciones). Cuando una colección no tiene ninguna pieza a la que la alerta aplique —por ejemplo, el porcentaje de «Sin código I» en una colección que está entera en comodato—, la celda dice **No aplica** en vez de un número o un error.
-- Un **gráfico de evolución** de los últimos 14 días para el indicador que elija en **Indicador**. Si ningún día del rango tiene piezas a las que la alerta aplique, el gráfico se reemplaza por el mismo aviso «No aplica».
+La tabla de completitud por colección y el gráfico de evolución de 14 días **ya no se muestran en Inicio**; los datos siguen disponibles en el servidor (`GET /reports/dashboard-stats` y su historial).
 
 ### Reporte de piezas incompletas (Reportes)
 
