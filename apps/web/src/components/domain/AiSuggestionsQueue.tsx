@@ -129,14 +129,14 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
   );
 }
 
-export function AiSuggestionsQueue({ embedded = false }: { embedded?: boolean } = {}) {
+export function AiSuggestionsQueue({ embedded = false, onQueueChanged }: { embedded?: boolean; onQueueChanged?: () => void } = {}) {
   const { hasPermission, currentUser } = useSession();
   const store = useMockStore();
   const searchParams = useSearchParams();
   const highlighted = searchParams.get("resaltar");
 
   if (getApiMode() === "live") {
-    return <AiSuggestionsLive devUser={currentUser?.email} canReview={hasPermission("ai.review")} embedded={embedded} />;
+    return <AiSuggestionsLive devUser={currentUser?.email} canReview={hasPermission("ai.review")} embedded={embedded} onQueueChanged={onQueueChanged} />;
   }
 
   if (!hasPermission("ai.review")) {

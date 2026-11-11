@@ -14,7 +14,6 @@ import {
   PendingLoading,
   PendingTabBody,
   PendingTabsNav,
-  SuggestionsPlaceholder,
   TAB_PERMISSION_NOTICES,
 } from "./PendingInbox";
 
@@ -128,13 +127,6 @@ describe("contenido de cada pestaña", () => {
     expect(visibleText(html)).toBe(PENDING_LOADING_TEXT);
   });
 
-  it("sugerencias (provisional hasta la 1.3): enlaza a su pantalla conservando los parámetros", () => {
-    const withQuery = render(<SuggestionsPlaceholder query="resaltar=abc" />);
-    expect(withQuery).toContain('href="/ia/sugerencias?resaltar=abc"');
-    expect(withQuery).toMatch(/<a\b[^>]*class="[^"]*min-h-11/);
-    expect(render(<SuggestionsPlaceholder query="" />)).toContain('href="/ia/sugerencias"');
-  });
-
   it("la cola de duplicados dentro de la bandeja no repite el título; fuera de ella, sí", () => {
     const embedded = render(
       <SessionProvider>
@@ -160,7 +152,6 @@ describe("textos de la bandeja sin identificadores internos", () => {
       NO_PENDING_TABS_NOTICE,
       PENDING_LOADING_TEXT,
       ...Object.values(TAB_PERMISSION_NOTICES),
-      visibleText(render(<SuggestionsPlaceholder query="" />)),
       visibleText(render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} />)),
     ];
     for (const text of texts) expect(text).not.toMatch(REQUIREMENT);

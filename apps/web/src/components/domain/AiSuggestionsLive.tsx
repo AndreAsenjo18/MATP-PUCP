@@ -24,11 +24,14 @@ export function AiSuggestionsLive({
   devUser,
   canReview,
   embedded = false,
+  onQueueChanged,
 }: {
   devUser?: string;
   canReview: boolean;
   /** Dentro de la bandeja «Revisar pendientes» se omite el encabezado (change `revisar-pendientes-unificado`, 1.3). */
   embedded?: boolean;
+  /** Se llama tras aprobar o rechazar con éxito, para que la bandeja recalcule su contador. */
+  onQueueChanged?: () => void;
 }) {
   const [suggestions, setSuggestions] = useState<AiSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +67,10 @@ export function AiSuggestionsLive({
     setBusyId(suggestion.id);
     const result = await approveAiSuggestion(suggestion.id, fields, devUser, dimensionsText);
     setBusyId(null);
-    if (result.status === "ok") await reload();
+    if (result.status === "ok") {
+      await reload();
+      onQueueChanged?.();
+    }
     else setError(result.message);
   }
 
@@ -72,7 +78,10 @@ export function AiSuggestionsLive({
     setBusyId(suggestion.id);
     const result = await rejectAiSuggestion(suggestion.id, reason, devUser);
     setBusyId(null);
-    if (result.status === "ok") await reload();
+    if (result.status === "ok") {
+      await reload();
+      onQueueChanged?.();
+    }
     else setError(result.message);
   }
 

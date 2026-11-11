@@ -15,7 +15,6 @@ import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
-import { buttonClassName } from "@/components/ui/Button";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
 import { useMockStore } from "@/lib/data/mock-store";
@@ -89,26 +88,6 @@ export function PendingLoading() {
     <p role="status" className="text-base text-gris-texto">
       {PENDING_LOADING_TEXT}
     </p>
-  );
-}
-
-/**
- * Pestaña de sugerencias mientras su cola no se pueda montar aquí: la tarea 1.3 (mover la página de
- * P4) espera la confirmación de P4. Enlaza a la pantalla actual conservando sus parámetros
- * (`?resaltar=`). Se reemplaza por `AiSuggestionsQueue` al cerrar la 1.3.
- */
-export function SuggestionsPlaceholder({ query }: { query: string }) {
-  const href = query ? `/ia/sugerencias?${query}` : "/ia/sugerencias";
-  return (
-    <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-borde p-6">
-      <p className="text-base text-tinta">Por ahora, las sugerencias de IA se revisan en su pantalla de siempre.</p>
-      <Link
-        href={href}
-        className={buttonClassName({})}
-      >
-        Abrir las sugerencias de IA
-      </Link>
-    </div>
   );
 }
 
