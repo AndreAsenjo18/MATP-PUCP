@@ -33,6 +33,8 @@ CHANGE_AUTH = "autenticacion-y-matriz-permisos"
 CHANGE_AUDIT = "auditoria-y-soft-delete-transversal"
 CHANGE_AI_EXTRACTION = "ia-extraccion-texto-libre"
 CHANGE_BULK = "descargas-masivas-y-enriquecimiento-lote"
+# Batch enrichment (RIA-04) moved out of CHANGE_BULK on 2026-11-11.
+CHANGE_AI_BATCH = "ia-enriquecimiento-lote"
 
 
 def implemented() -> dict[str, Any]:

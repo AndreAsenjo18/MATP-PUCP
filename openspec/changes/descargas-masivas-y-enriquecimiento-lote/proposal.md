@@ -1,3 +1,5 @@
+> **Partido el 2026-11-11.** El enriquecimiento por lote con IA (RIA-04) pasó, sin cambios de alcance, al change `ia-enriquecimiento-lote` (fuera del MVP, célula de IA). Este change conserva su nombre, porque lo citan el código, la migración `0023_media_bulk_download` y las pruebas, y queda solo con la descarga masiva de fotografías.
+
 ## Why
 
 El contrato de interfaces del equipo (`docs/fuentes/endpoints-api-v1.yaml`) incluye en su fase 3 dos operaciones que ningún change del backlog respalda: `POST /media/bulk-download` (`bulkDownloadMedia`, paquete ZIP con las fotos de un grupo de piezas) y `POST /ai/batch-enrich` (`batchAiEnrichment`, borradores de catálogo en lote para piezas sin descripción). La tarea 5.2 de `alinear-api-endpoints-v1` exige que cada stub cite un change existente, así que hace falta este change para exponerlas con su forma definitiva y planificar su implementación sin saltarse RN-008 ni RN-009.
@@ -5,7 +7,7 @@ El contrato de interfaces del equipo (`docs/fuentes/endpoints-api-v1.yaml`) incl
 ## What Changes
 
 - **Descarga masiva de fotografías:** generar en segundo plano un ZIP con las fotos de un conjunto acotado de piezas, con enlace de descarga de corta duración y caducidad. Las fotos cuya restricción de uso efectiva lo prohíba quedan fuera del paquete y se informa cuántas y por qué (RN-008). Cada descarga queda en la auditoría.
-- **Enriquecimiento por lote asistido por IA:** generar, para un conjunto acotado de piezas sin descripción, un borrador de descripción preliminar por pieza a partir de sus metadatos (RIA-04). Cada borrador queda como sugerencia **pendiente** y nunca se aplica sin aprobación humana (RN-009). Las piezas con metadatos insuficientes se omiten con su motivo.
+- ~~Enriquecimiento por lote asistido por IA~~: movido a `ia-enriquecimiento-lote`. Aquí quedan hechos su esquema, su stub `501` y su límite configurable (tarea 1.2).
 - **Rutas del contrato:** `POST /media/bulk-download` y `POST /ai/batch-enrich` se exponen primero como stubs `501` que citan este change (tarea 5.2 de `alinear-api-endpoints-v1`) y luego se implementan aquí.
 - Límites de tamaño del lote, caducidad del paquete y un trabajo activo por usuario, como ya hacen las exportaciones (`busqueda-avanzada-y-exportacion`) y los lotes de términos (`ia-sugerencia-terminos`).
 
@@ -18,7 +20,7 @@ El contrato de interfaces del equipo (`docs/fuentes/endpoints-api-v1.yaml`) incl
 ### Modified Capabilities
 
 - `multimedia`: descarga masiva de fotografías de varias piezas en un paquete, respetando la restricción de uso efectiva.
-- `ia-asistiva`: generación de descripciones preliminares por lote, como sugerencias pendientes de aprobación.
+- ~~`ia-asistiva`~~: su delta pasó a `ia-enriquecimiento-lote`.
 
 ## Impact
 
