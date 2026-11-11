@@ -24,6 +24,7 @@ import { AdminToolbar, SectionHeader } from "@/components/domain/AdminShell";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSession } from "@/lib/auth/session";
+import { plainDescription } from "@/lib/data/imports";
 import {
   deleteTemplate,
   fetchTemplates,
@@ -141,7 +142,7 @@ function TemplateAdminItem({
           <p className="text-xs text-gris-texto">
             {template.source_name} · {template.columns.length} columnas · creada el {formatDate(template.created_at)}
           </p>
-          {template.description && <p className="text-xs text-gris-texto">{template.description}</p>}
+          {plainDescription(template.description) && <p className="text-xs text-gris-texto">{plainDescription(template.description)}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && !editing && (

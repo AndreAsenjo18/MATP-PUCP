@@ -52,6 +52,9 @@ describe("lista de plantillas", () => {
     const html = list();
     const text = visibleText(html);
     expect(text).toContain("Plantilla sábana sintética v1");
+    // HU-06: la nota interna del equipo no se ve en pantalla.
+    expect(text).toContain("Columnas ilustrativas.");
+    expect(text).not.toContain("[SUPUESTO");
     expect(text).toContain("Sábana consultoría (sintética) · 2 columnas · creada el 22/10/2026");
     expect(html).toMatch(/<details[^>]*><summary[^>]*>Columnas \(2\)<\/summary>/);
     expect(text).toContain("Códigos (se reconoce el tipo de cada uno)");

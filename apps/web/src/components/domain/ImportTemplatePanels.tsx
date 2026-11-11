@@ -35,6 +35,7 @@ import {
   type TemplateDryRun,
   type TemplateSuggestion,
 } from "@/lib/data/import-templates";
+import { plainDescription } from "@/lib/data/imports";
 import { termLabel, termsVocabulary, type TermOption } from "@/lib/data/mapping-editor";
 
 /** Por qué el formato no se pudo aplicar solo (el asistente se detiene antes de validar). */
@@ -108,7 +109,7 @@ export function FormatProblemPanel({
                   {template.name}
                   {scores.has(template.id) && <span className="text-sm font-normal text-gris-texto"> · se parece {scoreLabel(scores.get(template.id) ?? 0)}</span>}
                 </p>
-                {template.description && <p className="text-sm text-gris-texto">{template.description}</p>}
+                {plainDescription(template.description) && <p className="text-sm text-gris-texto">{plainDescription(template.description)}</p>}
               </div>
               <Button variant="outline" icon={Layers} disabled={busy} onClick={() => onUse(template)}>
                 Usar este formato
