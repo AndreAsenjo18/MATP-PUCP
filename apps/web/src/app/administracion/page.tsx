@@ -19,6 +19,7 @@ import { LocationsLive } from "@/components/domain/LocationsAdmin";
 import { MappingTemplatesLive } from "@/components/domain/MappingTemplatesAdmin";
 import { NormalizationLive } from "@/components/domain/NormalizationAdmin";
 import { StatusBadge } from "@/components/domain/StatusBadges";
+import { StorageEstimateCard } from "@/components/domain/StorageEstimateCard";
 import { TrashPanel } from "@/components/domain/TrashPanel";
 import { CollectionsLive, IdentifierTypesLive, VocabulariesLive } from "@/components/domain/VocabulariesAdmin";
 import { FullExportPanel } from "@/components/domain/SearchLive";
@@ -171,7 +172,7 @@ function DemoLocations() {
 }
 
 function AdminSectionView({ slug }: { slug: string }) {
-  const { currentRole } = useSession();
+  const { currentRole, currentUser } = useSession();
   const live = getApiMode() === "live";
   switch (slug) {
     case "usuarios":
@@ -197,6 +198,8 @@ function AdminSectionView({ slug }: { slug: string }) {
       return <AuditSection />;
     case "exportacion":
       return live ? <FullExportPanel /> : <LiveOnlyNotice />;
+    case "almacenamiento":
+      return <StorageEstimateCard devUser={currentUser?.email} />;
     default:
       return null;
   }

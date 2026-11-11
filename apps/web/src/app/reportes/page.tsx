@@ -1,20 +1,19 @@
 "use client";
 
 /**
- * Pantalla 9 — Reportes: inventario general, por colección, por ubicación, agrupado por atributo,
- * incompletas (RF-033..035, RF-047) y exportación completa de la base en formato abierto (RF-044).
+ * Pantalla 9 — Reportes: inventario general, por colección, por ubicación, agrupado por atributo e
+ * incompletas (RF-033..035, RF-047). La exportación completa de la base (RF-044) y la estimación del
+ * volumen fotográfico (RNF-003) están en Administración › Control (change `reportes-vista-simplificada`).
  * En modo `live`, los inventarios vienen de `GET /reports/{report_type}` (change
  * `reportes-inventario`, 3.1).
  */
-import { Download, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportPreview } from "@/components/domain/ReportPreview";
 import { ReportSelector } from "@/components/domain/ReportSelector";
 import { ReportsLive } from "@/components/domain/ReportsLive";
-import { StorageEstimateCard } from "@/components/domain/StorageEstimateCard";
-import { FullExportPanel } from "@/components/domain/SearchLive";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Button } from "@/components/ui/Button";
@@ -81,27 +80,6 @@ function ReportesContent() {
       ) : (
         <Card as="section">
           <p className="text-base text-gris-texto">Este reporte necesita la conexión con el sistema: no está disponible con los datos de ejemplo.</p>
-        </Card>
-      )}
-
-      {/* La pantalla ya exige `reports.view`, el mismo permiso que la estimación (RNF-003). */}
-      <StorageEstimateCard devUser={currentUser?.email} />
-
-      {hasPermission("exports.full") && live && <FullExportPanel />}
-      {hasPermission("exports.full") && !live && (
-        <Card as="section">
-          <h2 className="text-lg font-semibold text-tinta">Exportación completa de la base</h2>
-          <p className="mt-1 text-base text-gris-texto">
-            Genera un archivo abierto (Excel/CSV) con todas las piezas y sus identificadores, para no depender de
-            este sistema.
-          </p>
-          <Button
-            icon={Download}
-            onClick={() => window.alert("Descarga simulada: en modo mock no se genera un archivo real (exportacion-completa.xlsx).")}
-            className="mt-2"
-          >
-            Exportar base completa
-          </Button>
         </Card>
       )}
     </div>
