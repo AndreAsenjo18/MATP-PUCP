@@ -59,6 +59,18 @@ export interface MergeSubmission {
 }
 
 export const MERGE_STEPS = ["Pieza que se conserva", "Valores de la ficha", "Resumen y confirmación"] as const;
+
+/**
+ * Prueba humana de HU-04 (change `revisar-pendientes-unificado`, 6.2): se avanzaba hasta el final sin
+ * leer y no se entendía por qué una opción del paso 1 no se podía elegir. El botón final nombra la
+ * acción, el resumen dice qué pasa con cada ficha y el paso 1 da la razón en una frase.
+ */
+export const MERGE_CONFIRM_LABEL = "Juntar las dos fichas";
+export const REQUIRED_SURVIVOR_REASON = "Se conserva esta: su código I nunca cambia de pieza.";
+export const BLOCKED_SURVIVOR_REASON = "No se puede elegir: solo la otra pieza tiene código I.";
+
+/** Etiquetas de `Field` y `Badge` (components/ui, de la Base) a 16 px solo en el asistente (C28). */
+const WIZARD_ATOMS = "[&_label]:text-base [&_p]:text-base [&_span.rounded-full]:text-base";
 export type MergeStep = 1 | 2 | 3;
 
 /** «Pieza A» o «Pieza B» según su lugar en el par. */
@@ -72,9 +84,9 @@ const RADIO_STYLES = "mt-1 h-5 w-5 shrink-0 accent-terracota focus-visible:outli
 
 function optionClassName(checked: boolean, disabled = false): string {
   return cn(
-    "flex gap-3 rounded-md border p-3 text-sm text-tinta",
+    "flex min-h-11 gap-3 rounded-md border p-3 text-base text-tinta",
     checked ? "border-terracota bg-terracota-light" : "border-borde bg-white",
-    disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+    disabled ? "cursor-not-allowed border-dashed bg-crema-light" : "cursor-pointer",
   );
 }
 
@@ -92,7 +104,7 @@ export function PieceCodes({ piece }: { piece: PieceDetail }) {
   const names = useIdentifierTypeNames();
   const others = otherIdentifiers(piece);
   return (
-    <span className="flex flex-wrap items-center gap-1.5 text-xs">
+    <span className="flex flex-wrap items-center gap-1.5 text-base">
       <span className="font-mono font-bold text-terracota">{piece.code_i ? `Código I ${piece.code_i}` : "Sin código I"}</span>
       {others.map((identifier) => (
         <span key={identifier.id} className="rounded bg-crema px-1.5 py-0.5 font-mono text-tinta">
@@ -104,16 +116,20 @@ export function PieceCodes({ piece }: { piece: PieceDetail }) {
   );
 }
 
-/** Las dos piezas y sus códigos, en una franja corta (pasos 2 y 3). */
-export function PieceCodesStrip({ surviving, absorbed }: { surviving: PieceDetail; absorbed: PieceDetail }) {
+/** Qué le pasa a cada ficha, dicho en la etiqueta de la franja del resumen (sin párrafos nuevos). */
+export const SURVIVOR_FATE = "Se conserva: queda como la ficha principal";
+export const ABSORBED_FATE = "Se absorbe: se da de baja, no se borra";
+
+/** Las dos piezas y sus códigos, en una franja corta (pasos 2 y 3); en el resumen, con su destino. */
+export function PieceCodesStrip({ surviving, absorbed, withFates = false }: { surviving: PieceDetail; absorbed: PieceDetail; withFates?: boolean }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2" aria-label="Códigos de las dos piezas">
+    <div className="grid gap-2 sm:grid-cols-2" aria-label={withFates ? "Qué pasa con cada ficha" : "Códigos de las dos piezas"}>
       {[
-        ["Se conserva", surviving],
-        ["Se absorbe", absorbed],
+        [withFates ? SURVIVOR_FATE : "Se conserva", surviving],
+        [withFates ? ABSORBED_FATE : "Se absorbe", absorbed],
       ].map(([title, piece]) => (
-        <div key={(piece as PieceDetail).id} className="flex min-w-0 flex-col gap-1 rounded-md bg-crema-light p-2 text-sm">
-          <span className="text-xs text-gris-texto">{title as string}</span>
+        <div key={(piece as PieceDetail).id} className="flex min-w-0 flex-col gap-1 rounded-md bg-crema-light p-2 text-base">
+          <span className={cn("text-base", withFates ? "font-semibold text-tinta" : "text-gris-texto")}>{title as string}</span>
           <span className="font-semibold break-words text-tinta">{(piece as PieceDetail).denomination}</span>
           <PieceCodes piece={piece as PieceDetail} />
         </div>
@@ -143,10 +159,10 @@ export function MergeSurvivorStep({
   if (block) {
     return (
       <div className="flex flex-col gap-2">
-        <p role="alert" className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
+        <p role="alert" className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
           <strong>No se puede fusionar este par.</strong> {block.message}
         </p>
-        <p className="text-xs text-gris-texto">El par sigue en la cola: márquelo como distinto o posponga la decisión.</p>
+        <p className="text-base text-gris-texto">El par sigue en la cola: márquelo como distinto o posponga la decisión.</p>
       </div>
     );
   }
@@ -157,10 +173,12 @@ export function MergeSurvivorStep({
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-base font-semibold text-tinta">¿Qué pieza se conserva?</legend>
-      <p className="text-xs text-gris-texto">La otra se da de baja lógica y enlaza a la que elija; no se borra.</p>
+      <p className="text-base text-gris-texto">La otra se da de baja lógica y enlaza a la que elija; no se borra.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         {options.map(([title, piece]) => {
           const restriction = survivorRestriction(piece.id, pieceA, pieceB);
+          // Es la que debe conservarse si la otra no se puede elegir.
+          const required = survivorRestriction(piece.id === pieceA.id ? pieceB.id : pieceA.id, pieceA, pieceB) !== null;
           const checked = survivingId === piece.id;
           const noteId = `${name}-${piece.id}`;
           return (
@@ -180,13 +198,14 @@ export function MergeSurvivorStep({
                   {title}: {piece.denomination}
                 </span>
                 <PieceCodes piece={piece} />
-                <span className="flex flex-wrap items-center gap-2 text-xs text-gris-texto">
+                {required && <span className="text-base font-medium text-tinta">{REQUIRED_SURVIVOR_REASON}</span>}
+                <span className="flex flex-wrap items-center gap-2 text-base text-gris-texto">
                   <TenureBadge regime={piece.tenure_regime} />
                   {piece.collection?.name ?? "Sin colección"} · {plural(piece.media_count, "foto", "fotos")}
                 </span>
                 {restriction && (
-                  <span id={noteId} className="text-xs font-medium text-carmin-texto">
-                    {restriction}
+                  <span id={noteId} className="text-base font-medium text-carmin-texto">
+                    {BLOCKED_SURVIVOR_REASON}
                   </span>
                 )}
               </span>
@@ -227,9 +246,9 @@ export function MergeFieldsStep({
     <div className="flex flex-col gap-3">
       <PieceCodesStrip surviving={surviving} absorbed={absorbed} />
       {conflicts.length === 0 ? (
-        <p className="text-sm text-tinta">Las dos fichas no tienen valores en conflicto: no hay nada que elegir.</p>
+        <p className="text-base text-tinta">Las dos fichas no tienen valores en conflicto: no hay nada que elegir.</p>
       ) : (
-        <p className="text-sm text-tinta">
+        <p className="text-base text-tinta">
           Elija el valor de cada campo en conflicto ({conflicts.length}). Si no cambia nada, queda el de la pieza que se conserva.
         </p>
       )}
@@ -237,7 +256,7 @@ export function MergeFieldsStep({
         const picked = picks[row.key] ?? surviving.id;
         return (
           <fieldset key={row.key} className="flex flex-col gap-1.5">
-            <legend className="mb-1 text-sm font-semibold text-tinta">{row.label}</legend>
+            <legend className="mb-1 text-base font-semibold text-tinta">{row.label}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {[surviving, absorbed].map((piece) => (
                 <label key={piece.id} className={optionClassName(picked === piece.id)}>
@@ -251,7 +270,7 @@ export function MergeFieldsStep({
                   />
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="break-words">{row.display(piece)}</span>
-                    <span className="text-xs text-gris-texto">
+                    <span className="text-base text-gris-texto">
                       {titles[piece.id]} · {piece.id === surviving.id ? "se conserva" : "se absorbe"}
                     </span>
                   </span>
@@ -262,14 +281,14 @@ export function MergeFieldsStep({
         );
       })}
       {periodError && (
-        <p role="alert" className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
+        <p role="alert" className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
           {periodError}
         </p>
       )}
       {fills.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold text-tinta">Se completan con la pieza absorbida (la conservada no los tiene)</h3>
-          <ul className="flex flex-col gap-0.5 text-xs text-tinta">
+          <h3 className="text-base font-semibold text-tinta">Se completan con la pieza absorbida (la conservada no los tiene)</h3>
+          <ul className="flex flex-col gap-0.5 text-base text-tinta">
             {fills.map(({ row }) => (
               <li key={row.key}>
                 {row.label}: «{row.display(absorbed)}»
@@ -279,11 +298,11 @@ export function MergeFieldsStep({
         </section>
       )}
       {masked.length > 0 && (
-        <p className="text-xs text-gris-texto">
+        <p className="text-base text-gris-texto">
           {masked.map(({ row }) => row.label).join(", ")}: restringido para su rol. Queda el valor de la conservada o, si está vacío, el de la absorbida.
         </p>
       )}
-      <p className="text-xs text-gris-texto">
+      <p className="text-base text-gris-texto">
         {plural(unchanged, "campo no cambia", "campos no cambian")}. La ubicación y la pieza contenedora son las de la conservada.
       </p>
     </div>
@@ -297,8 +316,8 @@ export function MergeFieldsStep({
 function SummarySection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-1">
-      <h3 className="text-sm font-semibold text-tinta">{title}</h3>
-      <ul className="flex list-disc flex-col gap-0.5 pl-5 text-xs text-tinta">{children}</ul>
+      <h3 className="text-base font-semibold text-tinta">{title}</h3>
+      <ul className="flex list-disc flex-col gap-0.5 pl-5 text-base text-tinta">{children}</ul>
     </section>
   );
 }
@@ -326,6 +345,11 @@ export function MergeSummaryStep({
   const materials = materialFates(surviving, absorbed);
   const s = `«${surviving.denomination}»`;
   const a = `«${absorbed.denomination}»`;
+  // Al llegar al resumen, el foco va a lo que pasa con cada ficha: no se confirma «de corrido».
+  const fatesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    fatesRef.current?.focus();
+  }, []);
 
   return (
     <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_17rem]">
@@ -343,7 +367,9 @@ export function MergeSummaryStep({
       </div>
 
       <div className="flex min-w-0 flex-col gap-3 md:order-1">
-        <PieceCodesStrip surviving={surviving} absorbed={absorbed} />
+        <div ref={fatesRef} tabIndex={-1} className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota">
+          <PieceCodesStrip surviving={surviving} absorbed={absorbed} withFates />
+        </div>
 
         <SummarySection title={`La ficha de ${s} después de fusionar`}>
           {changes.length === 0 && <li>Sus datos no cambian.</li>}
@@ -367,8 +393,10 @@ export function MergeSummaryStep({
           <li>Sus componentes, préstamos y sugerencias de IA.</li>
         </SummarySection>
 
-        <details className="text-xs text-tinta">
-          <summary className="cursor-pointer text-sm font-semibold">Qué se queda en {a}</summary>
+        <details className="text-base text-tinta">
+          <summary className="flex min-h-11 cursor-pointer items-center rounded-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota">
+            Qué se queda en {a}
+          </summary>
           <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5">
             <li>Movimientos, datos de origen y evaluaciones de conservación: se consultan desde la ficha de {s}.</li>
             {staying.map(({ identifier, fate }) => (
@@ -445,7 +473,10 @@ export function MergeWizard({ candidate, pieceA, pieceB, onClose, onSubmit, init
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={onClose}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40 open:flex"
+      className={cn(
+        "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl flex-col overflow-hidden rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40 open:flex",
+        WIZARD_ATOMS,
+      )}
     >
       <form
         noValidate
@@ -461,7 +492,7 @@ export function MergeWizard({ candidate, pieceA, pieceB, onClose, onSubmit, init
           <h2 id={titleId} className="text-lg font-semibold text-tinta">
             Fusionar piezas duplicadas
           </h2>
-          <ol aria-label="Pasos de la fusión" className="flex flex-wrap gap-1.5 text-xs">
+          <ol aria-label="Pasos de la fusión" className="flex flex-wrap gap-1.5 text-base">
             {MERGE_STEPS.map((label, index) => (
               <li
                 key={label}
@@ -500,12 +531,12 @@ export function MergeWizard({ candidate, pieceA, pieceB, onClose, onSubmit, init
           )}
 
           {submit.busy && (
-            <p role="status" className="mt-3 text-sm font-medium text-gris-texto">
+            <p role="status" className="mt-3 text-base font-medium text-gris-texto">
               Fusionando…
             </p>
           )}
           {submit.error && (
-            <p role="alert" className="mt-3 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
+            <p role="alert" className="mt-3 rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
               {submit.error}
             </p>
           )}
@@ -527,7 +558,7 @@ export function MergeWizard({ candidate, pieceA, pieceB, onClose, onSubmit, init
           )}
           {!block && step === 3 && (
             <Button type="submit" variant="primary" icon={GitMerge} disabled={submit.busy || Boolean(periodError)}>
-              Fusionar piezas
+              {MERGE_CONFIRM_LABEL}
             </Button>
           )}
         </div>

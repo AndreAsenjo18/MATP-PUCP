@@ -7,7 +7,19 @@ import { render, visibleText } from "@/test/render";
 
 import { MergeLinks, MergedFromNotice, MergedIntoNotice } from "./MergedPieceLinks";
 import { IdentifierTypeNamesProvider } from "./DuplicateReview";
-import { MergeFieldsStep, MergeSummaryStep, MergeSurvivorStep, MergeWizard, PieceCodes, type MergeStep } from "./MergeWizard";
+import {
+  ABSORBED_FATE,
+  BLOCKED_SURVIVOR_REASON,
+  MERGE_CONFIRM_LABEL,
+  MergeFieldsStep,
+  MergeSummaryStep,
+  MergeSurvivorStep,
+  MergeWizard,
+  PieceCodes,
+  REQUIRED_SURVIVOR_REASON,
+  SURVIVOR_FATE,
+  type MergeStep,
+} from "./MergeWizard";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 
@@ -42,9 +54,11 @@ describe("MergeWizard: paso 1, pieza que se conserva", () => {
     expect(radio(html, toro.id)).toContain('checked=""');
     expect(radio(html, toroB.id)).toContain('disabled=""');
     expect(radio(html, toroB.id)).toContain("aria-describedby=");
-    expect(text).toContain("Solo «Toro de Pucará» tiene código I vigente (I-0236): debe conservarse esa pieza");
+    // Prueba humana de HU-04: la razón, corta, junto a cada opción (antes, una frase larga solo en la que no se elige).
+    expect(text).toContain(REQUIRED_SURVIVOR_REASON);
+    expect(text).toContain(BLOCKED_SURVIVOR_REASON);
     expect(text).toContain("Siguiente");
-    expect(html).not.toMatch(/Fusionar piezas<\/button>/);
+    expect(html).not.toContain(`${MERGE_CONFIRM_LABEL}</button>`);
   });
 
   it("sin código I en ninguna, las dos se pueden conservar y se propone la pieza A", () => {
@@ -64,7 +78,7 @@ describe("MergeWizard: paso 1, pieza que se conserva", () => {
     expect(text).toMatch(message);
     expect(text).toContain("Cerrar");
     expect(text).not.toContain("Siguiente");
-    expect(html).not.toMatch(/Fusionar piezas<\/button>/);
+    expect(html).not.toContain(`${MERGE_CONFIRM_LABEL}</button>`);
   });
 });
 
@@ -128,10 +142,10 @@ describe("MergeWizard: paso 3, resumen y confirmación", () => {
     expect(visibleText(html)).toContain("Indique el motivo.");
   });
 
-  it("el último paso confirma con «Fusionar piezas» y permite volver atrás", () => {
+  it("el último paso confirma con «Juntar las dos fichas» y permite volver atrás", () => {
     const html = wizard(3);
     expect(html).toMatch(/<li aria-current="step"[^>]*>3\. Resumen y confirmación<\/li>/);
-    expect(html).toMatch(/<button type="submit"[^>]*>(?:(?!<\/button>)[\s\S])*Fusionar piezas<\/button>/);
+    expect(html).toMatch(/<button type="submit"[^>]*>(?:(?!<\/button>)[\s\S])*Juntar las dos fichas<\/button>/);
     expect(visibleText(html)).toContain("Anterior");
     expect(visibleText(html)).not.toContain("Siguiente");
   });
@@ -207,7 +221,7 @@ describe("diálogo de fusión compacto", () => {
     expect(html).toContain("open:flex");
     expect(html).toContain("max-h-[calc(100dvh-2rem)]");
     const body = html.indexOf("overflow-y-auto");
-    const footer = html.indexOf("Fusionar piezas</button>");
+    const footer = html.indexOf(`${MERGE_CONFIRM_LABEL}</button>`);
     expect(footer).toBeGreaterThan(body);
     // El pie queda fuera del cuerpo: su contenedor se abre después de cerrar el cuerpo.
     expect(html.slice(body, footer)).toContain("border-t border-borde");
@@ -272,5 +286,72 @@ describe("nombres de los tipos de código en la fusión (revisar-pendientes-unif
     );
     expect(visibleText(html)).toContain("Número de catálogo S-4");
     expect(visibleText(html)).toContain("Registro Nacional (Ministerio) S-1");
+  });
+});
+
+describe("fusión que no se confirma sin leer (prueba humana de HU-04)", () => {
+  it("paso 1: la razón va junto a la pieza que se conserva y a la que no se puede elegir, no a las dos", () => {
+    const html = wizard(1);
+    const options = html.match(/<label\b[\s\S]*?<\/label>/g) ?? [];
+    const [optionA, optionB] = options.map((o) => visibleText(o));
+    expect(optionA).toContain(REQUIRED_SURVIVOR_REASON);
+    expect(optionA).not.toContain(BLOCKED_SURVIVOR_REASON);
+    expect(optionB).toContain(BLOCKED_SURVIVOR_REASON);
+    expect(optionB).not.toContain(REQUIRED_SURVIVOR_REASON);
+    // La opción que no se elige ya no se apaga entera: su razón se lee con el contraste normal.
+    expect(options[1]).not.toContain("opacity-60");
+    expect(options[1]).toContain("border-dashed");
+  });
+
+  it("paso 1: sin código I en ninguna pieza no aparece ninguna de las dos razones", () => {
+    const sinCodigo = { ...toro, code_i: null, identifiers: [] };
+    const text = visibleText(render(<MergeWizard candidate={pair} pieceA={sinCodigo} pieceB={toroB} onClose={noop} onSubmit={ok} initialStep={1} />));
+    expect(text).not.toContain(REQUIRED_SURVIVOR_REASON);
+    expect(text).not.toContain(BLOCKED_SURVIVOR_REASON);
+  });
+
+  it("paso 3: las etiquetas de las piezas dicen qué pasa con cada ficha, sin párrafos nuevos", () => {
+    const html = wizard(3);
+    const text = visibleText(html);
+    expect(html).toContain('aria-label="Qué pasa con cada ficha"');
+    expect(text).toContain(`${SURVIVOR_FATE} Toro de Pucará`);
+    expect(text).toContain(`${ABSORBED_FATE} Toro de Pucará (3 cuernos)`);
+    // El resumen recibe el foco al llegar: es lo primero que se lee, no el botón.
+    expect(html).toMatch(/<div tabindex="-1"[^>]*><div [^>]*aria-label="Qué pasa con cada ficha"/);
+  });
+
+  it("los pasos 1 y 2 conservan las etiquetas cortas «Se conserva» y «Se absorbe»", () => {
+    const text = visibleText(wizard(2));
+    expect(text).toContain("Se conserva");
+    expect(text).not.toContain(SURVIVOR_FATE);
+  });
+});
+
+describe("legibilidad del asistente de fusión (Req: Legibilidad de la bandeja de pendientes)", () => {
+  function smallTags(markup: string): string[] {
+    return (markup.match(/<[a-z]+ [^>]*>/g) ?? []).filter((tag) => /class="[^"]*\btext-(xs|sm)\b/.test(tag));
+  }
+
+  it("ningún texto de los tres pasos baja de 16 px, salvo los átomos que el asistente sube", () => {
+    for (const step of [1, 2, 3] as const) {
+      const html = wizard(step);
+      // `Field` (etiqueta y ayuda del motivo) y `Badge` son de components/ui (la Base); el diálogo los sube a 16 px.
+      const overridden = (tag: string) => /^<span [^>]*rounded-full/.test(tag) || /^<(label|p) /.test(tag);
+      expect(smallTags(html).filter((tag) => !overridden(tag)), `paso ${step}`).toEqual([]);
+      expect(html).toContain("[&amp;_label]:text-base [&amp;_p]:text-base [&amp;_span.rounded-full]:text-base");
+    }
+  });
+
+  it("los códigos de la pieza se leen a 16 px", () => {
+    expect(smallTags(render(<PieceCodes piece={toro} />))).toEqual([]);
+  });
+
+  it("opciones, botones y el desplegable del resumen miden al menos 44 px", () => {
+    for (const step of [1, 2, 3] as const) {
+      const html = wizard(step);
+      for (const button of html.match(/<button\b[^>]*>/g) ?? []) expect(button, `paso ${step}`).toMatch(/\bmin-h-11\b/);
+      for (const option of html.match(/<label class="[^"]*rounded-md border[^"]*"/g) ?? []) expect(option).toMatch(/\bmin-h-11\b/);
+    }
+    expect(wizard(3)).toMatch(/<summary[^>]*class="[^"]*min-h-11/);
   });
 });

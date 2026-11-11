@@ -761,6 +761,12 @@ export function QueuePager({ page, pageCount, label, onPage }: { page: number; p
 
 const GENERIC_FAILURE = "No se pudo completar la acción. Intente nuevamente.";
 
+/**
+ * Etiqueta y ayuda de `Field` (components/ui, de la Base, 14 px) a 16 px en los diálogos de esta vista
+ * (prueba humana de HU-04, change `revisar-pendientes-unificado`, 6.2).
+ */
+const DIALOG_ATOMS = "[&_label]:text-base [&_p]:text-base";
+
 function ResolutionDialog({
   open,
   onClosed,
@@ -799,7 +805,7 @@ function ResolutionDialog({
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={onClosed}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40"
+      className={cn("m-auto w-[calc(100%-2rem)] max-w-md rounded-lg border border-borde bg-white p-0 text-tinta backdrop:bg-tinta/40", DIALOG_ATOMS)}
     >
       <form
         noValidate
@@ -957,6 +963,7 @@ export function PostponeDialog({
     >
       <Input
         type="date"
+        className="min-h-11"
         label="Posponer hasta"
         hint={`Entre el ${formatDate(postponedUntilFromDate(bounds.min))} y el ${formatDate(postponedUntilFromDate(bounds.max))}.`}
         required

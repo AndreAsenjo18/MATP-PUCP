@@ -93,20 +93,20 @@ Solo puede haber una búsqueda completa a la vez. Si alguien ya lanzó una, se m
 
 Fusionar deja **una sola ficha**. La pieza que se conserva recibe los datos de la otra; la otra queda **fusionada**: se da de baja (no se borra), se puede seguir consultando y enlaza a la que se conservó.
 
-1. En la tarjeta del par, pulse **Fusionar**. Se abre el asistente de fusión con tres pasos.
-2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Cada opción muestra su **código I y los demás códigos** (los históricos, marcados «histórico»), o «Sin código I». Si solo una de las dos tiene código I, se conserva esa: la otra opción aparece desactivada con el motivo, porque un código I nunca pasa a otra pieza.
+1. Con el par abierto (**Revisar**), pulse **Fusionar**. Se abre el asistente de fusión con tres pasos.
+2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Cada opción muestra su **código I y los demás códigos** (los históricos, marcados «histórico»), o «Sin código I». Si solo una de las dos tiene código I, se conserva esa: junto a ella dice «Se conserva esta: su código I nunca cambia de pieza.» y la otra opción aparece desactivada con «No se puede elegir: solo la otra pieza tiene código I.».
 3. Pulse **Siguiente**.
 4. **Paso 2, Valores de la ficha**: arriba se repiten los códigos de las dos piezas. En cada campo en el que las dos piezas tienen datos distintos, elija qué valor queda. Si no cambia nada, queda el de la pieza que se conserva.
    - La **época** y las **medidas** se eligen completas de una sola pieza.
    - Los campos que la pieza que se conserva tiene vacíos se completan solos con los de la otra; el asistente los lista.
    - La ubicación actual y la pieza de la que es componente son siempre las de la pieza que se conserva.
 5. Pulse **Siguiente**.
-6. **Paso 3, Resumen y confirmación**: revise el resumen antes de confirmar.
+6. **Paso 3, Resumen y confirmación**: revise el resumen antes de confirmar. Arriba, cada pieza dice qué le pasa: **Se conserva: queda como la ficha principal** y **Se absorbe: se da de baja, no se borra**.
    - **La ficha de … después de fusionar**: cada dato que cambia, con su valor anterior y el nuevo.
    - **Pasa de … a …**: los códigos de la otra pieza (si alguno repite un código de la pieza que se conserva, pasa como no vigente; no se borra), sus fotografías, sus materiales, sus componentes, sus préstamos y sus sugerencias de IA.
    - **Qué se queda en …** (plegado): sus movimientos, sus datos de origen y sus evaluaciones de conservación, sin cambios, y su código I si lo tiene.
 7. Escriba el **Motivo de la fusión (obligatorio)**, de al menos 3 caracteres. Está **al lado del resumen** en la computadora y **arriba** en el celular, sin bajar hasta el final.
-8. Pulse **Fusionar piezas**.
+8. Pulse **Juntar las dos fichas**.
 9. Aparece el aviso verde «Piezas fusionadas: … quedó fusionada en …». La cola se actualiza: el par pasa a **Fusionados** y los demás pares de la pieza fusionada pasan a **Reemplazados**.
 
 El asistente cabe en la pantalla: el contenido se desplaza dentro del cuadro y los botones **Cancelar**, **Anterior** y **Siguiente** siempre se ven. Para volver a un paso anterior sin perder lo elegido, pulse **Anterior**. Para salir sin fusionar, pulse **Cancelar**: no se cambia nada.

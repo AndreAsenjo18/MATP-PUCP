@@ -11,6 +11,8 @@ import {
   DuplicateFilters,
   DEFAULT_FILTERS,
   IdentifierTypeNamesProvider,
+  DistinctDialog,
+  PostponeDialog,
   QueuePager,
   ScanPanel,
   SEEDED_IDENTIFIER_TYPE_NAMES,
@@ -253,5 +255,24 @@ describe("legibilidad de la cola (Req: Legibilidad de la bandeja de pendientes)"
     expect(selects).toHaveLength(4);
     for (const select of selects) expect(select).toMatch(/\bmin-h-11\b/);
     expect(html).toContain("[&amp;_label]:text-base");
+  });
+});
+
+describe("diálogos de marcar como distinto y posponer (prueba humana de HU-04: «letra tal vez pequeña»)", () => {
+  const ok = async () => ({ ok: true as const });
+  const dialogs = [
+    ["Marcar como distinto", render(<DistinctDialog open onClose={noop} onSubmit={ok} />)],
+    ["Posponer", render(<PostponeDialog open today={new Date("2026-11-11T12:00:00Z")} onClose={noop} onSubmit={ok} />)],
+  ] as const;
+
+  it.each(dialogs)("«%s»: sin texto de menos de 16 px salvo etiqueta y ayuda, que el diálogo sube", (_name, html) => {
+    const small = (html.match(/<[a-z]+ [^>]*>/g) ?? []).filter((tag) => /class="[^"]*\btext-(xs|sm)\b/.test(tag));
+    expect(small.filter((tag) => !/^<(label|p) /.test(tag))).toEqual([]);
+    expect(html).toMatch(/<dialog[^>]*class="[^"]*\[&amp;_label\]:text-base \[&amp;_p\]:text-base/);
+  });
+
+  it.each(dialogs)("«%s»: botones y campos de una línea miden al menos 44 px", (_name, html) => {
+    for (const button of html.match(/<button\b[^>]*>/g) ?? []) expect(button).toMatch(/\bmin-h-11\b/);
+    for (const input of html.match(/<input\b[^>]*>/g) ?? []) expect(input).toMatch(/\bmin-h-11\b/);
   });
 });

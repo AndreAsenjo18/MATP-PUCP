@@ -95,12 +95,32 @@ La pestaña «Sugerencias de IA» MUST mostrar la cola de sugerencias pendientes
 - **THEN** la pestaña dice que no hay sugerencias pendientes de revisión y no muestra ninguna tarjeta
 
 ### Requirement: Legibilidad de la bandeja de pendientes
-En la bandeja de pendientes, los textos que la vista propia y la lista de duplicados muestran SHALL tener al menos 16 px, y los botones, pestañas, casillas y campos MUST medir al menos 44 px de alto. Las pestañas SHALL poder recorrerse y abrirse con el teclado y anunciar cuál está seleccionada. La vista MUST funcionar sin desplazamiento horizontal con la página ampliada al 150 % en una pantalla de 1366 × 768. El contenido de la pestaña de sugerencias queda fuera de este requirement. (RNF-001, RNF-010)
+En la bandeja de pendientes, los textos que la vista propia, la lista de duplicados, los diálogos de marcar como distinto y de posponer y el asistente de fusión muestran SHALL tener al menos 16 px, y los botones, pestañas, casillas y campos MUST medir al menos 44 px de alto. Las pestañas SHALL poder recorrerse y abrirse con el teclado y anunciar cuál está seleccionada. La vista MUST funcionar sin desplazamiento horizontal con la página ampliada al 150 % en una pantalla de 1366 × 768. El contenido de la pestaña de sugerencias queda fuera de este requirement. (RNF-001, RNF-010)
 
 #### Scenario: Recorrer las pestañas con el teclado
 - **WHEN** la persona llega a las pestañas con Tab y pulsa Intro sobre «Piezas incompletas»
 - **THEN** se abre esa pestaña, su dirección cambia a `/pendientes/incompletas` y se anuncia como la página actual
 
+#### Scenario: Diálogos de resolución y fusión
+- **WHEN** la persona abre «Marcar como distinto», «Posponer» o «Fusionar»
+- **THEN** sus textos, etiquetas y ayudas miden al menos 16 px y sus botones y campos, al menos 44 px de alto
+
 #### Scenario: Página ampliada
 - **WHEN** la persona abre la pestaña de duplicados con la página ampliada al 150 % en 1366 × 768
 - **THEN** las filas y las pestañas se leen completas, sin desplazamiento horizontal
+
+### Requirement: Fusión que no se confirma sin leer
+El asistente de fusión MUST explicar en el paso 1, junto a la pieza que debe conservarse y a la que no se puede elegir, la razón en una frase corta de lenguaje llano (el código I nunca cambia de pieza). En el último paso, el resumen MUST decir en las etiquetas de cada pieza qué le pasa a cada ficha (la que se conserva queda como ficha principal; la otra se da de baja sin borrarse), y el botón final SHALL nombrar la acción («Juntar las dos fichas») en lugar de repetir el verbo de los pasos anteriores. Al llegar al último paso, el foco SHALL ir al resumen. Las reglas de la fusión no cambian; ninguna pieza se borra (RN-005, RN-002). (RF-030, RNF-010)
+
+#### Scenario: Solo una pieza tiene código I
+- **GIVEN** un par en el que solo «Toro de Pucará» tiene código I vigente
+- **WHEN** la persona abre el paso 1 de la fusión
+- **THEN** junto a esa pieza lee que se conserva porque su código I no cambia de pieza, y la otra opción, deshabilitada, dice en una frase por qué no se puede elegir
+
+#### Scenario: Último paso
+- **WHEN** la persona llega a «Resumen y confirmación»
+- **THEN** el resumen dice qué pieza queda como ficha principal y cuál se da de baja sin borrarse, y el botón final dice «Juntar las dos fichas»
+
+#### Scenario: Confirmar sin motivo
+- **WHEN** la persona pulsa «Juntar las dos fichas» con el motivo vacío
+- **THEN** la fusión no se envía y el campo de motivo muestra qué falta
