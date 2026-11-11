@@ -66,6 +66,12 @@ El bloque de errores compara el campo que falta en las filas con las columnas qu
 
 Resumen → bloque de errores repetidos (si hay) → fotos (resumen) → filas → barra de aprobación fija. Se mueve «Formato aplicado» al resumen como una línea («Formato aplicado: … · Cambiar»), no como bloque aparte.
 
+## Resultado de la verificación de datos (tarea 1.1)
+
+La API **no necesita cambios**. `counts` del lote trae las filas por clasificación (`NEW`, `UPDATE`, `POSSIBLE_DUPLICATE`, `CONFLICT`, que suman `rows` porque toda fila tiene una) y `ERRORS` (filas con error, que se solapa con las anteriores). El listado de diferencias combina `classification` y `only_errors` con el total exacto, y cada fila trae `validation_errors` con `code` y `message`. El cliente recorre las filas con error de a 100 (`scanErrorRows`) y de ahí salen el resumen exclusivo (`clasificación − filas con error de esa clasificación`) y los grupos de error. Si el recorrido no coincide con `ERRORS`, el resumen dice «Calculando…» en lugar de mostrar cifras aproximadas.
+
+Limitaciones conocidas: (1) las decisiones por fila no admiten volver a «pendiente», así que no hay un botón «Deshacer» que devuelva las filas a su estado anterior; tras «Dejar fuera» cada fila puede volver a decidirse (Aceptar o Rechazar). (2) Filtrar por una situación pide al servidor todas las filas de esa clasificación, incluidas las que tienen error; por eso las cifras del resumen son exclusivas pero la lista filtrada no lo es.
+
 ## Risks / Trade-offs
 
 - **[Conteos exclusivos que no se pueden derivar en el cliente]** → Verificar primero con la API (tarea 1.1); si falta, proponer un campo opcional aditivo en vez de cifras aproximadas.

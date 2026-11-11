@@ -10,7 +10,8 @@ import { MappingEditor } from "./ImportMappingEditor";
 import { ImportPhotosView } from "./ImportPhotosPanel";
 import { DryRunPanel, FormatProblemPanel } from "./ImportTemplatePanels";
 import { UploadPanel } from "./ImportUpload";
-import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, RollbackPanel, RowFilters, TenureBanner } from "./ImportWizard";
+import { RepeatedErrorBlock, ReviewSummaryPanel } from "./ImportReview";
+import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, RollbackPanel, TenureBanner } from "./ImportWizard";
 
 // Spec importacion-datos — Lenguaje llano sin identificadores de requisitos. Ningún texto que la
 // persona lee en el asistente de importación puede traer RF-, RN-, RNF- ni RIA-. Datos sintéticos.
@@ -57,10 +58,19 @@ const LOG = { batch: { uploaded_by: "ana@matp.local" }, applied_rows: 3, rejecte
 const IMAGE = { id: "img-1", image_number: 1, anchor_row_number: 2, import_row_id: "row-1", status: "PENDING", content_type: "image/jpeg" } as unknown as ImportImage;
 const DRY_RUN = { sampled_rows: 1, total_rows: 1, missing_columns: [], columns: [] } as unknown as TemplateDryRun;
 
+const GROUP = {
+  key: "tenure_required|Falta el régimen de tenencia.",
+  code: "tenure_required",
+  message: "Falta el régimen de tenencia.",
+  rowIds: Array.from({ length: 30 }, (_, i) => `row-${i}`),
+  rowNumbers: Array.from({ length: 30 }, (_, i) => i + 2),
+  undecided: 30,
+};
+
 function texts(): Record<string, string> {
   const problem = { loading: false, busy: false, error: null, onUse: noop, onAdjust: noop, suggestions: [], templates: [TEMPLATE] };
   return {
-    subida: visibleText(render(<UploadPanel busy={false} templates={[TEMPLATE]} loadingTemplates={false} onUpload={noop} />)),
+    subida: visibleText(render(<UploadPanel busy={false} onUpload={noop} />)),
     pasos: visibleText(render(<ImportSteps current={1} />)),
     estado: visibleText(render(<BatchHeader batch={BATCH} />)) + visibleText(render(<ProgressPanel batch={BATCH} />)),
     formato: visibleText(render(<FormatBar formatName="Sábana" busy={false} onChange={noop} />)),
@@ -75,7 +85,9 @@ function texts(): Record<string, string> {
       ),
     ),
     vistaPrevia: visibleText(render(<DryRunPanel result={DRY_RUN} />)),
-    filtros: visibleText(render(<RowFilters active={null} onlyErrors={false} counts={{}} onChange={noop} />)),
+    resumen: visibleText(render(<ReviewSummaryPanel summary={{ total: 30, errors: 30, conflicts: 0, duplicates: 0, updates: 0, news: 0 }} filter={{ classification: null, onlyErrors: false }} onFilter={noop} sentence="Falta decidir: 30 filas con error sin decidir." />)),
+    errorRepetido: visibleText(render(<RepeatedErrorBlock group={GROUP} cause={{ formatName: "Sábana", columnLabel: "régimen de tenencia" }} totalRows={30} canDecide busy={false} progress={null} onChangeFormat={noop} onExcludeAll={noop}>{null}</RepeatedErrorBlock>)),
+    filaCompacta: visibleText(render(<ImportRowCard row={row({ validation_errors: [{ code: "tenure_required", message: "Falta el régimen de tenencia." }] })} compact canDecide busy={false} onDecide={noop} />)),
     fila: visibleText(render(<ImportRowCard row={row()} canDecide busy={false} onDecide={noop} />)),
     filaAntigua: visibleText(render(<ImportRowCard row={row({ classification: "NEW", matches: [] })} canDecide busy={false} onDecide={noop} />)),
     aprobacion:

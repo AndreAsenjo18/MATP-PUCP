@@ -1,27 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { MappingTemplate } from "@/lib/data/import-templates";
 import { formatFileSize, isSpreadsheetFile } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { AUTO_FORMAT, DropZone, FormatPicker, UploadPanel } from "./ImportUpload";
+import { DropZone, UploadPanel } from "./ImportUpload";
 
-// Spec importacion-datos — Subida guiada con formato elegido de antemano. Datos sintéticos (RNF-014).
+// Spec importacion-datos — Subida mínima con detección automática del formato. Datos sintéticos (RNF-014).
 
 const noop = () => {};
-
-function template(id: string, name: string, description: string | null = "Columnas de la sábana sintética."): MappingTemplate {
-  return {
-    id,
-    name,
-    source_name: "Sábana (sintética)",
-    header_signature: "a".repeat(64),
-    columns: [],
-    defaults: {},
-    description,
-    created_at: "2026-10-22T10:00:00Z",
-  };
-}
 
 describe("tipos de archivo admitidos", () => {
   it("acepta .xlsx y .csv sin importar mayúsculas y rechaza el resto", () => {
@@ -63,49 +49,30 @@ describe("zona de subida", () => {
   });
 });
 
-describe("elección de formato", () => {
-  it("«Detectar automáticamente» viene elegido y cada formato guardado trae su descripción", () => {
-    const html = render(
-      <FormatPicker templates={[template("tpl-1", "Sábana de la consultoría"), template("tpl-2", "Inventario 1998", null)]} loading={false} value={AUTO_FORMAT} onChange={noop} />,
-    );
-    const text = visibleText(html);
-    expect(text).toContain("Detectar automáticamente");
-    expect(text).toContain("Sábana de la consultoría");
-    expect(text).toContain("Columnas de la sábana sintética.");
-    // Sin descripción se usa la fuente del archivo.
-    expect(text).toContain("Sábana (sintética)");
-    expect(html.match(/type="radio"/g)).toHaveLength(3);
-    expect(html.match(/checked=""/g)).toHaveLength(1);
-    expect(html).toMatch(/value="auto"[^>]*checked=""|checked=""[^>]*value="auto"/);
-  });
-
-  it("con un formato elegido solo ese queda marcado", () => {
-    const html = render(<FormatPicker templates={[template("tpl-1", "Sábana de la consultoría")]} loading={false} value="tpl-1" onChange={noop} />);
-    expect(html).toMatch(/value="tpl-1"[^>]*checked=""|checked=""[^>]*value="tpl-1"/);
-    expect(html).not.toMatch(/value="auto"[^>]*checked=""|checked=""[^>]*value="auto"/);
-  });
-
-  it("mientras busca los formatos guardados lo indica y deja la detección automática", () => {
-    const text = visibleText(render(<FormatPicker templates={null} loading value={AUTO_FORMAT} onChange={noop} />));
-    expect(text).toContain("Buscando formatos guardados…");
-    expect(text).toContain("Detectar automáticamente");
-  });
-});
-
 describe("panel de subida", () => {
-  it("trae la guía de cinco líneas, el régimen por defecto en «Más opciones» y no sube sin archivo", () => {
-    const html = render(<UploadPanel busy={false} templates={[]} loadingTemplates={false} onUpload={noop} />);
+  it("muestra solo la zona de subida, el botón desactivado y la guía plegada, sin pedir un formato", () => {
+    const html = render(<UploadPanel busy={false} onUpload={noop} />);
     const text = visibleText(html);
-    expect(text).toContain("Antes de subir");
-    expect(text).toContain("Una fila por pieza.");
-    expect(html.match(/<li[ >]/g)).toHaveLength(5);
-    expect(text).toContain("Más opciones");
-    expect(text).toContain("Si el archivo no trae régimen de tenencia");
+    expect(text).toContain("Arrastre aquí su archivo");
+    expect(text).toContain("Subir y revisar");
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Subir y revisar/);
+    expect(text).not.toContain("Formato del archivo");
+    expect(text).not.toContain("Detectar automáticamente");
+    expect(text).not.toContain("Más opciones");
+    expect(text).not.toContain("Antes de subir");
+    expect(html).not.toContain('type="radio"');
+    expect(html).not.toContain("<select");
+  });
+
+  it("la guía queda plegada bajo «¿Cómo preparo mi Excel?» con cinco líneas como máximo", () => {
+    const html = render(<UploadPanel busy={false} onUpload={noop} />);
+    expect(html).toMatch(/<details(?![^>]*open)[^>]*>\s*<summary[^>]*>[^<]*¿Cómo preparo mi Excel\?/);
+    expect(visibleText(html)).toContain("Una fila por pieza.");
+    expect(html.match(/<li[ >]/g)?.length ?? 0).toBeLessThanOrEqual(5);
   });
 
   it("no menciona identificadores de requisitos", () => {
-    const text = visibleText(render(<UploadPanel busy={false} templates={[template("tpl-1", "Sábana")]} loadingTemplates={false} onUpload={noop} />));
-    expect(text).not.toMatch(/\b(RF|RN|RNF|RIA)-\d+/);
+    const text = visibleText(render(<UploadPanel busy={false} onUpload={noop} />));
+    expect(text).not.toMatch(/(RF|RN|RNF|RIA)-\d+/);
   });
 });

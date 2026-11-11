@@ -28,15 +28,18 @@ import {
   ImportSteps,
   ProgressPanel,
   RollbackPanel,
-  RowFilters,
+  TenureAction,
   TenureBanner,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
+import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
+import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
-import { UploadPanel, type UploadOptions } from "@/components/domain/ImportUpload";
+import { UploadPanel } from "@/components/domain/ImportUpload";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
@@ -61,9 +64,9 @@ import {
   associateImportImage,
   changedSummary,
   confirmImportBatch,
-  countTenureErrors,
   decideImportRow,
   downloadImportLog,
+  excludeRows,
   fetchImportBatch,
   fetchImportDiffs,
   fetchImportLog,
@@ -71,11 +74,13 @@ import {
   progressStep,
   revertConflicts,
   rollbackImportBatch,
+  scanErrorRows,
   skippedHeaderRowsNotice,
   startImportValidation,
   uploadImportFile,
   wizardStep,
   type ImportBatch,
+  type ImportRow,
   type ImportDiffs,
   type ImportLog,
   type RevertConflict,
@@ -103,12 +108,24 @@ import {
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
 
+/** El paso de fotografías del lote: la subida y la bandeja de fotos por revisar. */
+function PhotoStep({ batch, origin, devUser }: { batch: ImportBatch; origin: ImportOrigin | null; devUser?: string }) {
+  return (
+    <>
+      {origin === "excel-fotos" && <p className="text-base font-medium text-tinta">{PHOTO_STEP_NOTE}</p>}
+      <ImportPhotosPanel batch={batch} devUser={devUser} />
+      <ImportPhotoTray batch={batch} devUser={devUser} />
+    </>
+  );
+}
+
 export function LiveImportWizard() {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const router = useRouter();
   const params = useSearchParams();
   const batchId = params.get("lote");
+  const origin = originFromParams(params);
 
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -141,12 +158,13 @@ export function LiveImportWizard() {
   // Términos activos por vocabulario de las columnas `terms:` del borrador (4.1C).
   const [termsByVocabulary, setTermsByVocabulary] = useState<Record<string, TermOption[]>>({});
 
-  // Formato: opciones de la subida, lo que impidió aplicarlo solo y el último mapeo aplicado.
-  const [uploadOptions, setUploadOptions] = useState<UploadOptions>({ templateId: null, tenureDefault: "" });
+  // Formato: siempre se detecta solo al subir; aquí, lo que impidió aplicarlo y el último mapeo aplicado.
   const [formatIssue, setFormatIssue] = useState<FormatIssue | null>(null);
   const [changingFormat, setChangingFormat] = useState(false);
   const [appliedSource, setAppliedSource] = useState<BatchMappingSource | null>(null);
-  const [tenureCount, setTenureCount] = useState<{ count: number; complete: boolean } | null>(null);
+  // Filas con error del lote: de ellas salen el resumen exclusivo y los errores repetidos.
+  const [errorScan, setErrorScan] = useState<{ rows: ImportRow[]; complete: boolean } | null>(null);
+  const [excludeProgress, setExcludeProgress] = useState<{ key: string; done: number; total: number } | null>(null);
   const autoApplied = useRef<string | null>(null);
 
   const step = wizardStep(batch);
@@ -237,24 +255,23 @@ export function LiveImportWizard() {
     if (!batch || batch.status !== "UPLOADED" || processing || suggestions === null || templates === null) return;
     if (autoApplied.current === batch.id) return;
     autoApplied.current = batch.id;
-    const chosen = uploadOptions.templateId ? templates.find((template) => template.id === uploadOptions.templateId) : undefined;
-    const suggestion = uploadOptions.templateId ? undefined : suggestions[0];
-    const candidate = chosen ?? suggestion?.template;
+    const suggestion = suggestions[0];
+    const candidate = suggestion?.template;
     const missing = !candidate ? [] : suggestion ? suggestion.missing_columns : missingColumns(candidate, batch.headers ?? []);
     void (async () => {
       if (!candidate) return setFormatIssue({ kind: "unrecognized" });
       if (missing.length > 0) return setFormatIssue({ kind: "missing", template: candidate, missing });
-      await applyFormat(candidate, uploadOptions.tenureDefault);
+      await applyFormat(candidate, "");
     })();
     // `applyFormat` depende de `batch`, que ya es una dependencia; se ejecuta una vez por lote.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch, processing, suggestions, templates, uploadOptions]);
+  }, [batch, processing, suggestions, templates]);
 
   function resetTemplates() {
     setFormatIssue(null);
     setChangingFormat(false);
     setAppliedSource(null);
-    setTenureCount(null);
+    setErrorScan(null);
     setMappingMode("pick");
     setSuggestions(null);
     setTemplates(null);
@@ -309,18 +326,18 @@ export function LiveImportWizard() {
     };
   }, [batchId, showRows, devUser, reload]);
 
-  // Filas sin régimen de tenencia, para ofrecer asignarlo a todas (se omite si no hay errores).
-  const errorRows = (batch?.counts as Record<string, number> | undefined)?.ERRORS ?? 0;
+  // Filas con error (se omite si no hay): para el resumen y para agrupar los errores repetidos.
+  const errorCount = (batch?.counts as Record<string, number> | undefined)?.ERRORS ?? 0;
   useEffect(() => {
     let active = true;
-    if (!batchId || !showRows || step !== 3 || errorRows === 0) return;
-    countTenureErrors(batchId, devUser).then((result) => {
-      if (active && result.status === "ok") setTenureCount(result.value);
+    if (!batchId || !showRows || step !== 3 || errorCount === 0) return;
+    scanErrorRows(batchId, devUser).then((result) => {
+      if (active && result.status === "ok") setErrorScan(result.value);
     });
     return () => {
       active = false;
     };
-  }, [batchId, showRows, step, errorRows, devUser, reload]);
+  }, [batchId, showRows, step, errorCount, devUser, reload]);
 
   useEffect(() => {
     let active = true;
@@ -335,15 +352,14 @@ export function LiveImportWizard() {
 
   const counts = useMemo(() => (batch?.counts ?? {}) as Record<string, number>, [batch]);
 
-  async function handleUpload(file: File, options: UploadOptions) {
+  async function handleUpload(file: File) {
     setBusy(true);
     const result = await uploadImportFile(file, file.name, devUser);
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
     resetTemplates();
-    setUploadOptions(options);
-    router.replace(`/importacion?lote=${result.value.batch_id}`);
+    router.replace(importHref({ batchId: result.value.batch_id, origin }));
   }
 
   /** Guarda el mapeo y valida el lote; `onFailure` recibe el motivo si algo no se pudo. */
@@ -382,7 +398,7 @@ export function LiveImportWizard() {
     const missing = missingColumns(template, batch.headers ?? []);
     if (missing.length > 0) return setFormatIssue({ kind: "missing", template, missing });
     setError(null);
-    await applySourceAndValidate({ kind: "template", templateId: template.id, tenureDefault: uploadOptions.tenureDefault || null }, setError);
+    await applySourceAndValidate({ kind: "template", templateId: template.id, tenureDefault: null }, setError);
   }
 
   /** Mismo mapeo con un régimen por defecto, para las filas que no lo traen; luego a validar. */
@@ -495,6 +511,27 @@ export function LiveImportWizard() {
     setReload((n) => n + 1);
   }
 
+  // Resumen exclusivo y errores repetidos de la revisión (change `importacion-revision-simplificada`).
+  const errorRowsData = (errorScan?.rows ?? []).map(toErrorRow);
+  const knownErrorRows = errorCount === 0 ? [] : errorScan?.complete ? errorRowsData : null;
+  const summary = reviewSummary(counts, knownErrorRows);
+  const pending = pendingWork(summary, knownErrorRows);
+  const groups = groupRepeatedErrors(knownErrorRows ?? []);
+  const tenureGroup = groups.find((group) => group.code === "tenure_required");
+  const tenureRows = errorRowsData.filter((row) => row.errors.some((error) => error.code === "tenure_required")).length;
+
+  /** «Dejar fuera las N filas» de un error repetido: la decisión por fila de siempre, por tandas y con avance. */
+  async function handleExcludeGroup(group: ErrorGroup) {
+    if (!batch) return;
+    const undecided = new Set(errorRowsData.filter((row) => row.decision === "PENDING").map((row) => row.id));
+    const ids = group.rowIds.filter((id) => undecided.has(id));
+    setExcludeProgress({ key: group.key, done: 0, total: ids.length });
+    const result = await excludeRows(batch.id, ids, devUser, (done, total) => setExcludeProgress({ key: group.key, done, total }));
+    setExcludeProgress(null);
+    setError(result.failed > 0 ? `Se dejaron fuera ${result.done} filas, pero ${result.failed} no se pudieron. Vuelva a intentarlo.` : null);
+    setReload((n) => n + 1);
+  }
+
   async function handleConfirm(comment: string) {
     const summary = batch?.approval_summary;
     if (!batch || !summary) return;
@@ -556,6 +593,7 @@ export function LiveImportWizard() {
     setReload((n) => n + 1);
   }
 
+  const currentTemplate = templates?.find((template) => template.id === batch?.template_id) ?? null;
   const adjusting = mappingMode === "edit" && editorDraft !== null;
   const formatPanel: FormatIssue | null = formatIssue ?? (changingFormat ? { kind: "change", current: templates?.find((template) => template.id === batch?.template_id) ?? null } : null);
   const applyingFormat = batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
@@ -573,7 +611,7 @@ export function LiveImportWizard() {
       {batch && <BatchHeader batch={batch} />}
       <ErrorNotice message={error} />
 
-      {!batchId && <UploadPanel busy={busy} templates={templates} loadingTemplates={templates === null} onUpload={handleUpload} />}
+      {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
       {batch && processing && <ProgressPanel batch={batch} />}
       {batch && !processing && !adjusting && formatPanel && (
         <FormatProblemPanel
@@ -648,29 +686,68 @@ export function LiveImportWizard() {
           </Button>
         </Card>
       )}
-      {batch && !processing && !adjusting && !formatPanel && <ImportPhotosPanel batch={batch} devUser={devUser} />}
-      {batch && !processing && !adjusting && !formatPanel && <ImportPhotoTray batch={batch} devUser={devUser} />}
-
+      {/* Fotos del lote: aquí antes de la revisión; durante la revisión van tras el resumen y los errores. */}
+      {batch && !reviewing && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && (
-        <FormatBar
-          formatName={formatName}
-          busy={busy}
-          onChange={() => {
-            setError(null);
-            setChangingFormat(true);
+        <ReviewSummaryPanel
+          summary={summary}
+          filter={filters}
+          onFilter={(value) => {
+            setFilters(value);
+            setPage(1);
           }}
+          sentence={approvalSentence(summary, pending)}
+          formatLine={
+            <FormatBar
+              formatName={formatName}
+              busy={busy}
+              onChange={() => {
+                setError(null);
+                setChangingFormat(true);
+              }}
+            />
+          }
         />
       )}
-      {reviewing && (batch?.counts as Record<string, number> | undefined)?.ERRORS ? (
-        <TenureBanner
-          count={tenureCount?.count ?? 0}
-          complete={tenureCount?.complete ?? true}
-          decided={counts.DECIDED ?? 0}
-          busy={busy}
-          canAdjust={canReapply}
-          onApply={handleApplyTenure}
-        />
+      {reviewing &&
+        groups.map((group) => {
+          const isTenure = group === tenureGroup;
+          const cause = formatCause(group, currentTemplate, counts.rows ?? 0);
+          const groupRows = (errorScan?.rows ?? []).filter((row) => group.rowIds.includes(row.id));
+          return (
+            <RepeatedErrorBlock
+              key={group.key}
+              group={group}
+              cause={cause}
+              totalRows={counts.rows ?? 0}
+              canDecide={hasPermission("imports.prepare")}
+              busy={busy}
+              progress={excludeProgress?.key === group.key ? excludeProgress : null}
+              action={isTenure ? <TenureAction decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} /> : undefined}
+              onChangeFormat={() => {
+                setError(null);
+                setChangingFormat(true);
+              }}
+              onExcludeAll={() => handleExcludeGroup(group)}
+            >
+              {groupRows.slice(0, 25).map((row) => (
+                <ImportRowCard
+                  key={`${row.id}-${row.decision}-${JSON.stringify(row.resolution)}`}
+                  row={row}
+                  compact={isCompactRow(row, groups)}
+                  canDecide={hasPermission("imports.prepare")}
+                  busy={busy}
+                  onDecide={(input) => handleDecision(row.id, input)}
+                />
+              ))}
+              {groupRows.length > 25 && <p className="text-sm text-gris-texto">Se muestran 25 de {groupRows.length.toLocaleString("es-PE")} filas. Filtre por «Con errores» para recorrerlas todas.</p>}
+            </RepeatedErrorBlock>
+          );
+        })}
+      {reviewing && !tenureGroup && tenureRows > 0 ? (
+        <TenureBanner count={tenureRows} complete decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} />
       ) : null}
+      {batch && reviewing && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && diffs && (
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Revise las filas</h2>
@@ -683,40 +760,39 @@ export function LiveImportWizard() {
               ))}
             </ol>
           </details>
-          <RowFilters
-            active={filters.classification}
-            onlyErrors={filters.onlyErrors}
-            counts={counts}
-            onChange={(value) => {
-              setFilters(value);
-              setPage(1);
-            }}
-          />
           <div className="flex flex-col gap-3">
-            {diffs.items.map((row) => (
-              <ImportRowCard
-                key={`${row.id}-${row.decision}-${JSON.stringify(row.resolution)}`}
-                row={row}
-                canDecide={hasPermission("imports.prepare")}
-                busy={busy}
-                onDecide={(input) => handleDecision(row.id, input)}
-                photos={
-                  <RowPhotoStrip
-                    photos={rowPhotos[row.id] ?? []}
-                    busy={busy}
-                    onConfirmRepeated={
-                      hasPermission("imports.prepare") && batchId
-                        ? async (photoIds) => {
-                            const result = await confirmRepeatedPhotos(batchId, photoIds, devUser);
-                            if (result.status === "ok") setReload((value) => value + 1);
-                            else setError(result.message);
-                          }
-                        : undefined
-                    }
-                  />
-                }
-              />
-            ))}
+            {diffs.items.map((row) => {
+              // Las filas de un error repetido se ven en su bloque, salvo que se pidan «Con errores».
+              if (!filters.onlyErrors && isCompactRow(row, groups)) return null;
+              return (
+                <ImportRowCard
+                  key={`${row.id}-${row.decision}-${JSON.stringify(row.resolution)}`}
+                  row={row}
+                  compact={isCompactRow(row, groups)}
+                  canDecide={hasPermission("imports.prepare")}
+                  busy={busy}
+                  onDecide={(input) => handleDecision(row.id, input)}
+                  photos={
+                    <RowPhotoStrip
+                      photos={rowPhotos[row.id] ?? []}
+                      busy={busy}
+                      onConfirmRepeated={
+                        hasPermission("imports.prepare") && batchId
+                          ? async (photoIds) => {
+                              const result = await confirmRepeatedPhotos(batchId, photoIds, devUser);
+                              if (result.status === "ok") setReload((value) => value + 1);
+                              else setError(result.message);
+                            }
+                          : undefined
+                      }
+                    />
+                  }
+                />
+              );
+            })}
+            {!filters.onlyErrors && diffs.items.length > 0 && diffs.items.every((row) => isCompactRow(row, groups)) && (
+              <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
+            )}
           </div>
           <div className="flex items-center justify-between gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
@@ -732,7 +808,13 @@ export function LiveImportWizard() {
         </Card>
       )}
       {reviewing && batch && (
-        <ApprovalPanel summary={batch.approval_summary ?? null} canApprove={hasPermission("imports.approve")} busy={busy} onConfirm={handleConfirm} />
+        <ApprovalPanel
+          summary={batch.approval_summary ?? null}
+          canApprove={hasPermission("imports.approve")}
+          busy={busy}
+          onConfirm={handleConfirm}
+          pendingText={approvalSentence(summary, pending)}
+        />
       )}
 
       {batch && step === 5 && !processing && batch.status !== "FAILED_INGESTION" && log && <ImportLogPanel log={log} downloading={busy} onDownload={handleDownload} />}
@@ -761,9 +843,8 @@ export function LiveImportWizard() {
             setRollbackConflicts(null);
             setRollbackReason(null);
             resetTemplates();
-            setUploadOptions({ templateId: null, tenureDefault: "" });
             autoApplied.current = null;
-            router.replace("/importacion");
+            router.replace(importHref({ origin }));
           }}
         >
           Importar otro archivo

@@ -4,7 +4,7 @@
  * teclado de la cuadrícula. Datos sintéticos (RNF-014).
  */
 import { describe, expect, it, vi } from "vitest";
-import { PhotoImportEntry } from "@/app/importacion/page";
+import { ImportOriginPicker } from "@/components/domain/ImportOriginPicker";
 import type { BatchPhoto, PhotoFolder } from "@/lib/data/photoBatches";
 import { render, visibleText } from "@/test/render";
 import { PHOTO_WIZARD_STEPS, PhotoUploadStart, UPLOAD_HELP } from "./PhotoCatalogWizard";
@@ -56,10 +56,10 @@ function photo(id: string, overrides: Partial<BatchPhoto> = {}): BatchPhoto {
 }
 
 describe("entrada y paso 1 «Subir carpeta»", () => {
-  it("Importación ofrece la entrada separada de «Importar Excel»", () => {
-    const html = render(<PhotoImportEntry />);
+  it("Importación ofrece la opción «Solo imágenes» que lleva al asistente de fotos", () => {
+    const html = render(<ImportOriginPicker />);
     expect(html).toContain('href="/importacion/fotos"');
-    expect(visibleText(html)).toContain("Importar fotografías al catálogo");
+    expect(visibleText(html)).toContain("Solo imágenes");
   });
 
   it("pide el nombre del lote y explica cómo traer la carpeta de Drive", () => {
