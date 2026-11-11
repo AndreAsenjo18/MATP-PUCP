@@ -1,0 +1,52 @@
+> Corrección C22 (HU-21, HU-22; HU-08 en «Más filtros»). Paquete P2. Solo frontend, manual y supuestos; sin cambios de API, Excel ni impresión. Antes de empezar: avisar a P5 de la sección 4 (toca Administración › Control, donde trabaja C23) y a André Asenjo del `MODIFIED` de la vista previa (revisa el PR).
+
+## 1. Columnas principales en la vista previa
+
+- [ ] 1.1 `PREVIEW_COLUMNS` y la función pura `previewColumns(report, showAll)` en `lib/data/reports.ts` (design D1). Verificación: pruebas con el inventario de 19 columnas (6 principales en su orden), el agrupado de 20, por ubicación de 7, un reporte de 6 columnas o menos (todas, sin control), una principal ausente (se omite sin error) y `showAll` (todas, en el orden de la descarga) (Req: Vista previa del reporte fiel a la descarga).
+- [ ] 1.2 `ReportPreview` pinta solo las columnas de `previewColumns` en el encabezado y en cada fila, con la línea «En pantalla: 6 de 19 columnas. El Excel las trae todas.» y el botón «Ver las N columnas» / «Ver solo las principales». Filas, grupos, subtotales, totales y aviso de permisos, sin cambios. Verificación: pruebas de render con y sin `showAll`, de que los subtotales y totales son los mismos en los dos casos y de que el aviso «Ubicación limitada…» sigue aunque Ubicación no esté entre las principales; las pruebas vigentes de `ReportsLive.test.tsx` y `reports.test.ts`, en verde (escenarios «Columnas principales en pantalla», «Ver todas las columnas», «Reporte con pocas columnas», «Columna oculta por permisos»).
+
+## 2. Desplegables reconocibles
+
+- [ ] 2.1 `DisclosureSummary` en `components/domain` (flecha `ChevronRight` que gira con `group-open:rotate-90`, nombre y contador opcional; 44 px y foco visible) y uso en «Filtros» (`ReportsLive`), «Subtotales» (`ReportPreview`) y «Más filtros» (`SearchFilters`), sin cambiar sus nombres (design D3). Verificación: pruebas de render de los tres con la flecha, el contador «Filtros (2 activos)» y «Más filtros» con sus activos; las pruebas de `SearchLive.test.tsx` y `SearchPlainLanguage.test.tsx` (abre solo con un filtro activo) siguen en verde (Req: Desplegables de filtros y subtotales reconocibles).
+
+## 3. Textos, números y demostración
+
+- [ ] 3.1 Tabla de demostración de `app/reportes/page.tsx` con `totalsText(report)` en vez de `Object.entries(report.totals)`. Verificación: prueba de que se lee «13 piezas» y no «piezas:» (Req: Textos y números de Reportes en lenguaje llano, escenario «Totales del inventario de demostración»).
+- [ ] 3.2 Prueba que recorre los textos de Reportes (selector, parámetros, vista previa, incompletas, demostración) sin `RF-`, `RNF-`, `RN-`, `RIA-`, `[SUPUESTO]` ni claves internas, y con los números en `es-PE`. Verificación: la prueba en verde; si encuentra algo, se corrige en esta tarea (Req: Textos y números…, escenario «Números grandes»).
+- [ ] 3.3 `computeInventoryReport`, `computeByCollectionReport` y `computeByLocationReport` sin préstamos temporales (design D7). Verificación: prueba de que «Quena» (préstamo temporal sintético) no aparece y el total del inventario es 13; se ajustan las pruebas que contaban 14, con la razón (RN-004) en la nota de esta tarea (Req: Inventario de demostración con las reglas del inventario).
+
+## 4. Sacar de Reportes lo que no es un reporte (commit aparte, lo revisa P5)
+
+- [ ] 4.1 **Commit propio, con revisión de P5.** Sección «Almacenamiento de fotos» en Administración › Control: una entrada en `AdminShell.tsx` (`slug: "almacenamiento"`, `area: "control"`, `permissions: ["users.manage"]`) y un `case` en `app/administracion/page.tsx` que monta `StorageEstimateCard` tal cual. El título de la tarjeta pierde «(RNF-003)». En el mismo commit, Reportes deja de montar la tarjeta (design D4). Verificación: prueba de que la sección aparece en Control solo con `users.manage` y se abre con `?pestana=almacenamiento`, y de que Reportes ya no la monta; pruebas vigentes de `AdminShell` y Administración en verde (Req: Pantalla de Reportes solo con reportes, escenarios «Administrador consulta el almacenamiento» y «Rol sin acceso a Administración»).
+- [ ] 4.2 Reportes deja de montar «Exportación completa» (`FullExportPanel` y su versión de demostración); sigue en Administración › Control › Exportación completa. Verificación: prueba de que un Administrador no la ve en Reportes y sí en Control (escenario «Curadora en Reportes» y su equivalente para el Administrador).
+
+## 5. Legibilidad
+
+- [ ] 5.1 16 px y 44 px en `ReportSelector`, los parámetros de `ReportsLive`, `ReportPreview` e `IncompleteReportPanel`; etiquetas de `Field` subidas solo en esta vista (design D6). Verificación: prueba de render sin clases menores de 16 px salvo las sobrescritas (comprobadas) y con todos los botones, casillas, `summary` y campos con `min-h-11` (Req: Legibilidad de Reportes).
+- [ ] 5.2 Sin desplazamiento horizontal de la página a 360 px ni a 1366 px con zoom del 150 % (tabla dentro de su recuadro con `overflow-x-auto`; contenedores con `min-w-0`). Verificación: medida en Chrome de `scrollWidth` frente a `clientWidth` en inventario (con las 19 columnas desplegadas) e incompletas, anotada aquí (escenarios «Información incompleta en el celular» y «Todas las columnas en el celular»).
+
+## 6. Documentación y supuestos
+
+- [ ] 6.1 Manual: `reportes.md` (columnas en pantalla y Excel completo, «Ver las N columnas», flecha de «Filtros», sin volumen ni exportación completa), `administracion.md` (sección «Almacenamiento de fotos») y `busqueda.md` (flecha de «Más filtros»). Verificación: los nombres del manual coinciden con la pantalla.
+- [ ] 6.2 `docs/preguntas-contraparte.md`, sección W: filas W6 (columnas principales) y W7 (quién necesita la estimación del volumen); W1 y W2 sin cambios. Verificación: filas añadidas.
+
+## 7. Cierre y prueba humana
+
+- [ ] 7.1 Recorrido propio en Chrome con la compilación de producción, en modo demostración, a 1366 px, 360 px y 1366 px al 150 %, como Curadora y como Administrador, antes (`main`) y después con los mismos datos: alto de la página, palabras, textos de menos de 16 px, controles de menos de 44 px, columnas cortadas, nombres internos y desbordes. Capturas fuera del repo. Verificación: tabla de antes y después en la nota de esta tarea. Si hay `.env`, también en modo conectado.
+- [ ] 7.2 **Prueba humana (no la hace el agente).** El humano prueba en local con datos sintéticos, sin manual, como alguien de 60 años o más que no conoce el sistema, diciendo en voz alta lo que piensa, y el agente observa:
+  - **HU-21:** «Sacar el inventario de una colección y exportarlo. ¿Qué columnas faltan o sobran?» (en pantalla y en el Excel).
+  - **HU-22:** «Sacar un reporte agrupado por procedencia.» (en modo conectado; en demostración este reporte no está disponible).
+  - **HU-08, solo «Más filtros»:** «Busque piezas en mal estado de una sede.» ¿Reconoce que «Más filtros» se despliega?
+  - Preguntas, en este orden: ¿qué esperaba ver al abrir la pantalla?, ¿era eso?; ¿en qué momento no supo qué hacer?, ¿qué palabra no entendió?; ¿cuántos clics le costó?, ¿sobró alguno?; ¿qué texto cambiaría o borraría?; ¿algún botón le pareció pequeño, lejano o parecido a otro?; ¿se equivocó?, ¿el sistema le dejó claro cómo corregirlo?
+  - Lista de «los zapatos del usuario» (sección 1 de `docs/historias-de-usuario.md`), respondida una por una en el informe y con el motivo de cada una que no se cumpla:
+    - (sí/no) Se entiende a primera vista: el título dice qué se hace aquí; hay una sola acción principal y se ve sin desplazarse.
+    - (sí/no) Poco texto: un título y como máximo una línea de ayuda; sin siglas ni términos internos.
+    - (sí/no) Pocas opciones a la vez: unas 7 o menos por pantalla; lo avanzado, plegado.
+    - (sí/no) Legible: letra de 16 px o más; botones y campos de 44 px o más; contraste suficiente; no depende solo del color.
+    - (sí/no) Mínimo de clics: la tarea frecuente se hace en 3 clics o menos.
+    - (sí/no) Se perdona el error: confirmación en lenguaje llano antes de lo irreversible, «Deshacer» cuando se pueda, mensajes que dicen qué hacer.
+    - (sí/no) Funciona con teclado, con la página ampliada al 150 % y en un portátil de 1366 × 768.
+    - (sí/no) No se pierde lo escrito si la sesión caduca o se recarga la página (parámetros y filtros del reporte).
+    - (sí/no) El humano la probó, la hizo sin ayuda y dijo qué le incomodó.
+  - Verificación: informe con lo que encontró, lo corregido y lo pendiente; se corrige en este mismo change y se **repite la prueba** hasta que la haga de punta a punta sin trabarse. Solo entonces HU-21 y HU-22 pasan a «Revisada por un humano» en `docs/historias-de-usuario.md`.
+- [ ] 7.3 `npm run lint:web`, `npx vitest run`, `npm run build -w apps/web`, `npm run openapi:check` (sin cambios) y `openspec validate --all --strict` en verde; PR `feat(reports): ...` con el change, los IDs, la evidencia de 7.1 y 7.2 y la revisión de André (el `MODIFIED`) y de P5 (sección 4). Tras aprobar el PR, `openspec archive reportes-vista-simplificada -y`.
