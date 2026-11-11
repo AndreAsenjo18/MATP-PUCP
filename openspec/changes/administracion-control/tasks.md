@@ -28,10 +28,12 @@
   - Sin prueba de render propia: `FiltersDrawer` ya tiene la suya en `SearchLive.test.tsx`.
 - [x] 5.4 «Cambio» en lugar de «conjunto de cambios» en la pestaña de auditoría de la ficha, la reversión, el aviso de movimientos, el mensaje de la API para una reversión repetida y el manual (Req: Filtros plegados y una sola palabra… — escenario «Revertir desde la ficha»)
   - Cinco pruebas ajustadas al texto nuevo (`AuditChangeSetList`, `AuditTrailPanel`, `AuditLogChangeSetList`, `RevertChangeSetPanel` ×2) y `audit.test.ts`. Pruebas de API de auditoría y reversión: 163 en verde.
-- [ ] 5.5 Verificación en el navegador de 5.1 a 5.4 a 1280 y 375 px
-  - Pendiente (2026-11-11): Docker Desktop se apagó antes de reconstruir la API y la web.
-- [ ] 5.6 `npm run test:api:pg` (PostgreSQL en Docker) con la condición nueva `entity_type <> valor` de `exclude_entity_type`
-  - Pendiente: las pruebas de API corrieron con la base de pruebas local, no con PostgreSQL. Requiere Docker.
+- [x] 5.5 Verificación en el navegador de 5.1 a 5.4 a 1280 y 375 px
+  - 2026-11-11, Docker local en modo conectado, Administrador del seed. Auditoría sin filtros: 1 465 cambios y ningún inicio de sesión; con «Mostrar los inicios de sesión»: 1 478 (13 inicios de sesión) y el enlace CSV ya no lleva `exclude_entity_type`. Sin la palabra «conjunto» en Administración.
+  - A 375 px, Auditoría y Papelera muestran el botón «Filtros» con el formulario cerrado; el primer registro queda a 707 y 639 px, dentro de la primera pantalla. Al pulsarlo se abre el formulario y el botón dice «Ocultar los filtros». Sin desplazamiento horizontal.
+  - **No verificado en el navegador**: la pestaña de auditoría y el panel de reversión de la ficha (textos «cambio»). En modo conectado la ficha de una pieza real no tiene pestaña de auditoría (solo las fichas de ejemplo del modo demostración); quedan cubiertos por las pruebas de render. Ver el hallazgo de la nota final.
+- [x] 5.6 `npm run test:api:pg` (PostgreSQL en Docker) con la condición nueva `entity_type <> valor` de `exclude_entity_type`
+  - 2026-11-11: prueba nueva `tests/test_audit_query_postgresql.py` (total y página con y sin exclusión); `npm run test:api:pg` 16 de 16 en `matp_test`.
 - [ ] 5.7 Avisar a los dueños de lo que este change toca fuera de Control: P1 (pestaña de auditoría y reversión de la ficha: textos «cambio»), P2 (`FiltersDrawer` de `SearchFilters.tsx` ganó la prop opcional `id`, sin cambio de comportamiento) y Sergio y André (`exclude_entity_type` es un parámetro añadido al contrato, pendiente de su visto bueno como los demás añadidos)
 
 ## 4. Cierre
@@ -54,3 +56,7 @@
   - Los dos pendientes que se anotaron aquí (filtros en celular y «conjunto de cambios» en la ficha) se resolvieron en la sección 5.
 - [ ] 4.3 `npm run lint:web`, `npx vitest run` y `openspec validate --all --strict` en verde; tras aprobar el PR, `openspec archive administracion-control -y`
   - Parcial (2026-11-11): lint web y API en verde, `openapi:check` al día, 1302 pruebas web en 99 archivos, 27 de 27 specs válidas. Falta el archivo tras aprobar el PR.
+
+## Hallazgo fuera de este change
+
+- En modo conectado, la ficha de una pieza real no muestra la pestaña «Auditoría» (`LiveFichaContent` no la incluye): HU-24 («averiguar quién cambió el estado de una pieza») solo se puede hacer desde Administración › Control › Auditoría filtrando por el registro. Es de la ficha (P1) y de la auditoría (P5); se propone como change aparte.
