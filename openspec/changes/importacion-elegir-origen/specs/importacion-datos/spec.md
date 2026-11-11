@@ -72,9 +72,9 @@ El asistente del Excel MUST ofrecer, antes de subir el archivo, solo una zona do
 - **WHEN** una persona suelta un archivo `.docx` o `.pdf` sobre la zona de subida
 - **THEN** el archivo no se selecciona y la zona indica que solo se admiten archivos Excel (.xlsx) o CSV
 
-#### Scenario: Sin elección de formato antes de subir
-- **WHEN** la persona abre el asistente del Excel
-- **THEN** ve la zona de subida, el botón para subir y el enlace «¿Cómo preparo mi Excel?», y no ve ninguna lista de formatos
+#### Scenario: Formato por defecto
+- **WHEN** la persona abre el asistente del Excel sin tocar nada
+- **THEN** la detección automática es el comportamiento por defecto: ve la zona de subida, el botón para subir y el enlace «¿Cómo preparo mi Excel?», y no ve ninguna lista de formatos
 
 #### Scenario: Guía plegada
 - **WHEN** la persona pulsa «¿Cómo preparo mi Excel?»
