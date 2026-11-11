@@ -411,7 +411,7 @@ Revisión de los 61 Excel entregados por el museo con la ingesta y el normalizad
 
 ## RP. Bandeja «Revisar pendientes» y reparto del equipo (2026-11-10)
 
-Supuestos provisionales para poder desarrollar la bandeja única de pendientes (`revisar-pendientes-unificado`, HU-29 y HU-04). Se corrigen si el museo dice otra cosa.
+Supuestos provisionales para poder desarrollar la bandeja única de pendientes (`revisar-pendientes-unificado`, HU-29 y HU-04). Los confirman Sergio y André con el museo en una próxima reunión; los desarrolladores no los confirman. Si el museo dice otra cosa, se modifica la historia de usuario y se avisa a la persona dueña de esa historia.
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
