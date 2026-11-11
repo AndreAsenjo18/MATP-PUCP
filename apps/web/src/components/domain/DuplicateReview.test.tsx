@@ -30,7 +30,6 @@ import {
 } from "./DuplicateReview";
 import { qualityJobStatus } from "./status-intents";
 
-type Signal = DuplicateCandidate["matched_fields"][number];
 type PieceDetail = ApiSchemas["PieceDetail"];
 
 const noop = () => {};
@@ -60,11 +59,13 @@ const JOB: QualityJob = {
 
 describe("señales explicadas (RF-030)", () => {
   it("nombra cada señal y su tipo de identificador", () => {
-    const identifier: Signal = { signal: "identifier", field: "identifier:INC", similarity: 1 };
-    expect(signalLabel(identifier)).toBe("Identificador INC igual");
+    // revisar-pendientes-unificado 3.2: nombre del tipo en español; un tipo desconocido no muestra su código.
+    expect(signalLabel({ signal: "identifier", field: "identifier:INC_RN", similarity: 1 })).toBe("Coincide: Código INC / Registro Nacional");
+    expect(signalLabel({ signal: "identifier", field: "identifier:INC", similarity: 1 })).toBe("Coincide: Otro código");
     expect(signalLabel({ signal: "inventory_code_conflict", field: "identifier:I", similarity: 0 })).toBe("Códigos I vigentes distintos");
     expect(signalLabel({ signal: "collection", field: "collection_id", similarity: 0 })).toBe("Colecciones distintas");
-    expect(signalLabel({ field: "denominación libre", similarity: 0.5 })).toBe("denominación libre");
+    // Una señal desconocida es «Otro dato», nunca su nombre interno (antes devolvía el `field`).
+    expect(signalLabel({ field: "denominación libre", similarity: 0.5 })).toBe("Otro dato");
   });
 
   it("muestra los valores comparados de cada forma de señal", () => {
@@ -121,8 +122,8 @@ describe("DuplicateCandidateCard", () => {
     // Las filas que motivan la sospecha (denominación, colección y otros códigos) son «igual».
     expect(html.match(/data-mark="match"/g)?.length).toBeGreaterThanOrEqual(3);
     expect(text).toContain("igual");
-    expect(text).toContain("Identificador Colección igual 100 %"); // etiqueta de la señal, junto a la similitud
-    expect(text).toContain("Identificador Colección igual · similitud 100 %"); // detalle plegado
+    expect(text).toContain("Coincide: Código de colección 100 %"); // etiqueta de la señal, junto a la similitud
+    expect(text).toContain("Coincide: Código de colección · similitud 100 %"); // detalle plegado
     expect(text).toContain("Normalizado MMZ-015: A «M.M.Z. 015» · B «mmz 15»");
     expect(html).toContain(`href="/piezas/${ids.piece(1)}"`);
   });

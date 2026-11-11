@@ -77,7 +77,7 @@ Ningún texto de la lista de duplicados ni de la comparación de un par MUST mos
 
 #### Scenario: Señales conocidas
 - **WHEN** un par se propone por denominación parecida, misma colección e identificador INC/RN igual
-- **THEN** las señales dicen «Denominación parecida», «Misma colección o subcolección» e «Identificador INC / RN igual»
+- **THEN** las señales dicen «Denominación parecida», «Misma colección o subcolección» y «Coincide: Código INC / Registro Nacional» (el nombre del tipo que da el sistema)
 
 #### Scenario: Señal desconocida
 - **WHEN** la API devuelve una señal con un nombre que la pantalla no conoce, como `material_overlap`

@@ -10,13 +10,15 @@
  * (change `revisar-pendientes-unificado`, tarea 1.2); la página y la bandeja de pendientes la montan.
  */
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_FILTERS,
   DistinctDialog,
   DuplicateCandidateCard,
+  DuplicateCandidateRow,
   DuplicateFilters,
+  IdentifierTypeNamesProvider,
   PostponeDialog,
   QueuePager,
   ScanPanel,
@@ -34,6 +36,7 @@ import {
   fetchComparedPieces,
   fetchDuplicateCollections,
   fetchDuplicateQueue,
+  fetchIdentifierTypeNames,
   fetchQualityJob,
   isClosedPairFailure,
   resolveDuplicate,
@@ -82,11 +85,18 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [pieces, setPieces] = useState<{ key: string; byId: Record<string, PieceDetail | null> } | null>(null);
   const [collections, setCollections] = useState<CollectionOut[]>([]);
+  const [typeNames, setTypeNames] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   // Referencia de los límites para posponer: se fija al abrir el diálogo, no al pintar.
   const [today, setToday] = useState(() => new Date());
   const [notice, setNotice] = useState<Notice>(null);
   const [scan, setScan] = useState<{ job: QualityJob | null; error: string | null; starting: boolean }>({ job: null, error: null, starting: false });
+  // Un solo par abierto a la vez (design D4).
+  const [openId, setOpenId] = useState<string | null>(null);
+  // Tras resolver, el foco va a la fila que ocupa el mismo lugar o, si no queda ninguna, al aviso.
+  const focusAfterReload = useRef<number | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
 
   const query = useMemo(
     () => ({
@@ -106,6 +116,9 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
     let active = true;
     fetchDuplicateCollections(devUser).then((items) => {
       if (active) setCollections(items);
+    });
+    fetchIdentifierTypeNames(devUser).then((names) => {
+      if (active) setTypeNames(names);
     });
     return () => {
       active = false;
@@ -158,6 +171,22 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   const byId = useMemo(() => (pieces?.key === queue?.key ? pieces?.byId : undefined) ?? {}, [pieces, queue]);
   const piecesLoading = pieces?.key !== queue?.key;
 
+  useEffect(() => {
+    const index = focusAfterReload.current;
+    if (index === null || loading || queue?.status !== "ready") return;
+    focusAfterReload.current = null;
+    const toggles = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-review-toggle]");
+    if (toggles && toggles.length > 0) toggles[Math.min(index, toggles.length - 1)]?.focus();
+    else noticeRef.current?.focus();
+  }, [queue, loading]);
+
+  /** Cierra el par resuelto y recuerda su lugar para mover el foco cuando llegue la cola nueva. */
+  function afterResolution(candidate: DuplicateCandidate) {
+    focusAfterReload.current = Math.max(0, items.findIndex((c) => c.id === candidate.id));
+    setOpenId(null);
+    setReload((n) => n + 1);
+  }
+
   function openMerge(candidate: DuplicateCandidate) {
     const pieceA = byId[candidate.piece_a_id];
     const pieceB = candidate.piece_b_id ? byId[candidate.piece_b_id] : null;
@@ -167,12 +196,14 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   /** Cambia de página y vuelve al principio de la lista (también desde los controles de abajo). */
   function goToPage(next: number) {
     setPage(next);
+    setOpenId(null);
     window.scrollTo({ top: 0 });
   }
 
   function changeFilters(next: DuplicateFilterValue) {
     setFilters(next);
     setPage(1);
+    setOpenId(null);
     setNotice(null);
   }
 
@@ -209,107 +240,128 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
               : "Par marcado como piezas distintas.",
         });
       }
-      setReload((n) => n + 1);
+      afterResolution(candidate);
       return { ok: true };
     }
     if (isClosedPairFailure(result)) {
       setNotice({ tone: "warning", text: result.message });
-      setReload((n) => n + 1);
+      afterResolution(candidate);
       return { ok: true };
     }
     return { ok: false, message: result.message };
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        {!embedded && <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>}
-        <p className="text-base text-gris-texto">Compare cada par y decida. No se borra ninguna pieza.</p>
-      </header>
+    <IdentifierTypeNamesProvider names={typeNames}>
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          {!embedded && <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>}
+          <p className="text-base text-gris-texto">Compare cada par y decida. No se borra ninguna pieza.</p>
+        </header>
 
-      <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
+        <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
 
-      <DuplicateFilters value={filters} collections={collections} onChange={changeFilters} />
+        <DuplicateFilters value={filters} collections={collections} onChange={changeFilters} />
 
-      {notice && (
-        <p
-          role={notice.tone === "warning" ? "alert" : "status"}
-          className={notice.tone === "warning" ? "rounded-md bg-ambar-bg p-3 text-base text-ambar-texto" : "rounded-md bg-verde-bg p-3 text-base text-verde-exito"}
-        >
-          {notice.text}
-          {notice.link && (
-            <>
-              {" "}
-              <Link href={notice.link.href} className="font-medium underline">
-                {notice.link.label}
-              </Link>
-            </>
-          )}
-        </p>
-      )}
+        {notice && (
+          <p
+            ref={noticeRef}
+            tabIndex={-1}
+            role={notice.tone === "warning" ? "alert" : "status"}
+            className={notice.tone === "warning" ? "rounded-md bg-ambar-bg p-3 text-base text-ambar-texto" : "rounded-md bg-verde-bg p-3 text-base text-verde-exito"}
+          >
+            {notice.text}
+            {notice.link && (
+              <>
+                {" "}
+                <Link href={notice.link.href} className="font-medium underline">
+                  {notice.link.label}
+                </Link>
+              </>
+            )}
+          </p>
+        )}
 
-      {loading && (
-        <p role="status" className="text-base text-gris-texto">
-          Cargando la cola…
-        </p>
-      )}
-      {!loading && queue?.status === "error" && <PermissionNotice>{queue.message}</PermissionNotice>}
-      {!loading && queue?.status === "ready" && (
-        <>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-gris-texto">{total === 1 ? "1 par" : `${total} pares`}</p>
-            <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, arriba" onPage={goToPage} />
-          </div>
-          <div className="flex flex-col gap-4">
-            {items.map((candidate) => (
-              <DuplicateCandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                pieceA={byId[candidate.piece_a_id]}
-                pieceB={candidate.piece_b_id ? byId[candidate.piece_b_id] : null}
-                piecesLoading={piecesLoading}
-                canResolve={canResolve}
-                onMerge={() => openMerge(candidate)}
-                onDistinct={() => setDialog({ kind: "distinct", candidate })}
-                onPostpone={() => {
-                  setToday(new Date());
-                  setDialog({ kind: "postpone", candidate });
-                }}
-              />
-            ))}
-            {items.length === 0 && <Card className="border-dashed text-center text-base text-gris-texto">No hay pares con estos filtros.</Card>}
-          </div>
-          <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, abajo" onPage={goToPage} />
-        </>
-      )}
+        {loading && (
+          <p role="status" className="text-base text-gris-texto">
+            Cargando la cola…
+          </p>
+        )}
+        {!loading && queue?.status === "error" && <PermissionNotice>{queue.message}</PermissionNotice>}
+        {!loading && queue?.status === "ready" && (
+          <>
+            <div className="flex flex-col gap-2">
+              <p className="text-base text-gris-texto">{total === 1 ? "1 par" : `${total} pares`}</p>
+              <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, arriba" onPage={goToPage} />
+            </div>
+            {items.length > 0 ? (
+              <ul ref={listRef} aria-label="Posibles duplicados" className="flex flex-col gap-3">
+                {items.map((candidate) => {
+                  const pieceA = byId[candidate.piece_a_id];
+                  const pieceB = candidate.piece_b_id ? byId[candidate.piece_b_id] : null;
+                  const open = openId === candidate.id;
+                  return (
+                    <DuplicateCandidateRow
+                      key={candidate.id}
+                      candidate={candidate}
+                      pieceA={pieceA}
+                      pieceB={pieceB}
+                      piecesLoading={piecesLoading}
+                      open={open}
+                      onToggle={() => setOpenId(open ? null : candidate.id)}
+                    >
+                      <DuplicateCandidateCard
+                        candidate={candidate}
+                        pieceA={pieceA}
+                        pieceB={pieceB}
+                        piecesLoading={piecesLoading}
+                        canResolve={canResolve}
+                        onMerge={() => openMerge(candidate)}
+                        onDistinct={() => setDialog({ kind: "distinct", candidate })}
+                        onPostpone={() => {
+                          setToday(new Date());
+                          setDialog({ kind: "postpone", candidate });
+                        }}
+                      />
+                    </DuplicateCandidateRow>
+                  );
+                })}
+              </ul>
+            ) : (
+              <Card className="border-dashed text-center text-base text-gris-texto">No hay pares con estos filtros.</Card>
+            )}
+            <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, abajo" onPage={goToPage} />
+          </>
+        )}
 
-      {dialog?.kind === "merge" && (
-        <MergeWizard
-          key={dialog.candidate.id}
-          candidate={dialog.candidate}
-          pieceA={dialog.pieceA}
-          pieceB={dialog.pieceB}
+        {dialog?.kind === "merge" && (
+          <MergeWizard
+            key={dialog.candidate.id}
+            candidate={dialog.candidate}
+            pieceA={dialog.pieceA}
+            pieceB={dialog.pieceB}
+            onClose={() => setDialog(null)}
+            onSubmit={(submission: MergeSubmission) => {
+              const surviving = submission.survivingPieceId === dialog.pieceB.id ? dialog.pieceB : dialog.pieceA;
+              const absorbed = surviving === dialog.pieceA ? dialog.pieceB : dialog.pieceA;
+              return resolve(dialog.candidate, { resolution: "MERGED", ...submission }, { surviving, absorbed });
+            }}
+          />
+        )}
+        <DistinctDialog
+          open={dialog?.kind === "distinct"}
           onClose={() => setDialog(null)}
-          onSubmit={(submission: MergeSubmission) => {
-            const surviving = submission.survivingPieceId === dialog.pieceB.id ? dialog.pieceB : dialog.pieceA;
-            const absorbed = surviving === dialog.pieceA ? dialog.pieceB : dialog.pieceA;
-            return resolve(dialog.candidate, { resolution: "MERGED", ...submission }, { surviving, absorbed });
-          }}
+          onSubmit={(note) => (dialog ? resolve(dialog.candidate, { resolution: "DISTINCT", note }) : Promise.resolve({ ok: true }))}
         />
-      )}
-      <DistinctDialog
-        open={dialog?.kind === "distinct"}
-        onClose={() => setDialog(null)}
-        onSubmit={(note) => (dialog ? resolve(dialog.candidate, { resolution: "DISTINCT", note }) : Promise.resolve({ ok: true }))}
-      />
-      <PostponeDialog
-        open={dialog?.kind === "postpone"}
-        today={today}
-        onClose={() => setDialog(null)}
-        onSubmit={(postponedUntil, note) =>
-          dialog ? resolve(dialog.candidate, { resolution: "POSTPONED", postponedUntil, note }) : Promise.resolve({ ok: true })
-        }
-      />
-    </div>
+        <PostponeDialog
+          open={dialog?.kind === "postpone"}
+          today={today}
+          onClose={() => setDialog(null)}
+          onSubmit={(postponedUntil, note) =>
+            dialog ? resolve(dialog.candidate, { resolution: "POSTPONED", postponedUntil, note }) : Promise.resolve({ ok: true })
+          }
+        />
+      </div>
+    </IdentifierTypeNamesProvider>
   );
 }
