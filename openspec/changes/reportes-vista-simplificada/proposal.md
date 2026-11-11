@@ -7,12 +7,12 @@ Medido el 2026-11-11 en modo demostración (compilación de producción, Chrome)
 ## What Changes
 
 - **Salen de Reportes** «Volumen fotográfico» y «Exportación completa». La exportación completa ya existe en Administración › Control, así que solo se quita de Reportes. La estimación del volumen se monta tal cual (`StorageEstimateCard`) como sección **«Almacenamiento de fotos»** de Administración › Control, sin rediseñar esa pantalla, en una tarea y un commit aparte que revisa P5 (dueño de la vista).
-- **Vista previa con las columnas principales**: los reportes que listan piezas muestran en pantalla unas 6 columnas, con «Ver las N columnas» para desplegar todas, y una línea «En pantalla: 6 de 19 columnas. El Excel las trae todas.». La descarga y la impresión no cambian (todas las columnas). Filas, grupos, subtotales y totales siguen siendo idénticos a la descarga. `[SUPUESTO: cuáles son las columnas principales; W6]`
+- **Vista previa con las columnas principales**: los reportes que listan piezas muestran en pantalla unas 6 columnas, con «Ver las N columnas» para desplegar todas, y una línea «En pantalla: 6 de 19 columnas. El Excel las trae todas.». La descarga y la impresión no cambian (todas las columnas). Filas, grupos, subtotales y totales siguen siendo idénticos a la descarga. `[SUPUESTO: cuáles son las columnas principales; W8]`
 - **Desplegables reconocibles**: «Filtros» (Reportes), «Más filtros» (Búsqueda) y «Subtotales» (vista previa) conservan su nombre (lo usan la spec vigente y el manual), pero muestran su flecha, que gira al abrir, y, en los filtros, cuántos hay activos.
 - **Lenguaje llano**: sin identificadores de requisitos en Reportes; los totales se leen «14 piezas» y no «piezas: 14»; todos los números con el mismo formato `es-PE` que ya usa la aplicación.
 - **Legibilidad** (adelanta C28 en esta vista): letra de 16 px o más y controles de 44 px o más en el selector, los parámetros, la vista previa y el reporte de piezas incompletas. La página no se desplaza en horizontal a 360 px; la tabla se desplaza dentro de su recuadro.
 - **Demostración con las reglas del inventario**: el inventario de ejemplo excluye los préstamos temporales (RN-004), como ya hace el modo conectado.
-- Manual: `docs/manual-usuario/reportes.md`, `administracion.md` y `busqueda.md`. Supuestos W6 y W7 en `docs/preguntas-contraparte.md`.
+- Manual: `docs/manual-usuario/reportes.md`, `administracion.md` y `busqueda.md`. Supuestos W8 y W9 en `docs/preguntas-contraparte.md`.
 
 Ningún cambio es **BREAKING**: la API, el Excel y la impresión no cambian.
 
@@ -48,5 +48,5 @@ Los confirman Sergio y André (los desarrolladores no hablan con el cliente):
 
 - `[SUPUESTO]` **W1:** las piezas en comodato van en el inventario permanente, con subtotal propio, y se pueden excluir con «Incluir comodatos». No cambia.
 - `[SUPUESTO]` **W2:** no hay un formato oficial; el Excel mantiene las 19 columnas del diseño D3, en su orden.
-- `[SUPUESTO]` **W6 (nueva):** las columnas principales en pantalla son Código I, Código de colección, Denominación, Descripción, Colección y Régimen; en «Por ubicación», Código I, Código de colección, Denominación, Descripción, Ubicación y Última vez vista.
-- `[SUPUESTO]` **W7 (nueva):** la estimación del volumen fotográfico solo la necesita el Administrador; la Curadora deja de verla.
+- `[SUPUESTO]` **W8 (nueva):** las columnas principales en pantalla son Código I, Código de colección, Denominación, Descripción, Colección y Régimen; en «Por ubicación», Código I, Código de colección, Denominación, Descripción, Ubicación y Última vez vista.
+- `[SUPUESTO]` **W9 (nueva):** la estimación del volumen fotográfico solo la necesita el Administrador; la Curadora deja de verla.

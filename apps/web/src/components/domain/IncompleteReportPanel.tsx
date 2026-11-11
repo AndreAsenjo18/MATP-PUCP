@@ -79,14 +79,15 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium text-gris-texto">Filtrar por alerta (se combinan con «y»)</legend>
+    <div className="flex min-w-0 flex-col gap-4">
+      <fieldset className="flex min-w-0 flex-col gap-2">
+        <legend className="text-base font-medium text-gris-texto">Filtrar por alerta (se combinan con «y»)</legend>
         <div className="flex flex-wrap gap-2">
           {ALERT_CODES.map((code) => (
-            <label key={code} className="flex min-h-11 items-center gap-2 rounded-full bg-crema px-3 py-1 text-sm text-tinta">
+            <label key={code} className="flex min-h-11 max-w-full items-center gap-2 rounded-full bg-crema px-3 py-1 text-base text-tinta">
               <input
                 type="checkbox"
+                className="size-5 shrink-0 accent-terracota"
                 checked={alertFilter.includes(code)}
                 onChange={() => {
                   setPage(1);
@@ -99,8 +100,8 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
         </div>
       </fieldset>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-gris-texto">
+      <div className="flex min-w-0 flex-wrap items-end gap-3">
+        <label className="flex min-w-0 max-w-full flex-col gap-1 text-base font-medium text-gris-texto">
           Colección
           <select
             value={collectionId}
@@ -108,7 +109,7 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
               setPage(1);
               setCollectionId(event.target.value);
             }}
-            className="min-h-11 rounded-md border border-borde bg-white px-3 py-2 text-base text-tinta"
+            className="min-h-11 max-w-full rounded-md border border-borde bg-white px-3 py-2 text-base text-tinta"
           >
             <option value="">Todas</option>
             {collections.map((c) => (
@@ -119,25 +120,25 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
           </select>
         </label>
         {collectionId && (
-          <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
-            <input type="checkbox" checked={includeSubcollections} onChange={(event) => setIncludeSubcollections(event.target.checked)} />
+          <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
+            <input type="checkbox" className="size-5 shrink-0 accent-terracota" checked={includeSubcollections} onChange={(event) => setIncludeSubcollections(event.target.checked)} />
             Incluir subcolecciones
           </label>
         )}
         {canDownload && (
           <div className="ml-auto flex gap-2">
-            <button type="button" onClick={() => handleDownload("xlsx")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-sm font-medium text-tinta hover:bg-crema">
+            <button type="button" onClick={() => handleDownload("xlsx")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-base font-medium text-tinta hover:bg-crema">
               <FileSpreadsheet size={16} aria-hidden="true" />
               Excel
             </button>
-            <button type="button" onClick={() => handleDownload("csv")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-sm font-medium text-tinta hover:bg-crema">
+            <button type="button" onClick={() => handleDownload("csv")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-base font-medium text-tinta hover:bg-crema">
               <Download size={16} aria-hidden="true" />
               CSV
             </button>
           </div>
         )}
       </div>
-      {downloadMessage && <p className="text-sm text-gris-texto">{downloadMessage}</p>}
+      {downloadMessage && <p className="text-base text-gris-texto">{downloadMessage}</p>}
 
       {!result && (
         <p role="status" className="text-base text-gris-texto">
@@ -147,9 +148,9 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
       {result?.status === "unavailable" && <p className="text-base text-gris-texto">{result.message}</p>}
       {result?.status === "ok" && (
         <>
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto">
             <table className="w-full text-left text-base">
-              <thead className="text-sm text-gris-texto">
+              <thead className="text-base text-gris-texto">
                 <tr>
                   <th className="py-2 pr-4 font-medium">Pieza</th>
                   <th className="py-2 pr-4 font-medium">Colección</th>
@@ -184,7 +185,7 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between text-sm text-gris-texto">
+          <div className="flex items-center justify-between text-base text-gris-texto">
             <span>
               {result.page.total} pieza{result.page.total === 1 ? "" : "s"} · página {result.page.page}
             </span>
@@ -193,7 +194,7 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="min-h-11 rounded-md border border-borde px-3 py-1 text-sm font-medium text-tinta disabled:opacity-40"
+                className="min-h-11 rounded-md border border-borde px-3 py-1 text-base font-medium text-tinta disabled:opacity-40"
               >
                 Anterior
               </button>
@@ -201,7 +202,7 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
                 type="button"
                 disabled={page * INCOMPLETE_PAGE_SIZE >= result.page.total}
                 onClick={() => setPage((p) => p + 1)}
-                className="min-h-11 rounded-md border border-borde px-3 py-1 text-sm font-medium text-tinta disabled:opacity-40"
+                className="min-h-11 rounded-md border border-borde px-3 py-1 text-base font-medium text-tinta disabled:opacity-40"
               >
                 Siguiente
               </button>

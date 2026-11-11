@@ -265,14 +265,14 @@ export function totalsText(report: Pick<Report, "totals">): string {
     .join(" · ");
 }
 
-/** Más columnas que estas y la vista previa muestra solo las principales (W6). */
+/** Más columnas que estas y la vista previa muestra solo las principales (W8). */
 export const PREVIEW_COLUMN_LIMIT = 6;
 
 const MAIN_PIECE_COLUMNS = ["Código I", "Código de colección", "Denominación", DESCRIPTION_COLUMN, "Colección", "Régimen"] as const;
 
 /**
  * Columnas principales de la vista previa por tipo de reporte (change `reportes-vista-simplificada`,
- * design D1). `[SUPUESTO: W6]` La descarga y la impresión llevan siempre todas.
+ * design D1). `[SUPUESTO: W8]` La descarga y la impresión llevan siempre todas.
  */
 export const PREVIEW_COLUMNS: Readonly<Partial<Record<string, readonly string[]>>> = {
   inventory: MAIN_PIECE_COLUMNS,

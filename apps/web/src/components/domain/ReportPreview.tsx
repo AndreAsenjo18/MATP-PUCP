@@ -37,7 +37,7 @@ export function DescriptionCell({ text, initialExpanded = false }: { text: strin
   return (
     <div className="flex w-80 flex-col items-start">
       <div className={expanded ? "whitespace-pre-wrap" : "line-clamp-2"}>{text}</div>
-      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className={`min-h-11 text-sm text-terracota underline ${FOCUS_RING}`}>
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className={`min-h-11 text-base text-terracota underline ${FOCUS_RING}`}>
         {expanded ? "ver menos" : "ver más"}
       </button>
     </div>
@@ -69,7 +69,7 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
 
   return (
     <div className="max-h-[70vh] overflow-auto rounded-md border border-borde">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-base">
         <thead className="text-gris-texto">
           <tr>
             {/* En cada celda y no en `thead`: Safari de tablet no siempre fija `thead`. */}
@@ -107,7 +107,7 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
 
 function SubtotalList({ subtotals }: { subtotals: ReportSubtotal[] }) {
   return (
-    <ul className="grid gap-1 text-sm text-tinta sm:grid-cols-2">
+    <ul className="grid gap-1 text-base text-tinta sm:grid-cols-2">
       {subtotals.map((subtotal) => (
         <li key={`${subtotal.group}-${subtotal.label}`} style={{ paddingLeft: `${(subtotal.level ?? 0) * 16}px` }}>
           <span className="text-gris-texto">{subtotal.group}:</span> {subtotal.label} — {reportNumber(subtotal.count)}
@@ -152,14 +152,14 @@ export function ReportPreview({
     <div className="flex flex-col gap-3">
       <div>
         <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-        <p className="text-sm text-gris-texto">
+        <p className="text-base text-gris-texto">
           Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
           {report.generated_by ? ` por ${report.generated_by}` : ""}.
         </p>
-        <p className="text-sm text-gris-texto">Filtros: {filtersText(report)}</p>
+        <p className="text-base text-gris-texto">Filtros: {filtersText(report)}</p>
       </div>
       <p className="text-base font-semibold text-tinta">{totalsText(report)}</p>
-      {masked.length > 0 && <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">{maskedNotice(masked)}</p>}
+      {masked.length > 0 && <p className="rounded-md bg-crema px-3 py-2 text-base text-tinta">{maskedNotice(masked)}</p>}
       {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
       {report.rows.length > 0 && columnsNotice && (
         <div className="flex flex-wrap items-center gap-3">
@@ -175,7 +175,7 @@ export function ReportPreview({
           <Button variant="secondary" disabled={report.page <= 1} onClick={() => onPage(report.page - 1)}>
             Anterior
           </Button>
-          <span className="text-sm text-gris-texto">
+          <span className="text-base text-gris-texto">
             Página {report.page} de {pages} ({report.total_rows} filas)
           </span>
           <Button variant="secondary" disabled={report.page >= pages} onClick={() => onPage(report.page + 1)}>

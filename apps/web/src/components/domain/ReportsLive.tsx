@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
+import { cn } from "@/lib/cn";
 import { fetchCollections, type CollectionOption } from "@/lib/data/normalization-admin";
 import { fetchLocations } from "@/lib/data/locations";
 import {
@@ -34,6 +35,14 @@ import {
   type ReportParams,
 } from "@/lib/data/reports";
 import { EMPTY_FILTERS, TEXT_FILTER_KEYS, TYPING_DEBOUNCE_MS, activeChips, fetchExportJob, hasPendingJobs, type SearchFilters } from "@/lib/data/search";
+
+/**
+ * Etiquetas, ayudas y controles de `Field` (components/ui, de la Base) y el árbol de ubicaciones
+ * (`LocationTreeSelect`, de P3) a 16 px y 44 px solo en Reportes, sin tocar esos componentes
+ * (change `reportes-vista-simplificada`, design D6).
+ */
+export const READABLE =
+  "[&_label]:text-base [&_p]:text-base [&_legend]:text-base [&_fieldset_button]:text-base [&_fieldset_button]:min-h-11 [&_fieldset_span.rounded-full]:text-base [&_select]:min-h-11 [&_input:not([type=checkbox])]:min-h-11";
 
 /** Filas por página de la vista previa (design D4). */
 const PAGE_SIZE = 50;
@@ -242,7 +251,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
 
   return (
     <>
-      <Card as="section" className="flex flex-col gap-4">
+      <Card as="section" className={cn("flex min-w-0 flex-col gap-4", READABLE)}>
         <div className="flex flex-wrap items-end gap-3">
           {type === "by-attribute" && <GroupBySelect value={params.groupBy} onChange={(groupBy) => update({ groupBy })} />}
           {type === "by-collection" && (
@@ -276,7 +285,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
           )}
           {type !== "by-location" && (
             <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
-              <input type="checkbox" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
+              <input type="checkbox" className="size-5 accent-terracota" checked={params.includeLoansForUse !== false} onChange={(event) => update({ includeLoansForUse: event.target.checked })} />
               Incluir comodatos
             </label>
           )}
@@ -299,7 +308,7 @@ export function ReportsLive({ type }: { type: LiveReportType }) {
         {report && !missing && (
           <>
             <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
-            {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">{notice}</p>}
+            {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">{notice}</p>}
             <ReportPreview report={report} onPage={setPage} />
           </>
         )}

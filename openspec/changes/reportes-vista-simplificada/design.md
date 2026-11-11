@@ -25,7 +25,7 @@ Estado de `main` al 2026-11-11 (ver proposal.md, «Why»):
 ## Decisions
 
 ### D1. Columnas principales por tipo de reporte, en una sola tabla de configuración
-`lib/data/reports.ts` gana `PREVIEW_COLUMNS: Partial<Record<LiveReportType, readonly string[]>>` con los nombres de columna principales de cada reporte (W6):
+`lib/data/reports.ts` gana `PREVIEW_COLUMNS: Partial<Record<LiveReportType, readonly string[]>>` con los nombres de columna principales de cada reporte (W8):
 
 | Reporte | Columnas principales |
 |---|---|
@@ -71,8 +71,8 @@ flowchart LR
 ## Risks / Trade-offs
 
 - [Alguien busca una columna que ya no ve en pantalla] → la línea «En pantalla: 6 de 19…» y el botón están junto a la tabla; el Excel sigue completo. Se observa en la prueba humana (HU-21: «¿qué columnas faltan o sobran?»).
-- [Las columnas principales no son las que usa el museo] → `[SUPUESTO]` W6, una sola tabla de configuración para cambiarlas.
-- [La Curadora necesitaba la estimación del volumen] → `[SUPUESTO]` W7; si la necesita, se cambia el permiso de la sección a `reports.view` sin tocar nada más.
+- [Las columnas principales no son las que usa el museo] → `[SUPUESTO]` W8, una sola tabla de configuración para cambiarlas.
+- [La Curadora necesitaba la estimación del volumen] → `[SUPUESTO]` W9; si la necesita, se cambia el permiso de la sección a `reports.view` sin tocar nada más.
 - [Conflicto con C23 en Administración] → commit aparte, pequeño, revisado por P5.
 - [Conflicto con `revisar-pendientes-unificado` en `IncompleteReportPanel`] → C26 no modifica ese archivo, solo lo monta; el que se fusione segundo rebasa sin conflicto de contenido esperado.
 

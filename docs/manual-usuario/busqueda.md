@@ -34,7 +34,7 @@ En el panel de filtros, primero están los que el museo usa más:
 - **Categoría** y **Material**: términos de los vocabularios del museo.
 - **Descripción contiene**: la descripción de la pieza contiene lo que escriba. Las piezas sin descripción no aparecen.
 
-Los demás filtros están en **Más filtros**, plegado para no ocupar la pantalla:
+Los demás filtros están en **Más filtros**, plegado para no ocupar la pantalla. Se reconoce por la flecha a la izquierda de su nombre; si tiene filtros puestos, dice cuántos, por ejemplo **Más filtros (2 activos)**:
 - **Colección**: incluye las piezas de sus subcolecciones.
 - **Estado de conservación**.
 - **Ubicación**: incluye lo que contiene el lugar elegido. Se elige en un árbol (sede › espacio › mueble › nivel › contenedor). Escriba en **Buscar lugar** parte del nombre (por ejemplo «estante b») para ver solo los lugares que coinciden, con los lugares que los contienen. Al elegir un lugar se incluye todo lo que contiene: un depósito con sus muebles, niveles y contenedores. El lugar elegido se ve arriba con su ruta completa y se quita con el botón **Quitar la ubicación**.

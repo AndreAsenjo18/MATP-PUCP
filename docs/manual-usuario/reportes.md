@@ -41,7 +41,7 @@ Si su rol no ve las ubicaciones exactas (por ejemplo, Consulta interna), solo pu
 
 1. Pulse la tarjeta **Piezas agrupadas por…**.
 2. En **Agrupar por**, elija el atributo: **Procedencia**, **Denominación**, **Autor**, **Material**, **Estado de conservación**, **Categoría** o **Colección**.
-3. Si quiere acotar el reporte, abra **Filtros**: son los mismos de **Búsqueda**. Se aplican solos mientras los cambia.
+3. Si quiere acotar el reporte, abra **Filtros** (pulse la flecha o el nombre): son los mismos de **Búsqueda** y se aplican solos mientras los cambia. Con filtros puestos, dice cuántos hay, por ejemplo **Filtros (2 activos)**.
 4. Revise la vista previa y, si está conforme, pulse **Exportar a Excel** o **Vista imprimible**.
 
 Cómo se arman los grupos:
@@ -56,13 +56,15 @@ Entran las mismas piezas que en el inventario (vea [Qué entra en el inventario]
 
 ## Vista previa
 
-Antes de descargar, la pantalla muestra el reporte tal como saldrá en el archivo: las mismas filas, columnas, subtotales y totales.
+Antes de descargar, la pantalla muestra el reporte con las mismas filas, grupos, subtotales y totales que el archivo.
 
-- **Arriba** están el título, la fecha, quién lo generó, los filtros y los totales.
+- **Columnas**: el inventario trae 19 columnas y no caben en la pantalla. Por eso la vista previa muestra solo las principales (Código I, Código de colección, Denominación, Descripción, Colección y Régimen; en el reporte por ubicación, la Ubicación y la Última vez vista en lugar de Colección y Régimen). Arriba de la tabla dice, por ejemplo, «En pantalla: 6 de 19 columnas. El Excel las trae todas.». Pulse **Ver las 19 columnas** para verlas todas en la pantalla, y **Ver solo las principales** para volver. El Excel y la impresión llevan siempre todas.
+
+- **Arriba** están el título, la fecha, quién lo generó, los filtros y los totales, escritos como frase (por ejemplo, «120 piezas · 100 en propiedad · 20 en comodato»).
 - **La tabla** muestra 50 filas por página. Sus títulos quedan fijos al bajar. Use **Anterior** y **Siguiente** para cambiar de página.
 - **Los grupos** se pliegan y se despliegan pulsando su nombre. El número de piezas es el de todo el reporte, aunque esa página muestre solo una parte del grupo.
 - **La descripción** se recorta a dos líneas. Pulse **ver más** para leerla completa. En el archivo y en la impresión siempre va completa. Si una pieza no tiene descripción, la celda queda vacía.
-- **Debajo de la tabla** está la lista de **Subtotales**. Si es muy larga, empieza plegada.
+- **Debajo de la tabla** está la lista de **Subtotales**. Si es muy larga, empieza plegada: la flecha a la izquierda de **Subtotales** indica que se despliega.
 
 Si su rol no ve las ubicaciones exactas, el reporte lo indica con el aviso «Ubicación limitada a sede y espacio por tus permisos», igual que el archivo y la impresión.
 

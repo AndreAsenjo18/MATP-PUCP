@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { EMPTY_OPTIONS, SearchFiltersPanel } from "@/components/domain/SearchFilters";
+import { SessionProvider } from "@/lib/auth/session";
 import {
   PREVIEW_COLUMN_LIMIT,
   groupTitle,
@@ -16,7 +17,9 @@ import { render, visibleText } from "@/test/render";
 
 import { DisclosureSummary, withActiveCount } from "./DisclosureSummary";
 import { ReportPreview } from "./ReportPreview";
-import { ReportFilters } from "./ReportsLive";
+import { IncompleteReportPanel } from "./IncompleteReportPanel";
+import { ReportSelector } from "./ReportSelector";
+import { READABLE, ReportFilters } from "./ReportsLive";
 
 // Change reportes-vista-simplificada, secciones 1 a 3. HTML estático (ADR-012); datos sintéticos (RNF-014).
 
@@ -252,5 +255,60 @@ describe("demostración con las reglas del inventario (Req: Inventario de demost
     expect(byCollection).toBe(expected);
     expect(byLocation.totals.piezas).toBe(expected);
     expect(byLocation.rows.reduce((sum, cells) => sum + Number(cells[1]), 0)).toBe(expected);
+  });
+});
+
+describe("legibilidad de Reportes (Req: Legibilidad de Reportes)", () => {
+  /** Etiquetas HTML con una clase de letra menor de 16 px. */
+  function smallTags(markup: string): string[] {
+    return (markup.match(/<[a-z]+ [^>]*>/g) ?? []).filter((tag) => /class="[^"]*\btext-(xs|sm)\b/.test(tag));
+  }
+  const selector = render(<ReportSelector selected="inventory" onSelect={noop} />);
+  const preview = render(<ReportPreview report={report()} />);
+  const incomplete = render(
+    <SessionProvider>
+      <IncompleteReportPanel canDownload />
+    </SessionProvider>,
+  );
+  const TREE = [{ id: "sede", name: "Sede (sintética)", level_type: "Sede", children: [{ id: "dep", name: "Depósito 1", level_type: "Depósito", children: [] }] }];
+  const filters = render(
+    <div className={READABLE}>
+      <ReportFilters filters={EMPTY_FILTERS} options={{ ...EMPTY_OPTIONS, locationTree: TREE } as typeof EMPTY_OPTIONS} onChange={noop} onClear={noop} />
+    </div>,
+  );
+
+  it("selector, vista previa e incompletas sin letra de menos de 16 px", () => {
+    for (const html of [selector, preview, incomplete]) expect(smallTags(html)).toEqual([]);
+  });
+
+  it("en los filtros, lo pequeño es de `Field` (Base) o del árbol de ubicaciones (P3), y el contenedor lo sube a 16 px", () => {
+    // Etiqueta y ayuda de `Field`; leyenda, botones y etiquetas del árbol, que van dentro de su `fieldset`.
+    const overridden = (tag: string) => /^<(label|p|legend) /.test(tag) || /^<button /.test(tag) || /^<span [^>]*rounded-full/.test(tag);
+    expect(smallTags(filters).filter((tag) => !overridden(tag))).toEqual([]);
+    expect(filters).toMatch(/<fieldset[\s\S]*?<button/);
+    for (const variant of ["[&_label]:text-base", "[&_p]:text-base", "[&_legend]:text-base", "[&_fieldset_button]:text-base", "[&_fieldset_span.rounded-full]:text-base", "[&_select]:min-h-11"]) {
+      expect(READABLE).toContain(variant);
+    }
+  });
+
+  it("botones, desplegables, casillas y campos de incompletas miden al menos 44 px", () => {
+    for (const html of [preview, incomplete]) {
+      for (const button of html.match(/<button\b[^>]*>/g) ?? []) expect(button).toMatch(/\bmin-h-11\b/);
+    }
+    for (const html of [preview, incomplete, filters]) {
+      for (const summary of html.match(/<summary\b[^>]*>/g) ?? []) expect(summary).toMatch(/\bmin-h-11\b/);
+    }
+    // En los filtros, los botones del árbol (P3) miden 44 px solo por debajo de lg: el contenedor los mantiene en 44 px.
+    for (const button of filters.match(/<button\b[^>]*>/g) ?? []) expect(button).toMatch(/\b(min-h-11|size-11)\b/);
+    expect(READABLE).toContain("[&_fieldset_button]:min-h-11");
+    // En incompletas, cada casilla va dentro de una etiqueta de 44 px y el selector de colección mide 44 px.
+    const checkboxLabels = incomplete.match(/<label[^>]*>(?=<input type="checkbox")/g) ?? [];
+    expect(checkboxLabels.length).toBeGreaterThan(0);
+    for (const label of checkboxLabels) expect(label).toMatch(/\bmin-h-11\b/);
+    for (const select of incomplete.match(/<select\b[^>]*>/g) ?? []) expect(select).toMatch(/\bmin-h-11\b.*\bmax-w-full\b|\bmax-w-full\b.*\bmin-h-11\b/);
+  });
+
+  it("la tabla de incompletas se desplaza dentro de su recuadro, no la página", () => {
+    expect(incomplete).toMatch(/class="[^"]*\bmin-w-0\b/);
   });
 });
