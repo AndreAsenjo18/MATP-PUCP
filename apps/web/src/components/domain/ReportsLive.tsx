@@ -10,6 +10,7 @@ import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { DisclosureSummary, withActiveCount } from "@/components/domain/DisclosureSummary";
 import { ReportPreview } from "@/components/domain/ReportPreview";
 import { EMPTY_OPTIONS, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { MyExportsPanel } from "@/components/domain/SearchLive";
@@ -102,10 +103,8 @@ export function ReportFilters({
 }) {
   const active = activeChips(filters).length;
   return (
-    <details className="flex flex-col gap-3">
-      <summary className="flex min-h-11 cursor-pointer items-center text-base font-medium text-tinta">
-        Filtros{active > 0 && ` (${active} activo${active === 1 ? "" : "s"})`}
-      </summary>
+    <details className="group flex flex-col gap-3">
+      <DisclosureSummary>{withActiveCount("Filtros", active)}</DisclosureSummary>
       <div className="max-w-xl">
         <SearchFiltersPanel filters={filters} options={options} onChange={onChange} onClear={onClear} />
       </div>

@@ -108,7 +108,12 @@ function isActive(value: SearchFilters[keyof SearchFilters]): boolean {
 
 /** Hay algún filtro activo de «Más filtros»: la sección se abre sola. */
 export function secondaryFiltersActive(filters: SearchFilters): boolean {
-  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).some((key) => !MAIN_FILTER_KEYS.includes(key) && isActive(filters[key]));
+  return secondaryFiltersCount(filters) > 0;
+}
+
+/** Cuántos filtros de «Más filtros» están activos (change `reportes-vista-simplificada`, D3). */
+export function secondaryFiltersCount(filters: SearchFilters): number {
+  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).filter((key) => !MAIN_FILTER_KEYS.includes(key) && isActive(filters[key])).length;
 }
 
 /** Filtros activos en el formato de la API: query de `GET /search` y `filters` de la exportación. */

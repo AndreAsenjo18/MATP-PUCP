@@ -10,6 +10,7 @@ import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
+import { ReportPreview } from "@/components/domain/ReportPreview";
 import { ReportSelector } from "@/components/domain/ReportSelector";
 import { ReportsLive } from "@/components/domain/ReportsLive";
 import { StorageEstimateCard } from "@/components/domain/StorageEstimateCard";
@@ -62,47 +63,20 @@ function ReportesContent() {
         <ReportsLive key={selected} type={selected} />
       ) : report ? (
         <Card as="section" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-            {hasPermission("exports.run") && (
+          {/* La misma vista previa que el modo conectado: columnas principales y totales en frase. */}
+          {hasPermission("exports.run") && (
+            <div className="flex flex-wrap justify-end">
               <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
                 Exportar a Excel
               </Button>
-            )}
-          </div>
+            </div>
+          )}
           {exported && (
-            <p className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
-              Descarga simulada de <code>{report.report_type}.xlsx</code>. En modo conectado se generaría un
-              archivo real.
+            <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
+              En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con todas las columnas.
             </p>
           )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-base">
-              <thead className="text-sm text-gris-texto">
-                <tr>
-                  {report.columns.map((col) => (
-                    <th key={col} className="py-2 pr-4 font-medium">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {report.rows.map((row, index) => (
-                  <tr key={index} className="border-t border-borde">
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex} className="py-2 pr-4 text-tinta">
-                        {String(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-sm text-gris-texto">
-            Totales: {Object.entries(report.totals).map(([k, v]) => `${k}: ${v}`).join(" · ")}
-          </p>
+          <ReportPreview report={report} />
         </Card>
       ) : (
         <Card as="section">

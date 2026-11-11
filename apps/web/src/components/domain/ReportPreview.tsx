@@ -10,6 +10,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { DisclosureSummary } from "@/components/domain/DisclosureSummary";
 import {
   DESCRIPTION_COLUMN,
   cellText,
@@ -18,6 +19,9 @@ import {
   groupTitle,
   isLongDescription,
   maskedNotice,
+  previewColumns,
+  previewColumnsNotice,
+  reportNumber,
   totalsText,
   type Report,
   type ReportSubtotal,
@@ -40,19 +44,19 @@ export function DescriptionCell({ text, initialExpanded = false }: { text: strin
   );
 }
 
-function ReportRow({ columns, row }: { columns: string[]; row: unknown[] }) {
+function ReportRow({ columns, row, visible }: { columns: string[]; row: unknown[]; visible: readonly number[] }) {
   return (
     <tr className="border-t border-borde">
-      {row.map((cell, index) => (
+      {visible.map((index) => (
         <td key={index} className="px-2 py-1 align-top">
-          {columns[index] === DESCRIPTION_COLUMN ? <DescriptionCell text={cellText(cell, DESCRIPTION_COLUMN)} /> : cellText(cell)}
+          {columns[index] === DESCRIPTION_COLUMN ? <DescriptionCell text={cellText(row[index], DESCRIPTION_COLUMN)} /> : cellText(row[index])}
         </td>
       ))}
     </tr>
   );
 }
 
-function ReportTable({ report, initialCollapsed }: { report: Report; initialCollapsed: readonly string[] }) {
+function ReportTable({ report, initialCollapsed, visible }: { report: Report; initialCollapsed: readonly string[]; visible: readonly number[] }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set(initialCollapsed));
 
   function toggle(label: string) {
@@ -69,7 +73,7 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
         <thead className="text-gris-texto">
           <tr>
             {/* En cada celda y no en `thead`: Safari de tablet no siempre fija `thead`. */}
-            {report.columns.map((column) => (
+            {visible.map((index) => report.columns[index]).map((column) => (
               <th key={column} scope="col" className="sticky top-0 z-10 bg-white px-2 py-2 font-medium shadow-[inset_0_-1px_0_var(--color-borde)]">
                 {column}
               </th>
@@ -84,7 +88,7 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
             <tbody key={`${label}-${index}`} className="text-tinta">
               {label !== null && (
                 <tr className="border-t border-borde bg-crema">
-                  <th colSpan={report.columns.length} scope="colgroup" className="p-0 font-semibold">
+                  <th colSpan={visible.length} scope="colgroup" className="p-0 font-semibold">
                     <button type="button" aria-expanded={!folded} onClick={() => toggle(label)} className={`sticky left-0 flex min-h-11 items-center gap-2 px-2 text-left ${FOCUS_RING}`}>
                       <Icon size={18} aria-hidden="true" />
                       {groupTitle(group)}
@@ -92,7 +96,7 @@ function ReportTable({ report, initialCollapsed }: { report: Report; initialColl
                   </th>
                 </tr>
               )}
-              {!folded && group.rows.map((row, rowIndex) => <ReportRow key={rowIndex} columns={report.columns} row={row} />)}
+              {!folded && group.rows.map((row, rowIndex) => <ReportRow key={rowIndex} columns={report.columns} row={row} visible={visible} />)}
             </tbody>
           );
         })}
@@ -106,7 +110,7 @@ function SubtotalList({ subtotals }: { subtotals: ReportSubtotal[] }) {
     <ul className="grid gap-1 text-sm text-tinta sm:grid-cols-2">
       {subtotals.map((subtotal) => (
         <li key={`${subtotal.group}-${subtotal.label}`} style={{ paddingLeft: `${(subtotal.level ?? 0) * 16}px` }}>
-          <span className="text-gris-texto">{subtotal.group}:</span> {subtotal.label} — {subtotal.count}
+          <span className="text-gris-texto">{subtotal.group}:</span> {subtotal.label} — {reportNumber(subtotal.count)}
         </li>
       ))}
     </ul>
@@ -128,15 +132,22 @@ export function ReportPreview({
   report,
   onPage,
   initialCollapsed = [],
+  initialShowAll = false,
 }: {
   report: Report;
   onPage?: (page: number) => void;
   /** Grupos plegados desde el inicio. */
   initialCollapsed?: readonly string[];
+  /** Todas las columnas desde el inicio (pruebas; por defecto, solo las principales). */
+  initialShowAll?: boolean;
 }) {
   const pages = Math.max(1, Math.ceil(report.total_rows / Math.max(1, report.page_size)));
   const masked = report.masked_columns ?? [];
   const subtotals = report.subtotals ?? [];
+  // Columnas principales en pantalla; filas, grupos, subtotales y totales, siempre los del reporte.
+  const [showAll, setShowAll] = useState(initialShowAll);
+  const visible = previewColumns(report, showAll);
+  const columnsNotice = previewColumnsNotice(previewColumns(report, false).length, report.columns.length);
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -150,7 +161,15 @@ export function ReportPreview({
       <p className="text-base font-semibold text-tinta">{totalsText(report)}</p>
       {masked.length > 0 && <p className="rounded-md bg-crema px-3 py-2 text-sm text-tinta">{maskedNotice(masked)}</p>}
       {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
-      {report.rows.length > 0 && <ReportTable report={report} initialCollapsed={initialCollapsed} />}
+      {report.rows.length > 0 && columnsNotice && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-base text-tinta">{columnsNotice}</p>
+          <Button variant="outline" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
+            {showAll ? "Ver solo las principales" : `Ver las ${report.columns.length} columnas`}
+          </Button>
+        </div>
+      )}
+      {report.rows.length > 0 && <ReportTable report={report} initialCollapsed={initialCollapsed} visible={visible} />}
       {report.total_rows > report.page_size && onPage && (
         <div className="flex items-center justify-between gap-3">
           <Button variant="secondary" disabled={report.page <= 1} onClick={() => onPage(report.page - 1)}>
@@ -165,8 +184,8 @@ export function ReportPreview({
         </div>
       )}
       {subtotals.length > 0 && (
-        <details open={subtotals.length <= SUBTOTALS_OPEN_LIMIT} className="flex flex-col gap-2 border-t border-borde pt-1">
-          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-tinta">Subtotales ({subtotals.length})</summary>
+        <details open={subtotals.length <= SUBTOTALS_OPEN_LIMIT} className="group flex flex-col gap-2 border-t border-borde pt-1">
+          <DisclosureSummary>Subtotales ({subtotals.length})</DisclosureSummary>
           <SubtotalList subtotals={subtotals} />
         </details>
       )}
