@@ -19,3 +19,29 @@ En Administración › Control, la papelera y la consulta de auditoría MUST mos
 #### Scenario: Descargar la auditoría
 - **WHEN** el Administrador abre «Descargar en CSV»
 - **THEN** ve las dos descargas con los filtros vigentes, igual que antes
+
+### Requirement: Inicios de sesión fuera de la consulta por defecto
+La consulta de auditoría de Administración y su descarga en CSV MUST dejar fuera los inicios de sesión por defecto, SHALL ofrecer mostrarlos con una casilla y MUST mostrarlos cuando se filtra por ese tipo de registro o se busca un cambio o registro concreto. La API SHALL aceptar un parámetro opcional para dejar fuera un tipo de registro; sin él, responde como antes. Los inicios de sesión se siguen registrando. (RF-040, RN-005)
+
+#### Scenario: Consulta sin filtros
+- **WHEN** un Administrador abre la auditoría sin filtros
+- **THEN** no ve inicios de sesión entre los cambios ni en el total
+
+#### Scenario: Pedir los inicios de sesión
+- **WHEN** marca «Mostrar los inicios de sesión» y filtra
+- **THEN** los inicios de sesión vuelven a aparecer, también en el CSV
+
+#### Scenario: API sin el parámetro
+- **WHEN** un cliente consulta `GET /audit-logs` sin `exclude_entity_type`
+- **THEN** recibe todos los tipos de registro, igual que antes
+
+### Requirement: Filtros plegados y una sola palabra para los cambios
+En pantallas de menos de 1024 px, los filtros de la auditoría y de la papelera MUST abrirse con un botón que dice cuántos hay aplicados. La pestaña de auditoría de la ficha, la reversión y Administración SHALL llamar «cambio» a cada operación registrada, sin usar «conjunto de cambios», porque «conjunto» también es un tipo de pieza. (RNF-001, RNF-010)
+
+#### Scenario: Auditoría en el celular
+- **WHEN** un Administrador abre la auditoría a 375 px
+- **THEN** ve el botón «Filtros» y la lista de cambios, sin el formulario abierto
+
+#### Scenario: Revertir desde la ficha
+- **WHEN** la persona abre la reversión de un cambio en la ficha
+- **THEN** el panel se titula «Revertir este cambio» y ningún texto dice «conjunto»

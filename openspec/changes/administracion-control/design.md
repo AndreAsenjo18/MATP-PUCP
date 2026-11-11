@@ -25,7 +25,18 @@ Cada registro es un `li` con `grid` de cuatro columnas desde `lg` (qué · cuán
 ### D4. Pestañas táctiles
 Las pestañas de áreas y secciones usan `min-h-11` por debajo de `md` y `md:min-h-9` desde 768 px.
 
+### D5. Inicios de sesión fuera por defecto
+`GET /audit-logs` acepta `exclude_entity_type` (condición `entity_type <> valor`, en la lista, el detalle y el CSV). La web lo envía con `user_session` salvo que la persona marque «Mostrar los inicios de sesión», filtre por «Sesión» o pida un cambio o registro concreto (abrir el detalle de un inicio de sesión debe mostrarlo). **Descartado:** filtrar en el navegador (rompe el total y la paginación de 20 en 20); un parámetro booleano `include_sessions` (menos general y ata la API a un tipo).
+
+### D6. Filtros plegados por debajo de `lg`
+Se reutiliza `FiltersDrawer` de Búsqueda (con un `id` propio por pantalla): en celular y tableta, el botón «Filtros (N activos)» abre y cierra el formulario; desde `lg` se ve siempre.
+
+### D7. Una sola palabra: «cambio»
+Pestaña de auditoría de la ficha, panel de reversión, avisos y manual dicen «cambio» y «cambios»; el código y la API conservan `change_set`.
+
 ## Risks / Trade-offs
+
+- [Alguien busca un inicio de sesión y no lo ve] → la casilla está en «Más filtros», «Sesión» sigue en «Tipo de registro» y el manual lo explica.
 
 - [Motivo truncado] → el texto completo está en `title` y en el detalle; en celular no se trunca.
 - [Pruebas que leen los textos antiguos] → se actualizan explicando el cambio en `tasks.md`.

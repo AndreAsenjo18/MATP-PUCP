@@ -277,7 +277,7 @@ export async function confirmRevert(changeSetId: string, input: RevertConfirmInp
 const APPEND_ONLY_TYPES = new Set(["piece_movement", "piece_source_record", "conservation_assessment"]);
 
 export const MOVEMENT_NOTE =
-  "Los movimientos de ubicación registrados en este conjunto no se modifican: corríjalos registrando un movimiento correctivo desde la pestaña «Ubicación e historial».";
+  "Los movimientos de ubicación registrados en este cambio no se modifican: corríjalos registrando un movimiento correctivo desde la pestaña «Ubicación e historial».";
 
 function mockItem(entry: AuditEntryView): RevertItemOut {
   const base = { entity_type: entry.entity_type, entity_id: entry.entity_id, field: entry.field, source_action: entry.action };

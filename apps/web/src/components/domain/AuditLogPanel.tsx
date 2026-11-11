@@ -15,6 +15,8 @@
  * enmascara los valores sensibles que el rol no puede ver.
  */
 import { TriangleAlert } from "lucide-react";
+
+import { FiltersDrawer } from "@/components/domain/SearchFilters";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -26,6 +28,7 @@ import {
   EMPTY_AUDIT_FILTERS,
   fetchAuditChangeSets,
   fetchAuditEntries,
+  activeAuditFilterCount,
   hasActiveAuditFilters,
   type AuditChangeSetsResult,
   type AuditQueryFilters,
@@ -63,6 +66,7 @@ export interface AuditLogPanelProps {
 
 export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
   const [filters, setFilters] = useState<AuditQueryFilters>(EMPTY_AUDIT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [reloads, setReloads] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -128,7 +132,10 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
         <p className="text-base text-gris-texto">{AUDIT_INTRO}</p>
       </header>
 
-      <AuditLogFilterBar key={JSON.stringify(filters)} filters={filters} people={people} onApply={applyFilters} />
+      {/* En celular y tableta los filtros se abren con un botón, como en Búsqueda (administracion-control). */}
+      <FiltersDrawer id="audit-filters" open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={activeAuditFilterCount(filters)}>
+        <AuditLogFilterBar key={JSON.stringify(filters)} filters={filters} people={people} onApply={applyFilters} />
+      </FiltersDrawer>
 
       <AuditLogExport filters={filters} available={csvDownloadAvailable() && demoEntries === undefined} />
 

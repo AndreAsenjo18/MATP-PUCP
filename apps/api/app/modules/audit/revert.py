@@ -798,7 +798,7 @@ def revert_change_set(
     plan = plan_revert(session, change_set_id)
     if plan.summary.reverted:
         raise AlreadyReverted(
-            "Este conjunto de cambios ya fue revertido; puede revertir la reversión.",
+            "Este cambio ya fue revertido; puede revertir la reversión.",
             details={"reverted_by_change_set_id": str(plan.summary.reverted_by_change_set_id)},
         )
     check_revert_permissions(session, plan, ctx, permissions=permissions)

@@ -170,7 +170,7 @@ export function AuditLogEntryList({ entries, total, loading = false, error, onLo
       )}
       {!loading && !error && entries.length === 0 && <p className="text-base text-gris-texto">{DETAIL_EMPTY_MESSAGE}</p>}
       {entries.length > 0 && (
-        <ul aria-label="Campos cambiados en el conjunto" className="flex flex-col gap-2">
+        <ul aria-label="Campos cambiados" className="flex flex-col gap-2">
           {entries.map((entry) => (
             <li key={entry.id} className="flex flex-col text-base text-tinta">
               <span className="text-sm text-gris-texto">

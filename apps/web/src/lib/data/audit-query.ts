@@ -107,6 +107,23 @@ export interface AuditQueryFilters {
   userId: string;
   from: string;
   to: string;
+  /**
+   * `"1"` muestra los inicios de sesión. Por defecto (`""`) quedan fuera para que no llenen la
+   * consulta (change `administracion-control`, decisión del equipo del 2026-11-10).
+   */
+  sessions: string;
+}
+
+/** Tipo de registro de los inicios de sesión. */
+export const SESSION_ENTITY_TYPE = "user_session";
+
+/**
+ * Los inicios de sesión quedan fuera salvo que se pidan, se filtre justo por ese tipo o se busque un
+ * cambio o registro concreto (abrir el detalle de un inicio de sesión debe mostrarlo).
+ */
+export function hidesSessions(filters: Pick<AuditQueryFilters, "sessions" | "entityType" | "changeSetId" | "entityId">): boolean {
+  if (filters.sessions === "1" || filters.entityType === SESSION_ENTITY_TYPE) return false;
+  return !filters.changeSetId.trim() && !filters.entityId.trim();
 }
 
 export const EMPTY_AUDIT_FILTERS: AuditQueryFilters = {
@@ -119,7 +136,13 @@ export const EMPTY_AUDIT_FILTERS: AuditQueryFilters = {
   userId: "",
   from: "",
   to: "",
+  sessions: "",
 };
+
+/** Cuántos filtros hay aplicados, para el botón «Filtros (N activos)» en celular. */
+export function activeAuditFilterCount(filters: AuditQueryFilters): number {
+  return Object.values(filters).filter((value) => value.trim() !== "").length;
+}
 
 export function hasActiveAuditFilters(filters: AuditQueryFilters): boolean {
   return Object.values(filters).some((value) => value.trim() !== "");
@@ -151,6 +174,7 @@ export function auditQuery(filters: AuditQueryFilters): AuditQuery {
   const text = (value: string) => value.trim() || undefined;
   return {
     entity_type: text(filters.entityType),
+    exclude_entity_type: hidesSessions(filters) ? SESSION_ENTITY_TYPE : undefined,
     origin: (text(filters.origin) as AuditQuery["origin"]) ?? undefined,
     action: (text(filters.action) as AuditQuery["action"]) ?? undefined,
     origin_ref: text(filters.originRef),
@@ -226,6 +250,7 @@ export function filterAuditEntries(entries: readonly AuditEntryView[], filters: 
   const originRef = filters.originRef.trim().toLowerCase();
   return entries.filter((entry) => {
     if (filters.entityType && entry.entity_type !== filters.entityType) return false;
+    if (hidesSessions(filters) && entry.entity_type === SESSION_ENTITY_TYPE) return false;
     if (filters.origin && entry.origin !== filters.origin) return false;
     if (filters.action && entry.action !== filters.action) return false;
     if (filters.changeSetId.trim() && entry.change_set_id !== filters.changeSetId.trim()) return false;

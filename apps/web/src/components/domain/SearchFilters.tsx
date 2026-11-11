@@ -86,20 +86,23 @@ export function FiltersDrawer({
   open,
   onToggle,
   activeCount,
+  id = "search-filters",
   children,
 }: {
   open: boolean;
   onToggle: () => void;
   activeCount: number;
+  /** Lo usan también la papelera y la auditoría (change `administracion-control`). */
+  id?: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <Button variant="secondary" size="touch" icon={SlidersHorizontal} aria-expanded={open} aria-controls="search-filters" className="lg:hidden" onClick={onToggle}>
+      <Button variant="secondary" size="touch" icon={SlidersHorizontal} aria-expanded={open} aria-controls={id} className="lg:hidden" onClick={onToggle}>
         {open ? "Ocultar los filtros" : "Filtros"}
         {activeCount > 0 && ` (${activeCount} activo${activeCount === 1 ? "" : "s"})`}
       </Button>
-      <div id="search-filters" className={cn(open ? "block" : "hidden", "lg:block")}>
+      <div id={id} className={cn(open ? "block" : "hidden", "lg:block")}>
         {children}
       </div>
     </div>

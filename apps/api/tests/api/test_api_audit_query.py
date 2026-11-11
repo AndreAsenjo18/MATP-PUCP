@@ -295,6 +295,22 @@ def test_grouped_csv_export_summarizes_each_change_set(
     assert rows[0]["reverted"] == "false"
 
 
+def test_a_record_type_can_be_left_out(
+    seeded_api: SeededApi, imported_batch: ImportedBatch
+) -> None:
+    """Change `administracion-control`: the screen leaves logins (``user_session``) out."""
+    client = seeded_api.client
+    base = {"group_by": "change_set", "origin_ref": imported_batch.origin_ref}
+    shown = client.get(AUDIT, params=base, headers=HA)
+    assert shown.status_code == 200
+    assert shown.json()["total"] == 1
+    hidden = client.get(AUDIT, params={**base, "exclude_entity_type": "piece"}, headers=HA)
+    assert hidden.status_code == 200
+    assert hidden.json()["total"] == 0
+    other = client.get(AUDIT, params={**base, "exclude_entity_type": "user_session"}, headers=HA)
+    assert other.json()["total"] == 1
+
+
 def test_audit_query_still_requires_the_audit_permission(client: TestClient) -> None:
     assert client.get(AUDIT, headers=as_user(CATALOGUER)).status_code == 403
     assert (

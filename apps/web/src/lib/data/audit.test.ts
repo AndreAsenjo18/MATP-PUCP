@@ -183,7 +183,7 @@ describe("previewRevert", () => {
     useLive(async () =>
       json(409, {
         code: ALREADY_REVERTED,
-        message: "Este conjunto ya fue revertido.",
+        message: "Este cambio ya fue revertido.",
         details: { reverted_by_change_set_id: SET_B },
       }),
     );
@@ -192,7 +192,7 @@ describe("previewRevert", () => {
 
     expect(result).toEqual({
       status: "already_reverted",
-      message: "Este conjunto ya fue revertido.",
+      message: "Este cambio ya fue revertido.",
       revertedByChangeSetId: SET_B,
     });
   });

@@ -19,6 +19,18 @@
 - [x] 3.2 La dirección refleja la sección elegida (`?pestana=`), hallazgo del recorrido: al cambiar de pestaña quedaba la sección anterior en la dirección
   - Sin prueba de render (usa `window.history`); verificado en el navegador.
 
+## 5. Decisiones del equipo del 2026-11-10
+
+- [x] 5.1 `exclude_entity_type` en `GET /audit-logs` (`AuditFilters`, lista, detalle y CSV); prueba de API con y sin el parámetro; OpenAPI y cliente tipado regenerados; parámetro registrado en `docs/api/mapeo-endpoints-v1.md` (Req: Inicios de sesión fuera de la consulta por defecto — escenario «API sin el parámetro»)
+- [x] 5.2 Web: filtro `sessions` y casilla «Mostrar los inicios de sesión» en «Más filtros»; `hidesSessions` no oculta al filtrar por «Sesión» ni al pedir un cambio o registro concreto; la demostración aplica la misma regla; pruebas (Req: Inicios de sesión fuera… — escenarios «Consulta sin filtros» y «Pedir los inicios de sesión»)
+  - Tres pruebas ajustadas porque la consulta sin filtros ahora lleva `exclude_entity_type=user_session` (`audit-query.test.ts` ×2, `AuditLogPanel.test.tsx`).
+- [x] 5.3 Filtros de Auditoría y Papelera plegados por debajo de `lg` con `FiltersDrawer` (ganó un `id` por pantalla) (Req: Filtros plegados y una sola palabra… — escenario «Auditoría en el celular»)
+  - Sin prueba de render propia: `FiltersDrawer` ya tiene la suya en `SearchLive.test.tsx`.
+- [x] 5.4 «Cambio» en lugar de «conjunto de cambios» en la pestaña de auditoría de la ficha, la reversión, el aviso de movimientos, el mensaje de la API para una reversión repetida y el manual (Req: Filtros plegados y una sola palabra… — escenario «Revertir desde la ficha»)
+  - Cinco pruebas ajustadas al texto nuevo (`AuditChangeSetList`, `AuditTrailPanel`, `AuditLogChangeSetList`, `RevertChangeSetPanel` ×2) y `audit.test.ts`. Pruebas de API de auditoría y reversión: 163 en verde.
+- [ ] 5.5 Verificación en el navegador de 5.1 a 5.4 a 1280 y 375 px
+  - Pendiente (2026-11-11): Docker Desktop se apagó antes de reconstruir la API y la web.
+
 ## 4. Cierre
 
 - [x] 4.1 Manual `docs/manual-usuario/auditoria.md` (papelera, consulta global, CSV) y `administracion.md` (dirección por sección, pestañas, título de la exportación)
@@ -36,6 +48,6 @@
 
   - Sin desplazamiento horizontal en los tres anchos. «Restaurar» abre su panel (no se confirmó ninguna restauración). La dirección cambia a `?pestana=auditoria` al elegir la pestaña.
   - **No verificado**: rol Gestor de colecciones (botón desactivado), restauración confirmada con dependencias, descargas CSV reales, detalle campo a campo abierto, teclado y lector de pantalla.
-  - **Pendiente para otro change**: en celular los filtros de Auditoría ocupan casi toda la primera pantalla (podrían plegarse como en Búsqueda); la pestaña de auditoría de la ficha sigue diciendo «conjunto de cambios».
+  - Los dos pendientes que se anotaron aquí (filtros en celular y «conjunto de cambios» en la ficha) se resolvieron en la sección 5.
 - [ ] 4.3 `npm run lint:web`, `npx vitest run` y `openspec validate --all --strict` en verde; tras aprobar el PR, `openspec archive administracion-control -y`
-  - Parcial (2026-11-10): lint y tipos en verde, 1299 pruebas en 99 archivos, 23 de 23 specs válidas. Falta el archivo tras aprobar el PR.
+  - Parcial (2026-11-11): lint web y API en verde, `openapi:check` al día, 1302 pruebas web en 99 archivos, 27 de 27 specs válidas. Falta el archivo tras aprobar el PR.

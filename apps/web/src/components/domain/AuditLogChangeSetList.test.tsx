@@ -157,7 +157,7 @@ describe("AuditLogEntryList", () => {
     const html = render(<AuditLogEntryList entries={[entry()]} total={1} />);
     const text = visibleText(html);
 
-    expect(html).toContain('aria-label="Campos cambiados en el conjunto"');
+    expect(html).toContain('aria-label="Campos cambiados"');
     expect(text).toContain("Pieza");
     expect(text).toContain(shortId(PIECE));
     expect(text).toContain("procedencia: Ayacucho → Huancavelica");

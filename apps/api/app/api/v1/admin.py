@@ -666,6 +666,10 @@ def get_audit_logs(
     user: AuditReader,
     params: Annotated[PageParams, Depends(page_params)],
     entity_type: Annotated[str | None, Query(description="p. ej. piece, collection.")] = None,
+    exclude_entity_type: Annotated[
+        str | None,
+        Query(description="Deja fuera un tipo de registro, p. ej. user_session (sesiones)."),
+    ] = None,
     entity_id: uuid.UUID | None = None,
     change_set_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
@@ -686,6 +690,7 @@ def get_audit_logs(
 ) -> AuditLogPage | StreamingResponse:
     filters = AuditFilters(
         entity_type=entity_type,
+        exclude_entity_type=exclude_entity_type,
         entity_id=entity_id,
         change_set_id=change_set_id,
         user_id=user_id,

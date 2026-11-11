@@ -69,7 +69,8 @@ describe("AuditLogPanel", () => {
 
     expect(text).toContain("Cargando la auditoría…");
     expect(text).not.toContain(CSV_DEMO_NOTICE);
-    expect(html).toContain('href="http://api.test/api/v1/audit-logs?group_by=change_set&amp;format=csv"');
-    expect(html).toContain('href="http://api.test/api/v1/audit-logs?format=csv"');
+    // Los inicios de sesión quedan fuera por defecto también en el CSV (administracion-control).
+    expect(html).toContain('href="http://api.test/api/v1/audit-logs?exclude_entity_type=user_session&amp;group_by=change_set&amp;format=csv"');
+    expect(html).toContain('href="http://api.test/api/v1/audit-logs?exclude_entity_type=user_session&amp;format=csv"');
   });
 });

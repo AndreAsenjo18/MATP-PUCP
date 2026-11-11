@@ -88,6 +88,9 @@ class AuditFilters(BaseModel):
     """Filtros comunes a la vista campo a campo, la agrupada y la exportación."""
 
     entity_type: str | None = None
+    # Leaves out one record type, e.g. ``user_session`` so that logins do not flood the query
+    # (change ``administracion-control``).
+    exclude_entity_type: str | None = None
     entity_id: uuid.UUID | None = None
     change_set_id: uuid.UUID | None = None
     user_id: uuid.UUID | None = None
@@ -102,6 +105,8 @@ class AuditFilters(BaseModel):
         conditions: list[Any] = []
         if self.entity_type:
             conditions.append(AuditLog.entity_type == self.entity_type)
+        if self.exclude_entity_type:
+            conditions.append(AuditLog.entity_type != self.exclude_entity_type)
         if self.entity_id is not None:
             conditions.append(AuditLog.entity_id == self.entity_id)
         if self.change_set_id is not None:

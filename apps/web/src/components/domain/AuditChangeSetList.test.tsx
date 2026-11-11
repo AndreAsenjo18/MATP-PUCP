@@ -161,7 +161,7 @@ describe("AuditChangeSetList", () => {
     expect(text).toContain("Corrección de procedencia según el libro de inventario");
     expect(text).toContain("procedencia: Ayacucho → Huancavelica");
     expect(text).toContain("Revertir este cambio");
-    expect(html).toContain('aria-label="Conjuntos de cambios"');
+    expect(html).toContain('aria-label="Cambios registrados"');
     expect(html).toContain(`id="${changeSetAnchor(SET_A)}"`);
   });
 
