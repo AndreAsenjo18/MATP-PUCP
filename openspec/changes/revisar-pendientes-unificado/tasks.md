@@ -68,9 +68,12 @@
 
 ## 5. Documentación y supuestos
 
-- [ ] 5.1 Manual: sección nueva «Revisar pendientes» en `docs/manual-usuario/calidad-datos.md` (pestañas, contadores, fila compacta, «Revisar»); `ia.md` remite a la pestaña. Verificación: los nombres del manual coinciden con los de la pantalla.
-- [ ] 5.2 Registrar en `docs/preguntas-contraparte.md` (sección nueva del change) los supuestos: un mismo lugar para los tres pendientes, el contador de incompletas como «piezas por completar» y los textos de los niveles de parecido. Verificación: sección añadida y enlazada desde la spec delta.
+- [x] 5.1 Manual: sección nueva «Revisar pendientes» en `docs/manual-usuario/calidad-datos.md` (pestañas, contadores, fila compacta, «Revisar»); `ia.md` remite a la pestaña. Verificación: los nombres del manual coinciden con los de la pantalla.
+  - `calidad-datos.md`: sección nueva «Revisar pendientes» (pestañas, contadores, teclado, roles, avisos), y «Posibles duplicados» al día (abrir desde la pestaña, fila con «Revisar» y «Cerrar», «Coincide: …», foco en la fila siguiente tras resolver, pasos de «Marcar como distinto» y «Posponer» con el par abierto). El reporte de incompletas dice que también está en la pestaña. `ia.md` remite a la pestaña «Sugerencias de IA». `README.md`: secciones del menú y fila de `calidad-datos.md`. Mientras la Base no cambie el menú, el manual dice que «Duplicados» y «Sugerencias IA» llevan al mismo lugar. El aviso «Fuera del MVP» de `ia.md` es de P4 y no se tocó.
+- [x] 5.2 Registrar en `docs/preguntas-contraparte.md` (sección nueva del change) los supuestos: un mismo lugar para los tres pendientes, el contador de incompletas como «piezas por completar» y los textos de los niveles de parecido. Verificación: sección añadida y enlazada desde la spec delta.
+  - `main` ya traía la sección **RP** (2026-11-10) con RP1 (un mismo lugar para los tres pendientes) y RP2 (nombre de la pantalla y niveles «Muy parecidas / Parecidas / Poco parecidas»), así que **no se abrió una sección nueva**: se añadieron a RP las filas RP5 (el contador de incompletas como «piezas por completar») y RP6 (un solo motivo por par y la redacción «Coincide: …»). Las confirman Sergio y André con el museo, según la nota de la sección.
 - [ ] 5.3 Avisar a P1 de que `identifierTypeLabel` (`status-intents.ts`) no traduce los tipos sembrados (`INC_RN` y otros llegan tal cual a la ficha y al asistente de fusión), y registrarlo como hallazgo de C19 en `docs/lista-maestra-funcionalidades.md`. Verificación: aviso enviado y línea añadida.
+  - Hallazgo registrado en la fila **C19** de `docs/lista-maestra-funcionalidades.md` (2026-11-11), separado por dueño: ficha y `status-intents.ts` (P1) y asistente de fusión `MergeWizard` (P2, pendiente). **Texto del aviso listo; lo envía P2.** La tarea se cierra cuando P1 lo haya recibido.
 
 ## 6. Cierre y prueba humana
 
