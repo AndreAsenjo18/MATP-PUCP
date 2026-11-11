@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { EMPTY_OPTIONS, SearchFiltersPanel } from "@/components/domain/SearchFilters";
@@ -306,6 +309,14 @@ describe("legibilidad de Reportes (Req: Legibilidad de Reportes)", () => {
     expect(checkboxLabels.length).toBeGreaterThan(0);
     for (const label of checkboxLabels) expect(label).toMatch(/\bmin-h-11\b/);
     for (const select of incomplete.match(/<select\b[^>]*>/g) ?? []) expect(select).toMatch(/\bmin-h-11\b.*\bmax-w-full\b|\bmax-w-full\b.*\bmin-h-11\b/);
+  });
+
+  it("en incompletas con datos, las etiquetas de alerta van a 16 px y los enlaces a cada pieza miden 44 px (recorrido 7.1)", () => {
+    // Las filas solo existen con datos (se cargan en un efecto): el contenedor se comprueba pintado y
+    // el enlace, en el código; el recorrido en Chrome de 7.1 lo mide con datos.
+    expect(incomplete).toMatch(/^<div class="[^"]*\[&amp;_span\.rounded-full\]:text-base/);
+    const panel = readFileSync(path.resolve(__dirname, "IncompleteReportPanel.tsx"), "utf-8");
+    expect(panel).toMatch(/<Link href=\{`\/piezas\/\$\{item\.piece_id\}`\} className="inline-flex min-h-11 items-center/);
   });
 
   it("la tabla de incompletas se desplaza dentro de su recuadro, no la página", () => {

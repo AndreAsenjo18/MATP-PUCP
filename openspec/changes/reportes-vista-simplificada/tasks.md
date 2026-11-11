@@ -48,7 +48,22 @@
 
 ## 7. Cierre y prueba humana
 
-- [ ] 7.1 Recorrido propio en Chrome con la compilación de producción, en modo demostración, a 1366 px, 360 px y 1366 px al 150 %, como Curadora y como Administrador, antes (`main`) y después con los mismos datos: alto de la página, palabras, textos de menos de 16 px, controles de menos de 44 px, columnas cortadas, nombres internos y desbordes. Capturas fuera del repo. Verificación: tabla de antes y después en la nota de esta tarea. Si hay `.env`, también en modo conectado.
+- [x] 7.1 Recorrido propio en Chrome con la compilación de producción, en modo demostración, a 1366 px, 360 px y 1366 px al 150 %, como Curadora y como Administrador, antes (`main`) y después con los mismos datos: alto de la página, palabras, textos de menos de 16 px, controles de menos de 44 px, columnas cortadas, nombres internos y desbordes. Capturas fuera del repo. Verificación: tabla de antes y después en la nota de esta tarea. Si hay `.env`, también en modo conectado.
+  - **Solo en modo demostración** (sin `.env` en el repo; el modo conectado queda para la prueba humana). Compilación de producción (`next build` + `next start`) de `origin/main` (antes, en un worktree temporal con su propio `npm ci`) y de esta rama (después), en Chrome sin interfaz, con **los mismos datos**; medidas de la zona de contenido, con las mismas métricas que el diagnóstico. Una casilla se mide por su etiqueta en las dos versiones.
+
+    | Reporte, como Curadora | Alto a 1366 | Alto a 360 | Alto a 1366 al 150 % | Palabras | Textos de menos de 16 px | Controles de menos de 44 px | Nombres internos | Desborde de la página |
+    |---|---|---|---|---|---|---|---|---|
+    | Inventario general | 2 381 → **1 265** | 4 067 → **1 829** | 3 575 → **1 267** | 516 → 380 | 17 → **0** | 3 de 10 → **0** de 17 | RNF-003 → ninguno | no → no |
+    | Por colección | 1 330 → 1 209 | 2 152 → 1 741 | 1 540 → 1 211 | 183 → 146 | 12 → 0 | 3 de 10 → 0 de 13 | RNF-003 → ninguno | no → no |
+    | Por ubicación | 1 125 → 779 | 1 899 → 1 337 | 1 335 → 961 | 159 → 91 | 12 → 0 | 3 de 10 → 0 de 6 | RNF-003 → ninguno | no → no |
+    | Piezas agrupadas (no disponible en demostración) | 943 → 768 | 1 657 → 1 045 | 1 177 → 721 | 154 → 78 | 9 → 0 | 3 de 9 → 0 de 5 | RNF-003 → ninguno | no → no |
+    | Información incompleta | 1 755 → 1 403 | 3 317 → 2 897 | 2 205 → 1 905 | 304 → 228 | **47 → 0** | 9 de 28 → **0** de 24 | RNF-003 → ninguno | **sí → no** (a 360 px) |
+
+    Administrador, inventario general a 1366: 2 547 → 1 265 px y 542 → 380 palabras; ya no ve «Exportación completa» (142 px) ni «Volumen fotográfico» (420 px) en Reportes. Inventario de demostración: 7 columnas → 5 en pantalla, con «En pantalla: 5 de 7 columnas. El Excel las trae todas.» y «Ver las 7 columnas»; con datos reales serían 6 de 19. A 360 px las columnas que no caben se alcanzan desplazando la tabla dentro de su recuadro; la página no se mueve.
+  - En Administración › Control › Almacenamiento de fotos (`?pestana=almacenamiento`), el Administrador ve «Volumen fotográfico» sin «RNF-003»; la Curadora no ve la sección.
+  - **Corregido en el recorrido:** en «Información incompleta» con datos, los enlaces a cada pieza medían 20 px y las etiquetas de alerta, 14 px (no aparecían en las pruebas de HTML estático porque se cargan en un efecto). Ahora miden 44 px y 16 px; hay una prueba en `ReportsSimplified.test.tsx`.
+  - **Para observar en la prueba humana:** (1) a 360 px, la columna «Alertas» de incompletas queda cortada en el borde y no hay nada que indique que la tabla se desplaza; (2) «Generado el 17/9/2026, 2:00:00 a. m..» lleva un punto de más: `toLocaleString` termina en «a. m.» y la plantilla añade otro (es anterior a este change).
+  - Capturas fuera del repo: `C:\GitHub\capturas-c22\` (`antes-` y `despues-` del inventario y de incompletas a 1366 y 360, `despues-admin-almacenamiento-1366.png` y los dos `medidas-reportes.json`).
 - [ ] 7.2 **Prueba humana (no la hace el agente).** El humano prueba en local con datos sintéticos, sin manual, como alguien de 60 años o más que no conoce el sistema, diciendo en voz alta lo que piensa, y el agente observa:
   - **HU-21:** «Sacar el inventario de una colección y exportarlo. ¿Qué columnas faltan o sobran?» (en pantalla y en el Excel).
   - **HU-22:** «Sacar un reporte agrupado por procedencia.» (en modo conectado; en demostración este reporte no está disponible).

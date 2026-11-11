@@ -79,7 +79,8 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    // Las etiquetas de alerta (`Badge` de components/ui, de la Base) a 16 px solo aquí (reportes-vista-simplificada, D6).
+    <div className="flex min-w-0 flex-col gap-4 [&_span.rounded-full]:text-base">
       <fieldset className="flex min-w-0 flex-col gap-2">
         <legend className="text-base font-medium text-gris-texto">Filtrar por alerta (se combinan con «y»)</legend>
         <div className="flex flex-wrap gap-2">
@@ -161,7 +162,7 @@ export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: stri
                 {result.page.items.map((item) => (
                   <tr key={item.piece_id} className="border-t border-borde">
                     <td className="py-2 pr-4">
-                      <Link href={`/piezas/${item.piece_id}`} className="font-medium text-tinta underline hover:text-terracota">
+                      <Link href={`/piezas/${item.piece_id}`} className="inline-flex min-h-11 items-center font-medium text-tinta underline hover:text-terracota">
                         {item.title}
                       </Link>
                     </td>
