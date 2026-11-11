@@ -45,10 +45,9 @@ import {
   type RowPicks,
 } from "@/lib/data/merge-plan";
 
-import { useSubmit } from "./DuplicateReview";
+import { identifierTypeName, useIdentifierTypeNames, useSubmit } from "./DuplicateReview";
 import type { DialogOutcome } from "./PieceActionDialogs";
 import { TenureBadge } from "./StatusBadges";
-import { identifierTypeLabel } from "./status-intents";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 type DuplicateCandidate = ApiSchemas["DuplicateCandidateOut"];
@@ -90,13 +89,14 @@ export function otherIdentifiers(piece: Pick<PieceDetail, "identifiers">): Piece
 
 /** El código I y los demás códigos de la pieza (los históricos, marcados); «Sin código I» si no tiene. */
 export function PieceCodes({ piece }: { piece: PieceDetail }) {
+  const names = useIdentifierTypeNames();
   const others = otherIdentifiers(piece);
   return (
     <span className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="font-mono font-bold text-terracota">{piece.code_i ? `Código I ${piece.code_i}` : "Sin código I"}</span>
       {others.map((identifier) => (
         <span key={identifier.id} className="rounded bg-crema px-1.5 py-0.5 font-mono text-tinta">
-          {identifierTypeLabel(identifier.identifier_type_code)} {identifier.original_value}
+          {identifierTypeName(identifier.identifier_type_code, names)} {identifier.original_value}
           {identifier.is_current ? "" : " · histórico"}
         </span>
       ))}
@@ -318,6 +318,7 @@ export function MergeSummaryStep({
   noteError: string | null;
   onNoteChange: (note: string) => void;
 }) {
+  const names = useIdentifierTypeNames();
   const changes = sheetChanges(surviving, absorbed, choices);
   const identifiers = identifierFates(surviving, absorbed);
   const moving = identifiers.filter((i) => i.fate === "moves" || i.fate === "moves_not_current");
@@ -357,7 +358,7 @@ export function MergeSummaryStep({
         <SummarySection title={`Pasa de ${a} a ${s}`}>
           {moving.map(({ identifier, fate }) => (
             <li key={identifier.id}>
-              Código {identifierTypeLabel(identifier.identifier_type_code)} {identifier.original_value}
+              {identifierTypeName(identifier.identifier_type_code, names)} {identifier.original_value}
               {fate === "moves_not_current" && " (como no vigente: ya lo tiene la conservada)"}
             </li>
           ))}
@@ -374,7 +375,7 @@ export function MergeSummaryStep({
               <li key={identifier.id}>
                 {fate === "stays_inventory_code"
                   ? `Código I ${identifier.original_value}: un código I nunca cambia de pieza.`
-                  : `Identificador bloqueado ${identifierTypeLabel(identifier.identifier_type_code)} ${identifier.original_value}.`}
+                  : `Identificador bloqueado: ${identifierTypeName(identifier.identifier_type_code, names)} ${identifier.original_value}.`}
               </li>
             ))}
             {materials.stays.length > 0 && <li>Materiales que la conservada ya tiene: {materials.stays.map((m) => m.label).join(", ")}.</li>}

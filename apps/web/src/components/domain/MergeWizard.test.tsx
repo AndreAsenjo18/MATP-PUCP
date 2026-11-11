@@ -6,6 +6,7 @@ import { DUPLICATE_CANDIDATES, getPieceDetail, ids } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
 import { MergeLinks, MergedFromNotice, MergedIntoNotice } from "./MergedPieceLinks";
+import { IdentifierTypeNamesProvider } from "./DuplicateReview";
 import { MergeFieldsStep, MergeSummaryStep, MergeSurvivorStep, MergeWizard, PieceCodes, type MergeStep } from "./MergeWizard";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
@@ -109,7 +110,7 @@ describe("MergeWizard: paso 3, resumen y confirmación", () => {
     expect(text).toContain("Procedencia : «Puno» → «Cusco (sintético)» Elegido");
     expect(text).toContain("Autor : «Sin registrar» → «Taller sintético» Se completa");
     expect(text).toContain("Pasa de «Toro de Pucará (3 cuernos)» a «Toro de Pucará»");
-    expect(text).toContain("Código Colección mmz 15 (como no vigente: ya lo tiene la conservada)");
+    expect(text).toContain("Código de colección mmz 15 (como no vigente: ya lo tiene la conservada)");
     expect(text).toContain("2 fotografías.");
     expect(text).toContain("Sus componentes, préstamos y sugerencias de IA.");
     expect(text).toContain("Qué se queda en «Toro de Pucará (3 cuernos)»");
@@ -174,8 +175,9 @@ describe("códigos a la vista durante la fusión", () => {
   it("muestra el código I y los demás códigos de la pieza, con los históricos marcados", () => {
     const text = visibleText(render(<PieceCodes piece={historic(toro)} />));
     expect(text).toContain("Código I I-0236");
-    expect(text).toContain("Colección M.M.Z. 015");
-    expect(text).toContain("INC_RN 4521 · histórico");
+    expect(text).toContain("Código de colección M.M.Z. 015");
+    // revisar-pendientes-unificado: antes se veía el código interno «INC_RN 4521».
+    expect(text).toContain("Código INC / Registro Nacional 4521 · histórico");
   });
 
   it("una pieza sin ningún código dice «Sin código I» y no pinta una lista vacía", () => {
@@ -187,7 +189,7 @@ describe("códigos a la vista durante la fusión", () => {
 
   it("los tres pasos muestran los códigos de las dos piezas", () => {
     expect(visibleText(wizard(1))).toContain("Código I I-0236");
-    expect(visibleText(wizard(1))).toContain("Colección M.M.Z. 015");
+    expect(visibleText(wizard(1))).toContain("Código de colección M.M.Z. 015");
     for (const step of [2, 3] as const) {
       const text = visibleText(wizard(step));
       expect(text).toContain("Se conserva");
@@ -232,5 +234,43 @@ describe("diálogo de fusión compacto", () => {
     for (const step of [1, 2, 3] as const) expect(visibleText(wizard(step, clean))).not.toMatch(requirement);
     expect(visibleText(wizard(1, getPieceDetail(ids.piece(7))!))).not.toMatch(requirement);
     expect(visibleText(wizard(1, getPieceDetail(ids.piece(5))!))).not.toMatch(requirement);
+  });
+});
+
+describe("nombres de los tipos de código en la fusión (revisar-pendientes-unificado)", () => {
+  /** La pieza B con los códigos tal como los siembra la API, uno de ellos bloqueado. */
+  function withSeededCodes(piece: PieceDetail): PieceDetail {
+    const base = piece.identifiers.find((i) => i.identifier_type_code !== "I") ?? piece.identifiers[0]!;
+    const codes: [string, boolean][] = [["COLECCION", false], ["INC_RN", false], ["PROPIETARIO", true], ["OTRO", false], ["CATALOGO", false]];
+    return {
+      ...piece,
+      identifiers: codes.map(([code, locked], n) => ({ ...base, id: `seed-${n}`, identifier_type_code: code, original_value: `S-${n}`, is_current: true, is_locked: locked })),
+    };
+  }
+  const seededB = withSeededCodes(toroB);
+  const INTERNAL = ["COLECCION", "INC_RN", "PROPIETARIO", "OTRO", "CATALOGO"];
+
+  it("con los códigos del seed real, ningún paso muestra un código interno", () => {
+    for (const step of [1, 2, 3] as const) {
+      const text = visibleText(wizard(step, seededB));
+      for (const code of INTERNAL) expect(text, `paso ${step}: ${code}`).not.toContain(code);
+    }
+    const summary = visibleText(wizard(3, seededB));
+    expect(summary).toContain("Código de colección S-0");
+    expect(summary).toContain("Código INC / Registro Nacional S-1");
+    expect(summary).toContain("Identificador bloqueado: Código del propietario o comodante S-2.");
+    expect(summary).toContain("Otro código histórico S-3");
+    // Un tipo que nadie conoce se muestra como «Otro código», nunca con su código.
+    expect(summary).toContain("Otro código S-4");
+  });
+
+  it("usa el nombre que da la API cuando la cola lo provee", () => {
+    const html = render(
+      <IdentifierTypeNamesProvider names={{ CATALOGO: "Número de catálogo", INC_RN: "Registro Nacional (Ministerio)" }}>
+        <PieceCodes piece={seededB} />
+      </IdentifierTypeNamesProvider>,
+    );
+    expect(visibleText(html)).toContain("Número de catálogo S-4");
+    expect(visibleText(html)).toContain("Registro Nacional (Ministerio) S-1");
   });
 });

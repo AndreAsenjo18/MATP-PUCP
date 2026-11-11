@@ -130,7 +130,8 @@ export function IdentifierTypeNamesProvider({ names, children }: { names: Identi
   return <IdentifierTypeNamesContext.Provider value={names}>{children}</IdentifierTypeNamesContext.Provider>;
 }
 
-function useIdentifierTypeNames(): IdentifierTypeNames {
+/** Nombres de los tipos que la cola leyó de la API; vacío fuera de ella (quedan los sembrados). */
+export function useIdentifierTypeNames(): IdentifierTypeNames {
   return useContext(IdentifierTypeNamesContext);
 }
 
