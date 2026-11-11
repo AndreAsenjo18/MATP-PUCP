@@ -142,6 +142,8 @@ Para cambiar el nombre o la descripción de un formato, o para eliminarlo, use *
 
 ## 4. Revisar las filas
 
+Al llegar a la revisión lo primero que ve es un **resumen**: cuántas filas hay y cuántas están en cada situación (**Con errores**, **Conflictos**, **Posibles duplicados**, **Actualizaciones**, **Nuevas**). Cada fila se cuenta **una sola vez** (si tiene un error, se cuenta como error), así que las cifras suman el total. Debajo, una frase dice qué falta decidir antes de aprobar. Al pulsar una cifra, la lista muestra solo ese grupo. La línea **Formato aplicado** y el botón **Cambiar formato** también están en el resumen.
+
 Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su **decisión** y lo que hará la carga con ella («Creará una pieza nueva», «Actualizará una pieza existente» o «No se aplicará»).
 
 | Clasificación | Qué significa |
@@ -151,14 +153,21 @@ Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su
 | **Posible duplicado** | No coincide ningún código, pero se parece mucho a una pieza que ya existe. |
 | **Conflicto** | Sus códigos apuntan a piezas distintas, intenta cambiar el código I de una pieza o comparte el código I con otra fila del mismo archivo. |
 
-- Con los botones de arriba (**Nuevas**, **Actualizaciones**, **Posibles duplicados**, **Conflictos**, **Con errores**) se ve solo ese grupo.
+- Con las cifras del resumen se ve solo ese grupo. Las que están en 0 no se pueden pulsar.
 - En **Cómo se clasifican las filas** se explican las reglas y el umbral de parecido que se usaron.
 - Los datos del Excel de cada fila están plegados en **Ver datos del archivo**.
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
 
-### Filas sin régimen de tenencia
+### Un mismo error en muchas filas
 
-Si varias filas no traen régimen, un aviso amarillo dice cuántas son. Elija un régimen y pulse **Aplicar y validar de nuevo**: el lote se vuelve a validar con ese régimen para esas filas; las que ya lo traían no cambian. Si el régimen no encaja con los códigos de una fila (por ejemplo, Comodato con código I), esa fila mostrará el error correspondiente.
+Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque amarillo** («30 filas: Falta el régimen de tenencia») con lo que puede hacer, en lugar de repetir el error en cada tarjeta:
+
+- **Elegir una solución para todas.** Si el error es el régimen, elija uno y pulse **Aplicar y validar de nuevo**: el lote se vuelve a validar con ese régimen para esas filas; las que ya lo traían no cambian. Si el régimen no encaja con los códigos de una fila (por ejemplo, Comodato con código I), esa fila mostrará el error correspondiente.
+- **Cambiar el formato.** Si casi todas las filas fallan porque el formato aplicado no trae esa columna, el bloque lo dice («El formato … no trae la columna de régimen de tenencia») y ofrece **Cambiar formato** primero.
+- **Dejar fuera todas.** **Dejar fuera las N filas** (con una confirmación) las excluye de una vez, sin pedir motivo. Después puede decidir cada fila por separado.
+- **Ver las N filas.** Las filas del grupo están plegadas; al abrirlas, cada una ocupa una línea y, al pulsarla, muestra sus datos y sus tres botones.
+
+Un error que afecta a una o dos filas se sigue viendo en la tarjeta de cada fila.
 
 ### Revisar los cambios de una actualización
 
@@ -219,7 +228,7 @@ Los códigos se leen como en el resto de la carga: `M.M.Z. 509`, `MMZ 509` y `mm
 
 ## 5. Aprobar la carga
 
-En **Aprobación de la carga** se lee el resumen exacto, por ejemplo: «Se crearán 70 piezas nuevas, se actualizarán 35 piezas y 15 filas no se aplicarán».
+La barra **Aprobación de la carga** queda **pegada al pie de la pantalla** mientras revisa, así que el botón siempre está a la vista. Ahí se lee el resumen exacto, por ejemplo: «Se crearán 70 piezas nuevas, se actualizarán 35 piezas y 15 filas no se aplicarán».
 
 1. Pulse **Aprobar y aplicar** (solo Gestora de colecciones y Administrador).
 2. Revise el resumen en la ventana de confirmación y pulse **Confirmar**.

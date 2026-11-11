@@ -40,7 +40,6 @@ import {
   PROGRESS_STEPS,
   progressText,
   type RevertConflict,
-  type RowClassification,
   type RowDecisionInput,
   rowWarnings,
   stageFraction,
@@ -127,45 +126,6 @@ export function BatchHeader({ batch }: { batch: ImportBatch }) {
   );
 }
 
-export const CLASSIFICATION_FILTERS: { value: RowClassification | null; label: string }[] = [
-  { value: null, label: "Todas" },
-  { value: "NEW", label: "Nuevas" },
-  { value: "UPDATE", label: "Actualizaciones" },
-  { value: "POSSIBLE_DUPLICATE", label: "Posibles duplicados" },
-  { value: "CONFLICT", label: "Conflictos" },
-];
-
-export function RowFilters({
-  active,
-  onlyErrors,
-  counts,
-  onChange,
-}: {
-  active: RowClassification | null;
-  onlyErrors: boolean;
-  counts: Record<string, number>;
-  onChange: (value: { classification: RowClassification | null; onlyErrors: boolean }) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar filas">
-      {CLASSIFICATION_FILTERS.map((filter) => (
-        <Button
-          key={filter.label}
-          variant={active === filter.value && !onlyErrors ? "primary" : "outline"}
-          aria-pressed={active === filter.value && !onlyErrors}
-          onClick={() => onChange({ classification: filter.value, onlyErrors: false })}
-        >
-          {filter.label}
-          {filter.value && ` (${counts[filter.value] ?? 0})`}
-        </Button>
-      ))}
-      <Button variant={onlyErrors ? "primary" : "outline"} aria-pressed={onlyErrors} onClick={() => onChange({ classification: null, onlyErrors: true })}>
-        Con errores ({counts.ERRORS ?? 0})
-      </Button>
-    </div>
-  );
-}
-
 function display(value: unknown): string {
   if (value == null || value === "") return "—";
   if (Array.isArray(value)) return value.map(display).join(", ");
@@ -197,6 +157,7 @@ export function ImportRowCard({
   busy,
   onDecide,
   photos,
+  compact = false,
 }: {
   row: ImportRow;
   canDecide: boolean;
@@ -204,6 +165,11 @@ export function ImportRowCard({
   onDecide: (input: RowDecisionInput) => void;
   /** Miniaturas de las fotos de la fila (importacion-masiva-fotografias, tarea 6.3). */
   photos?: ReactNode;
+  /**
+   * Fila cuyo único problema es un error que el bloque de errores repetidos ya explica: ocupa una
+   * línea y el detalle y las acciones aparecen al abrirla (change `importacion-revision-simplificada`, D3).
+   */
+  compact?: boolean;
 }) {
   const candidates = candidatePieces(row);
   const resolvable = needsResolution(row);
@@ -218,7 +184,7 @@ export function ImportRowCard({
   const others = conflictingRows(row);
   const errors = row.validation_errors
     .filter(isRecordLike)
-    .map((error) => ({ message: plainMessage(String(error.message ?? "")), hint: validationHint(error.code)?.hint ?? null }))
+    .map((error) => ({ message: plainMessage(String(error.message ?? "")), hint: compact ? null : (validationHint(error.code)?.hint ?? null) }))
     .filter((error) => error.message);
   const warnings = rowWarnings(row);
   const blockerId = `fila-${row.id}-bloqueo`;
@@ -232,8 +198,8 @@ export function ImportRowCard({
       fieldDecisions: row.diff.length > 0 ? fields : undefined,
     });
 
-  return (
-    <article className="flex flex-col gap-3 rounded-md border border-borde p-4" aria-label={`Fila ${row.source_row_number}`}>
+  const card = (
+    <article className={cn("flex flex-col gap-3 p-4", !compact && "rounded-md border border-borde")} aria-label={`Fila ${row.source_row_number}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm text-gris-texto">Fila {row.source_row_number}</p>
@@ -377,13 +343,72 @@ export function ImportRowCard({
       )}
     </article>
   );
+  if (!compact) return card;
+  return (
+    <details className="rounded-md border border-borde">
+      <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-base">
+        <span className="text-gris-texto">Fila {row.source_row_number}</span>
+        <span className="min-w-0 font-semibold break-words text-tinta">{rowTitle(row)}</span>
+        <span className="text-sm font-medium text-carmin-texto">{errors.length > 0 ? shortErrorLabel(row) : ""}</span>
+        <StatusBadge status={importDecisionStatus(row.decision)} />
+      </summary>
+      {card}
+    </details>
+  );
 }
+
+/** Etiqueta corta del primer error de la fila, para la tarjeta compacta. */
+function shortErrorLabel(row: ImportRow): string {
+  const first = row.validation_errors.find(isRecordLike);
+  const code = first && typeof first.code === "string" ? first.code : "";
+  return SHORT_ERROR_LABELS[code] ?? plainMessage(String(first?.message ?? "")).replace(/\.$/, "");
+}
+
+const SHORT_ERROR_LABELS: Record<string, string> = {
+  tenure_required: "Sin régimen",
+  title_required: "Sin denominación",
+  invalid_inventory_code: "Código I ilegible",
+};
 
 /** Filas sin régimen de tenencia: elegir uno para todas y validar de nuevo. */
 /** Aviso de que validar de nuevo recalcula todas las filas y descarta las decisiones tomadas. */
 export function decisionsLostNotice(decided: number): string | null {
   if (decided <= 0) return null;
   return `Al validar de nuevo se recalculan las filas: ${decided === 1 ? "la decisión que ya tomó se pierde" : `las ${decided.toLocaleString("es-PE")} decisiones que ya tomó se pierden`}.`;
+}
+
+/** Elegir el régimen de las filas que no lo traen y validar de nuevo (se usa solo y dentro del bloque de errores repetidos). */
+export function TenureAction({
+  decided = 0,
+  busy,
+  canAdjust,
+  onApply,
+}: {
+  decided?: number;
+  busy: boolean;
+  canAdjust: boolean;
+  onApply: (tenure: string) => void;
+}) {
+  const [tenure, setTenure] = useState<string>(TENURE_DEFAULT_OPTIONS[0].value);
+  return (
+    <div className="flex flex-col gap-2">
+      {decisionsLostNotice(decided) && canAdjust && <p className="text-sm font-medium">{decisionsLostNotice(decided)}</p>}
+      <div className="flex flex-wrap items-end gap-3">
+        {canAdjust && (
+          <Select label="Régimen para esas filas" value={tenure} disabled={busy} onChange={(event) => setTenure(event.target.value)} fieldClassName="min-w-56">
+            {TENURE_DEFAULT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        )}
+        <Button variant={canAdjust ? "outline" : "primary"} disabled={busy} onClick={() => onApply(tenure)}>
+          {busy ? "Validando…" : canAdjust ? "Aplicar y validar de nuevo" : "Ajustar columnas"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function TenureBanner({
@@ -454,25 +479,26 @@ export function ApprovalPanel({
   canApprove,
   busy,
   onConfirm,
+  pendingText,
 }: {
   summary: ApprovalSummary | null;
   canApprove: boolean;
   busy: boolean;
   onConfirm: (comment: string) => void;
+  /** Qué falta decidir, en una frase (change `importacion-revision-simplificada`). */
+  pendingText?: string;
 }) {
+  // Barra pegada al pie durante la revisión: la acción de aprobar no queda a miles de píxeles (D4).
   return (
-    <Card as="section" className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-tinta">Aprobación de la carga</h2>
-      {summary ? <p className="text-base text-tinta">{summarySentence(summary)}</p> : <p className="text-base text-gris-texto">Calculando el resumen…</p>}
+    <Card as="section" aria-label="Aprobación de la carga" className="sticky bottom-0 z-10 flex flex-col gap-2 border-terracota shadow-lg">
+      <h2 className="sr-only">Aprobación de la carga</h2>
+      {summary ? <p className="text-base font-medium text-tinta">{summarySentence(summary)}</p> : <p className="text-base text-gris-texto">Calculando el resumen…</p>}
+      {pendingText && <p className="text-sm text-gris-texto">{pendingText}</p>}
       {summary?.photo_quota_warning && (
         <p role="status" className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
           {summary.photo_quota_warning}
         </p>
       )}
-      <p className="text-sm text-gris-texto">
-        Las filas nuevas y las actualizaciones sin decisión se aplican con la aprobación; los conflictos y posibles duplicados sin resolver no se
-        aplican. Si una fila incumple una regla al aplicar, no se aplica ninguna y el lote vuelve a revisión.
-      </p>
       {!canApprove ? (
         <PermissionNotice>Su rol puede preparar la carga, pero no aprobarla. La aprueba un Gestor de colecciones o un Administrador.</PermissionNotice>
       ) : (
@@ -487,6 +513,7 @@ export function ApprovalPanel({
           onConfirm={onConfirm}
         />
       )}
+      {canApprove && summary && summary.create + summary.update === 0 && <p className="text-sm text-gris-texto">No hay filas para aplicar todavía.</p>}
     </Card>
   );
 }

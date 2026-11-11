@@ -431,3 +431,13 @@ Las confirman Sergio y André con el museo (los desarrolladores no hablan con el
 | IO3 | ¿Debe «Excel e imágenes» pedir la carpeta de fotos antes de validar el Excel? | [SUPUESTO] No: las fotos se suben con el lote ya leído, porque se emparejan con sus filas. | Orden del recorrido | Baja |
 | IO4 | Y1 sigue abierta: ¿«formato» o «plantilla» para los paneles posteriores a la subida? | [SUPUESTO] «Formato». | Solo textos | Baja |
 
+## IR. Revisión simplificada de una importación (change `importacion-revision-simplificada`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IR1 | ¿Desde cuántas filas iguales conviene mostrar un error como bloque único? | [SUPUESTO] 3 filas (constante `REPEATED_ERROR_MIN_ROWS`). | Cuándo se agrupa | Baja |
+| IR2 | ¿Desde qué proporción de filas con el mismo dato faltante se culpa al formato aplicado? | [SUPUESTO] 80 % (constante `FORMAT_CAUSE_RATIO`). | Cuándo se sugiere cambiar de formato | Baja |
+| IR3 | ¿Prefiere el museo dejar fuera un grupo de filas con una confirmación, o directamente? | [SUPUESTO] Con una confirmación breve. | Un clic más al descartar | Baja |
+| IR4 | ¿La barra de aprobación debe mostrar también los conflictos sin decidir, o solo el recuento? | [SUPUESTO] Solo el recuento en una frase. | Texto de la barra | Baja |
