@@ -245,6 +245,10 @@ describe("legibilidad de la cola (Req: Legibilidad de la bandeja de pendientes)"
     expect(html).toMatch(/<summary[^>]*class="[^"]*min-h-11/);
     const importLink = (html.match(/<a\b[^>]*>/g) ?? []).find((a) => a.includes('href="/importacion"'));
     expect(importLink).toMatch(/\bmin-h-11\b/);
+    // Los enlaces a la ficha de cada pieza en la comparación (recorrido 6.1: medían 21 px).
+    const pieceLinks = (html.match(/<a\b[^>]*>/g) ?? []).filter((a) => a.includes('href="/piezas/'));
+    expect(pieceLinks.length).toBeGreaterThan(0);
+    for (const link of pieceLinks) expect(link).toMatch(/\bmin-h-11\b/);
     const selects = html.match(/<select\b[^>]*>/g) ?? [];
     expect(selects).toHaveLength(4);
     for (const select of selects) expect(select).toMatch(/\bmin-h-11\b/);

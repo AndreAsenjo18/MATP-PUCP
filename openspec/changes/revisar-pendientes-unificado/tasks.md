@@ -77,7 +77,29 @@
 
 ## 6. Cierre y prueba humana
 
-- [ ] 6.1 Recorrido propio en Docker local con el seed, en modo conectado y en demostración, a 1366 × 768, 768 y 360 px, con Administrador, Curador y un rol de solo lectura. Tabla de antes y después (alto de la página de duplicados, palabras visibles, textos de menos de 16 px, nombres internos visibles, clics para resolver un par) y capturas para P5. Verificación: tabla y capturas en la nota de esta tarea.
+- [x] 6.1 Recorrido propio en Docker local con el seed, en modo conectado y en demostración, a 1366 × 768, 768 y 360 px, con Administrador, Curador y un rol de solo lectura. Tabla de antes y después (alto de la página de duplicados, palabras visibles, textos de menos de 16 px, nombres internos visibles, clics para resolver un par) y capturas para P5. Verificación: tabla y capturas en la nota de esta tarea.
+  - **Solo en modo demostración.** El 2026-11-11 Docker arrancó, pero el repositorio no tiene `.env` (la base y MinIO lo exigen) y el equipo no autorizó crearlo: el modo conectado con el seed **no se recorrió**. Queda para la prueba de 6.2 o para quien tenga el `.env`.
+  - Cómo: compilación de producción (`next build` + `next start`) de `origin/main` (antes, en un worktree temporal) y de esta rama (después), en Chrome sin interfaz (`puppeteer-core`, instalado fuera del repo), con la Curadora sintética y **los mismos datos** (2 pares). Las medidas son de la zona de contenido (`main`).
+
+    | Medida | Antes (`/duplicados`) | Después (`/pendientes/duplicados`) |
+    |---|---|---|
+    | Alto de la página a 1366 × 768 | 1 510 px | **789 px** (1 713 con un par abierto) |
+    | Alto a 360 px | 2 497 px | **1 792 px** (3 227 con un par abierto) |
+    | Alto a 1366 px con zoom del 150 % | 1 734 px | 1 320 px |
+    | Palabras visibles | 286 | 168 (283 con un par abierto) |
+    | Textos de menos de 16 px | 82 | **0** |
+    | Controles de menos de 44 px | 10 de 16 | **0 de 10** (0 de 16 con un par abierto) |
+    | Nombres internos visibles | 0 (*) | 0 |
+    | Desplazamiento horizontal a 360 px y al 150 % | no / no | no / no |
+    | Clics para marcar un par como distinto | 2 y el motivo | 3 y el motivo (uno más: «Revisar») |
+    | Proyección con los 9 pares de producción | 4 247 px medidos en producción | ~1 496 px a 1366; ~4 169 px a 360 (estimación: base + 9 filas reales de 89 px y 324 px) |
+
+    (*) En demostración los fixtures usan códigos que `identifierTypeLabel` sí traduce (`COLLECTION`…). La fuga de `COLECCION`, `INC_RN`… solo aparece con el seed real y la cubren las pruebas de `DuplicateRow.test.tsx`.
+  - Comprobado en el navegador: un solo par abierto a la vez; tras marcar como distinto, aviso «Par marcado como piezas distintas.», el foco pasa al «Revisar» de la fila que ocupa ese lugar y la pestaña baja de «(2)» a «(1)»; en la pestaña de sugerencias, un solo `h1` (el de la bandeja), «Aprobar» + «Confirmar» baja el contador de «(2)» a «(1)», y `/ia/sugerencias?resaltar=<id>` deja resaltada solo la primera tarjeta; las redirecciones, en la 4.2.
+  - **Corregido en el recorrido:** (a) los enlaces «Pieza A: …» / «Pieza B: …» de la comparación medían 21 px: ahora 44 px, con una prueba que falla sin el arreglo; (b) en el círculo de similitud, «similitud alta» a 16 px tocaba el borde: el círculo pasa a 128 px.
+  - **A decidir:** (1) el par cuesta un clic más que antes («Revisar»); se compensa con una pantalla 2,4 veces más corta, pero hay que observarlo en 6.2. (2) A 360 px cada fila mide ~300 px porque las dos piezas se apilan (lo pide la spec), y los cuatro filtros ocupan ~350 px; plegarlos en celular sería un cambio aparte. (3) El menú sigue con «Duplicados» y «Sugerencias IA» y no resalta ninguna entrada en `/pendientes` (petición a la Base).
+  - **No verificado:** modo conectado; lector de pantalla; zoom real del navegador (se emuló con 911 × 512 a 1,5 de escala, el área útil de 1366 al 150 %).
+  - Capturas (fuera del repo, en el scratchpad de la sesión): `antes-duplicados-1366.png`, `antes-duplicados-360.png`, `despues-duplicados-1366.png`, `despues-duplicados-360.png`, `despues-duplicados-1366-par-abierto.png`, `despues-duplicados-360-par-abierto.png`, `despues-sugerencias-1366.png` y `medidas.json`. Para P5 se pueden copiar a `docs/manual-usuario/capturas/`.
 - [ ] 6.2 **Prueba humana (no la hace el agente).** El humano prueba en su entorno local con datos sintéticos, sin manual, como alguien de 60 años o más que no conoce el sistema, diciendo en voz alta qué entiende, y el agente observa:
   - **HU-29:** «Encontrar lo que hay por revisar sin que nadie le diga dónde está.» Solo se cierra con la entrada «Revisar pendientes» de la Base ya en el menú; si aún no está, se prueba desde el Inicio y se anota la condición.
   - **HU-04:** «Resolver tres pares de posibles duplicados: uno distinto, uno pospuesto y uno fusionado. ¿Sabe qué pasa con cada pieza?»

@@ -400,7 +400,7 @@ export function SimilarityMeter({ score }: { score: number }) {
   const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
   return (
     <div
-      className="flex size-28 shrink-0 items-center justify-center rounded-full p-1.5"
+      className="flex size-32 shrink-0 items-center justify-center rounded-full p-1.5"
       style={{ background: `conic-gradient(${level.ring} ${percent}%, var(--color-borde) 0)` }}
     >
       <div className="flex size-full flex-col items-center justify-center rounded-full bg-white">
@@ -423,7 +423,7 @@ type PieceSlot = PieceDetail | null | undefined;
 function pieceHeader(title: string, piece: PieceSlot, piecesLoading: boolean): ReactNode {
   if (piece) {
     return (
-      <Link href={`/piezas/${piece.id}`} className="font-semibold text-terracota underline">
+      <Link href={`/piezas/${piece.id}`} className="inline-flex min-h-11 items-center font-semibold text-terracota underline">
         {title}: {piece.denomination}
       </Link>
     );
