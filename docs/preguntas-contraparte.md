@@ -408,3 +408,14 @@ Revisión de los 61 Excel entregados por el museo con la ingesta y el normalizad
 | FR4 | En las fichas AJB, ¿qué son `D-1` y `VI-1.2` en la columna «Código INC»? | Sin supuesto: se conservan como «otro código» | importacion-datos | B |
 | FR5 | ¿Qué es `#RN 0000097322` (10 dígitos) en la columna «Código INC»? | Sin supuesto: se conserva como «otro código» | importacion-datos | B |
 | FR6 | Si una pieza está en el inventario general y en el archivo de su colección con datos distintos, ¿cuál manda? | **[SUPUESTO]** El archivo de la colección, que es el más completo: se carga primero y el inventario general sale como actualizaciones o posibles duplicados para revisar | importacion-datos (RF-024, RF-025) | A |
+
+## RP. Bandeja «Revisar pendientes» y reparto del equipo (2026-11-10)
+
+Supuestos provisionales para poder desarrollar la bandeja única de pendientes (`revisar-pendientes-unificado`, HU-29 y HU-04). Los confirman Sergio y André con el museo en una próxima reunión; los desarrolladores no los confirman. Si el museo dice otra cosa, se modifica la historia de usuario y se avisa a la persona dueña de esa historia.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| RP1 | ¿El mismo curador revisa los tres tipos de pendientes (posibles duplicados, sugerencias de IA y piezas incompletas)? | **[SUPUESTO]** Sí: cada pestaña se muestra solo a quien tiene el permiso para resolverla (`duplicates.resolve`, `ai.review`, `reports.view`); no se crea un rol nuevo | calidad-datos (RF-030, RF-019, RF-035) | A |
+| RP2 | ¿Cómo prefieren que se llame la pantalla y cómo se describe qué tan parecidas son dos piezas? | **[SUPUESTO]** «Revisar pendientes»; niveles «Muy parecidas», «Parecidas» y «Poco parecidas» tomados de los niveles alta, media y baja que ya calcula el sistema, sin un porcentaje nuevo. Se ajusta tras la prueba humana | calidad-datos (RNF-010) | B |
+| RP3 | ¿Quién del museo revisa las sugerencias que propone la IA? | **[SUPUESTO]** El curador (permiso `ai.review`); nada se guarda sin su aprobación (RN-009) | ia-asistiva (RIA-01, RN-009) | A |
+| RP4 | ¿El usuario típico tiene 60 años o más y poca práctica con computadoras? | **[SUPUESTO]** Sí: se diseña con letra de 16 px o más, botones de 44 px o más y pocas opciones por pantalla (HU-31). Se valida con el museo | RNF-010 | A |
