@@ -223,7 +223,15 @@ function AdministracionContent() {
         <p className="text-base text-gris-texto">Personas, catálogo, importación y control del sistema.</p>
       </header>
 
-      <AdminNav sections={sections} current={current.slug} onSelect={setRequested} />
+      <AdminNav
+        sections={sections}
+        current={current.slug}
+        onSelect={(slug) => {
+          setRequested(slug);
+          // La dirección dice en qué sección está, para compartirla o volver a ella (administracion-control).
+          window.history.replaceState(null, "", `${window.location.pathname}?pestana=${slug}`);
+        }}
+      />
 
       <AdminSectionView slug={current.slug} />
     </div>

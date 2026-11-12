@@ -15,6 +15,8 @@
  * comprobarlos (403).
  */
 import { ArrowLeft, TriangleAlert } from "lucide-react";
+
+import { FiltersDrawer } from "@/components/domain/SearchFilters";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -42,7 +44,7 @@ import { TrashFilterBar } from "./TrashFilterBar";
 import { TrashRestorePanel, type TrashRestoreState } from "./TrashRestorePanel";
 
 export const TRASH_INTRO =
-  "Aquí están los registros eliminados. Nada se borra de forma definitiva (RN-005): un Administrador puede restaurarlos, siempre que lo que necesitan siga activo.";
+  "Nada se borra de forma definitiva: un Administrador puede restaurar estos registros si lo que necesitan sigue activo.";
 export const TRASH_VIEW_ONLY_NOTICE = "Su rol puede ver la papelera, pero solo un Administrador puede restaurar registros.";
 export const TRASH_FOCUS_MISSING = "No se encontró ese registro en esta página de la papelera: puede estar en otra página o ya haber sido restaurado.";
 
@@ -84,6 +86,7 @@ export interface TrashPanelProps {
 
 export function TrashPanel({ canRestore }: TrashPanelProps) {
   const [filters, setFilters] = useState<TrashFilters>(EMPTY_TRASH_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [reloads, setReloads] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -188,7 +191,14 @@ export function TrashPanel({ canRestore }: TrashPanelProps) {
         {!canRestore && <p className="text-sm text-ambar-texto">{TRASH_VIEW_ONLY_NOTICE}</p>}
       </header>
 
-      <TrashFilterBar key={JSON.stringify(filters)} filters={filters} people={people} disabled={busy} onApply={applyFilters} />
+      <FiltersDrawer
+        id="trash-filters"
+        open={filtersOpen}
+        onToggle={() => setFiltersOpen((open) => !open)}
+        activeCount={Object.values(filters).filter(Boolean).length}
+      >
+        <TrashFilterBar key={JSON.stringify(filters)} filters={filters} people={people} disabled={busy} onApply={applyFilters} />
+      </FiltersDrawer>
 
       {notice && (
         <p role="status" className="rounded-md border border-verde-exito bg-verde-bg p-3 text-base text-tinta">

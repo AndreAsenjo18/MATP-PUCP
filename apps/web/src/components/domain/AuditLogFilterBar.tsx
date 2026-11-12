@@ -39,7 +39,7 @@ export function capitalize(text: string): string {
 
 /** Algún filtro de «Más filtros» está aplicado (la sección se abre sola). */
 export function hasAdvancedAuditFilters(filters: AuditQueryFilters): boolean {
-  return Boolean(filters.userId || filters.originRef.trim() || filters.entityId.trim() || filters.changeSetId.trim());
+  return Boolean(filters.userId || filters.originRef.trim() || filters.entityId.trim() || filters.changeSetId.trim() || filters.sessions === "1");
 }
 
 export interface AuditLogFilterBarProps {
@@ -147,13 +147,23 @@ export function AuditLogFilterBar({ filters, people, disabled = false, onApply }
               onChange={(event) => change({ entityId: event.target.value })}
             />
             <Input
-              label="Conjunto de cambios concreto"
+              label="Cambio concreto"
               hint="Identificador de la operación completa."
               value={draft.changeSetId}
               error={errors.changeSetId}
               disabled={disabled}
               onChange={(event) => change({ changeSetId: event.target.value })}
             />
+            <label className="flex min-h-11 items-center gap-2 text-sm text-tinta sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={draft.sessions === "1"}
+                disabled={disabled}
+                onChange={(event) => change({ sessions: event.target.checked ? "1" : "" })}
+                className="size-5 accent-terracota"
+              />
+              Mostrar los inicios de sesión
+            </label>
           </div>
         </details>
 

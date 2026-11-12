@@ -9,9 +9,9 @@ Dos ideas sirven para todo lo demás:
 
 > En la maqueta (modo demostración) la reversión y la restauración se simulan: no modifican ningún dato y la descarga a CSV no está disponible. Los textos y botones son los mismos que en el sistema real.
 
-## Qué es un conjunto de cambios
+## Qué es un cambio
 
-El historial no muestra una fila por cada campo, sino **un conjunto de cambios por cada operación completa**: una edición de la ficha, una carga de Excel, una reversión, una corrección de código I. Así se ve de un golpe qué se tocó, quién y por qué. Por ejemplo, una carga de Excel que modificó 54 piezas aparece como una sola tarjeta, no como 486 filas sueltas.
+El historial no muestra una fila por cada campo, sino **un cambio por cada operación completa**: una edición de la ficha, una carga de Excel, una reversión, una corrección de código I. Así se ve de un golpe qué se tocó, quién y por qué. Por ejemplo, una carga de Excel que modificó 54 piezas aparece como una sola tarjeta, no como 486 filas sueltas.
 
 ## Ver el historial de una pieza
 
@@ -19,7 +19,7 @@ El historial no muestra una fila por cada campo, sino **un conjunto de cambios p
 2. Pulse la pestaña **Auditoría**.
 3. Lea las tarjetas, de la más reciente a la más antigua. Cada tarjeta muestra:
    - **Etiquetas de acción** arriba: **Creación**, **Modificación**, **Baja lógica**, **Restauración**, **Corrección**, **Fusión** o **Reversión**. Una tarjeta puede tener varias.
-   - **Ya revertido**, si alguien deshizo ese conjunto (ver más abajo).
+   - **Ya revertido**, si alguien deshizo ese cambio (ver más abajo).
    - **Cuándo**: fecha y hora (ícono de reloj).
    - **Quién**: la persona que hizo el cambio (ícono de persona). Si lo hizo un proceso automático, dice **Sistema**.
    - **Origen**: de dónde vino el cambio. Puede ser **edición manual**, **carga masiva de Excel**, **sugerencia de inteligencia artificial** o **proceso del sistema**.
@@ -27,7 +27,7 @@ El historial no muestra una fila por cada campo, sino **un conjunto de cambios p
    - **Motivo**: la razón que escribió quien hizo el cambio. Si no escribió ninguna, dice **Sin motivo registrado.**
 4. Debajo de cada tarjeta, la lista de **campos de esta pieza** muestra el cambio campo por campo, con el valor anterior, una flecha y el valor nuevo. Por ejemplo: «procedencia: Procedencia sintética A → Procedencia sintética B». Un valor vacío aparece como «(vacío)».
 
-La pestaña muestra los 50 conjuntos más recientes. Si hay más, un aviso dice «Se muestran los N conjuntos más recientes de M. La consulta completa está en Administración.»
+La pestaña muestra los 50 cambios más recientes. Si hay más, un aviso dice «Se muestran los N cambios más recientes de M. La consulta completa está en Administración.»
 
 Los cambios sobre los identificadores o las fotos de la pieza no se ven campo por campo en esta pestaña: búsquelos en la consulta de **Administración** (ver «Consultar toda la auditoría»).
 
@@ -41,15 +41,15 @@ Es lo esperado. Usted sí puede saber que el campo cambió, quién lo hizo y cu�
 
 ## Revertir un cambio
 
-Revertir deshace **un conjunto de cambios completo** y lo anota como un conjunto nuevo de tipo **Reversión**. El historial original no se borra ni se modifica.
+Revertir deshace **un cambio completo** y lo anota como un cambio nuevo de tipo **Reversión**. El historial original no se borra ni se modifica.
 
-Importante: se revierte el conjunto entero, no solo lo que afectó a la pieza que está mirando. Si el conjunto es una carga de Excel de 54 piezas, la reversión alcanza a las 54. La vista previa le dice cuántos campos y registros se tocarán antes de que confirme.
+Importante: se revierte el cambio entero, no solo lo que afectó a la pieza que está mirando. Si el cambio es una carga de Excel de 54 piezas, la reversión alcanza a las 54. La vista previa le dice cuántos campos y registros se tocarán antes de que confirme.
 
 ### Pedir la vista previa y confirmar
 
 1. En la pestaña **Auditoría** de la ficha, busque la tarjeta del cambio que quiere deshacer.
-2. Pulse **Revertir este cambio**. Si el botón aparece apagado, su rol no puede revertir ese conjunto: debajo del botón se explica por qué (ver «Quién puede revertir qué»).
-3. Espere el mensaje «Calculando qué pasaría al revertir…». Bajo la tarjeta se abre el panel **Revertir este conjunto de cambios**. En este punto todavía no se ha cambiado nada.
+2. Pulse **Revertir este cambio**. Si el botón aparece apagado, su rol no puede revertir ese cambio: debajo del botón se explica por qué (ver «Quién puede revertir qué»).
+3. Espere el mensaje «Calculando qué pasaría al revertir…». Bajo la tarjeta se abre el panel **Revertir este cambio**. En este punto todavía no se ha cambiado nada.
 4. Lea **«Antes de confirmar, esto es lo que va a pasar»**. Las frases posibles son:
    - «Se devolverán N campos a su valor anterior.» Si son pocos, debajo se listan los valores: el actual, una flecha y el que se restaurará.
    - «Se eliminarán lógicamente N registros creados por este cambio: no se borran, quedan en la papelera y pueden restaurarse.»
@@ -59,15 +59,15 @@ Importante: se revierte el conjunto entero, no solo lo que afectó a la pieza qu
 5. Lea la zona de conflictos. Si dice «Nadie modificó estos datos después de este cambio: no hay conflictos.», siga al paso siguiente. Si dice «N cambios posteriores en conflicto», vaya a «Qué hacer si hay conflictos».
 6. Escriba el **Motivo de la reversión (obligatorio)**: una frase que explique por qué se revierte. Quedará anotado con su nombre.
 7. Pulse el botón rojo de confirmación. Dice «Revertir N cambios» (o «Revertir 1 cambio»; con conflictos dice, por ejemplo, «Revertir 3 cambios y descartar 1 cambio posterior»).
-8. Lea el aviso final: «Reversión registrada: … Quedó en la auditoría como un conjunto nuevo, que a su vez puede revertirse.» Pulse **Actualizar el historial** para ver el conjunto nuevo, o **Cerrar**.
+8. Lea el aviso final: «Reversión registrada: … Quedó en la auditoría como un cambio nuevo, que a su vez puede revertirse.» Pulse **Actualizar el historial** para ver el cambio nuevo, o **Cerrar**.
 
 Para salir sin cambiar nada, pulse **Cancelar** en cualquier momento antes del paso 7.
 
-Si la vista previa dice «Este conjunto no tiene nada que revertir», el botón de confirmación queda apagado: el conjunto solo contiene registros que no se modifican (como los movimientos de ubicación).
+Si la vista previa dice «Este cambio no tiene nada que revertir», el botón de confirmación queda apagado: el cambio solo contiene registros que no se modifican (como los movimientos de ubicación).
 
 ### Los movimientos de ubicación no se deshacen
 
-Un movimiento de ubicación (traslado de una pieza de un lugar a otro) es parte del historial físico de la pieza y **nunca se modifica**, tampoco al revertir. Si un conjunto incluye movimientos, la vista previa lo avisa así: «Los movimientos de ubicación registrados en este conjunto no se modifican: corríjalos registrando un movimiento correctivo desde la pestaña «Ubicación e historial».»
+Un movimiento de ubicación (traslado de una pieza de un lugar a otro) es parte del historial físico de la pieza y **nunca se modifica**, tampoco al revertir. Si un cambio incluye movimientos, la vista previa lo avisa así: «Los movimientos de ubicación registrados en este cambio no se modifican: corríjalos registrando un movimiento correctivo desde la pestaña «Ubicación e historial».»
 
 Para corregirlo:
 
@@ -79,7 +79,7 @@ Lo mismo pasa con las evaluaciones de conservación y los datos de origen: son d
 
 ### Qué hacer si hay conflictos
 
-Hay conflicto cuando **otra persona cambió el mismo dato después** del conjunto que usted quiere revertir. Revertir lo pisaría. El panel los lista en un recuadro rojo, uno por línea. Cada línea dice qué campo es y, cuando corresponde, cuándo se modificó, qué dice hoy y qué había dejado el conjunto. Ejemplo: «Modificado el 12/10/2026, 10:30:00; hoy dice «Procedencia sintética C»; este conjunto lo había dejado en «Procedencia sintética B».»
+Hay conflicto cuando **otra persona cambió el mismo dato después** del cambio que usted quiere revertir. Revertir lo pisaría. El panel los lista en un recuadro rojo, uno por línea. Cada línea dice qué campo es y, cuando corresponde, cuándo se modificó, qué dice hoy y qué había dejado el cambio. Ejemplo: «Modificado el 12/10/2026, 10:30:00; hoy dice «Procedencia sintética C»; este cambio lo había dejado en «Procedencia sintética B».»
 
 También se listan registros que la reversión no puede o no debe tocar: «el registro ya está eliminado», «ya está activo» o «ya no existe en el catálogo». En esos casos la reversión los deja como están.
 
@@ -102,56 +102,56 @@ Si mientras usted revisaba la vista previa alguien editó esos mismos datos, el 
 
 No se aplicó nada: puede calcular las veces que haga falta.
 
-### Si el conjunto ya fue revertido
+### Si el cambio ya fue revertido
 
-Un conjunto se revierte una sola vez. Si ya lo fue, la tarjeta lleva la etiqueta **Ya revertido** y dice «Este cambio ya fue revertido.» con el enlace **Ver la reversión en este historial**. Si alguien intenta revertirlo de nuevo (por ejemplo, porque la otra persona lo hizo mientras usted miraba), el panel muestra el aviso y el enlace **Ver el conjunto de reversión**.
+Un cambio se revierte una sola vez. Si ya lo fue, la tarjeta lleva la etiqueta **Ya revertido** y dice «Este cambio ya fue revertido.» con el enlace **Ver la reversión en este historial**. Si alguien intenta revertirlo de nuevo (por ejemplo, porque la otra persona lo hizo mientras usted miraba), el panel muestra el aviso y el enlace **Ver la reversión**.
 
-La reversión es en sí un conjunto de cambios, y **puede revertirse**: así se «rehace» lo que se deshizo.
+La reversión es en sí un cambio, y **puede revertirse**: así se «rehace» lo que se deshizo.
 
 ### Quién puede revertir qué
 
-Depende del origen del conjunto:
+Depende del origen del cambio:
 
-| Origen del conjunto | Quién puede revertirlo |
+| Origen del cambio | Quién puede revertirlo |
 |---|---|
 | **Edición manual** | Quien puede editar fichas: Administrador y Gestor de colecciones |
 | **Carga masiva de Excel** | Quien tiene permiso para revertir cargas: hoy, solo el Administrador |
 | **Sugerencia de inteligencia artificial** o **proceso del sistema** | Solo el Administrador |
 | Cualquiera de los anteriores, **si corrigió un código I** | Solo el Administrador |
 
-Un código I, una vez asignado, no cambia (está marcado físicamente en la pieza). Solo el Administrador, con un procedimiento auditado, puede corregirlo, y por eso solo él puede deshacer esa corrección. Si usted no es Administrador y el conjunto toca un código I, el panel avisa «Esta reversión afecta un código I: solo un Administrador puede aplicarla.» y, si confirma, el sistema la rechaza con «Esta reversión afecta un código I: se requiere el procedimiento de corrección de un Administrador.» Pida la reversión a un Administrador.
+Un código I, una vez asignado, no cambia (está marcado físicamente en la pieza). Solo el Administrador, con un procedimiento auditado, puede corregirlo, y por eso solo él puede deshacer esa corrección. Si usted no es Administrador y el cambio toca un código I, el panel avisa «Esta reversión afecta un código I: solo un Administrador puede aplicarla.» y, si confirma, el sistema la rechaza con «Esta reversión afecta un código I: se requiere el procedimiento de corrección de un Administrador.» Pida la reversión a un Administrador.
 
 ## Papelera
 
-Aquí están los registros eliminados: piezas, identificadores, fotografías o documentos, colecciones, términos de vocabulario, vocabularios, ubicaciones y plantillas de mapeo. Se abre en **Administración**, pestaña **Papelera**.
+Aquí están los registros eliminados: piezas, códigos de pieza, fotografías o documentos, colecciones, valores de listas, listas de valores, ubicaciones y formatos de archivo. Se abre en **Administración › Control › Papelera** (dirección `/administracion?pestana=papelera`).
 
 El Administrador puede abrirla y restaurar. El Gestor de colecciones puede abrirla y ver, pero el botón **Restaurar** le aparece apagado. Los demás roles no la ven (ver la tabla final).
 
 ### Buscar un registro eliminado
 
-1. Entre a **Administración** y pulse la pestaña **Papelera**.
+1. Entre a **Administración** y pulse la pestaña **Papelera**. En el teléfono o la tableta, pulse **Filtros** para ver los filtros.
 2. Si lo necesita, ajuste los filtros:
-   - **Tipo de registro**: por ejemplo «Término de vocabulario». Por defecto, «Todos los tipos».
+   - **Tipo de registro**: por ejemplo «Valor de una lista». Por defecto, «Todos los tipos».
    - **Eliminado por**: la persona que lo eliminó. La lista se llena con las personas que ya aparecen en los registros cargados.
    - **Eliminado desde** y **Eliminado hasta**: rango de fechas. La fecha «hasta» incluye todo ese día.
 3. Pulse **Filtrar**. Para volver a ver todo, pulse **Quitar filtros**.
 4. Lea el total («N registros eliminados») y, si hay más de 20, use **Anterior** y **Siguiente** (el pie dice «Página 1 de 3»).
 
-Cada tarjeta muestra:
+Cada registro ocupa una fila (en el teléfono, una tarjeta corta) con:
 
-- El **nombre** del registro y una etiqueta con su tipo (por ejemplo, «Término de vocabulario»).
+- El **nombre** del registro y una etiqueta con su tipo (por ejemplo, «Valor de una lista»), y a la derecha el botón **Restaurar**.
 - «**Eliminado el** 14/10/2026, 09:15:00 **por** Administradora de prueba (sintética)».
-- **Motivo:** la razón que escribió quien lo eliminó, por ejemplo «Duplicado del término Totora». Si no escribió ninguna, dice **Sin motivo registrado.** Lea el motivo antes de restaurar: puede avisarle que fue una decisión consciente.
+- **Motivo:** la razón que escribió quien lo eliminó, por ejemplo «Duplicado del término Totora». Si no escribió ninguna, dice **Sin motivo registrado.** En la computadora, un motivo largo se corta en una línea: deje el puntero encima para leerlo completo. Lea el motivo antes de restaurar: puede avisarle que fue una decisión consciente.
 
 Si no hay nada, verá «La papelera está vacía: no hay registros eliminados.» o, con filtros, «Ningún registro eliminado coincide con estos filtros.»
 
 ### Restaurar un registro
 
-1. En la tarjeta del registro, pulse **Restaurar**. Si el botón está apagado, su rol solo puede ver: la tarjeta lo explica («Solo un Administrador puede restaurar registros eliminados.»).
+1. En la fila del registro, pulse **Restaurar**. Si el botón está apagado, su rol solo puede ver: la tarjeta lo explica («Solo un Administrador puede restaurar registros eliminados.»).
 2. En el panel que se abre, lea qué pasará: el registro vuelve a estar disponible y la restauración queda anotada con su nombre.
 3. Si quiere, escriba el **Motivo de la restauración (opcional)**.
 4. Pulse **Restaurar** en el panel. Para dejarlo como estaba, pulse **Cancelar**.
-5. Verá en verde: «Se restauró «Totora» (término de vocabulario). Ya está disponible y la restauración quedó en la auditoría.» El registro sale de la lista.
+5. Verá en verde: «Se restauró «Totora» (valor de una lista). Ya está disponible y la restauración quedó en la auditoría.» El registro sale de la lista.
 
 ### Cuando primero hay que restaurar otra cosa
 
@@ -177,34 +177,36 @@ Otra variante: «Antes de restaurar, revise la pieza «…»: sigue activa y ya 
 
 ## Consultar toda la auditoría
 
-La consulta global muestra los conjuntos de cambios de todo el catálogo, no solo los de una pieza. Está en **Administración**, pestaña **Auditoría**, y exige el permiso de consultar la auditoría.
+La consulta global muestra los cambios de todo el catálogo, no solo los de una pieza; cada fila es una operación completa, igual que en la pestaña **Auditoría** de la ficha. Está en **Administración › Control › Auditoría** (dirección `/administracion?pestana=auditoria`) y exige el permiso de consultar la auditoría.
 
-1. Entre a **Administración** y pulse la pestaña **Auditoría**.
+1. Entre a **Administración** y pulse la pestaña **Auditoría**. En el teléfono o la tableta, pulse **Filtros** para ver los filtros (el botón dice cuántos hay aplicados).
 2. Elija los filtros que necesite:
-   - **Tipo de registro**: pieza, identificador de pieza, fotografía o documento, colección, etc.
+   - **Tipo de registro**: pieza, código de pieza, fotografía o documento, colección, sesión, etc.
    - **Origen del cambio**: edición manual, carga masiva de Excel, sugerencia de inteligencia artificial o proceso del sistema.
    - **Acción**: Creación, Modificación, Baja lógica, Restauración, Corrección, Fusión o Reversión.
    - **Desde** y **Hasta**: rango de fechas.
-   - Dentro de **Más filtros**: **Persona que hizo el cambio**, **Lote de importación o sugerencia de IA**, **Registro concreto** y **Conjunto de cambios concreto**. Los dos últimos piden el identificador completo; si está mal escrito, el campo lo indica.
+   - Dentro de **Más filtros**: **Persona que hizo el cambio**, **Lote de importación o sugerencia de IA**, **Registro concreto**, **Cambio concreto** y la casilla **Mostrar los inicios de sesión**. Los dos últimos piden el identificador completo; si está mal escrito, el campo lo indica.
 3. Pulse **Filtrar**. Para empezar de nuevo, pulse **Quitar filtros**.
-4. Lea las tarjetas. Son iguales a las de la ficha, más el dato **Lote o sugerencia de origen** cuando lo hay. Por ejemplo, filtrando por origen «carga masiva de Excel» y un lote verá una sola tarjeta con el número de piezas y de campos afectados.
-5. Pulse **Ver los campos cambiados** para abrir el detalle campo por campo. Si el conjunto tiene muchos, pulse **Mostrar más campos**. Pulse **Ocultar los campos cambiados** para cerrarlo.
+
+   Los **inicios de sesión** no se muestran por defecto: son muchos y taparían los cambios del catálogo. Para verlos, marque **Mostrar los inicios de sesión** en **Más filtros**, o elija **Sesión** en **Tipo de registro**. Si busca un cambio o un registro concreto, aparece aunque sea un inicio de sesión. La descarga en CSV sigue la misma regla.
+4. Lea las filas: la acción (por ejemplo, **Creación**), qué alcanzó («54 piezas · 486 campos registrados»), cuándo, quién y el origen, y debajo el motivo y, cuando lo hay, la **carga o sugerencia de origen**. Por ejemplo, filtrando por origen «carga masiva de Excel» y un lote verá una sola fila con el número de piezas y de campos afectados. Los procesos automáticos aparecen con un nombre legible, como **Inicio de sesión** o **Resumen diario de auditoría**.
+5. Pulse **Ver cambios** para abrir el detalle campo por campo. Si tiene muchos, pulse **Mostrar más campos**. Pulse **Ocultar cambios** para cerrarlo.
 6. Use **Anterior** y **Siguiente** para pasar de página.
 
-Si un conjunto fue revertido, la tarjeta dice «Este cambio ya fue revertido.» con el botón **Ver la reversión**, que filtra la consulta para mostrar ese conjunto.
+Si un cambio fue revertido, la fila dice «Este cambio ya fue revertido.» con el botón **Ver la reversión**, que filtra la consulta para mostrar esa reversión.
 
 Esta pantalla es de consulta: **no tiene botón para revertir**. Para revertir, abra la ficha de una pieza afectada y use su pestaña **Auditoría**.
 
-Si no hay resultados, verá «Ningún conjunto de cambios coincide con estos filtros.» (o «Todavía no hay registros de auditoría.» si el sistema está vacío).
+Si no hay resultados, verá «Ningún cambio coincide con estos filtros. Quite algún filtro.» (o «Todavía no hay registros de auditoría.» si el sistema está vacío).
 
 ### Descargar la consulta en CSV
 
 El CSV es un archivo que se abre en Excel.
 
 1. Aplique los filtros que quiera y pulse **Filtrar**. El archivo lleva los mismos filtros que está viendo.
-2. Pulse una de las dos descargas:
-   - **Descargar conjuntos de cambios (CSV)**: una fila por conjunto (quién, cuándo, origen, motivo, alcance).
-   - **Descargar campo por campo (CSV)**: una fila por cada campo cambiado, con valor anterior y valor nuevo.
+2. Abra **Descargar en CSV**, debajo de los filtros (está plegado), y pulse una de las dos descargas:
+   - **Un cambio por fila**: quién, cuándo, origen, motivo y alcance de cada operación.
+   - **Un campo por fila**: cada campo cambiado, con valor anterior y valor nuevo.
 3. Abra el archivo con Excel. Las tildes se ven bien.
 
 Dos cosas que conviene saber:
@@ -252,7 +254,7 @@ Esta tabla muestra los permisos actuales. El museo puede ajustarlos (ver **Admin
 | Revertir una **edición manual** | Sí | Sí | No | No |
 | Revertir una **carga de Excel** | Sí | No | No | No |
 | Revertir un cambio de **IA** o del **sistema** | Sí | No | No | No |
-| Revertir un conjunto que **corrigió un código I** | Sí | No | No | No |
+| Revertir un cambio que **corrigió un código I** | Sí | No | No | No |
 | Abrir la **Papelera** | Sí | Sí (solo ver) | No | No |
 | **Restaurar** desde la papelera | Sí | No | No | No |
 | Ver valores de campos sensibles en la auditoría | Según los permisos de datos sensibles de cada rol | Según los permisos de datos sensibles de cada rol | No aplica (no ve la auditoría) | No aplica (no ve la auditoría) |

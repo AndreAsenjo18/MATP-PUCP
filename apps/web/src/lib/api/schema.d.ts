@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 30bf6af3632f4596e0760bc0f00221efccc6ea26f217a0a14dee30b2165d85c9
+ * openapi-sha256: 6b0099e59fe2b5b45d5d9fe14ebc14c9350d1decc688d6a9d7ebcd745cdc32fd
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -8847,6 +8847,8 @@ export interface operations {
                 entity_id?: string | null;
                 /** @description p. ej. piece, collection. */
                 entity_type?: string | null;
+                /** @description Deja fuera un tipo de registro, p. ej. user_session (sesiones). */
+                exclude_entity_type?: string | null;
                 field?: string | null;
                 /** @description Descargar en CSV. */
                 format?: components["schemas"]["AuditExportFormat"] | null;

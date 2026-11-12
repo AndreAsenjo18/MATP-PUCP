@@ -17,6 +17,7 @@ import {
   filterAuditEntries,
   filterChangeSets,
   hasActiveAuditFilters,
+  hidesSessions,
   isUuid,
   UUID_INVALID,
   validateAuditFilters,
@@ -113,9 +114,10 @@ describe("filtros de la consulta de auditoría", () => {
     expect(auditEntityLabel("piece", 1)).toBe("pieza");
     expect(auditEntityLabel("piece", 54)).toBe("piezas");
     expect(auditEntityLabel("media_asset", 2)).toBe("fotografías o documentos");
-    expect(auditEntityLabel("term", 1)).toBe("término de vocabulario");
+    expect(auditEntityLabel("term", 1)).toBe("valor de una lista");
     expect(auditEntityLabel("piece_media", 1)).toBe("fotografía o documento");
-    expect(auditEntityLabel("tabla_nueva", 3)).toBe("registros de tipo tabla_nueva");
+    // Un tipo desconocido ya no muestra su nombre técnico (administracion-control D2).
+    expect(auditEntityLabel("tabla_nueva", 3)).toBe("otros registros");
   });
 
   it("valida los identificadores y el rango de fechas antes de enviarlos", () => {
@@ -138,8 +140,10 @@ describe("filtros de la consulta de auditoría", () => {
   });
 
   it("arma los parámetros de GET /audit-logs omitiendo los vacíos y usando hora de Lima", () => {
+    // Sin filtros, solo se dejan fuera los inicios de sesión (administracion-control).
     expect(auditQuery(EMPTY_AUDIT_FILTERS)).toEqual({
       entity_type: undefined,
+      exclude_entity_type: "user_session",
       origin: undefined,
       action: undefined,
       origin_ref: undefined,
@@ -180,12 +184,12 @@ describe("exportación a CSV", () => {
     expect(url.searchParams.has("page")).toBe(false);
   });
 
-  it("la descarga campo por campo no agrupa y sin filtros solo pide el formato", () => {
+  it("la descarga campo por campo no agrupa y sin filtros solo pide el formato y deja fuera las sesiones", () => {
     vi.stubEnv("API_INTERNAL_URL", BASE_URL);
 
     const url = new URL(auditCsvUrl(EMPTY_AUDIT_FILTERS, "entries"));
 
-    expect([...url.searchParams.keys()]).toEqual(["format"]);
+    expect([...url.searchParams.keys()]).toEqual(["exclude_entity_type", "format"]);
     expect(url.searchParams.get("format")).toBe("csv");
   });
 
@@ -296,5 +300,26 @@ describe("consulta en modo live", () => {
     vi.unstubAllGlobals();
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))));
     expect(await fetchAuditEntries({ filters: EMPTY_AUDIT_FILTERS, page: 1, pageSize: 20 })).toEqual({ status: "unavailable", message: CONNECTION_MESSAGE });
+  });
+});
+
+describe("inicios de sesión ocultos por defecto (administracion-control)", () => {
+  it("la consulta y el CSV dejan fuera las sesiones salvo que se pidan", () => {
+    expect(auditQuery(filters()).exclude_entity_type).toBe("user_session");
+    expect(auditQuery(filters({ sessions: "1" })).exclude_entity_type).toBeUndefined();
+    expect(auditQuery(filters({ entityType: "user_session" })).exclude_entity_type).toBeUndefined();
+    expect(auditCsvUrl(filters(), "change_sets")).toContain("exclude_entity_type=user_session");
+  });
+
+  it("un cambio o registro concreto se muestra aunque sea un inicio de sesión", () => {
+    expect(hidesSessions(filters({ changeSetId: ids.changeSet(1) }))).toBe(false);
+    expect(hidesSessions(filters({ entityId: ids.piece(1) }))).toBe(false);
+    expect(hidesSessions(filters())).toBe(true);
+  });
+
+  it("la demostración aplica la misma regla", () => {
+    const rows = [entry({ id: "a", change_set_id: ids.changeSet(1) }), entry({ id: "b", change_set_id: ids.changeSet(2), entity_type: "user_session" })];
+    expect(filterAuditEntries(rows, filters()).map((row) => row.id)).toEqual(["a"]);
+    expect(filterAuditEntries(rows, filters({ sessions: "1" })).map((row) => row.id)).toEqual(["a", "b"]);
   });
 });

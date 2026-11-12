@@ -31,8 +31,10 @@ export type TrashRestoreState =
   | { status: "stale"; message: string };
 
 /** Qué hará la restauración, sin tecnicismos. */
-export function restoreDescription(entry: Pick<TrashEntry, "entity_label" | "type_label">): string {
-  return `«${entry.entity_label}» (${entry.type_label.toLowerCase()}) volverá a estar disponible. El sistema comprueba antes que lo que necesita siga activo, y la restauración queda en la auditoría con su usuario (RN-005).`;
+export function restoreDescription(entry: Pick<TrashEntry, "entity_label" | "type_label"> & Partial<Pick<TrashEntry, "entity_type">>): string {
+  // Mismo nombre de tipo que la lista (administracion-control D2); sin códigos de reglas en pantalla.
+  const type = entry.entity_type ? trashTypeLabel(entry.entity_type) : entry.type_label;
+  return `«${entry.entity_label}» (${type.toLowerCase()}) volverá a estar disponible si lo que necesita sigue activo. La restauración queda en la auditoría con su usuario.`;
 }
 
 /** Encabezado cuando una dependencia bloquea la restauración. */

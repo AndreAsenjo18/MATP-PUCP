@@ -77,7 +77,7 @@ describe("textos del historial", () => {
     expect(entityLabel("piece", 1)).toBe("pieza");
     expect(entityLabel("piece", 54)).toBe("piezas");
     expect(entityLabel("media_asset", 2)).toBe("fotografías");
-    expect(entityLabel("tabla_nueva", 2)).toBe("registros de tipo tabla_nueva");
+    expect(entityLabel("tabla_nueva", 2)).toBe("otros registros");
   });
 
   it("une las partes con «y» y resume el alcance del conjunto", () => {
@@ -161,7 +161,7 @@ describe("AuditChangeSetList", () => {
     expect(text).toContain("Corrección de procedencia según el libro de inventario");
     expect(text).toContain("procedencia: Ayacucho → Huancavelica");
     expect(text).toContain("Revertir este cambio");
-    expect(html).toContain('aria-label="Conjuntos de cambios"');
+    expect(html).toContain('aria-label="Cambios registrados"');
     expect(html).toContain(`id="${changeSetAnchor(SET_A)}"`);
   });
 

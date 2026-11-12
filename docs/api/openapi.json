@@ -14085,6 +14085,24 @@
             }
           },
           {
+            "description": "Deja fuera un tipo de registro, p. ej. user_session (sesiones).",
+            "in": "query",
+            "name": "exclude_entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Deja fuera un tipo de registro, p. ej. user_session (sesiones).",
+              "title": "Exclude Entity Type"
+            }
+          },
+          {
             "in": "query",
             "name": "entity_id",
             "required": false,

@@ -15,6 +15,8 @@
  * enmascara los valores sensibles que el rol no puede ver.
  */
 import { TriangleAlert } from "lucide-react";
+
+import { FiltersDrawer } from "@/components/domain/SearchFilters";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -26,6 +28,7 @@ import {
   EMPTY_AUDIT_FILTERS,
   fetchAuditChangeSets,
   fetchAuditEntries,
+  activeAuditFilterCount,
   hasActiveAuditFilters,
   type AuditChangeSetsResult,
   type AuditQueryFilters,
@@ -39,7 +42,7 @@ import { AuditLogFilterBar } from "./AuditLogFilterBar";
 import { AuditLogPager, pageCount } from "./AuditLogPager";
 
 export const AUDIT_INTRO =
-  "Cada tarjeta es una operación completa (una edición, una carga de Excel, una reversión), no un campo suelto. Filtre por tipo de registro, origen, acción, fechas o persona y abra una tarjeta para ver qué campos cambiaron.";
+  "Cada fila es una operación completa: una edición, una carga de Excel o una reversión. Ábrala para ver qué campos cambiaron.";
 
 type Loaded = { key: string; result: AuditChangeSetsResult };
 
@@ -63,6 +66,7 @@ export interface AuditLogPanelProps {
 
 export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
   const [filters, setFilters] = useState<AuditQueryFilters>(EMPTY_AUDIT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [reloads, setReloads] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -122,13 +126,16 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
   }
 
   return (
-    <section aria-label="Consulta de auditoría" className="flex flex-col gap-4">
+    <section aria-label="Auditoría" className="flex flex-col gap-4">
       <header className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-tinta">Consulta de auditoría</h2>
+        <h2 className="text-lg font-semibold text-tinta">Auditoría</h2>
         <p className="text-base text-gris-texto">{AUDIT_INTRO}</p>
       </header>
 
-      <AuditLogFilterBar key={JSON.stringify(filters)} filters={filters} people={people} onApply={applyFilters} />
+      {/* En celular y tableta los filtros se abren con un botón, como en Búsqueda (administracion-control). */}
+      <FiltersDrawer id="audit-filters" open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={activeAuditFilterCount(filters)}>
+        <AuditLogFilterBar key={JSON.stringify(filters)} filters={filters} people={people} onApply={applyFilters} />
+      </FiltersDrawer>
 
       <AuditLogExport filters={filters} available={csvDownloadAvailable() && demoEntries === undefined} />
 
@@ -158,7 +165,7 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
         <>
           {current.total > 0 && (
             <p aria-live="polite" className="text-sm text-gris-texto">
-              {current.total === 1 ? "1 conjunto de cambios" : `${current.total} conjuntos de cambios`}
+              {current.total === 1 ? "1 cambio" : `${current.total.toLocaleString("es-PE")} cambios`}
             </p>
           )}
           <AuditLogChangeSetList
@@ -183,7 +190,7 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
             page={page}
             pageSize={AUDIT_PAGE_SIZE}
             total={current.total}
-            noun="conjuntos de cambios"
+            noun="cambios"
             onPageChange={(next) => {
               setDetail(null);
               setPage(Math.min(Math.max(1, next), pageCount(current.total, AUDIT_PAGE_SIZE)));

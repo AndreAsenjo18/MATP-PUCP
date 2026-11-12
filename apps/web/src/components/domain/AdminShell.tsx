@@ -97,7 +97,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
               aria-selected={selected}
               onClick={() => onSelect(area.sections[0].slug)}
               className={cn(
-                "inline-flex min-h-9 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+                "inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium md:min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
                 selected ? "bg-terracota text-white" : "bg-crema text-tinta hover:bg-borde",
               )}
             >
@@ -119,7 +119,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
               aria-current={selected ? "page" : undefined}
               onClick={() => onSelect(section.slug)}
               className={cn(
-                "min-h-9 rounded-t-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-terracota",
+                "min-h-11 rounded-t-md px-3 py-1.5 text-sm font-medium md:min-h-9 focus-visible:outline-2 focus-visible:outline-terracota",
                 selected ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
               )}
             >

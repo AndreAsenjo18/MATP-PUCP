@@ -172,7 +172,7 @@ function AuditTrailView({ trail, access, onReload }: AuditTrailViewProps) {
       <p className="text-sm text-gris-texto">{TRAIL_INTRO}</p>
       {trail.total > trail.changeSets.length && (
         <p className="text-sm text-gris-texto">
-          Se muestran los {trail.changeSets.length} conjuntos más recientes de {trail.total}. La consulta completa está en Administración.
+          Se muestran los {trail.changeSets.length} cambios más recientes de {trail.total}. La consulta completa está en Administración.
         </p>
       )}
       <AuditChangeSetList

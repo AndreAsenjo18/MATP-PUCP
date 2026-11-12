@@ -13,7 +13,7 @@ Las secciones se agrupan en **cuatro áreas**: primero se elige el área y debaj
 | **Importación** | Formatos de archivo · Lectura de códigos | Cómo se leen los Excel y los códigos que escribe el museo. |
 | **Control** | Papelera · Auditoría · Exportación completa · Almacenamiento de fotos | Recuperar, revisar, respaldar y saber cuánto ocupan las fotos. |
 
-En cada listado, los **filtros y la búsqueda están arriba** y el botón **Nuevo …** (nuevo usuario, nueva colección, nueva ubicación, nueva lista, nuevo tipo) abre un cuadro para crear; al guardar, el cuadro se cierra y el listado se actualiza. Los estados se ven con color y texto (verde «Activo», gris «Desactivado») y las acciones de cada fila son botones con un icono: deje el cursor encima para leer su nombre. Las direcciones que ya se usaban, como `/administracion?pestana=plantillas`, siguen funcionando.
+En cada listado, los **filtros y la búsqueda están arriba** y el botón **Nuevo …** (nuevo usuario, nueva colección, nueva ubicación, nueva lista, nuevo tipo) abre un cuadro para crear; al guardar, el cuadro se cierra y el listado se actualiza. Los estados se ven con color y texto (verde «Activo», gris «Desactivado») y las acciones de cada fila son botones con un icono: deje el cursor encima para leer su nombre. Las direcciones que ya se usaban, como `/administracion?pestana=plantillas`, siguen funcionando, y la dirección cambia al elegir otra sección: puede copiarla para volver a ella o enviarla. En el teléfono, las pestañas son más altas para tocarlas con el dedo.
 
 ## Usuarios y permisos
 
@@ -347,14 +347,14 @@ Solo la ve quien administra el sistema.
 
 ## Exportación completa de la base de datos (Respaldo en formato abierto)
 
-El sistema garantiza que el museo pueda extraer la totalidad de su patrimonio digital en formatos estándar y abiertos (CSV y XLSX) sin depender de software privativo (requisito RF-044).
+El sistema garantiza que el museo pueda extraer la totalidad de su patrimonio digital en formatos estándar y abiertos (CSV y XLSX) sin depender de software privativo. En pantalla, el panel se titula **Exportación completa de la base**.
 
 ### Quién puede exportar todo
 Por motivos de seguridad y confidencialidad institucional, la exportación completa está restringida exclusivamente a usuarios con el rol **Administrador** (permiso `exports.full`).
 
 ### Cómo solicitar la exportación completa
 1. Inicie sesión con una cuenta de Administrador.
-2. Diríjase a **Administración → Exportación completa** (también se abre con `/administracion?pestana=exportacion`) y pulse **Preparar exportación completa**.
+2. Diríjase a **Administración › Control › Exportación completa** (también se abre con `/administracion?pestana=exportacion`) y pulse **Preparar exportación completa**.
 3. El paquete se arma en segundo plano: la pantalla muestra *Preparándose* y se actualiza sola. Cuando aparezca *Lista*, pulse **Descargar**. El archivo se conserva 72 horas.
 4. **Idempotencia**: si ya hay una exportación completa en preparación, o una lista que todavía no caducó, el sistema muestra esa misma en lugar de empezar otra.
 

@@ -55,7 +55,7 @@ describe("AuditTrailPanel", () => {
     expect(text).toContain("Corrección según el libro de inventario");
     expect(text).toContain("carga masiva de Excel");
     expect(text).toContain("Revertir este cambio");
-    expect(html).toContain('aria-label="Conjuntos de cambios"');
+    expect(html).toContain('aria-label="Cambios registrados"');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

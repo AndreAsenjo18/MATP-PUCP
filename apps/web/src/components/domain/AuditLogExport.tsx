@@ -14,13 +14,13 @@ import { Button, buttonClassName } from "@/components/ui/Button";
 import { auditCsvUrl, type AuditCsvView, type AuditQueryFilters } from "@/lib/data/audit-query";
 
 export const CSV_VIEWS: ReadonlyArray<{ view: AuditCsvView; label: string }> = [
-  { view: "change_sets", label: "Descargar conjuntos de cambios (CSV)" },
-  { view: "entries", label: "Descargar campo por campo (CSV)" },
+  { view: "change_sets", label: "Un cambio por fila" },
+  { view: "entries", label: "Un campo por fila" },
 ];
 
 export const CSV_INTRO =
-  "El archivo lleva los mismos filtros que está viendo. Los valores que su rol no puede ver salen ocultos, igual que en pantalla. Las columnas están en inglés; Excel lo abre con las tildes correctas.";
-export const CSV_DEMO_NOTICE = "Modo demostración: la descarga la genera el servidor y aquí no hay servidor, así que no está disponible.";
+  "Con los filtros que está viendo; lo que su rol no puede ver sale oculto. Los encabezados están en inglés.";
+export const CSV_DEMO_NOTICE = "En el modo demostración no se puede descargar.";
 
 export interface AuditLogExportProps {
   /** Filtros aplicados (no el borrador del formulario). */
@@ -31,9 +31,14 @@ export interface AuditLogExportProps {
 
 export function AuditLogExport({ filters, available }: AuditLogExportProps) {
   return (
-    <section aria-label="Exportar a CSV" className="flex flex-col gap-2">
-      <p className="text-sm text-gris-texto">{CSV_INTRO}</p>
-      <div className="flex flex-wrap gap-3">
+    // Plegado por defecto: casi nunca se usa y ocupaba un bloque entero (change `administracion-control`, D3).
+    <details aria-label="Descargar en CSV" className="group flex flex-col gap-2">
+      <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start rounded-md text-sm font-medium text-terracota focus-visible:outline-2 focus-visible:outline-terracota md:min-h-9">
+        <Download size={18} aria-hidden="true" />
+        Descargar en CSV
+      </summary>
+      <p className="mt-2 text-sm text-gris-texto">{CSV_INTRO}</p>
+      <div className="mt-2 flex flex-wrap gap-3">
         {CSV_VIEWS.map(({ view, label }) =>
           available ? (
             <a key={view} href={auditCsvUrl(filters, view)} download className={buttonClassName({ variant: "outline" })}>
@@ -48,6 +53,6 @@ export function AuditLogExport({ filters, available }: AuditLogExportProps) {
         )}
       </div>
       {!available && <p className="text-sm text-ambar-texto">{CSV_DEMO_NOTICE}</p>}
-    </section>
+    </details>
   );
 }

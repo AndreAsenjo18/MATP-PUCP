@@ -146,7 +146,7 @@ describe("conflictos legibles", () => {
     expect(conflictSentence(conflict())).toContain("otra persona lo volvió a cambiar después");
     expect(detail).toContain("Modificado el");
     expect(detail).toContain("hoy dice «Puno»");
-    expect(detail).toContain("este conjunto lo había dejado en «Huancavelica»");
+    expect(detail).toContain("este cambio lo había dejado en «Huancavelica»");
     expect(detail).not.toContain("{");
   });
 
@@ -264,7 +264,7 @@ describe("RevertChangeSetPanel", () => {
   it("un conjunto ya revertido se informa con enlace al conjunto de reversión", () => {
     const html = render(
       <RevertChangeSetPanel
-        state={{ status: "blocked", message: "Este conjunto ya fue revertido.", revertedByChangeSetId: SET_B }}
+        state={{ status: "blocked", message: "Este cambio ya fue revertido.", revertedByChangeSetId: SET_B }}
         onRecalculate={noop}
         onCancel={noop}
         onConfirm={noop}
@@ -272,8 +272,8 @@ describe("RevertChangeSetPanel", () => {
     );
     const text = visibleText(html);
 
-    expect(text).toContain("Este conjunto ya fue revertido.");
-    expect(text).toContain("Ver el conjunto de reversión");
+    expect(text).toContain("Este cambio ya fue revertido.");
+    expect(text).toContain("Ver la reversión");
     expect(html).toContain(`href="#${changeSetAnchor(SET_B)}"`);
     expect(text).not.toContain("Motivo de la reversión");
   });
