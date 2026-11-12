@@ -98,6 +98,50 @@ export function paramsFromSearch(search: URLSearchParams): ReportParams {
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Reporte y filtros en la dirección (change `reportes-vista-simplificada`, prueba humana 7.2; Req:
+// Reporte y filtros conservados en la dirección): F5 o un enlace compartido abren lo mismo.
+// ---------------------------------------------------------------------------------------------
+
+/** Parámetro de la dirección con el tipo de reporte: `/reportes?reporte=by-attribute&...`. */
+export const REPORT_TYPE_PARAM = "reporte";
+
+/** Filtros de «Información incompleta» que se guardan en la dirección. */
+export interface IncompleteUrlState {
+  alerts: string[];
+  collectionId: string;
+  includeSubcollections: boolean;
+}
+
+/** Tipo de reporte de la dirección; uno desconocido abre el inventario general. */
+export function reportKeyFromSearch(search: { get(name: string): string | null }): ReportKey {
+  const value = search.get(REPORT_TYPE_PARAM);
+  return REPORT_TYPES.some((report) => report.type === value) ? (value as ReportKey) : "inventory";
+}
+
+/** Dirección de Reportes con el tipo y, si se dan, sus parámetros (los mismos nombres que la API). */
+export function reportsHref(type: ReportKey, params?: ReportParams, incomplete?: IncompleteUrlState): string {
+  const search = new URLSearchParams({ [REPORT_TYPE_PARAM]: type });
+  if (params && type !== "incomplete") {
+    for (const [key, value] of Object.entries(query(params))) search.set(key, String(value));
+  }
+  if (incomplete && type === "incomplete") {
+    for (const alert of incomplete.alerts) search.append("alert", alert);
+    if (incomplete.collectionId) search.set("collection_id", incomplete.collectionId);
+    if (!incomplete.includeSubcollections) search.set("include_subcollections", "false");
+  }
+  return `/reportes?${search.toString()}`;
+}
+
+/** Filtros de «Información incompleta» guardados en la dirección. */
+export function incompleteStateFromSearch(search: { get(name: string): string | null; getAll(name: string): string[] }): IncompleteUrlState {
+  return {
+    alerts: search.getAll("alert"),
+    collectionId: search.get("collection_id") ?? "",
+    includeSubcollections: search.get("include_subcollections") !== "false",
+  };
+}
+
 /** Por qué no se puede pedir el reporte todavía (falta un parámetro obligatorio), o `null`. */
 export function missingParameter(type: LiveReportType, params: ReportParams): string | null {
   if (type === "by-collection" && !params.collectionId) return "Elija la colección.";
@@ -209,7 +253,7 @@ export function groupRows(report: Pick<Report, "columns" | "rows" | "subtotals">
 /** «Procedencia: Puno — 80 piezas»; el conteo es de todo el reporte, no de la página. */
 export function groupTitle(group: Pick<ReportRowGroup, "heading" | "label" | "count">): string {
   const title = `${group.heading}: ${group.label}`;
-  return group.count === null ? title : `${title} — ${group.count} ${group.count === 1 ? "pieza" : "piezas"}`;
+  return group.count === null ? title : `${title} — ${group.count.toLocaleString("es-PE")} ${group.count === 1 ? "pieza" : "piezas"}`;
 }
 
 /** El texto de una celda. Una descripción vacía queda vacía, sin texto de relleno. */
@@ -234,8 +278,69 @@ export function filtersText(report: Pick<Report, "filters">): string {
   return filters.length ? filters.map(([key, value]) => `${key}: ${String(value)}`).join("; ") : "sin filtros";
 }
 
+/**
+ * Frases de los totales conocidos (change `reportes-vista-simplificada`, Req: Textos y números de
+ * Reportes en lenguaje llano): «14 piezas», no «Piezas: 14». La clave se compara sin mayúsculas
+ * porque la API usa «Piezas» y la demostración, «piezas».
+ */
+const TOTAL_PHRASES: Record<string, readonly [singular: string, plural: string]> = {
+  piezas: ["pieza", "piezas"],
+  colecciones: ["colección", "colecciones"],
+  propiedad: ["en propiedad", "en propiedad"],
+  comodato: ["en comodato", "en comodato"],
+  "préstamo temporal": ["en préstamo temporal", "en préstamo temporal"],
+  "apariciones en grupos": ["aparición en grupos", "apariciones en grupos"],
+  "nunca verificadas": ["nunca verificada", "nunca verificadas"],
+};
+
+/** Un número con el formato de la aplicación (`es-PE`); lo demás, tal cual. */
+export function reportNumber(value: unknown): string {
+  return typeof value === "number" ? value.toLocaleString("es-PE") : String(value);
+}
+
 export function totalsText(report: Pick<Report, "totals">): string {
   return Object.entries(report.totals)
-    .map(([label, value]) => `${label}: ${value}`)
+    .map(([label, value]) => {
+      const phrase = TOTAL_PHRASES[label.trim().toLowerCase()];
+      if (phrase && typeof value === "number") return `${reportNumber(value)} ${value === 1 ? phrase[0] : phrase[1]}`;
+      // Lo que no tiene frase (p. ej. «Total PEN») se deja como nombre y valor, con el número formateado.
+      return `${label}: ${reportNumber(value)}`;
+    })
     .join(" · ");
+}
+
+/** Más columnas que estas y la vista previa muestra solo las principales (W8). */
+export const PREVIEW_COLUMN_LIMIT = 6;
+
+const MAIN_PIECE_COLUMNS = ["Código I", "Código de colección", "Denominación", DESCRIPTION_COLUMN, "Colección", "Régimen"] as const;
+
+/**
+ * Columnas principales de la vista previa por tipo de reporte (change `reportes-vista-simplificada`,
+ * design D1). `[SUPUESTO: W8]` La descarga y la impresión llevan siempre todas.
+ */
+export const PREVIEW_COLUMNS: Readonly<Partial<Record<string, readonly string[]>>> = {
+  inventory: MAIN_PIECE_COLUMNS,
+  "by-collection": MAIN_PIECE_COLUMNS,
+  // La columna del grupo ya se lee en el encabezado de cada grupo.
+  "by-attribute": MAIN_PIECE_COLUMNS,
+  "by-location": ["Código I", "Código de colección", "Denominación", DESCRIPTION_COLUMN, "Ubicación", "Última vez vista"],
+};
+
+/**
+ * Índices de las columnas que pinta la vista previa, en el orden del reporte. Todas si se pidió,
+ * si el reporte trae pocas o si no tiene columnas principales; una principal que no viene se omite.
+ */
+export function previewColumns(report: Pick<Report, "report_type" | "columns">, showAll: boolean): number[] {
+  const all = report.columns.map((_, index) => index);
+  if (showAll || report.columns.length <= PREVIEW_COLUMN_LIMIT) return all;
+  const main = PREVIEW_COLUMNS[report.report_type];
+  if (!main) return all;
+  const picked = all.filter((index) => main.includes(report.columns[index]));
+  return picked.length > 0 ? picked : all;
+}
+
+/** «En pantalla: 6 de 19 columnas. El Excel las trae todas.»; `null` si se ven todas. */
+export function previewColumnsNotice(visible: number, total: number): string | null {
+  if (visible >= total) return null;
+  return `En pantalla: ${visible} de ${total} columnas. El Excel las trae todas.`;
 }

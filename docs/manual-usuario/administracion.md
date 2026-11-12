@@ -11,7 +11,7 @@ Las secciones se agrupan en **cuatro áreas**: primero se elige el área y debaj
 | **Personas** | Usuarios · Permisos por rol | Quién entra al sistema y qué puede hacer cada rol. |
 | **Catálogo** | Colecciones · Ubicaciones · Listas de valores · Tipos de código | Lo que se elige al llenar una ficha. |
 | **Importación** | Formatos de archivo · Lectura de códigos | Cómo se leen los Excel y los códigos que escribe el museo. |
-| **Control** | Papelera · Auditoría · Exportación completa | Recuperar, revisar y respaldar. |
+| **Control** | Papelera · Auditoría · Exportación completa · Almacenamiento de fotos | Recuperar, revisar, respaldar y saber cuánto ocupan las fotos. |
 
 En cada listado, los **filtros y la búsqueda están arriba** y el botón **Nuevo …** (nuevo usuario, nueva colección, nueva ubicación, nueva lista, nuevo tipo) abre un cuadro para crear; al guardar, el cuadro se cierra y el listado se actualiza. Los estados se ven con color y texto (verde «Activo», gris «Desactivado») y las acciones de cada fila son botones con un icono: deje el cursor encima para leer su nombre. Las direcciones que ya se usaban, como `/administracion?pestana=plantillas`, siguen funcionando.
 
@@ -334,6 +334,16 @@ El equipo técnico recibe también un aviso automático cuando una copia falla o
 ### Una vez al mes: comprobar que la copia sirve
 
 El equipo técnico hace un **simulacro de restauración**: recupera la última copia en un entorno aparte y comprueba que el número de piezas coincide y que una muestra de fotos está intacta. El resultado queda en un registro fechado. No afecta al sistema que usted usa.
+
+## Almacenamiento de fotos
+
+Muestra cuánto espacio ocupan las fotografías y cuánto ocuparían en el futuro, para decidir dónde guardarlas. Antes estaba en **Reportes**.
+
+1. Diríjase a **Administración → Control → Almacenamiento de fotos** (también se abre con `/administracion?pestana=almacenamiento`).
+2. Arriba ve el volumen actual: los originales, las versiones de visualización, las miniaturas y el total, con los promedios reales de fotos por pieza y de tamaño por foto.
+3. Para una proyección a medida, escriba **Piezas**, **Fotos por pieza** o **MB por foto** y pulse **Proyectar**. Lo que deje vacío toma los promedios reales.
+
+Solo la ve quien administra el sistema.
 
 ## Exportación completa de la base de datos (Respaldo en formato abierto)
 

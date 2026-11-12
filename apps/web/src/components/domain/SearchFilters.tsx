@@ -9,6 +9,7 @@
 import { Eraser, SlidersHorizontal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { DisclosureSummary, withActiveCount } from "@/components/domain/DisclosureSummary";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { LocationTreeSelect, type LocationTreeActions } from "@/components/domain/LocationTreeSelect";
 import { Button } from "@/components/ui/Button";
@@ -18,7 +19,7 @@ import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { fetchLocationsTree, type LocationNode } from "@/lib/data/locations";
 import { fetchPieceCatalogs, type TermOption } from "@/lib/data/pieces";
-import { TENURE_REGIMES, secondaryFiltersActive, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
+import { TENURE_REGIMES, secondaryFiltersActive, secondaryFiltersCount, type SearchFilters, type TenureRegimeLabel } from "@/lib/data/search";
 
 export interface SearchOptions {
   collections: TermOption[];
@@ -191,10 +192,8 @@ export function SearchFiltersPanel({
         onChange={(event) => onChange({ description: event.target.value })}
         placeholder="p. ej. paja toquilla"
       />
-      <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)}>
-        <summary className="flex min-h-11 cursor-pointer items-center rounded-md text-sm font-medium text-tinta focus-visible:outline-2 focus-visible:outline-terracota">
-          Más filtros
-        </summary>
+      <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
+        <DisclosureSummary>{withActiveCount("Más filtros", secondaryFiltersCount(filters))}</DisclosureSummary>
         <div className="mt-2 flex flex-col gap-4">
           <OptionSelect
             label="Colección (con subcolecciones)"

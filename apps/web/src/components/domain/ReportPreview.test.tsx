@@ -45,13 +45,13 @@ describe("vista previa del reporte", () => {
     expect(text).toContain("Filtros: collection: Colección RA (ficticia)");
     expect(text).toContain("Retablo de San Marcos");
     expect(text).toContain("Régimen: Propiedad — 2");
-    expect(text).toContain("Piezas: 2 · Propiedad: 2");
+    expect(text).toContain("2 piezas · 2 en propiedad");
     expect(text).not.toContain("Página");
   });
 
   it("pone los totales antes que la tabla", () => {
     const text = visibleText(render(<ReportPreview report={report()} onPage={noop} />));
-    expect(text.indexOf("Piezas: 2 · Propiedad: 2")).toBeLessThan(text.indexOf("Retablo de San Marcos"));
+    expect(text.indexOf("2 piezas · 2 en propiedad")).toBeLessThan(text.indexOf("Retablo de San Marcos"));
   });
 
   it("deja el encabezado de la tabla fijo al desplazarse", () => {
@@ -81,7 +81,7 @@ describe("vista previa del reporte", () => {
 
   it("explica por qué una pieza con dos materiales suma más apariciones que piezas", () => {
     const text = visibleText(render(<ReportPreview report={report({ totals: { Piezas: 1, "Apariciones en grupos": 2 }, message: "Una pieza con varios materiales aparece en cada grupo." })} />));
-    expect(text).toContain("Piezas: 1 · Apariciones en grupos: 2");
+    expect(text).toContain("1 pieza · 2 apariciones en grupos");
     expect(text).toContain("aparece en cada grupo");
   });
 
@@ -104,8 +104,8 @@ describe("reporte muy grande", () => {
       <ReportPreview report={report({ rows, total_rows: 10000, page_size: 50, totals: { Piezas: 10000 }, subtotals: [{ group: "Colección", label: "RA", count: 10000, level: 0 }] })} onPage={noop} />,
     );
     const text = visibleText(html);
-    expect(text).toContain("Piezas: 10000");
-    expect(text).toContain("Colección: RA — 10000 piezas");
+    expect(text).toContain("10,000 piezas");
+    expect(text).toContain("Colección: RA — 10,000 piezas");
     expect(text).toContain("Página 1 de 200 (10000 filas)");
     expect(text).toContain("Pieza 49");
     expect(text).not.toContain("Pieza 50");

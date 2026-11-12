@@ -26,10 +26,11 @@ describe("configuración de «Piezas agrupadas por…»", () => {
     expect(render(<GroupBySelect value="material" onChange={noop} />)).toMatch(/<option[^>]*selected=""[^>]*>Material</);
   });
 
-  it("usa los mismos filtros de la búsqueda, plegados y con cuántos hay activos", () => {
+  it("usa los mismos filtros de la búsqueda, desplegados de entrada y con cuántos hay activos", () => {
+    // reportes-vista-simplificada, prueba humana 7.2: plegados no se reconocía que se podían abrir.
     const closed = render(<ReportFilters filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
     expect(closed).toContain("<details");
-    expect(closed).not.toMatch(/<details[^>]*\sopen/);
+    expect(closed).toMatch(/<details[^>]*\sopen/);
     expect(closed).toContain('aria-label="Filtros de búsqueda"');
     expect(closed).toContain("Código o texto");
     expect(visibleText(closed)).not.toContain("activo");

@@ -116,7 +116,7 @@ describe("reporte agrupado en la impresión", () => {
   it("repite la cabecera una sola vez por tabla, con los totales al final", () => {
     const text = visibleText(render(<PrintableReport report={grouped} tooLarge={false} />));
     expect(text.match(/Piezas agrupadas por procedencia/g)).toHaveLength(1);
-    expect(text).toContain("Piezas: 3");
+    expect(text).toContain("3 piezas");
   });
 
   it("explica por qué hay más apariciones que piezas", () => {
