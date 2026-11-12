@@ -2,6 +2,8 @@
 
 Corrección **C13** de `docs/lista-maestra-funcionalidades.md` (observación J9 de la JP: «usar la mínima cantidad de clics para hacer lo que quiero»). Paquete P5. Medido el **2026-11-11**.
 
+> **Actualización 2026-11-12.** Después de esta medición llegó a `main` la ficha con pestañas (`ficha-edicion-unificada`, PR #188). Con ella quedaron resueltos **H4** (la ficha conectada ya muestra «Ubicación e historial» y «Origen y auditoría») y **H7** (las fotos están en su pestaña, sin bajar tres pantallas; la sección «Agregar fotografías» queda a unos 1 300 px dentro de la pestaña). H2 y H3 (guardar y editar) se revisan con la ficha nueva. La tabla de abajo es la medición original del 2026-11-11; repetirla con la ficha nueva.
+
 ## Cómo se midió
 
 - **Sistema**: Docker local en modo conectado, con el seed sintético, rama `main` (`05c34ef`) más los cambios de Administración › Control (`feat/administracion-control`), que no tocan estas tareas.
