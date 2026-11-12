@@ -244,3 +244,53 @@ export function movedOrder(media: readonly Pick<PieceMedia, "id">[], id: string,
   [ids[from], ids[to]] = [ids[to]!, ids[from]!];
   return ids;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Vistas repetidas (change `aviso-fotos-repetidas`, C6): avisos que no bloquean
+// ---------------------------------------------------------------------------------------------
+
+/** Nombre de la foto sin tipo de vista, igual que en la galería. */
+export const UNSPECIFIED_VIEW = "Vista sin especificar";
+
+export interface ViewCount {
+  label: string;
+  count: number;
+  /** La foto no tiene tipo de vista: no cuenta como repetida. */
+  unspecified: boolean;
+}
+
+/** Cuántas fotos hay de cada tipo de vista, en el orden en que aparecen en la galería. */
+export function viewCounts(media: readonly Pick<PieceMedia, "view_type">[]): ViewCount[] {
+  const counts = new Map<string, ViewCount>();
+  for (const asset of media) {
+    const key = asset.view_type?.id ?? "";
+    const current = counts.get(key) ?? { label: asset.view_type?.label ?? UNSPECIFIED_VIEW, count: 0, unspecified: !asset.view_type };
+    counts.set(key, { ...current, count: current.count + 1 });
+  }
+  return [...counts.values()];
+}
+
+/**
+ * Aviso al elegir el tipo de vista de las fotos que se van a subir: la pieza ya tiene fotos de esa
+ * vista. No bloquea, porque puede haber dos tomas válidas del mismo ángulo (J6).
+ */
+export function sameViewWarning(
+  media: readonly Pick<PieceMedia, "view_type">[],
+  viewTypeId: string,
+  viewTypes: readonly Pick<TermOption, "id" | "label">[],
+): string | null {
+  if (!viewTypeId) return null;
+  const count = media.filter((asset) => asset.view_type?.id === viewTypeId).length;
+  if (count === 0) return null;
+  const label = viewTypes.find((option) => option.id === viewTypeId)?.label ?? media.find((asset) => asset.view_type?.id === viewTypeId)?.view_type?.label;
+  const photos = count === 1 ? "1 foto" : `${count} fotos`;
+  return `La pieza ya tiene ${photos} de vista ${label}. Súbala solo si es otra toma.`;
+}
+
+/** Aviso si se suben varias fotos con un mismo tipo de vista: probablemente son de ángulos distintos. */
+export function manyWithOneViewWarning(fileCount: number, viewTypeId: string, viewTypes: readonly Pick<TermOption, "id" | "label">[]): string | null {
+  if (!viewTypeId || fileCount < 2) return null;
+  const label = viewTypes.find((option) => option.id === viewTypeId)?.label;
+  if (!label) return null;
+  return `Las ${fileCount} fotos quedarán como ${label}. Si alguna es de otro ángulo, cambie su tipo de vista en la galería.`;
+}

@@ -36,6 +36,25 @@ La miniatura y la vista grande de una foto nueva pueden tardar unos segundos en 
 
 El sistema la detiene y dice **Esta foto ya está en la pieza**. Si de verdad quiere tenerla dos veces, pulse **Subir de todos modos**; si no, no haga nada.
 
+### Si la vista ya tiene fotos
+
+Una pieza se documenta mejor con ángulos distintos (frente, perfil, detalle). Por eso el sistema avisa, **sin impedir la subida**:
+- Si elige un tipo de vista que la pieza ya tiene: *«La pieza ya tiene 1 foto de vista Frontal. Súbala solo si es otra toma.»*
+- Si sube varias fotos con un solo tipo de vista: *«Las 3 fotos quedarán como Frontal…»*. Después, en la galería, cambie el tipo de vista de las que sean de otro ángulo.
+
+Puede haber dos tomas válidas del mismo ángulo (otra luz, antes y después de una restauración); por eso el aviso no bloquea.
+
+Debajo de las miniaturas, **Vistas** resume cuántas fotos hay de cada tipo, por ejemplo *Frontal (2, repetida) · Perfil · Vista sin especificar*. Las vistas con más de una foto se marcan con un icono para que las revise.
+
+### Qué comprueba el sistema y qué no
+
+| Caso | ¿Se detecta? |
+|---|---|
+| La misma imagen, archivo idéntico | Sí, al subir desde la ficha y en la importación de fotos |
+| La misma imagen en otra resolución o recortada | Solo en la importación de fotos, entre las fotos del mismo lote |
+| Una foto de una vista que la pieza ya tiene | Sí, como aviso al elegir el tipo de vista y en el resumen **Vistas** |
+| Qué vistas debería tener cada pieza | No: el museo no ha definido un mínimo (pregunta Z2) |
+
 ## Cambiar el tipo de vista
 
 Elija la foto en las miniaturas y cambie su **Tipo de vista**. Se guarda al elegirlo.
