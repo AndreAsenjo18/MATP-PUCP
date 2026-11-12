@@ -187,10 +187,10 @@ describe("PieceSheet", () => {
     expect(text).toContain("Propietario legal");
   });
 
-  it("los identificadores muestran el candado accesible del código I y el aviso RN-002", () => {
+  it("los identificadores muestran el candado accesible del código I y una explicación clara", () => {
     const html = render(<PieceIdentifiersTable piece={pieceWithCode} />);
     expect(html).toContain('aria-label="Bloqueado"');
-    expect(visibleText(html)).toContain("El código I está bloqueado una vez asignado (RN-002)");
+    expect(visibleText(html)).toContain("El código I está bloqueado una vez asignado");
     expect(html).not.toContain("🔒");
   });
 
