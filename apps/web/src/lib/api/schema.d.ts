@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 2ac2ac64c558cb7bb381c53700c619fd372b1934cb65acd2f9feecf365d96e52
+ * openapi-sha256: 30bf6af3632f4596e0760bc0f00221efccc6ea26f217a0a14dee30b2165d85c9
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -35,6 +35,23 @@ export interface paths {
         put?: never;
         /** Solicitar una sugerencia al servicio de IA (queda PENDIENTE, RN-009) */
         post: operations["suggestCataloging"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/suggest-column-mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Carga masiva con IA: proponer a qué campo corresponde cada columna sin plantilla */
+        post: operations["suggestColumnMapping"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1008,9 +1025,50 @@ export interface paths {
         head?: never;
         /**
          * Decidir sobre una fila (aceptar, excluir o rechazar con motivo)
-         * @description Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino (`target_piece_id`) o marcándola como nueva (`as_new`). Una fila con errores o un conflicto sin resolver no se puede aceptar (422).
+         * @description Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino (`target_piece_id`) o marcándola como nueva (`as_new`). Sin `decision`, solo guarda esa resolución (p. ej. al elegir la pieza en la lista, sin darle Aceptar todavía). Una fila con errores o un conflicto sin resolver no se puede aceptar (422).
          */
         patch: operations["decideImportRow"];
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/rows/{row_id}/ai-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Carga masiva con IA: guardar el valor de IA elegido o editado para una fila
+         * @description No escribe en el catálogo (RN-009): el valor queda guardado en la fila y se aplica recién al aprobar el lote, igual que `field_decisions`. Un valor `null` quita ese campo de lo que se aplicará.
+         */
+        patch: operations["setRowAiFields"];
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/rows/{row_id}/ai-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Carga masiva con IA: extraer datos del texto libre sin mapear de una fila (RIA-01)
+         * @description Pedida bajo demanda desde la hoja de revisión (change carga-masiva-con-ia, D3), nunca
+         *     automática: una fila puede pedirla más de una vez, cada vez como una sugerencia nueva.
+         */
+        post: operations["suggestRowAiFields"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/validate": {
@@ -3193,6 +3251,57 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
+        /** ColumnMappingCandidateOut */
+        ColumnMappingCandidateOut: {
+            /** Column */
+            column: string;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Field
+             * @description Campo de destino propuesto, o null.
+             */
+            field?: string | null;
+        };
+        /**
+         * ColumnMappingSuggestionOut
+         * @description Nunca se persiste (a diferencia de ``AiSuggestionOut``): es una propuesta de mapeo, no un
+         *     dato de catálogo; la persona la confirma o la corrige en «Ajustar columnas» antes de validar
+         *     el lote (RN-009).
+         */
+        ColumnMappingSuggestionOut: {
+            /** Mappings */
+            mappings: components["schemas"]["ColumnMappingCandidateOut"][];
+            /** Message */
+            message?: string | null;
+        };
+        /**
+         * ColumnMappingSuggestRequest
+         * @description Body of ``POST /ai/suggest-column-mapping`` (change carga-masiva-con-ia): se pide cuando
+         *     ninguna plantilla guardada reconoció el archivo (RF-022, RF-048).
+         * @example {
+         *       "headers": [
+         *         "DENOMINACIÓN",
+         *         "CÓDIGOS",
+         *         "OBSERVACIONES"
+         *       ],
+         *       "sample_rows": [
+         *         {
+         *           "CÓDIGOS": "I-9201",
+         *           "DENOMINACIÓN": "Arpa andina",
+         *           "OBSERVACIONES": "Mide 95 cm de alto."
+         *         }
+         *       ]
+         *     }
+         */
+        ColumnMappingSuggestRequest: {
+            /** Headers */
+            headers: string[];
+            /** Sample Rows */
+            sample_rows?: {
+                [key: string]: unknown;
+            }[];
+        };
         /**
          * CompletenessFieldKind
          * @enum {string}
@@ -4734,7 +4843,7 @@ export interface components {
             };
             /**
              * Resolution
-             * @description Resolución de una persona: `target_piece_id` o `as_new`, `field_decisions`, `decided_by_id`, `decided_at`.
+             * @description Resolución de una persona: `target_piece_id` o `as_new`, `field_decisions`, `ai_fields` (carga masiva con IA, change carga-masiva-con-ia), `decided_by_id`, `decided_at`.
              */
             resolution?: {
                 [key: string]: unknown;
@@ -7288,6 +7397,32 @@ export interface components {
             reason: string;
         };
         /**
+         * RowAiFieldsRequest
+         * @description Body of ``PATCH /imports/{batch_id}/rows/{row_id}/ai-fields`` (change
+         *     carga-masiva-con-ia): la hoja de revisión guarda aquí, campo por campo, el valor elegido o
+         *     editado de la IA para la fila — vigente, propuesto, o corregido a mano. No es una decisión de
+         *     fila (``decide_import_row`` sigue siendo aparte) ni escribe en el catálogo: aprobar el lote es
+         *     lo único que lo aplica (RN-009).
+         * @example {
+         *       "fields": {
+         *         "dimensions": {
+         *           "dimension": "alto",
+         *           "unit": "cm",
+         *           "value": 95
+         *         }
+         *       }
+         *     }
+         */
+        RowAiFieldsRequest: {
+            /**
+             * Fields
+             * @description Campo de IA (`dimensions`, `conservation_status`, `review_marks`) -> valor elegido; un valor `null` quita ese campo de lo que se aplicará al aprobar el lote.
+             */
+            fields: {
+                [key: string]: unknown;
+            };
+        };
+        /**
          * RowClassification
          * @enum {string}
          */
@@ -7318,9 +7453,9 @@ export interface components {
             as_new: boolean;
             /**
              * Decision
-             * @enum {string}
+             * @description Sin decisión, solo guarda `target_piece_id`/`as_new` (resolver un conflicto o posible duplicado sin aceptar la fila todavía).
              */
-            decision: "ACCEPTED" | "EXCLUDED" | "REJECTED";
+            decision?: ("ACCEPTED" | "EXCLUDED" | "REJECTED") | null;
             /**
              * Field Decisions
              * @description Por campo del diff: aceptar el valor entrante o conservar el actual.
@@ -8325,6 +8460,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiSuggestionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El servicio de IA no respondió. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestColumnMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ColumnMappingSuggestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColumnMappingSuggestionOut"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */
@@ -11905,6 +12100,137 @@ export interface operations {
             };
             /** @description Datos no válidos. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setRowAiFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RowAiFieldsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestRowAiFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La fila no tiene texto libre sin mapear. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El servicio de IA no respondió. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
