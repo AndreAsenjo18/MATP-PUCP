@@ -1,6 +1,123 @@
 {
   "components": {
     "schemas": {
+      "ColumnMappingCandidate": {
+        "properties": {
+          "column": {
+            "description": "Encabezado tal como viene en el archivo.",
+            "title": "Column",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Clave de ``target_fields`` propuesta, o null si no hay una clara.",
+            "title": "Field"
+          }
+        },
+        "required": [
+          "column",
+          "confidence"
+        ],
+        "title": "ColumnMappingCandidate",
+        "type": "object"
+      },
+      "ColumnMappingRequest": {
+        "description": "Body of ``/v1/suggest-column-mapping`` (change carga-masiva-con-ia): a column of an import\nfile has no saved template to map it, so the AI proposes a destination from ``target_fields``.",
+        "examples": [
+          {
+            "headers": [
+              "DENOMINACIÓN",
+              "CÓDIGOS",
+              "OBSERVACIONES"
+            ],
+            "sample_rows": [
+              {
+                "CÓDIGOS": "I-9201",
+                "DENOMINACIÓN": "Arpa andina",
+                "OBSERVACIONES": "Mide 95 cm de alto."
+              }
+            ],
+            "target_fields": {
+              "denomination": "Denominación",
+              "notes": "Observaciones"
+            }
+          }
+        ],
+        "properties": {
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Headers",
+            "type": "array"
+          },
+          "sample_rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 20,
+            "title": "Sample Rows",
+            "type": "array"
+          },
+          "target_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Vocabulario de destino válido: campo interno -> etiqueta del contrato. La IA MUST NOT proponer un campo fuera de este diccionario.",
+            "title": "Target Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "headers",
+          "target_fields"
+        ],
+        "title": "ColumnMappingRequest",
+        "type": "object"
+      },
+      "ColumnMappingResult": {
+        "properties": {
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnMappingCandidate"
+            },
+            "title": "Mappings",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "required": [
+          "mappings"
+        ],
+        "title": "ColumnMappingResult",
+        "type": "object"
+      },
       "DescriptionResult": {
         "properties": {
           "text": {
@@ -607,6 +724,57 @@
           }
         },
         "summary": "RIA-01: proponer datos estructurados desde texto libre",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/suggest-column-mapping": {
+      "post": {
+        "operationId": "suggest_column_mapping",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColumnMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumnMappingResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "Carga masiva con IA: proponer a qué campo corresponde cada columna sin plantilla",
         "tags": [
           "IA asistiva"
         ]

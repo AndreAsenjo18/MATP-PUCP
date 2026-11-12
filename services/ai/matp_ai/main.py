@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from matp_ai.config import Settings, get_settings
 from matp_ai.providers import AIProvider, ProviderUnavailable, get_provider
 from matp_ai.schemas import (
+    ColumnMappingRequest,
+    ColumnMappingResult,
     DescriptionResult,
     ErrorResponse,
     ExtractionResult,
@@ -119,5 +121,15 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
             model=provider.model,
             result=provider.describe(body),
         )
+
+    @app.post(
+        "/v1/suggest-column-mapping",
+        response_model=ColumnMappingResult,
+        responses=ERRORS,
+        tags=["IA asistiva"],
+        summary="Carga masiva con IA: proponer a qué campo corresponde cada columna sin plantilla",
+    )
+    def suggest_column_mapping(body: ColumnMappingRequest) -> ColumnMappingResult:
+        return provider.suggest_column_mapping(body.headers, body.sample_rows, body.target_fields)
 
     return app

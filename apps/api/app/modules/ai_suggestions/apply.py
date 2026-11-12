@@ -29,6 +29,29 @@ from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 APPLICABLE_FIELDS = frozenset({"dimensions", "conservation_status", "review_marks"})
 
 
+def validate_field_value(field: str, value: Any) -> None:
+    """Shape check reused by the bulk-import grid (change carga-masiva-con-ia) to catch an
+    invalid edit as soon as the person makes it, instead of only when the whole batch is
+    applied. Does not check a ``conservation_status`` code against the vocabulary (needs a
+    session); ``apply_approved`` still does that when the value is actually applied."""
+    if field not in APPLICABLE_FIELDS:
+        raise ValidationFailed(
+            f"Tipo de dato de IA no reconocido: {field!r}.", code="unknown_suggestion_field"
+        )
+    if field == "dimensions":
+        _clean_dimension(value)
+    elif field == "conservation_status":
+        if not isinstance(value, str) or not value.strip():
+            raise ValidationFailed(
+                "El estado de conservación propuesto debe ser un código de término.",
+                code="invalid_conservation_value",
+            )
+    elif field == "review_marks" and value is not None and not isinstance(value, dict):
+        raise ValidationFailed(
+            "La marca de revisión debe ser un objeto.", code="invalid_review_mark_value"
+        )
+
+
 def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> None:
     if suggestion.status not in (SuggestionStatus.APPROVED, SuggestionStatus.PARTIALLY_APPROVED):
         raise BusinessRuleViolation(

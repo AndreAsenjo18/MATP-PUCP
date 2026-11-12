@@ -49,3 +49,34 @@ class AiServiceClient:
                 details={"upstream_status": response.status_code},
             )
         return response.json()
+
+    def suggest_column_mapping(
+        self,
+        headers: list[str],
+        sample_rows: list[dict[str, Any]],
+        target_fields: dict[str, str],
+    ) -> dict[str, Any]:
+        """Carga masiva con IA (change carga-masiva-con-ia). Degrada igual que
+        ``extract_structured``: ``ServiceUnavailable`` (503) nunca bloquea la importación, el
+        editor de columnas simplemente se muestra sin sugerencia."""
+        try:
+            response = self._client.post(
+                "/v1/suggest-column-mapping",
+                json={
+                    "headers": headers,
+                    "sample_rows": sample_rows,
+                    "target_fields": target_fields,
+                },
+            )
+        except httpx.HTTPError as exc:
+            raise ServiceUnavailable(
+                "El servicio de IA no respondió a tiempo. El catálogo no cambió.",
+                code="ai_unavailable",
+            ) from exc
+        if response.status_code >= 400:
+            raise ServiceUnavailable(
+                "El servicio de IA no está disponible en este momento. El catálogo no cambió.",
+                code="ai_unavailable",
+                details={"upstream_status": response.status_code},
+            )
+        return response.json()

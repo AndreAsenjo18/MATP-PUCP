@@ -198,20 +198,20 @@ describe("filtros", () => {
     for (const secondary of ["Colección (con subcolecciones)", "Ubicación", "Autor", "Procedencia", "Completitud de la ficha"]) {
       expect(text.indexOf(secondary)).toBeGreaterThan(text.indexOf("Más filtros"));
     }
-    expect(html).toContain("<details>");
+    expect(html).toContain('<details class="group">');
   });
 
   it("«Más filtros» aparece abierto cuando llega un filtro secundario, como la ubicación", () => {
     const withLocation = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, locationId: "loc-d2" }} options={OPTIONS} onChange={noop} onClear={noop} />);
-    expect(withLocation).toContain('<details open="">');
+    expect(withLocation).toContain('<details open="" class="group">');
     expect(visibleText(withLocation)).toContain("Sede Central (ficticia) › Depósito 2");
     const withAuthor = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, author: "Huamán" }} options={OPTIONS} onChange={noop} onClear={noop} />);
-    expect(withAuthor).toContain('<details open="">');
+    expect(withAuthor).toContain('<details open="" class="group">');
     const onlyMain = render(<SearchFiltersPanel filters={{ ...EMPTY_FILTERS, denomination: "mate", description: "asa" }} options={OPTIONS} onChange={noop} onClear={noop} />);
-    expect(onlyMain).toContain("<details>");
+    expect(onlyMain).toContain('<details class="group">');
     // «Ver por ubicación» (design D3) abre «Más filtros», donde está el árbol de ubicaciones.
     const byLocation = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={OPTIONS} onChange={noop} onClear={noop} openMore />);
-    expect(byLocation).toContain('<details open="">');
+    expect(byLocation).toContain('<details open="" class="group">');
   });
 
   it("en tableta los filtros se abren con un botón que dice cuántos hay activos", () => {

@@ -1,5 +1,25 @@
 # Calidad de datos
 
+## Revisar pendientes
+
+**Revisar pendientes** reúne en un solo lugar lo que espera una decisión suya. Tiene hasta tres pestañas:
+
+- **Posibles duplicados**: pares de piezas que parecen la misma (ver «Posibles duplicados», más abajo).
+- **Sugerencias de IA**: propuestas de la IA que esperan su aprobación (ver `ia.md`).
+- **Piezas incompletas**: piezas a las que les falta algún dato (ver «Reporte de piezas incompletas»).
+
+1. En la barra lateral, pulse **Revisar pendientes**. Mientras el menú no se actualice, **Duplicados** y **Sugerencias IA** llevan al mismo lugar.
+2. Se abre la primera pestaña que tiene algo por revisar. Si ninguna tiene, se abre la primera.
+3. Cada pestaña dice entre paréntesis cuántos pendientes tiene, por ejemplo **Posibles duplicados (9)**. El número baja cuando usted resuelve uno.
+4. Para cambiar de pestaña, púlsela. También puede llegar con la tecla Tab y abrirla con Intro.
+
+Solo ve las pestañas que su rol permite: por ejemplo, un rol de consulta solo ve **Piezas incompletas**. Si el número de una pestaña no aparece, el sistema no pudo contarlos en ese momento; la pestaña funciona igual.
+
+### Si algo sale mal
+
+- **«Su rol no tiene pendientes que revisar.»**: su rol no puede revisar duplicados, sugerencias ni piezas incompletas.
+- **«Su rol no puede resolver posibles duplicados.»** (o el mismo aviso de otra pestaña): abrió la dirección de una pestaña que su rol no tiene. Use las pestañas que aparecen arriba.
+
 ## Posibles duplicados
 
 Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de inventario y en una sábana de Excel, con la denominación escrita de otra forma («Retablo ayacuchano» y «Retablo Ayacuchano (3 pisos)») o con el código en otro formato («M.M.Z. 015» y «mmz 15»). El sistema busca esos casos y los propone como **pares** para que una persona decida qué hacer con cada uno.
@@ -10,8 +30,8 @@ Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de in
 
 ### Abrir la cola de duplicados
 
-1. En la barra lateral, pulse **Duplicados**.
-2. Se abre **Cola de posibles duplicados**. Muestra primero los pares pendientes, del más parecido al menos parecido, de diez en diez.
+1. En **Revisar pendientes**, abra la pestaña **Posibles duplicados**.
+2. La cola muestra primero los pares pendientes, del más parecido al menos parecido, de diez en diez. Cada par ocupa **una fila**.
 3. Para ver más pares, use **Siguiente** y **Anterior**: los controles están **arriba y abajo** de la lista, con «Página 1 de 2». Al cambiar de página desde abajo, la pantalla vuelve al principio.
 
 ### Filtrar la cola
@@ -25,13 +45,16 @@ Arriba de la cola hay cuatro filtros. Al cambiar uno, la cola se actualiza sola:
 
 ### Comparar las dos piezas
 
-Cada par se muestra en una tarjeta:
+Cada fila muestra las dos piezas (su denominación, su código I o «Sin código I» y su colección), cuánto se parecen en palabras (**Muy parecidas**, **Parecidas** o **Poco parecidas**) y el motivo principal, por ejemplo «Denominación parecida». Para ver el detalle:
 
-1. Arriba a la izquierda, un anillo muestra la **similitud** del par en cifra grande («90 %») y su nivel en palabras: **alta** (85 % o más), **media** (70 % o más) o **baja**. A su lado están el estado del par y etiquetas cortas con los motivos («Denominación parecida 100 %»).
-2. La tabla compara las dos fichas con el **nombre del campo en el centro**: la pieza A a la izquierda y la B a la derecha. Campos: denominación, colección, régimen, código I, otros códigos, autor, procedencia, época y medidas. En el celular, cada campo apila sus dos valores.
-3. Cada fila dice si es **igual** (en verde), **distinto** (con fondo ámbar) o **conflicto** (con fondo rojo, cuando las dos piezas tienen códigos I distintos). Un campo vacío en las dos piezas no se marca.
-4. Debajo, **Ver por qué se propone** despliega cada motivo: qué se comparó, cuánto se parece y los dos valores, el de la pieza A y el de la B.
-5. Pulse la denominación de una pieza para abrir su ficha.
+1. Pulse **Revisar** en la fila. El par se abre debajo, en el mismo lugar; si tenía otro abierto, ese se cierra. Para cerrarlo, pulse **Cerrar**.
+2. Arriba a la izquierda, un anillo muestra la **similitud** del par en cifra grande («90 %») y su nivel en palabras: **alta** (85 % o más), **media** (70 % o más) o **baja**. A su lado están el estado del par y etiquetas cortas con los motivos («Denominación parecida 100 %», «Coincide: Código de colección 100 %»).
+3. La tabla compara las dos fichas con el **nombre del campo en el centro**: la pieza A a la izquierda y la B a la derecha. Campos: denominación, colección, régimen, código I, otros códigos, autor, procedencia, época y medidas. En el celular, cada campo apila sus dos valores.
+4. Cada fila dice si es **igual** (en verde), **distinto** (con fondo ámbar) o **conflicto** (con fondo rojo, cuando las dos piezas tienen códigos I distintos). Un campo vacío en las dos piezas no se marca.
+5. Debajo, **Ver por qué se propone** despliega cada motivo: qué se comparó, cuánto se parece y los dos valores, el de la pieza A y el de la B.
+6. Pulse la denominación de una pieza para abrir su ficha.
+
+Cuando resuelve un par (distinto, pospuesto o fusionado), se cierra y la lista se actualiza; el cursor queda en la fila siguiente para seguir con el teclado.
 
 En un par con una **fila de importación**, la fila todavía no forma parte del catálogo: se decide en su carga. Pulse **Ver en Importación**.
 
@@ -39,7 +62,7 @@ En un par con una **fila de importación**, la fila todavía no forma parte del 
 
 Use esta opción cuando, a pesar del parecido, son piezas diferentes (por ejemplo, dos retablos del mismo taller).
 
-1. En la tarjeta del par, pulse **Marcar como distinto**.
+1. Con el par abierto (**Revisar**), pulse **Marcar como distinto**.
 2. Escriba en **Motivo (obligatorio)** por qué son distintas.
 3. Pulse **Marcar como distinto**.
 4. Aparece el aviso verde «Par marcado como piezas distintas.» y el par sale de los pendientes.
@@ -50,7 +73,7 @@ El par no vuelve a proponerse mientras no cambien los datos que se compararon. S
 
 Use esta opción cuando todavía no se puede decidir (por ejemplo, falta revisar la ficha física).
 
-1. En la tarjeta del par, pulse **Posponer**.
+1. Con el par abierto (**Revisar**), pulse **Posponer**.
 2. En **Posponer hasta**, elija la fecha. Se propone un mes; se puede elegir desde mañana hasta **180 días** después.
 3. Si quiere, escriba un **Motivo (opcional)**.
 4. Pulse **Posponer**.
@@ -70,20 +93,20 @@ Solo puede haber una búsqueda completa a la vez. Si alguien ya lanzó una, se m
 
 Fusionar deja **una sola ficha**. La pieza que se conserva recibe los datos de la otra; la otra queda **fusionada**: se da de baja (no se borra), se puede seguir consultando y enlaza a la que se conservó.
 
-1. En la tarjeta del par, pulse **Fusionar**. Se abre el asistente de fusión con tres pasos.
-2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Cada opción muestra su **código I y los demás códigos** (los históricos, marcados «histórico»), o «Sin código I». Si solo una de las dos tiene código I, se conserva esa: la otra opción aparece desactivada con el motivo, porque un código I nunca pasa a otra pieza.
+1. Con el par abierto (**Revisar**), pulse **Fusionar**. Se abre el asistente de fusión con tres pasos.
+2. **Paso 1, Pieza que se conserva**: elija la pieza que se conserva. Cada opción muestra su **código I y los demás códigos** (los históricos, marcados «histórico»), o «Sin código I». Si solo una de las dos tiene código I, se conserva esa: junto a ella dice «Se conserva esta: su código I nunca cambia de pieza.» y la otra opción aparece desactivada con «No se puede elegir: solo la otra pieza tiene código I.».
 3. Pulse **Siguiente**.
 4. **Paso 2, Valores de la ficha**: arriba se repiten los códigos de las dos piezas. En cada campo en el que las dos piezas tienen datos distintos, elija qué valor queda. Si no cambia nada, queda el de la pieza que se conserva.
    - La **época** y las **medidas** se eligen completas de una sola pieza.
    - Los campos que la pieza que se conserva tiene vacíos se completan solos con los de la otra; el asistente los lista.
    - La ubicación actual y la pieza de la que es componente son siempre las de la pieza que se conserva.
 5. Pulse **Siguiente**.
-6. **Paso 3, Resumen y confirmación**: revise el resumen antes de confirmar.
+6. **Paso 3, Resumen y confirmación**: revise el resumen antes de confirmar. Arriba, cada pieza dice qué le pasa: **Se conserva: queda como la ficha principal** y **Se absorbe: se da de baja, no se borra**.
    - **La ficha de … después de fusionar**: cada dato que cambia, con su valor anterior y el nuevo.
    - **Pasa de … a …**: los códigos de la otra pieza (si alguno repite un código de la pieza que se conserva, pasa como no vigente; no se borra), sus fotografías, sus materiales, sus componentes, sus préstamos y sus sugerencias de IA.
    - **Qué se queda en …** (plegado): sus movimientos, sus datos de origen y sus evaluaciones de conservación, sin cambios, y su código I si lo tiene.
 7. Escriba el **Motivo de la fusión (obligatorio)**, de al menos 3 caracteres. Está **al lado del resumen** en la computadora y **arriba** en el celular, sin bajar hasta el final.
-8. Pulse **Fusionar piezas**.
+8. Pulse **Juntar las dos fichas**.
 9. Aparece el aviso verde «Piezas fusionadas: … quedó fusionada en …». La cola se actualiza: el par pasa a **Fusionados** y los demás pares de la pieza fusionada pasan a **Reemplazados**.
 
 El asistente cabe en la pantalla: el contenido se desplaza dentro del cuadro y los botones **Cancelar**, **Anterior** y **Siguiente** siempre se ven. Para volver a un paso anterior sin perder lo elegido, pulse **Anterior**. Para salir sin fusionar, pulse **Cancelar**: no se cambia nada.
@@ -148,7 +171,7 @@ La tabla de completitud por colección y el gráfico de evolución de 14 días *
 
 ### Reporte de piezas incompletas (Reportes)
 
-En **Reportes**, la pestaña **Información incompleta** lista las piezas que tienen alguna alerta activa, ordenadas de la que tiene más alertas a la que tiene menos:
+El mismo reporte está en **Reportes** y en la pestaña **Piezas incompletas** de **Revisar pendientes**. En **Reportes**, la pestaña **Información incompleta** lista las piezas que tienen alguna alerta activa, ordenadas de la que tiene más alertas a la que tiene menos:
 
 1. **Filtrar por alerta**: marque una o varias. Varias marcadas se combinan con **«y»** (la pieza debe tener todas las marcadas, no solo una).
 2. **Colección**: limita el reporte a una colección y sus subcolecciones.

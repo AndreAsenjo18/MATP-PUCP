@@ -2,7 +2,13 @@
 
 from abc import ABC, abstractmethod
 
-from matp_ai.schemas import DescriptionResult, ExtractionResult, PieceContext, TermSuggestionResult
+from matp_ai.schemas import (
+    ColumnMappingResult,
+    DescriptionResult,
+    ExtractionResult,
+    PieceContext,
+    TermSuggestionResult,
+)
 
 
 class ProviderUnavailable(RuntimeError):
@@ -24,3 +30,13 @@ class AIProvider(ABC):
     @abstractmethod
     def describe(self, piece: PieceContext) -> DescriptionResult:
         """RIA-04: preliminary description built from metadata."""
+
+    @abstractmethod
+    def suggest_column_mapping(
+        self,
+        headers: list[str],
+        sample_rows: list[dict[str, object]],
+        target_fields: dict[str, str],
+    ) -> ColumnMappingResult:
+        """Carga masiva con IA (change carga-masiva-con-ia): a qué campo de ``target_fields``
+        corresponde cada columna de un archivo que ninguna plantilla guardada reconoció."""

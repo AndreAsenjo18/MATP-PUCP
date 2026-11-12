@@ -4,7 +4,7 @@ import type { AiSuggestion } from "@/lib/data/ai";
 import { ids } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
-import { AiSuggestionCard, AiSuggestPanel } from "./AiSuggestPanel";
+import { AiSuggestionCard } from "./AiSuggestionCard";
 import { AiSuggestionsLive } from "./AiSuggestionsLive";
 
 const PIECE = ids.piece(1);
@@ -29,32 +29,6 @@ const EMPTY_SUGGESTION: AiSuggestion = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-});
-
-describe("AiSuggestPanel", () => {
-  it("sin ai.request ni ai.review no muestra nada", () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const html = render(<AiSuggestPanel pieceId={PIECE} canRequest={false} canReview={false} />);
-
-    expect(html).toBe("");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("con ai.request muestra el selector de campo y el botón de pedir sugerencia", () => {
-    const html = render(<AiSuggestPanel pieceId={PIECE} canRequest canReview={false} />);
-    const text = visibleText(html);
-
-    expect(text).toContain("Sugerir datos desde el texto");
-    expect(text).toContain("Analizar el texto de");
-  });
-
-  it("antes de tener respuesta de la cola, avisa que está cargando", () => {
-    const html = render(<AiSuggestPanel pieceId={PIECE} canRequest={false} canReview />);
-
-    expect(visibleText(html)).toContain("Cargando…");
-  });
 });
 
 describe("AiSuggestionCard sin datos propuestos", () => {
@@ -134,7 +108,7 @@ describe("AiSuggestionCard con medidas propuestas", () => {
 });
 
 describe("AiSuggestionsLive", () => {
-  it("sin ai.review explica que la revisión se hace desde la ficha", () => {
+  it("sin ai.review avisa que no puede revisar sugerencias", () => {
     const html = render(<AiSuggestionsLive canReview={false} />);
 
     expect(visibleText(html)).toContain("Su rol no puede revisar sugerencias de IA");

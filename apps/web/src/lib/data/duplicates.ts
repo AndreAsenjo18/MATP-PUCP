@@ -24,7 +24,7 @@
 import { apiErrorMessage, createApiClient, isNotImplemented, type ApiSchemas } from "@/lib/api/client";
 
 import { plainMessage } from "./imports";
-import { COLLECTIONS, DUPLICATE_CANDIDATES, getPieceDetail } from "@/lib/fixtures";
+import { COLLECTIONS, DUPLICATE_CANDIDATES, IDENTIFIER_TYPES, getPieceDetail } from "@/lib/fixtures";
 
 import { mergeBlock, mergeReasonError, survivorRestriction, type MergeChoice } from "./merge-plan";
 import { apiBaseUrl, getApiMode } from "./mode";
@@ -389,6 +389,23 @@ export async function fetchDuplicateCollections(devUser?: string): Promise<Colle
     return data ?? [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Nombres visibles de los tipos de identificador (`GET /identifier-types`, permiso `pieces.read`),
+ * para que las señales y la comparación no muestren códigos internos como `INC_RN` (change
+ * `revisar-pendientes-unificado`, tarea 3.1; design D5). Vacío si no se pueden leer: la pantalla
+ * usa entonces los nombres de los tipos sembrados.
+ */
+export async function fetchIdentifierTypeNames(devUser?: string): Promise<Record<string, string>> {
+  const toNames = (types: readonly { code: string; label: string }[]) => Object.fromEntries(types.map((t) => [t.code, t.label]));
+  if (getApiMode() === "mock") return toNames(IDENTIFIER_TYPES);
+  try {
+    const { data } = await client(devUser).GET("/api/v1/identifier-types", {});
+    return data ? toNames(data) : {};
+  } catch {
+    return {};
   }
 }
 

@@ -55,10 +55,13 @@
 | RF-030 | Detección de duplicados por similitud con cola de revisión humana | Must | calidad-datos |
 | RF-045 | Carga masiva de fotografías asociada a la importación | Must | importacion-datos |
 | RF-046 | Carga masiva de fotografías a piezas existentes | Must | importacion-datos |
+| RF-048 | Carga masiva con asistencia de IA: mapeo de columnas sugerido sin plantilla y extracción de texto libre por fila, con revisión campo a campo antes de aplicar | Should | importacion-datos (apoya ia-asistiva) |
 
 > RF-045 no está en el Expediente original: lo pidió el museo en la validación del prototipo v3 (2026-10) y lo cubre el change `importacion-masiva-fotografias`. Debe incorporarse al Expediente.
 >
 > RF-046 tampoco está en el Expediente original: lo pidió el museo en la reunión del 2026-10-31, al mostrar su archivo fotográfico en Drive, y lo cubre el change `importacion-fotos-a-catalogo`. Debe incorporarse al Expediente.
+>
+> RF-048 tampoco está en el Expediente original: surge de una observación del equipo en la exposición del prototipo (que sugerir texto para editar a mano no escala a un lote grande) y lo cubre el change propuesto `carga-masiva-con-ia`. **[SUPUESTO]** Debe validarse con el museo y con la jefa de práctica antes de incorporarse al Expediente.
 
 ## 4. Consulta y reportes
 
@@ -117,6 +120,12 @@
 | RIA-03 | Sugerencia de categorías / términos normalizados (camino a tesauro Getty AAT) | 3 | ia-asistiva |
 | RIA-04 | Descripción preliminar desde metadatos | 4 (por validar) | ia-asistiva |
 | RIA-05 | Asistente de consulta sobre catálogo autorizado | 5 (pendiente) | ia-asistiva |
+
+> RIA-01 ya no se ofrece desde la ficha individual de una pieza (el panel «Sugerencias de IA» se
+> quitó de esa pantalla tras evaluarlo en vivo: solo cubre medidas, estado de conservación y
+> marcas de revisión, y no aporta nada frente a las alertas reales de completitud de la ficha).
+> La capacidad sigue disponible vía `carga-masiva-con-ia` (una propuesta por fila del lote) y el
+> endpoint `POST /ai/suggest-cataloging` sin UI propia. Change `retirar-sugerencias-ia-ficha`.
 
 **Fuera de alcance**: visión por computadora sobre imágenes.
 

@@ -346,6 +346,9 @@ Detalle en `docs/adr/ADR-011-despliegue-proxy-respaldos.md`, `docs/despliegue/vm
 | W5 | ¿De dónde salen las valorizaciones y en qué monedas? ¿Se convierten a una sola moneda? | Se cargan desde un CSV (`codigo, monto, moneda, fecha, fuente, notas`) con `python -m app.reports.load_valuations`; vale la más reciente por fecha; cada moneda tiene su propio total, sin conversión | busqueda-reportes (RF-037) | Baja |
 | W6 | Al imprimir el reporte agrupado por atributo, ¿cada grupo debe empezar en una hoja nueva? | **Abierta, el museo no lo ha definido.** Hoy los grupos van seguidos, cada uno con su título y subtotal, porque el texto libre puede dar cientos de grupos de una sola pieza. En el inventario, cada colección sí empieza hoja | busqueda-reportes (RF-047, RF-033), `reportes-por-atributo` 3.3 | Baja |
 | W7 | ¿En qué orden deben ir los grupos del reporte agrupado por atributo? | **Abierta, el museo no lo ha definido.** Hoy, alfabético en procedencia, denominación, autor y colección; en material, categoría y estado, el orden de su lista de valores. «Sin dato» siempre al final | busqueda-reportes (RF-047), `reportes-por-atributo` 2.3 | Baja |
+| W8 | En la vista previa de los reportes, ¿qué columnas necesitan ver en pantalla sin abrir el Excel? | **[SUPUESTO]** Código I, Código de colección, Denominación, Descripción, Colección y Régimen; en el reporte por ubicación, Código I, Código de colección, Denominación, Descripción, Ubicación y Última vez vista. Las demás, con «Ver las N columnas»; el Excel trae siempre todas (change `reportes-vista-simplificada`) | busqueda-reportes (RF-033, RNF-010) | Media |
+| W9 | ¿Quién necesita ver cuánto espacio ocupan las fotos (estimación del volumen fotográfico)? | **[SUPUESTO]** Solo el Administrador: pasó de Reportes a Administración › Control › Almacenamiento de fotos, y la Curadora dejó de verla. Si la necesita, se cambia el permiso de la sección (change `reportes-vista-simplificada`) | multimedia (RNF-003) | Baja |
+| W10 | En los reportes, ¿se entiende la columna «Régimen» (propiedad, comodato, préstamo temporal) o la llaman de otra forma? | **[SUPUESTO]** «Régimen», como en la ficha. En la prueba humana hubo dudas, pero es conocimiento del museo: no se puede validar con alguien de fuera (change `reportes-vista-simplificada`) | busqueda-reportes (RF-033, RNF-010) | Media |
 
 ## X. Supuestos del lote de demostración y su guía en calidad (change `importacion-masiva-fotografias`, tarea 7.1, y plan del MVP, 2026-10-25)
 
@@ -419,6 +422,8 @@ Supuestos provisionales para poder desarrollar la bandeja única de pendientes (
 | RP2 | ¿Cómo prefieren que se llame la pantalla y cómo se describe qué tan parecidas son dos piezas? | **[SUPUESTO]** «Revisar pendientes»; niveles «Muy parecidas», «Parecidas» y «Poco parecidas» tomados de los niveles alta, media y baja que ya calcula el sistema, sin un porcentaje nuevo. Se ajusta tras la prueba humana | calidad-datos (RNF-010) | B |
 | RP3 | ¿Quién del museo revisa las sugerencias que propone la IA? | **[SUPUESTO]** El curador (permiso `ai.review`); nada se guarda sin su aprobación (RN-009) | ia-asistiva (RIA-01, RN-009) | A |
 | RP4 | ¿El usuario típico tiene 60 años o más y poca práctica con computadoras? | **[SUPUESTO]** Sí: se diseña con letra de 16 px o más, botones de 44 px o más y pocas opciones por pantalla (HU-31). Se valida con el museo | RNF-010 | A |
+| RP5 | El número de la pestaña «Piezas incompletas», ¿debe contar todas las piezas con algún dato faltante, o solo las que alguien tiene que completar ahora? | **[SUPUESTO]** Todas las piezas con alguna alerta activa (el mismo total del reporte de incompletas), entendido como «piezas por completar». No es una cola de decisiones: no baja al «revisarla», solo al completar los datos | calidad-datos (RF-019, RF-035) | B |
+| RP6 | En la lista de posibles duplicados, ¿qué motivo ayuda más a decidir de un vistazo, y se entiende «Coincide: Código de colección»? | **[SUPUESTO]** Se muestra un solo motivo por par: un conflicto de códigos I si lo hay (porque impide fusionar); si no, la señal que más pesa en el parecido. Las coincidencias de código se leen «Coincide: {nombre del tipo de código}». Se ajusta tras la prueba humana | calidad-datos (RF-030, RNF-010) | C |
 
 ## IO. Elegir qué importar (change `importacion-elegir-origen`, 2026-11-10)
 
@@ -452,3 +457,14 @@ Las confirman Sergio y André con el museo (los desarrolladores no hablan con el
 | IG2 | ¿Los nombres del menú lateral por tarea («Buscar piezas», «Cargar datos», «Revisar pendientes», «Configuración») le sirven al museo? | [SUPUESTO] Sí. Los aplica la Base cuando cambie el menú. | Solo textos | Media |
 | IG3 | ¿Dónde debe vivir la evolución de completitud y la tabla por colección, ahora que salen del Inicio? | [SUPUESTO] En ninguna pantalla por ahora; los datos siguen en la API. Si el museo los pide, se ofrecen como un reporte. | Se pierde esa vista | Media |
 | IG4 | ¿Debe «Registrar una pieza nueva» ser también una entrada del menú para quien registra a diario? | [SUPUESTO] No: es una tarjeta del Inicio y el botón «Nueva pieza» de Búsqueda. | Un clic más para quien registra a diario | Baja |
+
+## CM. Carga masiva con IA (propuesta `carga-masiva-con-ia`, 2026-11-11)
+
+Surge de una observación del equipo en la exposición del prototipo: sugerir texto de IA para que alguien lo edite a mano no escala a un lote grande. Supuestos de diseño de la propuesta, no confirmados con el museo ni con la jefa de práctica.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| CM1 | ¿La extracción de texto libre se dispara automáticamente para todas las filas al entrar a Revisión, o bajo demanda? | **[SUPUESTO]** Bajo demanda (botón por fila o por lote), para no llamar a la IA en lotes grandes sin que la persona lo pida | importacion-datos (RF-048), ia-asistiva (RNF-008) | A |
+| CM2 | ¿Qué tamaño de muestra de filas se envía a la IA para sugerir el mapeo de columnas? | **[SUPUESTO]** Las primeras 20 filas con datos, suficiente para inferir el tipo de cada columna sin enviar el archivo completo | ia-asistiva | B |
+| CM3 | ¿Qué tamaño de página por defecto debe traer la hoja de revisión con sugerencias de IA? | **[SUPUESTO]** 25, igual que la paginación ya usada en la revisión del lote; la persona puede cambiarlo | importacion-datos (RF-048) | B |
+| CM4 | ¿Es «Should» o «Must» priorizar esta carga masiva con IA frente al resto del backlog de IA (RIA-02 a RIA-05)? | **[SUPUESTO]** Should: depende de que el museo valide que el volumen de carga lo justifica | importacion-datos (RF-048) | B |

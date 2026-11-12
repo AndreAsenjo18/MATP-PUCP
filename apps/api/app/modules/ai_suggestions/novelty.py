@@ -38,6 +38,23 @@ def _conservation_status_unchanged(session: Session, piece: Piece, value: Any) -
     return current is not None and current.code == value
 
 
+def current_value_for(session: Session, piece: Piece, field: str, value: Any) -> Any | None:
+    """The piece's comparable current value for ``field`` (change carga-masiva-con-ia, D4): the
+    matching dimension by name, or the current conservation status code. ``None`` for
+    ``review_marks``/``exhibitions``, which have none to compare against (same scope as
+    ``split_unchanged_fields``)."""
+    if field == "dimensions" and isinstance(value, dict):
+        name = value.get("dimension")
+        for current in piece.dimensions or []:
+            if current.get("dimension") == name:
+                return current
+        return None
+    if field == "conservation_status" and piece.conservation_state_id is not None:
+        current = session.get(Term, piece.conservation_state_id)
+        return current.code if current is not None else None
+    return None
+
+
 def split_unchanged_fields(
     session: Session, piece: Piece, fields: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:

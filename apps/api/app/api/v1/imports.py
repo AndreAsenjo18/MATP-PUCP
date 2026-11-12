@@ -41,9 +41,26 @@ from app.api.stubs import (
 from app.core import jobs
 from app.core.config import Settings
 from app.core.errors import ConflictError, NotFound, ValidationFailed
+from app.core.models_base import new_uuid
 from app.core.storage import ObjectStorage
-from app.modules.audit.context import AuditContext, require_audit_context, set_audit_context
+from app.modules.ai_suggestions.apply import validate_field_value
+from app.modules.ai_suggestions.client import AiServiceClient
+from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
+from app.modules.ai_suggestions.novelty import (
+    current_value_for,
+    explain_result,
+    split_unchanged_fields,
+)
+from app.modules.ai_suggestions.privacy import row_free_text
+from app.modules.ai_suggestions.schemas import AiSuggestionOut
+from app.modules.audit.context import (
+    AuditContext,
+    audit_context,
+    require_audit_context,
+    set_audit_context,
+)
 from app.modules.audit.models import AuditOrigin
+from app.modules.catalog.models import Piece
 from app.modules.imports import templates
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.candidates import enrich_matches
@@ -55,7 +72,13 @@ from app.modules.imports.catalog_photos import (
     upload_correspondences,
 )
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
-from app.modules.imports.decisions import approval_summary, approve, decide_row, row_action
+from app.modules.imports.decisions import (
+    approval_summary,
+    approve,
+    decide_row,
+    editable_batch,
+    row_action,
+)
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
@@ -66,6 +89,7 @@ from app.modules.imports.mapping import (
     ColumnSpec,
     MappingConversionError,
     MappingSpec,
+    free_text_values,
     from_column_mappings,
 )
 from app.modules.imports.models import (
@@ -127,6 +151,7 @@ from app.modules.imports.schemas import (
     PhotoUploadUrlsRequest,
     ReadingPreviewOut,
     RevertRequest,
+    RowAiFieldsRequest,
     RowDecisionRequest,
     TemplateDryRunOut,
     TemplateDryRunRequest,
@@ -551,8 +576,9 @@ def get_import_batch_diffs(
     summary="Decidir sobre una fila (aceptar, excluir o rechazar con motivo)",
     description="Acepta, excluye o rechaza (con motivo) una fila; acepta o excluye campos del "
     "diff; resuelve un conflicto o posible duplicado eligiendo la pieza destino "
-    "(`target_piece_id`) o marcándola como nueva (`as_new`). Una fila con errores o un "
-    "conflicto sin resolver no se puede aceptar (422).",
+    "(`target_piece_id`) o marcándola como nueva (`as_new`). Sin `decision`, solo guarda esa "
+    "resolución (p. ej. al elegir la pieza en la lista, sin darle Aceptar todavía). Una fila con "
+    "errores o un conflicto sin resolver no se puede aceptar (422).",
     **implemented(),
 )
 def decide_import_row(
@@ -568,13 +594,132 @@ def decide_import_row(
         session,
         batch_id,
         row_id,
-        decision=RowDecision(body.decision),
+        decision=RowDecision(body.decision) if body.decision else None,
         user_id=user.id,
         reason=body.reason,
         target_piece_id=body.target_piece_id,
         as_new=body.as_new,
         field_decisions=dict(body.field_decisions),
     )
+    session.commit()
+    return _row_out(row, matches=enrich_matches(session, [row])[row.id])
+
+
+@router.post(
+    "/imports/{batch_id}/rows/{row_id}/ai-suggestion",
+    response_model=AiSuggestionOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **NOT_FOUND,
+        422: {"model": ErrorResponse, "description": "La fila no tiene texto libre sin mapear."},
+        503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."},
+    },
+    summary="Carga masiva con IA: extraer datos del texto libre sin mapear de una fila (RIA-01)",
+    tags=["IA asistiva"],
+    **implemented(),
+)
+def suggest_row_ai_fields(
+    batch_id: uuid.UUID,
+    row_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    request: Request,
+) -> AiSuggestionOut:
+    """Pedida bajo demanda desde la hoja de revisión (change carga-masiva-con-ia, D3), nunca
+    automática: una fila puede pedirla más de una vez, cada vez como una sugerencia nueva."""
+    batch = get_spreadsheet_batch(session, batch_id)
+    row = session.get(ImportRow, row_id)
+    if row is None or row.batch_id != batch.id:
+        raise NotFound("La fila no pertenece a este lote.", code="row_not_found")
+    text = row_free_text(free_text_values(batch.mapping, row.raw_data))
+    if not text:
+        raise ValidationFailed(
+            "La fila no tiene texto libre sin mapear para analizar.", code="row_has_no_free_text"
+        )
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    envelope = client.extract_structured(text, source_field=None)
+    result = envelope["result"]
+    original_fields = result.get("fields") or []
+    piece = session.get(Piece, row.target_piece_id) if row.target_piece_id else None
+    if piece is not None:
+        novel_fields, unchanged_fields = split_unchanged_fields(session, piece, original_fields)
+        for item in novel_fields:
+            item["current_value"] = current_value_for(
+                session, piece, item.get("field"), item.get("value")
+            )
+    else:
+        # Fila nueva (o sin resolver todavía): no hay pieza con la que comparar (D4).
+        novel_fields, unchanged_fields = original_fields, []
+        for item in novel_fields:
+            item["current_value"] = None
+    output_data: dict[str, Any] = {
+        "fields": novel_fields,
+        "message": explain_result(original_fields, novel_fields, result.get("message")),
+    }
+    if unchanged_fields:
+        output_data["unchanged_fields"] = unchanged_fields
+    suggestion_id = new_uuid()
+    suggestion = AiSuggestion(
+        id=suggestion_id,
+        function_code=AiFunction.RIA_01_EXTRACT_STRUCTURED,
+        status=SuggestionStatus.PENDING,
+        provider=envelope["provider"],
+        model=envelope["model"],
+        piece_id=row.target_piece_id,
+        import_batch_id=batch.id,
+        input_data={
+            "row_id": str(row.id),
+            "source_row_number": row.source_row_number,
+            "text": text,
+        },
+        output_data=output_data,
+        requested_by_id=user.id,
+    )
+    with audit_context(
+        session,
+        AuditContext(origin=AuditOrigin.AI, user_id=user.id, origin_ref=str(suggestion_id)),
+    ):
+        session.add(suggestion)
+        session.commit()
+    return AiSuggestionOut.model_validate(suggestion)
+
+
+@router.patch(
+    "/imports/{batch_id}/rows/{row_id}/ai-fields",
+    response_model=ImportRowOut,
+    responses=NOT_FOUND,
+    summary="Carga masiva con IA: guardar el valor de IA elegido o editado para una fila",
+    description="No escribe en el catálogo (RN-009): el valor queda guardado en la fila y se "
+    "aplica recién al aprobar el lote, igual que `field_decisions`. Un valor `null` quita ese "
+    "campo de lo que se aplicará.",
+    tags=["IA asistiva"],
+    **implemented(),
+)
+def set_row_ai_fields(
+    batch_id: uuid.UUID,
+    row_id: uuid.UUID,
+    body: RowAiFieldsRequest,
+    session: SessionDep,
+    user: Preparer,
+) -> ImportRowOut:
+    writer(session, user)
+    batch = editable_batch(session, batch_id)
+    row = session.get(ImportRow, row_id)
+    if row is None or row.batch_id != batch.id:
+        raise NotFound("La fila no pertenece a este lote.", code="row_not_found")
+    resolution = dict(row.resolution or {})
+    ai_fields = dict(resolution.get("ai_fields") or {})
+    for field, value in body.fields.items():
+        if value is None:
+            ai_fields.pop(field, None)
+            continue
+        validate_field_value(field, value)
+        ai_fields[field] = value
+    if ai_fields:
+        resolution["ai_fields"] = ai_fields
+    else:
+        resolution.pop("ai_fields", None)
+    row.resolution = resolution
     session.commit()
     return _row_out(row, matches=enrich_matches(session, [row])[row.id])
 

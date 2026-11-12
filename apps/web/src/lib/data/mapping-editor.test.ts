@@ -4,6 +4,7 @@ import { createTemplate, updateTemplate, type MappingTemplate } from "./import-t
 import type { ImportBatch } from "./imports";
 import {
   addTransform,
+  applyAiColumnMapping,
   applyNotice,
   applyRequest,
   applySource,
@@ -120,6 +121,24 @@ describe("borrador a partir de una plantilla", () => {
     expect(draft.base).toBeNull();
     expect(draftStatus(draft)).toBe("new");
     expect(draft.columns.find((c) => c.source_column === "DENOMINACIÓN")?.target_field).toBe("denomination");
+  });
+});
+
+describe("carga masiva con IA: mapeo de columnas sugerido (change carga-masiva-con-ia, D2)", () => {
+  it("completa solo las columnas que la heurística local dejó sin destino", () => {
+    const draft = draftFromScratch(BATCH); // DENOMINACIÓN ya queda mapeada por suggestMapping
+    const next = applyAiColumnMapping(draft, [
+      { column: "DENOMINACIÓN", field: "description" }, // no debe pisar lo que ya tenía
+      { column: "MATERIAL", field: "terms:MATERIAL" },
+      { column: "FOTO", field: null },
+    ]);
+    expect(next.columns.find((c) => c.source_column === "DENOMINACIÓN")?.target_field).toBe("denomination");
+    expect(next.columns.find((c) => c.source_column === "MATERIAL")?.target_field).toBe("terms:MATERIAL");
+  });
+
+  it("sin candidatas con campo, devuelve el mismo borrador", () => {
+    const draft = draftFromScratch(BATCH);
+    expect(applyAiColumnMapping(draft, [{ column: "MATERIAL", field: null }])).toBe(draft);
   });
 });
 
