@@ -3,7 +3,6 @@
 import { notFound } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { AiSuggestPanel } from "@/components/domain/AiSuggestPanel";
 import { ConservationLive } from "@/components/domain/ConservationPanel";
 import {
   PieceDeleteDialog,
@@ -214,15 +213,6 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
             <LiveSourceRecords pieceId={pieceId} />
             <h2 className="text-lg font-semibold text-tinta">Auditoría</h2>
             <AuditSection pieceId={pieceId} demoEntries={[]} />
-          </PieceDetailPanel>
-          <PieceDetailPanel tab="Sugerencias IA" activeTab={tab} visited={visitedTabs.has("Sugerencias IA")}>
-            <AiSuggestPanel
-              pieceId={pieceId}
-              devUser={devUser}
-              canRequest={hasPermission("ai.request")}
-              canReview={hasPermission("ai.review")}
-              onChanged={() => setReloads((count) => count + 1)}
-            />
           </PieceDetailPanel>
         </>
       )}

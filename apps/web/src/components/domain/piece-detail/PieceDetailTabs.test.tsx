@@ -7,12 +7,12 @@ import { PIECE_DETAIL_TABS, PieceDetailPanel, PieceDetailTabs } from "./PieceDet
 const noop = () => {};
 
 describe("Ficha unificada: navegación por secciones (C9)", () => {
-  it("muestra siete secciones, sin repetir origen y auditoría", () => {
-    const html = render(<PieceDetailTabs activeTab="Datos generales" onChange={noop} pendingSuggestions={2} />);
-    expect((html.match(/role="tab"/g) ?? []).length).toBe(7);
-    expect(PIECE_DETAIL_TABS).toHaveLength(7);
+  it("muestra seis secciones, sin repetir origen y auditoría", () => {
+    const html = render(<PieceDetailTabs activeTab="Datos generales" onChange={noop}  />);
+    expect((html.match(/role="tab"/g) ?? []).length).toBe(6);
+    expect(PIECE_DETAIL_TABS).toHaveLength(6);
     expect(visibleText(html)).toContain("Origen y auditoría");
-    expect(visibleText(html)).toContain("Sugerencias IA 2");
+    expect(visibleText(html)).not.toContain("Sugerencias IA");
   });
 
   it("indica la sección seleccionada y ofrece navegación por teclado", () => {

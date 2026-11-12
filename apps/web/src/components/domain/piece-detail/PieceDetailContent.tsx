@@ -40,7 +40,6 @@ import { LivePieceDetail } from "./LivePieceDetail";
 import { LocationSection } from "./LocationSection";
 import { RegisterSimilarButton } from "./RegisterSimilarButton";
 import { SourceSection } from "./SourceSection";
-import { SuggestionsSection } from "./SuggestionsSection";
 import { PIECE_DETAIL_TABS, PieceDetailPanel, PieceDetailTabs, type PieceDetailTab } from "./PieceDetailTabs";
 
 export function PieceDetailContent({ pieceId }: { pieceId: string }) {
@@ -64,8 +63,6 @@ export function PieceDetailContent({ pieceId }: { pieceId: string }) {
   const media = getPieceMedia(pieceId);
   const sourceRecords = getPieceSourceRecords(pieceId);
   const audit = store.auditLog.filter((e) => e.entity_id === pieceId || (e.entity_type === "piece_identifier" && pieceId === ids.piece(6)));
-  const suggestions = store.aiSuggestions.filter((s) => s.piece_id === pieceId);
-  const pendingSuggestions = suggestions.filter((s) => s.status === "PENDING").length;
   const movements = store.movementsFor(pieceId, getPieceMovements(pieceId));
   const parent = piece.parent_piece_id ? store.pieces[piece.parent_piece_id] : undefined;
 
@@ -138,7 +135,7 @@ export function PieceDetailContent({ pieceId }: { pieceId: string }) {
         <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
       ) : (
         <>
-          <PieceDetailTabs activeTab={tab} onChange={selectTab} pendingSuggestions={pendingSuggestions} />
+          <PieceDetailTabs activeTab={tab} onChange={selectTab} />
 
           <PieceDetailPanel tab="Datos generales" activeTab={tab} visited={visitedTabs.has("Datos generales")}><PieceGeneralData piece={piece} /></PieceDetailPanel>
 
@@ -181,9 +178,6 @@ export function PieceDetailContent({ pieceId }: { pieceId: string }) {
             <AuditSection pieceId={pieceId} demoEntries={audit} />
           </PieceDetailPanel>
 
-          <PieceDetailPanel tab="Sugerencias IA" activeTab={tab} visited={visitedTabs.has("Sugerencias IA")}>
-            <SuggestionsSection suggestions={suggestions} />
-          </PieceDetailPanel>
         </>
       )}
     </div>

@@ -2,7 +2,6 @@
 
 import { type KeyboardEvent, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 
 /** Navegación común para fichas simuladas y conectadas (C9).
@@ -15,7 +14,6 @@ export const PIECE_DETAIL_TABS = [
   "Ubicación e historial",
   "Conservación",
   "Origen y auditoría",
-  "Sugerencias IA",
 ] as const;
 
 export type PieceDetailTab = (typeof PIECE_DETAIL_TABS)[number];
@@ -27,17 +25,14 @@ const TAB_IDS: Record<PieceDetailTab, string> = {
   "Ubicación e historial": "location",
   "Conservación": "conservation",
   "Origen y auditoría": "origin-audit",
-  "Sugerencias IA": "ai",
 };
 
 export function PieceDetailTabs({
   activeTab,
   onChange,
-  pendingSuggestions = 0,
 }: {
   activeTab: PieceDetailTab;
   onChange: (tab: PieceDetailTab) => void;
-  pendingSuggestions?: number;
 }) {
   function selectWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const last = PIECE_DETAIL_TABS.length - 1;
@@ -72,9 +67,6 @@ export function PieceDetailTabs({
           )}
         >
           {tab}
-          {tab === "Sugerencias IA" && pendingSuggestions > 0 && (
-            <Badge intent="warning" className="px-2 py-0">{pendingSuggestions}</Badge>
-          )}
         </button>
       ))}
     </div>
