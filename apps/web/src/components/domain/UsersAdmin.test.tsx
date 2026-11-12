@@ -4,7 +4,7 @@ import { render, visibleText } from "@/test/render";
 
 import type { PackageView, RoleOut, UserOut } from "@/lib/data/users-admin";
 
-import { PermissionPackageCard, PermissionSaveBar, RoleButtons, RoleChoice, TemporaryPasswordNotice, UsersTable } from "./UsersAdmin";
+import { PermissionPackageCard, PermissionSaveBar, ROLE_HINTS, ROLE_REQUIRED, RoleButtons, RoleChoice, TemporaryPasswordNotice, UsersTable } from "./UsersAdmin";
 
 describe("TemporaryPasswordNotice", () => {
   it("shows the password with the warning that it appears only once", () => {
@@ -23,7 +23,26 @@ describe("RoleChoice", () => {
     ];
     const html = render(<RoleChoice roles={roles} value="CATALOGUER" onChange={() => {}} />);
     expect(visibleText(html)).toContain("Consulta externa — desactivado en fase 1");
-    expect(String(html)).toMatch(/<option[^>]*disabled[^>]*>Consulta externa/);
+    // Botones de opción desde `fotos-y-roles-menos-clics` (C35); antes era una lista desplegable.
+    expect(String(html)).toMatch(/<input type="radio" disabled=""[^>]*value="EXTERNAL_RESEARCHER"/);
+  });
+
+  it("muestra cada rol con su línea y ninguno elegido si no se pasa valor (C35)", () => {
+    const roles = [
+      { code: "ADMIN", name: "Administrador", description: null, is_enabled: true, permissions: [] },
+      { code: "INTERNAL_VIEWER", name: "Consulta interna", description: null, is_enabled: true, permissions: [] },
+      { code: "NUEVO", name: "Rol nuevo", description: "Descripción que trae la API.", is_enabled: true, permissions: [] },
+    ];
+    const html = render(<RoleChoice roles={roles} value="" onChange={() => {}} />);
+    const text = visibleText(html);
+    expect(text).toContain(ROLE_HINTS.ADMIN);
+    expect(text).toContain(ROLE_HINTS.INTERNAL_VIEWER);
+    expect(text).toContain("Descripción que trae la API.");
+    expect(html.match(/type="radio"/g)).toHaveLength(3);
+    expect(html).not.toContain("checked");
+    const withError = render(<RoleChoice roles={roles} value="" onChange={() => {}} error={ROLE_REQUIRED} />);
+    expect(withError).toContain('role="alert"');
+    expect(visibleText(withError)).toContain("Elija un rol.");
   });
 });
 
