@@ -56,6 +56,25 @@ export function summarySentence(summary: UploadSummary): string {
   return `${parts.join(" · ")}. El servidor verifica cada foto y la propone a su fila en unos segundos; nada llega al catálogo hasta aprobar el lote.`;
 }
 
+/**
+ * Resumen de una línea de las fotos del lote (change `importacion-revision-simplificada`, D5):
+ * «80 fotos: 78 subidas, 2 ya estaban», o «40 de 80 fotos subidas» si la subida quedó a medias.
+ */
+export function photosOneLine(progress: readonly PhotoProgress[]): string {
+  const total = progress.length;
+  const summary = summarize([...progress]);
+  if (canResume([...progress])) {
+    const done = summary.uploaded + summary.registered + summary.rejected;
+    return `${done} de ${plural(total, "foto subida", "fotos subidas")}`;
+  }
+  const parts = [
+    summary.uploaded > 0 && plural(summary.uploaded, "subida", "subidas"),
+    summary.registered > 0 && plural(summary.registered, "ya estaba", "ya estaban"),
+    summary.rejected > 0 && plural(summary.rejected, "rechazada", "rechazadas"),
+  ].filter(Boolean) as string[];
+  return `${plural(total, "foto", "fotos")}${parts.length ? `: ${parts.join(", ")}` : ""}`;
+}
+
 export function statusLabel(item: PhotoProgress): string {
   switch (item.status) {
     case "pending":
@@ -151,15 +170,19 @@ export function ImportPhotosView({ progress, ignored, running, message, error, o
               Reanudar
             </Button>
           )}
-          <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto text-sm">
-            {listed.map((item) => (
-              <li key={item.relativePath} className="flex justify-between gap-3">
-                <span className="truncate text-tinta">{item.relativePath}</span>
-                <span className={item.status === "failed" || item.status === "rejected" ? "text-carmin-texto" : "text-gris-texto"}>{statusLabel(item)}</span>
-              </li>
-            ))}
-          </ul>
-          {progress.length > LISTED && <p className="text-sm text-gris-texto">y {progress.length - LISTED} fotos más.</p>}
+          <p className="text-base font-medium text-tinta">{photosOneLine(progress)}</p>
+          <details className="text-sm">
+            <summary className="min-h-11 cursor-pointer py-2 text-base text-tinta">Ver los archivos</summary>
+            <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+              {listed.map((item) => (
+                <li key={item.relativePath} className="flex justify-between gap-3">
+                  <span className="truncate text-tinta">{item.relativePath}</span>
+                  <span className={item.status === "failed" || item.status === "rejected" ? "text-carmin-texto" : "text-gris-texto"}>{statusLabel(item)}</span>
+                </li>
+              ))}
+            </ul>
+            {progress.length > LISTED && <p className="text-sm text-gris-texto">y {progress.length - LISTED} fotos más.</p>}
+          </details>
         </div>
       )}
     </Card>

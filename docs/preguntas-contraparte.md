@@ -420,6 +420,39 @@ Supuestos provisionales para poder desarrollar la bandeja única de pendientes (
 | RP3 | ¿Quién del museo revisa las sugerencias que propone la IA? | **[SUPUESTO]** El curador (permiso `ai.review`); nada se guarda sin su aprobación (RN-009) | ia-asistiva (RIA-01, RN-009) | A |
 | RP4 | ¿El usuario típico tiene 60 años o más y poca práctica con computadoras? | **[SUPUESTO]** Sí: se diseña con letra de 16 px o más, botones de 44 px o más y pocas opciones por pantalla (HU-31). Se valida con el museo | RNF-010 | A |
 
+## IO. Elegir qué importar (change `importacion-elegir-origen`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IO1 | ¿Los textos de las tres tarjetas de Importación («Solo Excel», «Solo imágenes», «Excel e imágenes») se entienden? | [SUPUESTO] «Sábanas de piezas en Excel o CSV», «Fotos de piezas que ya están registradas. Una foto sin pieza no crea una pieza», «Piezas en Excel y sus fotos. Las fotos se suben después del Excel». | Solo textos de la interfaz | Media |
+| IO2 | ¿Prefiere el museo entrar directo al asistente de Excel, sin la elección? | [SUPUESTO] No: se muestra la elección cada vez; si prefieren entrar directo, el Inicio puede enlazar a `/importacion?origen=excel`. | Un clic más para quien siempre sube un Excel | Baja |
+| IO3 | ¿Debe «Excel e imágenes» pedir la carpeta de fotos antes de validar el Excel? | [SUPUESTO] No: las fotos se suben con el lote ya leído, porque se emparejan con sus filas. | Orden del recorrido | Baja |
+| IO4 | Y1 sigue abierta: ¿«formato» o «plantilla» para los paneles posteriores a la subida? | [SUPUESTO] «Formato». | Solo textos | Baja |
+
+## IR. Revisión simplificada de una importación (change `importacion-revision-simplificada`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IR1 | ¿Desde cuántas filas iguales conviene mostrar un error como bloque único? | [SUPUESTO] 3 filas (constante `REPEATED_ERROR_MIN_ROWS`). | Cuándo se agrupa | Baja |
+| IR2 | ¿Desde qué proporción de filas con el mismo dato faltante se culpa al formato aplicado? | [SUPUESTO] 80 % (constante `FORMAT_CAUSE_RATIO`). | Cuándo se sugiere cambiar de formato | Baja |
+| IR3 | ¿Prefiere el museo dejar fuera un grupo de filas con una confirmación, o directamente? | [SUPUESTO] Con una confirmación breve. | Un clic más al descartar | Baja |
+| IR4 | ¿La barra de aprobación debe mostrar también los conflictos sin decidir, o solo el recuento? | [SUPUESTO] Solo el recuento en una frase. | Texto de la barra | Baja |
+
+## IG. Inicio como guía de tareas (change `inicio-guia-de-tareas`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IG1 | ¿Los verbos de las tarjetas del Inicio son los que usa el museo? | [SUPUESTO] «Buscar una pieza», «Registrar una pieza nueva», «Cargar datos o fotos», «Revisar pendientes», «Sacar un reporte», «Configuración». Se validan con la prueba de 5 segundos. | Solo textos | Media |
+| IG2 | ¿Los nombres del menú lateral por tarea («Buscar piezas», «Cargar datos», «Revisar pendientes», «Configuración») le sirven al museo? | [SUPUESTO] Sí. Los aplica la Base cuando cambie el menú. | Solo textos | Media |
+| IG3 | ¿Dónde debe vivir la evolución de completitud y la tabla por colección, ahora que salen del Inicio? | [SUPUESTO] En ninguna pantalla por ahora; los datos siguen en la API. Si el museo los pide, se ofrecen como un reporte. | Se pierde esa vista | Media |
+| IG4 | ¿Debe «Registrar una pieza nueva» ser también una entrada del menú para quien registra a diario? | [SUPUESTO] No: es una tarjeta del Inicio y el botón «Nueva pieza» de Búsqueda. | Un clic más para quien registra a diario | Baja |
+
 ## CM. Carga masiva con IA (propuesta `carga-masiva-con-ia`, 2026-11-11)
 
 Surge de una observación del equipo en la exposición del prototipo: sugerir texto de IA para que alguien lo edite a mano no escala a un lote grande. Supuestos de diseño de la propuesta, no confirmados con el museo ni con la jefa de práctica.

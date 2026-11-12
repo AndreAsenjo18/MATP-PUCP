@@ -141,6 +141,14 @@ export function plainMessage(text: string): string {
     .trim();
 }
 
+/** Notas internas del equipo entre corchetes, p. ej. «[SUPUESTO]» o «[SUPUESTO A1]». */
+const INTERNAL_NOTE = /\[\s*SUPUESTO[^\]]*\]\s*/gi;
+
+/** Descripción apta para mostrar: sin notas internas del equipo (`[SUPUESTO]`) ni referencias a requisitos. */
+export function plainDescription(text: string | null | undefined): string {
+  return plainMessage((text ?? "").replace(INTERNAL_NOTE, ""));
+}
+
 /** Opciones de `call`: las pantallas que aún muestran referencias a requisitos las conservan. */
 export interface CallOptions {
   keepReferences?: boolean;
@@ -642,6 +650,53 @@ export async function countTenureErrors(batchId: string, devUser?: string): Prom
     if (result.value.page * result.value.pageSize >= result.value.total) return { status: "ok", value: { count, complete: true } };
   }
   return { status: "ok", value: { count, complete: false } };
+}
+
+/** Páginas de 100 filas con error que se recorren como máximo (10 000 filas, más que todo el catálogo). */
+const ERROR_SCAN_MAX_PAGES = 100;
+
+/**
+ * Todas las filas con error del lote, de a 100 (change `importacion-revision-simplificada`, D1/D2):
+ * de ellas salen el resumen exclusivo y los errores repetidos. `complete: false` si el lote tiene
+ * más filas con error de las que se recorren.
+ */
+export async function scanErrorRows(batchId: string, devUser?: string): Promise<ImportResult<{ rows: ImportRow[]; complete: boolean }>> {
+  const rows: ImportRow[] = [];
+  for (let page = 1; page <= ERROR_SCAN_MAX_PAGES; page += 1) {
+    const result = await fetchImportDiffs(batchId, { onlyErrors: true, page, pageSize: 100 }, devUser);
+    if (result.status !== "ok") return result;
+    rows.push(...result.value.items);
+    if (result.value.page * result.value.pageSize >= result.value.total) return { status: "ok", value: { rows, complete: true } };
+  }
+  return { status: "ok", value: { rows, complete: false } };
+}
+
+/** Filas que se dejan fuera a la vez al decidir un grupo, para no saturar el servidor. */
+const EXCLUDE_BATCH_SIZE = 5;
+
+/**
+ * Deja fuera las filas dadas con la decisión por fila de siempre (`EXCLUDED`, sin motivo), por
+ * tandas y avisando del avance. No se detiene ante una falla: devuelve cuántas se dejaron fuera y
+ * cuántas no, para decirlo sin esconder nada.
+ */
+export async function excludeRows(
+  batchId: string,
+  rowIds: readonly string[],
+  devUser?: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ done: number; failed: number }> {
+  let done = 0;
+  let failed = 0;
+  for (let start = 0; start < rowIds.length; start += EXCLUDE_BATCH_SIZE) {
+    const batch = rowIds.slice(start, start + EXCLUDE_BATCH_SIZE);
+    const results = await Promise.all(batch.map((rowId) => decideImportRow(batchId, rowId, { decision: "EXCLUDED" }, devUser)));
+    for (const result of results) {
+      if (result.status === "ok") done += 1;
+      else failed += 1;
+    }
+    onProgress?.(done + failed, rowIds.length);
+  }
+  return { done, failed };
 }
 
 /** `PATCH /imports/{batch_id}/rows/{row_id}`: decisión de fila, de campos y resolución (D5). */

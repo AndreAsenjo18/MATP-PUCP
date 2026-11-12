@@ -9,26 +9,30 @@ El asistente de importación carga en el catálogo las piezas de una hoja de cá
 - **Nada llega al catálogo hasta que se aprueba.** Mientras tanto, el lote es una propuesta que se puede revisar, corregir o abandonar.
 - El archivo original se guarda sin cambios y cada decisión queda en la **bitácora** del lote, con su usuario y la fecha.
 - Para los Excel históricos del museo (BD estandarizada y fichas de catalogación), vea antes [Cargar el histórico del museo](carga-historico.md).
-- ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Use **Importar fotografías al catálogo**: ver [Importar el archivo fotográfico](importacion-fotos.md).
+- ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Elija **Solo imágenes** al abrir Importación: ver [Importar el archivo fotográfico](importacion-fotos.md).
 
 ## 1. Preparar el archivo
 
 - Formatos admitidos: **Excel (.xlsx)** y **CSV**. Un archivo de Access o de Word se convierte antes a Excel.
 - Cada fila es una pieza y la primera fila con títulos son las **cabeceras** (si los títulos están más abajo, se indica en el paso 3).
-- La **denominación** es obligatoria en cada fila. El **régimen de tenencia** (Propiedad, Comodato o Préstamo temporal) también; si el archivo no tiene esa columna, se puede elegir un valor para todas las filas.
+- La **denominación** es obligatoria en cada fila. El **régimen de tenencia** (Propiedad, Comodato o Préstamo temporal) también; si el archivo no tiene esa columna, el asistente lo avisa al revisar las filas y permite elegir un valor para todas.
 - Una celda puede traer **varios códigos** a la vez («I-0236 / M.M.Z. 015»): el sistema separa cada código y reconoce su tipo.
 - Escriba «S/N» o deje la celda vacía si la pieza no tiene código. La lista de textos que significan «sin código» (S/N, s/c, -, 0…) la mantienen la Gestora de colecciones y el Administrador (ver [Administración › Normalización](administracion.md#normalización-de-códigos)).
 - Hay un tamaño máximo por archivo y un máximo de filas por lote. Si su archivo es más grande, divídalo en varios.
 - Las fotos pegadas dentro del Excel se extraen y se revisan al final (ver «Asociar las imágenes del Excel»).
 
-## 2. Subir el archivo y elegir su formato
+## 2. Elegir qué importar y subir el archivo
 
 1. En la barra lateral, pulse **Importación**. La barra se puede **contraer** a una columna de iconos con **Contraer menú**; el navegador recuerda su elección.
-2. Arrastre el archivo a la zona **Arrastre aquí su archivo** o haga clic en ella para elegirlo. Solo se admiten archivos Excel (.xlsx) o CSV; con otro tipo, la zona lo avisa y no lo selecciona.
-3. Junto a la zona, **Antes de subir** resume en cinco líneas lo que debe traer el archivo.
-4. En **Formato del archivo**, deje **Detectar automáticamente** (lo reconocemos por los títulos de las columnas) o elija uno de los formatos guardados. Un **formato** es la forma de leer las columnas de una misma fuente, por ejemplo, todas las sábanas de la consultoría.
-5. Si el archivo no trae columna de régimen de tenencia, abra **Más opciones** y elija el régimen de las filas sin dato (Propiedad, Comodato o Préstamo temporal). Las filas que sí lo traen conservan el suyo.
-6. Pulse **Subir y revisar**.
+2. Responda **¿Qué desea importar?** con una de las tres tarjetas:
+   - **Solo Excel**: sábanas de piezas en Excel o CSV.
+   - **Solo imágenes**: fotos de piezas que ya están registradas. Una foto sin pieza no crea una pieza (ver [Importar el archivo fotográfico](importacion-fotos.md)).
+   - **Excel e imágenes**: las piezas en Excel y sus fotos. Las fotos se suben **después** del Excel, porque se emparejan con sus filas.
+3. Arrastre el archivo a la zona **Arrastre aquí su archivo** o haga clic en ella para elegirlo. Solo se admiten archivos Excel (.xlsx) o CSV; con otro tipo, la zona lo avisa y no lo selecciona.
+4. Pulse **Subir y revisar**. No hay que elegir un formato: se reconoce por los títulos de las columnas.
+5. ¿Duda sobre cómo debe venir el archivo? Abra **¿Cómo preparo mi Excel?**, que resume en cinco líneas lo que debe traer.
+
+La elección queda en la dirección de la página, así que recargarla o compartir el enlace conserva el mismo camino. Un lote que ya empezó se abre directamente donde quedó, sin pasar por las tarjetas.
 
 Mientras se lee el archivo aparece el avance en filas. Puede salir de la pantalla: el proceso continúa en el servidor. Para volver al lote, use la dirección de la página, que lleva el lote.
 
@@ -36,7 +40,7 @@ El avance se ve en la barra de cuatro pasos —**Archivo**, **Revisión**, **Apr
 
 ## 3. El formato se aplica solo
 
-Al terminar la lectura, el sistema aplica el formato que eligió, o el que mejor coincide con las columnas del archivo, y valida el lote: no hay un paso de mapeo que completar. Llega directo a **Revise las filas**, donde arriba dice con qué formato se leyó («Formato aplicado: …»). Si no es el correcto, pulse **Cambiar formato**: el archivo se lee de nuevo con otro formato, sin volver a subirlo.
+Al terminar la lectura, el sistema aplica el formato que mejor coincide con las columnas del archivo, y valida el lote: no hay un paso de mapeo que completar. Llega directo a **Revise las filas**, donde arriba dice con qué formato se leyó («Formato aplicado: …»). Si no es el correcto, pulse **Cambiar formato**: el archivo se lee de nuevo con otro formato, sin volver a subirlo.
 
 El sistema se detiene antes de validar solo en estos casos, y siempre explica por qué:
 
@@ -140,6 +144,8 @@ Para cambiar el nombre o la descripción de un formato, o para eliminarlo, use *
 
 ## 4. Revisar las filas
 
+Al llegar a la revisión lo primero que ve es un **resumen**: cuántas filas hay y cuántas están en cada situación (**Con errores**, **Conflictos**, **Posibles duplicados**, **Actualizaciones**, **Nuevas**). Cada fila se cuenta **una sola vez** (si tiene un error, se cuenta como error), así que las cifras suman el total. Debajo, una frase dice qué falta decidir antes de aprobar. Al pulsar una cifra, la lista muestra solo ese grupo. La línea **Formato aplicado** y el botón **Cambiar formato** también están en el resumen.
+
 Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su **decisión** y lo que hará la carga con ella («Creará una pieza nueva», «Actualizará una pieza existente» o «No se aplicará»).
 
 | Clasificación | Qué significa |
@@ -149,7 +155,7 @@ Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su
 | **Posible duplicado** | No coincide ningún código, pero se parece mucho a una pieza que ya existe. |
 | **Conflicto** | Sus códigos apuntan a piezas distintas, intenta cambiar el código I de una pieza o comparte el código I con otra fila del mismo archivo. |
 
-- Con los botones de arriba (**Nuevas**, **Actualizaciones**, **Posibles duplicados**, **Conflictos**, **Con errores**) se ve solo ese grupo.
+- Con las cifras del resumen se ve solo ese grupo. Las que están en 0 no se pueden pulsar.
 - En **Cómo se clasifican las filas** se explican las reglas y el umbral de parecido que se usaron.
 - Los datos del Excel de cada fila están plegados en **Ver datos del archivo**.
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
@@ -166,9 +172,16 @@ Si una columna del archivo quedó como **Dato de origen** o mapeada a **Observac
 
 Si la columna de texto libre de una fila está vacía, no se ofrece pedir sugerencias para ella.
 
-### Filas sin régimen de tenencia
+### Un mismo error en muchas filas
 
-Si varias filas no traen régimen, un aviso amarillo dice cuántas son. Elija un régimen y pulse **Aplicar y validar de nuevo**: el lote se vuelve a validar con ese régimen para esas filas; las que ya lo traían no cambian. Si el régimen no encaja con los códigos de una fila (por ejemplo, Comodato con código I), esa fila mostrará el error correspondiente.
+Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque amarillo** («30 filas: Falta el régimen de tenencia») con lo que puede hacer, en lugar de repetir el error en cada tarjeta:
+
+- **Elegir una solución para todas.** Si el error es el régimen, elija uno y pulse **Aplicar y validar de nuevo**: el lote se vuelve a validar con ese régimen para esas filas; las que ya lo traían no cambian. Si el régimen no encaja con los códigos de una fila (por ejemplo, Comodato con código I), esa fila mostrará el error correspondiente.
+- **Cambiar el formato.** Si casi todas las filas fallan porque el formato aplicado no trae esa columna, el bloque lo dice («El formato … no trae la columna de régimen de tenencia») y ofrece **Cambiar formato** primero.
+- **Dejar fuera todas.** **Dejar fuera las N filas** (con una confirmación) las excluye de una vez, sin pedir motivo. Después puede decidir cada fila por separado.
+- **Ver las N filas.** Las filas del grupo están plegadas; al abrirlas, cada una ocupa una línea y, al pulsarla, muestra sus datos y sus tres botones.
+
+Un error que afecta a una o dos filas se sigue viendo en la tarjeta de cada fila.
 
 ### Revisar los cambios de una actualización
 
@@ -231,7 +244,7 @@ Los códigos se leen como en el resto de la carga: `M.M.Z. 509`, `MMZ 509` y `mm
 
 ## 5. Aprobar la carga
 
-En **Aprobación de la carga** se lee el resumen exacto, por ejemplo: «Se crearán 70 piezas nuevas, se actualizarán 35 piezas y 15 filas no se aplicarán».
+La barra **Aprobación de la carga** queda **pegada al pie de la pantalla** mientras revisa, así que el botón siempre está a la vista. Ahí se lee el resumen exacto, por ejemplo: «Se crearán 70 piezas nuevas, se actualizarán 35 piezas y 15 filas no se aplicarán».
 
 1. Pulse **Aprobar y aplicar** (solo Gestora de colecciones y Administrador).
 2. Revise el resumen en la ventana de confirmación y pulse **Confirmar**.

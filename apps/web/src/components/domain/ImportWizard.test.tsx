@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ImportBatch, ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, RollbackPanel, RowFilters, TenureBanner } from "./ImportWizard";
+import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, RollbackPanel, TenureBanner } from "./ImportWizard";
 
 const noop = () => {};
 const acceptButton = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar<\/button>/;
@@ -180,14 +180,7 @@ describe("fila de la previsualización (RF-026)", () => {
   });
 });
 
-describe("filtros, mapeo y aprobación", () => {
-  it("filtra por clasificación con los conteos del lote", () => {
-    const text = visibleText(render(<RowFilters active="CONFLICT" onlyErrors={false} counts={{ CONFLICT: 3, NEW: 2, ERRORS: 1 }} onChange={noop} />));
-    expect(text).toContain("Conflictos (3)");
-    expect(text).toContain("Nuevas (2)");
-    expect(text).toContain("Con errores (1)");
-  });
-
+describe("aprobación y régimen", () => {
   it("muestra el resumen que se aprueba o el aviso de permiso", () => {
     const summary = { create: 2, update: 1, skip: 4, summary_token: "t" };
     expect(visibleText(render(<ApprovalPanel summary={summary} canApprove busy={false} onConfirm={noop} />))).toContain(

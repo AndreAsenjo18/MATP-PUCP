@@ -23,6 +23,7 @@ Cada change del backlog tiene como tarea de cierre actualizar su sección. Mient
 
 ## Cómo moverse por el sistema
 
+- **Inicio** le pregunta **¿Qué desea hacer?** y le muestra tarjetas grandes con la tarea (**Buscar una pieza**, **Registrar una pieza nueva**, **Cargar datos o fotos**, **Revisar pendientes**, **Sacar un reporte**, **Configuración**). Cada tarjeta aparece solo si su rol puede hacer esa tarea; en **Revisar pendientes** se ve el número de elementos por revisar cuando hay alguno.
 - **En computadora**: las secciones (Inicio, Búsqueda, Importación, Duplicados, Sugerencias IA, Reportes, Administración) están en la **barra lateral oscura** de la izquierda. La sección en la que está aparece resaltada. Para verificar o mover piezas use **Búsqueda**: la antigua Vista de depósito se unió a ella.
 - **En teléfono o tablet**: pulse **Menú** arriba a la izquierda para ver las secciones; el menú se cierra al elegir una sección, al pulsar **Cerrar menú** o con la tecla Escape.
 - Solo aparecen las secciones que su rol permite usar.

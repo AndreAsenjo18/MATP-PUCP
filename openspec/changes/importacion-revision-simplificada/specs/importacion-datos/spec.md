@@ -41,7 +41,7 @@ Cuando tres o más filas de un lote comparten el mismo error de validación, la 
 - **THEN** el bloque desaparece y las 2 filas muestran su error en su tarjeta
 
 ### Requirement: Aprobación siempre visible durante la revisión
-Durante la revisión, la pantalla MUST mantener visible al pie, sin tener que recorrer la lista de filas, una barra de aprobación con el resumen de lo que se aplicará (filas que se crearán, que se actualizarán y que se omitirán) y la acción de aprobar. La acción SHALL estar desactivada, con el motivo en una línea, cuando el lote tenga conflictos o errores sin decidir, o cuando el rol de la persona no pueda aprobar; en ese caso la barra MUST decir quién puede hacerlo. La barra MUST NOT cubrir el contenido en pantallas de 360 px de ancho y SHALL poder usarse con teclado. La aprobación sigue exigiendo la confirmación explícita con el resumen. (RF-027, RNF-001, RNF-007, RNF-010)
+Durante la revisión, la pantalla MUST mantener visible al pie, sin tener que recorrer la lista de filas, una barra de aprobación con el resumen de lo que se aplicará (filas que se crearán, que se actualizarán y que se omitirán) y la acción de aprobar. La barra SHALL decir en una frase cuántas filas con error o por resolver siguen sin decidir y que lo que no se decida no se importa, sin cambiar las reglas de aprobación vigentes; la acción SHALL estar desactivada, con el motivo en una línea, cuando no haya filas que aplicar o cuando el rol de la persona no pueda aprobar, y en este último caso la barra MUST decir quién puede hacerlo. La barra MUST NOT cubrir el contenido en pantallas de 360 px de ancho y SHALL poder usarse con teclado. La aprobación sigue exigiendo la confirmación explícita con el resumen. (RF-027, RNF-001, RNF-007, RNF-010)
 
 #### Scenario: Lote listo para aprobar
 - **GIVEN** un lote sin conflictos ni errores pendientes y una persona con permiso de aprobar
@@ -50,7 +50,11 @@ Durante la revisión, la pantalla MUST mantener visible al pie, sin tener que re
 
 #### Scenario: Lote con errores sin decidir
 - **WHEN** quedan filas con errores que no se dejaron fuera ni se rechazaron
-- **THEN** el botón de aprobar está desactivado y la barra dice cuántas filas faltan por decidir
+- **THEN** la barra dice cuántas filas faltan por decidir y que esas filas no se importarán, y el botón de aprobar sigue disponible mientras haya filas que aplicar
+
+#### Scenario: Nada que aplicar
+- **WHEN** el resumen de aprobación no tiene filas que crear ni actualizar
+- **THEN** el botón de aprobar está desactivado y la barra dice que no hay filas para aplicar
 
 #### Scenario: Catalogador sin permiso de aprobación
 - **WHEN** un Catalogador abre la revisión de un lote listo
@@ -61,11 +65,11 @@ Durante la revisión, la pantalla MUST mantener visible al pie, sin tener que re
 - **THEN** la barra ocupa dos líneas como máximo, no tapa el final de la lista y no produce desplazamiento horizontal
 
 ### Requirement: Fotografías del lote en resumen
-Después de subir la carpeta de fotografías de un lote, el asistente MUST mostrar un resumen de una línea —cuántas fotos se subieron, cuántas ya estaban, cuántas fueron rechazadas, cuántas quedan por revisar y cuántas faltan por subir— y MUST NOT listar todas las fotos una por una. La lista por archivo SHALL quedar plegada bajo «Ver los archivos» y, al abrirla, mostrar primero las rechazadas o pendientes. Si todas las fotos se subieron bien, el resumen MUST ocupar una sola línea y la subida seguir disponible para agregar más o reanudar. (RF-045, RNF-010)
+Después de subir la carpeta de fotografías de un lote, el asistente MUST mostrar un resumen de una línea —cuántas fotos se subieron, cuántas ya estaban, cuántas fueron rechazadas y cuántas faltan por subir— y MUST NOT listar todas las fotos una por una; las fotos por revisar siguen en su bandeja. La lista por archivo SHALL quedar plegada bajo «Ver los archivos» y, al abrirla, mostrar primero las rechazadas o pendientes. Si todas las fotos se subieron bien, el resumen MUST ocupar una sola línea y la subida seguir disponible para agregar más o reanudar. (RF-045, RNF-010)
 
 #### Scenario: Ochenta fotos subidas
 - **WHEN** termina la subida de 80 fotos del lote, 78 nuevas y 2 que ya estaban
-- **THEN** el panel muestra «80 fotos: 78 subidas, 2 ya estaban, 0 por revisar» y no lista los 80 nombres
+- **THEN** el panel muestra «80 fotos: 78 subidas, 2 ya estaban» y no lista los 80 nombres
 
 #### Scenario: Fotos rechazadas
 - **WHEN** 3 fotos de la carpeta fueron rechazadas por su tipo de archivo
