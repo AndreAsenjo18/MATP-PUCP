@@ -121,6 +121,12 @@
 | RIA-04 | Descripción preliminar desde metadatos | 4 (por validar) | ia-asistiva |
 | RIA-05 | Asistente de consulta sobre catálogo autorizado | 5 (pendiente) | ia-asistiva |
 
+> RIA-01 ya no se ofrece desde la ficha individual de una pieza (el panel «Sugerencias de IA» se
+> quitó de esa pantalla tras evaluarlo en vivo: solo cubre medidas, estado de conservación y
+> marcas de revisión, y no aporta nada frente a las alertas reales de completitud de la ficha).
+> La capacidad sigue disponible vía `carga-masiva-con-ia` (una propuesta por fila del lote) y el
+> endpoint `POST /ai/suggest-cataloging` sin UI propia. Change `retirar-sugerencias-ia-ficha`.
+
 **Fuera de alcance**: visión por computadora sobre imágenes.
 
 ## 8. Reglas de negocio
