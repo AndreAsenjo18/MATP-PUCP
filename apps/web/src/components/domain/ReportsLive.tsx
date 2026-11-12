@@ -8,7 +8,7 @@
  */
 import { FileSpreadsheet, Printer } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DisclosureSummary, withActiveCount } from "@/components/domain/DisclosureSummary";
 import { ReportPreview } from "@/components/domain/ReportPreview";
@@ -98,7 +98,10 @@ export function ReportActions({
   );
 }
 
-/** Los filtros de la búsqueda, plegados para que la tabla quede a la vista (design D4). */
+/**
+ * Los filtros de la búsqueda. Desplegados de entrada y con la cabecera en forma de botón: en la prueba
+ * humana (7.2) no se reconocía que «Filtros» se podía abrir. Se pueden plegar.
+ */
 export function ReportFilters({
   filters,
   options,
@@ -111,9 +114,10 @@ export function ReportFilters({
   onClear: () => void;
 }) {
   const active = activeChips(filters).length;
+  const [open, setOpen] = useState(true);
   return (
-    <details className="group flex flex-col gap-3">
-      <DisclosureSummary>{withActiveCount("Filtros", active)}</DisclosureSummary>
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="group flex flex-col gap-3">
+      <DisclosureSummary variant="button">{withActiveCount("Filtros", active)}</DisclosureSummary>
       <div className="max-w-xl">
         <SearchFiltersPanel filters={filters} options={options} onChange={onChange} onClear={onClear} />
       </div>
@@ -148,11 +152,28 @@ export function ReportJobNotice({ job }: { job: Pick<ExportJob, "status"> }) {
 // Contenedor live
 // ---------------------------------------------------------------------------------------------
 
-export function ReportsLive({ type }: { type: LiveReportType }) {
+export function ReportsLive({
+  type,
+  initialParams,
+  onParamsChange,
+}: {
+  type: LiveReportType;
+  /** Parámetros guardados en la dirección (F5 o enlace compartido). */
+  initialParams?: ReportParams;
+  /** Avisa cada cambio para guardarlo en la dirección. */
+  onParamsChange?: (params: ReportParams) => void;
+}) {
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
-  const [params, setParams] = useState<ReportParams>({ includeLoansForUse: true, filters: EMPTY_FILTERS });
-  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
+  const [params, setParams] = useState<ReportParams>(() => initialParams ?? { includeLoansForUse: true, filters: EMPTY_FILTERS });
+  const [filters, setFilters] = useState<SearchFilters>(() => initialParams?.filters ?? EMPTY_FILTERS);
+  // Cada cambio de parámetros va a la dirección; el estado inicial ya está ahí.
+  const reported = useRef(params);
+  useEffect(() => {
+    if (reported.current === params) return;
+    reported.current = params;
+    onParamsChange?.(params);
+  }, [params, onParamsChange]);
   const [options, setOptions] = useState<SearchOptions>(EMPTY_OPTIONS);
   const [page, setPage] = useState(1);
   const [report, setReport] = useState<Report | null>(null);

@@ -8,7 +8,8 @@
  * `reportes-inventario`, 3.1).
  */
 import { FileSpreadsheet } from "lucide-react";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportPreview } from "@/components/domain/ReportPreview";
@@ -20,7 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
 import { getApiMode } from "@/lib/data/mode";
-import type { ReportKey } from "@/lib/data/reports";
+import { incompleteStateFromSearch, paramsFromSearch, reportKeyFromSearch, reportsHref, type IncompleteUrlState, type ReportKey, type ReportParams } from "@/lib/data/reports";
 import { computeByCollectionReport, computeByLocationReport, computeInventoryReport } from "@/lib/fixtures";
 
 /** Los reportes del modo sintético; los demás solo existen con la API. */
@@ -32,8 +33,31 @@ const MOCK_REPORTS: Partial<Record<ReportKey, typeof computeInventoryReport>> = 
 
 function ReportesContent() {
   const { hasPermission, currentUser } = useSession();
-  const [selected, setSelected] = useState<ReportKey>("inventory");
+  // El tipo de reporte y sus filtros viven en la dirección (prueba humana 7.2): F5 o un enlace los conservan.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlType = reportKeyFromSearch(searchParams);
+  const [selected, setSelected] = useState<ReportKey>(urlType);
   const [exported, setExported] = useState(false);
+  // Los filtros de la dirección solo valen para el reporte que la dirección nombra (al cambiar de tipo, empieza sin filtros).
+  const fromUrl = urlType === selected;
+  const initialParams = useMemo<ReportParams | undefined>(
+    () => (fromUrl && selected !== "incomplete" ? paramsFromSearch(new URLSearchParams(searchParams.toString())) : undefined),
+    [fromUrl, selected, searchParams],
+  );
+  const initialIncomplete = useMemo<IncompleteUrlState | undefined>(
+    () => (fromUrl && selected === "incomplete" ? incompleteStateFromSearch(new URLSearchParams(searchParams.toString())) : undefined),
+    [fromUrl, selected, searchParams],
+  );
+  const replace = useCallback((href: string) => router.replace(href, { scroll: false }), [router]);
+  const onParamsChange = useCallback((params: ReportParams) => replace(reportsHref(selected, params)), [replace, selected]);
+  const onIncompleteChange = useCallback((state: IncompleteUrlState) => replace(reportsHref("incomplete", undefined, state)), [replace]);
+
+  function choose(type: ReportKey) {
+    setSelected(type);
+    setExported(false);
+    replace(reportsHref(type));
+  }
 
   if (!hasPermission("reports.view")) {
     return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
@@ -51,15 +75,20 @@ function ReportesContent() {
         </p>
       </header>
 
-      <ReportSelector selected={selected} onSelect={setSelected} />
+      <ReportSelector selected={selected} onSelect={choose} />
 
       {selected === "incomplete" ? (
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Piezas con información incompleta</h2>
-          <IncompleteReportPanel devUser={currentUser?.email} canDownload={hasPermission("exports.run")} />
+          <IncompleteReportPanel
+            devUser={currentUser?.email}
+            canDownload={hasPermission("exports.run")}
+            initialState={initialIncomplete}
+            onStateChange={onIncompleteChange}
+          />
         </Card>
       ) : live ? (
-        <ReportsLive key={selected} type={selected} />
+        <ReportsLive key={selected} type={selected} initialParams={initialParams} onParamsChange={onParamsChange} />
       ) : report ? (
         <Card as="section" className="flex flex-col gap-3">
           {/* La misma vista previa que el modo conectado: columnas principales y totales en frase. */}
@@ -87,9 +116,12 @@ function ReportesContent() {
 }
 
 export default function ReportesPage() {
+  // `useSearchParams` dentro de `Suspense`: sin él, `next build` falla.
   return (
     <RequireSession>
-      <ReportesContent />
+      <Suspense fallback={null}>
+        <ReportesContent />
+      </Suspense>
     </RequireSession>
   );
 }

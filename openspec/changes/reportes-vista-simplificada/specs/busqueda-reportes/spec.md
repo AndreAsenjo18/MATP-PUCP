@@ -45,23 +45,23 @@ La pantalla de Reportes MUST mostrar solo el selector de reportes, los parámetr
 - **THEN** no ve la estimación del volumen en ninguna pantalla a la que tenga acceso
 
 ### Requirement: Desplegables de filtros y subtotales reconocibles
-Los desplegables «Filtros» de Reportes, «Más filtros» de Búsqueda y «Subtotales» de la vista previa MUST mostrar una flecha que indique que se pueden abrir y que cambie de sentido al abrirse, además de su nombre. Los de filtros SHALL indicar cuántos filtros hay activos (por ejemplo, «Filtros (2 activos)»). Sus nombres no cambian. Se abren y cierran con el ratón y con el teclado (Intro o espacio). (RF-032, RF-047, RNF-010)
+Los desplegables «Filtros» de Reportes, «Más filtros» de Búsqueda y «Subtotales» de la vista previa MUST mostrar una flecha que indique que se pueden abrir y que cambie de sentido al abrirse, además de su nombre. Los de filtros SHALL indicar cuántos filtros hay activos (por ejemplo, «Filtros (2 activos)»). Sus nombres no cambian. Se abren y cierran con el ratón y con el teclado (Intro o espacio). En Reportes, «Filtros» MUST mostrarse desplegado al abrir el reporte y su cabecera SHALL tener aspecto de botón (borde y fondo), porque en la prueba humana no se reconocía que se podía abrir; «Más filtros» de Búsqueda conserva su aspecto y su comportamiento. (RF-032, RF-047, RNF-010)
 
-#### Scenario: Filtros plegados en un reporte agrupado
-- **WHEN** un usuario elige «Piezas agrupadas por…» sin filtros activos
-- **THEN** ve «Filtros» con una flecha hacia la derecha o hacia abajo que indica que se despliega, no un título suelto
+#### Scenario: Filtros a la vista en un reporte agrupado
+- **WHEN** un usuario elige «Piezas agrupadas por…»
+- **THEN** ve los filtros desplegados y, encima, la cabecera «Filtros» con aspecto de botón y su flecha, que permite plegarlos
 
 #### Scenario: Filtros activos
-- **WHEN** el usuario tiene dos filtros activos y los filtros están plegados
-- **THEN** el desplegable dice «Filtros (2 activos)»
+- **WHEN** el usuario tiene dos filtros activos
+- **THEN** la cabecera dice «Filtros (2 activos)», esté desplegada o plegada
 
 #### Scenario: Más filtros en Búsqueda
 - **WHEN** un usuario abre Búsqueda
-- **THEN** «Más filtros» se ve plegado con su flecha, y se abre solo cuando alguno de sus filtros está activo, como hasta ahora
+- **THEN** «Más filtros» se ve plegado con su flecha y sin aspecto de botón, y se abre solo cuando alguno de sus filtros está activo, como hasta ahora
 
 #### Scenario: Con el teclado
 - **WHEN** el usuario llega a «Filtros» con Tab y pulsa Intro
-- **THEN** los filtros se despliegan y la flecha cambia de sentido
+- **THEN** los filtros se pliegan o despliegan y la flecha cambia de sentido
 
 ### Requirement: Textos y números de Reportes en lenguaje llano
 Ningún texto que la pantalla de Reportes muestre MUST contener identificadores de requisitos (`RF-`, `RNF-`, `RN-`, `RIA-`), notas `[SUPUESTO]` ni claves internas. Los totales SHALL leerse como frases («14 piezas»), no como pares clave y valor («piezas: 14»), y todos los números MUST usar el formato `es-PE` de la aplicación. (RNF-010)
@@ -91,3 +91,27 @@ En modo demostración, los reportes de inventario MUST aplicar las mismas reglas
 #### Scenario: Préstamo temporal en los datos de ejemplo
 - **WHEN** un usuario genera el inventario general en modo demostración y entre los datos de ejemplo hay un préstamo temporal
 - **THEN** el préstamo temporal no aparece en el reporte ni cuenta en su total
+
+### Requirement: Reporte y filtros conservados en la dirección
+La pantalla de Reportes MUST guardar en la dirección de la página el tipo de reporte elegido y sus parámetros y filtros (colección, ubicación, comodatos, días sin verificar, atributo de agrupación, filtros de la búsqueda y, en «Información incompleta», las alertas y la colección), de modo que al recargar la página o al abrir un enlace compartido se vea el mismo reporte con los mismos filtros. Al cambiar de tipo de reporte, el nuevo empieza sin filtros. Un tipo desconocido en la dirección SHALL abrir el inventario general. Recargar no MUST pedir nada que el usuario ya haya elegido. (RF-033, RF-047, RNF-010)
+
+#### Scenario: Recargar con filtros
+- **GIVEN** un usuario con el reporte «Piezas agrupadas por…» agrupado por procedencia y filtrado por una colección
+- **WHEN** recarga la página
+- **THEN** ve el mismo reporte, agrupado por procedencia y con la misma colección, y la cabecera dice «Filtros (1 activo)»
+
+#### Scenario: Enlace compartido
+- **WHEN** otra persona con el mismo permiso abre el enlace de ese reporte
+- **THEN** ve el mismo tipo de reporte con los mismos parámetros y filtros
+
+#### Scenario: Cambiar de tipo
+- **WHEN** el usuario pasa de «Piezas agrupadas por…» con filtros a «Por colección»
+- **THEN** el reporte por colección empieza sin filtros y la dirección ya no lleva los del reporte anterior
+
+#### Scenario: Información incompleta
+- **WHEN** el usuario marca la alerta «Sin foto» en «Información incompleta» y recarga
+- **THEN** la alerta sigue marcada y la lista muestra las mismas piezas
+
+#### Scenario: Tipo desconocido en la dirección
+- **WHEN** alguien abre `/reportes?reporte=valorizacion` sin ese reporte disponible
+- **THEN** se abre el inventario general, sin error

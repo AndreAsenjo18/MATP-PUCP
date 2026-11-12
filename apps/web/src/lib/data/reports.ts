@@ -98,6 +98,50 @@ export function paramsFromSearch(search: URLSearchParams): ReportParams {
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Reporte y filtros en la dirección (change `reportes-vista-simplificada`, prueba humana 7.2; Req:
+// Reporte y filtros conservados en la dirección): F5 o un enlace compartido abren lo mismo.
+// ---------------------------------------------------------------------------------------------
+
+/** Parámetro de la dirección con el tipo de reporte: `/reportes?reporte=by-attribute&...`. */
+export const REPORT_TYPE_PARAM = "reporte";
+
+/** Filtros de «Información incompleta» que se guardan en la dirección. */
+export interface IncompleteUrlState {
+  alerts: string[];
+  collectionId: string;
+  includeSubcollections: boolean;
+}
+
+/** Tipo de reporte de la dirección; uno desconocido abre el inventario general. */
+export function reportKeyFromSearch(search: { get(name: string): string | null }): ReportKey {
+  const value = search.get(REPORT_TYPE_PARAM);
+  return REPORT_TYPES.some((report) => report.type === value) ? (value as ReportKey) : "inventory";
+}
+
+/** Dirección de Reportes con el tipo y, si se dan, sus parámetros (los mismos nombres que la API). */
+export function reportsHref(type: ReportKey, params?: ReportParams, incomplete?: IncompleteUrlState): string {
+  const search = new URLSearchParams({ [REPORT_TYPE_PARAM]: type });
+  if (params && type !== "incomplete") {
+    for (const [key, value] of Object.entries(query(params))) search.set(key, String(value));
+  }
+  if (incomplete && type === "incomplete") {
+    for (const alert of incomplete.alerts) search.append("alert", alert);
+    if (incomplete.collectionId) search.set("collection_id", incomplete.collectionId);
+    if (!incomplete.includeSubcollections) search.set("include_subcollections", "false");
+  }
+  return `/reportes?${search.toString()}`;
+}
+
+/** Filtros de «Información incompleta» guardados en la dirección. */
+export function incompleteStateFromSearch(search: { get(name: string): string | null; getAll(name: string): string[] }): IncompleteUrlState {
+  return {
+    alerts: search.getAll("alert"),
+    collectionId: search.get("collection_id") ?? "",
+    includeSubcollections: search.get("include_subcollections") !== "false",
+  };
+}
+
 /** Por qué no se puede pedir el reporte todavía (falta un parámetro obligatorio), o `null`. */
 export function missingParameter(type: LiveReportType, params: ReportParams): string | null {
   if (type === "by-collection" && !params.collectionId) return "Elija la colección.";

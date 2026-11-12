@@ -41,7 +41,7 @@ Si su rol no ve las ubicaciones exactas (por ejemplo, Consulta interna), solo pu
 
 1. Pulse la tarjeta **Piezas agrupadas por…**.
 2. En **Agrupar por**, elija el atributo: **Procedencia**, **Denominación**, **Autor**, **Material**, **Estado de conservación**, **Categoría** o **Colección**.
-3. Si quiere acotar el reporte, abra **Filtros** (pulse la flecha o el nombre): son los mismos de **Búsqueda** y se aplican solos mientras los cambia. Con filtros puestos, dice cuántos hay, por ejemplo **Filtros (2 activos)**.
+3. Si quiere acotar el reporte, use **Filtros**, que aparecen ya desplegados: son los mismos de **Búsqueda** y se aplican solos mientras los cambia. Con filtros puestos, el botón dice cuántos hay, por ejemplo **Filtros (2 activos)**; púlselo para plegarlos.
 4. Revise la vista previa y, si está conforme, pulse **Exportar a Excel** o **Vista imprimible**.
 
 Cómo se arman los grupos:
@@ -53,6 +53,10 @@ Cómo se arman los grupos:
 Entran las mismas piezas que en el inventario (vea [Qué entra en el inventario](#qué-entra-en-el-inventario)). La primera columna, **Grupo**, dice a qué grupo pertenece cada fila, también en el archivo.
 
 > **Pendiente de confirmar con el museo:** el orden de los grupos (pregunta W7).
+
+## Volver al mismo reporte
+
+El reporte que eligió y sus filtros quedan en la dirección de la página. Si recarga la página (F5) o comparte el enlace con alguien que tiene el mismo permiso, se abre el mismo reporte con los mismos filtros. Al elegir otro tipo de reporte, el nuevo empieza sin filtros.
 
 ## Vista previa
 

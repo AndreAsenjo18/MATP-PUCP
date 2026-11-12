@@ -6,10 +6,11 @@
  */
 import { Download, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ApiSchemas } from "@/lib/api/client";
 import { fetchDuplicateCollections } from "@/lib/data/duplicates";
+import type { IncompleteUrlState } from "@/lib/data/reports";
 import {
   downloadIncompleteReport,
   fetchIncompleteReport,
@@ -36,11 +37,31 @@ function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export function IncompleteReportPanel({ devUser, canDownload }: { devUser?: string; canDownload: boolean }) {
+export function IncompleteReportPanel({
+  devUser,
+  canDownload,
+  initialState,
+  onStateChange,
+}: {
+  devUser?: string;
+  canDownload: boolean;
+  /** Filtros guardados en la dirección (Reportes); la bandeja de pendientes no los usa. */
+  initialState?: IncompleteUrlState;
+  /** Avisa cada cambio de filtros para guardarlo en la dirección. */
+  onStateChange?: (state: IncompleteUrlState) => void;
+}) {
   const [collections, setCollections] = useState<CollectionOut[]>([]);
-  const [alertFilter, setAlertFilter] = useState<AlertType[]>([]);
-  const [collectionId, setCollectionId] = useState("");
-  const [includeSubcollections, setIncludeSubcollections] = useState(true);
+  const [alertFilter, setAlertFilter] = useState<AlertType[]>(() => (initialState?.alerts ?? []).filter((a): a is AlertType => ALERT_CODES.includes(a as AlertType)));
+  const [collectionId, setCollectionId] = useState(initialState?.collectionId ?? "");
+  const [includeSubcollections, setIncludeSubcollections] = useState(initialState?.includeSubcollections ?? true);
+  // Cada cambio de filtros va a la dirección; el estado inicial ya está ahí.
+  const reported = useRef(JSON.stringify({ alertFilter, collectionId, includeSubcollections }));
+  useEffect(() => {
+    const key = JSON.stringify({ alertFilter, collectionId, includeSubcollections });
+    if (reported.current === key) return;
+    reported.current = key;
+    onStateChange?.({ alerts: alertFilter, collectionId, includeSubcollections });
+  }, [alertFilter, collectionId, includeSubcollections, onStateChange]);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{ status: "ok"; page: IncompletePage } | { status: "unavailable"; message: string } | null>(null);
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);

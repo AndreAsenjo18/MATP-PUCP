@@ -169,7 +169,10 @@ describe("desplegables reconocibles (Req: Desplegables de filtros y subtotales r
         <DisclosureSummary>Filtros</DisclosureSummary>
       </details>,
     );
-    expect(html).toMatch(/<summary class="[^"]*min-h-11[^"]*list-none/);
+    const summary = html.match(/<summary\b[^>]*>/)?.[0] ?? "";
+    expect(summary).toMatch(/class="[^"]*min-h-11[^"]*list-none/);
+    expect(summary).toContain('data-variant="plain"');
+    expect(summary).not.toContain("border-terracota");
     const arrow = html.match(/<svg\b[^>]*>/)?.[0] ?? "";
     expect(arrow).toContain('data-disclosure-arrow=""');
     expect(arrow).toMatch(/class="[^"]*group-open:rotate-90/);
@@ -182,11 +185,22 @@ describe("desplegables reconocibles (Req: Desplegables de filtros y subtotales r
     expect(withActiveCount("Filtros", 2)).toBe("Filtros (2 activos)");
   });
 
-  it("«Filtros» de Reportes: flecha y «(2 activos)», con el mismo nombre", () => {
+  it("«Filtros» de Reportes: desplegado de entrada, cabecera con aspecto de botón, flecha y «(2 activos)»", () => {
     const html = render(<ReportFilters filters={{ ...EMPTY_FILTERS, denomination: "mate", collectionId: "c1" }} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
-    expect(html).toMatch(/^<details class="group/);
+    expect(html).toMatch(/^<details open="" class="group/);
+    const summary = html.match(/<summary\b[^>]*>/)?.[0] ?? "";
+    expect(summary).toContain('data-variant="button"');
+    expect(summary).toMatch(/class="[^"]*\bborder\b[^"]*border-terracota[^"]*bg-white/);
     expect(html).toContain("data-disclosure-arrow");
     expect(visibleText(html)).toContain("Filtros (2 activos)");
+  });
+
+  it("«Más filtros» de Búsqueda conserva su aspecto: sin borde de botón y plegado sin filtros secundarios", () => {
+    const html = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
+    const summary = html.match(/<summary\b[^>]*>/)?.[0] ?? "";
+    expect(summary).toContain('data-variant="plain"');
+    expect(summary).not.toContain("border-terracota");
+    expect(html).toContain('<details class="group">');
   });
 
   it("«Más filtros» de Búsqueda: flecha y cuántos de los suyos están activos", () => {

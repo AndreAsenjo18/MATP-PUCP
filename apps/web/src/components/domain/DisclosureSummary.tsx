@@ -15,11 +15,19 @@ export function withActiveCount(label: string, active: number): string {
   return active > 0 ? `${label} (${active} activo${active === 1 ? "" : "s"})` : label;
 }
 
-export function DisclosureSummary({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * `button`: con borde y fondo, para que se vea que se pulsa (Reportes, prueba humana 7.2). `plain`, el
+ * de siempre («Más filtros» de Búsqueda y «Subtotales»).
+ */
+export type DisclosureVariant = "plain" | "button";
+
+export function DisclosureSummary({ children, className, variant = "plain" }: { children: ReactNode; className?: string; variant?: DisclosureVariant }) {
   return (
     <summary
+      data-variant={variant}
       className={cn(
         "flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-base font-medium text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota [&::-webkit-details-marker]:hidden",
+        variant === "button" && "w-fit border border-terracota bg-white px-4 py-2 text-terracota hover:bg-terracota-light",
         className,
       )}
     >

@@ -57,6 +57,11 @@ Se añade una entrada a `AdminShell.tsx` (`slug: "almacenamiento"`, `label: "Alm
 ### D7. Demostración con las reglas del inventario
 `computeInventoryReport`, `computeByCollectionReport` y `computeByLocationReport` filtran `tenure_regime !== "Préstamo Temporal"`. El total del inventario de ejemplo pasa de 14 a 13 piezas; las pruebas que contaban 14 se ajustan explicando que el préstamo temporal nunca debió contar (RN-004).
 
+### D8. Tras la prueba humana (7.2): filtros a la vista y reporte en la dirección
+- **Filtros de Reportes desplegados y con aspecto de botón.** `DisclosureSummary` gana `variant="button"` (borde terracota, fondo blanco, relleno). `ReportFilters` lo usa y arranca desplegado (`open` controlado con `onToggle`, se puede plegar). «Más filtros» de Búsqueda y «Subtotales» siguen con `variant="plain"`, sin cambios.
+- **Tipo y filtros en la dirección.** `?reporte=<tipo>` más los parámetros con los mismos nombres que la API, reutilizando `query()` y `paramsFromSearch()` de la vista imprimible (`reportsHref`, `reportKeyFromSearch`). En incompletas se guardan `alert` (repetido), `collection_id` e `include_subcollections` (`incompleteStateFromSearch`). La página lee la dirección con `useSearchParams` dentro de `Suspense` y la actualiza con `router.replace(…, { scroll: false })`. `ReportsLive` e `IncompleteReportPanel` reciben `initialParams` / `initialState` y avisan cada cambio. Los de incompletas son opcionales: la bandeja de pendientes no los pasa y no cambia. Los filtros de la dirección solo se aplican al tipo que nombra la dirección, así que al cambiar de tipo el nuevo empieza sin filtros.
+  **Descartado:** guardar en `localStorage` (no sirve para un enlace compartido, y la regla del proyecto lo reserva para comodidades por persona).
+
 ```mermaid
 flowchart LR
   R[Reportes] --> S[Selector]
