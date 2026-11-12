@@ -1,3 +1,5 @@
+> **Partido el 2026-11-11.** D4 y D5 (lote de IA y criterio de metadatos) pasaron a `ia-enriquecimiento-lote` (allí D2 y D3). Se dejan aquí como referencia histórica de las decisiones; ya no se implementan en este change.
+
 ## Context
 
 El documento de interfaces del equipo sitúa en su fase 3 `POST /media/bulk-download` («Archivo ZIP generado», `200`) y `POST /ai/batch-enrich` («Proceso en lote iniciado», `200`), sin esquemas de petición ni de respuesta. La tarea 5.2 de `alinear-api-endpoints-v1` las expone como stubs `501` que citan este change; aquí se fija su forma y cómo se implementan.

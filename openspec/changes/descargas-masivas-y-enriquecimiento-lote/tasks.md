@@ -13,16 +13,14 @@
 
 ## 3. Enriquecimiento por lote
 
-- [ ] 3.1 Reutilizar o crear (D4, coordinado con `ia-sugerencia-terminos`) el registro de lote de IA con `function_code = RIA_04`, un lote activo por usuario y estado `PARTIAL`; pruebas del segundo lote (409) y de recuperación tras caída (Req: Omisión explicada y continuidad del lote de enriquecimiento; RNF-008)
-- [ ] 3.2 Criterio de piezas sin descripción y de metadatos suficientes (D5) con borrador determinista del `MockProvider`; pruebas de pieza con descripción omitida y de solo denominación (Req: Omisión explicada y continuidad del lote de enriquecimiento; Descripciones preliminares por lote como sugerencias pendientes; RIA-04)
-- [ ] 3.3 `POST /ai/batch-enrich` que crea una `ai_suggestion` `PENDING` por pieza procesada; prueba de que ninguna ficha cambia sin aprobación (Req: Descripciones preliminares por lote como sugerencias pendientes; RN-009)
-- [ ] 3.4 Prueba de IA que deja de responder a mitad del lote: queda `PARTIAL` y conserva las sugerencias ya generadas (Req: Omisión explicada y continuidad del lote de enriquecimiento; RIA-04, RNF-008)
+> Movido el 2026-11-11 a `ia-enriquecimiento-lote` (tareas 1.1 a 1.4 de ese change), sin cambios de alcance: la IA está fuera del MVP y depende de la célula de IA. Este change queda solo con la descarga masiva de fotografías.
 
 ## 4. Cierre
 
-- [ ] 4.1 Regenerar OpenAPI y cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar las filas 42 y 45 del mapeo a «hecho»; `npm run openapi:check` en verde (Req: Descarga masiva de fotografías por paquete; Descripciones preliminares por lote como sugerencias pendientes)
-- [ ] 4.2 Sección del manual de usuario en `docs/manual-usuario/` (descarga de fotos por lote y revisión de borradores de IA)
-  - [x] Parte de fotos: `docs/manual-usuario/descarga-masiva-fotos.md`.
-  - Parte de IA: la revisión de borradores queda para cuando exista la sección 3; hasta entonces 4.2 sigue abierta.
-- [ ] 4.3 `npm run lint`, `npm test`, `npm run test:api:pg` (PostgreSQL con Docker) y `openspec validate descargas-masivas-y-enriquecimiento-lote --strict` en verde
+- [x] 4.1 Regenerar OpenAPI y cliente tipado (`npm run openapi && npm run openapi:client`) y actualizar la fila 42 del mapeo a «hecho» (la 45 pasa a `ia-enriquecimiento-lote`); `npm run openapi:check` en verde (Req: Descarga masiva de fotografías por paquete)
+  - 2026-11-11: la fila 42 ya estaba «hecho»; OpenAPI y cliente regenerados al pasar el stub de `POST /ai/batch-enrich` a `ia-enriquecimiento-lote`; `openapi:check` al día.
+- [x] 4.2 Sección del manual de usuario en `docs/manual-usuario/` (descarga de fotos por lote)
+  - `docs/manual-usuario/descarga-masiva-fotos.md`. La parte de revisión de borradores de IA pasó a `ia-enriquecimiento-lote` (tarea 2.2).
+- [x] 4.3 `npm run lint`, `npm test`, `npm run test:api:pg` (PostgreSQL con Docker) y `openspec validate descargas-masivas-y-enriquecimiento-lote --strict` en verde
+  - 2026-11-11: lint web y API, 1340 pruebas web, suite completa de la API (SQLite) sin fallos, `npm run test:api:pg` 15 de 15 y `openspec validate --all --strict` 27 de 27.
 - [ ] 4.4 Tras aprobar el PR, `openspec archive descargas-masivas-y-enriquecimiento-lote -y`

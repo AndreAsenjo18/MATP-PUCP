@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 610a651adcddf389d4d517a5c6485f95dc5ab42d779540efd9079f5b08c48952
+ * openapi-sha256: 6b0099e59fe2b5b45d5d9fe14ebc14c9350d1decc688d6a9d7ebcd745cdc32fd
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -8429,7 +8429,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`. */
+            /** @description Stub del contrato; lo implementa el change `ia-enriquecimiento-lote`. */
             501: {
                 headers: {
                     [name: string]: unknown;

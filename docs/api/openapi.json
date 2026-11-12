@@ -13440,7 +13440,7 @@
                 }
               }
             },
-            "description": "Stub del contrato; lo implementa el change `descargas-masivas-y-enriquecimiento-lote`."
+            "description": "Stub del contrato; lo implementa el change `ia-enriquecimiento-lote`."
           }
         },
         "security": [
@@ -13452,7 +13452,7 @@
         "tags": [
           "IA asistiva"
         ],
-        "x-change": "descargas-masivas-y-enriquecimiento-lote",
+        "x-change": "ia-enriquecimiento-lote",
         "x-status": "stub"
       }
     },

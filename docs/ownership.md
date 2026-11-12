@@ -72,7 +72,8 @@ Changes activos con tareas pendientes que no figuraban en este mapa. Cada uno ti
 
 | Change | Capacidades | Responsable | Depende de | Orden sugerido |
 |---|---|---|---|---|
-| `descargas-masivas-y-enriquecimiento-lote` | multimedia, ia-asistiva | Germán Asenjo | `fotografias-multiples-por-pieza` (**bloqueante** para la sección 2: restricción efectiva, en `fix/media-routes`), `ia-extraccion-texto-libre` (**bloqueante** para la sección 3); coordina con `ia-sugerencia-terminos` (modelo de lote de IA, D4) | 1 (sección 1 ahora) · 2 (sección 2, tras `fix/media-routes`) · 3 (sección 3, tras `ia-extraccion-texto-libre`) — issue #134 |
+| `descargas-masivas-y-enriquecimiento-lote` | multimedia | Germán Asenjo | `fotografias-multiples-por-pieza` (restricción efectiva) | Secciones 1 y 2 hechas; solo falta el cierre. El enriquecimiento por lote (antes sección 3) pasó a `ia-enriquecimiento-lote` el 2026-11-11 — issue #134 |
+| `ia-enriquecimiento-lote` | ia-asistiva | [por confirmar: P4 / célula de IA] | `ia-extraccion-texto-libre` (**bloqueante**); coordina con `ia-sugerencia-terminos` (modelo de lote de IA, D2) | Fuera del MVP; tras `ia-extraccion-texto-libre` y la pregunta C9 |
 | `prestamos-y-exposiciones` (solo archivar) | ubicacion-movimientos | Germán Asenjo | — | Cuando se quiera (tarea 3.5, issue #136); las rutas `/loans` siguen pendientes en #135 |
 
 ## Reglas de coordinación entre células

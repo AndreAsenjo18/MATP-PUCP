@@ -22,8 +22,8 @@ from app.api.deps import (
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
+    CHANGE_AI_BATCH,
     CHANGE_AI_EXTRACTION,
-    CHANGE_BULK,
     implemented,
     not_implemented,
     stub,
@@ -832,10 +832,10 @@ def batch_enrich_body(request: Request, body: BatchEnrichRequest) -> BatchEnrich
     response_model=AiBatchOut,
     summary="Descripciones preliminares por lote para piezas sin descripción (RIA-04, RN-009)",
     tags=["IA asistiva"],
-    **stub(CHANGE_BULK),
+    **stub(CHANGE_AI_BATCH),
 )
 def batch_ai_enrichment(
     user: AiRequester, body: Annotated[BatchEnrichRequest, Depends(batch_enrich_body)]
 ) -> AiBatchOut:
     """Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación."""
-    raise not_implemented(CHANGE_BULK, AiBatchOut)
+    raise not_implemented(CHANGE_AI_BATCH, AiBatchOut)
