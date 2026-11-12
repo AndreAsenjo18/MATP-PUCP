@@ -373,6 +373,7 @@ Detalle en `docs/despliegue/demo-calidad.md`, `data/fixtures/lote_demo/LEEME.md`
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
 | Z1 | ¿Una pieza puede registrarse directamente en un mueble o un depósito, o siempre en un nivel o contenedor? | [SUPUESTO] Siempre en un lugar final (el que no tiene otros dentro): «Mover a» solo ofrece esos. La API sigue aceptando cualquier destino activo que no sea una sede; si el museo guarda piezas en muebles sin niveles definidos, basta crearles un nivel en Administración o relajar la regla en la interfaz. | Vista de depósito (movimientos y lote) | Media |
+| Z2 | ¿Hay un conjunto mínimo de vistas fotográficas por tipo de pieza (por ejemplo, frontal y posterior para textiles)? | [SUPUESTO] No: el sistema solo avisa cuando una vista ya tiene fotos y muestra el resumen de vistas de cada pieza; no exige vistas ni bloquea la subida (change `aviso-fotos-repetidas`). | multimedia (RF-013) | Baja |
 
 ## AA. Supuestos de las descargas masivas y el enriquecimiento por lote (change `descargas-masivas-y-enriquecimiento-lote`, 2026-10-31)
 
