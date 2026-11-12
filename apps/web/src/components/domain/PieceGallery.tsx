@@ -32,6 +32,7 @@ import {
   restrictionLabel,
   retirePieceMedia,
   updatePieceMedia,
+  viewCounts,
   type PieceMedia,
   type PieceMediaResult,
 } from "@/lib/data/media";
@@ -148,6 +149,30 @@ function PhotoActions({ media, selected, actions }: { media: PieceMedia[]; selec
   );
 }
 
+/**
+ * Qué vistas tiene la pieza y cuántas fotos de cada una (change `aviso-fotos-repetidas`, C6): una vista
+ * con varias fotos se marca para revisar, sin bloquear nada.
+ */
+export function ViewSummary({ media }: { media: readonly Pick<PieceMedia, "view_type">[] }) {
+  const counts = viewCounts(media);
+  return (
+    <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gris-texto">
+      <span className="font-medium text-tinta">Vistas:</span>
+      {counts.map((view, index) => {
+        const repeated = view.count > 1 && !view.unspecified;
+        return (
+          <span key={view.label} className={cn("inline-flex items-center gap-1", repeated && "font-medium text-ambar-texto")}>
+            {repeated && <TriangleAlert size={14} aria-hidden="true" />}
+            {view.label}
+            {view.count > 1 && ` (${view.count}${repeated ? ", repetida" : ""})`}
+            {index < counts.length - 1 && <span aria-hidden="true">·</span>}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 export interface PieceGalleryViewProps {
   media: PieceMedia[];
   pieceTitle: string;
@@ -231,6 +256,7 @@ export function PieceGalleryView({ media, pieceTitle, selectedId, onSelect, acti
           </li>
         ))}
       </ul>
+      {media.length > 1 && <ViewSummary media={media} />}
       {actions && (actions.canEdit || actions.canRetire) && <PhotoActions media={media} selected={selected} actions={actions} />}
     </Card>
   );
@@ -342,6 +368,7 @@ export function PieceGallery({ pieceId, pieceTitle, onChanged }: { pieceId: stri
         <PiecePhotoUpload
           pieceId={pieceId}
           viewTypes={viewTypes}
+          existing={media}
           devUser={devUser}
           onUploaded={() => {
             void reload();

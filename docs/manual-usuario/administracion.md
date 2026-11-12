@@ -22,13 +22,13 @@ Solo el rol **Administrador** gestiona cuentas y permisos. Las cuentas son indiv
 ### Crear un usuario
 
 1. Vaya a **Administración › Personas › Usuarios** y pulse **Nuevo usuario** (arriba a la derecha). Antes puede buscar a la persona por nombre o correo, o filtrar por rol, para comprobar que no existe.
-2. Escriba el **correo** (no puede repetirse, aunque cambien las mayúsculas), el **nombre** y elija uno o más **roles**.
+2. Escriba el **correo** (no puede repetirse, aunque cambien las mayúsculas) y el **nombre**, y marque el **rol**. Cada rol tiene una línea que dice qué puede hacer. **Ningún rol viene marcado**: si pulsa **Crear usuario** sin elegirlo, el cuadro dice «Elija un rol.» y conserva lo que escribió.
 3. Pulse **Crear usuario**. El cuadro se cierra y el sistema muestra una **contraseña temporal** sobre el listado.
 4. **Anótela y entréguela en persona o por un canal privado: se muestra una sola vez** y no se puede volver a consultar. Si se pierde, restablezca la contraseña.
 
 La persona deberá cambiar esa contraseña la primera vez que ingrese (ver [Acceso](acceso.md)).
 
-El rol «Consulta externa / investigador» aparece desactivado en esta fase y no se puede asignar.
+El rol «Consulta externa / investigador» aparece con la marca «desactivado en fase 1» y no se puede asignar.
 
 ### Cambiar roles, desactivar o restablecer la contraseña
 
