@@ -119,6 +119,24 @@ export function draftFromScratch(batch: Pick<ImportBatch, "headers">): EditorDra
   };
 }
 
+/**
+ * Carga masiva con IA (change carga-masiva-con-ia, D2): completa con lo que propone la IA solo
+ * las columnas que la heurística local (`suggestMapping`) dejó sin destino — nunca reemplaza un
+ * destino que ya tenía, de la heurística o de quien edita. Pura, sin red, para poder probarla sin
+ * navegador (ADR-012); la llamada a la IA vive en el componente.
+ */
+export function applyAiColumnMapping(draft: EditorDraft, candidates: readonly { column: string; field?: string | null }[]): EditorDraft {
+  const proposed = new Map(candidates.filter((item) => item.field).map((item) => [item.column, item.field as string]));
+  if (proposed.size === 0) return draft;
+  return {
+    ...draft,
+    columns: draft.columns.map((column) => {
+      const field = !column.target_field ? proposed.get(column.source_column) : undefined;
+      return field ? canonicalColumn({ ...column, target_field: field }) : column;
+    }),
+  };
+}
+
 /** Columnas que importan para comparar: una columna de origen sin transformaciones es como no listarla. */
 function mappingKey(columns: readonly ColumnMapping[]): string {
   const relevant = columns

@@ -51,6 +51,8 @@ CAMPOS_ANADIDOS: set[tuple[str, str]] = {
 
 # Operaciones propias que el documento no contempla, justificadas en el mapeo.
 ANADIDOS: set[tuple[str, str]] = {
+    # Mapeo de columnas por IA (change carga-masiva-con-ia, tarea 1.1).
+    ("post", "/ai/suggest-column-mapping"),
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),
@@ -92,6 +94,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/collection-acronym-aliases"),
     ("delete", "/collection-acronym-aliases/{}"),
     ("get", "/imports/{}"),
+    # Carga masiva con IA (change carga-masiva-con-ia, tarea 2).
+    ("post", "/imports/{}/rows/{}/ai-suggestion"),
+    ("patch", "/imports/{}/rows/{}/ai-fields"),
     ("post", "/imports/{}/images/{}/associate"),
     ("get", "/imports/{}/log"),
     # Fotos del lote (change importacion-masiva-fotografias, diseño D2).

@@ -37,12 +37,15 @@ import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/Impo
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
+import { ImportRowAiSuggestions } from "@/components/domain/ImportRowAiSuggestions";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
 import { UploadPanel } from "@/components/domain/ImportUpload";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
+import { suggestColumnMapping } from "@/lib/data/ai";
 import { confirmRepeatedPhotos, fetchRowPhotos, type TrayPhoto } from "@/lib/data/importPhotos";
 import {
   createTemplate,
@@ -88,6 +91,7 @@ import {
   type RowDecisionInput,
 } from "@/lib/data/imports";
 import {
+  applyAiColumnMapping,
   applySource,
   associateTerm,
   columnErrors,
@@ -107,6 +111,10 @@ import {
   type TermOption,
   type Vocabulary,
 } from "@/lib/data/mapping-editor";
+
+// Opciones del selector "Filas por página" (tarea 3.2): el backend acepta de 1 a 100
+// (apps/api/app/api/pagination.py, MAX_PAGE_SIZE).
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 /** El paso de fotografías del lote: la subida y la bandeja de fotos por revisar. */
 function PhotoStep({ batch, origin, devUser }: { batch: ImportBatch; origin: ImportOrigin | null; devUser?: string }) {
@@ -132,6 +140,12 @@ export function LiveImportWizard() {
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean }>({ classification: null, onlyErrors: false });
   const [page, setPage] = useState(1);
+  // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
+  // grandes (p. ej. 200 filas); el backend acepta de 1 a 100 (apps/api/app/api/pagination.py).
+  const [pageSize, setPageSize] = useState(IMPORT_PAGE_SIZE);
+  // Se incrementa con "Pedir sugerencias de IA para estas filas": cada ImportRowAiSuggestions
+  // visible pide la suya al notar el cambio, en paralelo en vez de una por una (tarea 3.2b).
+  const [aiBulkSignal, setAiBulkSignal] = useState(0);
   const [diffs, setDiffs] = useState<ImportDiffs | null>(null);
   const [allImages, setAllImages] = useState<ReviewImage[]>([]);
   const [log, setLog] = useState<ImportLog | null>(null);
@@ -259,8 +273,15 @@ export function LiveImportWizard() {
     const candidate = suggestion?.template;
     const missing = !candidate ? [] : suggestion ? suggestion.missing_columns : missingColumns(candidate, batch.headers ?? []);
     void (async () => {
-      if (!candidate) return setFormatIssue({ kind: "unrecognized" });
-      if (missing.length > 0) return setFormatIssue({ kind: "missing", template: candidate, missing });
+      // Ninguna plantilla calza con confianza (sea porque no hay candidata o porque a la elegida
+      // le faltan columnas): se abre directo «Ajustar columnas» con el mapeo que sugiere la IA,
+      // sin mostrar antes la lista de candidatas por parecido (change carga-masiva-con-ia, D2).
+      // El régimen de tenencia ya no se elige al subir (importacion-elegir-origen): se decide
+      // después, desde el aviso de «Filas sin régimen de tenencia» (TenureBanner).
+      if (!candidate) return handleStartFromScratch();
+      if (missing.length > 0) {
+        return missing.length < candidate.columns.length ? handleUseTemplate(candidate) : handleStartFromScratch();
+      }
       await applyFormat(candidate, "");
     })();
     // `applyFormat` depende de `batch`, que ya es una dependencia; se ejecuta una vez por lote.
@@ -291,7 +312,7 @@ export function LiveImportWizard() {
   useEffect(() => {
     let active = true;
     if (!batchId || !showRows) return;
-    fetchImportDiffs(batchId, { ...filters, page, pageSize: IMPORT_PAGE_SIZE }, devUser).then((result) => {
+    fetchImportDiffs(batchId, { ...filters, page, pageSize }, devUser).then((result) => {
       if (!active) return;
       if (result.status === "ok") setDiffs(result.value);
       else setError(result.message);
@@ -299,7 +320,7 @@ export function LiveImportWizard() {
     return () => {
       active = false;
     };
-  }, [batchId, showRows, filters, page, devUser, reload]);
+  }, [batchId, showRows, filters, page, pageSize, devUser, reload]);
 
   useEffect(() => {
     let active = true;
@@ -412,6 +433,20 @@ export function LiveImportWizard() {
     await applySourceAndValidate(source, setError);
   }
 
+  /**
+   * Carga masiva con IA (change carga-masiva-con-ia, D2): completa con lo que propone la IA las
+   * columnas que sigan sin destino tras abrir el editor (por heurística local o por plantilla).
+   * No bloquea la apertura del editor, que ya quedó puesta antes de llamar esto; si la IA no está
+   * disponible, el editor sigue como ya quedó. `base` identifica el borrador que disparó el
+   * pedido, para descartar una respuesta tardía si mientras tanto se abrió otro.
+   */
+  function requestAiColumnMapping(headers: string[], base: MappingTemplate | null) {
+    void suggestColumnMapping(headers, devUser).then((result) => {
+      if (result.status !== "ok") return;
+      setEditorDraft((current) => (current && current.base === base ? applyAiColumnMapping(current, result.value.mappings) : current));
+    });
+  }
+
   function handleUseTemplate(template: MappingTemplate) {
     if (!batch) return;
     closeEditor();
@@ -419,6 +454,7 @@ export function LiveImportWizard() {
     setDryRun(null);
     setError(null);
     setMappingMode("edit");
+    requestAiColumnMapping(batch.headers ?? [], template);
   }
 
   function handleStartFromScratch() {
@@ -428,6 +464,7 @@ export function LiveImportWizard() {
     setDryRun(null);
     setError(null);
     setMappingMode("edit");
+    requestAiColumnMapping(batch.headers ?? [], null);
   }
 
   // La vista previa ya calculada se conserva marcada como desactualizada (`stale`), para poder
@@ -760,6 +797,29 @@ export function LiveImportWizard() {
               ))}
             </ol>
           </details>
+          <div className="flex flex-wrap items-end justify-end gap-3">
+            {batchId && (
+              <Button variant="secondary" onClick={() => setAiBulkSignal((n) => n + 1)}>
+                Pedir sugerencias de IA para estas filas
+              </Button>
+            )}
+            <Select
+              label="Filas por página"
+              fieldClassName="w-auto flex-row items-center gap-2"
+              className="w-auto"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="flex flex-col gap-3">
             {diffs.items.map((row) => {
               // Las filas de un error repetido se ven en su bloque, salvo que se pidan «Con errores».
@@ -787,6 +847,11 @@ export function LiveImportWizard() {
                       }
                     />
                   }
+                  aiSuggestions={
+                    batchId ? (
+                      <ImportRowAiSuggestions row={row} batchId={batchId} devUser={devUser} bulkRequestSignal={aiBulkSignal} />
+                    ) : undefined
+                  }
                 />
               );
             })}
@@ -794,7 +859,7 @@ export function LiveImportWizard() {
               <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
             )}
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-center gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               Anterior
             </Button>
