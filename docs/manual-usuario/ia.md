@@ -10,7 +10,7 @@ Para entrar necesita un rol con permiso de revisar sugerencias de IA (por ejempl
 
 ## Cómo se ve
 
-Abra **Sugerencias IA** en el menú. Arriba están el propósito y la etiqueta **Fuera del MVP**. Debajo, **Ejemplos pendientes de revisión** y, cuando revise alguno, **Ejemplos ya revisados**.
+Abra **Revisar pendientes** en el menú y la pestaña **Sugerencias de IA** (mientras el menú no se actualice, **Sugerencias IA** lleva al mismo lugar). Arriba están el propósito y la etiqueta **Fuera del MVP**. Debajo, **Ejemplos pendientes de revisión** y, cuando revise alguno, **Ejemplos ya revisados**.
 
 Cada tarjeta dice qué hizo la IA (**Extraer datos de un texto**, **Detectar posibles duplicados**, **Sugerir términos**, **Redactar una descripción** o **Responder consultas**) y, si corresponde, a qué pieza se refiere. Tiene dos cuadros:
 
@@ -29,4 +29,4 @@ En esta demostración el resultado se guarda solo mientras la página está abie
 ## Si algo no coincide con lo que espera
 
 - **No aparecen sugerencias sobre mis piezas:** es lo esperado. Los ejemplos son fijos y sintéticos.
-- **No veo «Sugerencias IA» en el menú:** su rol no tiene permiso de revisar sugerencias.
+- **No veo la pestaña «Sugerencias de IA»:** su rol no tiene permiso de revisar sugerencias. Si abre su dirección, la pantalla dice «Su rol no puede revisar sugerencias de IA.»
