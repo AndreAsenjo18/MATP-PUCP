@@ -61,16 +61,77 @@ export function TemporaryPasswordNotice({ email, password }: { email: string; pa
   );
 }
 
-export function RoleChoice({ roles, value, onChange }: { roles: RoleOut[]; value: string; onChange: (code: string) => void }) {
+/**
+ * Qué puede hacer cada rol, en una línea (change `fotos-y-roles-menos-clics`, D2). Resume los paquetes de
+ * permisos del seed; la matriz está por validar con el museo (B7). Un rol nuevo usa la descripción de la API.
+ */
+export const ROLE_HINTS: Readonly<Record<string, string>> = {
+  ADMIN: "Todo, incluidos usuarios y permisos.",
+  COLLECTIONS_MANAGER: "Colecciones, calidad e importaciones; sin usuarios.",
+  CATALOGUER: "Registra y edita fichas, fotos y movimientos.",
+  CONSERVATION: "Evaluaciones de conservación y fotos.",
+  STORAGE_STAFF: "Consulta y registra movimientos en el depósito.",
+  INTERNAL_VIEWER: "Solo consulta, sin datos restringidos.",
+  EXTERNAL_RESEARCHER: "Para investigadores externos, más adelante.",
+};
+
+export const ROLE_REQUIRED = "Elija un rol.";
+
+/** Rol de un usuario nuevo: botones de opción con su línea y ninguno elegido de antemano (C35). */
+export function RoleChoice({
+  roles,
+  value,
+  onChange,
+  error = null,
+}: {
+  roles: RoleOut[];
+  value: string;
+  onChange: (code: string) => void;
+  error?: string | null;
+}) {
+  const errorId = "rol-error";
   return (
-    <Select label="Rol" value={value} onChange={(event) => onChange(event.target.value)}>
-      {roles.map((role) => (
-        <option key={role.code} value={role.code} disabled={!role.is_enabled}>
-          {role.name}
-          {role.is_enabled ? "" : " — desactivado en fase 1"}
-        </option>
-      ))}
-    </Select>
+    <fieldset className="flex flex-col gap-1" aria-describedby={error ? errorId : undefined}>
+      <legend className="mb-1 text-sm font-medium text-tinta">Rol</legend>
+      {/* Una columna y líneas de un renglón: el diálogo es angosto y debe caber en un portátil. */}
+      <div className="flex flex-col gap-0.5">
+        {roles.map((role) => {
+          const hint = ROLE_HINTS[role.code] ?? role.description ?? "";
+          return (
+            <label
+              key={role.code}
+              className={cn(
+                "flex min-h-11 items-start gap-2 rounded-md px-2 py-1 md:min-h-0",
+                role.is_enabled ? "cursor-pointer hover:bg-crema-light" : "cursor-not-allowed opacity-60",
+                role.code === value && "bg-crema",
+              )}
+            >
+              <input
+                type="radio"
+                name="nuevo-usuario-rol"
+                value={role.code}
+                checked={role.code === value}
+                disabled={!role.is_enabled}
+                onChange={() => onChange(role.code)}
+                className="mt-1 size-5 shrink-0 accent-terracota"
+              />
+              <span className="flex flex-col">
+                <span className="text-base text-tinta">
+                  {role.name.replace(/\s*\(desactivado en fase 1\)/, "")}
+                  {role.is_enabled ? "" : " — desactivado en fase 1"}
+                </span>
+                {hint && <span className="text-sm text-gris-texto">{hint}</span>}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-carmin-texto">
+          {error}
+        </p>
+      )}
+    </fieldset>
   );
 }
 
@@ -176,7 +237,9 @@ export function UsersLive() {
   const [temporary, setTemporary] = useState<{ email: string; password: string } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Ningún rol elegido de antemano: antes quedaba «Administrador», el primero activo (C35).
   const [form, setForm] = useState({ email: "", fullName: "", role: "" });
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const [usersResult, rolesResult] = await Promise.all([fetchUsers(showInactive), fetchRoles()]);
@@ -184,7 +247,7 @@ export function UsersLive() {
     if (rolesResult.status !== "ok") return setProblem(describeUsersFailure(rolesResult));
     setUsers(usersResult.value);
     setRoles(rolesResult.value);
-    setForm((current) => ({ ...current, role: current.role || (rolesResult.value.find((r) => r.is_enabled)?.code ?? "") }));
+
   }, [showInactive]);
 
   useEffect(() => {
@@ -201,6 +264,11 @@ export function UsersLive() {
 
   async function handleCreate(): Promise<boolean> {
     setCreateError(null);
+    // Sin rol no se crea la cuenta: lo escrito se conserva y el aviso queda junto a los roles (C35).
+    if (!form.role) {
+      setRoleError(ROLE_REQUIRED);
+      return false;
+    }
     const result = await createUser({ email: form.email, full_name: form.fullName, roles: [form.role] });
     if (result.status !== "ok") {
       setCreateError(describeUsersFailure(result));
@@ -208,7 +276,7 @@ export function UsersLive() {
     }
     setProblem(null);
     setTemporary({ email: result.value.email, password: result.value.temporary_password ?? "" });
-    setForm((current) => ({ ...current, email: "", fullName: "" }));
+    setForm({ email: "", fullName: "", role: "" });
     await reload();
     return true;
   }
@@ -264,12 +332,21 @@ export function UsersLive() {
         onClose={() => {
           setDialogOpen(false);
           setCreateError(null);
+          setRoleError(null);
         }}
         onSubmit={handleCreate}
       >
         <Input label="Correo" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <Input label="Nombre completo" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-        <RoleChoice roles={roles} value={form.role} onChange={(role) => setForm({ ...form, role })} />
+        <RoleChoice
+          roles={roles}
+          value={form.role}
+          error={roleError}
+          onChange={(role) => {
+            setForm({ ...form, role });
+            setRoleError(null);
+          }}
+        />
       </FormDialog>
     </Card>
   );
