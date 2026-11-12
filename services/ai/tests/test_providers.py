@@ -81,6 +81,53 @@ def test_suggest_terms_and_describe() -> None:
     assert description == MockProvider().describe(piece)
 
 
+_TARGET_FIELDS = {
+    "denomination": "Denominación",
+    "provenance": "Procedencia",
+    "notes": "Observaciones",
+    "dimensions_text": "Medidas (texto)",
+}
+
+
+def test_mock_column_mapping_by_alias() -> None:
+    result = MockProvider().suggest_column_mapping(
+        headers=["DENOMINACIÓN", "PROCEDENCIA", "OBSERVACIONES"],
+        sample_rows=[],
+        target_fields=_TARGET_FIELDS,
+    )
+    by_column = {m.column: m.field for m in result.mappings}
+    assert by_column == {
+        "DENOMINACIÓN": "denomination",
+        "PROCEDENCIA": "provenance",
+        "OBSERVACIONES": "notes",
+    }
+    assert result.message is None
+
+
+def test_mock_column_mapping_unrecognized_column() -> None:
+    result = MockProvider().suggest_column_mapping(
+        headers=["FOTO"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    assert result.mappings[0].field is None
+    assert result.mappings[0].confidence == 0.0
+    assert result.message
+
+
+def test_mock_column_mapping_never_proposes_outside_target_fields() -> None:
+    result = MockProvider().suggest_column_mapping(
+        headers=["OBSERVACIONES"], sample_rows=[], target_fields={}
+    )
+    assert result.mappings[0].field is None
+
+
+def test_mock_column_mapping_does_not_repeat_a_field() -> None:
+    result = MockProvider().suggest_column_mapping(
+        headers=["OBSERVACIONES", "OBS"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    fields = [m.field for m in result.mappings]
+    assert fields.count("notes") == 1
+
+
 def test_llm_without_base_url_is_unavailable() -> None:
     """RIA-03/04 stay unimplemented regardless of configuration."""
     settings = load_settings(ai_provider="llm", llm_api_key="clave-ficticia", llm_model="modelo-x")
@@ -169,6 +216,60 @@ def test_llm_extract_structured_invalid_json(monkeypatch: pytest.MonkeyPatch) ->
     provider = _llm_provider(monkeypatch, "esto no es JSON")
     with pytest.raises(ProviderUnavailable):
         provider.extract_structured(TEXT)
+
+
+def test_llm_column_mapping_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"mappings": ['
+        '{"column": "DENOMINACIÓN", "field": "denomination", "confidence": 0.9}, '
+        '{"column": "OBSERVACIONES", "field": "notes", "confidence": 0.8}'
+        "]}"
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.suggest_column_mapping(
+        headers=["DENOMINACIÓN", "OBSERVACIONES"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    assert {m.column: m.field for m in result.mappings} == {
+        "DENOMINACIÓN": "denomination",
+        "OBSERVACIONES": "notes",
+    }
+
+
+def test_llm_column_mapping_drops_hallucinated_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = '{"mappings": [{"column": "FOTO", "field": "photo_filename", "confidence": 0.9}]}'
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.suggest_column_mapping(
+        headers=["FOTO"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    # "photo_filename" no está en _TARGET_FIELDS: una clave inventada o fuera de vocabulario
+    # nunca se propone (mismo espíritu que el fragmento alucinado de extract_structured).
+    assert result.mappings[0].field is None
+
+
+def test_llm_column_mapping_missing_column_in_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = '{"mappings": [{"column": "DENOMINACIÓN", "field": "denomination", "confidence": 1}]}'
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.suggest_column_mapping(
+        headers=["DENOMINACIÓN", "OBSERVACIONES"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    # Hay exactamente un resultado por encabezado recibido, aunque el proveedor haya omitido uno.
+    assert [m.column for m in result.mappings] == ["DENOMINACIÓN", "OBSERVACIONES"]
+    assert result.mappings[1].field is None
+
+
+def test_llm_column_mapping_never_repeats_a_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"mappings": ['
+        '{"column": "OBSERVACIONES", "field": "notes", "confidence": 0.9}, '
+        '{"column": "OBS", "field": "notes", "confidence": 0.9}'
+        "]}"
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.suggest_column_mapping(
+        headers=["OBSERVACIONES", "OBS"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    fields = [m.field for m in result.mappings]
+    assert fields.count("notes") == 1
 
 
 @pytest.mark.skipif(

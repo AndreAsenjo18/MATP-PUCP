@@ -7,7 +7,9 @@ What applying the batch does with each row (``row_action``):
 - A row resolved by a person goes to its chosen piece (update) or becomes a new piece.
 - A pending or accepted ``NEW`` row creates a piece and an ``UPDATE`` row updates its target:
   approving the batch with the summary on screen is the human approval of those rows
-  [SUPUESTO B11], so a batch of thousands of rows does not need one click per row.
+  [SUPUESTO B11], so a batch of thousands of rows does not need one click per row. A row left
+  ``PENDING`` that gets applied this way has its ``decision`` set to ``ACCEPTED`` once applied
+  (``apply.py``), so the log reflects what actually happened instead of staying "Pendiente".
 - ``CONFLICT`` and ``POSSIBLE_DUPLICATE`` rows without a resolution are skipped: they never
   reach the catalog without a person choosing what they are.
 
@@ -153,6 +155,13 @@ def approval_summary(session: Session, batch_id: uuid.UUID) -> ApprovalSummary:
     )
 
 
+def editable_batch(session: Session, batch_id: uuid.UUID) -> ImportBatch:
+    """Public alias of ``_editable_batch`` for callers outside this module (change
+    carga-masiva-con-ia): the AI-fields endpoint needs the same editability guarantee as any
+    other row decision."""
+    return _editable_batch(session, batch_id)
+
+
 def _editable_batch(session: Session, batch_id: uuid.UUID) -> ImportBatch:
     """Lock a batch whose preview can be changed; a failed application goes back to preview."""
     batch = lock_batch(session, batch_id)
@@ -242,14 +251,19 @@ def decide_row(
     batch_id: uuid.UUID,
     row_id: uuid.UUID,
     *,
-    decision: RowDecision,
+    decision: RowDecision | None,
     user_id: uuid.UUID,
     reason: str | None = None,
     target_piece_id: uuid.UUID | None = None,
     as_new: bool = False,
     field_decisions: dict[str, FieldAction] | None = None,
 ) -> ImportRow:
-    """Record the decision of a person on one row (D5); the classification never changes."""
+    """Record the decision of a person on one row (D5); the classification never changes.
+
+    ``decision`` is optional (change carga-masiva-con-ia): sin ella, esta llamada solo guarda
+    ``target_piece_id``/``as_new`` — resolver a qué pieza corresponde un conflicto o posible
+    duplicado apenas se elige, sin esperar a que la persona le dé "Aceptar" (D-resuelve-solo).
+    """
     batch = _editable_batch(session, batch_id)
     row = session.get(ImportRow, row_id)
     if row is None or row.batch_id != batch.id:
@@ -263,6 +277,11 @@ def decide_row(
     if target_piece_id is not None and as_new:
         raise ValidationFailed(
             "Elija una pieza destino o márquela como nueva, no ambas.", code="invalid_resolution"
+        )
+    if decision is None and target_piece_id is None and not as_new and not field_decisions:
+        raise ValidationFailed(
+            "No hay nada que guardar: indique una decisión, una resolución o campos del diff.",
+            code="nothing_to_decide",
         )
 
     resolution: dict[str, Any] = dict(row.resolution or {})
@@ -334,8 +353,9 @@ def decide_row(
 
     resolution.update(decided_by_id=str(user_id), decided_at=utcnow().isoformat())
     row.resolution = resolution
-    row.decision = decision
-    row.decision_reason = reason
+    if decision is not None:
+        row.decision = decision
+        row.decision_reason = reason
     session.flush()
     return row
 

@@ -97,6 +97,54 @@ DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
 PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection", PHOTO_FILE_FIELD})
 
+# Carga masiva con IA (change carga-masiva-con-ia, D2): vocabulario de destino ofrecido a la IA
+# para sugerir el mapeo de una columna cuando ninguna plantilla guardada reconoce el archivo.
+# [SUPUESTO] acotado a los campos simples y a los dos vocabularios de términos más frecuentes en
+# los Excel del museo (material, técnica); no cubre cada ``terms:<vocabulario>`` posible.
+AI_MAPPING_EXTRA_TARGETS: dict[str, str] = {
+    IDENTIFIER_TARGET: "Identificadores",
+    f"{TERMS_TARGET}:MATERIAL": "Material",
+    f"{TERMS_TARGET}:TECHNIQUE": "Técnica",
+}
+
+
+def ai_mapping_targets() -> dict[str, str]:
+    """Campo interno -> etiqueta: todos los destinos posibles, sin filtrar los sensibles todavía
+    (eso lo hace ``ai_suggestions.privacy.safe_target_fields``, que es quien decide qué es
+    sensible)."""
+    return {**FIELD_TARGETS, **AI_MAPPING_EXTRA_TARGETS}
+
+
+# Campos a los que una columna de texto libre puede mapearse sin dejar de ser texto libre para la
+# IA (carga masiva con IA, change carga-masiva-con-ia, D3): ``notes``/``description`` son los
+# mismos campos de origen que ya acepta la extracción de una sola pieza (``privacy.py``).
+FREE_TEXT_TARGETS = frozenset({"notes", "description"})
+
+
+def free_text_values(
+    stored_mapping: Mapping[str, Any] | None, raw_data: Mapping[str, Any]
+) -> dict[str, Any]:
+    """``raw_data`` restringido a las columnas que siguen siendo texto libre para la IA: las que
+    el mapeo del lote dejó sin mapear a ningún campo, más las que mapeó a
+    ``notes``/``description`` (carga masiva con IA, D3). Sin mapeo guardado, se trata todo el
+    ``raw_data`` como texto libre."""
+    if not stored_mapping:
+        return dict(raw_data)
+    try:
+        spec = read_mapping(stored_mapping)
+    except MappingConversionError:
+        return dict(raw_data)
+
+    def _is_free_text(target: ColumnTarget) -> bool:
+        if target.kind == "source_payload":
+            return True
+        return target.kind == "field" and target.name in FREE_TEXT_TARGETS
+
+    structured_sources = {
+        column.source for column in spec.columns if not _is_free_text(column.target)
+    }
+    return {key: value for key, value in raw_data.items() if key not in structured_sources}
+
 
 def _collection_name_key(name: str) -> str:
     """A collection name as the files write it: without accents, case nor «Colección»."""

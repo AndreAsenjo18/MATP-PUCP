@@ -5,9 +5,12 @@ Rules and keyword lists are [SUPUESTO]: they only exist to make demos coherent.
 
 import re
 import unicodedata
+from difflib import SequenceMatcher
 
 from matp_ai.providers.base import AIProvider
 from matp_ai.schemas import (
+    ColumnMappingCandidate,
+    ColumnMappingResult,
     DescriptionResult,
     ExtractionResult,
     PieceContext,
@@ -70,6 +73,50 @@ def _fold(text: str) -> str:
 def _number(raw: str) -> float:
     value = float(raw.replace(",", "."))
     return int(value) if value.is_integer() else value
+
+
+# [SUPUESTO] Encabezados frecuentes de los Excel del museo -> campo interno, tomados de las
+# convenciones ya usadas en data/fixtures/lote_demo/ y lote_demo_ia/. Un alias solo se propone si
+# su campo está en el ``target_fields`` que llega en la petición (el llamador decide el
+# vocabulario válido; el proveedor nunca inventa un campo fuera de esa lista).
+_HEADER_ALIASES: dict[str, str] = {
+    "denominacion": "denomination",
+    "descripcion": "description",
+    "regimen": "tenure_regime",
+    "regimen de tenencia": "tenure_regime",
+    "coleccion": "collection",
+    "autor": "author",
+    "procedencia": "provenance",
+    "epoca": "epoch_original_text",
+    "medidas": "dimensions_text",
+    "fecha de ingreso": "entry_date",
+    "observaciones": "notes",
+    "obs": "notes",
+    "registrador": "recorded_by",
+    "material": "terms:MATERIAL",
+    "materiales": "terms:MATERIAL",
+    "tecnica": "terms:TECHNIQUE",
+    "codigos": "identifier",
+    "codigo": "identifier",
+}
+_MAPPING_THRESHOLD = 0.72  # [SUPUESTO], igual de espíritu que SUGGEST_THRESHOLD de templates.py
+
+
+def _best_field_for_header(header: str, target_fields: dict[str, str]) -> tuple[str | None, float]:
+    folded = _fold(header.strip())
+    alias = _HEADER_ALIASES.get(folded)
+    if alias and alias in target_fields:
+        return alias, 0.95
+    best_field: str | None = None
+    best_score = 0.0
+    for field, label in target_fields.items():
+        score = SequenceMatcher(None, folded, _fold(label)).ratio()
+        score = max(score, SequenceMatcher(None, folded, _fold(field)).ratio())
+        if score > best_score:
+            best_field, best_score = field, score
+    if best_score >= _MAPPING_THRESHOLD:
+        return best_field, round(best_score, 2)
+    return None, 0.0
 
 
 class MockProvider(AIProvider):
@@ -188,3 +235,27 @@ class MockProvider(AIProvider):
             used.append("dimensions_text")
         sentence += " Descripción preliminar generada automáticamente; requiere revisión humana."
         return DescriptionResult(text=sentence, used_fields=used)
+
+    def suggest_column_mapping(
+        self,
+        headers: list[str],
+        sample_rows: list[dict[str, object]],
+        target_fields: dict[str, str],
+    ) -> ColumnMappingResult:
+        del (
+            sample_rows
+        )  # El mock decide solo por el encabezado; el proveedor real sí usa la muestra.
+        used_fields: set[str] = set()
+        mappings: list[ColumnMappingCandidate] = []
+        for header in headers:
+            field, confidence = _best_field_for_header(header, target_fields)
+            if field in used_fields:
+                # Dos columnas no compiten por el mismo campo en el mock: la primera se lo queda.
+                field, confidence = None, 0.0
+            if field is not None:
+                used_fields.add(field)
+            mappings.append(
+                ColumnMappingCandidate(column=header, field=field, confidence=confidence)
+            )
+        message = None if used_fields else "No se reconoció un campo claro para ninguna columna."
+        return ColumnMappingResult(mappings=mappings, message=message)

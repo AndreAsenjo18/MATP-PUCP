@@ -419,3 +419,14 @@ Supuestos provisionales para poder desarrollar la bandeja única de pendientes (
 | RP2 | ¿Cómo prefieren que se llame la pantalla y cómo se describe qué tan parecidas son dos piezas? | **[SUPUESTO]** «Revisar pendientes»; niveles «Muy parecidas», «Parecidas» y «Poco parecidas» tomados de los niveles alta, media y baja que ya calcula el sistema, sin un porcentaje nuevo. Se ajusta tras la prueba humana | calidad-datos (RNF-010) | B |
 | RP3 | ¿Quién del museo revisa las sugerencias que propone la IA? | **[SUPUESTO]** El curador (permiso `ai.review`); nada se guarda sin su aprobación (RN-009) | ia-asistiva (RIA-01, RN-009) | A |
 | RP4 | ¿El usuario típico tiene 60 años o más y poca práctica con computadoras? | **[SUPUESTO]** Sí: se diseña con letra de 16 px o más, botones de 44 px o más y pocas opciones por pantalla (HU-31). Se valida con el museo | RNF-010 | A |
+
+## CM. Carga masiva con IA (propuesta `carga-masiva-con-ia`, 2026-11-11)
+
+Surge de una observación del equipo en la exposición del prototipo: sugerir texto de IA para que alguien lo edite a mano no escala a un lote grande. Supuestos de diseño de la propuesta, no confirmados con el museo ni con la jefa de práctica.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| CM1 | ¿La extracción de texto libre se dispara automáticamente para todas las filas al entrar a Revisión, o bajo demanda? | **[SUPUESTO]** Bajo demanda (botón por fila o por lote), para no llamar a la IA en lotes grandes sin que la persona lo pida | importacion-datos (RF-048), ia-asistiva (RNF-008) | A |
+| CM2 | ¿Qué tamaño de muestra de filas se envía a la IA para sugerir el mapeo de columnas? | **[SUPUESTO]** Las primeras 20 filas con datos, suficiente para inferir el tipo de cada columna sin enviar el archivo completo | ia-asistiva | B |
+| CM3 | ¿Qué tamaño de página por defecto debe traer la hoja de revisión con sugerencias de IA? | **[SUPUESTO]** 25, igual que la paginación ya usada en la revisión del lote; la persona puede cambiarlo | importacion-datos (RF-048) | B |
+| CM4 | ¿Es «Should» o «Must» priorizar esta carga masiva con IA frente al resto del backlog de IA (RIA-02 a RIA-05)? | **[SUPUESTO]** Should: depende de que el museo valide que el volumen de carga lo justifica | importacion-datos (RF-048) | B |

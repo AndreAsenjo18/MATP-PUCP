@@ -90,6 +90,46 @@ class CatalogingSuggestionRequest(BaseModel):
     text: str | None = Field(None, description="Texto explícito si no se toma de la ficha.")
 
 
+class ColumnMappingSuggestRequest(BaseModel):
+    """Body of ``POST /ai/suggest-column-mapping`` (change carga-masiva-con-ia): se pide cuando
+    ninguna plantilla guardada reconoció el archivo (RF-022, RF-048)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "headers": ["DENOMINACIÓN", "CÓDIGOS", "OBSERVACIONES"],
+                    "sample_rows": [
+                        {
+                            "DENOMINACIÓN": "Arpa andina",
+                            "CÓDIGOS": "I-9201",
+                            "OBSERVACIONES": "Mide 95 cm de alto.",
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    headers: list[str] = Field(min_length=1, max_length=100)
+    sample_rows: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
+
+
+class ColumnMappingCandidateOut(BaseModel):
+    column: str
+    field: str | None = Field(None, description="Campo de destino propuesto, o null.")
+    confidence: float = Field(ge=0, le=1)
+
+
+class ColumnMappingSuggestionOut(BaseModel):
+    """Nunca se persiste (a diferencia de ``AiSuggestionOut``): es una propuesta de mapeo, no un
+    dato de catálogo; la persona la confirma o la corrige en «Ajustar columnas» antes de validar
+    el lote (RN-009)."""
+
+    mappings: list[ColumnMappingCandidateOut]
+    message: str | None = None
+
+
 class AiSuggestionApproval(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

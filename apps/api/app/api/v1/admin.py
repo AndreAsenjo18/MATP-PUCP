@@ -34,7 +34,11 @@ from app.modules.ai_suggestions.apply import apply_approved
 from app.modules.ai_suggestions.client import AiServiceClient
 from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
 from app.modules.ai_suggestions.novelty import explain_result, split_unchanged_fields
-from app.modules.ai_suggestions.privacy import extraction_text
+from app.modules.ai_suggestions.privacy import (
+    extraction_text,
+    safe_sample_rows,
+    safe_target_fields,
+)
 from app.modules.ai_suggestions.schemas import (
     AiBatchOut,
     AiSuggestionApproval,
@@ -43,6 +47,8 @@ from app.modules.ai_suggestions.schemas import (
     AiSuggestionRejection,
     BatchEnrichRequest,
     CatalogingSuggestionRequest,
+    ColumnMappingSuggestionOut,
+    ColumnMappingSuggestRequest,
 )
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditAction, AuditOrigin
@@ -59,6 +65,7 @@ from app.modules.audit.query import (
 )
 from app.modules.audit.schemas import AuditEntryOut
 from app.modules.catalog.queries import get_piece
+from app.modules.imports.mapping import ai_mapping_targets
 from app.modules.users import admin as users_admin
 from app.modules.users import auth
 from app.modules.users.admin import user_roles
@@ -98,6 +105,9 @@ Reader = Annotated[CurrentUser, Depends(require_permission("pieces.read"))]
 UserManager = Annotated[CurrentUser, Depends(require_permission("users.manage"))]
 AiRequester = Annotated[CurrentUser, Depends(require_permission("ai.request"))]
 AiReviewer = Annotated[CurrentUser, Depends(require_permission("ai.review"))]
+# El mapeo de columnas por IA lo pide el asistente de importación, no una persona pidiendo una
+# sugerencia de IA suelta: el permiso es el mismo que preparar una carga (RF-022), no `ai.request`.
+ImportPreparer = Annotated[CurrentUser, Depends(require_permission("imports.prepare"))]
 AuditReader = Annotated[CurrentUser, Depends(require_permission("audit.read"))]
 
 
@@ -539,6 +549,25 @@ def suggest_cataloging(
         session.add(suggestion)
         session.commit()
     return AiSuggestionOut.model_validate(suggestion)
+
+
+@router.post(
+    "/ai/suggest-column-mapping",
+    response_model=ColumnMappingSuggestionOut,
+    responses={503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."}},
+    summary="Carga masiva con IA: proponer a qué campo corresponde cada columna sin plantilla",
+    tags=["IA asistiva"],
+    **implemented(),
+)
+def suggest_column_mapping(
+    body: ColumnMappingSuggestRequest, user: ImportPreparer, request: Request
+) -> ColumnMappingSuggestionOut:
+    del user  # solo gatea el permiso; esta operación no persiste nada (no hay RN-009 que cumplir)
+    target_fields = safe_target_fields(ai_mapping_targets())
+    sample_rows = safe_sample_rows(body.headers, body.sample_rows)
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    result = client.suggest_column_mapping(body.headers, sample_rows, target_fields)
+    return ColumnMappingSuggestionOut.model_validate(result)
 
 
 @router.post(

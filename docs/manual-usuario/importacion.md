@@ -1,6 +1,6 @@
 # Importación de sábanas Excel y CSV
 
-> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`.
+> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`; la sugerencia de IA al ajustar columnas y las sugerencias de IA por fila las agrega `carga-masiva-con-ia`.
 
 El asistente de importación carga en el catálogo las piezas de una hoja de cálculo (por ejemplo, una sábana de la consultoría o un inventario de depósito) **sin duplicar ni pisar** lo que ya existe.
 
@@ -46,6 +46,8 @@ El sistema se detiene antes de validar solo en estos casos, y siempre explica po
 ### Ajustar columnas
 
 **Ajustar columnas** abre el editor: aquí se indica a qué dato de la ficha corresponde cada columna. Úselo solo cuando ningún formato sirve; el editor parte de los títulos del archivo y propone un destino para cada columna.
+
+Cuando llega hasta aquí porque ningún formato reconoció el archivo o el elegido no encajó, el sistema pide a la IA un mapeo de columna a dato, a partir de los títulos y de una muestra de filas (sin columnas de datos del propietario ni otras restringidas por rol), y precarga ese destino en cada columna: revíselo igual antes de validar. Si la IA no está disponible, el editor se abre igual, con todas las columnas en **Dato de origen**, sin bloquear la carga.
 
 ### El editor
 
@@ -151,6 +153,18 @@ Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su
 - En **Cómo se clasifican las filas** se explican las reglas y el umbral de parecido que se usaron.
 - Los datos del Excel de cada fila están plegados en **Ver datos del archivo**.
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
+- Las filas se muestran por páginas; **Filas por página** (10, 25, 50 o 100) elige cuántas, para no desplazarse por un lote de cientos de filas de una sola vez.
+
+### Sugerencias de IA para una columna de texto libre
+
+Si una columna del archivo quedó como **Dato de origen** o mapeada a **Observaciones**/**Descripción** (ninguna IA toca una columna ya mapeada a un dato estructurado), su tarjeta trae **Pedir sugerencias de IA**. Con muchas filas, en vez de entrar una por una, **Pedir sugerencias de IA para estas filas** (arriba de la lista, junto a **Filas por página**) las pide todas de una vez para la página que está viendo. Al pulsarlo:
+
+1. Aparece una tabla con cada dato que la IA propone extraer de ese texto: el valor **vigente** de la pieza (en una actualización), el **propuesto** por la IA y una casilla para incluirlo.
+2. Edite el valor propuesto si la IA leyó algo mal; cuando el valor propuesto coincide con el vigente, no se marca como conflicto.
+3. Marque qué campos incluir y pulse **Guardar valores de IA**. Nada se aplica al catálogo todavía: queda guardado en el lote hasta que se apruebe (RN-009).
+4. **Ver el texto analizado** despliega, dentro de la misma tarjeta, el texto de origen completo de esa fila.
+
+Si la columna de texto libre de una fila está vacía, no se ofrece pedir sugerencias para ella.
 
 ### Filas sin régimen de tenencia
 
@@ -167,7 +181,9 @@ En una actualización, el recuadro **Cambios sobre la pieza del catálogo** list
 ### Resolver un conflicto o un posible duplicado
 
 1. En **¿A qué pieza corresponde esta fila?**, elija la pieza. Cada opción muestra su denominación, su colección, su código I (o «Sin código I») y por qué coincide («Mismo código…» o «Se parece 82 %»), para distinguir piezas con el mismo nombre. Si ninguna es, elija **Ninguna: es una pieza nueva**.
-2. Pulse **Aceptar**. La fila pasa a actualizar esa pieza (y muestra sus cambios) o a crear una nueva.
+
+   Esa elección se guarda sola en cuanto la hace, sin necesitar **Aceptar**: ya resuelve el conflicto o el posible duplicado aunque todavía no decida la fila.
+2. Pulse **Aceptar** para, además, dejar la fila lista para aplicarse al aprobar el lote (y ver sus cambios, si actualiza una pieza existente) o a crear una nueva.
 
 No se puede elegir una pieza que tenga **otro código I** que el de la fila: el código I nunca cambia en una carga. Tampoco se puede crear como nueva una fila cuyo código I ya es de otra pieza.
 
@@ -288,3 +304,5 @@ Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no 
 | «El lote se está procesando» | Espere a que termine la etapa en curso. |
 | «Las imágenes se asocian después de aplicar el lote» | Apruebe el lote primero. |
 | El lote quedó **fallido al aplicar** | Lea la fila y el motivo en la cabecera del lote, corrija esa fila y vuelva a aprobar. |
+| «No se reconocieron datos estructurados en el texto» | El texto de esa fila no tenía nada que la IA pudiera extraer (por ejemplo, un texto muy corto o sin medidas, procedencia, etc.). No es un error: la fila sigue su curso igual, sin esos campos. |
+| «El servicio de IA no está disponible en este momento» al pedir sugerencias | El catálogo no cambió; reintente más tarde o siga sin la sugerencia de IA. |

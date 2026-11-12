@@ -154,6 +154,42 @@ def test_resolving_a_conflict_choosing_the_target_piece(pipeline: Pipeline) -> N
     assert entry["resolution"]["target_piece_id"] == piece_a
 
 
+def test_resolving_without_a_decision_only_saves_the_target_piece(pipeline: Pipeline) -> None:
+    """Elegir la pieza destino en el desplegable, sin darle «Aceptar» todavía (change
+    carga-masiva-con-ia): la resolución queda guardada y la fila se aplica igual al aprobar el
+    lote, aunque su decisión siga en «Pendiente» (mismo espíritu que una fila nueva sin decisión
+    explícita, decisions.py)."""
+    batch = prepared(pipeline)
+    piece_a = _piece_of(batch.rows[4], TYPE_INVENTORY)
+
+    response = decide(pipeline, batch, 4, target_piece_id=piece_a)
+
+    assert response.status_code == 200, response.text
+    row = response.json()
+    assert row["decision"] == "PENDING"
+    assert row["action"] == "UPDATE" and row["target_piece_id"] == piece_a
+    assert row["resolution"]["target_piece_id"] == piece_a
+
+    shown = summary(pipeline, batch.id)
+    assert shown["update"] >= 1
+    rejected = decide(pipeline, batch, 3, decision="REJECTED", reason="Fuera de alcance")
+    assert rejected.status_code == 200
+    excluded = decide(pipeline, batch, 5, decision="EXCLUDED")
+    assert excluded.status_code == 200
+    excluded2 = decide(pipeline, batch, 6, decision="EXCLUDED")
+    assert excluded2.status_code == 200
+    comodato_rejected = decide(pipeline, batch, 7, decision="REJECTED", reason="Comodato con I")
+    assert comodato_rejected.status_code == 200
+    shown = summary(pipeline, batch.id)
+    confirmed = confirm(pipeline, batch.id, shown["summary_token"])
+    assert confirmed.status_code == 200, confirmed.text
+
+    assert _rows(pipeline, batch.id)[4]["decision"] == "ACCEPTED"  # applied → marked as such
+    with pipeline.session() as session:
+        target = session.get(Piece, uuid.UUID(piece_a))
+        assert target is not None and target.denomination == f"Contradictoria {batch.tag}"
+
+
 def test_accepting_a_conflict_without_a_target_is_422(pipeline: Pipeline) -> None:
     batch = prepared(pipeline)
 
@@ -305,6 +341,20 @@ def test_application_creates_and_updates_pieces(pipeline: Pipeline, applied: Bat
             )
         )
         assert row is not None and row.target_piece_id == created.id
+
+
+def test_applying_a_row_left_pending_marks_it_accepted(pipeline: Pipeline, applied: Batch) -> None:
+    """Filas 2 y 3 se aplicaron sin que nadie les diera «Aceptar» (quedaron «Pendiente»); la
+    bitácora no debe seguir diciendo eso de una fila que sí se aplicó. La fila 4, rechazada
+    explícitamente y no aplicada, conserva su decisión tal cual."""
+    rows = _rows(pipeline, applied.id)
+    assert rows[2]["decision"] == "ACCEPTED"
+    assert rows[3]["decision"] == "ACCEPTED"
+    assert rows[4]["decision"] == "REJECTED"
+    log = pipeline.client.get(f"{BASE}/{applied.id}/log").json()
+    entries = {entry["source_row_number"]: entry for entry in log["entries"]}
+    assert 2 not in entries and 3 not in entries  # el log solo lista lo NO aplicado
+    assert entries[4]["decision"] == "REJECTED"
 
 
 def test_every_applied_piece_keeps_its_source_data(pipeline: Pipeline, applied: Batch) -> None:
