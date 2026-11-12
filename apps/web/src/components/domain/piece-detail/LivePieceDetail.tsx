@@ -39,6 +39,10 @@ import {
 } from "@/lib/data/pieces";
 import { fetchPieceAlerts, type PieceAlert } from "@/lib/data/quality";
 
+import { AuditSection } from "./AuditSection";
+import { LiveLocationSection } from "./LiveLocationSection";
+import { LiveSourceRecords } from "./LiveSourceRecords";
+import { PieceDetailPanel, PieceDetailTabs, PIECE_DETAIL_TABS, type PieceDetailTab } from "./PieceDetailTabs";
 import { RegisterSimilarButton } from "./RegisterSimilarButton";
 
 /**
@@ -55,6 +59,12 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
   const [alerts, setAlerts] = useState<PieceAlert[]>([]);
   // Vuelve a leer la ficha tras una acción sin pasar por «Cargando», que desmontaría sus formularios.
   const [reloads, setReloads] = useState(0);
+  const [tab, setTab] = useState<PieceDetailTab>("Datos generales");
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PieceDetailTab>>(() => new Set(["Datos generales"]));
+  function selectTab(next: PieceDetailTab) {
+    setTab(next);
+    setVisitedTabs((current) => current.has(next) ? current : new Set([...current, next]));
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -158,38 +168,62 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
         <PieceDeletedNotice pieceName={piece.denomination} canRestore={hasPermission("pieces.restore")} onRestore={() => setRestoreOpen(true)} />
       ) : (
         <>
-          <PieceAlertsPanel pieceId={pieceId} alerts={alerts} />
-          <PieceGeneralData piece={piece} />
-          <PieceIdentifiersTable piece={history.status === "ok" ? { ...piece, identifiers: history.identifiers } : piece}>
-            <LiveIdentifierActions
-              piece={piece}
-              can={can}
-              types={identifierTypes}
-              typesError={typesError}
-              historyError={history.status === "ok" || piece.merged_into ? null : history.message}
-              onRegistered={() => setReloads((count) => count + 1)}
-              onCorrect={handleCorrect}
-            />
-          </PieceIdentifiersTable>
-          <PieceGallery
+          <PieceAlertsPanel
             pieceId={pieceId}
-            pieceTitle={piece.denomination}
-            onChanged={() => {
-              // La alerta «sin fotografía» depende de lo que acaba de cambiar.
-              fetchPieceAlerts(pieceId, devUser).then((result) => {
-                if (result.status === "ok") setAlerts(result.alerts);
-              });
+            alerts={alerts}
+            onNavigateToTab={(requested) => {
+              if (PIECE_DETAIL_TABS.includes(requested as PieceDetailTab)) selectTab(requested as PieceDetailTab);
             }}
           />
-          <ConservationLive pieceId={pieceId} />
-          <AiSuggestPanel
-            pieceId={pieceId}
-            devUser={devUser}
-            canRequest={hasPermission("ai.request")}
-            canReview={hasPermission("ai.review")}
-            onChanged={() => setReloads((count) => count + 1)}
-          />
-          <p className="text-sm text-gris-texto">Ubicación, datos de origen y auditoría de esta ficha se conectan a la API en sus changes.</p>
+          <PieceDetailTabs activeTab={tab} onChange={selectTab} />
+          <PieceDetailPanel tab="Datos generales" activeTab={tab} visited={visitedTabs.has("Datos generales")}>
+            <PieceGeneralData piece={piece} />
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Identificadores" activeTab={tab} visited={visitedTabs.has("Identificadores")}>
+            <PieceIdentifiersTable piece={history.status === "ok" ? { ...piece, identifiers: history.identifiers } : piece}>
+              <LiveIdentifierActions
+                piece={piece}
+                can={can}
+                types={identifierTypes}
+                typesError={typesError}
+                historyError={history.status === "ok" || piece.merged_into ? null : history.message}
+                onRegistered={() => setReloads((count) => count + 1)}
+                onCorrect={handleCorrect}
+              />
+            </PieceIdentifiersTable>
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Fotografías" activeTab={tab} visited={visitedTabs.has("Fotografías")}>
+            <PieceGallery
+              pieceId={pieceId}
+              pieceTitle={piece.denomination}
+              onChanged={() => {
+                fetchPieceAlerts(pieceId, devUser).then((result) => {
+                  if (result.status === "ok") setAlerts(result.alerts);
+                });
+              }}
+            />
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Ubicación e historial" activeTab={tab} visited={visitedTabs.has("Ubicación e historial")}>
+            <LiveLocationSection pieceId={pieceId} piece={piece} />
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Conservación" activeTab={tab} visited={visitedTabs.has("Conservación")}>
+            <ConservationLive pieceId={pieceId} />
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Origen y auditoría" activeTab={tab} visited={visitedTabs.has("Origen y auditoría")}>
+            <h2 className="text-lg font-semibold text-tinta">Datos de origen</h2>
+            <LiveSourceRecords pieceId={pieceId} />
+            <h2 className="text-lg font-semibold text-tinta">Auditoría</h2>
+            <AuditSection pieceId={pieceId} demoEntries={[]} />
+          </PieceDetailPanel>
+          <PieceDetailPanel tab="Sugerencias IA" activeTab={tab} visited={visitedTabs.has("Sugerencias IA")}>
+            <AiSuggestPanel
+              pieceId={pieceId}
+              devUser={devUser}
+              canRequest={hasPermission("ai.request")}
+              canReview={hasPermission("ai.review")}
+              onChanged={() => setReloads((count) => count + 1)}
+            />
+          </PieceDetailPanel>
         </>
       )}
     </div>
