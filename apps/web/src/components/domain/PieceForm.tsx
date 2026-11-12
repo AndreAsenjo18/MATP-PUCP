@@ -24,7 +24,7 @@
  * `crud-manual-completo` D4: en el alta, «Guardar y registrar otra» abre un formulario nuevo con los
  * datos repetibles (`lib/forms/piece-copy.ts`), avisando de dónde vienen y resaltándolos hasta que se tocan.
  */
-import { CopyPlus, Save } from "lucide-react";
+import { ChevronRight, CopyPlus, Save } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 
@@ -127,6 +127,27 @@ const VISIBLE_FIELDS: Record<"create" | "edit", readonly PieceFormField[]> = {
   ],
 };
 
+/** Ubica los errores de validación en la tarjeta pertinente cuando está contraída. */
+const EDIT_FIELD_SECTION: Partial<Record<PieceFormField, string>> = {
+  denomination: "identification",
+  collection_id: "identification",
+  category_id: "identification",
+  object_type_term_id: "identification",
+  availability_term_id: "identification",
+  lender_name: "identification",
+  loan_agreement_ref: "identification",
+  description: "description",
+  author: "description",
+  provenance: "provenance",
+  period_text: "provenance",
+  acquisition_method_term_id: "provenance",
+  entry_date: "provenance",
+  dimensions_text: "materials",
+  material_term_ids: "materials",
+  conservation_state_id: "conservation",
+  notes: "notes",
+};
+
 /** Campos de texto del formulario (los que se pintan con `Input` o `Textarea`). */
 type TextFieldName =
   | "denomination"
@@ -165,12 +186,52 @@ function CopiedMark({ copied, children }: { copied: boolean; children: ReactNode
   );
 }
 
-/** Una sección del editor (design D8): título visible y sus campos. */
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
+/** Tarjeta por sección. En edición los campos siguen montados al cerrar la tarjeta:
+ * react-hook-form conserva así el borrador y las validaciones mientras la persona navega.
+ * En el alta conserva el diseño original, con todas las secciones abiertas.
+ */
+function FormSection({
+  title,
+  children,
+  editMode = false,
+  expanded = true,
+  onToggle,
+  description,
+  sectionId,
+}: {
+  title: string;
+  children: ReactNode;
+  editMode?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+  description?: string;
+  sectionId?: string;
+}) {
   return (
-    <fieldset className="flex flex-col gap-4 rounded-lg border border-borde p-4">
-      <legend className="px-2 text-lg font-semibold text-tinta">{title}</legend>
-      {children}
+    <fieldset className={editMode ? "rounded-lg border border-borde bg-white" : "flex flex-col gap-4 rounded-lg border border-borde p-4"}>
+      <legend className={editMode ? "sr-only" : "px-2 text-lg font-semibold text-tinta"}>{title}</legend>
+      {editMode && sectionId && (
+        <button
+          type="button"
+          data-matp-piece-accordion="true"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-controls={sectionId + "-fields"}
+          className="flex min-h-14 w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-lg font-semibold text-tinta hover:bg-crema-light focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-crema" aria-hidden="true">
+            <ChevronRight size={22} className={expanded ? "rotate-90 transition-transform" : "transition-transform"} />
+          </span>
+          <span className="flex-1">{title}</span>
+          {description && <span className="sr-only">. {description}</span>}
+        </button>
+      )}
+      <div
+        id={sectionId ? sectionId + "-fields" : undefined}
+        className={!editMode || expanded ? (editMode ? "flex flex-col gap-4 px-4 pb-4" : "flex flex-col gap-4") : "hidden"}
+      >
+        {children}
+      </div>
     </fieldset>
   );
 }
@@ -326,7 +387,7 @@ function ReadOnlyFact({ label, value, hint }: { label: string; value: ReactNode;
   return (
     <div className="flex flex-col gap-1">
       <span className="text-base font-medium text-tinta">{label}</span>
-      <p className="rounded-lg border border-borde bg-crema p-2.5 text-base text-tinta">{value}</p>
+      <p className="border-l-2 border-borde py-1 pl-3 text-base text-tinta">{value}</p>
       {hint && <p className="text-sm text-gris-texto">{hint}</p>}
     </div>
   );
@@ -359,6 +420,25 @@ export function PieceForm({
   const { control, handleSubmit, getValues, reset } = form;
   const { isDirty, isSubmitting, dirtyFields, touchedFields } = form.formState;
   const values = useWatch({ control });
+
+  // La persona puede editar solo la tarjeta que necesita. Las demás permanecen
+  // en el DOM, ocultas, para no descartar lo escrito al pasar entre secciones.
+  const [expandedSections, setExpandedSections] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+  const editSection = (sectionId: string, description: string) => ({
+    editMode: mode === "edit",
+    expanded: expandedSections.has(sectionId),
+    onToggle: () => toggleSection(sectionId),
+    description,
+    sectionId,
+  });
 
   const [validator] = useState(() => createPieceValidator());
   const [issues, setIssues] = useState<PieceIssue[]>([]);
@@ -403,6 +483,15 @@ export function PieceForm({
       if (!active) return;
       if (outcome.status === "ok") {
         setIssues(outcome.result.issues);
+        if (mode === "edit") {
+          const affected = outcome.result.issues
+            .filter((issue) => issue.severity === "error")
+            .map((issue) => EDIT_FIELD_SECTION[issue.field as PieceFormField])
+            .filter((section): section is string => Boolean(section));
+          if (affected.length > 0) {
+            setExpandedSections((current) => new Set([...current, ...affected]));
+          }
+        }
         setValidationNote(null);
       } else if (outcome.status !== "aborted") {
         setIssues([]);
@@ -412,7 +501,7 @@ export function PieceForm({
     return () => {
       active = false;
     };
-  }, [values, isDirty, draft, validator, getValues, pieceId]);
+  }, [values, isDirty, draft, validator, getValues, pieceId, mode]);
 
   // Borrador: se guarda mientras se escribe (con espera) y, además, justo antes de enviar.
   useEffect(() => {
@@ -461,6 +550,10 @@ export function PieceForm({
     } else {
       setSaveMessage({ kind: "error", text: outcome.message });
     }
+  }, () => {
+    // Denominación es obligatoria: si se cerró su tarjeta, abrirla para mostrar
+    // el error que react-hook-form acaba de encontrar.
+    if (mode === "edit") setExpandedSections((current) => new Set([...current, "identification"]));
   });
   const submit = saveWith("open");
 
@@ -540,11 +633,21 @@ export function PieceForm({
           />
         )}
 
-        <p className="text-sm text-gris-texto">
-          Los campos marcados con <span className="text-carmin-texto">*</span> son obligatorios; el resto puede completarse después.
-        </p>
+        {mode === "edit" ? (
+          <div className="rounded-lg border border-borde bg-crema-light p-4">
+            <p className="text-base font-semibold text-tinta">Cómo editar</p>
+            <p className="mt-2 text-base text-gris-texto">
+              Abra las secciones que necesite. Puede abrir varias a la vez; lo escrito se conserva al cerrarlas.
+              Los campos marcados con * son obligatorios.
+            </p>
+          </div>
+        ) : (
+          <p className="text-base text-gris-texto">
+            Los campos marcados con <span className="text-carmin-texto">*</span> son obligatorios; el resto puede completarse después.
+          </p>
+        )}
 
-        <FormSection title="Identificación">
+        <FormSection title="Identificación" {...editSection("identification", "Denominación, colección, clasificación y disponibilidad.")}>
           <TextControl
             control={control}
             grouped={grouped}
@@ -619,12 +722,12 @@ export function PieceForm({
           )}
         </FormSection>
 
-        <FormSection title="Descripción">
+        <FormSection title="Descripción" {...editSection("description", "Descripción y autor de la pieza.")}>
           <TextControl control={control} grouped={grouped} name="description" label="Descripción" rows={3} copied={isCopied("description")} />
           <TextControl control={control} grouped={grouped} name="author" label="Autor" copied={isCopied("author")} />
         </FormSection>
 
-        <FormSection title="Procedencia y época">
+        <FormSection title="Procedencia y época" {...editSection("provenance", "Procedencia, época, adquisición y fecha de ingreso.")}>
           <TextControl control={control} grouped={grouped} name="provenance" label="Procedencia" copied={isCopied("provenance")} />
           <TextControl control={control} grouped={grouped} name="period_text" label="Época (texto original)" copied={isCopied("period_text")} />
           <ChoiceControl
@@ -643,7 +746,7 @@ export function PieceForm({
             name="entry_date"
             type="date"
             label="Fecha de ingreso"
-            hint="Formato año-mes-día. Déjela vacía si no se conoce."
+            hint="Seleccione la fecha en el calendario. Puede dejarla vacía si no se conoce."
             copied={isCopied("entry_date")}
           />
           {mode === "create" && <TextControl control={control} grouped={grouped} name="recorded_by" label="Registrado por" copied={isCopied("recorded_by")} />}
@@ -663,7 +766,7 @@ export function PieceForm({
           )}
         </FormSection>
 
-        <FormSection title="Medidas y materiales">
+        <FormSection title="Medidas y materiales" {...editSection("materials", "Dimensiones y materiales de la pieza.")}>
           <TextControl control={control} grouped={grouped} name="dimensions_text" label="Medidas (texto original)" copied={isCopied("dimensions_text")} />
           <Controller
             control={control}
@@ -710,7 +813,7 @@ export function PieceForm({
           />
         </FormSection>
 
-        <FormSection title="Conservación">
+        <FormSection title="Conservación" {...editSection("conservation", "Estado de conservación consignado en la ficha.")}>
           <Controller
             control={control}
             name="conservation_state_id"
@@ -740,9 +843,19 @@ export function PieceForm({
           />
         </FormSection>
 
-        <FormSection title="Observaciones">
+        <FormSection title="Observaciones" {...editSection("notes", "Notas y observaciones adicionales.")}>
           <TextControl control={control} grouped={grouped} name="notes" label="Observaciones" rows={3} copied={isCopied("notes")} />
         </FormSection>
+
+        {mode === "edit" && (
+          <aside className="rounded-lg border border-borde bg-white p-4">
+            <p className="text-base font-semibold text-tinta">Otras acciones de la ficha</p>
+            <p className="mt-2 text-base text-gris-texto">
+              Para agregar identificadores, subir fotografías o registrar evaluaciones de conservación,
+              vuelva a la ficha de la pieza. Estas acciones se guardan por separado.
+            </p>
+          </aside>
+        )}
 
         {(grouped.general.length > 0 || validationNote) && (
           <div role="status" className="flex flex-col gap-2 rounded-lg border border-borde bg-crema p-3 text-base text-tinta">
@@ -759,7 +872,9 @@ export function PieceForm({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-4">
+        <div className={mode === "edit"
+          ? "sticky bottom-0 z-10 -mx-3 flex flex-wrap items-center gap-3 border-t border-borde bg-crema-light px-3 py-3 shadow-md"
+          : "flex flex-wrap items-center gap-3 border-t border-borde pt-4"}>
           <Button type="submit" icon={Save} disabled={isSubmitting || hasBlockingIssue}>
             {mode === "create" ? "Registrar pieza" : "Guardar cambios"}
           </Button>
