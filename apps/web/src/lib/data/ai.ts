@@ -10,7 +10,7 @@
  */
 import { createApiClient, type ApiSchemas } from "@/lib/api/client";
 
-import { call, IMPORT_ERROR_MESSAGES, type ImportResult } from "./imports";
+import { call, IMPORT_ERROR_MESSAGES, type ImportResult, type ImportRow } from "./imports";
 import { apiBaseUrl } from "./mode";
 
 export type AiSuggestion = ApiSchemas["AiSuggestionOut"];
@@ -197,4 +197,64 @@ export async function listPendingAiSuggestions(
     AI_ERROR_MESSAGES,
   );
   return result.status === "ok" ? { status: "ok", value: result.value.items } : result;
+}
+
+export type ColumnMappingSuggestion = ApiSchemas["ColumnMappingSuggestionOut"];
+
+/**
+ * Carga masiva con IA (change carga-masiva-con-ia, D2): mapeo de columnas propuesto cuando
+ * ninguna plantilla guardada reconoció el archivo. Degrada a `ai_unavailable` sin bloquear el
+ * editor de columnas, que sigue usando la heurística local (`suggestMapping`) mientras tanto.
+ */
+export async function suggestColumnMapping(
+  headers: string[],
+  devUser?: string,
+): Promise<ImportResult<ColumnMappingSuggestion>> {
+  return call(
+    () =>
+      client(devUser).POST("/api/v1/ai/suggest-column-mapping", {
+        body: { headers, sample_rows: [] },
+      }) as Promise<{ data?: ColumnMappingSuggestion; error?: unknown }>,
+    AI_ERROR_MESSAGES,
+  );
+}
+
+/**
+ * Carga masiva con IA (change carga-masiva-con-ia, D3): pide la extracción de IA del texto libre
+ * sin mapear de una fila del lote. En una fila de actualización, compara contra el valor vigente
+ * de la pieza (`current_value` en cada campo; `unchanged_fields` para lo que ya coincide).
+ */
+export async function suggestRowAiFields(
+  batchId: string,
+  rowId: string,
+  devUser?: string,
+): Promise<ImportResult<AiSuggestion>> {
+  return call(
+    () =>
+      client(devUser).POST("/api/v1/imports/{batch_id}/rows/{row_id}/ai-suggestion", {
+        params: { path: { batch_id: batchId, row_id: rowId } },
+      }) as Promise<{ data?: AiSuggestion; error?: unknown }>,
+    AI_ERROR_MESSAGES,
+  );
+}
+
+/**
+ * Carga masiva con IA (change carga-masiva-con-ia, D4/D6): guarda, campo por campo, el valor
+ * elegido o editado en la hoja de revisión. No escribe en el catálogo (RN-009); se aplica recién
+ * al aprobar el lote. Un valor `null` quita ese campo de lo que se aplicará.
+ */
+export async function setRowAiFields(
+  batchId: string,
+  rowId: string,
+  fields: Record<string, unknown>,
+  devUser?: string,
+): Promise<ImportResult<ImportRow>> {
+  return call(
+    () =>
+      client(devUser).PATCH("/api/v1/imports/{batch_id}/rows/{row_id}/ai-fields", {
+        params: { path: { batch_id: batchId, row_id: rowId } },
+        body: { fields },
+      }) as Promise<{ data?: ImportRow; error?: unknown }>,
+    AI_ERROR_MESSAGES,
+  );
 }

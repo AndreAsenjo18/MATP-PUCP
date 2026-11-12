@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { AI_ERROR_MESSAGES } from "@/lib/data/ai";
 import type { MappingTemplate, TemplateDryRun } from "@/lib/data/import-templates";
 import { IMPORT_ERROR_MESSAGES, VALIDATION_HINTS, type ImportBatch, type ImportImage, type ImportLog, type ImportRow } from "@/lib/data/imports";
 import { draftFromScratch } from "@/lib/data/mapping-editor";
 import { render, visibleText } from "@/test/render";
 
 import { ImportConflictModal } from "./ImportConflictModal";
+import { ImportRowAiSuggestions } from "./ImportRowAiSuggestions";
 import { MappingEditor } from "./ImportMappingEditor";
 import { ImportPhotosView } from "./ImportPhotosPanel";
 import { DryRunPanel, FormatProblemPanel } from "./ImportTemplatePanels";
@@ -90,6 +92,7 @@ function texts(): Record<string, string> {
     filaCompacta: visibleText(render(<ImportRowCard row={row({ validation_errors: [{ code: "tenure_required", message: "Falta el régimen de tenencia." }] })} compact canDecide busy={false} onDecide={noop} />)),
     fila: visibleText(render(<ImportRowCard row={row()} canDecide busy={false} onDecide={noop} />)),
     filaAntigua: visibleText(render(<ImportRowCard row={row({ classification: "NEW", matches: [] })} canDecide busy={false} onDecide={noop} />)),
+    sugerenciasIA: visibleText(render(<ImportRowAiSuggestions row={row()} batchId="batch-1" />)),
     aprobacion:
       visibleText(render(<ApprovalPanel summary={{ create: 2, update: 1, skip: 3, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />)) +
       visibleText(render(<ApprovalPanel summary={null} canApprove={false} busy={false} onConfirm={noop} />)),
@@ -115,6 +118,7 @@ describe("lenguaje llano en el asistente de importación", () => {
   it("los mensajes de error y las sugerencias tampoco los traen", () => {
     for (const message of Object.values(IMPORT_ERROR_MESSAGES)) expect(message).not.toMatch(REQUIREMENT_ID);
     for (const { hint } of Object.values(VALIDATION_HINTS)) expect(hint).not.toMatch(REQUIREMENT_ID);
+    for (const message of Object.values(AI_ERROR_MESSAGES)) expect(message).not.toMatch(REQUIREMENT_ID);
   });
 
   it("una fila con un error guardado antes del cambio se muestra sin la referencia", () => {

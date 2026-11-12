@@ -157,6 +157,7 @@ export function ImportRowCard({
   busy,
   onDecide,
   photos,
+  aiSuggestions,
   compact = false,
 }: {
   row: ImportRow;
@@ -165,6 +166,9 @@ export function ImportRowCard({
   onDecide: (input: RowDecisionInput) => void;
   /** Miniaturas de las fotos de la fila (importacion-masiva-fotografias, tarea 6.3). */
   photos?: ReactNode;
+  /** Sugerencias de IA del texto libre sin mapear de la fila (change carga-masiva-con-ia); solo
+   * en modo `live`, igual que `photos`. */
+  aiSuggestions?: ReactNode;
   /**
    * Fila cuyo único problema es un error que el bloque de errores repetidos ya explica: ocupa una
    * línea y el detalle y las acciones aparecen al abrirla (change `importacion-revision-simplificada`, D3).
@@ -274,7 +278,18 @@ export function ImportRowCard({
       )}
 
       {resolvable && canDecide && (
-        <Select label="¿A qué pieza corresponde esta fila?" value={target} onChange={(event) => setTarget(event.target.value)}>
+        <Select
+          label="¿A qué pieza corresponde esta fila?"
+          value={target}
+          disabled={busy}
+          onChange={(event) => {
+            const value = event.target.value;
+            setTarget(value);
+            // Se guarda sola, sin esperar a "Aceptar" (change carga-masiva-con-ia): elegir la
+            // pieza destino o "Ninguna: es una pieza nueva" ya resuelve el conflicto/duplicado.
+            if (value) onDecide({ targetPieceId: value === "new" ? null : value, asNew: value === "new" });
+          }}
+        >
           <option value="">Elegir…</option>
           {candidates.map((candidate) => (
             <option key={candidate.pieceId} value={candidate.pieceId} disabled={!candidate.available}>
@@ -296,6 +311,8 @@ export function ImportRowCard({
           ))}
         </dl>
       </details>
+
+      {aiSuggestions}
 
       {row.images && row.images.length > 0 && (
         <p className="flex items-center gap-1 text-sm text-gris-texto">

@@ -94,6 +94,57 @@ class DescriptionResult(BaseModel):
     used_fields: list[str]
 
 
+class ColumnMappingRequest(BaseModel):
+    """Body of ``/v1/suggest-column-mapping`` (change carga-masiva-con-ia): a column of an import
+    file has no saved template to map it, so the AI proposes a destination from ``target_fields``.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "headers": ["DENOMINACIÓN", "CÓDIGOS", "OBSERVACIONES"],
+                    "sample_rows": [
+                        {
+                            "DENOMINACIÓN": "Arpa andina",
+                            "CÓDIGOS": "I-9201",
+                            "OBSERVACIONES": "Mide 95 cm de alto.",
+                        }
+                    ],
+                    "target_fields": {"denomination": "Denominación", "notes": "Observaciones"},
+                }
+            ]
+        }
+    )
+
+    headers: list[str] = Field(min_length=1, max_length=100)
+    sample_rows: list[dict[str, Any]] = Field(default_factory=list, max_length=20)
+    target_fields: dict[str, str] = Field(
+        description="Vocabulario de destino válido: campo interno -> etiqueta del contrato. "
+        "La IA MUST NOT proponer un campo fuera de este diccionario."
+    )
+
+    @field_validator("headers")
+    @classmethod
+    def _not_blank_headers(cls, value: list[str]) -> list[str]:
+        if any(not h.strip() for h in value):
+            raise ValueError("Ningún encabezado puede estar vacío.")
+        return value
+
+
+class ColumnMappingCandidate(BaseModel):
+    column: str = Field(description="Encabezado tal como viene en el archivo.")
+    field: str | None = Field(
+        None, description="Clave de ``target_fields`` propuesta, o null si no hay una clara."
+    )
+    confidence: float = Field(ge=0, le=1)
+
+
+class ColumnMappingResult(BaseModel):
+    mappings: list[ColumnMappingCandidate]
+    message: str | None = None
+
+
 class SuggestionEnvelope[T](BaseModel):
     function_code: Literal["RIA_01", "RIA_03", "RIA_04"]
     provider: str

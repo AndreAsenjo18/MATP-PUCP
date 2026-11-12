@@ -36,8 +36,10 @@ from sqlalchemy import event, select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import BusinessRuleViolation, DomainError, ValidationFailed
-from app.core.models_base import new_uuid
+from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
+from app.modules.ai_suggestions.apply import apply_approved
+from app.modules.ai_suggestions.models import AiSuggestion, SuggestionStatus
 from app.modules.audit.context import refined_context
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
@@ -51,7 +53,13 @@ from app.modules.imports.mapping import (
     PIECE_FIELDS,
     MappedRow,
 )
-from app.modules.imports.models import ImportBatch, ImportBatchKind, ImportPhoto, ImportRow
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportBatchKind,
+    ImportPhoto,
+    ImportRow,
+    RowDecision,
+)
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.imports.observations import NOTES_FIELD, is_observations, with_observation
@@ -191,6 +199,54 @@ def _add_observation(session: Session, row: ImportRow) -> Piece:
     if change.get("observation") and field_actions(row).get(NOTES_FIELD) == "accept":
         update_piece(session, piece, notes=with_observation(piece.notes, change["observation"]))
     return piece
+
+
+def _pending_ai_suggestions_by_row(
+    session: Session, batch_id: uuid.UUID
+) -> dict[str, AiSuggestion]:
+    """Last PENDING suggestion per row id (change carga-masiva-con-ia): a row may have asked
+    more than once, so the most recent one is the one its staged choices refer to."""
+    suggestions = session.scalars(
+        select(AiSuggestion)
+        .where(
+            AiSuggestion.import_batch_id == batch_id,
+            AiSuggestion.status == SuggestionStatus.PENDING,
+        )
+        .order_by(AiSuggestion.created_at)
+    ).all()
+    by_row: dict[str, AiSuggestion] = {}
+    for suggestion in suggestions:
+        row_id = (suggestion.input_data or {}).get("row_id")
+        if row_id:
+            by_row[row_id] = suggestion  # a later one overwrites an earlier one
+    return by_row
+
+
+def _apply_ai_fields(
+    session: Session,
+    row: ImportRow,
+    piece: Piece,
+    suggestion: AiSuggestion | None,
+    reviewer_id: uuid.UUID,
+) -> None:
+    """Applies what the grid staged in ``row.resolution["ai_fields"]`` (change
+    carga-masiva-con-ia, D6) through the same single write point as the per-piece flow
+    (``apply_approved``, RN-009): approving the batch is the human approval of these fields too,
+    same as it already is for the structured diff (decisions.py)."""
+    ai_fields: dict[str, Any] = (row.resolution or {}).get("ai_fields") or {}
+    if not ai_fields or suggestion is None:
+        return
+    approved_fields = [{"field": field, "value": value} for field, value in ai_fields.items()]
+    total_fields = len(suggestion.output_data.get("fields", []))
+    suggestion.approved_data = {"fields": approved_fields}
+    suggestion.status = (
+        SuggestionStatus.APPROVED
+        if len(approved_fields) >= total_fields
+        else SuggestionStatus.PARTIALLY_APPROVED
+    )
+    suggestion.reviewed_by_id = reviewer_id
+    suggestion.reviewed_at = utcnow()
+    apply_approved(session, suggestion, piece)
 
 
 def _photos_to_apply(
@@ -410,6 +466,7 @@ def apply_batch(
     counts = dict.fromkeys(APPLIED_COUNTS, 0)
     created: list[dict[str, Any]] = []
     observations = is_observations(batch)
+    ai_suggestions_by_row = _pending_ai_suggestions_by_row(session, batch.id)
     total = len(rows)
     with refined_context(session, change_set_id=change_set_id):
         for done, row in enumerate(rows, start=1):
@@ -430,9 +487,28 @@ def apply_batch(
                     piece = _create(session, batch, mapped)
                     created.append({"id": row.id, "target_piece_id": piece.id})
                     counts["APPLIED_CREATED"] += 1
+                    _apply_ai_fields(
+                        session,
+                        row,
+                        piece,
+                        ai_suggestions_by_row.get(str(row.id)),
+                        batch.approved_by_id,  # type: ignore[arg-type]
+                    )
                 else:
                     piece = _update(session, batch, row, mapped)
                     counts["APPLIED_UPDATED"] += 1
+                    _apply_ai_fields(
+                        session,
+                        row,
+                        piece,
+                        ai_suggestions_by_row.get(str(row.id)),
+                        batch.approved_by_id,  # type: ignore[arg-type]
+                    )
+                # A row left "Pendiente" (nadie le dio clic a Aceptar) sigue aplicándose: aprobar
+                # el lote es la aprobación humana de esas filas (D6, decisions.py). Reflejar eso
+                # acá para que la bitácora no diga "Pendiente" de una fila que sí se aplicó.
+                if row.decision == RowDecision.PENDING:
+                    row.decision = RowDecision.ACCEPTED
                 session.add(
                     PieceSourceRecord(
                         id=new_uuid(),

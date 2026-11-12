@@ -49,7 +49,9 @@ export type RowDecisionValue = "ACCEPTED" | "EXCLUDED" | "REJECTED";
 export type FieldAction = "accept" | "exclude";
 
 export interface RowDecisionInput {
-  decision: RowDecisionValue;
+  /** Sin decisión, solo guarda `targetPieceId`/`asNew` (change carga-masiva-con-ia): resolver un
+   * conflicto o posible duplicado apenas se elige, sin esperar a "Aceptar". */
+  decision?: RowDecisionValue;
   reason?: string | null;
   targetPieceId?: string | null;
   asNew?: boolean;
@@ -703,7 +705,7 @@ export async function decideImportRow(batchId: string, rowId: string, input: Row
     client(devUser).PATCH("/api/v1/imports/{batch_id}/rows/{row_id}", {
       params: { path: { batch_id: batchId, row_id: rowId } },
       body: {
-        decision: input.decision,
+        decision: input.decision ?? null,
         reason: input.reason?.trim() || null,
         target_piece_id: input.targetPieceId ?? null,
         as_new: input.asNew ?? false,

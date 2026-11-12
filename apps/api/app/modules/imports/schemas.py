@@ -463,7 +463,8 @@ class ImportRowOut(BaseModel):
     resolution: dict[str, Any] | None = Field(
         None,
         description="Resolución de una persona: `target_piece_id` o `as_new`, "
-        "`field_decisions`, `decided_by_id`, `decided_at`.",
+        "`field_decisions`, `ai_fields` (carga masiva con IA, change carga-masiva-con-ia), "
+        "`decided_by_id`, `decided_at`.",
     )
     action: Literal["CREATE", "UPDATE", "SKIP"] | None = Field(
         None, description="Qué hará la aplicación del lote con la fila."
@@ -543,7 +544,11 @@ class RowDecisionRequest(BaseModel):
         }
     )
 
-    decision: Literal["ACCEPTED", "EXCLUDED", "REJECTED"]
+    decision: Literal["ACCEPTED", "EXCLUDED", "REJECTED"] | None = Field(
+        None,
+        description="Sin decisión, solo guarda `target_piece_id`/`as_new` (resolver un "
+        "conflicto o posible duplicado sin aceptar la fila todavía).",
+    )
     reason: str | None = Field(None, description="Obligatorio para REJECTED (RF-028).")
     target_piece_id: uuid.UUID | None = Field(
         None, description="Conflicto o posible duplicado: la fila actualiza esta pieza."
@@ -554,6 +559,27 @@ class RowDecisionRequest(BaseModel):
     field_decisions: dict[str, Literal["accept", "exclude"]] = Field(
         default_factory=dict,
         description="Por campo del diff: aceptar el valor entrante o conservar el actual.",
+    )
+
+
+class RowAiFieldsRequest(BaseModel):
+    """Body of ``PATCH /imports/{batch_id}/rows/{row_id}/ai-fields`` (change
+    carga-masiva-con-ia): la hoja de revisión guarda aquí, campo por campo, el valor elegido o
+    editado de la IA para la fila — vigente, propuesto, o corregido a mano. No es una decisión de
+    fila (``decide_import_row`` sigue siendo aparte) ni escribe en el catálogo: aprobar el lote es
+    lo único que lo aplica (RN-009)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"fields": {"dimensions": {"dimension": "alto", "value": 95, "unit": "cm"}}}
+            ]
+        }
+    )
+
+    fields: dict[str, Any] = Field(
+        description="Campo de IA (`dimensions`, `conservation_status`, `review_marks`) -> valor "
+        "elegido; un valor `null` quita ese campo de lo que se aplicará al aprobar el lote."
     )
 
 
