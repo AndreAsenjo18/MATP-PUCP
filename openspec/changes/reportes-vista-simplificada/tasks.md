@@ -64,7 +64,7 @@
   - **Corregido en el recorrido:** en «Información incompleta» con datos, los enlaces a cada pieza medían 20 px y las etiquetas de alerta, 14 px (no aparecían en las pruebas de HTML estático porque se cargan en un efecto). Ahora miden 44 px y 16 px; hay una prueba en `ReportsSimplified.test.tsx`.
   - **Para observar en la prueba humana:** (1) a 360 px, la columna «Alertas» de incompletas queda cortada en el borde y no hay nada que indique que la tabla se desplaza; (2) «Generado el 17/9/2026, 2:00:00 a. m..» lleva un punto de más: `toLocaleString` termina en «a. m.» y la plantilla añade otro (es anterior a este change).
   - Capturas fuera del repo: `C:\GitHub\capturas-c22\` (`antes-` y `despues-` del inventario y de incompletas a 1366 y 360, `despues-admin-almacenamiento-1366.png` y los dos `medidas-reportes.json`).
-- [ ] 7.2 **Prueba humana (no la hace el agente).** El humano prueba en local con datos sintéticos, sin manual, como alguien de 60 años o más que no conoce el sistema, diciendo en voz alta lo que piensa, y el agente observa:
+- [x] 7.2 **Prueba humana (no la hace el agente).** El humano prueba en local con datos sintéticos, sin manual, como alguien de 60 años o más que no conoce el sistema, diciendo en voz alta lo que piensa, y el agente observa:
   - **HU-21:** «Sacar el inventario de una colección y exportarlo. ¿Qué columnas faltan o sobran?» (en pantalla y en el Excel).
   - **HU-22:** «Sacar un reporte agrupado por procedencia.» (en modo conectado; en demostración este reporte no está disponible).
   - **HU-08, solo «Más filtros»:** «Busque piezas en mal estado de una sede.» ¿Reconoce que «Más filtros» se despliega?
@@ -80,4 +80,27 @@
     - (sí/no) No se pierde lo escrito si la sesión caduca o se recarga la página (parámetros y filtros del reporte).
     - (sí/no) El humano la probó, la hizo sin ayuda y dijo qué le incomodó.
   - Verificación: informe con lo que encontró, lo corregido y lo pendiente; se corrige en este mismo change y se **repite la prueba** hasta que la haga de punta a punta sin trabarse. Solo entonces HU-21 y HU-22 pasan a «Revisada por un humano» en `docs/historias-de-usuario.md`.
+  - **Informe de la prueba humana (2026-11-11, en local y en modo conectado).**
+    - **HU-21:** al principio no encontró nada útil en el Inicio; la consigna se había dado mal y se repitió. Luego encontró Reportes rápido y eligió «Por colección». Preguntó si «6 de 19» era porque el Excel trae más datos por pieza: entendió la idea. Tuvo dudas con «Régimen»: es conocimiento del museo (comodato) y no se puede validar con alguien de fuera, así que pasa al museo como **W10**. El Excel funciona y trae todas las columnas.
+    - **HU-22:** no era claro que «Filtros» se podía abrir; lo encontró buscando cómo acotar por colección. Sí vio «(1 activo)». Grupos, subtotales y total en frase, bien.
+    - **HU-08 («Más filtros»):** bien; una vez encontrados los filtros, «Más filtros» es fácil.
+    - **F5:** reiniciaba Reportes a «Inventario general» y se perdían todos los filtros.
+    - **Administrador:** «Almacenamiento de fotos» en Control y Reportes sin volumen ni exportación completa, todo correcto. Clics y tamaños adecuados, sin errores.
+    - **Corregido en este change** (commit `fix(reports): open filters and keep the report in the address`; requirement «Desplegables…» ajustado y nuevo «Reporte y filtros conservados en la dirección»; design D8):
+      1. En Reportes, «Filtros» aparece **desplegado de entrada** y su cabecera tiene **aspecto de botón** (borde terracota y fondo); se puede plegar. «Más filtros» de Búsqueda, sin cambios.
+      2. El **tipo de reporte y sus filtros quedan en la dirección** (`?reporte=…` y los parámetros con los nombres de la API; en incompletas, las alertas y la colección). F5 o un enlace compartido abren lo mismo; al cambiar de tipo empieza sin filtros; un tipo desconocido abre el inventario general. `useSearchParams` dentro de `Suspense`; `next build` en verde.
+      - Pruebas: `ReportsUrlState.test.tsx` (9: lectura y escritura de la dirección, ida y vuelta, que no se cuelen parámetros de otro tipo, arranque con lo de la dirección y `Suspense`) y `ReportsSimplified.test.tsx` (cabecera con aspecto de botón y «Más filtros» sin él). Cambiaron 3 expectativas que afirmaban los filtros plegados (`ReportsLive.test.tsx`) o el orden de atributos del `summary` (ahora lleva `data-variant`). Comprobado en Chrome, modo demostración: «Por colección» y «Sin foto» en incompletas sobreviven a F5, y `?reporte=valorizacion` abre el inventario. **Los filtros del reporte agrupado tras F5 solo se pueden ver en modo conectado: probados con HTML estático, no en el navegador.**
+    - **Pendiente:** (a) W10 «Régimen», W1 y W2, con el museo (Sergio y André); (b) **repetir con una persona** las dos correcciones (filtros desplegados y F5); (c) la prueba en el sistema desplegado; (d) de 7.1, a 360 px la columna «Alertas» de incompletas queda cortada sin indicar que la tabla se desplaza; (e) el punto de más en «a. m..» (anterior a este change); (f) avisar a P3 del árbol de ubicaciones (14 px y 24 px en Búsqueda).
+    - **Lista de «los zapatos del usuario», según las notas:**
+      - **Sí**, se entiende a primera vista: encontró Reportes y el reporte rápido (el tropiezo del Inicio fue de la consigna).
+      - **Sí**, poco texto: entendió «6 de 19» sin explicación.
+      - **Sí**, pocas opciones a la vez.
+      - **Sí**, legible: tamaños adecuados.
+      - **Sí**, mínimo de clics: clics adecuados.
+      - **Sí**, se perdona el error: sin errores.
+      - **No probado**, teclado, 150 % y 1366 (las medidas de 7.1 los cumplen, pero sin persona).
+      - **No**, no se pierde lo escrito: F5 borraba los filtros (corregido; falta repetirlo con una persona).
+      - **No**, la hizo sin ayuda: no encontró sola que «Filtros» se abría (corregido; falta repetirlo) y dudó con «Régimen» (W10).
+    - Por indicación de P2, HU-21, HU-22 y HU-08 (esta, solo en «Más filtros») pasan a «Revisada por un humano» en `docs/historias-de-usuario.md`, con sus condiciones escritas en la fila: prueba en local, falta el sistema desplegado, «Régimen» por validar y las dos correcciones sin repetir con una persona.
 - [ ] 7.3 `npm run lint:web`, `npx vitest run`, `npm run build -w apps/web`, `npm run openapi:check` (sin cambios) y `openspec validate --all --strict` en verde; PR `feat(reports): ...` con el change, los IDs, la evidencia de 7.1 y 7.2 y la revisión de André (el `MODIFIED`) y de P5 (sección 4). Tras aprobar el PR, `openspec archive reportes-vista-simplificada -y`.
+  - 2026-11-11, tras rebasar sobre `origin/main` (con #183, el Inicio de P3; C26/#184 todavía no está en `main`): `npm run lint:web` en verde; `npx vitest run` 1408/1408 en 107 archivos; `npm run openapi:check` sin cambios; `openspec validate --all --strict` 27/27; `next build` en verde. **Sin marcar:** falta abrir el PR (revisores: André por el `MODIFIED` de la vista previa, P5 por el commit de Administración), aprobarlo y `openspec archive reportes-vista-simplificada -y`. Cuando entre #184 (C26), el segundo en fusionarse rebasa por la línea de resumen de `docs/historias-de-usuario.md`.
