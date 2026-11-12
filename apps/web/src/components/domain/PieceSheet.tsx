@@ -150,7 +150,7 @@ export function PieceIdentifiersTable({ piece, children }: { piece: PieceDetail;
       {piece.code_i && (
         <p className="flex items-start gap-2 rounded-md bg-crema-light p-3 text-sm text-gris-texto">
           <Lock size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
-          El código I está bloqueado una vez asignado (RN-002). Solo un Administrador puede corregirlo mediante un procedimiento
+          El código I está bloqueado una vez asignado. Solo un Administrador puede corregirlo mediante un procedimiento
           auditado.
         </p>
       )}

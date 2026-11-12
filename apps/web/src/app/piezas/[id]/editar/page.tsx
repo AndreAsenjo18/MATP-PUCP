@@ -73,7 +73,7 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
         </Link>
         <h1 className="text-2xl font-bold text-tinta">Editar: {piece.denomination}</h1>
         <p className="text-base text-gris-texto">
-          El código I no se edita aquí (RN-002): se corrige desde la ficha, con el procedimiento auditado.
+          El código de inventario no se modifica desde este formulario. Si necesita corregirlo, regrese a la ficha y utilice la corrección con registro de auditoría.
         </p>
       </header>
 
