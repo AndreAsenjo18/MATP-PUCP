@@ -59,9 +59,9 @@ export function computeCompletenessKpis(): CompletenessKpis {
   };
 }
 
-export function countPiecesByCollection(): { collection: string; count: number }[] {
+export function countPiecesByCollection(pieces: readonly (typeof PIECES)[number][] = PIECES): { collection: string; count: number }[] {
   const byCollectionMap = new Map<string, number>();
-  for (const piece of PIECES) {
+  for (const piece of pieces) {
     const key = piece.collection?.name ?? "Piezas sueltas (sin colección)";
     byCollectionMap.set(key, (byCollectionMap.get(key) ?? 0) + 1);
   }
@@ -87,8 +87,18 @@ function singlePage(report: Omit<ReportOut, "page" | "page_size" | "total_rows">
   return { ...report, page: 1, page_size: report.rows.length, total_rows: report.rows.length };
 }
 
+/**
+ * Piezas del inventario permanente en la demostración: sin préstamos temporales (RN-004), como el
+ * modo conectado (change `reportes-vista-simplificada`, D7). Los datos de ejemplo no tienen piezas
+ * eliminadas ni fusionadas.
+ */
+export function inventoryPieces(): (typeof PIECES)[number][] {
+  return PIECES.filter((piece) => piece.tenure_regime !== "Préstamo Temporal");
+}
+
 export function computeInventoryReport(): ReportOut {
-  const rows = PIECES.map((p) => [
+  const pieces = inventoryPieces();
+  const rows = pieces.map((p) => [
     p.denomination,
     p.description ?? "",
     p.collection?.name ?? "Sin colección",
@@ -102,15 +112,15 @@ export function computeInventoryReport(): ReportOut {
     title: "Inventario general (sintético)",
     generated_at: "2026-09-17T07:00:00Z",
     filters: {},
-    columns: ["Denominación", "Descripción", "Colección", "Código I", "Régimen de tenencia", "Estado de conservación", "Ubicación"],
+    columns: ["Denominación", "Descripción", "Colección", "Código I", "Régimen", "Estado de conservación", "Ubicación"],
     rows,
-    totals: { piezas: PIECES.length },
+    totals: { piezas: pieces.length },
     download_url: null,
   });
 }
 
 export function computeByCollectionReport(): ReportOut {
-  const counts = countPiecesByCollection();
+  const counts = countPiecesByCollection(inventoryPieces());
   return singlePage({
     report_type: "by-collection",
     title: "Inventario por colección (sintético)",
@@ -125,7 +135,8 @@ export function computeByCollectionReport(): ReportOut {
 
 export function computeByLocationReport(): ReportOut {
   const byLocation = new Map<string, number>();
-  for (const piece of PIECES) {
+  const pieces = inventoryPieces();
+  for (const piece of pieces) {
     const key = piece.location.path.length > 0 ? piece.location.path[0].name : "Sin ubicación";
     byLocation.set(key, (byLocation.get(key) ?? 0) + 1);
   }
@@ -136,7 +147,7 @@ export function computeByLocationReport(): ReportOut {
     filters: {},
     columns: ["Sede/ubicación", "N.º de piezas"],
     rows: [...byLocation.entries()].map(([location, count]) => [location, count]),
-    totals: { piezas: PIECES.length },
+    totals: { piezas: pieces.length },
     download_url: null,
   });
 }

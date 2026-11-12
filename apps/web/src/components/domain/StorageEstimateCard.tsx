@@ -139,7 +139,7 @@ export function StorageEstimateCard({ devUser }: { devUser?: string }) {
 
   return (
     <Card as="section" className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold text-tinta">Volumen fotográfico (RNF-003)</h2>
+      <h2 className="text-lg font-semibold text-tinta">Volumen fotográfico</h2>
       {result === null && <p className="text-base text-gris-texto">Calculando la estimación…</p>}
       {result?.status === "error" && (
         <p role="alert" className="text-base text-carmin-texto">

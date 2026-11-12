@@ -26,7 +26,7 @@ export function ReportSelector({ selected, onSelect }: { selected: ReportKey; on
           })}
         >
           <span className="text-base font-semibold text-tinta">{report.label}</span>
-          <span className="text-sm text-gris-texto">{report.summary}</span>
+          <span className="text-base text-gris-texto">{report.summary}</span>
         </button>
       ))}
     </div>

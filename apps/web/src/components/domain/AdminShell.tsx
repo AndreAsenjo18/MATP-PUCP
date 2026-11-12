@@ -49,6 +49,9 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { slug: "papelera", label: "Papelera", area: "control", permissions: ["trash.read"] },
   { slug: "auditoria", label: "Auditoría", area: "control", permissions: ["audit.read"] },
   { slug: "exportacion", label: "Exportación completa", area: "control", permissions: ["exports.full"] },
+  // Estimación del volumen fotográfico (spec multimedia, RNF-003), traída desde Reportes
+  // (change `reportes-vista-simplificada`, tarea 4.1). [SUPUESTO: solo el Administrador la necesita, W9]
+  { slug: "almacenamiento", label: "Almacenamiento de fotos", area: "control", permissions: ["users.manage"] },
 ];
 
 /** Secciones que el rol puede usar, en el orden de `ADMIN_SECTIONS`. */
