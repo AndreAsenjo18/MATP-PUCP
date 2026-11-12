@@ -47,7 +47,7 @@ describe("AuditLogFilterBar", () => {
       expect(text).toContain(label);
     }
     expect(text).toContain("Fotografía o documento");
-    expect(text).toContain("Término de vocabulario");
+    expect(text).toContain("Valor de una lista");
   });
 
   it("deja lo menos usado en «Más filtros», cerrado si no hay ninguno aplicado", () => {
@@ -58,7 +58,7 @@ describe("AuditLogFilterBar", () => {
     expect(text).toContain("Persona que hizo el cambio");
     expect(text).toContain("Lote de importación o sugerencia de IA");
     expect(text).toContain("Registro concreto");
-    expect(text).toContain("Conjunto de cambios concreto");
+    expect(text).toContain("Cambio concreto");
     expect(html).not.toMatch(/<details[^>]*\sopen=""/);
     expect(text).toContain("Gabriela Curadora (sintética)");
   });

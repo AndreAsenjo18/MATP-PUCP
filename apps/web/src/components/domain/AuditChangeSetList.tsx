@@ -49,26 +49,27 @@ export function originLabel(origin: AuditOrigin | string): string {
  */
 const ENTITY_LABELS: Record<string, [string, string]> = {
   piece: ["pieza", "piezas"],
-  piece_identifier: ["identificador", "identificadores"],
+  piece_identifier: ["código de pieza", "códigos de pieza"],
   media_asset: ["fotografía", "fotografías"],
   piece_material: ["material de la pieza", "materiales de la pieza"],
   piece_movement: ["movimiento de ubicación", "movimientos de ubicación"],
   piece_source_record: ["dato de origen", "datos de origen"],
   collection: ["colección", "colecciones"],
-  term: ["término de vocabulario", "términos de vocabulario"],
-  vocabulary: ["vocabulario", "vocabularios"],
+  term: ["valor de una lista", "valores de listas"],
+  vocabulary: ["lista de valores", "listas de valores"],
   location: ["ubicación", "ubicaciones"],
   conservation_assessment: ["evaluación de conservación", "evaluaciones de conservación"],
-  import_mapping_template: ["plantilla de importación", "plantillas de importación"],
+  import_mapping_template: ["formato de archivo", "formatos de archivo"],
   import_batch: ["lote de importación", "lotes de importación"],
   loan: ["préstamo", "préstamos"],
   loan_item: ["pieza del préstamo", "piezas del préstamo"],
   app_user: ["usuario", "usuarios"],
+  user_session: ["sesión", "sesiones"],
 };
 
 export function entityLabel(entityType: string, count: number): string {
   const labels = ENTITY_LABELS[entityType];
-  if (!labels) return count === 1 ? `registro de tipo ${entityType}` : `registros de tipo ${entityType}`;
+  if (!labels) return count === 1 ? "otro registro" : "otros registros";
   return count === 1 ? labels[0] : labels[1];
 }
 
@@ -216,7 +217,7 @@ export function AuditChangeSetList({ changeSets, entries, access, onRevert, open
   }
   const known = new Set(changeSets.map((summary) => summary.change_set_id));
   return (
-    <ol aria-label="Conjuntos de cambios" className="flex flex-col gap-3">
+    <ol aria-label="Cambios registrados" className="flex flex-col gap-3">
       {changeSets.map((summary) => (
         <Card as="li" key={summary.change_set_id} id={changeSetAnchor(summary.change_set_id)} className="flex flex-col gap-2">
           <AuditChangeSetHeader summary={summary} />
@@ -263,7 +264,7 @@ function AuditChangeSetHeader({ summary }: { summary: AuditChangeSetSummary }) {
 function AuditChangeSetEntries({ entries }: { entries: readonly AuditEntryView[] }) {
   if (entries.length === 0) return null;
   return (
-    <ul aria-label="Campos de esta pieza en el conjunto" className="flex flex-col gap-1 border-t border-borde pt-2">
+    <ul aria-label="Campos de esta pieza en este cambio" className="flex flex-col gap-1 border-t border-borde pt-2">
       {entries.map((entry) => (
         <li key={entry.id} className="text-base text-tinta">
           {entry.values_masked ? (
@@ -303,9 +304,9 @@ function AuditRevertControl({ summary, access, onRevert, revertedIsListed }: Aud
             Ver la reversión en este historial
           </a>
         ) : target ? (
-          <>La reversión quedó registrada en el conjunto {target}, que a su vez puede revertirse.</>
+          <>La reversión quedó registrada en el cambio {target}, que a su vez puede revertirse.</>
         ) : (
-          <>La reversión quedó registrada como un conjunto nuevo, que a su vez puede revertirse.</>
+          <>La reversión quedó registrada como un cambio nuevo, que a su vez puede revertirse.</>
         )}
       </p>
     );

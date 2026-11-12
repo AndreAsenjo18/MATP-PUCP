@@ -42,7 +42,7 @@ export type RevertPanelState =
 export const REVERT_REASON_REQUIRED = "Indique el motivo de la reversión: quedará registrado en la auditoría con su usuario (RN-005).";
 export const CONFLICTS_CONFIRM_REQUIRED = "Marque la casilla para confirmar que los cambios posteriores se descartarán.";
 export const CONFLICTS_CONFIRM_LABEL = "Entiendo que los cambios posteriores listados arriba se descartarán.";
-export const NOTHING_TO_REVERT = "Este conjunto no tiene nada que revertir: solo contiene registros que no se modifican (como los movimientos de ubicación).";
+export const NOTHING_TO_REVERT = "Este cambio no tiene nada que revertir: solo contiene registros que no se modifican (como los movimientos de ubicación).";
 
 export interface RevertFormErrors {
   reason?: string;
@@ -124,7 +124,7 @@ export function conflictSentence(conflict: RevertConflictOut): string {
   if (conflict.reason === "no_soft_delete") {
     return `${fieldLabel(conflict.field)}: este tipo de registro no admite eliminación lógica, así que la reversión no lo tocará.`;
   }
-  return `${fieldLabel(conflict.field)}: otra persona lo volvió a cambiar después de este conjunto. Si continúa, se perderá ese cambio más reciente.`;
+  return `${fieldLabel(conflict.field)}: otra persona lo volvió a cambiar después de este cambio. Si continúa, se perderá ese cambio más reciente.`;
 }
 
 /**
@@ -136,7 +136,7 @@ export function conflictDetailSentence(conflict: RevertConflictOut): string | nu
   const parts: string[] = [];
   if (conflict.changed_at) parts.push(`Modificado el ${formatMoment(conflict.changed_at)}`);
   parts.push(`hoy dice «${formatAuditValue(conflict.current_value)}»`);
-  parts.push(`este conjunto lo había dejado en «${formatAuditValue(conflict.expected_value)}»`);
+  parts.push(`este cambio lo había dejado en «${formatAuditValue(conflict.expected_value)}»`);
   return `${parts.join("; ")}.`;
 }
 
@@ -155,7 +155,7 @@ export function revertResultSentence(result: RevertChangeSetOut): string {
   if (result.deleted_entities > 0) parts.push(result.deleted_entities === 1 ? "1 registro eliminado lógicamente" : `${result.deleted_entities} registros eliminados lógicamente`);
   if (result.restored_entities > 0) parts.push(result.restored_entities === 1 ? "1 registro restaurado" : `${result.restored_entities} registros restaurados`);
   const detail = parts.length > 0 ? `${joinWithAnd(parts)}.` : "Sin cambios que aplicar.";
-  return `Reversión registrada: ${detail} Quedó en la auditoría como un conjunto nuevo, que a su vez puede revertirse.`;
+  return `Reversión registrada: ${detail} Quedó en la auditoría como un cambio nuevo, que a su vez puede revertirse.`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ export function RevertChangeSetPanel({ state, onRecalculate, onCancel, onConfirm
     <section aria-labelledby={titleId} className="mt-2 flex flex-col gap-3 rounded-md border border-ambar-alerta bg-ambar-bg p-4">
       <h3 id={titleId} className="flex items-center gap-2 text-base font-semibold text-tinta">
         <RotateCcw size={18} aria-hidden="true" />
-        Revertir este conjunto de cambios
+        Revertir este cambio
       </h3>
 
       {state.status === "loading" && (
@@ -204,7 +204,7 @@ export function RevertChangeSetPanel({ state, onRecalculate, onCancel, onConfirm
           {state.revertedByChangeSetId && (
             <p className="text-sm text-ambar-texto">
               <a href={`#${changeSetAnchor(state.revertedByChangeSetId)}`} className="text-terracota underline">
-                Ver el conjunto de reversión
+                Ver la reversión
               </a>
               , que a su vez puede revertirse.
             </p>

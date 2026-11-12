@@ -42,21 +42,40 @@ function client() {
 /** Tipos de registro tal como los escribe la auditoría (nombre de tabla), con su nombre en español. */
 export const AUDIT_ENTITY_TYPES: ReadonlyArray<{ value: string; singular: string; plural: string }> = [
   { value: "piece", singular: "pieza", plural: "piezas" },
-  { value: "piece_identifier", singular: "identificador de pieza", plural: "identificadores de pieza" },
+  { value: "piece_identifier", singular: "código de pieza", plural: "códigos de pieza" },
   { value: "media_asset", singular: "fotografía o documento", plural: "fotografías o documentos" },
   { value: "piece_movement", singular: "movimiento de ubicación", plural: "movimientos de ubicación" },
   { value: "piece_source_record", singular: "dato de origen", plural: "datos de origen" },
   { value: "conservation_assessment", singular: "evaluación de conservación", plural: "evaluaciones de conservación" },
   { value: "collection", singular: "colección", plural: "colecciones" },
-  { value: "term", singular: "término de vocabulario", plural: "términos de vocabulario" },
-  { value: "vocabulary", singular: "vocabulario", plural: "vocabularios" },
+  { value: "term", singular: "valor de una lista", plural: "valores de listas" },
+  { value: "vocabulary", singular: "lista de valores", plural: "listas de valores" },
   { value: "location", singular: "ubicación", plural: "ubicaciones" },
-  { value: "import_mapping_template", singular: "plantilla de mapeo", plural: "plantillas de mapeo" },
+  { value: "import_mapping_template", singular: "formato de archivo", plural: "formatos de archivo" },
   { value: "import_batch", singular: "carga de importación", plural: "cargas de importación" },
   { value: "duplicate_candidate", singular: "candidato a duplicado", plural: "candidatos a duplicado" },
   { value: "ai_suggestion", singular: "sugerencia de IA", plural: "sugerencias de IA" },
   { value: "app_user", singular: "usuario", plural: "usuarios" },
+  { value: "user_session", singular: "sesión", plural: "sesiones" },
 ];
+
+/**
+ * Procesos del sistema que escriben en la auditoría con un nombre técnico (`actor_label`), con el
+ * nombre que lee la persona (change `administracion-control`, D2). Los desconocidos se muestran tal cual.
+ */
+const SYSTEM_ACTORS: Readonly<Record<string, string>> = {
+  "auth.login": "Inicio de sesión",
+  "audit-digest": "Resumen diario de auditoría",
+  load_valuations: "Carga de valorizaciones",
+  "seed: plantillas": "Datos iniciales",
+  "recuperación de lotes": "Recuperación de cargas",
+};
+
+/** Quién hizo el cambio: la persona, el proceso del sistema con nombre legible o «Sistema». */
+export function systemActorLabel(actorLabel: string | null | undefined): string {
+  if (!actorLabel) return "Sistema";
+  return SYSTEM_ACTORS[actorLabel] ?? actorLabel;
+}
 
 /** Nombres con que algunos fixtures antiguos escriben los mismos tipos. */
 const ENTITY_ALIASES: Readonly<Record<string, string>> = { piece_media: "media_asset", vocabulary_term: "term" };
@@ -64,7 +83,8 @@ const ENTITY_ALIASES: Readonly<Record<string, string>> = { piece_media: "media_a
 /** Nombre de un tipo de registro en singular o plural; si no se conoce, se muestra tal cual. */
 export function auditEntityLabel(entityType: string, count = 1): string {
   const known = AUDIT_ENTITY_TYPES.find((type) => type.value === (ENTITY_ALIASES[entityType] ?? entityType));
-  if (!known) return count === 1 ? `registro de tipo ${entityType}` : `registros de tipo ${entityType}`;
+  // Un tipo nuevo no muestra su nombre técnico: el detalle campo a campo dice qué cambió.
+  if (!known) return count === 1 ? "otro registro" : "otros registros";
   return count === 1 ? known.singular : known.plural;
 }
 
@@ -87,6 +107,23 @@ export interface AuditQueryFilters {
   userId: string;
   from: string;
   to: string;
+  /**
+   * `"1"` muestra los inicios de sesión. Por defecto (`""`) quedan fuera para que no llenen la
+   * consulta (change `administracion-control`, decisión del equipo del 2026-11-10).
+   */
+  sessions: string;
+}
+
+/** Tipo de registro de los inicios de sesión. */
+export const SESSION_ENTITY_TYPE = "user_session";
+
+/**
+ * Los inicios de sesión quedan fuera salvo que se pidan, se filtre justo por ese tipo o se busque un
+ * cambio o registro concreto (abrir el detalle de un inicio de sesión debe mostrarlo).
+ */
+export function hidesSessions(filters: Pick<AuditQueryFilters, "sessions" | "entityType" | "changeSetId" | "entityId">): boolean {
+  if (filters.sessions === "1" || filters.entityType === SESSION_ENTITY_TYPE) return false;
+  return !filters.changeSetId.trim() && !filters.entityId.trim();
 }
 
 export const EMPTY_AUDIT_FILTERS: AuditQueryFilters = {
@@ -99,7 +136,13 @@ export const EMPTY_AUDIT_FILTERS: AuditQueryFilters = {
   userId: "",
   from: "",
   to: "",
+  sessions: "",
 };
+
+/** Cuántos filtros hay aplicados, para el botón «Filtros (N activos)» en celular. */
+export function activeAuditFilterCount(filters: AuditQueryFilters): number {
+  return Object.values(filters).filter((value) => value.trim() !== "").length;
+}
 
 export function hasActiveAuditFilters(filters: AuditQueryFilters): boolean {
   return Object.values(filters).some((value) => value.trim() !== "");
@@ -131,6 +174,7 @@ export function auditQuery(filters: AuditQueryFilters): AuditQuery {
   const text = (value: string) => value.trim() || undefined;
   return {
     entity_type: text(filters.entityType),
+    exclude_entity_type: hidesSessions(filters) ? SESSION_ENTITY_TYPE : undefined,
     origin: (text(filters.origin) as AuditQuery["origin"]) ?? undefined,
     action: (text(filters.action) as AuditQuery["action"]) ?? undefined,
     origin_ref: text(filters.originRef),
@@ -206,6 +250,7 @@ export function filterAuditEntries(entries: readonly AuditEntryView[], filters: 
   const originRef = filters.originRef.trim().toLowerCase();
   return entries.filter((entry) => {
     if (filters.entityType && entry.entity_type !== filters.entityType) return false;
+    if (hidesSessions(filters) && entry.entity_type === SESSION_ENTITY_TYPE) return false;
     if (filters.origin && entry.origin !== filters.origin) return false;
     if (filters.action && entry.action !== filters.action) return false;
     if (filters.changeSetId.trim() && entry.change_set_id !== filters.changeSetId.trim()) return false;

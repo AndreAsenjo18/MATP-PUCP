@@ -45,16 +45,19 @@ function client() {
 // Tipos de registro que se pueden restaurar
 // ---------------------------------------------------------------------------------------------
 
-/** Tipos que la API admite en la papelera, con su nombre en español (el mismo que envía `type_label`). */
+/**
+ * Tipos que la API admite en la papelera, con el nombre que usa el museo (change `administracion-control`):
+ * la pantalla lo prefiere al `type_label` de la API, que queda de respaldo para tipos nuevos.
+ */
 export const TRASH_ENTITY_TYPES: ReadonlyArray<{ value: string; label: string }> = [
   { value: "piece", label: "Pieza" },
-  { value: "piece_identifier", label: "Identificador de pieza" },
+  { value: "piece_identifier", label: "Código de pieza" },
   { value: "media_asset", label: "Fotografía o documento" },
   { value: "collection", label: "Colección" },
-  { value: "term", label: "Término de vocabulario" },
-  { value: "vocabulary", label: "Vocabulario" },
+  { value: "term", label: "Valor de una lista" },
+  { value: "vocabulary", label: "Lista de valores" },
   { value: "location", label: "Ubicación" },
-  { value: "import_mapping_template", label: "Plantilla de mapeo" },
+  { value: "import_mapping_template", label: "Formato de archivo" },
 ];
 
 /** Nombre en español de un tipo; si la API añade uno nuevo, se muestra tal cual. */

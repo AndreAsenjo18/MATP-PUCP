@@ -54,11 +54,12 @@ describe("TrashEntryList", () => {
     expect(html).toContain('aria-label="Registros eliminados"');
     expect(html).toContain(`id="${trashAnchor(TERM)}"`);
     expect(text).toContain("Totora");
-    expect(text).toContain("Término de vocabulario");
+    // Nombre del glosario del museo (change `administracion-control`), no el `type_label` de la API.
+    expect(text).toContain("Valor de una lista");
     expect(text).toContain("Administrador MATP (sintético)");
     expect(text).toContain("Motivo: Duplicado del término Totora");
     expect(text).toContain("Restaurar");
-    expect(html).toContain('aria-label="Restaurar término de vocabulario «Totora»"');
+    expect(html).toContain('aria-label="Restaurar valor de una lista «Totora»"');
     expect(html).not.toMatch(disabledButton);
   });
 
@@ -96,8 +97,8 @@ describe("TrashEntryList", () => {
 
     expect(text).toContain("Panel de restauración");
     // Solo queda el botón del otro registro.
-    expect(html.match(/Restaurar término de vocabulario «/g)).toHaveLength(1);
-    expect(html).toContain("Restaurar término de vocabulario «Rojo carmín»");
+    expect(html.match(/Restaurar valor de una lista «/g)).toHaveLength(1);
+    expect(html).toContain("Restaurar valor de una lista «Rojo carmín»");
   });
 
   it("distingue la papelera vacía de unos filtros sin resultados", () => {

@@ -229,9 +229,6 @@ async def run_load_test(
     print(" SLA Target: p95 <= 2000 ms")
     print("==================================================\n")
 
-    start_wall = time.monotonic()
-    end_time = start_wall + duration_seconds
-
     own_client = False
     if client is None:
         client = httpx.AsyncClient(timeout=30.0)
@@ -240,6 +237,10 @@ async def run_load_test(
     try:
         if email and password:
             await _login(client, base_url, email, password)
+        # The clock starts after signing in: verifying the password is slow on purpose, and with a
+        # short run it used up the whole duration before the first search (0 requests).
+        start_wall = time.monotonic()
+        end_time = start_wall + duration_seconds
         tasks = [
             worker(
                 worker_id=i,
