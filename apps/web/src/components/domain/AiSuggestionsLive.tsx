@@ -20,7 +20,19 @@ import {
   type ProposedField,
 } from "@/lib/data/ai";
 
-export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; canReview: boolean }) {
+export function AiSuggestionsLive({
+  devUser,
+  canReview,
+  embedded = false,
+  onQueueChanged,
+}: {
+  devUser?: string;
+  canReview: boolean;
+  /** Dentro de la bandeja «Revisar pendientes» se omite el encabezado (change `revisar-pendientes-unificado`, 1.3). */
+  embedded?: boolean;
+  /** Se llama tras aprobar o rechazar con éxito, para que la bandeja recalcule su contador. */
+  onQueueChanged?: () => void;
+}) {
   const [suggestions, setSuggestions] = useState<AiSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -55,7 +67,10 @@ export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; ca
     setBusyId(suggestion.id);
     const result = await approveAiSuggestion(suggestion.id, fields, devUser, dimensionsText);
     setBusyId(null);
-    if (result.status === "ok") await reload();
+    if (result.status === "ok") {
+      await reload();
+      onQueueChanged?.();
+    }
     else setError(result.message);
   }
 
@@ -63,7 +78,10 @@ export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; ca
     setBusyId(suggestion.id);
     const result = await rejectAiSuggestion(suggestion.id, reason, devUser);
     setBusyId(null);
-    if (result.status === "ok") await reload();
+    if (result.status === "ok") {
+      await reload();
+      onQueueChanged?.();
+    }
     else setError(result.message);
   }
 
@@ -73,12 +91,14 @@ export function AiSuggestionsLive({ devUser, canReview }: { devUser?: string; ca
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Sugerencias de IA</h1>
-        <p className="max-w-3xl text-base text-gris-texto">
-          Propuestas de la IA pendientes de revisión, de cualquier pieza. Ninguna se aplica al catálogo sin que una persona la apruebe (RN-009).
-        </p>
-      </header>
+      {!embedded && (
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold text-tinta">Sugerencias de IA</h1>
+          <p className="max-w-3xl text-base text-gris-texto">
+            Propuestas de la IA pendientes de revisión, de cualquier pieza. Ninguna se aplica al catálogo sin que una persona la apruebe (RN-009).
+          </p>
+        </header>
+      )}
 
       {error && (
         <p role="alert" className="rounded-md bg-carmin-bg px-3 py-2 text-base text-carmin-texto">
