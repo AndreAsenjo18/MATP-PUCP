@@ -37,5 +37,5 @@
 
   - Sin desplazamiento horizontal en los tres anchos. Se movió de verdad la pieza sintética I-8653 a otra caja: aviso «1 pieza movida a …» y la tarjeta mostró la ruta nueva con «visto hoy».
   - **No verificado**: roles sin permiso de movimientos o de registrar piezas; teclado y lector de pantalla; «Verificar» tras este change (no se tocó su lógica); exportación real que pase a «Mis exportaciones»; modo demostración en el navegador.
-- [ ] 4.3 `npm run lint:web`, `npx vitest run` y `openspec validate --all --strict` en verde; tras aprobar el PR, `openspec archive rediseno-ux-busqueda -y`
-  - Parcial (2026-11-04): lint y tipos en verde, 1268 pruebas en 95 archivos, 26 de 26 specs válidas. Falta el archivo tras aprobar el PR.
+- [x] 4.3 `npm run lint:web`, `npx vitest run` y `openspec validate --all --strict` en verde; tras aprobar el PR, `openspec archive rediseno-ux-busqueda -y`
+  - Parcial (2026-11-04): lint y tipos en verde, 1268 pruebas en 95 archivos, 26 de 26 specs válidas. PR fusionado en `main`; archivado el 2026-11-10.
