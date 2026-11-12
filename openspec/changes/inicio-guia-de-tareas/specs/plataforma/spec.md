@@ -9,8 +9,8 @@ La pantalla de Inicio MUST abrir con la pregunta «¿Qué desea hacer?» y tarje
 - **THEN** ve las seis tarjetas de tarea, «Revisar pendientes» con el número 90, y la línea «318 piezas · 117 sin código I · 138 sin foto» con enlace a las piezas incompletas
 
 #### Scenario: Personal de depósito
-- **WHEN** abre el Inicio un rol que puede buscar y mover piezas pero no importar, revisar pendientes ni administrar
-- **THEN** solo ve las tarjetas «Buscar una pieza» y «Registrar una pieza nueva» si tiene ese permiso, y no ve «Cargar datos o fotos», «Revisar pendientes» ni «Configuración»
+- **WHEN** abre el Inicio un rol que puede buscar y mover piezas pero no importar, revisar duplicados o sugerencias, ver reportes ni administrar
+- **THEN** solo ve las tarjetas «Buscar una pieza» y «Registrar una pieza nueva» si tiene ese permiso, y no ve «Cargar datos o fotos», «Revisar pendientes», «Sacar un reporte» ni «Configuración»
 
 #### Scenario: Nada pendiente
 - **WHEN** no hay elementos por revisar

@@ -733,8 +733,7 @@ class SyntheticCatalogBuilder:
             source_name=SOURCE_NAME,
             header_signature=header_signature(SABANA_HEADERS),
             mapping=MappingSpecV1.model_validate(SABANA_TEMPLATE_MAPPING).as_json(),
-            description="[SUPUESTO] Columnas ilustrativas de data/fixtures/sabana_sintetica_v1.xlsx "
-            "hasta recibir el Excel real (A1).",
+            description="Columnas de la sábana de ejemplo (datos sintéticos).",
         )
         self.session.add(template)
         self.session.add(
@@ -744,8 +743,7 @@ class SyntheticCatalogBuilder:
                 source_name=DEMO_SOURCE_NAME,
                 header_signature=header_signature(DEMO_BATCH_HEADERS),
                 mapping=MappingSpecV1.model_validate(DEMO_BATCH_TEMPLATE_MAPPING).as_json(),
-                description="[SUPUESTO] Columnas del lote de demostración sintético "
-                "(data/fixtures/lote_demo/).",
+                description="Columnas del lote de demostración (datos sintéticos).",
             )
         )
         sync_predefined_templates(self.session)  # the real formats (formatos-reales-importacion)

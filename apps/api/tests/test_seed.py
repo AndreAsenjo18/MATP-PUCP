@@ -300,9 +300,10 @@ SABANA_FIXTURE = FIXTURES / "sabana_sintetica_v1.xlsx"
 
 
 def test_seed_template_is_v1_for_the_synthetic_sabana(seeded: tuple[Session, Any]) -> None:
-    """Task 3.4 of plantillas-mapeo-y-normalizacion: the seed template is v1, marked
-    [SUPUESTO], with the signature of the headers of ``data/fixtures/sabana_sintetica_v1.xlsx``
-    computed as the API does, and its mapping is valid for those headers."""
+    """Task 3.4 of plantillas-mapeo-y-normalizacion: the seed template is v1, described in
+    plain language (no internal notes), with the signature of the headers of
+    ``data/fixtures/sabana_sintetica_v1.xlsx`` computed as the API does, and its mapping is
+    valid for those headers."""
     session, _summary = seeded
     template = session.scalars(
         select(ImportMappingTemplate).where(
@@ -313,7 +314,8 @@ def test_seed_template_is_v1_for_the_synthetic_sabana(seeded: tuple[Session, Any
     headers = [str(cell.value) for cell in next(sheet.iter_rows(max_row=1))]
 
     assert template.mapping["version"] == 1
-    assert "[SUPUESTO]" in (template.description or "")
+    assert "[SUPUESTO]" not in (template.description or "")
+    assert template.description
     assert headers == HEADERS
     assert template.header_signature == header_signature(headers)
     spec = read_mapping(template.mapping)
@@ -332,7 +334,8 @@ def test_seed_has_a_template_that_recognizes_the_demo_batch(seeded: tuple[Sessio
 
     spec = read_mapping(template.mapping)
 
-    assert "[SUPUESTO]" in (template.description or "")
+    assert "[SUPUESTO]" not in (template.description or "")
+    assert template.description
     assert template.header_signature == header_signature(DEMO_BATCH_HEADERS)
     assert isinstance(spec, MappingSpecV1)
     assert [column.source for column in spec.columns] == DEMO_BATCH_HEADERS

@@ -441,3 +441,14 @@ Las confirman Sergio y André con el museo (los desarrolladores no hablan con el
 | IR2 | ¿Desde qué proporción de filas con el mismo dato faltante se culpa al formato aplicado? | [SUPUESTO] 80 % (constante `FORMAT_CAUSE_RATIO`). | Cuándo se sugiere cambiar de formato | Baja |
 | IR3 | ¿Prefiere el museo dejar fuera un grupo de filas con una confirmación, o directamente? | [SUPUESTO] Con una confirmación breve. | Un clic más al descartar | Baja |
 | IR4 | ¿La barra de aprobación debe mostrar también los conflictos sin decidir, o solo el recuento? | [SUPUESTO] Solo el recuento en una frase. | Texto de la barra | Baja |
+
+## IG. Inicio como guía de tareas (change `inicio-guia-de-tareas`, 2026-11-10)
+
+Las confirman Sergio y André con el museo (los desarrolladores no hablan con el cliente).
+
+| ID | Pregunta | Supuesto | Impacto | Prioridad |
+|---|---|---|---|---|
+| IG1 | ¿Los verbos de las tarjetas del Inicio son los que usa el museo? | [SUPUESTO] «Buscar una pieza», «Registrar una pieza nueva», «Cargar datos o fotos», «Revisar pendientes», «Sacar un reporte», «Configuración». Se validan con la prueba de 5 segundos. | Solo textos | Media |
+| IG2 | ¿Los nombres del menú lateral por tarea («Buscar piezas», «Cargar datos», «Revisar pendientes», «Configuración») le sirven al museo? | [SUPUESTO] Sí. Los aplica la Base cuando cambie el menú. | Solo textos | Media |
+| IG3 | ¿Dónde debe vivir la evolución de completitud y la tabla por colección, ahora que salen del Inicio? | [SUPUESTO] En ninguna pantalla por ahora; los datos siguen en la API. Si el museo los pide, se ofrecen como un reporte. | Se pierde esa vista | Media |
+| IG4 | ¿Debe «Registrar una pieza nueva» ser también una entrada del menú para quien registra a diario? | [SUPUESTO] No: es una tarjeta del Inicio y el botón «Nueva pieza» de Búsqueda. | Un clic más para quien registra a diario | Baja |

@@ -139,6 +139,14 @@ export function plainMessage(text: string): string {
     .trim();
 }
 
+/** Notas internas del equipo entre corchetes, p. ej. «[SUPUESTO]» o «[SUPUESTO A1]». */
+const INTERNAL_NOTE = /\[\s*SUPUESTO[^\]]*\]\s*/gi;
+
+/** Descripción apta para mostrar: sin notas internas del equipo (`[SUPUESTO]`) ni referencias a requisitos. */
+export function plainDescription(text: string | null | undefined): string {
+  return plainMessage((text ?? "").replace(INTERNAL_NOTE, ""));
+}
+
 /** Opciones de `call`: las pantallas que aún muestran referencias a requisitos las conservan. */
 export interface CallOptions {
   keepReferences?: boolean;

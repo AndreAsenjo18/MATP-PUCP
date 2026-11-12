@@ -105,6 +105,9 @@ describe("panel de formato (cuando no se aplicó solo)", () => {
     );
     const text = visibleText(html);
     expect(text).toContain("No reconocemos el formato de este archivo");
+    // HU-06: la nota interna del equipo no se ve en pantalla.
+    expect(text).not.toContain("[SUPUESTO");
+    expect(text).toContain("Columnas ilustrativas.");
     expect(text.indexOf("Sábana 2023 · se parece 72 %")).toBeLessThan(text.indexOf("Plantilla sábana sintética v1"));
     expect(text).toContain("Usar este formato");
     expect(text).toContain("Ajustar columnas");

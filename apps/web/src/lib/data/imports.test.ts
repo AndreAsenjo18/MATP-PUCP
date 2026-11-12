@@ -14,6 +14,7 @@ import {
   isProcessing,
   mappingRequest,
   batchStateText,
+  plainDescription,
   plainMessage,
   progressStep,
   progressText,
@@ -396,5 +397,18 @@ describe("filas omitidas por repetir el encabezado (formatos-reales-importacion,
     expect(skippedHeaderRowsNotice({ counts: { skipped_header_rows: 1 } } as never)).toContain("1 fila no se cargó");
     expect(skippedHeaderRowsNotice({ counts: {} } as never)).toBeNull();
     expect(skippedHeaderRowsNotice(null)).toBeNull();
+  });
+});
+
+describe("plainDescription (HU-06)", () => {
+  it("quita las notas internas entre corchetes y deja el texto", () => {
+    expect(plainDescription("[SUPUESTO] Columnas ilustrativas.")).toBe("Columnas ilustrativas.");
+    expect(plainDescription("[SUPUESTO A1] Columnas de la sábana (RN-010).")).toBe("Columnas de la sábana.");
+  });
+
+  it("acepta una descripción vacía o ausente", () => {
+    expect(plainDescription(null)).toBe("");
+    expect(plainDescription(undefined)).toBe("");
+    expect(plainDescription("[SUPUESTO]")).toBe("");
   });
 });
