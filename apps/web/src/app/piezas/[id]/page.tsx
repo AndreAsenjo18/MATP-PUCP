@@ -2,7 +2,9 @@
 
 /**
  * Pantalla 4 — Ficha de pieza: Datos generales · Identificadores (I con candado) · Fotografías ·
- * Ubicación e historial de movimientos · Datos de origen · Auditoría · Sugerencias IA.
+ * Ubicación e historial de movimientos · Datos de origen · Auditoría.
+ * (Change `retirar-sugerencias-ia-ficha`: el panel de Sugerencias de IA se quitó de esta pantalla;
+ * la IA se sigue pidiendo y revisando desde `carga-masiva-con-ia` y `/ia/sugerencias`.)
  * Badges de completitud y de régimen (comodato). Prioridad alta (docs/PROMPT_BASE.md Fase 6).
  * Las secciones visuales vienen de `components/domain/PieceSheet`; aquí quedan sesión, store y acciones.
  *
@@ -29,7 +31,6 @@ import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
 
-import { AiSuggestPanel } from "@/components/domain/AiSuggestPanel";
 import { AuditTrailPanel } from "@/components/domain/AuditTrailPanel";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { IdentifierAddForm } from "@/components/domain/IdentifierAddForm";
@@ -416,13 +417,6 @@ function LiveFichaContent({ pieceId }: { pieceId: string }) {
             }}
           />
           <ConservationLive pieceId={pieceId} />
-          <AiSuggestPanel
-            pieceId={pieceId}
-            devUser={devUser}
-            canRequest={hasPermission("ai.request")}
-            canReview={hasPermission("ai.review")}
-            onChanged={() => setReloads((count) => count + 1)}
-          />
           <p className="text-sm text-gris-texto">Ubicación, datos de origen y auditoría de esta ficha se conectan a la API en sus changes.</p>
         </>
       )}

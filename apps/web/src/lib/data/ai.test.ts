@@ -10,7 +10,6 @@ import {
   fieldsOf,
   listPendingAiSuggestions,
   rejectAiSuggestion,
-  suggestCataloging,
 } from "./ai";
 
 // Modo `mock` es el valor por defecto sin NEXT_PUBLIC_API_MODE; `useLive` sustituye `fetch` por un
@@ -43,51 +42,6 @@ function requestAt(fetchMock: { mock: { calls: Array<[Request]> } }, index: numb
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
-});
-
-describe("suggestCataloging", () => {
-  it("pide la sugerencia sobre el campo indicado", async () => {
-    const suggestion = { id: SUGGESTION, status: "PENDING", provider: "mock", output_data: { fields: [] } };
-    const fetchMock = useLive(async () => json(201, suggestion));
-
-    const result = await suggestCataloging(PIECE, "notes");
-
-    const request = requestAt(fetchMock, 0);
-    expect(request.method).toBe("POST");
-    expect(new URL(request.url).pathname).toBe("/api/v1/ai/suggest-cataloging");
-    expect(await request.json()).toEqual({ piece_id: PIECE, field: "notes" });
-    expect(result).toEqual({ status: "ok", value: suggestion });
-  });
-
-  it("un 503 del proveedor se traduce al mensaje de «no disponible»", async () => {
-    useLive(async () => json(503, { code: "ai_unavailable", message: "El proveedor de IA no respondió." }));
-
-    const result = await suggestCataloging(PIECE, "notes");
-
-    expect(result).toEqual({ status: "rejected", code: "ai_unavailable", message: AI_ERROR_MESSAGES.ai_unavailable });
-  });
-
-  it("un campo de origen no permitido llega como 422", async () => {
-    useLive(async () => json(422, { code: "source_field_not_allowed", message: "x" }));
-
-    const result = await suggestCataloging(PIECE, "lender_name");
-
-    expect(result).toEqual({
-      status: "rejected",
-      code: "source_field_not_allowed",
-      message: AI_ERROR_MESSAGES.source_field_not_allowed,
-    });
-  });
-
-  it("en modo mock no llama a la red", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await suggestCataloging(PIECE, "notes");
-
-    expect(result.status).toBe("unavailable");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
 });
 
 describe("approveAiSuggestion", () => {

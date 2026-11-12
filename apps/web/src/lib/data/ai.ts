@@ -1,8 +1,9 @@
 /**
- * Sugerencias de IA en modo `live` (change `ia-extraccion-texto-libre`, tareas 3.1 y 3.2; RIA-01,
- * RN-009). `POST /ai/suggest-cataloging` pide una propuesta al proveedor configurado
- * (`AI_PROVIDER`); queda PENDIENTE hasta que alguien con `ai.review` la aprueba (total, parcial o
- * editada) o la rechaza con motivo — ninguna sugerencia escribe el catálogo por sí sola.
+ * Sugerencias de IA en modo `live` (change `ia-extraccion-texto-libre`, tarea 3.2; RIA-01,
+ * RN-009): aprobar (total, parcial o editada) o rechazar con motivo una sugerencia ya generada —
+ * ninguna sugerencia escribe el catálogo por sí sola. Las sugerencias las generan
+ * `carga-masiva-con-ia` (una por fila) o `POST /ai/suggest-cataloging` directamente (sin UI propia
+ * tras el change `retirar-sugerencias-ia-ficha`).
  *
  * En modo `mock` estas operaciones responden `unavailable` (vía `call`, igual que el asistente de
  * importación): la pantalla de ejemplos de demostración en esta misma ruta (change
@@ -23,12 +24,6 @@ export interface ProposedField {
   source_fragment: string | null;
   confidence: number;
 }
-
-/** Campos de origen que se pueden enviar a la IA (`ai_suggestions/privacy.py`). */
-export const AI_SOURCE_FIELDS: { value: string; label: string }[] = [
-  { value: "notes", label: "Notas" },
-  { value: "description", label: "Descripción" },
-];
 
 export const FIELD_LABELS: Record<string, string> = {
   dimensions: "Medida",
@@ -124,21 +119,6 @@ export function fieldValueText(item: Pick<ProposedField, "field" | "value">): st
     return `${value.description ?? "Exposición"}${value.year ? ` (${value.year})` : ""}`;
   }
   return JSON.stringify(value);
-}
-
-/** Pide una sugerencia a la IA sobre un campo de texto libre de la pieza (RIA-01). */
-export async function suggestCataloging(
-  pieceId: string,
-  field: string,
-  devUser?: string,
-): Promise<ImportResult<AiSuggestion>> {
-  return call(
-    () =>
-      client(devUser).POST("/api/v1/ai/suggest-cataloging", {
-        body: { piece_id: pieceId, field },
-      }) as Promise<{ data?: AiSuggestion; error?: unknown }>,
-    AI_ERROR_MESSAGES,
-  );
 }
 
 /**

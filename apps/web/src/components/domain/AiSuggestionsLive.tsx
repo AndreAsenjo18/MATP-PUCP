@@ -2,14 +2,14 @@
 
 /**
  * Cola de revisión de sugerencias de IA, modo `live` (change `ia-extraccion-texto-libre`, tarea
- * 3.2; RIA-01, RN-009). Todas las sugerencias pendientes del sistema (no solo las de una pieza),
- * con el mismo aprobar/rechazar que la ficha. Requiere `ai.review`: quien solo puede pedir
- * sugerencias (`ai.request`) las revisa desde la propia ficha de la pieza.
+ * 3.2; RIA-01, RN-009). Todas las sugerencias pendientes del sistema (no solo las de una pieza).
+ * Requiere `ai.review`. Las sugerencias llegan por `carga-masiva-con-ia` (una por fila) o por el
+ * endpoint `suggest-cataloging` (sin UI propia desde el change `retirar-sugerencias-ia-ficha`).
  */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { AiSuggestionCard } from "@/components/domain/AiSuggestPanel";
+import { AiSuggestionCard } from "@/components/domain/AiSuggestionCard";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { Card } from "@/components/ui/Card";
 import {
@@ -86,7 +86,7 @@ export function AiSuggestionsLive({
   }
 
   if (!canReview) {
-    return <PermissionNotice>Su rol no puede revisar sugerencias de IA. Pídalas desde la ficha de cada pieza si tiene permiso para solicitarlas.</PermissionNotice>;
+    return <PermissionNotice>Su rol no puede revisar sugerencias de IA.</PermissionNotice>;
   }
 
   return (
