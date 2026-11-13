@@ -7,6 +7,7 @@ import { Badge, BADGE_INTENTS, badgeIntentClass } from "./Badge";
 import { Button, BUTTON_VARIANTS, buttonClassName } from "./Button";
 import { Card, cardClassName } from "./Card";
 import { TAB_LIST_CLASS, tabClassName } from "./Tabs";
+import { scrollEdges, TableScroller } from "./TableScroller";
 import { Input } from "./Input";
 import { Select } from "./Select";
 import { Textarea } from "./Textarea";
@@ -106,6 +107,34 @@ describe("Pestañas (un solo estilo en todo el sistema)", () => {
     expect(TAB_LIST_CLASS).toContain("p-1.5");
     expect(tabClassName(false)).toContain("whitespace-nowrap");
     expect(tabClassName(false)).toContain("shrink-0");
+  });
+});
+
+describe("TableScroller (flechas de la tabla de Reportes)", () => {
+  it("sabe hacia qué lados queda tabla por ver", () => {
+    expect(scrollEdges(0, 1200, 800)).toEqual({ left: false, right: true });
+    expect(scrollEdges(200, 1200, 800)).toEqual({ left: true, right: true });
+    expect(scrollEdges(400, 1200, 800)).toEqual({ left: true, right: false });
+    // Una tabla que cabe no tiene a dónde ir; 1 px de redondeo no cuenta.
+    expect(scrollEdges(0, 800, 800)).toEqual({ left: false, right: false });
+    expect(scrollEdges(0.5, 801, 800)).toEqual({ left: false, right: false });
+  });
+
+  it("el cuadro es una región con nombre que recibe el foco; sin medir el ancho no muestra flechas", () => {
+    const html = render(
+      <TableScroller label="Tabla del reporte">
+        <table>
+          <tbody>
+            <tr>
+              <td>Toro de Pucará</td>
+            </tr>
+          </tbody>
+        </table>
+      </TableScroller>,
+    );
+    expect(html).toMatch(/<div id="[^"]+" role="region" aria-label="Tabla del reporte" tabindex="0" class="[^"]*overflow-auto/);
+    expect(html).not.toContain("Ver las columnas");
+    expect(visibleText(html)).toContain("Toro de Pucará");
   });
 });
 

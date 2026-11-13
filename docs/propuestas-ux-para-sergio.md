@@ -2,6 +2,64 @@
 
 Salen de la remodelación visual (change `remodelacion-visual`). La remodelación es solo de diseño: **las propuestas no están aplicadas**, salvo las que se marcan como «Aplicado, para avisar», que André decidió aplicar. Cada una indica la pantalla, qué se ve hoy, la propuesta y el motivo, para que Sergio decida.
 
+## Pedidos del cliente
+
+### C1. Reportes: filtrar por todos los datos de la ficha y exportar a Excel solo lo filtrado
+
+- **Pedido del cliente** (lo transmitió André el 2026-11-13):
+  1. Poder filtrar los reportes por todos los datos que se anotan al registrar una pieza.
+  2. Que el Excel traiga solo las piezas filtradas.
+- **No implementado:** son filtros y comportamiento nuevos, fuera de la remodelación visual.
+
+**Cómo funciona hoy la exportación.** Con datos reales, el Excel de cada reporte se pide con los mismos parámetros que la vista en pantalla: trae las mismas piezas filtradas, con todas las columnas, la fecha, el usuario y los filtros en la cabecera. Lo mismo ocurre con la descarga de «Información incompleta» (Excel o CSV), que respeta las alertas y la colección elegidas. En modo demostración no se genera ningún archivo. La API ya aplica los filtros de búsqueda a los cuatro reportes que listan piezas.
+
+**Qué filtros ofrece hoy cada reporte en pantalla:**
+
+| Reporte | Filtros en pantalla |
+|---|---|
+| Inventario general | Incluir comodatos |
+| Por colección | Colección (obligatoria); incluir comodatos |
+| Por ubicación | Ubicación (obligatoria); no verificadas en los últimos N días |
+| Piezas agrupadas por… | Agrupar por; incluir comodatos; y el panel completo de filtros de Buscar (abajo) |
+| Información incompleta | Alertas (sin código I, sin foto, sin ubicación, campos obligatorios incompletos, campos recomendados incompletos, código no normalizable); colección, con o sin subcolecciones |
+
+El panel completo de filtros de Buscar tiene: código o texto, denominación, categoría, material, «descripción contiene», colección (con subcolecciones), estado de conservación, ubicación, régimen de tenencia, código I (con o sin), época desde y hasta (año), autor, procedencia y completitud de la ficha. Solo aparece en «Piezas agrupadas por…».
+
+**Datos que se anotan al registrar una pieza y si hoy se puede filtrar por ellos:**
+
+| Dato del formulario | ¿Hay filtro? |
+|---|---|
+| Denominación | Sí |
+| Código I | Sí: por su valor («código o texto») y por tenerlo o no |
+| Régimen de tenencia | Sí |
+| Colección | Sí |
+| Categoría | Sí |
+| Tipo de bien | **No** |
+| Disponibilidad | **No** |
+| Comodante | **No** (además es un dato restringido por rol) |
+| Convenio de comodato | **No** (también restringido) |
+| Propietario legal | **No** |
+| Descripción | Sí («descripción contiene») |
+| Autor | Sí |
+| Procedencia | Sí |
+| Época (texto original) | **En parte:** por rango de años; las épocas escritas solo como texto no se pueden comparar y se avisan aparte |
+| Forma de adquisición | **No** |
+| Fecha de ingreso | **No** (haría falta un rango de fechas) |
+| Registrado por | **No** |
+| Ubicación inicial | **En parte:** se filtra por la ubicación actual, no por la inicial |
+| Medidas (texto original) | **No** |
+| Materiales | Sí (un material a la vez) |
+| Estado de conservación | Sí |
+| Observaciones | **No** |
+
+Faltan 10 datos (tipo de bien, disponibilidad, comodante, convenio de comodato, propietario legal, forma de adquisición, fecha de ingreso, registrado por, medidas y observaciones), y 2 se cubren solo en parte (época y ubicación inicial).
+
+**Propuesta:**
+
+1. Mostrar el panel completo de filtros en los cuatro reportes que listan piezas, no solo en «Piezas agrupadas por…»; la API ya los acepta.
+2. Agregar los filtros que faltan, empezando por los de listas cerradas (tipo de bien, disponibilidad, forma de adquisición), el rango de fecha de ingreso y «registrado por».
+3. Decir junto a «Exportar a Excel» que el archivo trae solo las piezas filtradas, por ejemplo: «El Excel trae las mismas piezas que ve en pantalla, con todas las columnas».
+
 ## Aplicado, para avisar
 
 Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como consecuencia directa de la remodelación. Se anotan para que Sergio los conozca y pueda revisarlos.

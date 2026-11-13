@@ -9,7 +9,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { buttonClassName } from "@/components/ui/Button";
-import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
+import { TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
+import { TableScroller } from "@/components/ui/TableScroller";
 import type { ApiSchemas } from "@/lib/api/client";
 import { fetchDuplicateCollections } from "@/lib/data/duplicates";
 import type { IncompleteUrlState } from "@/lib/data/reports";
@@ -172,7 +173,7 @@ export function IncompleteReportPanel({
       {result?.status === "unavailable" && <p className="text-base text-gris-texto">{result.message}</p>}
       {result?.status === "ok" && (
         <>
-          <div className={TABLE_BOX_CLASS}>
+          <TableScroller label="Tabla de piezas incompletas">
             <table className={TABLE_CLASS}>
               <thead className={THEAD_CLASS}>
                 <tr>
@@ -208,7 +209,7 @@ export function IncompleteReportPanel({
                 )}
               </tbody>
             </table>
-          </div>
+          </TableScroller>
           <div className="flex items-center justify-between text-base text-gris-texto">
             <span>
               {result.page.total} pieza{result.page.total === 1 ? "" : "s"} · página {result.page.page}

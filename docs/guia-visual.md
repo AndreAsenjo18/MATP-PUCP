@@ -119,6 +119,8 @@ En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni co
 
 Estilo común en `components/ui/Table.ts`: la fila de títulos en crema, en seminegrita y fija al desplazarse; filas con una línea fina arriba; y el desplazamiento solo dentro del cuadro de la tabla (alto máximo de 70 % de la pantalla), nunca de la página.
 
+En Reportes, el cuadro es `TableScroller` (`components/ui/TableScroller.tsx`): cuando la tabla es más ancha que su cuadro aparecen dos flechas de 44 px que la desplazan a los lados (se desactivan al llegar a cada extremo; inmediatas con «reducir movimiento»), y el cuadro recibe el foco para recorrerlo con el teclado.
+
 ## Administración (maqueta B)
 
 - **Pestañas:** áreas en el contenedor de las pestañas principales; secciones subrayadas.

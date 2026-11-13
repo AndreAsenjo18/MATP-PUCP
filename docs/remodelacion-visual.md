@@ -275,6 +275,7 @@ Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos tipos de re
 - **Tipos de reporte** como tarjetas con el icono en un círculo de color, tres arriba y dos abajo desde 1024 px. El elegido lleva borde terracota y una marca de visto, además de `aria-pressed`.
 - **Resultado:** el título en negrita y, a su lado, «Exportar a Excel» en verde sólido (y «Vista imprimible» con datos reales). Debajo, la cantidad como etiqueta, la línea de columnas en pantalla y «Ver las N columnas» con borde.
 - **Tabla** con el estilo común: fila de títulos en crema y fija, grupos en crema suave y desplazamiento solo dentro de su cuadro.
+- **Flechas para desplazar la tabla** (pedido del 2026-11-13, solo comportamiento visual): en la tabla del reporte y en la de «Información incompleta», dos flechas de 44 px aparecen cuando la tabla no cabe y la desplazan a los lados. Verificado a 1366 px (sin flechas: la tabla cabe), 683 y 320 px (aparecen, desplazan y se desactivan en cada extremo, sin desplazar la página).
 - **Vista de impresión:** sin cambios de diseño. Sigue en blanco y negro limpio, sin cabecera terracota ni trama; solo toma la letra Manrope del resto del sistema.
 
 **Lo que no sigue a la maqueta, y por qué:**

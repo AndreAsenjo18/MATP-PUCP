@@ -10,7 +10,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS } from "@/components/ui/Table";
+import { TABLE_CLASS, TD_CLASS, TH_CLASS } from "@/components/ui/Table";
+import { TableScroller } from "@/components/ui/TableScroller";
 import { DisclosureSummary } from "@/components/domain/DisclosureSummary";
 import {
   DESCRIPTION_COLUMN,
@@ -69,7 +70,7 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
   }
 
   return (
-    <div className={TABLE_BOX_CLASS}>
+    <TableScroller label="Tabla del reporte">
       <table className={TABLE_CLASS}>
         <thead className="text-tinta">
           <tr>
@@ -102,7 +103,7 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
           );
         })}
       </table>
-    </div>
+    </TableScroller>
   );
 }
 
