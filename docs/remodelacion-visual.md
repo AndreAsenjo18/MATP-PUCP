@@ -95,7 +95,16 @@ En ventanas de poca altura, el menú flotante no cabía y el pie (insignia, pers
 
 Con el teclado, 20 de 20 comprobaciones del menú de pantallas estrechas. Capturas en `docs/capturas-piloto/remodelacion/fase1-menu/`.
 
-**Decisión para revisar: el texto de la insignia.** A 16 px, la insignia completa, «Modo demostración (datos sintéticos)», mide 334 px, y el pie del menú deja 240 px. Para que entre en una línea, la insignia muestra «Modo demostración». El resto, «(datos sintéticos)», sigue en la ayuda que aparece al pasar el cursor y en el texto para el lector de pantalla. Si debe verse entero, la alternativa es ensanchar el menú de 288 a 384 px, lo que resta ese espacio al contenido en todas las pantallas.
+**Decisión del texto de la insignia (aceptada el 2026-11-13):** A 16 px, la insignia completa, «Modo demostración (datos sintéticos)», mide 334 px, y el pie del menú deja 240 px. Para que entre en una línea, la insignia muestra «Modo demostración». El resto, «(datos sintéticos)», sigue en la ayuda que aparece al pasar el cursor y en el texto para el lector de pantalla. Si debe verse entero, la alternativa es ensanchar el menú de 288 a 384 px, lo que resta ese espacio al contenido en todas las pantallas. André decidió dejarla corta y no ensanchar el menú.
+
+## Segunda corrección de la base: foco de los campos, margen del menú y textos
+
+- **Listas desplegables:** al enfocarlas se veía un contorno cortado, con una barra azul oscura pegada al borde derecho (en «Categoría» de Buscar y «Eliminado por» de la Papelera). La dibujaba el control nativo de Windows encima del contorno del sistema. Ahora las listas no usan el aspecto nativo: llevan una flecha propia y el contorno de foco es el del sistema, terracota, de 3 px, completo y redondeado como el campo. Con colores forzados (alto contraste) vuelve el control nativo.
+- **Comprobación:** en 23 pantallas, a 1366 y 320 px, ningún campo (texto, lista, área de texto ni fecha) tiene el contorno recortado por un contenedor, y ninguna lista conserva el aspecto nativo.
+- **Campos de fecha:** el contorno es completo y terracota. La parte que se está editando («dd», «mm» o «aaaa») se resalta con el color de selección del sistema operativo, azul en Windows. Chrome 157 no deja que la página cambie ese color: no aplica `:focus` a esas partes, ni con `!important` ni con `accent-color`. Queda así, y no es un contorno cortado.
+- **Margen del menú en Administración:** medido en Buscar y en las pestañas Personas, Auditoría, Papelera y Colecciones, de 1024 a 2560 px, expandido y contraído: el menú tiene el mismo margen de 12 px arriba y a la izquierda en todas. El círculo «N» que toca la esquina inferior izquierda es el indicador de desarrollo de Next.js, que solo aparece con el servidor de desarrollo.
+- **Textos:** los nueve avisos «Cambie de rol desde la cabecera» y la ayuda del acceso dicen ahora «desde el menú». Está anotado para Sergio, junto con el rol que no se repite al pie del menú.
+- **Change `inicio-guia-de-tareas`:** alineado con los nombres del menú («Buscar» y «Administración»). El menú no cambia.
 
 ## Pantallas y rutas
 

@@ -140,7 +140,7 @@ export function AiSuggestionsQueue({ embedded = false, onQueueChanged }: { embed
   }
 
   if (!hasPermission("ai.review")) {
-    return <PermissionNotice>Su rol no puede revisar sugerencias de la IA. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no puede revisar sugerencias de la IA. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   const pending = store.aiSuggestions.filter((s) => s.status === "PENDING");

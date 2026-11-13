@@ -53,7 +53,7 @@ El encabezado «Sesión de demostración…» y las listas leídas de `useMockSt
 
 ### D6. Menú: seis entradas con nombres de tarea
 
-`NAV_ITEMS` pasa a: Inicio, Buscar piezas, Cargar datos, Revisar pendientes, Reportes, Configuración. «Registrar una pieza nueva» no es una entrada del menú: es una tarjeta del Inicio y el botón «Nueva pieza» de Buscar piezas (evita una entrada más para una acción puntual). Las direcciones no cambian (`/busqueda`, `/importacion`, `/pendientes`, `/reportes`, `/administracion`).
+`NAV_ITEMS` pasa a: Inicio, Buscar, Cargar datos, Revisar pendientes, Reportes, Administración (nombres alineados con la remodelación visual, change `remodelacion-visual`). «Registrar una pieza nueva» no es una entrada del menú: es una tarjeta del Inicio y el botón «Nueva pieza» de Buscar (evita una entrada más para una acción puntual). Las direcciones no cambian (`/busqueda`, `/importacion`, `/pendientes`, `/reportes`, `/administracion`).
 
 ### D7. Legibilidad de las tarjetas
 

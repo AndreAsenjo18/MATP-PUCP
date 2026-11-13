@@ -455,7 +455,7 @@ Las confirman Sergio y André con el museo (los desarrolladores no hablan con el
 | ID | Pregunta | Supuesto | Impacto | Prioridad |
 |---|---|---|---|---|
 | IG1 | ¿Los verbos de las tarjetas del Inicio son los que usa el museo? | [SUPUESTO] «Buscar una pieza», «Registrar una pieza nueva», «Cargar datos o fotos», «Revisar pendientes», «Sacar un reporte», «Configuración». Se validan con la prueba de 5 segundos. | Solo textos | Media |
-| IG2 | ¿Los nombres del menú lateral por tarea («Buscar piezas», «Cargar datos», «Revisar pendientes», «Configuración») le sirven al museo? | [SUPUESTO] Sí. Los aplica la Base cuando cambie el menú. | Solo textos | Media |
+| IG2 | ¿Los nombres del menú lateral por tarea («Buscar», «Cargar datos», «Revisar pendientes», «Administración») le sirven al museo? | [SUPUESTO] Sí. Los aplica la remodelación visual (change `remodelacion-visual`); la tarjeta del Inicio sigue diciendo «Configuración». | Solo textos | Media |
 | IG3 | ¿Dónde debe vivir la evolución de completitud y la tabla por colección, ahora que salen del Inicio? | [SUPUESTO] En ninguna pantalla por ahora; los datos siguen en la API. Si el museo los pide, se ofrecen como un reporte. | Se pierde esa vista | Media |
 | IG4 | ¿Debe «Registrar una pieza nueva» ser también una entrada del menú para quien registra a diario? | [SUPUESTO] No: es una tarjeta del Inicio y el botón «Nueva pieza» de Búsqueda. | Un clic más para quien registra a diario | Baja |
 

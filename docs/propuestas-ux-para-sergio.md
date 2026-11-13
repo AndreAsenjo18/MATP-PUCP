@@ -1,16 +1,26 @@
 # Propuestas de experiencia y textos para Sergio
 
-Salen de la remodelación visual (change `remodelacion-visual`). La remodelación es solo de diseño: **ninguna de estas propuestas está aplicada**. Cada una indica la pantalla, qué se ve hoy, la propuesta y el motivo, para que Sergio decida.
+Salen de la remodelación visual (change `remodelacion-visual`). La remodelación es solo de diseño: **las propuestas no están aplicadas**, salvo las que se marcan como «Aplicado, para avisar», que André decidió aplicar. Cada una indica la pantalla, qué se ve hoy, la propuesta y el motivo, para que Sergio decida.
+
+## Aplicado, para avisar
+
+Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como consecuencia directa de la remodelación. Se anotan para que Sergio los conozca y pueda revisarlos.
+
+### A1. «Cambie de rol desde la cabecera» pasa a «desde el menú»
+
+- **Pantallas:** el aviso de permisos por defecto (`components/layout/PermissionNotice.tsx`) y los avisos de Administración, Cargar datos (dos), Cargar fotos, Registrar pieza, Editar pieza, Reportes y Sugerencias: nueve textos. También la ayuda del acceso: «Puede cambiar de rol en cualquier momento desde el menú».
+- **Antes:** el botón «Cambiar de rol» estaba en la franja superior.
+- **Ahora:** la franja superior ya no existe y el botón está al pie del menú, así que los textos dicen «desde el menú».
+- **Motivo:** el texto mandaba a la persona a buscar algo que ya no existe.
+
+### A2. El rol no se repite al pie del menú si el nombre ya lo dice
+
+- **Pantalla:** el pie del menú, en todas las pantallas.
+- **Antes:** nombre y rol, siempre en dos líneas («Administrador MATP (sintético)» y debajo «Administrador»).
+- **Ahora:** el rol va debajo del nombre solo si el nombre no lo contiene. Con «Gabriela Curadora (sintética)» se sigue viendo «Gestor de colecciones (Curadora)».
+- **Motivo:** el pie tiene que caber siempre a la vista en ventanas bajas; repetir el rol ocupaba una línea sin dar información nueva.
 
 ## Urgentes: textos que la remodelación deja desactualizados
-
-### 1. «Cambie de rol desde la cabecera»
-
-- **Pantallas:** el aviso de permisos por defecto (`components/layout/PermissionNotice.tsx`) y los avisos de Administración, Cargar datos, Cargar fotos, Registrar pieza, Editar pieza, Reportes y Sugerencias. En el acceso, la ayuda «Puede cambiar de rol en cualquier momento desde la cabecera».
-- **Hoy:** el botón «Cambiar de rol» está en la franja superior.
-- **Después de la remodelación:** la franja superior desaparece y el botón queda al pie del menú.
-- **Propuesta:** «Cambie de rol desde el pie del menú», o un texto que no dependa del lugar.
-- **Motivo:** el texto mandaría a la persona a buscar algo que ya no existe.
 
 ### 2. Manual de usuario con los nombres antiguos del menú
 
@@ -23,8 +33,8 @@ Salen de la remodelación visual (change `remodelacion-visual`). La remodelació
 
 - **Pantallas:** el Inicio y el menú.
 - **Hoy:** la tarjeta del Inicio dice «Configuración» y el menú dice «Administración»; llevan al mismo lugar.
-- **Además:** el change `inicio-guia-de-tareas` propone para el menú «Buscar piezas» y «Configuración», y la remodelación usa «Buscar» y «Administración», como se decidió.
-- **Propuesta:** un solo nombre en el Inicio y en el menú, y alinear los dos changes antes de archivarlos.
+- **Ya resuelto:** el change `inicio-guia-de-tareas` se alineó el 2026-11-13 con los nombres del menú que decidió André («Buscar» y «Administración»). Su tarjeta del Inicio sigue diciendo «Configuración».
+- **Propuesta:** un solo nombre en la tarjeta del Inicio y en el menú.
 
 ### 3b. Enlace para saltar al contenido
 

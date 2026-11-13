@@ -144,6 +144,28 @@
   background-color: var(--color-tinta);
 }
 
+/*
+ * Listas desplegables sin el aspecto nativo: en Windows el control nativo dibuja su propio foco (una
+ * barra azul pegada al borde derecho) encima del contorno del sistema. Se dibuja la flecha aquí y se
+ * reserva su espacio; fuera de capa para que el relleno derecho gane a los px-* de cada pantalla.
+ * Con colores forzados (alto contraste) vuelve el control nativo.
+ */
+select:where(:not([multiple], [size])) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b534c' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.875rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-right: 2.75rem;
+}
+
+@media (forced-colors: active) {
+  select:where(:not([multiple], [size])) {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
 /* Los títulos principales siempre en peso 800, aunque la pantalla pida otro (por eso fuera de capa). */
 h1 {
   font-weight: 800;

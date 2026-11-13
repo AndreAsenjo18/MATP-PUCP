@@ -91,7 +91,7 @@ Los `h1` van siempre en peso 800.
 | `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `outline`, `danger`; tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
 | `Card`, `cardClassName` | `components/ui/Card.tsx` | Superficie base: blanco, borde arena, 24 px, sombra suave. Con `interactive`: realce, foco y movimiento corto |
 | `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre |
-| `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles |
+| `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
 | `IconCircle` | `components/ui/IconCircle.tsx` | Icono en círculo de color por tipo de tarea |
 | `StatChip` | `components/ui/StatChip.tsx` | Ficha de un dato en píldora; con `href`, es enlace y lleva flecha |
 | `TextileMark` | `components/brand/TextileMotif.tsx` | Rombo de tejido propio, decorativo |

@@ -158,7 +158,7 @@ function MockLogin() {
         <Select
           id="user"
           label="Ingresar como (persona sintética)"
-          hint="Cada persona demuestra un rol de la matriz de permisos. Puede cambiar de rol en cualquier momento desde la cabecera."
+          hint="Cada persona demuestra un rol de la matriz de permisos. Puede cambiar de rol en cualquier momento desde el menú."
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           className="p-3"

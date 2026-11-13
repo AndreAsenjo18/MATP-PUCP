@@ -43,7 +43,7 @@ function ImportacionContent() {
   const template = IMPORT_TEMPLATES[0];
 
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   return (
@@ -306,7 +306,7 @@ function ImportacionRouter() {
   const { hasPermission } = useSession();
   const params = useSearchParams();
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
   if (importScreen(params) === "picker") return <ImportOriginPicker />;
   return getApiMode() === "live" ? <LiveImportWizard /> : <ImportacionContent />;

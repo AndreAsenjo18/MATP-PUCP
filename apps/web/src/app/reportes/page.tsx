@@ -60,7 +60,7 @@ function ReportesContent() {
   }
 
   if (!hasPermission("reports.view")) {
-    return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   const live = getApiMode() === "live";

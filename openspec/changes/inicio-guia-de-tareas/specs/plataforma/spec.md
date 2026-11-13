@@ -31,11 +31,11 @@ La pantalla de Inicio MUST abrir con la pregunta «¿Qué desea hacer?» y tarje
 ## MODIFIED Requirements
 
 ### Requirement: Navegación principal con barra lateral responsive
-Las pantallas autenticadas MUST compartir una estructura común (`MainLayout`) con barra lateral de navegación en escritorio y, en pantallas menores de 768 px, un botón de menú con etiqueta visible que abre y cierra la navegación. La navegación SHALL tener como máximo seis entradas, nombradas por lo que la persona quiere hacer —«Inicio», «Buscar piezas», «Cargar datos», «Revisar pendientes», «Reportes» y, solo para quien administra, «Configuración»—, mostrar solo las secciones permitidas al rol activo (RF-039), marcar la sección actual, poder usarse con teclado (el menú móvil se cierra con Escape y al elegir una sección) y no producir desplazamiento horizontal en un móvil de 360 px. (RNF-001, RNF-010, RF-039)
+Las pantallas autenticadas MUST compartir una estructura común (`MainLayout`) con barra lateral de navegación en escritorio y, en pantallas menores de 768 px, un botón de menú con etiqueta visible que abre y cierra la navegación. La navegación SHALL tener como máximo seis entradas, nombradas por lo que la persona quiere hacer —«Inicio», «Buscar», «Cargar datos», «Revisar pendientes», «Reportes» y, solo para quien administra, «Administración»—, mostrar solo las secciones permitidas al rol activo (RF-039), marcar la sección actual, poder usarse con teclado (el menú móvil se cierra con Escape y al elegir una sección) y no producir desplazamiento horizontal en un móvil de 360 px. (RNF-001, RNF-010, RF-039)
 
 #### Scenario: Personal de depósito en móvil
 - **GIVEN** un Personal auxiliar de depósito en un móvil de 360 px de ancho
-- **WHEN** abre el menú y elige «Buscar piezas»
+- **WHEN** abre el menú y elige «Buscar»
 - **THEN** el menú se cierra, se muestra la pantalla elegida sin desplazamiento horizontal y en el menú solo aparecen las secciones que su rol permite
 
 #### Scenario: Escritorio
@@ -44,11 +44,11 @@ Las pantallas autenticadas MUST compartir una estructura común (`MainLayout`) c
 
 #### Scenario: Administrador
 - **WHEN** abre el menú un Administrador
-- **THEN** ve las seis entradas y «Configuración» es la última
+- **THEN** ve las seis entradas y «Administración» es la última
 
 #### Scenario: Rol sin permiso de administrar
 - **WHEN** abre el menú un rol sin permiso de administrar
-- **THEN** no ve «Configuración» y el menú tiene como máximo cinco entradas
+- **THEN** no ve «Administración» y el menú tiene como máximo cinco entradas
 
 #### Scenario: Pantalla sin sesión
 - **WHEN** no hay sesión iniciada (pantalla de acceso)

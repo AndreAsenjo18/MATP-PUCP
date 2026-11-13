@@ -213,7 +213,7 @@ function AdministracionContent() {
   const current = initialSection(requested ?? params.get("pestana"), sections);
 
   if (!current) {
-    return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   return (
