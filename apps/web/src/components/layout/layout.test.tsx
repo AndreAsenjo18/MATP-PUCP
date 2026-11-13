@@ -6,7 +6,7 @@ import { render, visibleText } from "@/test/render";
 import { memoryStorage } from "@/test/memory-storage";
 
 import { isActive, mobileMenuReducer, NAV_ITEMS, readSidebarCollapsed, SIDEBAR_STORAGE_KEY, visibleNavItems, writeSidebarCollapsed } from "./navigation";
-import { MenuAccount } from "./MenuAccount";
+import { MenuAccount, roleIsRedundant } from "./MenuAccount";
 import { PermissionNotice } from "./PermissionNotice";
 import { Sidebar } from "./Sidebar";
 
@@ -83,14 +83,15 @@ describe("Sidebar", () => {
   it("marca la sección actual con aria-current y fondo crema, y oculta los iconos al lector de pantalla", () => {
     const html = render(<Sidebar items={NAV_ITEMS.slice(0, 3)} pathname="/busqueda" />);
     expect(html).toContain('aria-label="Navegación principal"');
-    expect(html).toContain("bg-tinta");
+    // Sin fondo propio: va sobre el panel oscuro y deja ver la pista de desplazamiento.
+    expect(html).toMatch(/<nav[^>]*class="text-crema"/);
     expect(html).toMatch(/aria-current="page"[^>]*class="[^"]*bg-crema text-tinta[^"]*"[^>]*href="\/busqueda"|href="\/busqueda"[^>]*aria-current="page"/);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html.match(/<svg[^>]*aria-hidden="true"/g)).toHaveLength(3);
     expect(visibleText(html)).toBe("Inicio Buscar Cargar datos");
-    // Cada sección es una píldora de 48 px.
+    // Cada sección es una píldora de 44 px.
     expect(html.match(/rounded-full/g)).toHaveLength(3);
-    expect(html.match(/min-h-12/g)).toHaveLength(3);
+    expect(html.match(/min-h-11/g)).toHaveLength(3);
   });
 });
 
@@ -152,7 +153,7 @@ describe("MenuAccount (cuenta al pie del menú)", () => {
     expect(visibleText(html)).toContain("Administrador");
     expect(visibleText(html)).toContain("Cerrar sesión");
     expect(html).toContain("w-full");
-    expect(html).toContain("min-h-12");
+    expect(html).toContain("min-h-11");
     expect(html).not.toContain("truncate");
     expect(visibleText(html)).not.toContain("Modo demostración");
   });
@@ -163,11 +164,32 @@ describe("MenuAccount (cuenta al pie del menú)", () => {
     expect(text.match(/Modo demostración/g)).toHaveLength(1);
   });
 
-  it("contraída deja botones de icono de 48 px con su nombre como ayuda y para el lector de pantalla", () => {
+  it("la insignia de demostración es compacta, de 16 px, y conserva «datos sintéticos» para el lector y como ayuda", () => {
+    const html = render(<MenuAccount name="Ana García" role="Administrador" logoutLabel="Cambiar de rol" onLogout={() => {}} demo />);
+    const badge = html.match(/<span title="Modo demostración \(datos sintéticos\)"[^>]*>/)?.[0] ?? "";
+    expect(badge).toContain("text-base");
+    expect(badge).toContain("py-0.5");
+    expect(badge).not.toMatch(/text-(xs|sm)\b/);
+    expect(html).toContain('class="sr-only"> (datos sintéticos)');
+  });
+
+  it("no repite el rol si el nombre ya lo dice, y si no lo dice lo pone debajo del nombre", () => {
+    expect(roleIsRedundant("Administrador MATP (sintético)", "Administrador")).toBe(true);
+    expect(roleIsRedundant("Gabriela Curadora (sintética)", "Gestor de colecciones (Curadora)")).toBe(false);
+    expect(roleIsRedundant("Ana García", undefined)).toBe(true);
+    const admin = visibleText(render(<MenuAccount name="Administrador MATP (sintético)" role="Administrador" logoutLabel="Cambiar de rol" onLogout={() => {}} />));
+    expect(admin.match(/Administrador/g)).toHaveLength(1);
+    const curator = render(<MenuAccount name="Gabriela Curadora (sintética)" role="Gestor de colecciones (Curadora)" logoutLabel="Cambiar de rol" onLogout={() => {}} />);
+    expect(visibleText(curator)).toContain("Gabriela Curadora (sintética) Gestor de colecciones (Curadora)");
+    expect(curator).not.toContain("·");
+    expect(curator.match(/<p /g)).toHaveLength(1);
+  });
+
+  it("contraída deja botones de icono de 44 px con su nombre como ayuda y para el lector de pantalla", () => {
     const html = render(<MenuAccount name="Ana García" role="Administrador" logoutLabel="Cambiar de rol" onLogout={() => {}} demo collapsed />);
     expect(html).toContain('aria-label="Cambiar de rol"');
     expect(html).toContain('title="Cambiar de rol"');
-    expect(html).toContain("size-12");
+    expect(html).toContain("size-11");
     expect(html).toContain('class="sr-only">Modo demostración');
     expect(visibleText(html)).not.toContain("Ana García");
   });

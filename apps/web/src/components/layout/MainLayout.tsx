@@ -91,22 +91,31 @@ interface MenuPanelProps {
   onNavigate?: () => void;
   /** Control junto a la marca: cerrar el panel en pantallas estrechas. */
   topControl?: ReactNode;
-  /** Control sobre la cuenta: contraer o expandir el menú en escritorio. */
+  /** Control pegado a la lista de secciones: contraer o expandir el menú en escritorio. */
   collapseControl?: ReactNode;
   account: ReactNode;
 }
 
+/**
+ * Panel del menú, alto como la ventana. Las secciones hacen scroll dentro de su zona solo si no
+ * caben, y el pie (cuenta y cierre de sesión) queda siempre a la vista. Si la ventana es tan baja
+ * que ni así cabe la zona mínima de secciones, se desplaza el panel entero y el cierre de sesión
+ * queda al final, nunca oculto.
+ */
 function MenuPanel({ items, pathname, collapsed, onNavigate, topControl, collapseControl, account }: MenuPanelProps) {
   return (
-    <div className="flex h-full flex-col gap-5 overflow-y-auto overscroll-contain rounded-panel bg-tinta py-5 text-crema shadow-md">
-      <div className={cn("flex items-start justify-between gap-2", collapsed ? "flex-col items-center px-2" : "px-3")}>
+    <div className="scroll-menu flex h-full flex-col overflow-y-auto overscroll-contain rounded-panel bg-tinta text-crema shadow-md">
+      <div className={cn("flex shrink-0 items-start justify-between gap-2 pt-4 pb-2", collapsed ? "flex-col items-center px-2" : "px-3")}>
         <Brand collapsed={collapsed} />
         {topControl}
       </div>
-      <Sidebar items={items} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
-      <div className="mt-auto flex flex-col gap-4">
-        {collapseControl && <div className={collapsed ? "px-2" : "px-3"}>{collapseControl}</div>}
-        <div className="border-t border-white/15 pt-4">{account}</div>
+      {/* Si no caben, un brillo en el borde (scroll-pista) y la barra fina avisan de que hay más. */}
+      <div data-menu-sections className="scroll-menu scroll-pista min-h-28 flex-1 scroll-py-2 overflow-y-auto overscroll-contain py-1">
+        <Sidebar items={items} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+        {collapseControl && <div className={cn("pt-1", collapsed ? "px-2" : "px-3")}>{collapseControl}</div>}
+      </div>
+      <div data-menu-account className="shrink-0 border-t border-white/15 pt-3 pb-3">
+        {account}
       </div>
     </div>
   );
@@ -134,7 +143,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (menuOpen && !dialog.open) dialog.showModal();
+    if (menuOpen && !dialog.open) {
+      dialog.showModal();
+      // Al abrir, el foco va a la sección actual (o a «Cerrar menú»), no a la marca.
+      const target = dialog.querySelector<HTMLElement>("[aria-current='page']") ?? dialog.querySelector<HTMLElement>("button[aria-label='Cerrar menú']");
+      target?.focus();
+    }
     if (!menuOpen && dialog.open) dialog.close();
   }, [menuOpen]);
 
@@ -201,7 +215,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
                 aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
                 title={collapsed ? "Expandir menú" : undefined}
                 onClick={toggleSidebar}
-                className={cn(ON_DARK_CONTROL, "flex min-h-12 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
+                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
               >
                 {collapsed ? <PanelLeftOpen size={22} aria-hidden="true" /> : <PanelLeftClose size={22} aria-hidden="true" />}
                 {!collapsed && "Contraer menú"}

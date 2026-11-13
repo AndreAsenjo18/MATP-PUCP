@@ -121,6 +121,29 @@
   }
 }
 
+/*
+ * Barra de desplazamiento fina y del tono del menú oscuro, sin carril claro: así no queda una
+ * franja clara entre el menú y el contenido cuando las secciones no caben.
+ */
+@utility scroll-menu {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-crema) 35%, transparent) transparent;
+}
+
+/*
+ * Pista de que hay más secciones: un brillo suave en el borde de la lista hacia donde queda
+ * contenido. Las dos «tapas» del color del panel se mueven con el contenido (local) y ocultan el
+ * brillo al llegar a cada extremo; si todo cabe, no se ve ninguno.
+ */
+@utility scroll-pista {
+  background:
+    linear-gradient(var(--color-tinta) 40%, transparent) center top / 100% 2rem no-repeat local,
+    linear-gradient(transparent, var(--color-tinta) 60%) center bottom / 100% 2rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-crema) 28%, transparent), transparent) center top / 100% 1rem no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-crema) 28%, transparent), transparent) center bottom / 100% 1rem no-repeat scroll;
+  background-color: var(--color-tinta);
+}
+
 /* Los títulos principales siempre en peso 800, aunque la pantalla pida otro (por eso fuera de capa). */
 h1 {
   font-weight: 800;

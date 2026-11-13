@@ -69,9 +69,12 @@ Los `h1` van siempre en peso 800.
 
 ## Estructura
 
-- **Menú flotante** desde 1024 px: panel `tinta` separado del borde, con esquinas de 28 px y toda la altura visible. Las entradas son píldoras; la actual, crema con texto oscuro y `aria-current`.
-- **Al pie del menú:** la insignia «Modo demostración» (solo en demostración, una vez), la persona y su rol, y «Cerrar sesión» o «Cambiar de rol». Encima, «Contraer menú», que deja un riel de iconos.
-- **Bajo 1024 px:** botón «Menú» de 44 px que abre el mismo menú como diálogo modal. Atrapa el foco, se cierra con Escape, al tocar fuera o al elegir una sección, y devuelve el foco al botón.
+- **Menú flotante** desde 1024 px: panel `tinta` separado 12 px del borde, con esquinas de 28 px. Mide la altura visible menos esos márgenes y queda fijo al desplazar la página. Las entradas son píldoras de 44 px; la actual, crema con texto oscuro y `aria-current`.
+- **Tres zonas en el menú:** la marca arriba, las secciones en medio y el pie abajo. Las secciones se desplazan dentro de su zona solo si no caben; un brillo suave en el borde avisa de que hay más. El pie queda siempre a la vista. Si la ventana es tan baja que la zona de secciones no llega a 112 px, se desplaza el menú entero y el cierre de sesión queda al final, nunca oculto.
+- **Barra de desplazamiento del menú:** fina, del tono del menú y sin carril, para que no quede una franja clara junto al contenido (`scroll-menu`, `scroll-pista` en `globals.css`).
+- **«Contraer menú»** va pegado a la última sección, sin hueco en medio, y deja un riel de iconos.
+- **Pie compacto:** la insignia «Modo demostración» en una línea a 16 px (solo en demostración, una vez; «datos sintéticos» queda como ayuda y para el lector de pantalla), el nombre de la persona y debajo su rol solo si el nombre no lo dice ya, y «Cerrar sesión» o «Cambiar de rol» de 44 px.
+- **Bajo 1024 px:** botón «Menú» de 44 px que abre el mismo menú como diálogo modal, con las mismas tres zonas. El foco empieza en la sección actual. Atrapa el foco, se cierra con Escape, al tocar fuera o al elegir una sección, y devuelve el foco al botón.
 - **Sin franja superior.** El contenido va centrado con `max-w-contenido`, con márgenes de 1 a 2 rem.
 - **Menú con nombres de tarea:** Inicio, Buscar, Cargar datos, Revisar pendientes, Reportes y Administración.
 

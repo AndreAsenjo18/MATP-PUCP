@@ -11,6 +11,7 @@
 - [x] 1.3 Átomos con el estilo B: `Button` (44 px en todos los tamaños), `Badge`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `IconCircle`, `StatChip` y la superficie; estilos de base para diálogos, casillas, foco y realce al tocar (Req: Botones que se adaptan al dispositivo; Identidad visual «Cabecera audaz»)
 - [x] 1.4 Estructura: menú flotante con la cuenta al pie, botón «Menú» bajo 1024 px con foco atrapado, sin franja superior, contenedor con ancho máximo y nombres de tarea en el menú (Req: Navegación principal con barra lateral responsive; Cuenta de la persona al pie del menú; Barra lateral de navegación retraíble)
 - [x] 1.5 Verificación en los siete anchos de todas las pantallas, pruebas del módulo, lint, `tsc`, `openspec validate --strict` y `openapi:check`
+- [x] 1.6 Corrección del menú en ventanas bajas: alto de la ventana y fijo, secciones con desplazamiento propio solo si no caben, pie compacto siempre alcanzable, barra fina sin carril claro y «Contraer menú» pegado a la lista. Verificado con ventanas de 600, 720, 768 y 900 px y zoom de 150 % y 200 % (Req: Navegación principal con barra lateral responsive; Cuenta de la persona al pie del menú)
 
 ## 2. Pantallas por grupos
 

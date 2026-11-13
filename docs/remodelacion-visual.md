@@ -11,7 +11,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | Fase | Qué | Estado |
 |---|---|---|
 | 0 | Inventario, change, capturas «antes» | Hecha |
-| 1 | Base: tokens, átomos, estructura y menú | Hecha, esperando revisión |
+| 1 | Base: tokens, átomos, estructura y menú | Hecha, con la corrección del menú en ventanas bajas; esperando revisión |
 | 2a | Inicio y Búsqueda | Pendiente |
 | 2b | Ficha: alta, vista y edición | Pendiente |
 | 2c | Revisar pendientes | Pendiente |
@@ -68,6 +68,34 @@ Menú con teclado: 19 de 19 comprobaciones. En 911 px, «Menú» mide 44 px, abr
 - Tablas más anchas que la página a 320 px en Reportes, Piezas incompletas y Usuarios. Se desplazan dentro de su cuadro y la página no se mueve; falta comprobar que la fila de títulos quede visible (grupos c, e y f).
 
 **Regresiones corregidas en esta fase:** a 320 px desbordaban la insignia «Desactivado en fase 1» del acceso, que tenía `whitespace-nowrap`, y el botón «Ver cambios» de Auditoría, al que el tamaño `touch` le había ganado relleno.
+
+## Corrección de la base: el menú en ventanas bajas
+
+En ventanas de poca altura, el menú flotante no cabía y el pie (insignia, persona y cierre de sesión) quedaba fuera de la pantalla. Cambios:
+
+- El menú mide la altura visible menos sus márgenes y queda fijo. Tiene tres zonas: marca, secciones y pie. Solo las secciones se desplazan, y solo si no caben; el pie queda siempre abajo y a la vista.
+- Si la ventana es tan baja que la zona de secciones no llega a 112 px, se desplaza el menú entero y el cierre de sesión queda al final, alcanzable.
+- Pie compacto: la insignia «Modo demostración» en una línea de 28 px de alto, a 16 px; el rol debajo del nombre solo si el nombre no lo dice ya (para «Administrador MATP» no se repite «Administrador»); el botón y las entradas del menú, de 44 px (antes 48).
+- Barra de desplazamiento fina, del tono del menú y sin carril claro. Si hay más secciones, un brillo suave en el borde de la lista lo indica.
+- «Contraer menú» va pegado a la última sección, a 4 px, sin hueco en medio.
+- En el menú de pantallas estrechas, el foco empieza en la sección actual.
+
+**Verificación.** Se probaron ventanas de 600, 720, 768 y 900 px de alto, de dos formas: como alto de la página y como alto de la ventana con unos 130 px de barras del navegador. Cada una a 100 %, 150 % y 200 % de zoom, con anchos de 1366 y 1920 px. Se usaron dos personas: Administrador, con seis secciones, y Gestor de colecciones, con cinco y el rol en dos líneas. En total, 97 casos, incluido el riel contraído a 470 px, con 0 fallos.
+
+| Comprobación | Resultado |
+|---|---|
+| Pie a la vista sin desplazar nada | 74 de 97 |
+| Menú entero desplazable, con el cierre de sesión al final y alcanzable | 23 de 97. Todos con 393 px de alto útil o menos: 200 % en ventanas de hasta 720 px, 150 % en las de 600 px y, para el Gestor, cuyo rol ocupa dos líneas, 150 % en las de 720 px |
+| Pie oculto sin forma de llegar a él | 0 |
+| Texto cortado o encimado en el menú | 0 |
+| Insignia en más de una línea | 0 (28 px de alto en todos los casos) |
+| Botón de cierre de sesión de menos de 44 px | 0 |
+| Barra de desplazamiento fina en el menú y en las secciones | 97 de 97 |
+| Hueco entre la última sección y «Contraer menú» | 4 px |
+
+Con el teclado, 20 de 20 comprobaciones del menú de pantallas estrechas. Capturas en `docs/capturas-piloto/remodelacion/fase1-menu/`.
+
+**Decisión para revisar: el texto de la insignia.** A 16 px, la insignia completa, «Modo demostración (datos sintéticos)», mide 334 px, y el pie del menú deja 240 px. Para que entre en una línea, la insignia muestra «Modo demostración». El resto, «(datos sintéticos)», sigue en la ayuda que aparece al pasar el cursor y en el texto para el lector de pantalla. Si debe verse entero, la alternativa es ensanchar el menú de 288 a 384 px, lo que resta ese espacio al contenido en todas las pantallas.
 
 ## Pantallas y rutas
 

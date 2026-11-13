@@ -1,11 +1,20 @@
 ## ADDED Requirements
 
 ### Requirement: Cuenta de la persona al pie del menú
-El menú lateral MUST mostrar, en su parte inferior y en todos los anchos, el nombre y el rol de la persona y el botón que cierra la sesión («Cerrar sesión», o «Cambiar de rol» en modo demostración), que ejecuta lo mismo que antes. En modo demostración la insignia «Modo demostración» SHALL aparecer una sola vez en toda la pantalla, en el menú y encima de la persona. Las pantallas MUST NOT repetir estos datos en una franja superior. (RNF-001, RNF-010)
+El menú lateral MUST mostrar, en su parte inferior y en todos los anchos, el nombre y el rol de la persona y el botón que cierra la sesión («Cerrar sesión», o «Cambiar de rol» en modo demostración), que ejecuta lo mismo que antes. El rol SHALL omitirse solo cuando el nombre ya lo contiene, para no repetirlo. En modo demostración la insignia «Modo demostración» SHALL aparecer una sola vez en toda la pantalla, en el menú y encima de la persona, en una sola línea y con letra de 16 px o más. El pie MUST quedar siempre alcanzable: el menú mide la altura visible, solo sus secciones se desplazan si no caben, y si la ventana es tan baja que ni así cabe, se desplaza el menú entero con el cierre de sesión al final. Las pantallas MUST NOT repetir estos datos en una franja superior. (RNF-001, RNF-010)
 
 #### Scenario: Escritorio
 - **WHEN** una persona abre cualquier pantalla autenticada en una pantalla de 1366 px
 - **THEN** ve al pie del menú su nombre, su rol y «Cerrar sesión», y la pantalla no tiene franja superior
+
+#### Scenario: Ventana baja o con zoom
+- **GIVEN** una ventana de 600 px de alto, o de 768 px con 200 % de zoom
+- **WHEN** la persona busca el cierre de sesión en el menú
+- **THEN** lo ve al pie sin desplazar nada o, si no cabe, lo alcanza al final del menú, sin texto cortado ni encimado
+
+#### Scenario: El nombre ya dice el rol
+- **WHEN** la cuenta se llama «Administrador MATP» y su rol es «Administrador»
+- **THEN** el pie del menú muestra el nombre una vez, sin repetir el rol debajo
 
 #### Scenario: Pantalla estrecha
 - **GIVEN** una sesión iniciada en una pantalla de 375 px
