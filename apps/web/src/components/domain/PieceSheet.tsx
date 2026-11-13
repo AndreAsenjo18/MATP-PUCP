@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import type { ApiSchemas } from "@/lib/api/client";
 
-import { identifierCurrencyStatus, identifierTypeLabel } from "./status-intents";
+import { conservationIntent, identifierCurrencyStatus, identifierTypeLabel } from "./status-intents";
 import { AlertBadge, LockBadge, StatusBadge, TenureBadge } from "./StatusBadges";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
@@ -83,6 +83,13 @@ function PieceFieldGroup({ title, children }: { title: string; children: ReactNo
 
 const RESTRICTED = "Restringido para su rol";
 
+/** El estado de conservación como insignia de color si es de la lista cerrada; si no, como texto. Mismo texto. */
+function ConservationValue({ status }: { status: PieceDetail["conservation_status"] }) {
+  if (!status) return <>Sin registrar</>;
+  const intent = conservationIntent(status.code);
+  return intent ? <Badge intent={intent}>{status.label}</Badge> : <>{status.label}</>;
+}
+
 /**
  * Datos generales agrupados como el formulario de la pieza (Identificación, Descripción, Procedencia y
  * época, Medidas y materiales, Conservación y Observaciones), con los mismos campos de siempre.
@@ -121,7 +128,7 @@ export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
         )}
       </PieceFieldGroup>
       <PieceFieldGroup title="Conservación">
-        <PieceField label="Estado de conservación" value={piece.conservation_status?.label ?? "Sin registrar"} />
+        <PieceField label="Estado de conservación" value={<ConservationValue status={piece.conservation_status} />} />
       </PieceFieldGroup>
       {piece.notes && (
         <PieceFieldGroup title="Observaciones">

@@ -125,7 +125,7 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
         )}
 
         {row.validation_errors.length > 0 && (
-          <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
+          <p className="aviso-error rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
             {row.validation_errors.map((e) => plainMessage((e as { message?: string }).message ?? JSON.stringify(e))).join("; ")}
           </p>
         )}

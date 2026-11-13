@@ -226,7 +226,7 @@ export function PhotoReadingView({
 
             <div className="flex flex-col gap-2" aria-live="polite">
               <h3 className="text-base font-semibold text-tinta">Vista previa</h3>
-              {previewError && <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">{previewError}</p>}
+              {previewError && <p className="aviso-error rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">{previewError}</p>}
               {preview && !previewError && (
                 <>
                   <p className="text-sm text-gris-texto">

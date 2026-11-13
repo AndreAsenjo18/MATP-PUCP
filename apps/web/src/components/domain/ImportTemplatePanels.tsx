@@ -153,7 +153,7 @@ export function DryRunPanel({ result, stale = false, association }: { result: Te
         </p>
       )}
       {result.missing_columns.length > 0 && (
-        <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">Columnas de la plantilla que el lote no trae: {result.missing_columns.join(", ")}.</p>
+        <p className="aviso-error rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">Columnas de la plantilla que el lote no trae: {result.missing_columns.join(", ")}.</p>
       )}
       <div className="flex flex-col gap-2">
         {result.columns.map((column) => (

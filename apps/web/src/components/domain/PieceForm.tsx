@@ -801,7 +801,7 @@ export function PieceForm({
                       </div>
                     )}
                     {feedback.error && (
-                      <p role="alert" className="text-sm font-medium text-carmin-texto">
+                      <p role="alert" className="texto-error text-sm font-medium text-carmin-texto">
                         {feedback.error}
                       </p>
                     )}

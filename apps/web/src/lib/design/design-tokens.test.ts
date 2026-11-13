@@ -72,6 +72,11 @@ describe("tokens del sistema de diseño (globals.css)", () => {
     expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS, ...DECORATIVE_TOKENS].sort());
   });
 
+  it("los avisos de error llevan un icono además del color ladrillo (con o sin recuadro)", () => {
+    expect(GLOBALS_CSS).toMatch(/:where\(\[role="alert"\]\.bg-carmin-bg, \.aviso-error, \.texto-error\)::before \{[^}]*mask:/);
+    expect(GLOBALS_CSS).toContain("background-color: CanvasText");
+  });
+
   it("los colores decorativos no aparecen como color de texto en ningún par de contraste", () => {
     for (const token of DECORATIVE_TOKENS) expect(CONTRAST_PAIRS.some((pair) => pair.text === token)).toBe(false);
   });

@@ -128,7 +128,7 @@ function ImportacionContent() {
             {rows
               .filter((r) => r.validation_errors.length > 0)
               .map((r) => (
-                <li key={r.id} className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
+                <li key={r.id} className="aviso-error rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
                   Fila {r.source_row_number}:{" "}
                   {r.validation_errors.map((e) => (e as { message?: string }).message ?? JSON.stringify(e)).join("; ")}
                 </li>

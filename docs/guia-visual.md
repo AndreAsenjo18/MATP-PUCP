@@ -102,6 +102,10 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 - **Tarjeta de filtros** arriba: el buscador en píldora y, debajo, los filtros en una fila de listas de 52 px, alineadas por abajo. «Limpiar filtros» en píldora blanca con borde.
 - **Resultados en filas** de 84 px o más, una bajo otra, con `gap` de 12 px. Toda la fila es el enlace; sube 2 px al pasar el cursor.
 
+## Avisos de error
+
+El color ladrillo nunca va solo: cada aviso de error lleva un icono de alerta y su texto. El icono lo dibuja `globals.css`, con el color del texto, en todo aviso `role="alert"` sobre fondo `carmin-bg`. Los avisos con recuadro que no tienen ese rol llevan la clase `aviso-error`, y los errores sin recuadro (el de un campo, por ejemplo), `texto-error`. Con colores forzados, el icono toma el color del texto del sistema.
+
 ## Pestañas
 
 Un solo estilo en todo el sistema (`components/ui/Tabs.ts`): píldoras de 44 px y 16 px. La activa va en terracota sólido y en seminegrita; las demás, blancas con borde arena. En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni cortar el texto de ninguna pestaña.
@@ -109,6 +113,7 @@ Un solo estilo en todo el sistema (`components/ui/Tabs.ts`): píldoras de 44 px 
 ## Ficha (maqueta B)
 
 - **Acciones bajo la banda:** «Editar ficha» (`primary`), «Registrar a partir de esta pieza» (`outline`) y, aparte a la derecha, «Eliminar pieza» (`danger-outline`).
+- **Estado de conservación** como insignia de color si es un término de la lista cerrada (bueno en verde; regular o en restauración en ámbar; malo en ladrillo), con el mismo texto; un término que no está en la lista se muestra como texto.
 - **Datos en grupos** con subtítulo terracota (`h2`) y una línea fina entre grupos. Etiqueta tenue de 16 px y valor de 20 px en seminegrita; los párrafos, a 18 px. Tres columnas desde 1024 px, dos desde 640 px.
 
 ## Movimiento

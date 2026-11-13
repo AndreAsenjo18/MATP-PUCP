@@ -209,7 +209,20 @@ describe("PieceSheet", () => {
     // Etiqueta tenue de 16 px y valor de 20 px en seminegrita.
     expect(html).toMatch(/<dt class="text-base font-medium text-gris-texto">/);
     expect(html).toMatch(/<dd class="mt-1 text-xl font-semibold/);
-    expect(html).not.toMatch(/text-(xs|sm)\b/);
+  });
+
+  it("el estado de conservación es una insignia de color solo si es de la lista cerrada; si no, texto", () => {
+    const base = PIECES.find((p) => p.conservation_status?.code === "BUENO")!;
+    const good = render(<PieceGeneralData piece={base} />);
+    expect(good).toContain(BADGE_INTENTS.success);
+    expect(visibleText(good)).toContain("Bueno");
+    const bad = render(<PieceGeneralData piece={{ ...base, conservation_status: { ...base.conservation_status!, code: "MALO", label: "Malo" } }} />);
+    expect(bad).toContain(BADGE_INTENTS.danger);
+    const other = render(<PieceGeneralData piece={{ ...base, conservation_status: { ...base.conservation_status!, code: "NUEVO_TERMINO", label: "Otro estado" } }} />);
+    expect(visibleText(other)).toContain("Otro estado");
+    expect(other).not.toContain(BADGE_INTENTS.success);
+    expect(other).not.toContain(BADGE_INTENTS.danger);
+    expect(visibleText(render(<PieceGeneralData piece={{ ...base, conservation_status: null }} />))).toContain("Sin registrar");
   });
 
   it("los identificadores muestran el candado accesible del código I y una explicación clara", () => {

@@ -184,6 +184,48 @@ select:where(:not([multiple], [size])) {
   mask-image: linear-gradient(to right, transparent, #000 6rem);
 }
 
+/*
+ * Avisos de error: siempre un icono además del color ladrillo. Se dibuja aquí, con el color del texto,
+ * para todo aviso `role="alert"` sobre fondo ladrillo y para los que llevan `aviso-error`; `texto-error`
+ * es la versión sin recuadro (el error de un campo). Fuera de capa para ganar al relleno de cada aviso.
+ */
+:is([role="alert"].bg-carmin-bg, .aviso-error) {
+  position: relative;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+}
+
+.texto-error {
+  position: relative;
+  padding-left: 1.75rem;
+}
+
+/* `:where` no suma especificidad: la posición la dan las dos reglas siguientes. */
+:where([role="alert"].bg-carmin-bg, .aviso-error, .texto-error)::before {
+  content: "";
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 8v4M12 16h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+:where([role="alert"].bg-carmin-bg, .aviso-error)::before {
+  top: 0.875rem;
+  left: 0.75rem;
+}
+
+:where(.texto-error)::before {
+  top: 0.125rem;
+  left: 0;
+}
+
+@media (forced-colors: active) {
+  :where([role="alert"].bg-carmin-bg, .aviso-error, .texto-error)::before {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
 /* Los títulos principales siempre en peso 800, aunque la pantalla pida otro (por eso fuera de capa). */
 h1 {
   font-weight: 800;

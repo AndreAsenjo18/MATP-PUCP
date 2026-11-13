@@ -137,6 +137,13 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
 
+## Decisiones tras el grupo 2b (2026-11-13)
+
+- **Descripción y Observaciones a 18 px:** aprobado.
+- **Estado de conservación en la ficha:** como insignia de color, solo si es uno de los cuatro términos de la lista cerrada (`BUENO` en verde; `REGULAR` y `EN_RESTAURACION` en ámbar; `MALO` en ladrillo), con el mismo texto. Un término agregado después se muestra como texto.
+- **Avisos de error:** todos llevan un icono además del color ladrillo, con recuadro o sin él (el error de cada campo incluido).
+- **Antes de cualquier `npm ci`:** detener el servidor, comprobar que el puerto 3000 quedó libre y, si queda un proceso, cerrarlo por su número.
+
 ## Grupo 2b: la ficha según la maqueta B (imagen 2, derecha)
 
 Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos campos, pestañas, textos y lógica, en los dos modos.

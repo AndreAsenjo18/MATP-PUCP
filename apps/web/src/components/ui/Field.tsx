@@ -61,7 +61,7 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={ids.errorId} className="text-base font-semibold text-carmin-texto">
+        <p id={ids.errorId} className="texto-error text-base font-semibold text-carmin-texto">
           {error}
         </p>
       )}
