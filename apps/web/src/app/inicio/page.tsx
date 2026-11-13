@@ -2,15 +2,22 @@
 
 /**
  * Pantalla 2 — Inicio como guía de tareas (change `inicio-guia-de-tareas`): «¿Qué desea hacer?»,
- * tarjetas de tarea según el rol y una sola línea con el estado del catálogo (RF-035, RF-039).
+ * tarjetas de tarea según el rol y el estado del catálogo (RF-035, RF-039).
+ *
+ * Es además la pantalla piloto de la identidad visual (change `piloto-identidad-visual-inicio`,
+ * docs/guia-visual.md): nombre del museo, título en `font-display` y cenefa de tejido. La
+ * tipografía se importa aquí y no en el layout para que ninguna otra pantalla cambie (D1).
  *
  * El tablero de completitud (tabla por colección, evolución de 14 días, últimas cargas y tabla de
  * piezas incompletas) ya no está aquí: los indicadores siguen en la API y en Reportes ›
  * Información incompleta. En modo real no se lee el almacén de demostración.
  */
+import "@fontsource-variable/fraunces/wght.css";
+
 import { useEffect, useState } from "react";
 
-import { CatalogStatusLine, TaskCards } from "@/components/domain/HomeGuide";
+import { TextileBand, TextileMark } from "@/components/brand/TextileMotif";
+import { CatalogStatusChips, TaskCards } from "@/components/domain/HomeGuide";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
 import { listPendingAiSuggestions } from "@/lib/data/ai";
@@ -70,22 +77,33 @@ function InicioContent() {
   }, [canReviewDuplicates, canReviewSuggestions, demo, devUser]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">¿Qué desea hacer?</h1>
+    <div className="flex flex-col gap-seccion">
+      <header className="flex flex-col gap-2">
+        <p translate="no" className="flex items-center gap-2 text-base font-medium text-terracota-dark">
+          <TextileMark />
+          Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»
+        </p>
+        <h1 className="text-4xl font-semibold text-balance text-tinta">
+          {/* El span evita la regla global que pone Poppins en todo h1 (globals.css). */}
+          <span className="font-display">¿Qué desea hacer?</span>
+        </h1>
         {demo && (
           <p className="text-base text-gris-texto">
-            Sesión de demostración como <strong className="text-tinta">{currentRole?.name}</strong>. Todos los datos son sintéticos y los cambios que haga
-            aquí no se guardan al recargar la página.
+            Sesión de demostración como <strong className="text-tinta">{currentRole?.name}</strong>: los datos son de ejemplo y no se guardan.
           </p>
         )}
       </header>
 
       <TaskCards tasks={visibleTasks(hasPermission)} pending={pending} />
 
-      <section aria-label="Estado del catálogo">
-        <CatalogStatusLine status={status} failed={statusFailed} />
+      <section aria-labelledby="catalog-status-title" className="flex flex-col gap-3">
+        <h2 id="catalog-status-title" className="text-base font-semibold text-gris-texto">
+          <span className="font-sans">El catálogo hoy</span>
+        </h2>
+        <CatalogStatusChips status={status} failed={statusFailed} />
       </section>
+
+      <TextileBand className="opacity-60" />
     </div>
   );
 }

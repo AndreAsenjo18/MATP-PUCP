@@ -74,15 +74,17 @@ describe("tareas visibles por rol", () => {
   });
 });
 
-describe("línea de estado y número de pendientes", () => {
-  it("usa una sola medida, cuántas faltan", () => {
-    const text = statusParts({ total: 318, withoutInventoryCode: 117, withoutPhoto: 138 }).map((part) => part.text).join(" · ");
-    expect(text).toBe("318 piezas · 117 sin código I · 138 sin foto");
+describe("fichas de estado y número de pendientes", () => {
+  it("usa una sola medida, cuántas faltan, en palabras completas y sin siglas", () => {
+    const text = statusParts({ total: 318, withoutInventoryCode: 117, withoutPhoto: 138 }).map((part) => `${part.value} ${part.label}`).join(" · ");
+    expect(text).toBe("318 piezas en el catálogo · 117 sin código de inventario · 138 sin foto");
     expect(text).not.toContain("%");
+    expect(text).not.toContain("código I");
   });
 
-  it("dice «pieza» en singular", () => {
-    expect(statusParts({ total: 1, withoutInventoryCode: 0, withoutPhoto: 0 })[0].text).toBe("1 pieza");
+  it("dice «pieza» en singular y separa los miles", () => {
+    expect(statusParts({ total: 1, withoutInventoryCode: 0, withoutPhoto: 0 })[0].label).toBe("pieza en el catálogo");
+    expect(statusParts({ total: 10250, withoutInventoryCode: 0, withoutPhoto: 0 })[0].value).toMatch(/^10.250$/);
   });
 
   it("muestra el número solo cuando hay algo por revisar", () => {

@@ -42,12 +42,20 @@ export interface CatalogStatus {
 
 const count = (value: number) => value.toLocaleString("es-PE");
 
-/** Partes de la línea de estado: «318 piezas · 117 sin código I · 138 sin foto», una sola medida (cuántas faltan). */
-export function statusParts(status: CatalogStatus): { text: string; kind: "all" | "inventory" | "photo" }[] {
+export interface StatusPart {
+  kind: "all" | "inventory" | "photo";
+  /** La cantidad, ya con separador de miles. */
+  value: string;
+  /** Lo que cuenta, en palabras completas y sin siglas. */
+  label: string;
+}
+
+/** Fichas del estado del catálogo: el total y una sola medida de lo que falta (cuántas piezas). */
+export function statusParts(status: CatalogStatus): StatusPart[] {
   return [
-    { text: `${count(status.total)} ${status.total === 1 ? "pieza" : "piezas"}`, kind: "all" },
-    { text: `${count(status.withoutInventoryCode)} sin código I`, kind: "inventory" },
-    { text: `${count(status.withoutPhoto)} sin foto`, kind: "photo" },
+    { kind: "all", value: count(status.total), label: status.total === 1 ? "pieza en el catálogo" : "piezas en el catálogo" },
+    { kind: "inventory", value: count(status.withoutInventoryCode), label: "sin código de inventario" },
+    { kind: "photo", value: count(status.withoutPhoto), label: "sin foto" },
   ];
 }
 
