@@ -34,12 +34,12 @@ describe("buscador siempre visible (rediseno-ux-busqueda D1, D2)", () => {
     expect(html).toContain("sm:rounded-full");
   });
 
-  it("en Búsqueda los filtros van en fila, sin tarjeta propia y con campos de 52 px; Reportes los conserva en columna", () => {
+  it("en Búsqueda los filtros van en fila, sin tarjeta propia, compactos y con campos de 44 px; Reportes los conserva en columna", () => {
     const row = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} withQuery={false} layout="fila" />);
     expect(row).not.toContain('aria-label="Filtros de búsqueda"');
     expect(row).toContain("xl:grid-cols-4");
-    expect(row).toContain("min-h-13");
-    expect(row).not.toMatch(/class="[^"]*min-h-11[^"]*rounded-md border/);
+    expect(row).toContain("gap-y-3");
+    expect(row).not.toContain("min-h-13");
     const column = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
     expect(column).toContain('aria-label="Filtros de búsqueda"');
     expect(column).not.toContain("min-h-13");

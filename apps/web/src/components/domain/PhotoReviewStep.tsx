@@ -14,7 +14,7 @@
 import { Check, CheckSquare, ImageOff, Search, Trash2, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { StatusBadge } from "@/components/domain/StatusBadges";
-import { Button } from "@/components/ui/Button";
+import { Button, DISABLED_STYLES } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { confirmImportBatch, fetchImportBatch, type ImportBatch } from "@/lib/data/imports";
@@ -240,7 +240,7 @@ export function PhotoReviewView({
                       type="button"
                       disabled={busy}
                       onClick={() => onAssign?.(piece)}
-                      className="flex min-h-11 w-full flex-col rounded-md px-2 py-1 text-left hover:bg-crema focus-visible:outline-2 focus-visible:outline-terracota"
+                      className={`flex min-h-11 w-full flex-col rounded-md px-2 py-1 text-left hover:bg-crema focus-visible:outline-3 focus-visible:outline-terracota ${DISABLED_STYLES}`}
                     >
                       <span className="text-base text-tinta">{piece.label}</span>
                       <span className="text-sm text-gris-texto">

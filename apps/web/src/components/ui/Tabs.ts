@@ -13,8 +13,9 @@
  */
 import { cn } from "@/lib/cn";
 
+// `overflow-y-hidden`: la fila solo se desplaza a los lados; nunca aparece una barra vertical.
 export const TAB_LIST_CLASS =
-  "flex w-fit max-w-full gap-1 overflow-x-auto overscroll-x-contain rounded-full border border-borde bg-white p-1.5 shadow-sm [scrollbar-width:thin]";
+  "flex w-fit max-w-full gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-full border border-borde bg-white p-1.5 shadow-sm [scrollbar-width:thin]";
 
 export function tabClassName(selected: boolean, className?: string): string {
   return cn(
@@ -25,11 +26,14 @@ export function tabClassName(selected: boolean, className?: string): string {
   );
 }
 
-export const UNDERLINE_TAB_LIST_CLASS = "flex max-w-full gap-2 overflow-x-auto overscroll-x-contain border-b border-borde [scrollbar-width:thin]";
+// La línea de base es una sombra interior: el subrayado de la activa la cubre sin márgenes negativos,
+// que desbordaban la fila y hacían aparecer una barra de desplazamiento vertical.
+export const UNDERLINE_TAB_LIST_CLASS =
+  "flex max-w-full gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain shadow-[inset_0_-1px_0_var(--color-borde)] [scrollbar-width:thin]";
 
 export function underlineTabClassName(selected: boolean, className?: string): string {
   return cn(
-    "-mb-px inline-flex min-h-11 shrink-0 items-center border-b-3 px-3 py-2 text-base whitespace-nowrap focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-terracota",
+    "inline-flex min-h-11 shrink-0 items-center border-b-3 px-3 py-2 text-base whitespace-nowrap focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-terracota",
     selected ? "border-terracota font-semibold text-terracota" : "border-transparent font-medium text-gris-texto hover:border-borde hover:text-tinta",
     className,
   );

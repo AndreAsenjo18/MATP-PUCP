@@ -23,7 +23,7 @@ import { AdminList, RetireDialog } from "@/components/domain/AdminList";
 import { AdminToolbar, FormDialog, Notice, SectionHeader } from "@/components/domain/AdminShell";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, DISABLED_STYLES } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -98,7 +98,8 @@ export function TermList({ terms, busy, onToggle }: { terms: VocabularyTerm[]; b
               title={`${term.code} · ${term.is_active ? "Pulse para desactivar" : "Pulse para activar"}`}
               onClick={() => onToggle(term)}
               className={cn(
-                "inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:opacity-50",
+                "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1 text-base font-medium focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+                DISABLED_STYLES,
                 term.is_active ? "bg-verde-bg text-verde-exito hover:brightness-95" : "bg-borde text-gris-texto line-through hover:brightness-95",
               )}
             >

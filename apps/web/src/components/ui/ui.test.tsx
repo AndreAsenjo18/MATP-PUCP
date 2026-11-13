@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 import { render, visibleText } from "@/test/render";
 
 import { Badge, BADGE_INTENTS, badgeIntentClass } from "./Badge";
-import { Button, BUTTON_VARIANTS, buttonClassName } from "./Button";
+import { Button, BUTTON_VARIANTS, buttonClassName, DISABLED_STYLES } from "./Button";
 import { Card, cardClassName } from "./Card";
-import { TAB_LIST_CLASS, tabClassName } from "./Tabs";
+import { stepClassName } from "./Steps";
+import { TAB_LIST_CLASS, tabClassName, UNDERLINE_TAB_LIST_CLASS, underlineTabClassName } from "./Tabs";
 import { scrollEdges, TableScroller } from "./TableScroller";
 import { Input } from "./Input";
 import { Select } from "./Select";
@@ -44,7 +45,9 @@ describe("Button", () => {
   it("refleja el estado deshabilitado", () => {
     const html = render(<Button disabled>Aprobar</Button>);
     expect(html).toContain('disabled=""');
-    expect(html).toContain("disabled:opacity-50");
+    // El estilo único de lo deshabilitado (gris cálido, sin transparencia que lo haga parecer otro botón).
+    expect(html).toContain("disabled:bg-borde");
+    expect(html).not.toContain("disabled:opacity");
   });
 
   it("buttonClassName recurre a primary/md ante valores desconocidos", () => {
@@ -135,6 +138,44 @@ describe("TableScroller (flechas de la tabla de Reportes)", () => {
     expect(html).toMatch(/<div id="[^"]+" role="region" aria-label="Tabla del reporte" tabindex="0" class="[^"]*overflow-auto/);
     expect(html).not.toContain("Ver las columnas");
     expect(visibleText(html)).toContain("Toro de Pucará");
+  });
+});
+
+describe("deshabilitado, igual en todo el sistema", () => {
+  it("gris cálido neutro, texto legible, sin sombra ni hover y cursor de no permitido", () => {
+    for (const piece of ["disabled:bg-borde", "disabled:text-gris-texto", "disabled:shadow-none", "disabled:cursor-not-allowed", "disabled:hover:bg-borde"]) {
+      expect(DISABLED_STYLES).toContain(piece);
+    }
+    expect(DISABLED_STYLES).not.toContain("opacity");
+    for (const variant of Object.keys(BUTTON_VARIANTS)) {
+      expect(buttonClassName({ variant: variant as keyof typeof BUTTON_VARIANTS })).toContain(DISABLED_STYLES);
+    }
+    expect(stepClassName("pendiente")).toContain("disabled:bg-borde");
+  });
+});
+
+describe("pestañas sin barra vertical", () => {
+  it("las filas solo se desplazan a los lados y el subrayado no usa márgenes negativos", () => {
+    expect(TAB_LIST_CLASS).toContain("overflow-y-hidden");
+    expect(UNDERLINE_TAB_LIST_CLASS).toContain("overflow-y-hidden");
+    expect(UNDERLINE_TAB_LIST_CLASS).toContain("overflow-x-auto");
+    expect(underlineTabClassName(true)).not.toMatch(/-m[by]-/);
+    expect(underlineTabClassName(true)).toContain("min-h-11");
+  });
+});
+
+describe("Badge tenue", () => {
+  it("más chica pero de 16 px, sin relleno y con texto visible", () => {
+    const html = render(
+      <Badge intent="warning" subtle>
+        Sin código I
+      </Badge>,
+    );
+    expect(html).toContain("text-sm");
+    expect(html).toContain("bg-white");
+    expect(html).toContain("px-2");
+    expect(html).not.toContain("bg-ambar-bg");
+    expect(visibleText(html)).toBe("Sin código I");
   });
 });
 

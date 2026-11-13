@@ -650,7 +650,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
       <div className="flex flex-col gap-6">
         {/* Tarjeta de filtros de la maqueta B. El buscador queda a la vista en todos los tamaños, fuera de
             «Filtros», que en tableta se abre con un botón (rediseno-ux-busqueda D1). */}
-        <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-5">
+        <Card as="aside" aria-label="Filtros de búsqueda" padded={false} className="flex flex-col gap-3 p-4 sm:px-5">
           <SearchBox value={filters.q} onChange={(q) => update({ q })} />
           <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
             <SearchFiltersPanel

@@ -6,6 +6,7 @@
  */
 import { cn } from "@/lib/cn";
 
+import { DISABLED_STYLES } from "./Button";
 import { TAB_LIST_CLASS } from "./Tabs";
 
 export type StepState = "actual" | "hecho" | "pendiente";
@@ -14,7 +15,8 @@ export const STEP_LIST_CLASS = TAB_LIST_CLASS;
 
 export function stepClassName(state: StepState, className?: string): string {
   return cn(
-    "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-base whitespace-nowrap focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:opacity-50",
+    "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-base whitespace-nowrap focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+    DISABLED_STYLES,
     state === "actual" && "bg-terracota font-semibold text-white shadow-sm",
     state === "hecho" && "bg-verde-bg font-medium text-verde-exito",
     state === "pendiente" && "font-medium text-tinta enabled:hover:bg-crema-light enabled:hover:text-terracota",

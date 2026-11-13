@@ -85,9 +85,9 @@ function BusquedaContent() {
         }
       />
       {/* Tarjeta de filtros de la maqueta B: el buscador arriba y los filtros en una fila. */}
-      <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-5">
+      <Card as="aside" aria-label="Filtros de búsqueda" padded={false} className="flex flex-col gap-3 p-4 sm:px-5">
         <SearchBox value={q} onChange={setQ} />
-        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 items-end gap-x-4 gap-y-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           <FilterSelect label="Colección" value={collectionId} onChange={setCollectionId} options={COLLECTIONS.map((c) => ({ value: c.id, label: c.name }))} />
           <FilterSelect label="Categoría" value={categoryCode} onChange={setCategoryCode} options={categories.map((c) => ({ value: c.code, label: c.label }))} />
           <FilterSelect label="Material" value={materialCode} onChange={setMaterialCode} options={materials.map((c) => ({ value: c.code, label: c.label }))} />
@@ -103,7 +103,7 @@ function BusquedaContent() {
             ]}
           />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
           <div className="flex flex-wrap gap-x-6">
             <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
               <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} className="size-5 accent-terracota" />
@@ -169,7 +169,7 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <Select label={label} value={value} onChange={(event) => onChange(event.target.value)} controlSize="lg">
+    <Select label={label} value={value} onChange={(event) => onChange(event.target.value)}>
       <option value="">Todas</option>
       {options.map((option) => (
         <option key={option.value} value={option.value}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BADGE_INTENTS } from "@/components/ui/Badge";
+import { BADGE_INTENTS, SUBTLE_BADGE_INTENTS } from "@/components/ui/Badge";
 import { alertsForPiece, getPieceDetail, PIECES, toSummary } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
@@ -137,6 +137,19 @@ describe("ConfirmButton", () => {
 });
 
 describe("PieceCard", () => {
+  it("las insignias son tenues; con varias van en su propia línea debajo del nombre", () => {
+    const busy = PIECES.find((p) => alertsForPiece(p).some((alert) => alert.applies && alert.type !== "MISSING_PHOTO"))!;
+    const several = render(<PieceCard {...pieceCardProps(toSummary(busy), alertsForPiece(busy))} />);
+    expect(several.indexOf('class="mt-1.5"')).toBeGreaterThan(several.indexOf("<h3"));
+    expect(several).toMatch(/<div class="mt-1\.5"><div class="flex flex-wrap items-center gap-1\.5">/);
+    expect(several).toContain("bg-white px-2");
+    const single = render(
+      <PieceCard href="/piezas/x" title="Mate" inventoryCode="I-0001" collectionName={null} locationLabel={null} tenureRegime="Propiedad" hasPhoto />,
+    );
+    expect(single).not.toContain('class="mt-1.5"');
+    expect(single).toContain("lg:justify-end");
+  });
+
   it("es una fila (maqueta B): todo es un solo enlace de 84 px o más, con foco visible y una flecha", () => {
     const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
     expect(html.match(/<a /g)).toHaveLength(1);
@@ -149,7 +162,8 @@ describe("PieceCard", () => {
   it("una pieza en comodato muestra el badge Comodato y el aviso Sin código I", () => {
     const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
     expect(html).toContain(`href="/piezas/${loanPiece.id}"`);
-    expect(html).toContain(BADGE_INTENTS.info);
+    // En las filas de resultados las insignias son tenues (mismo color de texto, sin relleno).
+    expect(html).toContain(SUBTLE_BADGE_INTENTS.info);
     expect(visibleText(html)).toContain("Comodato");
     if (!loanPiece.code_i) expect(visibleText(html)).toContain("Sin código I");
   });

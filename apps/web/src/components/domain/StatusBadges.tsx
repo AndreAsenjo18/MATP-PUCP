@@ -10,17 +10,21 @@ import type { ApiSchemas } from "@/lib/api/client";
 import { alertStatus, tenureStatus, type StatusStyle, type TenureRegimeLabel } from "./status-intents";
 
 /** Régimen de tenencia (Propia, Comodato, Préstamo temporal). */
-export function TenureBadge({ regime }: { regime: TenureRegimeLabel | string }) {
+export function TenureBadge({ regime, subtle = false }: { regime: TenureRegimeLabel | string; subtle?: boolean }) {
   const { label, intent } = tenureStatus(regime);
-  return <Badge intent={intent}>{label}</Badge>;
+  return (
+    <Badge intent={intent} subtle={subtle}>
+      {label}
+    </Badge>
+  );
 }
 
 /** Alerta de completitud de una pieza; no se muestra si no aplica. */
-export function AlertBadge({ alert }: { alert: ApiSchemas["PieceAlert"] }) {
+export function AlertBadge({ alert, subtle = false }: { alert: ApiSchemas["PieceAlert"]; subtle?: boolean }) {
   if (!alert.applies) return null;
   const { label, intent } = alertStatus(alert.type);
   return (
-    <Badge intent={intent} icon={TriangleAlert} title={alert.message}>
+    <Badge intent={intent} icon={TriangleAlert} title={alert.message} subtle={subtle}>
       {label}
     </Badge>
   );

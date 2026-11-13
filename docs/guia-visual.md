@@ -102,6 +102,10 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 - **Tarjeta de filtros** arriba: el buscador en píldora y, debajo, los filtros en una fila de listas de 52 px, alineadas por abajo. «Limpiar filtros» en píldora blanca con borde.
 - **Resultados en filas** de 84 px o más, una bajo otra, con `gap` de 12 px. Toda la fila es el enlace; sube 2 px al pasar el cursor.
 
+## Deshabilitado
+
+Un solo estilo en todo el sistema (`DISABLED_STYLES` en `components/ui/Button.tsx`): fondo gris cálido `borde`, texto `gris-texto`, sin sombra ni respuesta al cursor y cursor de «no permitido». Nunca una versión transparente del botón, que se confunde con otro botón.
+
 ## Avisos de error
 
 El color ladrillo nunca va solo: cada aviso de error lleva un icono de alerta y su texto. El icono lo dibuja `globals.css`, con el color del texto, en todo aviso `role="alert"` sobre fondo `carmin-bg`. Los avisos con recuadro que no tienen ese rol llevan la clase `aviso-error`, y los errores sin recuadro (el de un campo, por ejemplo), `texto-error`. Con colores forzados, el icono toma el color del texto del sistema.
@@ -161,7 +165,7 @@ En Reportes, el cuadro es `TableScroller` (`components/ui/TableScroller.tsx`): c
 |---|---|---|
 | `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `neutral` (blanca con borde arena), `outline`, `danger` (confirmar una eliminación) y `danger-outline` (lo destructivo discreto, como «Eliminar pieza»); tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
 | `Card`, `cardClassName` | `components/ui/Card.tsx` | Superficie base: blanco, borde arena, 24 px, sombra suave. Con `interactive`: realce, foco y movimiento corto |
-| `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre |
+| `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre; `subtle` la hace tenue (sin relleno, borde fino), para las filas de resultados |
 | `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. `controlSize="lg"` lo sube a 52 px, para las barras de filtros. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
 | `IconCircle` | `components/ui/IconCircle.tsx` | Icono en círculo de color por tipo de tarea; con `shape="square"`, en cuadrado redondeado |
 | `StatChip` | `components/ui/StatChip.tsx` | Píldora de un dato, `neutro` (blanca) o `alerta` (ámbar); con `href`, es enlace y lleva flecha |

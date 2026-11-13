@@ -21,8 +21,15 @@ interface ButtonBaseProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
 export type ButtonProps = ButtonBaseProps &
   ({ children: ReactNode; "aria-label"?: string } | { children?: undefined; "aria-label": string });
 
-const BASE_STYLES =
-  "inline-flex items-center justify-center gap-2 rounded-full text-center font-semibold leading-snug transition-[translate] duration-150 ease-out focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:cursor-not-allowed disabled:opacity-50 motion-safe:enabled:hover:-translate-y-px motion-safe:enabled:active:translate-y-0";
+/**
+ * Lo deshabilitado en todo el sistema: gris cálido neutro (no una versión pálida del botón), texto
+ * gris legible (5,7:1), sin sombra ni respuesta al cursor y con el cursor de «no permitido». Lo usan
+ * también los controles que no son `Button` (pasos, flechas de las tablas, términos, listas).
+ */
+export const DISABLED_STYLES =
+  "disabled:cursor-not-allowed disabled:border-borde disabled:bg-borde disabled:text-gris-texto disabled:shadow-none disabled:hover:border-borde disabled:hover:bg-borde disabled:hover:text-gris-texto disabled:hover:brightness-100";
+
+const BASE_STYLES = `inline-flex items-center justify-center gap-2 rounded-full text-center font-semibold leading-snug transition-[translate] duration-150 ease-out focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota motion-safe:enabled:hover:-translate-y-px motion-safe:enabled:active:translate-y-0 ${DISABLED_STYLES}`;
 
 export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-terracota text-white shadow-sm hover:bg-terracota-dark",

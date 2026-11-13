@@ -58,4 +58,5 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { text: "gris-texto", background: "crema", usage: "«vs» entre las dos piezas; títulos de tabla" },
   { text: "tinta", background: "crema", usage: "Fila de títulos de las tablas" },
   { text: "ambar-texto", background: "crema", usage: "Iniciales de la persona en la lista de usuarios" },
+  { text: "terracota-dark", background: "white", usage: "Badge info tenue (filas de resultados)" },
 ];

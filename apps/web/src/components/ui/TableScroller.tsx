@@ -15,6 +15,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 
 import { cn } from "@/lib/cn";
 
+import { DISABLED_STYLES } from "./Button";
 import { TABLE_BOX_CLASS } from "./Table";
 
 export interface ScrollEdges {
@@ -32,8 +33,7 @@ export function scrollEdges(scrollLeft: number, scrollWidth: number, clientWidth
 /** Cuánto del ancho visible avanza cada flecha: deja una columna a la vista como referencia. */
 const STEP = 0.8;
 
-const ARROW =
-  "inline-flex size-11 items-center justify-center rounded-full border border-borde bg-white text-tinta shadow-sm hover:border-terracota hover:text-terracota focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-borde disabled:hover:text-tinta";
+const ARROW = `inline-flex size-11 items-center justify-center rounded-full border border-borde bg-white text-tinta shadow-sm hover:border-terracota hover:text-terracota focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota ${DISABLED_STYLES}`;
 
 export function TableScroller({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   const id = useId();

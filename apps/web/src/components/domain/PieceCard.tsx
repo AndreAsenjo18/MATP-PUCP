@@ -10,6 +10,7 @@
 import { ArrowRight, ImageOff, MapPin } from "lucide-react";
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import type { ApiSchemas } from "@/lib/api/client";
 
@@ -67,6 +68,22 @@ export function PieceCard({
 }: PieceCardProps) {
   // «Sin foto» va con las insignias; no se repite como alerta.
   const badges = alerts.filter((alert) => alert.applies && alert.type !== "MISSING_PHOTO");
+  // Insignias tenues para que no compitan con el nombre. Con una sola (la tenencia), a la derecha;
+  // con varias, en una línea propia debajo del nombre en vez de apiñarse a la derecha.
+  const several = badges.length > 0 || !hasPhoto;
+  const badgeList = (
+    <div className={cn("flex flex-wrap items-center gap-1.5", !several && "lg:justify-end")}>
+      <TenureBadge regime={tenureRegime} subtle />
+      {badges.map((alert) => (
+        <AlertBadge key={alert.type} alert={alert} subtle />
+      ))}
+      {!hasPhoto && (
+        <Badge intent="warning" icon={ImageOff} subtle title="Requiere fotografía">
+          Sin foto
+        </Badge>
+      )}
+    </div>
+  );
   return (
     <Link
       href={href}
@@ -93,19 +110,9 @@ export function PieceCard({
             </span>
           </p>
           {matchReason && <p className="mt-1 self-start rounded-md bg-crema px-2 py-0.5 text-base text-tinta">{matchReason}</p>}
+          {several && <div className="mt-1.5">{badgeList}</div>}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 lg:max-w-[45%] lg:justify-end">
-          <TenureBadge regime={tenureRegime} />
-          {badges.map((alert) => (
-            <AlertBadge key={alert.type} alert={alert} />
-          ))}
-          {!hasPhoto && (
-            <span className="inline-flex items-center gap-1 font-medium text-ambar-texto" title="Requiere fotografía">
-              <ImageOff size={16} aria-hidden="true" />
-              Sin foto
-            </span>
-          )}
-        </div>
+        {!several && badgeList}
       </div>
       <ArrowRight
         size={20}

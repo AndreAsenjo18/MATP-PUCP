@@ -123,7 +123,7 @@ export const SEARCH_BOX_HINT = "Cualquier código, vigente o histórico, con o s
  */
 export function SearchBox({ value, onChange }: { value: string; onChange: (q: string) => void }) {
   return (
-    <form role="search" onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-1.5">
+    <form role="search" onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-1">
       <label htmlFor="q" className="text-base font-semibold text-tinta">
         Código o texto
       </label>
@@ -175,8 +175,9 @@ export function SearchFiltersPanel({
   const secondary = secondaryFiltersActive(filters);
   const fila = layout === "fila";
   // Los campos se alinean por abajo: si una etiqueta salta de línea, su campo no se descuadra.
-  const fields = fila ? "grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-4" : "flex flex-col gap-4";
-  const size = fila ? "lg" : "md";
+  const fields = fila ? "grid grid-cols-1 items-end gap-x-4 gap-y-3 sm:grid-cols-2 xl:grid-cols-4" : "flex flex-col gap-4";
+  // En fila (Buscar), campos de 44 px para que la tarjeta ocupe poco alto y los resultados se vean antes.
+  const size = "md";
   const [moreOpen, setMoreOpen] = useState(secondary || openMore);
   // Se abre al llegar un filtro secundario; ajustar el estado al renderizar evita un efecto.
   const [wasSecondary, setWasSecondary] = useState(secondary);
@@ -304,7 +305,7 @@ export function SearchFiltersPanel({
       </Button>
     </>
   );
-  if (fila) return <div className="flex flex-col gap-4">{body}</div>;
+  if (fila) return <div className="flex flex-col gap-3">{body}</div>;
   return (
     <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
       {body}

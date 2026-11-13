@@ -324,6 +324,15 @@ Sin maqueta propia: el mismo lenguaje que el resto. Comparado a 1366 × 768, 150
 
 **Verificación:** acceso, Estado y Cambiar contraseña en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px; la 404, con y sin sesión, a 1366 px y a 320 px.
 
+## Correcciones tras la revisión en video (2026-11-13)
+
+1. **Pestañas de segundo nivel de Administración** (Importación y Control): mostraban una barra de desplazamiento vertical diminuta. La causaba el margen negativo del subrayado de la pestaña activa, que desbordaba la fila. Ahora la línea de base es una sombra interior, sin margen negativo, y todas las filas de pestañas (también las principales y los pasos) ocultan el desplazamiento vertical y conservan el horizontal.
+2. **Botones deshabilitados:** se veían como una versión rosa pálida del botón. Ahora hay un solo estilo en todo el sistema (`DISABLED_STYLES` en `Button.tsx`): fondo gris cálido (`borde`), texto `gris-texto` (5,7:1), sin sombra ni respuesta al cursor, y cursor de «no permitido». Lo usan también los pasos de los asistentes, las flechas de las tablas, los términos de las listas de valores (que además pasan de 32 a 44 px) y la lista de piezas al revisar fotos.
+3. **Filas de Buscar:** las insignias son tenues (16 px, sin relleno, borde fino de su color). Con una sola, la tenencia, va a la derecha; con varias, en una línea propia debajo del nombre. Se conservan todas.
+4. **Tarjeta de filtros de Buscar** más baja, con los mismos filtros: relleno de 16 px, 12 px entre filas, listas de 44 px (antes 52) y, desde 768 px, tres columnas. Alto de la tarjeta: de 324 a 290 px a 1366 × 768 (la primera fila de resultados empieza en 522 px y se ven dos enteras) y de 462 a 376 px al 150 %.
+
+Verificado a 1366 × 768, 150 % y 320 px: ninguna fila de pestañas desborda en vertical, ningún desplazamiento lateral de la página, insignias de 16 px y controles de 44 px como mínimo.
+
 ## Cierre (fase 3)
 
 **Resultado final**, medido en las 21 rutas de siempre en los siete anchos (320, 683, 911, 1366, 1920, 2560 y 3200 px), en modo demostración como Administrador, más la 404:
