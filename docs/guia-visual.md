@@ -119,6 +119,11 @@ En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni co
 
 Estilo común en `components/ui/Table.ts`: la fila de títulos en crema, en seminegrita y fija al desplazarse; filas con una línea fina arriba; y el desplazamiento solo dentro del cuadro de la tabla (alto máximo de 70 % de la pantalla), nunca de la página.
 
+## Importación (maqueta B)
+
+- **Tarjetas de opción:** grandes, con el icono en un círculo de color, título `text-opcion` (27 px), descripción `text-opcion-texto` (19 px), etiqueta corta del tipo y botón redondo terracota con flecha.
+- **Pasos de un asistente** (`components/ui/Steps.ts`): en el contenedor de las pestañas; actual en terracota, hechos en verde con visto, pendientes sin fondo.
+
 ## Revisar pendientes (maqueta B)
 
 - Cada par de posibles duplicados es una tarjeta con las dos piezas en paneles de color suave (`ambar-bg` y `ciruela-bg`) separadas por «vs», el nivel de parecido como píldora y «Revisar» en terracota sólido.

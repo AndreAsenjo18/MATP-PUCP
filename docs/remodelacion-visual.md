@@ -15,7 +15,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 2a | Inicio y cabeceras de todas las pantallas principales | Hecha, esperando revisión |
 | 2b | Ficha: alta, vista y edición | Hecha, esperando revisión |
 | 2c | Revisar pendientes | Hecha, esperando revisión |
-| 2d | Importación e importación de fotos | Pendiente |
+| 2d | Importación e importación de fotos | Hecha, esperando revisión |
 | 2e | Reportes y vista de impresión | Pendiente |
 | 2f | Administración | Pendiente |
 | 2g | Acceso, cambio de contraseña y estado | Pendiente |
@@ -136,6 +136,29 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 **Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
+## Grupo 2d: Importación (maqueta B de Importación)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos flujos, pasos, textos y lógica.
+
+**Qué cambió:**
+
+- **«¿Qué desea importar?»:** las tres opciones son tarjetas grandes (unos 300 px de alto) con el icono en un círculo de color (añil, ciruela y verde), el título a 27 px y la descripción a 19 px (tokens `text-opcion` y `text-opcion-texto`), una etiqueta corta del tipo en su color y un botón redondo terracota con una flecha. Toda la tarjeta es el enlace; el botón es solo la señal.
+- **Pasos de los asistentes** (Excel en demostración y fotos): el mismo contenedor blanco que las pestañas, con el paso actual en terracota, los hechos en verde con su visto y los que faltan sin fondo (`components/ui/Steps.ts`).
+- **Tablas** de mapeo, conflicto de una fila, lectura de nombres de fotos y mapeo de términos con el estilo común de tablas.
+
+**Texto nuevo, pedido expresamente:** las etiquetas de tipo «Para piezas nuevas», «Para fotos» y «Paso a paso», tomadas de la maqueta. Anotado para Sergio (aviso A4).
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| Ayuda «Elija una opción para empezar.» en la banda | Sin ayuda | Texto nuevo que no se pidió |
+| Iconos de documento, imagen y capas | Los de siempre (hoja de cálculo, imágenes y capas) | Mismo significado; no se cambian sin motivo |
+
+El indicador de avance del asistente con datos reales (círculos y líneas) conserva su forma; ya seguía la paleta.
+
+**Verificación:** Importación, Importación de fotos, el asistente de Excel y la pestaña Importación de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
 
 ## Grupo 2c: Revisar pendientes (maqueta B de Pendientes)
 

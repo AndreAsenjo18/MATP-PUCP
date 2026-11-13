@@ -51,6 +51,11 @@
   --text-titulo--line-height: 1.05;
   --text-titulo-trabajo: clamp(1.75rem, 1.45rem + 1vw, 2.5rem);
   --text-titulo-trabajo--line-height: 1.15;
+  /* Tarjetas grandes de opción (Importación, maqueta B): título de 27 px y descripción de 19 px. */
+  --text-opcion: 1.6875rem;
+  --text-opcion--line-height: 1.2;
+  --text-opcion-texto: 1.1875rem;
+  --text-opcion-texto--line-height: 1.5;
 
   /* Radios altos: campos y avisos (md), tarjetas y diálogos (lg), menú y paneles (xl, 2xl). */
   --radius-md: 0.875rem;

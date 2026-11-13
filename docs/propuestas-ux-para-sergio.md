@@ -35,6 +35,12 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Requisito del Inicio:** pide «tarjetas grandes» para las seis tareas, entre ellas «Buscar una pieza» con su enlace. En la maqueta B buscar es un formulario en la cabecera.
 - **Propuesta:** antes de archivar cualquiera de los dos changes, reescribir esos dos puntos de `inicio-guia-de-tareas` como en la remodelación.
 
+### A4. Etiquetas de tipo en «¿Qué desea importar?»
+
+- **Pantalla:** Importación, la elección del origen.
+- **Ahora:** cada tarjeta lleva una etiqueta corta, tomada de la maqueta B: «Para piezas nuevas» (Solo Excel), «Para fotos» (Solo imágenes) y «Paso a paso» (Excel e imágenes).
+- **Motivo:** André las pidió expresamente para el grupo de Importación.
+
 ## Urgentes: textos que la remodelación deja desactualizados
 
 ### 2. Manual de usuario con los nombres antiguos del menú
