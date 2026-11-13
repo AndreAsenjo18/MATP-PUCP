@@ -10,6 +10,7 @@
  * de los parámetros: un layout no se vuelve a pintar al navegar y no los recibe (tarea 1.1). Los
  * contadores se piden al montar y cuando una pestaña avisa con `refresh` (design D3).
  */
+import { ClipboardList, Copy, Sparkles, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -46,6 +47,9 @@ export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
 // ---------------------------------------------------------------------------------------------
 
 /** Pestañas como enlaces: 16 px, 44 px de alto, la activa con `aria-current` y una marca gruesa. */
+/** Icono de cada pestaña (maqueta B); el nombre va siempre al lado. */
+const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { duplicates: Copy, suggestions: Sparkles, incomplete: ClipboardList };
+
 export function PendingTabsNav({
   tabs,
   counts,
@@ -61,6 +65,7 @@ export function PendingTabsNav({
       <ul className={TAB_LIST_CLASS}>
         {tabs.map((tab) => {
           const active = tab.key === activeKey;
+          const Icon = TAB_ICONS[tab.key];
           return (
             <li key={tab.key}>
               <Link
@@ -68,6 +73,7 @@ export function PendingTabsNav({
                 aria-current={active ? "page" : undefined}
                 className={tabClassName(active)}
               >
+                <Icon size={18} aria-hidden="true" className="shrink-0" />
                 {tabLabel(tab, counts[tab.key])}
               </Link>
             </li>

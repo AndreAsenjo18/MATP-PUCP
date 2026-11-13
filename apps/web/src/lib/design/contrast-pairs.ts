@@ -48,4 +48,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { text: "white", background: "verde-exito", usage: "IconCircle verde sólido" },
   { text: "white", background: "ambar-texto", usage: "IconCircle ámbar sólido" },
   { text: "white", background: "gris-texto", usage: "IconCircle piedra sólido" },
+  // Pares de la cola de duplicados: cada pieza en un panel de color suave.
+  { text: "tinta", background: "ambar-bg", usage: "Panel de la primera pieza del par" },
+  { text: "gris-texto", background: "ambar-bg", usage: "Panel de la primera pieza del par (detalle)" },
+  { text: "terracota", background: "ambar-bg", usage: "Código I en el panel de la primera pieza" },
+  { text: "tinta", background: "ciruela-bg", usage: "Panel de la segunda pieza del par" },
+  { text: "gris-texto", background: "ciruela-bg", usage: "Panel de la segunda pieza del par (detalle)" },
+  { text: "terracota", background: "ciruela-bg", usage: "Código I en el panel de la segunda pieza" },
+  { text: "gris-texto", background: "crema", usage: "«vs» entre las dos piezas; títulos de tabla" },
+  { text: "tinta", background: "crema", usage: "Fila de títulos de las tablas" },
 ];

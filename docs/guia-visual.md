@@ -108,7 +108,21 @@ El color ladrillo nunca va solo: cada aviso de error lleva un icono de alerta y 
 
 ## Pestañas
 
-Un solo estilo en todo el sistema (`components/ui/Tabs.ts`): píldoras de 44 px y 16 px. La activa va en terracota sólido y en seminegrita; las demás, blancas con borde arena. En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni cortar el texto de ninguna pestaña.
+Dos estilos, en `components/ui/Tabs.ts`, los dos de 44 px y 16 px:
+
+- **Principales:** un contenedor blanco redondeado con las pestañas dentro; la activa es una píldora terracota sólida en seminegrita y las demás van sin fondo. Pueden llevar icono. Las usan la ficha, Revisar pendientes y las áreas de Administración.
+- **De segundo nivel:** subrayadas, con la activa en terracota. Las usan las secciones de Administración.
+
+En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni cortar el texto de ninguna pestaña.
+
+## Tablas
+
+Estilo común en `components/ui/Table.ts`: la fila de títulos en crema, en seminegrita y fija al desplazarse; filas con una línea fina arriba; y el desplazamiento solo dentro del cuadro de la tabla (alto máximo de 70 % de la pantalla), nunca de la página.
+
+## Revisar pendientes (maqueta B)
+
+- Cada par de posibles duplicados es una tarjeta con las dos piezas en paneles de color suave (`ambar-bg` y `ciruela-bg`) separadas por «vs», el nivel de parecido como píldora y «Revisar» en terracota sólido.
+- Las tarjetas de acción («Buscar en todo el catálogo») llevan el icono en un círculo de color suave.
 
 ## Ficha (maqueta B)
 

@@ -49,7 +49,7 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
             {functionLabel(suggestion.function_code)}
           </p>
           {piece && (
-            <Link href={`/piezas/${piece.id}`} className="text-sm text-terracota underline">
+            <Link href={`/piezas/${piece.id}`} className="inline-flex min-h-11 items-center text-base font-semibold text-terracota underline underline-offset-4">
               {piece.denomination}
             </Link>
           )}

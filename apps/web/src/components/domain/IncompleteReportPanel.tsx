@@ -8,6 +8,8 @@ import { Download, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { buttonClassName } from "@/components/ui/Button";
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
 import type { ApiSchemas } from "@/lib/api/client";
 import { fetchDuplicateCollections } from "@/lib/data/duplicates";
 import type { IncompleteUrlState } from "@/lib/data/reports";
@@ -149,11 +151,11 @@ export function IncompleteReportPanel({
         )}
         {canDownload && (
           <div className="ml-auto flex gap-2">
-            <button type="button" onClick={() => handleDownload("xlsx")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-base font-medium text-tinta hover:bg-crema">
+            <button type="button" onClick={() => handleDownload("xlsx")} className={buttonClassName({ variant: "neutral", size: "sm" })}>
               <FileSpreadsheet size={16} aria-hidden="true" />
               Excel
             </button>
-            <button type="button" onClick={() => handleDownload("csv")} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-borde px-3 py-2 text-base font-medium text-tinta hover:bg-crema">
+            <button type="button" onClick={() => handleDownload("csv")} className={buttonClassName({ variant: "neutral", size: "sm" })}>
               <Download size={16} aria-hidden="true" />
               CSV
             </button>
@@ -170,25 +172,25 @@ export function IncompleteReportPanel({
       {result?.status === "unavailable" && <p className="text-base text-gris-texto">{result.message}</p>}
       {result?.status === "ok" && (
         <>
-          <div className="max-w-full overflow-x-auto">
-            <table className="w-full text-left text-base">
-              <thead className="text-base text-gris-texto">
+          <div className={TABLE_BOX_CLASS}>
+            <table className={TABLE_CLASS}>
+              <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className="py-2 pr-4 font-medium">Pieza</th>
-                  <th className="py-2 pr-4 font-medium">Colección</th>
-                  <th className="py-2 pr-4 font-medium">Alertas</th>
+                  <th className={TH_CLASS}>Pieza</th>
+                  <th className={TH_CLASS}>Colección</th>
+                  <th className={TH_CLASS}>Alertas</th>
                 </tr>
               </thead>
               <tbody>
                 {result.page.items.map((item) => (
-                  <tr key={item.piece_id} className="border-t border-borde">
-                    <td className="py-2 pr-4">
+                  <tr key={item.piece_id}>
+                    <td className={TD_CLASS}>
                       <Link href={`/piezas/${item.piece_id}`} className="inline-flex min-h-11 items-center font-medium text-tinta underline hover:text-terracota">
                         {item.title}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4 text-gris-texto">{item.collection_name ?? "Sin colección"}</td>
-                    <td className="py-2 pr-4">
+                    <td className={`${TD_CLASS} text-gris-texto`}>{item.collection_name ?? "Sin colección"}</td>
+                    <td className={TD_CLASS}>
                       <div className="flex flex-wrap gap-1">
                         {item.alerts.map((type) => (
                           <AlertBadge key={type} alert={{ type, applies: true, message: "", suggested_action: "" }} />
@@ -199,7 +201,7 @@ export function IncompleteReportPanel({
                 ))}
                 {result.page.items.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center text-gris-texto">
+                    <td colSpan={3} className={`${TD_CLASS} text-center text-gris-texto`}>
                       Sin piezas incompletas con estos filtros.
                     </td>
                   </tr>
@@ -216,7 +218,7 @@ export function IncompleteReportPanel({
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="min-h-11 rounded-md border border-borde px-3 py-1 text-base font-medium text-tinta disabled:opacity-40"
+                className={buttonClassName({ variant: "neutral", size: "sm" })}
               >
                 Anterior
               </button>
@@ -224,7 +226,7 @@ export function IncompleteReportPanel({
                 type="button"
                 disabled={page * INCOMPLETE_PAGE_SIZE >= result.page.total}
                 onClick={() => setPage((p) => p + 1)}
-                className="min-h-11 rounded-md border border-borde px-3 py-1 text-base font-medium text-tinta disabled:opacity-40"
+                className={buttonClassName({ variant: "neutral", size: "sm" })}
               >
                 Siguiente
               </button>

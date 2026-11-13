@@ -121,7 +121,7 @@ export function AiSuggestionsLive({
               onReject={(reason) => handleReject(suggestion, reason)}
               footer={
                 suggestion.piece_id && (
-                  <Link href={`/piezas/${suggestion.piece_id}`} className="text-sm text-terracota underline">
+                  <Link href={`/piezas/${suggestion.piece_id}`} className="inline-flex min-h-11 items-center text-base font-semibold text-terracota underline underline-offset-4">
                     Ver la ficha de la pieza
                   </Link>
                 )

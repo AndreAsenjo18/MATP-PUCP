@@ -24,7 +24,8 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, cardClassName } from "@/components/ui/Card";
+import { IconCircle } from "@/components/ui/IconCircle";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -327,7 +328,6 @@ const SCORE_OPTIONS = [
  * suben a 16 px y 44 px sin tocar el átomo, que es de la Base (C28).
  */
 const FILTER_FIELD = "[&_label]:text-base [&_p]:text-base";
-const FILTER_CONTROL = "min-h-11";
 
 export function DuplicateFilters({
   value,
@@ -339,8 +339,9 @@ export function DuplicateFilters({
   onChange: (next: DuplicateFilterValue) => void;
 }) {
   return (
-    <form role="search" aria-label="Filtros de la cola" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
-      <Select fieldClassName={FILTER_FIELD} className={FILTER_CONTROL} label="Estado" value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as DuplicateFilterValue["status"] })}>
+    // Los filtros en su propia tarjeta, con listas de 52 px (maqueta B).
+    <form role="search" aria-label="Filtros de la cola" className={cardClassName({ className: "grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4" })} onSubmit={(event) => event.preventDefault()}>
+      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Estado" value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as DuplicateFilterValue["status"] })}>
         {STATUS_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -349,7 +350,7 @@ export function DuplicateFilters({
       </Select>
       <Select
         fieldClassName={FILTER_FIELD}
-        className={FILTER_CONTROL}
+        controlSize="lg"
         label="Colección"
         hint="Incluye sus subcolecciones."
         value={value.collectionId}
@@ -362,14 +363,14 @@ export function DuplicateFilters({
           </option>
         ))}
       </Select>
-      <Select fieldClassName={FILTER_FIELD} className={FILTER_CONTROL} label="Similitud mínima" value={value.minScore} onChange={(event) => onChange({ ...value, minScore: event.target.value })}>
+      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Similitud mínima" value={value.minScore} onChange={(event) => onChange({ ...value, minScore: event.target.value })}>
         {SCORE_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
       </Select>
-      <Select fieldClassName={FILTER_FIELD} className={FILTER_CONTROL} label="Origen" value={value.origin} onChange={(event) => onChange({ ...value, origin: event.target.value as DuplicateFilterValue["origin"] })}>
+      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Origen" value={value.origin} onChange={(event) => onChange({ ...value, origin: event.target.value as DuplicateFilterValue["origin"] })}>
         <option value="">Catálogo e importación</option>
         <option value="CATALOG">Dos piezas del catálogo</option>
         <option value="IMPORT">Fila de importación</option>
@@ -698,26 +699,44 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
   const words = SIMILARITY_WORDS[similarityLevel(candidate.score)];
   return (
     <li>
-      <article aria-label={`Par: ${words.toLowerCase()}`} className={cn("rounded-lg border bg-white", open ? "border-terracota" : "border-borde")}>
-        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
-          <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
-            <RowPiece piece={pieceA} piecesLoading={piecesLoading} />
-            {isImportRow ? (
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="text-lg font-semibold text-tinta">Fila de importación</p>
-                <p className="text-base text-gris-texto">Aún no está en el catálogo.</p>
-              </div>
-            ) : (
-              <RowPiece piece={pieceB} piecesLoading={piecesLoading} />
-            )}
+      <article
+        aria-label={`Par: ${words.toLowerCase()}`}
+        className={cn("rounded-tarjeta border bg-white shadow-sm", open ? "border-terracota" : "border-borde")}
+      >
+        <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center">
+          {/* Las dos piezas en paneles de color suave, separadas por «vs» (maqueta B). */}
+          <div className="grid min-w-0 flex-1 items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3">
+            <div className="flex min-w-0 items-center rounded-md bg-ambar-bg p-3">
+              <RowPiece piece={pieceA} piecesLoading={piecesLoading} />
+            </div>
+            <span aria-hidden="true" className="inline-flex size-10 items-center justify-center self-center justify-self-center rounded-full bg-crema text-base font-bold text-gris-texto">
+              vs
+            </span>
+            <div className="flex min-w-0 items-center rounded-md bg-ciruela-bg p-3">
+              {isImportRow ? (
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <p className="text-lg font-semibold text-tinta">Fila de importación</p>
+                  <p className="text-base text-gris-texto">Aún no está en el catálogo.</p>
+                </div>
+              ) : (
+                <RowPiece piece={pieceB} piecesLoading={piecesLoading} />
+              )}
+            </div>
           </div>
-          <div className="flex min-w-0 flex-col gap-1 lg:w-60">
-            <p className="text-base font-semibold text-tinta">{words}</p>
+          <div className="flex min-w-0 flex-col items-start gap-1.5 lg:w-56">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-3 py-1 text-base font-semibold",
+                similarityLevel(candidate.score) === "low" ? "bg-borde text-gris-texto" : "bg-ambar-bg text-ambar-texto",
+              )}
+            >
+              {words}
+            </span>
             {reason && <p className="text-base text-gris-texto">{signalLabel(reason, names)}</p>}
             {candidate.status !== "PENDING" && <p className="text-base text-tinta">Estado: {duplicateStatus(candidate.status).label}</p>}
           </div>
           <Button
-            variant={open ? "secondary" : "outline"}
+            variant={open ? "secondary" : "primary"}
             aria-expanded={open}
             aria-controls={detailId}
             data-review-toggle=""
@@ -1002,9 +1021,13 @@ export function ScanPanel({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold text-tinta">Buscar en todo el catálogo</h2>
-          <p className="text-base text-gris-texto">Corre sola al crear o editar piezas. Lance una completa tras cambios masivos.</p>
+        {/* Con un ancho mínimo, el botón pasa a la línea de abajo en pantallas estrechas. */}
+        <div className="flex min-w-0 flex-1 basis-64 items-center gap-4">
+          <IconCircle icon={ScanSearch} tone="anil" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 className="text-lg font-bold text-tinta">Buscar en todo el catálogo</h2>
+            <p className="text-base text-gris-texto">Corre sola al crear o editar piezas. Lance una completa tras cambios masivos.</p>
+          </div>
         </div>
         {canScan && (
           <Button variant="outline" icon={ScanSearch} disabled={starting || running} onClick={onStart}>

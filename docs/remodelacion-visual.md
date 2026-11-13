@@ -14,7 +14,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 1 | Base: tokens, átomos, estructura y menú | Hecha, con la corrección del menú en ventanas bajas; esperando revisión |
 | 2a | Inicio y cabeceras de todas las pantallas principales | Hecha, esperando revisión |
 | 2b | Ficha: alta, vista y edición | Hecha, esperando revisión |
-| 2c | Revisar pendientes | Pendiente |
+| 2c | Revisar pendientes | Hecha, esperando revisión |
 | 2d | Importación e importación de fotos | Pendiente |
 | 2e | Reportes y vista de impresión | Pendiente |
 | 2f | Administración | Pendiente |
@@ -136,6 +136,31 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 **Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
+## Grupo 2c: Revisar pendientes (maqueta B de Pendientes)
+
+Las cuatro maquetas de Importación, Pendientes, Reportes y Administración llegaron el 2026-11-13 y se usan como referencia visual: datos, filtros, pestañas, textos y lógica son los reales. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
+
+**Qué cambió:**
+
+- **Pestañas del sistema** dentro de un contenedor blanco redondeado, como en las maquetas: la activa en terracota sólido y las demás sin fondo (`components/ui/Tabs.ts`). Las de Revisar pendientes llevan icono. Las secciones de Administración pasan a pestañas subrayadas de 44 px, distintas de las principales.
+- **«Buscar en todo el catálogo»** con el icono en un círculo añil y «Buscar duplicados» con borde. En pantallas estrechas el botón baja a su propia línea.
+- **Filtros de la cola** en su propia tarjeta, con listas de 52 px.
+- **Cada par** es una tarjeta: las dos piezas en paneles de color suave (ámbar y ciruela) separadas por un «vs» decorativo; el nivel de parecido («Muy parecidas») como píldora; el motivo debajo; y «Revisar» en terracota sólido. El conteo («2 pares») va con peso de encabezado.
+- **Piezas incompletas** con el estilo común de tablas (`components/ui/Table.ts`): fila de títulos en crema y fija, y el desplazamiento solo dentro del cuadro. Los botones de descarga y de página usan la píldora neutra.
+- **Sugerencias:** el nombre de cada pieza es un enlace de 16 px y 44 px de alto (antes 22 px). Resuelve los dos pendientes de la fase 1 de esta pestaña.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| «2 pares por revisar» | «2 pares» | No se cambian textos |
+| Código «I-0236 · Colección MMZ» | «Código I I-0236 · Colección MMZ (ficticia)» | Mismo motivo |
+| Pestañas con los iconos de la maqueta | Iconos de lucide parecidos (copiar, chispas, portapapeles) | Los de la maqueta no tienen nombre; se eligieron los más cercanos |
+
+**Verificación:** las tres pestañas, `/duplicados` y `/ia/sugerencias` en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla de Piezas incompletas es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
+
+**Auditoría web-design-guidelines:** un hallazgo, corregido: en 320 px el texto de «Buscar en todo el catálogo» quedaba en una columna de una palabra por línea.
 
 ## Decisiones tras el grupo 2b (2026-11-13)
 

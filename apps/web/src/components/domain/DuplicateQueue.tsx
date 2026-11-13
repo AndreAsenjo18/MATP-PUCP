@@ -293,7 +293,7 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
         {!loading && queue?.status === "ready" && (
           <>
             <div className="flex flex-col gap-2">
-              <p className="text-base text-gris-texto">{total === 1 ? "1 par" : `${total} pares`}</p>
+              <p className="text-lg font-bold text-tinta">{total === 1 ? "1 par" : `${total} pares`}</p>
               <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, arriba" onPage={goToPage} />
             </div>
             {items.length > 0 ? (

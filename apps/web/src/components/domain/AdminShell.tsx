@@ -16,7 +16,7 @@
 import { FileSpreadsheet, Library, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { TAB_LIST_CLASS, tabClassName } from "@/components/ui/Tabs";
+import { TAB_LIST_CLASS, tabClassName, UNDERLINE_TAB_LIST_CLASS, underlineTabClassName } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
 
 export type AdminArea = "personas" | "catalogo" | "importacion" | "control";
@@ -104,7 +104,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
           );
         })}
       </div>
-      <div role="tablist" aria-label={`Secciones de ${active.label}`} className={TAB_LIST_CLASS}>
+      <div role="tablist" aria-label={`Secciones de ${active.label}`} className={UNDERLINE_TAB_LIST_CLASS}>
         {active.sections.map((section) => {
           const selected = section.slug === current;
           return (
@@ -115,7 +115,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
               aria-selected={selected}
               aria-current={selected ? "page" : undefined}
               onClick={() => onSelect(section.slug)}
-              className={tabClassName(selected)}
+              className={underlineTabClassName(selected)}
             >
               {section.label}
             </button>
