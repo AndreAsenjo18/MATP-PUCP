@@ -119,6 +119,12 @@ En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni co
 
 Estilo común en `components/ui/Table.ts`: la fila de títulos en crema, en seminegrita y fija al desplazarse; filas con una línea fina arriba; y el desplazamiento solo dentro del cuadro de la tabla (alto máximo de 70 % de la pantalla), nunca de la página.
 
+## Reportes (maqueta B)
+
+- **Tipos de reporte** en tarjetas con icono de color; el elegido con borde terracota y marca de visto.
+- **Resultado:** acciones junto al título («Exportar a Excel» en verde, variante `create`), la cantidad como etiqueta crema y la tabla con el estilo común.
+- **Vista de impresión:** blanco y negro, sin banda ni trama.
+
 ## Importación (maqueta B)
 
 - **Tarjetas de opción:** grandes, con el icono en un círculo de color, título `text-opcion` (27 px), descripción `text-opcion-texto` (19 px), etiqueta corta del tipo y botón redondo terracota con flecha.

@@ -91,19 +91,21 @@ function ReportesContent() {
       ) : report ? (
         <Card as="section" className="flex flex-col gap-3">
           {/* La misma vista previa que el modo conectado: columnas principales y totales en frase. */}
-          {hasPermission("exports.run") && (
-            <div className="flex flex-wrap justify-end">
-              <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-                Exportar a Excel
-              </Button>
-            </div>
-          )}
+          <ReportPreview
+            report={report}
+            actions={
+              hasPermission("exports.run") && (
+                <Button variant="create" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+                  Exportar a Excel
+                </Button>
+              )
+            }
+          />
           {exported && (
             <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
               En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con todas las columnas.
             </p>
           )}
-          <ReportPreview report={report} />
         </Card>
       ) : (
         <Card as="section">

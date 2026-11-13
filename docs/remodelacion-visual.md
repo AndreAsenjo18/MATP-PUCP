@@ -16,7 +16,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 2b | Ficha: alta, vista y edición | Hecha, esperando revisión |
 | 2c | Revisar pendientes | Hecha, esperando revisión |
 | 2d | Importación e importación de fotos | Hecha, esperando revisión |
-| 2e | Reportes y vista de impresión | Pendiente |
+| 2e | Reportes y vista de impresión | Hecha, esperando revisión |
 | 2f | Administración | Pendiente |
 | 2g | Acceso, cambio de contraseña y estado | Pendiente |
 | 3 | Cierre: consistencia, capturas «después», informe | Pendiente |
@@ -136,6 +136,26 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 **Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
+## Grupo 2e: Reportes (maqueta B de Reportes)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos tipos de reporte, columnas, filtros, textos y lógica, en los dos modos.
+
+**Qué cambió:**
+
+- **Tipos de reporte** como tarjetas con el icono en un círculo de color, tres arriba y dos abajo desde 1024 px. El elegido lleva borde terracota y una marca de visto, además de `aria-pressed`.
+- **Resultado:** el título en negrita y, a su lado, «Exportar a Excel» en verde sólido (y «Vista imprimible» con datos reales). Debajo, la cantidad como etiqueta, la línea de columnas en pantalla y «Ver las N columnas» con borde.
+- **Tabla** con el estilo común: fila de títulos en crema y fija, grupos en crema suave y desplazamiento solo dentro de su cuadro.
+- **Vista de impresión:** sin cambios de diseño. Sigue en blanco y negro limpio, sin cabecera terracota ni trama; solo toma la letra Manrope del resto del sistema.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| Columnas Código, Nombre, Categoría, Ubicación y Estado | Las columnas principales reales del reporte (Denominación, Descripción, Colección, Código I, Régimen) | No se inventan columnas |
+| Iconos de la maqueta | Iconos de lucide parecidos (barras, biblioteca, ubicación, capas, lupa) | Los de la maqueta no tienen nombre |
+
+**Verificación:** Reportes y la vista de impresión en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla es más ancha que la pantalla a 320 y 683 px y se desplaza dentro de su cuadro.
 
 ## Grupo 2d: Importación (maqueta B de Importación)
 

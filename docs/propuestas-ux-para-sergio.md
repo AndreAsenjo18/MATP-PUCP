@@ -78,6 +78,13 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Motivo:** «fase 1» es un término del proyecto, no del museo.
 - **Propuesta:** «Uso interno del museo» y «No disponible por ahora».
 
+### 5b. «NEXT_PUBLIC_API_MODE=live» en la vista de impresión
+
+- **Pantalla:** Reportes › Vista imprimible, en modo demostración.
+- **Hoy:** «El asistente conectado a la API solo funciona con NEXT_PUBLIC_API_MODE=live.»
+- **Propuesta:** «La vista para imprimir solo está disponible con los datos reales del museo.»
+- **Motivo:** muestra el nombre de una variable de configuración y la palabra «API».
+
 ## Coherencia de textos
 
 ### 6. «Volver a la búsqueda» y «Volver a búsqueda»

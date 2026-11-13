@@ -21,7 +21,7 @@
 - [x] 2.2 Ficha según la maqueta B: «Volver» y las insignias en la banda (también en alta y edición), acciones con «Eliminar pieza» discreta en ladrillo, color destructivo ladrillo, datos generales en los grupos del formulario y un solo estilo de pestañas en todo el sistema (ficha, Revisar pendientes y Administración, 44 px) (Req: Identidad visual «Cabecera audaz»)
 - [x] 2.3 Revisar pendientes según la maqueta B: pestañas en contenedor con icono, «Buscar en todo el catálogo» con icono, filtros en tarjeta, pares en paneles con «vs», tabla común en Piezas incompletas y enlaces de Sugerencias de 44 px (Req: Identidad visual «Cabecera audaz»)
 - [x] 2.4 Importación según la maqueta B: tarjetas grandes de origen con icono, etiqueta de tipo y botón redondo; pasos de los asistentes en el contenedor de las pestañas; tablas de importación con el estilo común (Req: Identidad visual «Cabecera audaz»)
-- [ ] 2.5 Reportes, incluida la vista de impresión
+- [x] 2.5 Reportes según la maqueta B: tipos en tarjetas con icono y el elegido con borde y visto, resultado con «Exportar a Excel» en verde junto al título, cantidad como etiqueta y tabla común; la vista de impresión sigue en blanco y negro (Req: Identidad visual «Cabecera audaz»)
 - [ ] 2.6 Administración: Personas, Catálogo, Importación y Control (Req: Controles compactos con color e icono en Administración)
 - [ ] 2.7 Acceso, cambio de contraseña y estado de los servicios
 

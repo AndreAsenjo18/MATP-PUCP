@@ -57,7 +57,8 @@ describe("vista previa del reporte", () => {
   it("deja el encabezado de la tabla fijo al desplazarse", () => {
     const html = render(<ReportPreview report={report()} onPage={noop} />);
     expect(html.match(/<th[^>]*scope="col"[^>]*sticky top-0/g)).toHaveLength(3);
-    expect(html).toMatch(/max-h-\[70vh\] overflow-auto/);
+    // El cuadro común de tablas: alto máximo y desplazamiento solo dentro de él.
+    expect(html).toMatch(/max-h-\[min\(70dvh,40rem\)\] max-w-full overflow-auto/);
   });
 
   it("muestra las mismas columnas que el archivo, en el mismo orden", () => {

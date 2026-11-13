@@ -86,7 +86,7 @@ export function ReportActions({
   return (
     <div className="flex flex-wrap gap-2">
       {canExport && (
-        <Button variant="outline" icon={FileSpreadsheet} disabled={busy} onClick={onExport}>
+        <Button variant="create" icon={FileSpreadsheet} disabled={busy} onClick={onExport}>
           Exportar a Excel
         </Button>
       )}
@@ -328,9 +328,12 @@ export function ReportsLive({
         {job && <ReportJobNotice job={job} />}
         {report && !missing && (
           <>
-            <ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />
+            <ReportPreview
+              report={report}
+              onPage={setPage}
+              actions={<ReportActions type={type} params={params} report={report} canExport={hasPermission("exports.run")} busy={busy} onExport={handleExport} />}
+            />
             {notice && <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">{notice}</p>}
-            <ReportPreview report={report} onPage={setPage} />
           </>
         )}
       </Card>
