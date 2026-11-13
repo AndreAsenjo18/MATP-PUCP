@@ -22,7 +22,7 @@ export interface MenuAccountProps {
 }
 
 const LOGOUT_STYLES =
-  "flex items-center justify-center gap-2 rounded-full border border-crema/60 text-base font-semibold text-crema hover:bg-white/10 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema";
+  "flex items-center justify-center gap-2 rounded-full border border-crema/60 text-base font-bold text-crema hover:bg-white/10 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema";
 
 /** El rol se omite si el nombre ya lo dice (p. ej. «Administrador MATP» con el rol «Administrador»). */
 export function roleIsRedundant(name: string | undefined, role: string | undefined): boolean {
@@ -48,7 +48,7 @@ export function MenuAccount({ name, role, logoutLabel, onLogout, demo = false, c
   }
   const showRole = !roleIsRedundant(name, role);
   return (
-    <div className="flex flex-col gap-2 px-3">
+    <div className="flex flex-col gap-2 px-3 font-heading">
       {demo && (
         // Dos palabras en una línea, a 16 px; lo de «datos sintéticos» queda para la ayuda y el lector de pantalla.
         <span title={DEMO_LABEL} className="inline-flex items-center gap-1.5 self-start rounded-full bg-ambar-bg px-2.5 py-0.5 text-base font-medium text-ambar-texto">
@@ -56,12 +56,12 @@ export function MenuAccount({ name, role, logoutLabel, onLogout, demo = false, c
           Modo demostración<span className="sr-only"> (datos sintéticos)</span>
         </span>
       )}
-      <p className="min-w-0 px-1 text-base break-words text-crema">
-        <span className="block font-semibold">{name}</span>
-        {showRole && <span className="block text-crema/80">{role}</span>}
+      <p className="min-w-0 px-1 text-base break-words text-crema/80">
+        <span className="block">{name}</span>
+        {showRole && <span className="block">{role}</span>}
       </p>
+      {/* Como en la maqueta B: el botón dice lo que hace, sin icono; el icono queda para el riel. */}
       <button type="button" onClick={onLogout} className={cn(LOGOUT_STYLES, "min-h-11 w-full px-4 py-2")}>
-        <LogOut size={20} aria-hidden="true" className="shrink-0" />
         {logoutLabel}
       </button>
     </div>

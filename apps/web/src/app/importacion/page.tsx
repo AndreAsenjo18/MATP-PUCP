@@ -11,6 +11,7 @@ import { ArrowLeft, ArrowRight, Check, Download, FileSpreadsheet, MinusCircle, S
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportConflictModal } from "@/components/domain/ImportConflictModal";
 import { ImportOriginPicker } from "@/components/domain/ImportOriginPicker";
@@ -48,10 +49,7 @@ function ImportacionContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Asistente de importación</h1>
-        <p className="text-base text-gris-texto">Lote de demostración: {batch.file_name} ({batch.source_name}).</p>
-      </header>
+      <PageHeader title="Asistente de importación" description={`Lote de demostración: ${batch.file_name} (${batch.source_name}).`} />
 
       <ol className="flex flex-wrap gap-2" aria-label="Pasos de la importación">
         {STEPS.map((label, index) => (

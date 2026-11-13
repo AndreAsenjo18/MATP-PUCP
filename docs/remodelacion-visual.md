@@ -12,7 +12,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 |---|---|---|
 | 0 | Inventario, change, capturas «antes» | Hecha |
 | 1 | Base: tokens, átomos, estructura y menú | Hecha, con la corrección del menú en ventanas bajas; esperando revisión |
-| 2a | Inicio y Búsqueda | Pendiente |
+| 2a | Inicio y cabeceras de todas las pantallas principales | Hecha, esperando revisión |
 | 2b | Ficha: alta, vista y edición | Pendiente |
 | 2c | Revisar pendientes | Pendiente |
 | 2d | Importación e importación de fotos | Pendiente |
@@ -106,19 +106,50 @@ Con el teclado, 20 de 20 comprobaciones del menú de pantallas estrechas. Captur
 - **Textos:** los nueve avisos «Cambie de rol desde la cabecera» y la ayuda del acceso dicen ahora «desde el menú». Está anotado para Sergio, junto con el rol que no se repite al pie del menú.
 - **Change `inicio-guia-de-tareas`:** alineado con los nombres del menú («Buscar» y «Administración»). El menú no cambia.
 
+## Grupo 2a: Inicio según la maqueta B y cabeceras
+
+La maqueta B del Inicio llegó el 2026-11-13. Se describió antes de empezar y se reprodujo comparando capturas a 1366 × 768, 150 % (911 × 512) y 50 % (2732 × 1536). La imagen representa una ventana de unos 1366 × 860 px, así que a 768 px de alto la fila «El catálogo hoy» queda bajo el borde, igual que en ella.
+
+**Qué cambió:**
+
+- **`PageHeader`** (`components/layout/PageHeader.tsx`), en dos tamaños. El grande, solo para el Inicio. El compacto, de 96 a 128 px en 1366 px, para Buscar, la ficha (vista, alta y edición), Revisar pendientes y sus colas, Importación (las dos versiones del asistente, el origen y las fotos), Reportes y Administración. Mismos títulos, ayudas y lógica.
+- **Acciones en la banda:** «Nueva pieza» de Buscar, como píldora crema. Las de la ficha quedan bajo la banda, porque el grupo 2b las quiere en terracota sólido, que no se vería sobre ella.
+- **«Volver a …»** (`PageBackLink`): área de toque de 44 px. Resuelve el pendiente de la fase 1 en alta, ficha y edición.
+- **Trama de rombos** (`trama-rombos`): la de la maqueta, una cuadrícula de rombos de contorno con un rombo pequeño dentro, desde 768 px.
+- **Inicio:** buscador real en la cabecera (`next/form` hacia `/busqueda?q=…`, sin recargar), tarjeta verde para registrar, cuatro tarjetas blancas con el icono en cuadrado redondeado, píldoras del catálogo sin icono y sin la línea de demostración. Todo en Manrope.
+- **Menú:** rombo de la marca, entradas en Manrope con 8 px entre ellas, iconos de la maqueta (subir, barras y deslizadores) y botón del pie sin icono.
+- **Token nuevo** `terracota-vivo`, solo decorativo (rombo y trama), con prueba de que nunca es color de texto.
+
+**Lo que no sigue a la imagen, y por qué:**
+
+| En la imagen | En la aplicación | Motivo |
+|---|---|---|
+| Varios textos de menos de 16 px (nombre del museo, descripciones, píldoras, pie del menú) | 16 px | Límite de letra; las proporciones quedan algo más grandes |
+| Pie con «Cerrar sesión» y sin insignia | En demostración, la insignia y «Cambiar de rol» | La imagen muestra el modo real; el texto del botón lo decide la lógica |
+| Sin «Contraer menú» | Se conserva | Función existente |
+| Píldoras del catálogo sin flecha | Las dos de ámbar llevan una flecha pequeña | Son enlaces y la blanca no: sin flecha, la diferencia sería solo de color |
+| La trama empieza bajo el botón «Buscar» | Empieza donde termina el buscador, desvanecida | Que nunca quede detrás de un texto en ningún ancho |
+| — (solo 1366 px) | Bajo 640 px el botón «Buscar» pasa a su propia fila y la tarjeta verde pierde la flecha | Que el campo y el título tengan sitio a 320 px |
+
+A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por e…»), como ya pasaba en Buscar. Anotado para Sergio (propuesta 8).
+
+**Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
+
+**Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
 ## Pantallas y rutas
 
 Grupos: **a** Inicio y Búsqueda · **b** Ficha · **c** Revisar pendientes · **d** Importación · **e** Reportes · **f** Administración · **g** Acceso, contraseña y estado.
 
-Cabecera propuesta: **principal** (panel terracota con título grande) o **trabajo** (compacta, para tablas y formularios). Se confirma en cada grupo.
+Cabecera: **principal** (`PageHeader` grande, solo el Inicio) o **trabajo** (`PageHeader` compacta). Desde el grupo 2a, todas las pantallas con menú, salvo Estado y Cambiar contraseña (grupo g), llevan la compacta.
 
 Medición «antes»: el máximo, entre los siete anchos, de elementos con letra de menos de 16 px y de controles de menos de 44 px de alto. Ninguna pantalla tenía desplazamiento lateral ni texto cortado, salvo Auditoría (5 textos cortados).
 
 | Ruta | Archivo | Grupo | Cabecera | Letra < 16 px | Controles < 44 px | Estado |
 |---|---|---|---|---|---|---|
 | `/` (acceso) | `app/page.tsx` | g | sin menú | 12 | 0 | Pendiente |
-| `/inicio` | `app/inicio/page.tsx` | a | principal | 4 | 1 | Pendiente |
-| `/busqueda` | `app/busqueda/page.tsx` | a | trabajo | 91 | 6 | Pendiente |
+| `/inicio` | `app/inicio/page.tsx` | a | principal | 4 | 1 | Hecha (2a), según la maqueta B |
+| `/busqueda` | `app/busqueda/page.tsx` | a | trabajo | 91 | 6 | Cabecera hecha (2a) |
 | `/piezas/nueva` | `app/piezas/nueva/page.tsx` | b | trabajo | 24 | 2 | Pendiente |
 | `/piezas/[id]` | `app/piezas/[id]/page.tsx` | b | trabajo | 23 | 2 | Pendiente |
 | `/piezas/[id]/editar` | `app/piezas/[id]/editar/page.tsx` | b | trabajo | 5 | 2 | Pendiente |
@@ -127,9 +158,9 @@ Medición «antes»: el máximo, entre los siete anchos, de elementos con letra 
 | `/pendientes/sugerencias` | `app/pendientes/sugerencias/page.tsx` | c | trabajo | 56 | 5 | Pendiente |
 | `/pendientes/incompletas` | `app/pendientes/incompletas/page.tsx` | c | trabajo | 4 | 1 | Pendiente |
 | `/duplicados`, `/ia/sugerencias` | redirigen a `/pendientes/…` | c | — | — | — | Sin pantalla propia |
-| `/importacion` | `app/importacion/page.tsx` | d | principal | 4 | 1 | Pendiente |
+| `/importacion` | `app/importacion/page.tsx` | d | trabajo | 4 | 1 | Cabecera hecha (2a) |
 | `/importacion/fotos` | `app/importacion/fotos/page.tsx` | d | trabajo | 7 | 1 | Pendiente |
-| `/reportes` | `app/reportes/page.tsx` | e | principal | 4 | 1 | Pendiente |
+| `/reportes` | `app/reportes/page.tsx` | e | trabajo | 4 | 1 | Cabecera hecha (2a) |
 | `/reportes/imprimir/[tipo]` | `app/reportes/imprimir/[tipo]/page.tsx` | e | impresión | 4 | 1 | Pendiente |
 | `/administracion` (Personas) | `app/administracion/page.tsx` | f | trabajo | 35 | 6 | Pendiente |
 | `/administracion` (Catálogo) | ídem | f | trabajo | 13 | 8 | Pendiente |

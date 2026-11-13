@@ -20,6 +20,21 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Ahora:** el rol va debajo del nombre solo si el nombre no lo contiene. Con «Gabriela Curadora (sintética)» se sigue viendo «Gestor de colecciones (Curadora)».
 - **Motivo:** el pie tiene que caber siempre a la vista en ventanas bajas; repetir el rol ocupaba una línea sin dar información nueva.
 
+### A3. El Inicio de la maqueta B
+
+- **Pantalla:** Inicio.
+- **Antes:** seis tarjetas, con «Buscar una pieza» como una de las dos grandes, y la línea «Sesión de demostración como…» bajo el título.
+- **Ahora:** «Buscar una pieza» es un buscador dentro de la cabecera, con el texto de ejemplo nuevo «Código o nombre, por ejemplo I-0236» y el botón «Buscar». La línea de demostración ya no está: la insignia vive solo en el menú. Los demás textos son los de siempre.
+- **Motivo:** el Inicio es una de las excepciones decididas de la remodelación, y la maqueta B lo dibuja así.
+
+## Para resolver antes de archivar
+
+### R1. El change `inicio-guia-de-tareas` y la remodelación dicen cosas distintas
+
+- **Escenario «Escritorio»** de su requisito de navegación: pide «un encabezado con su nombre, su rol y el cambio de rol». La remodelación quitó esa franja y puso la cuenta al pie del menú. André decidió no tocarlo todavía.
+- **Requisito del Inicio:** pide «tarjetas grandes» para las seis tareas, entre ellas «Buscar una pieza» con su enlace. En la maqueta B buscar es un formulario en la cabecera.
+- **Propuesta:** antes de archivar cualquiera de los dos changes, reescribir esos dos puntos de `inicio-guia-de-tareas` como en la remodelación.
+
 ## Urgentes: textos que la remodelación deja desactualizados
 
 ### 2. Manual de usuario con los nombres antiguos del menú
@@ -63,3 +78,18 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 
 - **Pantallas:** Registrar pieza dice «Volver a la búsqueda»; la ficha dice «Volver a búsqueda».
 - **Propuesta:** un solo texto en las dos.
+
+## Comportamiento
+
+### 7. En demostración, Buscar no recoge lo que se escribió en el Inicio
+
+- **Pantallas:** Inicio y Buscar, solo en modo demostración.
+- **Hoy:** el buscador del Inicio lleva a `/busqueda?q=…`. Con datos reales, Buscar aplica ese texto. En demostración, Buscar abre con el campo vacío, porque esa versión de la pantalla no lee la dirección.
+- **Propuesta:** que la versión de demostración también lea `q` de la dirección, como ya hace con «Solo piezas incompletas». Es un cambio de lógica, así que no lo apliqué.
+- **Motivo:** en una demostración parece que el buscador del Inicio no hace nada.
+
+### 8. Textos de ejemplo cortados a 320 px
+
+- **Pantallas:** el buscador del Inicio («Código o nombre, por ejemplo I-0236») y el de Buscar («p. ej. I-0236, mmz 15, cerámica huánuco»).
+- **Hoy:** a 320 px de ancho, o con zoom al 300 %, el campo no tiene sitio para el ejemplo completo y se ve cortado.
+- **Propuesta:** un ejemplo más corto en el campo («Código o nombre») y el ejemplo completo en la línea de ayuda, que sí puede ocupar dos líneas.

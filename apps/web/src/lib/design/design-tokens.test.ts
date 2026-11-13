@@ -47,6 +47,9 @@ const REQUIRED_TOKENS = [
 /** Colores de icono por tipo de tarea (docs/guia-visual.md). */
 const TASK_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
 
+/** Colores solo decorativos (docs/guia-visual.md): nunca se usan como color de texto. */
+const DECORATIVE_TOKENS = ["terracota-vivo"];
+
 const LAYOUT = readFileSync(path.resolve(__dirname, "../../app/layout.tsx"), "utf-8");
 
 describe("contrastRatio", () => {
@@ -65,8 +68,12 @@ describe("contrastRatio", () => {
 });
 
 describe("tokens del sistema de diseño (globals.css)", () => {
-  it("define los 16 colores institucionales y los 4 de icono por tipo de tarea, y ninguno más", () => {
-    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS].sort());
+  it("define los 16 colores institucionales, los 4 de icono por tipo de tarea y el decorativo, y ninguno más", () => {
+    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS, ...DECORATIVE_TOKENS].sort());
+  });
+
+  it("los colores decorativos no aparecen como color de texto en ningún par de contraste", () => {
+    for (const token of DECORATIVE_TOKENS) expect(CONTRAST_PAIRS.some((pair) => pair.text === token)).toBe(false);
   });
 
   it("define las tipografías heading y sans con respaldo del sistema", () => {

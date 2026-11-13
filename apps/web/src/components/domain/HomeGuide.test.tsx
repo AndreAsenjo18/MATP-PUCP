@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { TextileMark } from "@/components/brand/TextileMotif";
+import { BrandMark } from "@/components/brand/TextileMotif";
 import { TASKS, visibleTasks } from "@/lib/help/tasks";
 import { render, visibleText } from "@/test/render";
 
-import { CatalogStatusChips, TaskCards } from "./HomeGuide";
+import { CatalogStatusChips, HomeSearch, TaskCards } from "./HomeGuide";
 
-// Spec plataforma — Inicio como guía de tareas y «Piloto de identidad visual en el Inicio».
+// Spec plataforma — Inicio como guía de tareas y la maqueta B de `remodelacion-visual`.
 // Datos sintéticos (RNF-014).
 
 const ALL = visibleTasks(() => true);
+const SEARCH = TASKS.find((task) => task.id === "search")!;
 
 /** El HTML de la lista con esa etiqueta accesible. */
 function list(html: string, label: string): string {
@@ -18,34 +19,34 @@ function list(html: string, label: string): string {
 }
 
 describe("tarjetas de tarea", () => {
-  it("la Gestora ve las seis tarjetas, cada una con verbo, una línea y un enlace", () => {
+  it("la Gestora ve registrar y las otras cuatro tareas, cada una con verbo, una línea y un enlace; buscar es el buscador", () => {
     const html = render(<TaskCards tasks={ALL} pending={90} />);
     const text = visibleText(html);
-    for (const task of TASKS) {
+    for (const task of TASKS.filter((task) => task.id !== "search")) {
       expect(text).toContain(task.verb);
       expect(text).toContain(task.description);
       expect(html).toContain(`href="${task.href}"`);
     }
-    expect(html.match(/<a /g)).toHaveLength(6);
+    expect(text).not.toContain(SEARCH.verb);
+    expect(html.match(/<a /g)).toHaveLength(5);
   });
 
-  it("destaca buscar y registrar: van primero, aparte y con letra más grande", () => {
+  it("registrar va primero, en una tarjeta verde ancha con letra más grande; las demás, en una fila aparte", () => {
     const html = render(<TaskCards tasks={ALL} />);
-    const main = list(html, "Lo más frecuente");
     const others = list(html, "Otras tareas");
-    expect(visibleText(main)).toContain("Buscar una pieza");
-    expect(visibleText(main)).toContain("Registrar una pieza nueva");
-    expect(main.match(/<a /g)).toHaveLength(2);
+    const register = html.slice(0, html.indexOf("Otras tareas"));
+    expect(visibleText(register)).toContain("Registrar una pieza nueva");
+    expect(register).toContain("bg-verde-exito");
+    expect(register).toContain("text-2xl");
+    expect(register.match(/<a /g)).toHaveLength(1);
     expect(others.match(/<a /g)).toHaveLength(4);
-    expect(html.indexOf("Lo más frecuente")).toBeLessThan(html.indexOf("Otras tareas"));
-    expect(main).toContain("text-2xl");
-    expect(main).toContain("font-heading");
     expect(others).not.toContain("text-2xl");
   });
 
-  it("da a cada tipo de tarea un círculo de color distinto, siempre con su icono y su nombre", () => {
+  it("da a cada tipo de tarea un cuadro de color distinto, siempre con su icono y su nombre", () => {
     const html = render(<TaskCards tasks={ALL} />);
-    for (const tone of ["bg-terracota ", "bg-verde-exito ", "bg-anil-bg", "bg-ambar-bg", "bg-ciruela-bg", "bg-borde"]) expect(html).toContain(tone);
+    for (const tone of ["bg-verde-exito ", "bg-anil-bg", "bg-ambar-bg", "bg-ciruela-bg", "bg-borde"]) expect(html).toContain(tone);
+    expect(list(html, "Otras tareas").match(/rounded-md/g)).toHaveLength(4);
     expect(html.match(/<svg /g)!.length).toBeGreaterThanOrEqual(6);
     expect(html.match(/aria-hidden="true"/g)!.length).toBeGreaterThanOrEqual(6);
   });
@@ -59,7 +60,6 @@ describe("tarjetas de tarea", () => {
   it("el Personal de depósito no ve cargar, revisar ni configuración", () => {
     const html = render(<TaskCards tasks={visibleTasks((permission) => permission === "pieces.create")} />);
     const text = visibleText(html);
-    expect(text).toContain("Buscar una pieza");
     expect(text).toContain("Registrar una pieza nueva");
     expect(text).not.toContain("Cargar datos o fotos");
     expect(text).not.toContain("Revisar pendientes");
@@ -119,11 +119,13 @@ describe("fichas del estado del catálogo", () => {
     expect(html.match(/<a /g)).toHaveLength(2);
   });
 
-  it("cada ficha lleva icono además de color, miden 44 px o más y las cifras no bailan", () => {
+  it("el total va en blanco y lo que falta en ámbar; los enlaces llevan flecha además de color, miden 44 px y las cifras no bailan", () => {
     const html = render(<CatalogStatusChips status={status} failed={false} />);
-    expect(html.match(/min-h-12/g)).toHaveLength(3);
+    expect(html.match(/min-h-11/g)).toHaveLength(3);
     expect(html.match(/tabular-nums/g)).toHaveLength(3);
-    expect(html.match(/<svg /g)!.length).toBeGreaterThanOrEqual(3);
+    expect(html.match(/bg-white/g)).toHaveLength(1);
+    expect(html.match(/bg-ambar-bg/g)).toHaveLength(2);
+    expect(html.match(/<svg /g)).toHaveLength(2);
     expect(html).toContain("focus-visible:outline-3");
   });
 
@@ -138,12 +140,36 @@ describe("fichas del estado del catálogo", () => {
   });
 });
 
-describe("motivo de tejido", () => {
-  it("es decorativo: oculto a lectores de pantalla, sin texto y con colores de los tokens", () => {
-    const html = render(<TextileMark />);
+describe("buscador de la cabecera", () => {
+  it("es un formulario real hacia Buscar con el parámetro de siempre, etiqueta visible y ayuda enlazada", () => {
+    const html = render(<HomeSearch task={SEARCH} />);
+    const text = visibleText(html);
+    expect(html).toMatch(/<form[^>]*action="\/busqueda"/);
+    expect(html).toContain('role="search"');
+    expect(html).toContain('name="q"');
+    expect(html).toContain('placeholder="Código o nombre, por ejemplo I-0236"');
+    expect(text).toContain("Buscar una pieza");
+    expect(text).toContain("Encuentre una pieza por su código o su nombre.");
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Buscar<\/button>/);
+    const inputId = html.match(/<input[^>]*id="([^"]+)"/)![1];
+    expect(html).toContain(`for="${inputId}"`);
+    expect(html).toContain(`aria-describedby="${inputId}-ayuda"`);
+  });
+
+  it("el campo y el botón miden 44 px y el foco se ve sobre la cabecera", () => {
+    const html = render(<HomeSearch task={SEARCH} />);
+    expect(html.match(/min-h-11/g)).toHaveLength(2);
+    expect(html).toContain("has-[input:focus-visible]:outline-crema");
+    expect(html).not.toMatch(/text-(xs|sm)\b/);
+  });
+});
+
+describe("rombo de la marca", () => {
+  it("es decorativo: oculto a lectores de pantalla, sin texto y con el color del token", () => {
+    const html = render(<BrandMark />);
     expect(html).toContain('aria-hidden="true"');
     expect(visibleText(html)).toBe("");
-    expect(html).toContain("fill-terracota");
+    expect(html).toContain("stroke-terracota-vivo");
     expect(html).not.toMatch(/#[0-9a-f]{6}/i);
   });
 });

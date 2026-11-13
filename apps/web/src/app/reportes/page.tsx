@@ -11,6 +11,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportPreview } from "@/components/domain/ReportPreview";
 import { ReportSelector } from "@/components/domain/ReportSelector";
@@ -68,12 +69,10 @@ function ReportesContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Reportes</h1>
-        <p className="text-base text-gris-texto">
-          {live ? "Generados en el momento sobre una instantánea consistente del catálogo." : "Calculados en el momento a partir del catálogo sintético."}
-        </p>
-      </header>
+      <PageHeader
+        title="Reportes"
+        description={live ? "Generados en el momento sobre una instantánea consistente del catálogo." : "Calculados en el momento a partir del catálogo sintético."}
+      />
 
       <ReportSelector selected={selected} onSelect={choose} />
 

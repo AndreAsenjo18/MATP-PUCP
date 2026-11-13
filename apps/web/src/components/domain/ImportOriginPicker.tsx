@@ -6,6 +6,7 @@
 import { FileSpreadsheet, Images, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { cardClassName } from "@/components/ui/Card";
 import { importHref } from "@/lib/data/import-origin";
 
@@ -40,9 +41,7 @@ export const IMPORT_ORIGIN_OPTIONS: OriginOption[] = [
 export function ImportOriginPicker() {
   return (
     <section aria-labelledby="importar-que" className="flex flex-col gap-4">
-      <h1 id="importar-que" className="text-2xl font-bold text-tinta">
-        ¿Qué desea importar?
-      </h1>
+      <PageHeader title="¿Qué desea importar?" titleId="importar-que" />
       <ul className="grid gap-4 md:grid-cols-3">
         {IMPORT_ORIGIN_OPTIONS.map(({ href, title, description, icon: Icon }) => (
           <li key={href} className="flex">

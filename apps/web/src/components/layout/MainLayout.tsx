@@ -18,6 +18,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 
+import { BrandMark } from "@/components/brand/TextileMotif";
 import { buttonClassName } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
@@ -77,9 +78,12 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     );
   }
   return (
-    <Link href="/inicio" translate="no" className={cn(ON_DARK_CONTROL, "block rounded-2xl px-3 py-1")}>
-      <span className="block font-heading text-2xl font-extrabold tracking-tight">MATP</span>
-      <span className="block text-base text-crema/80">Gestión de colecciones</span>
+    <Link href="/inicio" translate="no" className={cn(ON_DARK_CONTROL, "flex items-center gap-3 rounded-2xl px-3 py-1 font-heading")}>
+      <BrandMark />
+      <span className="flex flex-col">
+        <span className="text-2xl font-extrabold tracking-tight">MATP</span>
+        <span className="text-base text-crema/80">Gestión de colecciones</span>
+      </span>
     </Link>
   );
 }
@@ -215,9 +219,9 @@ export function MainLayout({ children }: { children: ReactNode }) {
                 aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
                 title={collapsed ? "Expandir menú" : undefined}
                 onClick={toggleSidebar}
-                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
+                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 font-heading text-base font-semibold", collapsed && "justify-center px-0")}
               >
-                {collapsed ? <PanelLeftOpen size={22} aria-hidden="true" /> : <PanelLeftClose size={22} aria-hidden="true" />}
+                {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
                 {!collapsed && "Contraer menú"}
               </button>
             }

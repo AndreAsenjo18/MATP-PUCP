@@ -2,7 +2,7 @@
 
 Reglas, tokens y componentes que comparten todas las pantallas. Sale del change `remodelacion-visual`; el seguimiento por pantalla está en [remodelacion-visual.md](remodelacion-visual.md). Complementa a [system-design.md](system-design.md), que sigue describiendo los niveles de componentes.
 
-**Estado:** la base (fase 1) está aplicada a todas las pantallas por herencia. Las cabeceras y el ajuste fino de cada pantalla llegan por grupos en la fase 2; esta guía se completa al cerrar.
+**Estado:** la base (fase 1) está aplicada a todas las pantallas por herencia. El Inicio sigue la maqueta B y las pantallas principales ya tienen su cabecera (grupo 2a). El ajuste fino de cada pantalla llega por grupos en la fase 2; esta guía se completa al cerrar.
 
 > [SUPUESTO] La paleta y la trama no son identidad oficial de la Dirección de Cultura (pregunta J1 de [preguntas-contraparte.md](preguntas-contraparte.md)).
 
@@ -28,7 +28,7 @@ Todos en `apps/web/src/app/globals.css`, en un solo bloque `@theme`.
 
 ### Color
 
-No hay colores nuevos: la dirección B usa la paleta existente.
+La dirección B usa la paleta existente, más un color solo decorativo medido en la maqueta del Inicio.
 
 | Uso en la B | Token |
 |---|---|
@@ -40,15 +40,16 @@ No hay colores nuevos: la dirección B usa la paleta existente.
 | Avisos de «falta algo» | `ambar-bg` con texto `ambar-texto` |
 | Bordes finos color arena | `borde` |
 | Iconos por tipo de tarea | `terracota`, `verde-exito`, `anil`, `ambar-texto`, `ciruela`, `gris-texto` (piedra) |
+| Rombo de la marca y trama de las cabeceras (solo decorativo, nunca texto) | `terracota-vivo` (#e07040) |
 
 ### Letra
 
 | Token | Valor | Uso |
 |---|---|---|
-| `font-heading` | Manrope Variable (autoalojada; respaldo `system-ui`) | Todos los títulos (`h1`, `h2`, `h3`) |
-| `font-sans` | Inter Variable | Texto de lectura |
-| `text-titulo` | 36 a 64 px, fluido (`clamp`) | Título de la cabecera principal |
-| `text-titulo-trabajo` | 28 a 40 px, fluido | Título de las pantallas de trabajo |
+| `font-heading` | Manrope Variable (autoalojada; respaldo `system-ui`) | Todos los títulos (`h1`, `h2`, `h3`) y, enteros, el Inicio, el menú y las cabeceras, como en la maqueta B |
+| `font-sans` | Inter Variable | Texto de lectura de las pantallas de trabajo |
+| `text-titulo` | 36 a 64 px, fluido (`clamp`) | Título de la cabecera principal (Inicio) |
+| `text-titulo-trabajo` | 28 a 40 px, fluido | Título de la cabecera compacta |
 | `text-xs`, `text-sm`, `text-base` | 16 px | Todo el texto de lectura |
 
 Los `h1` van siempre en peso 800.
@@ -69,14 +70,31 @@ Los `h1` van siempre en peso 800.
 
 ## Estructura
 
-- **Menú flotante** desde 1024 px: panel `tinta` separado 12 px del borde, con esquinas de 28 px. Mide la altura visible menos esos márgenes y queda fijo al desplazar la página. Las entradas son píldoras de 44 px; la actual, crema con texto oscuro y `aria-current`.
+- **Menú flotante** desde 1024 px: panel `tinta` separado 12 px del borde, con esquinas de 28 px. Mide la altura visible menos esos márgenes y queda fijo al desplazar la página. Arriba, el rombo terracota vivo junto a «MATP» y «Gestión de colecciones». Las entradas son píldoras de 44 px con 8 px entre ellas, en Manrope; la actual, crema con texto oscuro y `aria-current`.
 - **Tres zonas en el menú:** la marca arriba, las secciones en medio y el pie abajo. Las secciones se desplazan dentro de su zona solo si no caben; un brillo suave en el borde avisa de que hay más. El pie queda siempre a la vista. Si la ventana es tan baja que la zona de secciones no llega a 112 px, se desplaza el menú entero y el cierre de sesión queda al final, nunca oculto.
 - **Barra de desplazamiento del menú:** fina, del tono del menú y sin carril, para que no quede una franja clara junto al contenido (`scroll-menu`, `scroll-pista` en `globals.css`).
 - **«Contraer menú»** va pegado a la última sección, sin hueco en medio, y deja un riel de iconos.
-- **Pie compacto:** la insignia «Modo demostración» en una línea a 16 px (solo en demostración, una vez; «datos sintéticos» queda como ayuda y para el lector de pantalla), el nombre de la persona y debajo su rol solo si el nombre no lo dice ya, y «Cerrar sesión» o «Cambiar de rol» de 44 px.
+- **Pie compacto:** la insignia «Modo demostración» en una línea a 16 px (solo en demostración, una vez; «datos sintéticos» queda como ayuda y para el lector de pantalla), el nombre de la persona y debajo su rol solo si el nombre no lo dice ya, y «Cerrar sesión» o «Cambiar de rol» de 44 px, con borde claro y sin icono (el icono queda para el riel).
 - **Bajo 1024 px:** botón «Menú» de 44 px que abre el mismo menú como diálogo modal, con las mismas tres zonas. El foco empieza en la sección actual. Atrapa el foco, se cierra con Escape, al tocar fuera o al elegir una sección, y devuelve el foco al botón.
 - **Sin franja superior.** El contenido va centrado con `max-w-contenido`, con márgenes de 1 a 2 rem.
-- **Menú con nombres de tarea:** Inicio, Buscar, Cargar datos, Revisar pendientes, Reportes y Administración.
+- **Menú con nombres de tarea:** Inicio, Buscar, Cargar datos, Revisar pendientes, Reportes y Administración. Iconos: casa, lupa, flecha de subir, portapapeles, barras y deslizadores.
+
+## Cabeceras
+
+Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos tamaños. Panel `terracota` con esquinas de 28 px y todo el texto en `crema`.
+
+- **Grande (solo el Inicio):** el nombre del museo en letra chica, el título «¿Qué desea hacer?» en `text-titulo` y el buscador.
+- **Compacta (las demás):** de 96 a 128 px de alto en 1366 px, con el título en `text-titulo-trabajo` y la línea de ayuda si la pantalla ya la tenía. Las acciones principales van dentro de la banda como píldoras crema con texto oscuro (`headerActionClassName`), con foco crema. En pantallas estrechas, el texto largo de ayuda la hace crecer: no se corta.
+- **Trama de rombos** (`trama-rombos` en `globals.css`): cuadrícula de rombos de contorno con un rombo pequeño relleno dentro, en `terracota-vivo` al 36 % y al 46 %, plana. Anclada arriba a la derecha y desvanecida hacia la izquierda; ocupa el 40 % derecho de la grande y hasta 20 rem de la compacta. El contenido deja libre esa franja, así que nunca queda detrás del texto. Se oculta bajo 768 px.
+- **Volver:** `PageBackLink`, sobre la cabecera, es un enlace subrayado con área de toque de 44 px.
+- **Ficha:** el nombre de la pieza va en la banda; las insignias y las acciones, debajo, sobre el fondo claro.
+
+## Inicio (maqueta B)
+
+- **Buscador en la cabecera:** etiqueta «Buscar una pieza», píldora blanca con la lupa terracota, el campo y el botón «Buscar» en píldora `tinta` dentro, y la línea de ayuda debajo. Es un formulario real hacia `/busqueda?q=…`. Bajo 640 px el botón pasa a una fila propia dentro del mismo cuadro blanco.
+- **«Registrar una pieza nueva»:** tarjeta ancha en `verde-exito`, con el «+» en un círculo blanco y una flecha.
+- **Las demás tareas:** tarjetas blancas en una fila (dos columnas bajo 1280 px y una bajo 640 px), con el icono en un cuadrado redondeado de color suave: añil para cargar, ámbar para revisar (con la insignia «N por revisar»), ciruela para reportes y piedra para configuración.
+- **«El catálogo hoy»:** píldoras `StatChip`, el total en blanco y lo que falta en ámbar suave, como enlaces con flecha.
 
 ## Movimiento
 
@@ -92,9 +110,10 @@ Los `h1` van siempre en peso 800.
 | `Card`, `cardClassName` | `components/ui/Card.tsx` | Superficie base: blanco, borde arena, 24 px, sombra suave. Con `interactive`: realce, foco y movimiento corto |
 | `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre |
 | `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
-| `IconCircle` | `components/ui/IconCircle.tsx` | Icono en círculo de color por tipo de tarea |
-| `StatChip` | `components/ui/StatChip.tsx` | Ficha de un dato en píldora; con `href`, es enlace y lleva flecha |
-| `TextileMark` | `components/brand/TextileMotif.tsx` | Rombo de tejido propio, decorativo |
+| `IconCircle` | `components/ui/IconCircle.tsx` | Icono en círculo de color por tipo de tarea; con `shape="square"`, en cuadrado redondeado |
+| `StatChip` | `components/ui/StatChip.tsx` | Píldora de un dato, `neutro` (blanca) o `alerta` (ámbar); con `href`, es enlace y lleva flecha |
+| `BrandMark` | `components/brand/TextileMotif.tsx` | Rombo de la marca, decorativo |
+| `PageHeader`, `PageBackLink`, `headerActionClassName` | `components/layout/PageHeader.tsx` | Cabecera grande o compacta, enlace para volver y acciones en la banda |
 | `MainLayout`, `Sidebar`, `MenuAccount` | `components/layout/` | Estructura, menú y cuenta |
 
 ### Lo que se hereda sin tocar las pantallas

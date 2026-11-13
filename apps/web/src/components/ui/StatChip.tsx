@@ -1,38 +1,37 @@
 /**
- * Ficha de un dato (docs/guia-visual.md): icono en círculo, la cantidad y lo que cuenta, en palabras
- * completas. Con `href` es un enlace y lo dice con una flecha, no solo con el color.
+ * Píldora de un dato (docs/guia-visual.md, maqueta B): la cantidad en negrita y lo que cuenta, en
+ * palabras completas. `neutro` en blanco; `alerta` en ámbar suave para lo que falta. Con `href` es
+ * un enlace y lo dice con una flecha, no solo con el color. 44 px de alto como mínimo.
  */
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-import { IconCircle, type Tone } from "@/components/ui/IconCircle";
 import { cn } from "@/lib/cn";
 
-const BASE = "inline-flex min-h-12 items-center gap-3 rounded-full border border-borde bg-white py-1 pr-4 pl-1 text-base text-tinta";
+export type StatChipTone = "neutro" | "alerta";
 
-export function StatChip({ icon, tone, value, label, href }: { icon: LucideIcon; tone: Tone; value: string; label: string; href?: string }) {
+const TONES: Record<StatChipTone, string> = {
+  neutro: "border-borde bg-white text-tinta",
+  alerta: "border-ambar-alerta/40 bg-ambar-bg text-ambar-texto",
+};
+
+const BASE = "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-1.5 text-base";
+
+export function StatChip({ value, label, tone = "neutro", href }: { value: string; label: string; tone?: StatChipTone; href?: string }) {
   const content = (
     <>
-      <IconCircle icon={icon} tone={tone} className="size-10" />
-      <span>
-        <strong className="font-semibold tabular-nums">{value}</strong>
-        {/* Espacio duro: la cantidad no se separa de lo que cuenta al cambiar de línea. */}
-        {" "}
-        {label}
-      </span>
+      <strong className="font-extrabold tabular-nums">{value}</strong>
+      <span>{label}</span>
     </>
   );
-  if (!href) return <span className={BASE}>{content}</span>;
+  if (!href) return <span className={cn(BASE, TONES[tone])}>{content}</span>;
   return (
     <Link
       href={href}
-      className={cn(
-        BASE,
-        "shadow-sm hover:border-terracota hover:shadow-md active:shadow-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-      )}
+      className={cn(BASE, TONES[tone], "hover:border-terracota hover:shadow-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota")}
     >
       {content}
-      <ChevronRight size={18} aria-hidden="true" className="text-gris-texto" />
+      <ChevronRight size={16} aria-hidden="true" className="-mr-1 shrink-0" />
     </Link>
   );
 }

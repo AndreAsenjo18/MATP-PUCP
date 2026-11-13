@@ -14,8 +14,9 @@ import { Suspense, useMemo, useState } from "react";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
 import { SearchBox } from "@/components/domain/SearchFilters";
 import { SearchLive } from "@/components/domain/SearchLive";
+import { headerActionClassName, PageHeader } from "@/components/layout/PageHeader";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { Button, buttonClassName } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
@@ -72,10 +73,18 @@ function BusquedaContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
-        <SearchBox value={q} onChange={setQ} />
-      </header>
+      <PageHeader
+        title="Búsqueda"
+        actions={
+          hasPermission("pieces.create") && (
+            <Link href="/piezas/nueva" className={headerActionClassName}>
+              <Plus size={18} aria-hidden="true" />
+              Nueva pieza
+            </Link>
+          )
+        }
+      />
+      <SearchBox value={q} onChange={setQ} />
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
@@ -115,12 +124,6 @@ function BusquedaContent() {
               <strong className="text-tinta">{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
             </p>
             <div className="flex flex-wrap gap-2">
-              {hasPermission("pieces.create") && (
-                <Link href="/piezas/nueva" className={buttonClassName({})}>
-                  <Plus size={18} aria-hidden="true" />
-                  Nueva pieza
-                </Link>
-              )}
               {hasPermission("exports.run") && (
                 <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
                   Exportar a Excel

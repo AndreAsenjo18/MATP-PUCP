@@ -1,6 +1,7 @@
 /**
  * Icono dentro de un círculo de color (docs/guia-visual.md). El color dice el tipo de tarea, pero
  * nunca va solo: quien lo usa pone siempre un texto al lado. `solid` es para lo más importante.
+ * `shape="square"` lo pone en un cuadrado redondeado, como las tarjetas de tarea del Inicio.
  */
 import type { LucideIcon } from "lucide-react";
 
@@ -34,16 +35,20 @@ export function IconCircle({
   tone,
   size = "md",
   solid = false,
+  shape = "circle",
   className,
 }: {
   icon: LucideIcon;
   tone: Tone;
   size?: keyof typeof SIZES;
   solid?: boolean;
+  shape?: "circle" | "square";
   className?: string;
 }) {
   return (
-    <span className={cn("inline-flex shrink-0 items-center justify-center rounded-full", SIZES[size], (solid ? SOLID : SOFT)[tone], className)}>
+    <span
+      className={cn("inline-flex shrink-0 items-center justify-center", shape === "square" ? "rounded-md" : "rounded-full", SIZES[size], (solid ? SOLID : SOFT)[tone], className)}
+    >
       <Icon size={ICON_SIZES[size]} aria-hidden="true" />
     </span>
   );

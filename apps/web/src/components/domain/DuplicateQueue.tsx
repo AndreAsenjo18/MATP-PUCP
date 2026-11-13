@@ -25,6 +25,7 @@ import {
   formatDate,
   type DuplicateFilterValue,
 } from "@/components/domain/DuplicateReview";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { MergeWizard, type MergeSubmission } from "@/components/domain/MergeWizard";
 import type { DialogOutcome } from "@/components/domain/PieceActionDialogs";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
@@ -254,10 +255,11 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   return (
     <IdentifierTypeNamesProvider names={typeNames}>
       <div className="flex flex-col gap-6">
-        <header className="flex flex-col gap-1">
-          {!embedded && <h1 className="text-2xl font-bold text-tinta">Cola de posibles duplicados</h1>}
+        {embedded ? (
           <p className="text-base text-gris-texto">Compare cada par y decida. No se borra ninguna pieza.</p>
-        </header>
+        ) : (
+          <PageHeader title="Cola de posibles duplicados" description="Compare cada par y decida. No se borra ninguna pieza." />
+        )}
 
         <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
 

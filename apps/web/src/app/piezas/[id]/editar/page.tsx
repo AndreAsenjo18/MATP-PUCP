@@ -9,11 +9,11 @@
  * sesión de demostración; `live` carga la ficha con `fetchPieceDetail` y guarda con `updatePiece`
  * (`PUT /pieces/{id}`). El formulario es `PieceForm` (react-hook-form + zod, ADR-015).
  */
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import {  } from "lucide-react";
 import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 
+import { PageBackLink, PageHeader } from "@/components/layout/PageHeader";
 import { PieceForm, outcomeFromUpdate, type SaveOutcome } from "@/components/domain/PieceForm";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -66,16 +66,13 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <Link href={`/piezas/${piece.id}`} className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Volver a la ficha
-        </Link>
-        <h1 className="text-2xl font-bold text-tinta">Editar: {piece.denomination}</h1>
-        <p className="text-base text-gris-texto">
-          El código de inventario no se modifica desde este formulario. Si necesita corregirlo, regrese a la ficha y utilice la corrección con registro de auditoría.
-        </p>
-      </header>
+      <div className="flex flex-col gap-3">
+        <PageBackLink href={`/piezas/${piece.id}`}>Volver a la ficha</PageBackLink>
+        <PageHeader
+          title={`Editar: ${piece.denomination}`}
+          description="El código de inventario no se modifica desde este formulario. Si necesita corregirlo, regrese a la ficha y utilice la corrección con registro de auditoría."
+        />
+      </div>
 
       <PieceForm
         key={piece.id}

@@ -14,6 +14,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { useSession } from "@/lib/auth/session";
 import { cn } from "@/lib/cn";
@@ -111,10 +112,7 @@ export function PendingInboxFrame({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">{PENDING_TITLE}</h1>
-        <p className="text-base text-gris-texto">{PENDING_HINT}</p>
-      </header>
+      <PageHeader title={PENDING_TITLE} description={PENDING_HINT} />
       {tabs.length === 0 ? (
         <PermissionNotice>{NO_PENDING_TABS_NOTICE}</PermissionNotice>
       ) : (

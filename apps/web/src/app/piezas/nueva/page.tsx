@@ -16,11 +16,12 @@
  * Quien puede mover piezas elige también la ubicación inicial. Se registra después de guardar, como
  * el primer movimiento de la pieza: si ese paso falla, la pieza ya existe y el aviso lo dice.
  */
-import { ArrowLeft } from "lucide-react";
+import {  } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PageBackLink, PageHeader } from "@/components/layout/PageHeader";
 import { PieceForm, type SaveIntent, type SaveOutcome } from "@/components/domain/PieceForm";
 import { Button } from "@/components/ui/Button";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
@@ -104,16 +105,13 @@ function NewPieceContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <Link href="/busqueda" className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Volver a la búsqueda
-        </Link>
-        <h1 className="text-2xl font-bold text-tinta">Registrar una pieza</h1>
-        <p className="text-base text-gris-texto">
-          Complete los datos que conozca. La denominación es obligatoria; el sistema revisa el resto mientras usted escribe.
-        </p>
-      </header>
+      <div className="flex flex-col gap-3">
+        <PageBackLink href="/busqueda">Volver a la búsqueda</PageBackLink>
+        <PageHeader
+          title="Registrar una pieza"
+          description="Complete los datos que conozca. La denominación es obligatoria; el sistema revisa el resto mientras usted escribe."
+        />
+      </div>
 
       {lastSaved && (
         <p role="status" className={cn("rounded-md px-3 py-2 text-base", lastSaved.warning ? "bg-ambar-bg text-ambar-texto" : "bg-verde-bg text-verde-exito")}>

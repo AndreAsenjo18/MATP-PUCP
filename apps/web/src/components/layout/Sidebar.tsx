@@ -23,7 +23,7 @@ export interface SidebarProps {
 export function Sidebar({ items, pathname, onNavigate, className, id, collapsed = false }: SidebarProps) {
   return (
     <nav id={id} aria-label="Navegación principal" className={cn("text-crema", className)}>
-      <ul className={cn("flex flex-col gap-1", collapsed ? "px-2" : "px-3")}>
+      <ul className={cn("flex flex-col gap-2 font-heading", collapsed ? "px-2" : "px-3")}>
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
@@ -40,7 +40,7 @@ export function Sidebar({ items, pathname, onNavigate, className, id, collapsed 
                   active ? "bg-crema text-tinta" : "text-crema hover:bg-white/10",
                 )}
               >
-                <Icon size={22} aria-hidden="true" className="shrink-0" />
+                <Icon size={20} aria-hidden="true" className="shrink-0" />
                 <span className={collapsed ? "sr-only" : undefined}>{item.label}</span>
               </Link>
             </li>

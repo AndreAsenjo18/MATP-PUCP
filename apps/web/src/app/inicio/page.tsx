@@ -12,8 +12,8 @@
  */
 import { useEffect, useState } from "react";
 
-import { TextileMark } from "@/components/brand/TextileMotif";
-import { CatalogStatusChips, TaskCards } from "@/components/domain/HomeGuide";
+import { CatalogStatusChips, HomeSearch, TaskCards } from "@/components/domain/HomeGuide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
 import { listPendingAiSuggestions } from "@/lib/data/ai";
@@ -27,7 +27,7 @@ function numerator(kpis: CompletenessKpis, alert: AlertType): number {
 }
 
 function InicioContent() {
-  const { currentRole, currentUser, hasPermission } = useSession();
+  const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const demo = getApiMode() === "mock";
   const [status, setStatus] = useState<CatalogStatus | null>(null);
@@ -72,25 +72,20 @@ function InicioContent() {
     };
   }, [canReviewDuplicates, canReviewSuggestions, demo, devUser]);
 
+  const tasks = visibleTasks(hasPermission);
+  const searchTask = tasks.find((task) => task.id === "search");
+
+  // Todo el Inicio en Manrope, como la maqueta B; la insignia de demostración vive solo en el menú.
   return (
-    <div className="flex flex-col gap-seccion">
-      <header className="flex flex-col gap-2">
-        <p translate="no" className="flex items-center gap-2 text-base font-medium text-terracota-dark">
-          <TextileMark />
-          Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»
-        </p>
-        <h1 className="text-4xl text-balance text-tinta">¿Qué desea hacer?</h1>
-        {demo && (
-          <p className="text-base text-gris-texto">
-            Sesión de demostración como <strong className="text-tinta">{currentRole?.name}</strong>: los datos son de ejemplo y no se guardan.
-          </p>
-        )}
-      </header>
+    <div className="flex flex-col gap-5 font-heading">
+      <PageHeader size="grande" eyebrow={<span translate="no">Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»</span>} title="¿Qué desea hacer?">
+        {searchTask && <HomeSearch task={searchTask} />}
+      </PageHeader>
 
-      <TaskCards tasks={visibleTasks(hasPermission)} pending={pending} />
+      <TaskCards tasks={tasks} pending={pending} />
 
-      <section aria-labelledby="catalog-status-title" className="flex flex-col gap-3">
-        <h2 id="catalog-status-title" className="font-sans text-base font-semibold text-gris-texto">
+      <section aria-labelledby="catalog-status-title" className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <h2 id="catalog-status-title" className="text-base font-semibold text-gris-texto">
           El catálogo hoy
         </h2>
         <CatalogStatusChips status={status} failed={statusFailed} />

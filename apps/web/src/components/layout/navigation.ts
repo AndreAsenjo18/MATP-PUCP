@@ -3,7 +3,7 @@
  * apertura/cierre del menú en pantallas estrechas (RNF-001). Sin React, para poder probarlas
  * directamente.
  */
-import { ChartColumn, ClipboardCheck, FileUp, House, Search, Settings, type LucideIcon } from "lucide-react";
+import { ChartNoAxesColumn, ClipboardCheck, House, Search, SlidersHorizontal, Upload, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -21,10 +21,10 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: House },
   { href: "/busqueda", label: "Buscar", icon: Search },
-  { href: "/importacion", label: "Cargar datos", icon: FileUp, permissions: ["imports.prepare"] },
+  { href: "/importacion", label: "Cargar datos", icon: Upload, permissions: ["imports.prepare"] },
   { href: "/pendientes", label: "Revisar pendientes", icon: ClipboardCheck, permissions: ["duplicates.resolve", "ai.review", "reports.view"] },
-  { href: "/reportes", label: "Reportes", icon: ChartColumn, permissions: ["reports.view"] },
-  { href: "/administracion", label: "Administración", icon: Settings, permissions: ["users.manage"] },
+  { href: "/reportes", label: "Reportes", icon: ChartNoAxesColumn, permissions: ["reports.view"] },
+  { href: "/administracion", label: "Administración", icon: SlidersHorizontal, permissions: ["users.manage"] },
 ];
 
 export function visibleNavItems(hasPermission: (permission: string) => boolean, items: NavItem[] = NAV_ITEMS): NavItem[] {

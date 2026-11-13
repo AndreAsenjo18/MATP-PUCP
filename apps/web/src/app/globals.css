@@ -29,6 +29,8 @@
   --color-anil-bg: #dfe7f3;
   --color-ciruela: #6b3566;
   --color-ciruela-bg: #efe0ec;
+  /* Solo decorativo, nunca texto: el rombo de la marca sobre el menú oscuro y la trama de las cabeceras. */
+  --color-terracota-vivo: #e07040;
 
   --font-heading: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -164,6 +166,21 @@ select:where(:not([multiple], [size])) {
     appearance: auto;
     background-image: none;
   }
+}
+
+/*
+ * Trama de rombos de las cabeceras terracota (maqueta B): rombos de contorno con un rombo pequeño
+ * dentro, en una cuadrícula regular, un poco más claros que el fondo y planos. Anclada arriba a la
+ * derecha y desvanecida hacia la izquierda para no competir con el texto. El color es
+ * `--color-terracota-vivo` (#e07040), escrito aquí porque una imagen en `url()` no lee variables.
+ * El tamaño de la celda se cambia con `--trama-tamano`.
+ */
+@utility trama-rombos {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Cpath d='M36 8 64 36 36 64 8 36Z' fill='none' stroke='%23e07040' stroke-opacity='.36' stroke-width='1.5'/%3E%3Cpath d='M36 27.5 44.5 36 36 44.5 27.5 36Z' fill='%23e07040' fill-opacity='.46'/%3E%3C/svg%3E");
+  background-position: right top;
+  background-repeat: repeat;
+  background-size: var(--trama-tamano, 4.5rem) var(--trama-tamano, 4.5rem);
+  mask-image: linear-gradient(to right, transparent, #000 6rem);
 }
 
 /* Los títulos principales siempre en peso 800, aunque la pantalla pida otro (por eso fuera de capa). */

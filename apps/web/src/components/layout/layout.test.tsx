@@ -7,6 +7,7 @@ import { memoryStorage } from "@/test/memory-storage";
 
 import { isActive, mobileMenuReducer, NAV_ITEMS, readSidebarCollapsed, SIDEBAR_STORAGE_KEY, visibleNavItems, writeSidebarCollapsed } from "./navigation";
 import { MenuAccount, roleIsRedundant } from "./MenuAccount";
+import { headerActionClassName, PageBackLink, PageHeader } from "./PageHeader";
 import { PermissionNotice } from "./PermissionNotice";
 import { Sidebar } from "./Sidebar";
 
@@ -192,5 +193,59 @@ describe("MenuAccount (cuenta al pie del menú)", () => {
     expect(html).toContain("size-11");
     expect(html).toContain('class="sr-only">Modo demostración');
     expect(visibleText(html)).not.toContain("Ana García");
+  });
+});
+
+describe("PageHeader (cabecera terracota)", () => {
+  it("compacta: el título como único h1, la ayuda y la trama decorativa solo desde 768 px", () => {
+    const html = render(<PageHeader title="Reportes" description="Calculados en el momento." />);
+    expect(html.match(/<h1\b[^>]*>([^<]+)</)?.[1]).toBe("Reportes");
+    expect(html.match(/<h1\b/g)).toHaveLength(1);
+    expect(visibleText(html)).toContain("Calculados en el momento.");
+    expect(html).toContain("bg-terracota");
+    expect(html).toContain("rounded-panel");
+    expect(html).toContain("text-crema");
+    expect(html).toContain("text-titulo-trabajo");
+    const trama = html.match(/<span aria-hidden="true" data-trama=""[^>]*>/)?.[0] ?? "";
+    expect(trama).toContain("trama-rombos");
+    expect(trama).toContain("hidden md:block");
+    expect(html).not.toMatch(/text-(xs|sm)\b/);
+  });
+
+  it("compacta deja libre la franja de la trama para que nunca quede detrás del texto", () => {
+    const html = render(<PageHeader title="Administración" />);
+    expect(html).toMatch(/md:pr-\[min\(28%,16rem\)\]/);
+    expect(html).toContain("w-[min(34%,20rem)]");
+  });
+
+  it("grande: nombre del museo, título grande y el contenido que se le pase, en la parte libre de la trama", () => {
+    const html = render(
+      <PageHeader size="grande" eyebrow="Museo de prueba" title="¿Qué desea hacer?">
+        <p>Buscador</p>
+      </PageHeader>,
+    );
+    const text = visibleText(html);
+    expect(text).toContain("Museo de prueba");
+    expect(text).toContain("Buscador");
+    expect(html).toContain("text-titulo");
+    expect(html).not.toContain("text-titulo-trabajo");
+    expect(html).toContain("md:pr-[36%]");
+  });
+
+  it("las acciones van dentro de la banda, en píldora crema de 44 px con foco crema", () => {
+    const html = render(<PageHeader title="Búsqueda" actions={<span className={headerActionClassName}>Nueva pieza</span>} />);
+    expect(visibleText(html)).toContain("Nueva pieza");
+    expect(headerActionClassName).toContain("bg-crema");
+    expect(headerActionClassName).toContain("text-tinta");
+    expect(headerActionClassName).toContain("min-h-11");
+    expect(headerActionClassName).toContain("focus-visible:outline-crema");
+  });
+
+  it("«Volver a …» es un enlace subrayado con área de toque de 44 px", () => {
+    const html = render(<PageBackLink href="/busqueda">Volver a la búsqueda</PageBackLink>);
+    expect(html).toContain('href="/busqueda"');
+    expect(html).toContain("min-h-11");
+    expect(html).toContain("underline");
+    expect(visibleText(html)).toContain("Volver a la búsqueda");
   });
 });

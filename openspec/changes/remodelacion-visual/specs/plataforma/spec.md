@@ -26,7 +26,7 @@ El menú lateral MUST mostrar, en su parte inferior y en todos los anchos, el no
 - **THEN** la insignia «Modo demostración» aparece una sola vez, en el menú, y el botón dice «Cambiar de rol»
 
 ### Requirement: Identidad visual «Cabecera audaz»
-Las pantallas MUST seguir una sola identidad visual definida por tokens: las pantallas principales SHALL abrir con un panel terracota con el título grande en crema, y las pantallas de trabajo (tablas y formularios) con un encabezado compacto. Los títulos SHALL usar la tipografía de títulos en peso 800 y un tamaño fluido entre 36 y 64 px. Las tarjetas, los paneles y los diálogos SHALL tener esquinas muy redondeadas, bordes finos color arena y sombras suaves; los botones y los campos, esquinas de radio alto o forma de píldora. La trama de rombos MUST ser un dibujo propio en SVG, decorativo y oculto a los lectores de pantalla, usado solo como acento de las cabeceras: MUST NOT ir detrás de un texto y SHALL ocultarse en pantallas estrechas. El movimiento al pasar el cursor SHALL ser corto y MUST desactivarse cuando la persona pide reducir el movimiento. (RNF-001, RNF-010)
+Las pantallas MUST seguir una sola identidad visual definida por tokens: el Inicio SHALL abrir con un panel terracota con el título grande en crema, y las demás pantallas con una cabecera terracota compacta, de 96 a 128 px de alto con una línea de ayuda, y sus acciones principales dentro de la banda. Los títulos SHALL usar la tipografía de títulos en peso 800 y un tamaño fluido: entre 36 y 64 px en la cabecera principal y entre 28 y 40 px en la compacta. Las tarjetas, los paneles y los diálogos SHALL tener esquinas muy redondeadas, bordes finos color arena y sombras suaves; los botones y los campos, esquinas de radio alto o forma de píldora. La trama de rombos MUST ser un dibujo propio en SVG, decorativo y oculto a los lectores de pantalla, usado solo como acento de las cabeceras: MUST NOT ir detrás de un texto y SHALL ocultarse por debajo de 768 px. El movimiento al pasar el cursor SHALL ser corto y MUST desactivarse cuando la persona pide reducir el movimiento. (RNF-001, RNF-010)
 
 #### Scenario: Texto sobre la cabecera terracota
 - **WHEN** se declara el par de texto crema sobre fondo terracota
@@ -43,6 +43,14 @@ Las pantallas MUST seguir una sola identidad visual definida por tokens: las pan
 #### Scenario: Pantalla de trabajo
 - **WHEN** una persona abre una pantalla con una tabla o un formulario largo
 - **THEN** el encabezado es compacto y la tabla o el formulario se ven sin desplazarse en 1366 × 768
+
+#### Scenario: Buscar desde el Inicio
+- **WHEN** una persona escribe «toro» en el buscador de la cabecera del Inicio y pulsa «Buscar»
+- **THEN** llega a Buscar con la dirección `/busqueda?q=toro`, sin recargar la página
+
+#### Scenario: Acciones en la cabecera compacta
+- **WHEN** una persona que puede registrar piezas abre Buscar en 1366 px
+- **THEN** «Nueva pieza» está dentro de la banda terracota, como píldora crema con texto oscuro, y la cabecera mide 128 px o menos
 
 ### Requirement: Diseño fluido con el zoom del navegador
 Todas las pantallas MUST verse completas y sin desplazamiento horizontal de la página en anchos de 320 a 3200 px CSS, que corresponden al zoom del navegador entre 300 % y 50 %. El contenido principal SHALL ir en un contenedor centrado con un ancho máximo de 85 rem, y la estructura (menú y fondo) MUST ocupar toda la altura visible. La letra MUST medir 16 px o más y los controles 44 px o más de alto en todos los anchos. Los textos largos SHALL saltar de línea en vez de cortarse, y los botones SHALL crecer en alto en lugar de truncar su etiqueta. Solo las tablas anchas MAY desplazarse, dentro de su propio cuadro y con la fila de títulos visible. (RNF-001, RNF-010)

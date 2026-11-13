@@ -15,7 +15,8 @@ import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
 import { EMPTY_OPTIONS, FiltersDrawer, SearchBox, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
 import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
-import { Button, buttonClassName } from "@/components/ui/Button";
+import { headerActionClassName, PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Card, cardClassName } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { useSession } from "@/lib/auth/session";
@@ -634,11 +635,19 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold text-tinta">Búsqueda</h1>
-        {/* El buscador queda a la vista en todos los tamaños, fuera de «Filtros» (rediseno-ux-busqueda D1). */}
-        <SearchBox value={filters.q} onChange={(q) => update({ q })} />
-      </header>
+      <PageHeader
+        title="Búsqueda"
+        actions={
+          canCreate && (
+            <Link href="/piezas/nueva" className={headerActionClassName}>
+              <Plus size={18} aria-hidden="true" />
+              Nueva pieza
+            </Link>
+          )
+        }
+      />
+      {/* El buscador queda a la vista en todos los tamaños, fuera de «Filtros» (rediseno-ux-busqueda D1). */}
+      <SearchBox value={filters.q} onChange={(q) => update({ q })} />
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
@@ -680,12 +689,6 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             >
               Ver por ubicación
             </Button>
-            {canCreate && (
-              <Link href="/piezas/nueva" className={buttonClassName({})}>
-                <Plus size={18} aria-hidden="true" />
-                Nueva pieza
-              </Link>
-            )}
           </div>
           <ActiveFilterChips chips={chips} onRemove={remove} />
           {canMove && (

@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { AI_PURPOSE, AI_TITLE, dataView, FieldList, functionLabel, ScopeNotice } from "@/components/domain/AiSuggestionParts";
 import { AiSuggestionsLive } from "@/components/domain/AiSuggestionsLive";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -149,12 +150,7 @@ export function AiSuggestionsQueue({ embedded = false, onQueueChanged }: { embed
 
   return (
     <div className="flex flex-col gap-5">
-      {!embedded && (
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-tinta">{AI_TITLE}</h1>
-          <p className="max-w-3xl text-base text-gris-texto">{AI_PURPOSE}</p>
-        </header>
-      )}
+      {!embedded && <PageHeader title={AI_TITLE} description={AI_PURPOSE} />}
 
       <ScopeNotice />
 

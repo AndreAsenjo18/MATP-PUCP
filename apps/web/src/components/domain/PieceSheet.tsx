@@ -4,10 +4,10 @@
  * (RN-002), fotografías y ubicación actual. Son presentacionales: las acciones (editar, corregir,
  * retirar, mover) las inyecta la pantalla, que es la que conoce la sesión y el store.
  */
-import { ArrowLeft, ImageOff, Lock, MapPin, TriangleAlert } from "lucide-react";
-import Link from "next/link";
+import { ImageOff, Lock, MapPin, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { PageBackLink, PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import type { ApiSchemas } from "@/lib/api/client";
@@ -33,27 +33,26 @@ export function PieceSheetHeader({
   backHref?: string;
   backLabel?: string;
 }) {
+  // El nombre va en la banda; las insignias y las acciones, debajo, sobre el fondo claro (sus
+  // colores, como el terracota de «Editar ficha», no se verían sobre la banda).
   return (
-    <header className="flex flex-col gap-2">
-      <Link href={backHref} className="flex items-center gap-1 self-start text-sm text-gris-texto underline hover:text-terracota">
-        <ArrowLeft size={16} aria-hidden="true" />
-        {backLabel}
-      </Link>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-tinta">{piece.denomination}</h1>
+    <div className="flex flex-col gap-3">
+      <PageBackLink href={backHref}>{backLabel}</PageBackLink>
+      <PageHeader title={piece.denomination} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <TenureBadge regime={piece.tenure_regime} />
+          {piece.code_i && <LockBadge label={`Código I: ${piece.code_i}`} />}
+          {alerts
+            .filter((alert) => alert.applies)
+            .map((alert) => (
+              <AlertBadge key={alert.type} alert={alert} />
+            ))}
+        </div>
         {actions}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <TenureBadge regime={piece.tenure_regime} />
-        {piece.code_i && <LockBadge label={`Código I: ${piece.code_i}`} />}
-        {alerts
-          .filter((alert) => alert.applies)
-          .map((alert) => (
-            <AlertBadge key={alert.type} alert={alert} />
-          ))}
-      </div>
       {notices}
-    </header>
+    </div>
   );
 }
 

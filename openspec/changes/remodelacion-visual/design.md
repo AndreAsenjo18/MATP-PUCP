@@ -26,9 +26,13 @@ Las clases siguen igual; cambia lo que valen. La jerarquía de letra se hace con
 
 La dirección B se describió con colores medidos de capturas. Todos coinciden con tokens existentes: crema con `crema-light`, tinta y menú con `tinta`, terracota con `terracota`, verde con `verde-exito` y arena con `borde`. Se conservan del piloto `anil` y `ciruela` para los iconos por tipo de tarea. Crema sobre terracota da 5,7:1 y queda declarado como par permitido.
 
+Única excepción, al recibir la maqueta B del Inicio (2026-11-13): `terracota-vivo` (#e07040), un coral medido en la maqueta para el rombo de la marca sobre el menú oscuro y para la trama de rombos (al 36 % y al 46 % sobre el terracota). Es solo decorativo: nunca es color de texto, y una prueba lo verifica.
+
 ### D3. Tipografía
 
-Manrope Variable (Fontsource, autoalojada) en peso 800 para los títulos, cargada en el layout raíz; Inter sigue para el texto. La regla global de `h1`, `h2` y `h3` usa `--font-heading`, que pasa a Manrope; por eso desaparece el `span` provisional del Inicio. Se retiran Poppins y Fraunces. Los títulos de cabecera usan `clamp()` entre 36 y 64 px.
+Manrope Variable (Fontsource, autoalojada) en peso 800 para los títulos, cargada en el layout raíz; Inter sigue para el texto. La regla global de `h1`, `h2` y `h3` usa `--font-heading`, que pasa a Manrope; por eso desaparece el `span` provisional del Inicio. Se retiran Poppins y Fraunces. El título de la cabecera principal usa `clamp()` entre 36 y 64 px, y el de la compacta, entre 28 y 40 px.
+
+La maqueta B usa Manrope en todo el texto. Para seguirla sin cambiar la lectura de tablas y formularios, van enteros en Manrope el Inicio, el menú y las cabeceras; el resto del texto sigue en Inter.
 
 ### D4. Menú flotante y sin franja superior
 
@@ -50,17 +54,22 @@ El contenido va en un contenedor centrado de 85 rem (1360 px) como máximo, con 
 
 Hay dos variantes, en un mismo componente de estructura:
 
-- **Principal:** panel terracota con título grande en crema y la trama de rombos como acento lateral. La trama se oculta bajo 640 px y nunca va detrás del texto.
-- **De trabajo:** compacta, para no perder espacio en tablas y formularios.
+Las dos son `PageHeader` (`components/layout/PageHeader.tsx`):
+
+- **Principal (`grande`, solo el Inicio):** panel terracota con el nombre del museo, el título grande en crema y el buscador. La trama ocupa el 40 % derecho.
+- **De trabajo (`compacta`, el resto):** de 96 a 128 px de alto, con el título, la línea de ayuda si la pantalla ya la tenía y las acciones principales dentro de la banda, como píldoras crema con texto oscuro. La trama ocupa la franja derecha, de 20 rem como máximo.
+
+En las dos, la trama es una cuadrícula de rombos de contorno con un rombo pequeño dentro, un poco más clara que el fondo, desvanecida hacia la izquierda. Se oculta bajo 768 px y nunca va detrás del texto: el contenido deja libre su franja. El foco dentro de la banda es crema. Las acciones de la ficha quedan bajo la banda, porque sus colores (terracota sólido para «Editar ficha») no se verían sobre ella.
 
 ### D8. Inicio
 
 El contenido y los permisos del Inicio son los de `inicio-guia-de-tareas`. La remodelación cambia cómo se presentan:
 
-- La búsqueda va dentro de la cabecera, como un formulario que navega a `/busqueda`.
+- La búsqueda va dentro de la cabecera, como un formulario que navega a `/busqueda?q=…` sin recargar la página (`next/form`). Es la tarea «Buscar una pieza»: su verbo es la etiqueta y su explicación, la ayuda.
 - «Registrar una pieza nueva» es una tarjeta ancha verde.
-- Cuatro tarjetas blancas para las demás tareas.
-- Píldoras de resumen; las que avisan de que falta algo van en ámbar y son enlaces.
+- Cuatro tarjetas blancas para las demás tareas, con el icono en un cuadrado redondeado de color suave.
+- Píldoras de resumen; las que avisan de que falta algo van en ámbar y son enlaces, con una flecha además del color.
+- Sin la línea «Sesión de demostración como…»: la insignia de demostración vive solo en el menú.
 
 ## Risks / Trade-offs
 

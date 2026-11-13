@@ -13,6 +13,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { AdminNav, SectionHeader, initialSection, visibleSections } from "@/components/domain/AdminShell";
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { LocationsLive } from "@/components/domain/LocationsAdmin";
@@ -218,10 +219,7 @@ function AdministracionContent() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Administración</h1>
-        <p className="text-base text-gris-texto">Personas, catálogo, importación y control del sistema.</p>
-      </header>
+      <PageHeader title="Administración" description="Personas, catálogo, importación y control del sistema." />
 
       <AdminNav
         sections={sections}

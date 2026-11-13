@@ -32,6 +32,7 @@ import {
   TenureBanner,
   type ReviewImage,
 } from "@/components/domain/ImportWizard";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
@@ -640,10 +641,7 @@ export function LiveImportWizard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Importar piezas</h1>
-        <p className="text-base text-gris-texto">Suba un Excel o CSV, revise lo que cambiará y apruebe.</p>
-      </header>
+      <PageHeader title="Importar piezas" description="Suba un Excel o CSV, revise lo que cambiará y apruebe." />
       <ImportSteps current={progressStep(batch)} complete={batch?.status === "APPLIED"} />
       {batch && <BatchHeader batch={batch} />}
       <ErrorNotice message={error} />

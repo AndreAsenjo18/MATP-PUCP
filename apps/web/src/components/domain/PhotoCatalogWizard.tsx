@@ -16,6 +16,7 @@
 import { ArrowLeft, ArrowRight, Check, FolderPlus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { PhotoReadingStep } from "@/components/domain/PhotoReadingStep";
 import { PhotoReviewStep } from "@/components/domain/PhotoReviewStep";
@@ -93,12 +94,10 @@ export function PhotoCatalogWizard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Importar fotografías al catálogo</h1>
-        <p className="text-base text-gris-texto">
-          Archivo fotográfico de piezas ya registradas, sin Excel.{batch && ` Lote: ${batch.file_name} · ${batchStateText(batch)}.`}
-        </p>
-      </header>
+      <PageHeader
+        title="Importar fotografías al catálogo"
+        description={<>Archivo fotográfico de piezas ya registradas, sin Excel.{batch && ` Lote: ${batch.file_name} · ${batchStateText(batch)}.`}</>}
+      />
 
       <ol className="flex flex-wrap gap-2" aria-label="Pasos de la importación de fotografías">
         {PHOTO_WIZARD_STEPS.map((label, index) => (
