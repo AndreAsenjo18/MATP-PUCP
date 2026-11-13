@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, type ReactNode } from "react";
 
-import { cn } from "@/lib/cn";
+import { TAB_LIST_CLASS, tabClassName } from "@/components/ui/Tabs";
 
 /** Navegación común para fichas simuladas y conectadas (C9).
  * Agrupa origen y auditoría para no saturar la interfaz con ocho opciones.
@@ -49,7 +49,7 @@ export function PieceDetailTabs({
   }
 
   return (
-    <div role="tablist" aria-label="Secciones de la ficha" className="flex max-w-full gap-1 overflow-x-auto border-b border-borde pb-1">
+    <div role="tablist" aria-label="Secciones de la ficha" className={TAB_LIST_CLASS}>
       {PIECE_DETAIL_TABS.map((tab, index) => (
         <button
           key={tab}
@@ -61,10 +61,7 @@ export function PieceDetailTabs({
           tabIndex={activeTab === tab ? 0 : -1}
           onClick={() => onChange(tab)}
           onKeyDown={(event) => selectWithKeyboard(event, index)}
-          className={cn(
-            "flex min-h-11 shrink-0 items-center gap-1 rounded-t-md px-3 py-2 text-base font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-terracota",
-            activeTab === tab ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
-          )}
+          className={tabClassName(activeTab === tab)}
         >
           {tab}
         </button>

@@ -7,7 +7,7 @@ import { memoryStorage } from "@/test/memory-storage";
 
 import { isActive, mobileMenuReducer, NAV_ITEMS, readSidebarCollapsed, SIDEBAR_STORAGE_KEY, visibleNavItems, writeSidebarCollapsed } from "./navigation";
 import { MenuAccount, roleIsRedundant } from "./MenuAccount";
-import { headerActionClassName, PageBackLink, PageHeader } from "./PageHeader";
+import { headerActionClassName, PageHeader } from "./PageHeader";
 import { PermissionNotice } from "./PermissionNotice";
 import { Sidebar } from "./Sidebar";
 
@@ -241,11 +241,19 @@ describe("PageHeader (cabecera terracota)", () => {
     expect(headerActionClassName).toContain("focus-visible:outline-crema");
   });
 
-  it("«Volver a …» es un enlace subrayado con área de toque de 44 px", () => {
-    const html = render(<PageBackLink href="/busqueda">Volver a la búsqueda</PageBackLink>);
-    expect(html).toContain('href="/busqueda"');
-    expect(html).toContain("min-h-11");
-    expect(html).toContain("underline");
+  it("«Volver a …» va dentro de la banda como píldora crema, con área de toque de 44 px y foco visible", () => {
+    const html = render(<PageHeader back={{ href: "/busqueda", label: "Volver a la búsqueda" }} title="Registrar una pieza" />);
+    const link = html.match(/<a [^>]*href="\/busqueda"[^>]*>/)?.[0] ?? "";
+    expect(link).toContain("min-h-11");
+    expect(html).toContain("bg-crema");
+    expect(html).toContain("group-focus-visible:outline-crema");
     expect(visibleText(html)).toContain("Volver a la búsqueda");
+    expect(html.indexOf("Volver a la búsqueda")).toBeLessThan(html.indexOf("<h1"));
+  });
+
+  it("las insignias junto al título van en la misma línea si caben", () => {
+    const html = render(<PageHeader title="Toro de Pucará" meta={<span>Código I: I-0236</span>} />);
+    expect(visibleText(html)).toContain("Código I: I-0236");
+    expect(html).toMatch(/<div class="flex flex-wrap items-center gap-x-3 gap-y-2"><h1/);
   });
 });

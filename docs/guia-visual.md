@@ -38,6 +38,7 @@ La dirección B usa la paleta existente, más un color solo decorativo medido en
 | Texto sobre la cabecera | `crema` (5,7:1 sobre terracota) |
 | Acción principal de crear o registrar | `verde-exito` (variante `create` de `Button`) |
 | Avisos de «falta algo» | `ambar-bg` con texto `ambar-texto` |
+| Errores y lo destructivo (rojo ladrillo apagado) | `carmin-bg`, `carmin-texto`, `carmin-peligro` |
 | Bordes finos color arena | `borde` |
 | Iconos por tipo de tarea | `terracota`, `verde-exito`, `anil`, `ambar-texto`, `ciruela`, `gris-texto` (piedra) |
 | Rombo de la marca y trama de las cabeceras (solo decorativo, nunca texto) | `terracota-vivo` (#e07040) |
@@ -86,8 +87,8 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 - **Grande (solo el Inicio):** el nombre del museo en letra chica, el título «¿Qué desea hacer?» en `text-titulo` y el buscador.
 - **Compacta (las demás):** de 96 a 128 px de alto en 1366 px, con el título en `text-titulo-trabajo` y la línea de ayuda si la pantalla ya la tenía. Las acciones principales van dentro de la banda como píldoras crema con texto oscuro (`headerActionClassName`), con foco crema. En pantallas estrechas, el texto largo de ayuda la hace crecer: no se corta.
 - **Trama de rombos** (`trama-rombos` en `globals.css`): cuadrícula de rombos de contorno con un rombo pequeño relleno dentro, en `terracota-vivo` al 36 % y al 46 %, plana. Anclada arriba a la derecha y desvanecida hacia la izquierda; ocupa el 40 % derecho de la grande y hasta 20 rem de la compacta. El contenido deja libre esa franja, así que nunca queda detrás del texto. Se oculta bajo 768 px.
-- **Volver:** `PageBackLink`, sobre la cabecera, es un enlace subrayado con área de toque de 44 px.
-- **Ficha:** el nombre de la pieza va en la banda; las insignias y las acciones, debajo, sobre el fondo claro.
+- **Volver:** píldora crema dentro de la banda, arriba del título (`back`), de 32 px a la vista y 44 px de área de toque.
+- **Ficha:** en la banda, «Volver», el nombre y, a su lado, el código I, la tenencia y las alertas (`meta`). Las acciones van debajo, sobre el fondo claro.
 
 ## Inicio (maqueta B)
 
@@ -101,6 +102,15 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 - **Tarjeta de filtros** arriba: el buscador en píldora y, debajo, los filtros en una fila de listas de 52 px, alineadas por abajo. «Limpiar filtros» en píldora blanca con borde.
 - **Resultados en filas** de 84 px o más, una bajo otra, con `gap` de 12 px. Toda la fila es el enlace; sube 2 px al pasar el cursor.
 
+## Pestañas
+
+Un solo estilo en todo el sistema (`components/ui/Tabs.ts`): píldoras de 44 px y 16 px. La activa va en terracota sólido y en seminegrita; las demás, blancas con borde arena. En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni cortar el texto de ninguna pestaña.
+
+## Ficha (maqueta B)
+
+- **Acciones bajo la banda:** «Editar ficha» (`primary`), «Registrar a partir de esta pieza» (`outline`) y, aparte a la derecha, «Eliminar pieza» (`danger-outline`).
+- **Datos en grupos** con subtítulo terracota (`h2`) y una línea fina entre grupos. Etiqueta tenue de 16 px y valor de 20 px en seminegrita; los párrafos, a 18 px. Tres columnas desde 1024 px, dos desde 640 px.
+
 ## Movimiento
 
 - Solo se anima el desplazamiento (`translate`), en 150 ms: tarjetas que suben 2 px y botones que suben 1 px al pasar el cursor.
@@ -111,7 +121,7 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 
 | Componente | Archivo | Para qué |
 |---|---|---|
-| `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `neutral` (blanca con borde arena), `outline`, `danger`; tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
+| `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `neutral` (blanca con borde arena), `outline`, `danger` (confirmar una eliminación) y `danger-outline` (lo destructivo discreto, como «Eliminar pieza»); tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
 | `Card`, `cardClassName` | `components/ui/Card.tsx` | Superficie base: blanco, borde arena, 24 px, sombra suave. Con `interactive`: realce, foco y movimiento corto |
 | `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre |
 | `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. `controlSize="lg"` lo sube a 52 px, para las barras de filtros. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
@@ -120,7 +130,8 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 | `BrandMark` | `components/brand/TextileMotif.tsx` | Rombo de la marca, decorativo |
 | `SearchPill` | `components/ui/SearchPill.tsx` | Buscador en píldora con la lupa y el botón oscuro «Buscar» dentro; sobre terracota (Inicio) o sobre blanco (Buscar) |
 | `PieceCard` | `components/domain/PieceCard.tsx` | Fila de resultado: código en terracota, nombre, colección y ubicación, insignias y flecha; toda la fila es el enlace |
-| `PageHeader`, `PageBackLink`, `headerActionClassName` | `components/layout/PageHeader.tsx` | Cabecera grande o compacta, enlace para volver y acciones en la banda |
+| `PageHeader`, `headerActionClassName` | `components/layout/PageHeader.tsx` | Cabecera grande o compacta; con `back`, la píldora «Volver» dentro de la banda; con `meta`, insignias junto al título; acciones en la banda |
+| `TAB_LIST_CLASS`, `tabClassName` | `components/ui/Tabs.ts` | El único estilo de pestañas del sistema |
 | `MainLayout`, `Sidebar`, `MenuAccount` | `components/layout/` | Estructura, menú y cuenta |
 
 ### Lo que se hereda sin tocar las pantallas

@@ -28,6 +28,10 @@ export interface PageHeaderProps {
   eyebrow?: ReactNode;
   /** Acciones principales de la pantalla, dentro de la banda. */
   actions?: ReactNode;
+  /** «Volver a …» como píldora crema arriba de la banda (maqueta B de la ficha). */
+  back?: { href: string; label: ReactNode };
+  /** Insignias junto al título, en la misma línea si caben (el código y la tenencia de la ficha). */
+  meta?: ReactNode;
   /** Contenido extra dentro de la banda, bajo el título (el buscador del Inicio). */
   children?: ReactNode;
   size?: PageHeaderSize;
@@ -40,7 +44,7 @@ export interface PageHeaderProps {
 export const headerActionClassName =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-crema px-5 py-2.5 text-center text-base font-bold text-tinta shadow-sm transition-[translate] duration-150 ease-out hover:bg-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0";
 
-export function PageHeader({ title, description, eyebrow, actions, children, size = "compacta", titleId, className }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, actions, back, meta, children, size = "compacta", titleId, className }: PageHeaderProps) {
   const large = size === "grande";
   return (
     <header
@@ -62,10 +66,14 @@ export function PageHeader({ title, description, eyebrow, actions, children, siz
       />
       <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : "gap-4 md:flex-row md:items-center md:justify-between md:pr-[min(28%,16rem)]")}>
         <div className="flex min-w-0 flex-col gap-1.5">
+          {back && <BandBackLink href={back.href}>{back.label}</BandBackLink>}
           {eyebrow && <p className="text-base font-semibold">{eyebrow}</p>}
-          <h1 id={titleId} className={cn("text-balance break-words", large ? "text-titulo" : "text-titulo-trabajo")}>
-            {title}
-          </h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 id={titleId} className={cn("text-balance break-words", large ? "text-titulo" : "text-titulo-trabajo")}>
+              {title}
+            </h1>
+            {meta}
+          </div>
           {description && <p className="max-w-3xl text-base">{description}</p>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -75,15 +83,17 @@ export function PageHeader({ title, description, eyebrow, actions, children, siz
   );
 }
 
-/** «Volver a …» sobre la cabecera: enlace subrayado con un área de toque de 44 px. */
-export function PageBackLink({ href, children }: { href: string; children: ReactNode }) {
+/**
+ * «Volver a …» dentro de la banda: una píldora crema de 32 px, como en la maqueta, con un área de
+ * toque de 44 px. El foco se dibuja alrededor de la píldora.
+ */
+function BandBackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full pr-2 text-base text-gris-texto underline underline-offset-4 hover:text-terracota"
-    >
-      <ArrowLeft size={18} aria-hidden="true" className="shrink-0" />
-      {children}
+    <Link href={href} className="group -my-1.5 inline-flex min-h-11 items-center self-start focus-visible:outline-none">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-crema px-3 py-1 text-base font-semibold text-tinta group-hover:bg-white group-focus-visible:outline-3 group-focus-visible:outline-offset-2 group-focus-visible:outline-crema">
+        <ArrowLeft size={18} aria-hidden="true" className="shrink-0" />
+        {children}
+      </span>
     </Link>
   );
 }

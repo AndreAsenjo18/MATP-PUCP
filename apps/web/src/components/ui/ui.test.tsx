@@ -6,6 +6,7 @@ import { render, visibleText } from "@/test/render";
 import { Badge, BADGE_INTENTS, badgeIntentClass } from "./Badge";
 import { Button, BUTTON_VARIANTS, buttonClassName } from "./Button";
 import { Card, cardClassName } from "./Card";
+import { TAB_LIST_CLASS, tabClassName } from "./Tabs";
 import { Input } from "./Input";
 import { Select } from "./Select";
 import { Textarea } from "./Textarea";
@@ -83,6 +84,37 @@ describe("Button", () => {
 
   it("size lg produce una acción grande para depósito", () => {
     expect(render(<Button size="lg">Registrar movimiento</Button>)).toContain("text-lg");
+  });
+});
+
+describe("Pestañas (un solo estilo en todo el sistema)", () => {
+  it("píldoras de 44 px y 16 px; la activa en terracota sólido y en seminegrita, no solo por color", () => {
+    expect(tabClassName(true)).toContain("bg-terracota");
+    expect(tabClassName(true)).toContain("font-semibold");
+    expect(tabClassName(false)).toContain("font-medium");
+    expect(tabClassName(false)).not.toContain("bg-terracota");
+    for (const selected of [true, false]) {
+      expect(tabClassName(selected)).toContain("min-h-11");
+      expect(tabClassName(selected)).toContain("text-base");
+      expect(tabClassName(selected)).toContain("rounded-full");
+      expect(tabClassName(selected)).toContain("focus-visible:outline-3");
+    }
+  });
+
+  it("en pantallas estrechas la fila se desplaza dentro de su cuadro, con sitio para el foco", () => {
+    expect(TAB_LIST_CLASS).toContain("overflow-x-auto");
+    expect(TAB_LIST_CLASS).toContain("p-1.5");
+    expect(tabClassName(false)).toContain("whitespace-nowrap");
+    expect(tabClassName(false)).toContain("shrink-0");
+  });
+});
+
+describe("Button «danger-outline»", () => {
+  it("es discreto: borde y texto ladrillo sobre blanco, nunca relleno", () => {
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("border-carmin-peligro");
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("text-carmin-texto");
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("bg-white");
+    expect(BUTTON_VARIANTS["danger-outline"]).not.toMatch(/\bbg-carmin-peligro\b/);
   });
 });
 

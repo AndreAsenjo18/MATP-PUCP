@@ -13,7 +13,7 @@ import {  } from "lucide-react";
 import { notFound, useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 
-import { PageBackLink, PageHeader } from "@/components/layout/PageHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PieceForm, outcomeFromUpdate, type SaveOutcome } from "@/components/domain/PieceForm";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
@@ -66,13 +66,11 @@ function EditorView({ piece, afterSave }: EditorViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <PageBackLink href={`/piezas/${piece.id}`}>Volver a la ficha</PageBackLink>
-        <PageHeader
-          title={`Editar: ${piece.denomination}`}
-          description="El código de inventario no se modifica desde este formulario. Si necesita corregirlo, regrese a la ficha y utilice la corrección con registro de auditoría."
-        />
-      </div>
+      <PageHeader
+        back={{ href: `/piezas/${piece.id}`, label: "Volver a la ficha" }}
+        title={`Editar: ${piece.denomination}`}
+        description="El código de inventario no se modifica desde este formulario. Si necesita corregirlo, regrese a la ficha y utilice la corrección con registro de auditoría."
+      />
 
       <PieceForm
         key={piece.id}

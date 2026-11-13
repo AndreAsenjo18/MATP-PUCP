@@ -44,6 +44,14 @@ Las pantallas MUST seguir una sola identidad visual definida por tokens: el Inic
 - **WHEN** una persona abre una pantalla con una tabla o un formulario largo
 - **THEN** el encabezado es compacto y la tabla o el formulario se ven sin desplazarse en 1366 × 768
 
+#### Scenario: Pestañas en todo el sistema
+- **WHEN** una persona abre la ficha de una pieza, Revisar pendientes o Administración en 320 px y en 1366 px
+- **THEN** las pestañas son píldoras de 44 px con la activa en terracota sólido, y en 320 px la fila se desplaza dentro de su cuadro sin desplazar la página ni cortar el texto de ninguna pestaña
+
+#### Scenario: Eliminar una pieza, discreto
+- **WHEN** una persona con permiso abre la ficha de una pieza
+- **THEN** «Editar ficha» es la acción principal en terracota sólido y «Eliminar pieza» va aparte, con borde y texto rojo ladrillo sobre blanco, de 44 px de alto
+
 #### Scenario: Buscar desde el Inicio
 - **WHEN** una persona escribe «toro» en el buscador de la cabecera del Inicio y pulsa «Buscar»
 - **THEN** llega a Buscar con la dirección `/busqueda?q=toro`, sin recargar la página

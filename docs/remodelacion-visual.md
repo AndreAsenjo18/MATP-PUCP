@@ -13,7 +13,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 0 | Inventario, change, capturas «antes» | Hecha |
 | 1 | Base: tokens, átomos, estructura y menú | Hecha, con la corrección del menú en ventanas bajas; esperando revisión |
 | 2a | Inicio y cabeceras de todas las pantallas principales | Hecha, esperando revisión |
-| 2b | Ficha: alta, vista y edición | Pendiente |
+| 2b | Ficha: alta, vista y edición | Hecha, esperando revisión |
 | 2c | Revisar pendientes | Pendiente |
 | 2d | Importación e importación de fotos | Pendiente |
 | 2e | Reportes y vista de impresión | Pendiente |
@@ -137,6 +137,35 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
 
+## Grupo 2b: la ficha según la maqueta B (imagen 2, derecha)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos campos, pestañas, textos y lógica, en los dos modos.
+
+**Qué cambió:**
+
+- **Banda:** «Volver a búsqueda» va dentro, como píldora crema de 32 px con un área de toque de 44 px. Al lado del nombre, en la misma línea si caben, el código I, la tenencia y las alertas. Alta y edición llevan su «Volver» de la misma forma (`PageHeader` con `back` y `meta`).
+- **Acciones bajo la banda:** «Editar ficha» en terracota sólido; «Registrar a partir de esta pieza» con borde terracota; «Eliminar pieza» aparte, a la derecha, discreta: borde y texto ladrillo sobre blanco (variante `danger-outline`). Todas de 44 px.
+- **Color destructivo:** los `carmin-*` pasan de un carmín rosado, fuera de la paleta, a un rojo ladrillo apagado cercano al terracota (#b5473a, #8c2f22 y #f6dfd8). Cambian así todos los avisos de error y los botones de confirmar una eliminación. Los pares de contraste siguen en AA y la prueba los verifica.
+- **Pestañas, un solo estilo en todo el sistema** (`components/ui/Tabs.ts`): píldoras de 44 px y 16 px, la activa en terracota sólido y en seminegrita, las demás blancas con borde. En pantallas estrechas la fila se desplaza dentro de su cuadro y ninguna pestaña parte ni corta su texto. Se aplica a la ficha, a Revisar pendientes y a Administración (áreas y secciones), que así pasan de 36 a 44 px. Esto resuelve el pendiente de la fase 1 de las pestañas de Administración.
+- **Datos generales en grupos**, los del formulario de la pieza: Identificación, Descripción, Procedencia y época, Medidas y materiales, Conservación y Observaciones. Cada grupo lleva un subtítulo terracota y lo separa una línea fina. Etiquetas tenues de 16 px y valores de 20 px en seminegrita, en tres columnas desde 1024 px. Los mismos campos de antes, ninguno más ni menos.
+
+**Lo que no sigue a la imagen, y por qué:**
+
+| En la imagen | En la aplicación | Motivo |
+|---|---|---|
+| «Volver a los resultados» | «Volver a búsqueda» | No se cambian textos fuera del Inicio |
+| Píldora «I-0236» junto al nombre | «Código I: I-0236» con el candado, más la tenencia y las alertas | Mismo texto de siempre; no se quitan datos |
+| Tres pestañas: Datos, Fotografías e Historial | Las seis reales: Datos generales, Identificadores, Fotografías, Ubicación e historial, Conservación, y Origen y auditoría | No se cambian pestañas ni textos |
+| Tres grupos (Identificación, Origen y Conservación) con campos de ejemplo | Los seis grupos del formulario con los campos reales | Grupos y campos reales |
+| El estado de conservación como insignia verde | Como texto («Bueno») | Es el dato tal como llega; convertirlo en insignia sería lógica nueva |
+| Píldora «Volver» de unos 26 px | 32 px visibles y 44 px de área de toque | Mínimo de 44 px para lo que se pulsa |
+| Descripción a 20 px | Descripción y Observaciones a 18 px con más interlineado | Son párrafos: a 20 px en seminegrita cuestan de leer |
+| Imagen principal junto a los datos | No está | Pedido: solo una nota para Sergio (propuesta 11) |
+
+**Verificación:** la ficha, alta, edición, Revisar pendientes y Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px. Controles de menos de 44 px: Personas, Catálogo e Importación de Administración pasan de 6, 8 y 6 a 0; Control, de 10 a 2 (dos controles de Auditoría, grupo f); Sugerencias sigue con 4 (grupo c).
+
+**Auditoría web-design-guidelines:** un hallazgo, corregido: los subtítulos de los grupos de datos son `h2`, como los de las demás pestañas de la ficha, y no `h3` directamente bajo el título. Queda anotado sin cambiar: las pestañas de Administración no se recorren con las flechas, como sí las de la ficha (es lógica de teclado, no de estilo).
+
 ## Buscar según la maqueta B (imagen 2, izquierda)
 
 Recibida el 2026-11-13. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
@@ -180,7 +209,7 @@ Medido antes y después en 22 pantallas a 320, 911, 1366 y 1920 px:
 
 En 1366 y 1920 px no se parte ningún botón: lo que va en dos líneas es la marca del menú y las tarjetas de tipo de reporte, que llevan título y descripción a propósito.
 
-**Pendiente:** `npm ci` con el lockfile sin Inter. Al detener el servidor de desarrollo quedó un proceso en el puerto 3000 que no se pudo cerrar, y `npm ci` no se corre con el servidor arriba. `npm ls --package-lock-only` no marca a Inter como faltante ni sobrante.
+`npm ci` con el lockfile sin Inter, corrido con el servidor detenido: instala bien y solo queda Manrope entre las fuentes.
 
 ## Pantallas y rutas
 

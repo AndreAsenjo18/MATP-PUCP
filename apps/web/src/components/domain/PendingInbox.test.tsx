@@ -61,14 +61,14 @@ describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañ
 });
 
 describe("legibilidad de las pestañas (Req: Legibilidad de la bandeja de pendientes)", () => {
-  it("16 px, 44 px de alto, foco visible; las pestañas pasan de línea en lugar de desbordar", () => {
+  it("16 px, 44 px de alto, foco visible; en pantallas estrechas se desplazan dentro de su cuadro, sin desbordar la página", () => {
     const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="duplicates" />);
     for (const anchor of links(html)) {
       expect(anchor).toMatch(/\bmin-h-11\b/);
       expect(anchor).toMatch(/\btext-base\b/);
-      expect(anchor).toMatch(/focus-visible:outline-2/);
+      expect(anchor).toMatch(/focus-visible:outline-3/);
     }
-    expect(html).toMatch(/<ul class="[^"]*flex-wrap/);
+    expect(html).toMatch(/<ul class="[^"]*overflow-x-auto/);
   });
 });
 

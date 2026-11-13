@@ -21,9 +21,10 @@
   --color-ambar-alerta: #c8791e;
   --color-ambar-bg: #f5e4cc;
   --color-ambar-texto: #8a4f0c;
-  --color-carmin-peligro: #da2a4e;
-  --color-carmin-bg: #f7d9df;
-  --color-carmin-texto: #a3183a;
+  /* Rojo ladrillo apagado, cercano al terracota (antes un carmín rosado fuera de la paleta). */
+  --color-carmin-peligro: #b5473a;
+  --color-carmin-bg: #f6dfd8;
+  --color-carmin-texto: #8c2f22;
   /* Colores de icono por tipo de tarea: cargar (añil) y reportes (ciruela). */
   --color-anil: #2c4a7c;
   --color-anil-bg: #dfe7f3;

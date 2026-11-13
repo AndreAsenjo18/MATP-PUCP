@@ -197,6 +197,21 @@ describe("PieceSheet", () => {
     expect(text).toContain("Propietario legal");
   });
 
+  it("agrupa los datos como el formulario, con subtítulo y línea fina, sin quitar campos (maqueta B)", () => {
+    const html = render(<PieceGeneralData piece={loanPiece} />);
+    const groups = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]);
+    expect(groups).toEqual(["Identificación", "Descripción", "Procedencia y época", "Medidas y materiales", "Conservación", ...(loanPiece.notes ? ["Observaciones"] : [])]);
+    const labels = [...html.matchAll(/<dt[^>]*>([^<]+)<\/dt>/g)].map((match) => match[1]);
+    for (const label of ["Colección", "Categoría", "Tipo de bien", "Materiales", "Estado de conservación", "Forma de adquisición", "Disponibilidad", "Procedencia", "Época (texto original)", "Medidas", "Fecha de ingreso", "Registrado por", "Propietario legal", "Comodante", "Convenio de comodato", "Descripción"]) {
+      expect(labels).toContain(label);
+    }
+    expect(html).toContain("border-t border-borde");
+    // Etiqueta tenue de 16 px y valor de 20 px en seminegrita.
+    expect(html).toMatch(/<dt class="text-base font-medium text-gris-texto">/);
+    expect(html).toMatch(/<dd class="mt-1 text-xl font-semibold/);
+    expect(html).not.toMatch(/text-(xs|sm)\b/);
+  });
+
   it("los identificadores muestran el candado accesible del código I y una explicación clara", () => {
     const html = render(<PieceIdentifiersTable piece={pieceWithCode} />);
     expect(html).toContain('aria-label="Bloqueado"');

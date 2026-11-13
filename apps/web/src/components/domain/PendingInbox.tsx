@@ -14,10 +14,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { TAB_LIST_CLASS, tabClassName } from "@/components/ui/Tabs";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { useSession } from "@/lib/auth/session";
-import { cn } from "@/lib/cn";
 import { useMockStore } from "@/lib/data/mock-store";
 import {
   UNKNOWN_COUNTS,
@@ -57,8 +57,8 @@ export function PendingTabsNav({
 }) {
   if (tabs.length === 0) return null;
   return (
-    <nav aria-label="Pendientes" className="border-b border-borde">
-      <ul className="flex flex-wrap gap-x-2">
+    <nav aria-label="Pendientes">
+      <ul className={TAB_LIST_CLASS}>
         {tabs.map((tab) => {
           const active = tab.key === activeKey;
           return (
@@ -66,10 +66,7 @@ export function PendingTabsNav({
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "-mb-px inline-flex min-h-11 items-center rounded-t-md border-b-4 px-4 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-                  active ? "border-terracota font-semibold text-tinta" : "border-transparent font-medium text-gris-texto hover:border-borde hover:text-tinta",
-                )}
+                className={tabClassName(active)}
               >
                 {tabLabel(tab, counts[tab.key])}
               </Link>

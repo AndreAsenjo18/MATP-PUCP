@@ -95,6 +95,19 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Propuesta:** que al pulsarlo lleve el foco a «N resultados», para que quien usa el teclado o un lector de pantalla llegue a la lista, o quitar el botón en esta pantalla.
 - **Motivo:** un botón que no responde confunde.
 
+### 11. Imagen principal junto a los datos de la ficha
+
+- **Pantalla:** ficha de la pieza, pestaña «Datos generales».
+- **Hoy:** las fotos están en su propia pestaña, «Fotografías».
+- **Propuesta:** mostrar la foto principal al lado de los datos, para reconocer la pieza sin cambiar de pestaña.
+- **Motivo:** se pidió anotarla y no implementarla; cambia qué se muestra en la pestaña.
+
+### 12. Textos y pestañas de la maqueta B en la ficha
+
+- **Pantalla:** ficha de la pieza.
+- **En la maqueta:** «Volver a los resultados» (hoy «Volver a búsqueda»), el código solo («I-0236», hoy «Código I: I-0236») y tres pestañas: «Datos», «Fotografías» e «Historial» (hoy seis). El estado de conservación aparece como insignia de color.
+- **Propuesta:** decidir si se simplifican las pestañas y los textos. Seis pestañas es más de lo que la maqueta propone; agrupar Identificadores, Ubicación, Conservación y Origen en «Historial» o en «Datos» acortaría la fila.
+
 ### 10. Textos de la maqueta B en Buscar
 
 - **Pantalla:** Buscar.

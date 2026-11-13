@@ -9,7 +9,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "primary" | "create" | "secondary" | "neutral" | "outline" | "danger";
+export type ButtonVariant = "primary" | "create" | "secondary" | "neutral" | "outline" | "danger" | "danger-outline";
 export type ButtonSize = "sm" | "md" | "lg" | "touch";
 
 interface ButtonBaseProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "aria-label"> {
@@ -33,6 +33,8 @@ export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   neutral: "border border-borde bg-white text-tinta hover:border-gris-texto hover:bg-crema-light",
   outline: "border border-terracota bg-white text-terracota hover:bg-terracota-light",
   danger: "bg-carmin-peligro text-white shadow-sm hover:bg-carmin-texto",
+  // Lo destructivo que no es la confirmación final («Eliminar pieza»): discreto, con borde y texto ladrillo.
+  "danger-outline": "border border-carmin-peligro bg-white text-carmin-texto hover:bg-carmin-bg",
 };
 
 const SIZES: Record<ButtonSize, string> = {

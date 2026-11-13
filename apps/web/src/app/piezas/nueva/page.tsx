@@ -21,7 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { PageBackLink, PageHeader } from "@/components/layout/PageHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PieceForm, type SaveIntent, type SaveOutcome } from "@/components/domain/PieceForm";
 import { Button } from "@/components/ui/Button";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
@@ -105,13 +105,11 @@ function NewPieceContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <PageBackLink href="/busqueda">Volver a la búsqueda</PageBackLink>
-        <PageHeader
-          title="Registrar una pieza"
-          description="Complete los datos que conozca. La denominación es obligatoria; el sistema revisa el resto mientras usted escribe."
-        />
-      </div>
+      <PageHeader
+        back={{ href: "/busqueda", label: "Volver a la búsqueda" }}
+        title="Registrar una pieza"
+        description="Complete los datos que conozca. La denominación es obligatoria; el sistema revisa el resto mientras usted escribe."
+      />
 
       {lastSaved && (
         <p role="status" className={cn("rounded-md px-3 py-2 text-base", lastSaved.warning ? "bg-ambar-bg text-ambar-texto" : "bg-verde-bg text-verde-exito")}>

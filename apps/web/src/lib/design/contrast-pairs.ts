@@ -4,7 +4,8 @@
  * puro (#ffffff), que no es token.
  *
  * `ambar-alerta` y `carmin-peligro` NO figuran como texto sobre sus fondos suaves porque no alcanzan
- * el contraste (2.7:1 y 3.6:1): para texto se usan `ambar-texto` y `carmin-texto`.
+ * el contraste (2.7:1 y 4.2:1): para texto se usan `ambar-texto` y `carmin-texto`. Los `carmin-*` son
+ * un rojo ladrillo apagado (change `remodelacion-visual`, ficha).
  */
 export interface ContrastPair {
   text: string;
@@ -32,7 +33,8 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { text: "ambar-texto", background: "ambar-bg", usage: "Badge warning, avisos" },
   { text: "carmin-texto", background: "carmin-bg", usage: "Badge danger, errores" },
   { text: "gris-texto", background: "borde", usage: "Badge default" },
-  { text: "carmin-texto", background: "white", usage: "Mensajes de error de campos" },
+  { text: "carmin-texto", background: "white", usage: "Mensajes de error de campos; Button danger-outline («Eliminar pieza»)" },
+  { text: "carmin-texto", background: "carmin-bg", usage: "Button danger-outline (hover)" },
   { text: "ambar-texto", background: "white", usage: "Aviso «Sin foto» en tarjetas" },
   { text: "verde-exito", background: "white", usage: "Mensajes de éxito" },
   // Dirección «B · Cabecera audaz» (docs/guia-visual.md)

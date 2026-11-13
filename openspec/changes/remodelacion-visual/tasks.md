@@ -18,7 +18,7 @@
 
 - [x] 2.1 Inicio según la maqueta B y `PageHeader` en sus dos variantes (grande y compacta), aplicada a Buscar, la ficha (vista, alta y edición), Revisar pendientes, Importación, Reportes y Administración; menú con el rombo de la marca e iconos de la maqueta; enlaces «Volver» de 44 px; comparación de capturas a 1366 × 768, 150 % y 50 %; verificación en los siete anchos y auditoría web-design-guidelines (Req: Identidad visual «Cabecera audaz»; D2, D3, D7, D8)
 - [x] 2.1b Cuerpo de Buscar según la maqueta B: tarjeta de filtros con el buscador en píldora y listas de 52 px, y resultados en filas enlazadas, en los dos modos (Req: Identidad visual «Cabecera audaz»)
-- [ ] 2.2 Ficha: alta, vista y edición de pieza
+- [x] 2.2 Ficha según la maqueta B: «Volver» y las insignias en la banda (también en alta y edición), acciones con «Eliminar pieza» discreta en ladrillo, color destructivo ladrillo, datos generales en los grupos del formulario y un solo estilo de pestañas en todo el sistema (ficha, Revisar pendientes y Administración, 44 px) (Req: Identidad visual «Cabecera audaz»)
 - [ ] 2.3 Revisar pendientes: duplicados, sugerencias y piezas incompletas
 - [ ] 2.4 Importación e importación de fotos
 - [ ] 2.5 Reportes, incluida la vista de impresión
