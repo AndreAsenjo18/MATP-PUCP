@@ -132,11 +132,11 @@ describe("resultados de la búsqueda", () => {
     expect(text).not.toContain("Quitar la selección");
   });
 
-  it("en tableta las tarjetas son compactas y la casilla es grande", () => {
+  it("en tableta las filas son compactas y la casilla es grande", () => {
     const html = render(<SearchResults page={page({ items: [hit()] })} selection={EMPTY_SELECTION} onSelectionChange={noop} />);
-    expect(html).toMatch(/<a[^>]*class="[^"]*p-3 lg:p-4/);
+    expect(html).toMatch(/<a[^>]*class="[^"]*px-4 py-3 lg:px-5 lg:py-4/);
     expect(html).toMatch(/type="checkbox"[^>]*class="[^"]*size-7[^"]*lg:size-6/);
-    expect(html).toContain("size-14 lg:size-20");
+    expect(html).toContain("size-14");
   });
 
   it("muestra cuándo se vio la pieza solo si el resultado trae la fecha (dato restringido)", () => {

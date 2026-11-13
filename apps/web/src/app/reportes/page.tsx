@@ -11,6 +11,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
 import { ReportPreview } from "@/components/domain/ReportPreview";
 import { ReportSelector } from "@/components/domain/ReportSelector";
@@ -60,7 +61,7 @@ function ReportesContent() {
   }
 
   if (!hasPermission("reports.view")) {
-    return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para ver reportes. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   const live = getApiMode() === "live";
@@ -68,12 +69,10 @@ function ReportesContent() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Reportes</h1>
-        <p className="text-base text-gris-texto">
-          {live ? "Generados en el momento sobre una instantánea consistente del catálogo." : "Calculados en el momento a partir del catálogo sintético."}
-        </p>
-      </header>
+      <PageHeader
+        title="Reportes"
+        description={live ? "Generados en el momento sobre una instantánea consistente del catálogo." : "Calculados en el momento a partir del catálogo sintético."}
+      />
 
       <ReportSelector selected={selected} onSelect={choose} />
 
@@ -92,19 +91,21 @@ function ReportesContent() {
       ) : report ? (
         <Card as="section" className="flex flex-col gap-3">
           {/* La misma vista previa que el modo conectado: columnas principales y totales en frase. */}
-          {hasPermission("exports.run") && (
-            <div className="flex flex-wrap justify-end">
-              <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-                Exportar a Excel
-              </Button>
-            </div>
-          )}
+          <ReportPreview
+            report={report}
+            actions={
+              hasPermission("exports.run") && (
+                <Button variant="create" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+                  Exportar a Excel
+                </Button>
+              )
+            }
+          />
           {exported && (
             <p className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
               En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con todas las columnas.
             </p>
           )}
-          <ReportPreview report={report} />
         </Card>
       ) : (
         <Card as="section">

@@ -39,7 +39,7 @@ describe("árbol de ubicaciones", () => {
     const html = render(<LocationTreeView nodes={tree} onDeactivate={() => {}} />);
     expect(html).toContain('aria-label="Desactivar Rack A"');
     expect(html).toContain('aria-label="Desactivar Caja 3"');
-    expect(html).toContain("min-h-8");
+    expect(html).toContain("min-h-11 gap-1.5 px-3.5");
     expect(render(<LocationTreeView nodes={tree} />)).not.toContain("Desactivar");
   });
 

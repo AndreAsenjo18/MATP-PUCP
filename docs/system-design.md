@@ -39,7 +39,9 @@ Declarados en `apps/web/src/app/globals.css`. Generan clases como `bg-terracota`
 | `verde-exito` / `verde-bg` | `#007438` / `#E1EFD8` | Estado correcto |
 | `ambar-alerta` / `ambar-bg` / `ambar-texto` | `#C8791E` / `#F5E4CC` / `#8A4F0C` | Advertencia: borde e icono / fondo / **texto** |
 | `carmin-peligro` / `carmin-bg` / `carmin-texto` | `#DA2A4E` / `#F7D9DF` / `#A3183A` | Error: fondo sólido y borde / fondo suave / **texto** y hover |
-| `font-heading` / `font-sans` | Poppins / Inter (respaldo `system-ui`) | Títulos / cuerpo |
+| `font-heading` / `font-sans` | Manrope en los dos (respaldo `system-ui`) | Títulos / cuerpo |
+
+La escala de letra, los radios, las sombras, el ancho máximo y los colores de icono por tipo de tarea están en [guia-visual.md](guia-visual.md), que manda sobre esta sección desde la remodelación visual.
 
 Los pares de texto sobre fondo permitidos están en `apps/web/src/lib/design/contrast-pairs.ts` y la prueba `design-tokens.test.ts` exige contraste ≥ 4.5:1. Está **prohibido** usar la paleta genérica de Tailwind (`stone-*`, `red-*`, `amber-*`…) o colores hexadecimales en componentes: lo detecta `no-generic-palette.test.ts`. Se permiten `white`, `black` y `transparent`.
 
@@ -91,7 +93,7 @@ Siempre lleva texto visible; el color nunca es el único portador del significad
 
 ## 5. Estructura
 
-`MainLayout` envuelve todas las pantallas: sin sesión muestra solo la pantalla de acceso; con sesión muestra `Sidebar` (fondo `tinta`) en escritorio, un botón «Menú» con panel en móvil (se cierra con Escape o al elegir sección), y un encabezado con usuario, rol, «Cambiar de rol» y el aviso de modo demostración. Las secciones se filtran por permiso del rol (RF-039).
+`MainLayout` envuelve todas las pantallas: sin sesión muestra solo la pantalla de acceso; con sesión muestra, desde 1024 px, un menú flotante oscuro con la cuenta de la persona al pie (`MenuAccount`) y, por debajo, un botón «Menú» que abre el mismo menú como diálogo. No hay franja superior. Las secciones se filtran por permiso del rol (RF-039). Detalle en [guia-visual.md](guia-visual.md).
 
 ## 6. Convenciones
 

@@ -112,6 +112,6 @@ describe("barra de acciones en tableta (fusion-busqueda-deposito 3.4)", () => {
     const html = render(<SelectionBar selection={SELECTION} destinations={DESTINATIONS} onVerify={noop} onMove={noop} />);
     const section = html.match(/<section[^>]*>/)?.[0] ?? "";
     for (const token of ["fixed", "inset-x-0", "bottom-0", "lg:static"]) expect(section).toContain(token);
-    expect(html.match(/<button[^>]*class="[^"]*min-h-11[^"]*md:min-h-9/g)).toHaveLength(2);
+    expect(html.match(/<button[^>]*class="[^"]*min-h-12[^"]*lg:min-h-11/g)).toHaveLength(2);
   });
 });

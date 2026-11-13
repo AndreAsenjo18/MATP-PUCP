@@ -12,6 +12,7 @@ import { LogIn } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -40,12 +41,12 @@ function LiveLogin() {
   }, [session, router, returnTo]);
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-6 px-4 py-8">
-      <header className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium text-terracota">Uso interno · Fase 1</p>
-        <h1 className="text-3xl font-bold text-balance text-tinta">Gestión de Colecciones del MATP</h1>
-        <p className="text-base text-gris-texto">Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot;</p>
-      </header>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-8">
+      <PageHeader
+        eyebrow="Uso interno · Fase 1"
+        title="Gestión de Colecciones del MATP"
+        description={<>Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot;</>}
+      />
       {expired && (
         <p role="status" className="rounded-md border border-ambar-alerta bg-ambar-bg p-3 text-sm text-ambar-texto">
           Su sesión expiró por seguridad. Inicie sesión de nuevo: lo que estaba escribiendo se conserva y podrá continuar.
@@ -130,15 +131,12 @@ function MockLogin() {
   const selectedRole = ROLES.find((r) => r.code === selectedRoleCode);
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-6 px-4 py-8">
-      <header className="flex flex-col gap-2 text-center">
-        <p className="text-sm font-medium text-terracota">Uso interno · Fase 1</p>
-        <h1 className="text-3xl font-bold text-balance text-tinta">Gestión de Colecciones del MATP</h1>
-        <p className="text-base text-gris-texto">
-          Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot; — maqueta de demostración con datos
-          sintéticos.
-        </p>
-      </header>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-8">
+      <PageHeader
+        eyebrow="Uso interno · Fase 1"
+        title="Gestión de Colecciones del MATP"
+        description={<>Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot; — maqueta de demostración con datos sintéticos.</>}
+      />
 
       <Card
         as="section"
@@ -158,7 +156,7 @@ function MockLogin() {
         <Select
           id="user"
           label="Ingresar como (persona sintética)"
-          hint="Cada persona demuestra un rol de la matriz de permisos. Puede cambiar de rol en cualquier momento desde la cabecera."
+          hint="Cada persona demuestra un rol de la matriz de permisos. Puede cambiar de rol en cualquier momento desde el menú."
           value={selectedUserId}
           onChange={(event) => setSelectedUserId(event.target.value)}
           className="p-3"
@@ -181,9 +179,9 @@ function MockLogin() {
           <h2 className="text-sm font-semibold text-gris-texto">Roles del sistema</h2>
           <ul className="mt-2 flex flex-col gap-1 text-sm text-tinta">
             {ROLES.map((role) => (
-              <li key={role.code} className="flex items-center justify-between gap-2">
+              <li key={role.code} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                 <span className={role.is_enabled ? "" : "text-gris-texto line-through"}>{role.name}</span>
-                {!role.is_enabled && <Badge className="shrink-0 whitespace-nowrap">Desactivado en fase 1</Badge>}
+                {!role.is_enabled && <Badge>Desactivado en fase 1</Badge>}
               </li>
             ))}
           </ul>

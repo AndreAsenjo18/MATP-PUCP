@@ -13,7 +13,7 @@ El menú tiene siete entradas por sustantivo («Importación», «Duplicados», 
 - **«Revisar pendientes» con su número** en la tarjeta, cuando hay algo por revisar.
 - **Se retiran del Inicio** la tabla por colección, la evolución de 14 días, las últimas cargas y la tabla de piezas incompletas. La serie histórica y los indicadores siguen disponibles por API y en Reportes › Información incompleta.
 - **Fuera del Inicio, el texto «sesión de demostración»** deja de mostrarse en el sistema desplegado; solo aparece en modo demostración y sin datos de ejemplo mezclados con los reales.
-- **Menú con nombres de tarea y menos entradas**: **Inicio · Buscar piezas · Cargar datos · Revisar pendientes · Reportes · Configuración** (esta última solo para administradores). Pasa de siete entradas a seis y a cinco para quien no administra.
+- **Menú con nombres de tarea y menos entradas**: **Inicio · Buscar · Cargar datos · Revisar pendientes · Reportes · Administración** (esta última solo para administradores; la tarjeta del Inicio conserva el nombre «Configuración»). Pasa de siete entradas a seis y a cinco para quien no administra.
 - Las direcciones actuales (`/busqueda`, `/importacion`, `/reportes`, `/administracion`) no cambian.
 
 ## Capabilities

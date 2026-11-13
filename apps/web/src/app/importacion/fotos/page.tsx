@@ -13,7 +13,7 @@ import { useSession } from "@/lib/auth/session";
 function Content() {
   const { hasPermission } = useSession();
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
   return <PhotoCatalogWizard />;
 }

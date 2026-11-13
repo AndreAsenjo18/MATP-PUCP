@@ -132,8 +132,8 @@ describe("vista previa con columnas principales (Req: Vista previa del reporte f
     expect(visibleText(html)).toContain("En pantalla: 6 de 19 columnas. El Excel las trae todas.");
     expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>(?:(?!<\/button>)[\s\S])*Ver las 19 columnas<\/button>/);
     // Cada fila tiene tantas celdas como columnas visibles.
-    expect(html.match(/<tr class="border-t border-borde"><td/g)).toHaveLength(2);
-    expect((html.split('<tr class="border-t border-borde">')[1].match(/<td/g) ?? []).length).toBe(6);
+    expect(html.match(/<tr><td/g)).toHaveLength(2);
+    expect((html.match(/<tr><td[\s\S]*?<\/tr>/)?.[0].match(/<td/g) ?? []).length).toBe(6);
   });
 
   it("con todas a la vista: las 19 en su orden y «Ver solo las principales»; filas, subtotales y totales iguales", () => {

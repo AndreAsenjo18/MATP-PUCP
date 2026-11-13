@@ -1,8 +1,8 @@
 ## 1. Tabla de tareas y menú
 
 - [x] 1.1 Crear `lib/help/tasks.ts` con la tabla de tareas (identificador, verbo, explicación de una línea, destino, permiso o permisos, si va en el menú) y una función pura que devuelve las tareas visibles para un rol. Prueba: cada destino es una ruta existente, cada permiso es conocido, y un rol de depósito, uno de catálogo y el administrador ven lo esperado. Cumple «Inicio como guía de tareas» y la navegación modificada.
-- [ ] 1.2 **Pedir a la Base** (el menú lateral es solo de la Base, `docs/historias-de-usuario.md` sección 8, regla 3) que reescriba `NAV_ITEMS` en `navigation.ts` a partir de la tabla de tareas: Inicio, Buscar piezas, Cargar datos, Revisar pendientes, Reportes y Configuración, con los permisos de D2, y actualizar `Sidebar.tsx`. Prueba de las entradas visibles por rol, de «Configuración» solo para administradores y de un máximo de cinco entradas sin ese permiso. Cumple «Navegación principal con barra lateral responsive».
-- [ ] 1.3 Actualizar las pruebas del menú existentes (`layout.test.tsx`) que mencionen los nombres antiguos y cambiar el texto «Vista de depósito» del escenario del móvil por «Buscar piezas». Cumple la navegación modificada.
+- [ ] 1.2 **Pedir a la Base** (el menú lateral es solo de la Base, `docs/historias-de-usuario.md` sección 8, regla 3) que reescriba `NAV_ITEMS` en `navigation.ts` a partir de la tabla de tareas: Inicio, Buscar, Cargar datos, Revisar pendientes, Reportes y Administración, con los permisos de D2, y actualizar `Sidebar.tsx`. Prueba de las entradas visibles por rol, de «Administración» solo para administradores y de un máximo de cinco entradas sin ese permiso. Cumple «Navegación principal con barra lateral responsive».
+- [ ] 1.3 Actualizar las pruebas del menú existentes (`layout.test.tsx`) que mencionen los nombres antiguos y cambiar el texto «Vista de depósito» del escenario del móvil por «Buscar». Cumple la navegación modificada.
 
 ## 2. Pantalla de Inicio
 

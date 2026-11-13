@@ -13,6 +13,7 @@
  */
 import { FileUp, Folder, Lightbulb, Save } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
 import { StatusBadge } from "@/components/domain/StatusBadges";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -226,27 +227,27 @@ export function PhotoReadingView({
 
             <div className="flex flex-col gap-2" aria-live="polite">
               <h3 className="text-base font-semibold text-tinta">Vista previa</h3>
-              {previewError && <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">{previewError}</p>}
+              {previewError && <p className="aviso-error rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">{previewError}</p>}
               {preview && !previewError && (
                 <>
                   <p className="text-sm text-gris-texto">
                     {preview.total} fotos en la carpeta{preview.not_fitting > 0 && ` · ${preview.not_fitting} no siguen la plantilla`}.
                   </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="text-gris-texto">
+                  <div className={TABLE_BOX_CLASS}>
+                    <table className={TABLE_CLASS}>
+                      <thead className={THEAD_CLASS}>
                         <tr>
-                          <th className="py-1 pr-3 font-medium">Nombre</th>
-                          <th className="py-1 pr-3 font-medium">Códigos leídos</th>
-                          <th className="py-1 font-medium">Resultado</th>
+                          <th className={TH_CLASS}>Nombre</th>
+                          <th className={TH_CLASS}>Códigos leídos</th>
+                          <th className={TH_CLASS}>Resultado</th>
                         </tr>
                       </thead>
                       <tbody>
                         {preview.items.map((item) => (
-                          <tr key={item.photo_id} className="border-t border-borde">
-                            <td className="py-1 pr-3 text-tinta">{item.relative_path.split("/").pop()}</td>
-                            <td className="py-1 pr-3 text-gris-texto">{item.codes.join(" · ") || "—"}</td>
-                            <td className="py-1 text-tinta">
+                          <tr key={item.photo_id}>
+                            <td className={`${TD_CLASS} text-tinta`}>{item.relative_path.split("/").pop()}</td>
+                            <td className={`${TD_CLASS} text-gris-texto`}>{item.codes.join(" · ") || "—"}</td>
+                            <td className={`${TD_CLASS} text-tinta`}>
                               {item.piece_id ? "Pieza encontrada" : item.match_status === "AMBIGUOUS" ? "Ambigua" : "Sin pieza"}
                               {item.match_reason && <span className="text-gris-texto"> · {REASON_LABELS[item.match_reason] ?? item.match_reason}</span>}
                             </td>

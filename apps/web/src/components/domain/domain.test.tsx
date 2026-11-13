@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BADGE_INTENTS } from "@/components/ui/Badge";
+import { BADGE_INTENTS, SUBTLE_BADGE_INTENTS } from "@/components/ui/Badge";
 import { alertsForPiece, getPieceDetail, PIECES, toSummary } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
@@ -137,10 +137,33 @@ describe("ConfirmButton", () => {
 });
 
 describe("PieceCard", () => {
+  it("las insignias son tenues; con varias van en su propia línea debajo del nombre", () => {
+    const busy = PIECES.find((p) => alertsForPiece(p).some((alert) => alert.applies && alert.type !== "MISSING_PHOTO"))!;
+    const several = render(<PieceCard {...pieceCardProps(toSummary(busy), alertsForPiece(busy))} />);
+    expect(several.indexOf('class="mt-1.5"')).toBeGreaterThan(several.indexOf("<h3"));
+    expect(several).toMatch(/<div class="mt-1\.5"><div class="flex flex-wrap items-center gap-1\.5">/);
+    expect(several).toContain("bg-white px-2");
+    const single = render(
+      <PieceCard href="/piezas/x" title="Mate" inventoryCode="I-0001" collectionName={null} locationLabel={null} tenureRegime="Propiedad" hasPhoto />,
+    );
+    expect(single).not.toContain('class="mt-1.5"');
+    expect(single).toContain("lg:justify-end");
+  });
+
+  it("es una fila (maqueta B): todo es un solo enlace de 84 px o más, con foco visible y una flecha", () => {
+    const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toMatch(/^<a [^>]*class="[^"]*min-h-21/);
+    expect(html).toContain("focus-visible:outline-3");
+    expect(html).toContain("motion-safe:hover:-translate-y-0.5");
+    expect(html.match(/<svg /g)!.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("una pieza en comodato muestra el badge Comodato y el aviso Sin código I", () => {
     const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
     expect(html).toContain(`href="/piezas/${loanPiece.id}"`);
-    expect(html).toContain(BADGE_INTENTS.info);
+    // En las filas de resultados las insignias son tenues (mismo color de texto, sin relleno).
+    expect(html).toContain(SUBTLE_BADGE_INTENTS.info);
     expect(visibleText(html)).toContain("Comodato");
     if (!loanPiece.code_i) expect(visibleText(html)).toContain("Sin código I");
   });
@@ -151,7 +174,7 @@ describe("PieceCard", () => {
     expect(html).toContain("text-ambar-texto");
   });
 
-  it("muestra el código en monoespaciada terracota y trunca títulos largos", () => {
+  it("muestra el código en monoespaciada terracota y no corta los títulos largos: saltan de línea", () => {
     const html = render(
       <PieceCard
         href="/piezas/x"
@@ -165,7 +188,8 @@ describe("PieceCard", () => {
     );
     expect(html).toContain("font-mono");
     expect(html).toContain("text-terracota");
-    expect(html).toContain("line-clamp-2");
+    expect(html).not.toContain("line-clamp");
+    expect(html).toContain("break-words");
     expect(visibleText(html)).toContain("Sin colección");
     expect(visibleText(html)).toContain("Sin ubicación");
     expect(visibleText(html)).not.toContain("Sin foto");
@@ -185,6 +209,34 @@ describe("PieceSheet", () => {
     expect(text).toContain("Comodante");
     expect(text).toContain("Convenio de comodato");
     expect(text).toContain("Propietario legal");
+  });
+
+  it("agrupa los datos como el formulario, con subtítulo y línea fina, sin quitar campos (maqueta B)", () => {
+    const html = render(<PieceGeneralData piece={loanPiece} />);
+    const groups = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]);
+    expect(groups).toEqual(["Identificación", "Descripción", "Procedencia y época", "Medidas y materiales", "Conservación", ...(loanPiece.notes ? ["Observaciones"] : [])]);
+    const labels = [...html.matchAll(/<dt[^>]*>([^<]+)<\/dt>/g)].map((match) => match[1]);
+    for (const label of ["Colección", "Categoría", "Tipo de bien", "Materiales", "Estado de conservación", "Forma de adquisición", "Disponibilidad", "Procedencia", "Época (texto original)", "Medidas", "Fecha de ingreso", "Registrado por", "Propietario legal", "Comodante", "Convenio de comodato", "Descripción"]) {
+      expect(labels).toContain(label);
+    }
+    expect(html).toContain("border-t border-borde");
+    // Etiqueta tenue de 16 px y valor de 20 px en seminegrita.
+    expect(html).toMatch(/<dt class="text-base font-medium text-gris-texto">/);
+    expect(html).toMatch(/<dd class="mt-1 text-xl font-semibold/);
+  });
+
+  it("el estado de conservación es una insignia de color solo si es de la lista cerrada; si no, texto", () => {
+    const base = PIECES.find((p) => p.conservation_status?.code === "BUENO")!;
+    const good = render(<PieceGeneralData piece={base} />);
+    expect(good).toContain(BADGE_INTENTS.success);
+    expect(visibleText(good)).toContain("Bueno");
+    const bad = render(<PieceGeneralData piece={{ ...base, conservation_status: { ...base.conservation_status!, code: "MALO", label: "Malo" } }} />);
+    expect(bad).toContain(BADGE_INTENTS.danger);
+    const other = render(<PieceGeneralData piece={{ ...base, conservation_status: { ...base.conservation_status!, code: "NUEVO_TERMINO", label: "Otro estado" } }} />);
+    expect(visibleText(other)).toContain("Otro estado");
+    expect(other).not.toContain(BADGE_INTENTS.success);
+    expect(other).not.toContain(BADGE_INTENTS.danger);
+    expect(visibleText(render(<PieceGeneralData piece={{ ...base, conservation_status: null }} />))).toContain("Sin registrar");
   });
 
   it("los identificadores muestran el candado accesible del código I y una explicación clara", () => {

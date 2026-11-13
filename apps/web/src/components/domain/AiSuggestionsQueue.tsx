@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { AI_PURPOSE, AI_TITLE, dataView, FieldList, functionLabel, ScopeNotice } from "@/components/domain/AiSuggestionParts";
 import { AiSuggestionsLive } from "@/components/domain/AiSuggestionsLive";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -48,7 +49,7 @@ function SuggestionCard({ id, highlighted = false }: { id: string; highlighted?:
             {functionLabel(suggestion.function_code)}
           </p>
           {piece && (
-            <Link href={`/piezas/${piece.id}`} className="text-sm text-terracota underline">
+            <Link href={`/piezas/${piece.id}`} className="inline-flex min-h-11 items-center text-base font-semibold text-terracota underline underline-offset-4">
               {piece.denomination}
             </Link>
           )}
@@ -140,7 +141,7 @@ export function AiSuggestionsQueue({ embedded = false, onQueueChanged }: { embed
   }
 
   if (!hasPermission("ai.review")) {
-    return <PermissionNotice>Su rol no puede revisar sugerencias de la IA. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no puede revisar sugerencias de la IA. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   const pending = store.aiSuggestions.filter((s) => s.status === "PENDING");
@@ -149,12 +150,7 @@ export function AiSuggestionsQueue({ embedded = false, onQueueChanged }: { embed
 
   return (
     <div className="flex flex-col gap-5">
-      {!embedded && (
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-tinta">{AI_TITLE}</h1>
-          <p className="max-w-3xl text-base text-gris-texto">{AI_PURPOSE}</p>
-        </header>
-      )}
+      {!embedded && <PageHeader title={AI_TITLE} description={AI_PURPOSE} />}
 
       <ScopeNotice />
 

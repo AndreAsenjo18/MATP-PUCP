@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 /*
- * Tokens del sistema de diseño MATP (docs/system-design.md, ADR-012).
- * Único lugar donde se definen colores y tipografías: los componentes usan solo estas clases
- * (bg-terracota, text-tinta, font-heading...). Los pares de texto sobre fondo permitidos están en
- * src/lib/design/contrast-pairs.ts y se verifican con design-tokens.test.ts (contraste >= 4.5:1).
+ * Tokens del sistema de diseño MATP, dirección «B · Cabecera audaz» (docs/guia-visual.md, change
+ * remodelacion-visual). Único lugar donde se definen colores, letras, radios y sombras: los
+ * componentes usan solo estas clases (bg-terracota, text-tinta, font-heading, rounded-tarjeta...).
+ * Los pares de texto sobre fondo permitidos están en src/lib/design/contrast-pairs.ts y se
+ * verifican con design-tokens.test.ts (contraste >= 4.5:1).
  */
 @theme {
   --color-terracota: #a23c16;
@@ -20,26 +21,230 @@
   --color-ambar-alerta: #c8791e;
   --color-ambar-bg: #f5e4cc;
   --color-ambar-texto: #8a4f0c;
-  --color-carmin-peligro: #da2a4e;
-  --color-carmin-bg: #f7d9df;
-  --color-carmin-texto: #a3183a;
+  /* Rojo ladrillo apagado, cercano al terracota (antes un carmín rosado fuera de la paleta). */
+  --color-carmin-peligro: #b5473a;
+  --color-carmin-bg: #f6dfd8;
+  --color-carmin-texto: #8c2f22;
+  /* Colores de icono por tipo de tarea: cargar (añil) y reportes (ciruela). */
+  --color-anil: #2c4a7c;
+  --color-anil-bg: #dfe7f3;
+  --color-ciruela: #6b3566;
+  --color-ciruela-bg: #efe0ec;
+  /* Solo decorativo, nunca texto: el rombo de la marca sobre el menú oscuro y la trama de las cabeceras. */
+  --color-terracota-vivo: #e07040;
 
-  --font-heading: var(--font-poppins), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Toda la aplicación en Manrope, como la maqueta B (cuerpo, formularios y tablas). */
+  --font-sans: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /*
+   * Escala de letra sin nada por debajo de 16 px (docs/historias-de-usuario.md, sección 1).
+   * text-xs y text-sm conservan su nombre para no tocar cada pantalla, pero valen lo mismo que
+   * text-base: la jerarquía se hace con peso y color.
+   */
+  --text-xs: 1rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5;
+  /* Títulos fluidos: de 36 a 64 px en cabeceras principales y de 28 a 40 px en las de trabajo. */
+  --text-titulo: clamp(2.25rem, 1.6rem + 2.4vw, 4rem);
+  --text-titulo--line-height: 1.05;
+  --text-titulo-trabajo: clamp(1.75rem, 1.45rem + 1vw, 2.5rem);
+  --text-titulo-trabajo--line-height: 1.15;
+  /* Tarjetas grandes de opción (Importación, maqueta B): título de 27 px y descripción de 19 px. */
+  --text-opcion: 1.6875rem;
+  --text-opcion--line-height: 1.2;
+  --text-opcion-texto: 1.1875rem;
+  --text-opcion-texto--line-height: 1.5;
+
+  /* Radios altos: campos y avisos (md), tarjetas y diálogos (lg), menú y paneles (xl, 2xl). */
+  --radius-md: 0.875rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2rem;
+  --radius-tarjeta: 1.5rem;
+  --radius-panel: 1.75rem;
+
+  /* Sombras cálidas (tinte terracota): en reposo y al pasar el cursor. */
+  --shadow-sm: 0 1px 2px rgb(12 15 20 / 0.05), 0 4px 14px rgb(133 47 15 / 0.07);
+  --shadow-md: 0 2px 4px rgb(12 15 20 / 0.06), 0 14px 30px rgb(133 47 15 / 0.14);
+
+  /* Espaciado con nombre: p-tarjeta, gap-tarjetas, gap-seccion. */
+  --spacing-tarjeta: 1.5rem;
+  --spacing-tarjetas: 1rem;
+  --spacing-seccion: 2rem;
+
+  /* Ancho máximo del contenido: centrado, sin estirarse en monitores anchos (max-w-contenido). */
+  --container-contenido: 85rem;
 }
 
 /* Familias autoalojadas con Fontsource (importadas en app/layout.tsx; sin Google Fonts, RNF-008). */
 :root {
-  --font-inter: "Inter Variable";
-  --font-poppins: "Poppins";
+  --font-manrope: "Manrope Variable";
 }
 
-body {
-  font-size: 1rem;
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  /* Títulos en Manrope; una clase de la pantalla puede cambiar la familia si hace falta. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
+
+  /* Foco visible en todo lo que se puede usar con el teclado, aunque la pantalla no lo defina. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid var(--color-terracota);
+    outline-offset: 2px;
+  }
+
+  /* Sin la espera del doble toque en lo que se pulsa, y un realce suave del color del sistema. */
+  :where(a, button, summary, label, [role="button"], [role="tab"]) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgb(162 60 22 / 0.15);
+  }
+
+  /* Casillas y opciones más grandes y del color del sistema. */
+  :where(input[type="checkbox"], input[type="radio"]) {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: var(--color-terracota);
+  }
+
+  :where(dialog)::backdrop {
+    background: rgb(12 15 20 / 0.5);
+  }
+
+  ::selection {
+    background: var(--color-terracota-light);
+    color: var(--color-tinta);
+  }
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
+/*
+ * Barra de desplazamiento fina y del tono del menú oscuro, sin carril claro: así no queda una
+ * franja clara entre el menú y el contenido cuando las secciones no caben.
+ */
+@utility scroll-menu {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-crema) 35%, transparent) transparent;
+}
+
+/*
+ * Pista de que hay más secciones: un brillo suave en el borde de la lista hacia donde queda
+ * contenido. Las dos «tapas» del color del panel se mueven con el contenido (local) y ocultan el
+ * brillo al llegar a cada extremo; si todo cabe, no se ve ninguno.
+ */
+@utility scroll-pista {
+  background:
+    linear-gradient(var(--color-tinta) 40%, transparent) center top / 100% 2rem no-repeat local,
+    linear-gradient(transparent, var(--color-tinta) 60%) center bottom / 100% 2rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-crema) 28%, transparent), transparent) center top / 100% 1rem no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-crema) 28%, transparent), transparent) center bottom / 100% 1rem no-repeat scroll;
+  background-color: var(--color-tinta);
+}
+
+/*
+ * Listas desplegables sin el aspecto nativo: en Windows el control nativo dibuja su propio foco (una
+ * barra azul pegada al borde derecho) encima del contorno del sistema. Se dibuja la flecha aquí y se
+ * reserva su espacio; fuera de capa para que el relleno derecho gane a los px-* de cada pantalla.
+ * Con colores forzados (alto contraste) vuelve el control nativo.
+ */
+select:where(:not([multiple], [size])) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b534c' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.875rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-right: 2.75rem;
+}
+
+@media (forced-colors: active) {
+  select:where(:not([multiple], [size])) {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
+/*
+ * Trama de rombos de las cabeceras terracota (maqueta B): rombos de contorno con un rombo pequeño
+ * dentro, en una cuadrícula regular, un poco más claros que el fondo y planos. Anclada arriba a la
+ * derecha y desvanecida hacia la izquierda para no competir con el texto. El color es
+ * `--color-terracota-vivo` (#e07040), escrito aquí porque una imagen en `url()` no lee variables.
+ * El tamaño de la celda se cambia con `--trama-tamano`.
+ */
+@utility trama-rombos {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Cpath d='M36 8 64 36 36 64 8 36Z' fill='none' stroke='%23e07040' stroke-opacity='.36' stroke-width='1.5'/%3E%3Cpath d='M36 27.5 44.5 36 36 44.5 27.5 36Z' fill='%23e07040' fill-opacity='.46'/%3E%3C/svg%3E");
+  background-position: right top;
+  background-repeat: repeat;
+  background-size: var(--trama-tamano, 4.5rem) var(--trama-tamano, 4.5rem);
+  mask-image: linear-gradient(to right, transparent, #000 6rem);
+}
+
+/*
+ * Avisos de error: siempre un icono además del color ladrillo. Se dibuja aquí, con el color del texto,
+ * para todo aviso `role="alert"` sobre fondo ladrillo y para los que llevan `aviso-error`; `texto-error`
+ * es la versión sin recuadro (el error de un campo). Fuera de capa para ganar al relleno de cada aviso.
+ */
+:is([role="alert"].bg-carmin-bg, .aviso-error) {
+  position: relative;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+}
+
+.texto-error {
+  position: relative;
+  padding-left: 1.75rem;
+}
+
+/* `:where` no suma especificidad: la posición la dan las dos reglas siguientes. */
+:where([role="alert"].bg-carmin-bg, .aviso-error, .texto-error)::before {
+  content: "";
+  position: absolute;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 8v4M12 16h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+:where([role="alert"].bg-carmin-bg, .aviso-error)::before {
+  top: 0.875rem;
+  left: 0.75rem;
+}
+
+:where(.texto-error)::before {
+  top: 0.125rem;
+  left: 0;
+}
+
+@media (forced-colors: active) {
+  :where([role="alert"].bg-carmin-bg, .aviso-error, .texto-error)::before {
+    background-color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
+/* Los títulos principales siempre en peso 800, aunque la pantalla pida otro (por eso fuera de capa). */
+h1 {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Quien pide menos movimiento no ve desplazamientos ni animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

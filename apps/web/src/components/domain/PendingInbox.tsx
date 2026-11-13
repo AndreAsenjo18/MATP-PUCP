@@ -10,13 +10,15 @@
  * de los parámetros: un layout no se vuelve a pintar al navegar y no los recibe (tarea 1.1). Los
  * contadores se piden al montar y cuando una pestaña avisa con `refresh` (design D3).
  */
+import { ClipboardList, Copy, Sparkles, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { TAB_LIST_CLASS, tabClassName } from "@/components/ui/Tabs";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { useSession } from "@/lib/auth/session";
-import { cn } from "@/lib/cn";
 import { useMockStore } from "@/lib/data/mock-store";
 import {
   UNKNOWN_COUNTS,
@@ -45,6 +47,9 @@ export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
 // ---------------------------------------------------------------------------------------------
 
 /** Pestañas como enlaces: 16 px, 44 px de alto, la activa con `aria-current` y una marca gruesa. */
+/** Icono de cada pestaña (maqueta B); el nombre va siempre al lado. */
+const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { duplicates: Copy, suggestions: Sparkles, incomplete: ClipboardList };
+
 export function PendingTabsNav({
   tabs,
   counts,
@@ -56,20 +61,19 @@ export function PendingTabsNav({
 }) {
   if (tabs.length === 0) return null;
   return (
-    <nav aria-label="Pendientes" className="border-b border-borde">
-      <ul className="flex flex-wrap gap-x-2">
+    <nav aria-label="Pendientes">
+      <ul className={TAB_LIST_CLASS}>
         {tabs.map((tab) => {
           const active = tab.key === activeKey;
+          const Icon = TAB_ICONS[tab.key];
           return (
             <li key={tab.key}>
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "-mb-px inline-flex min-h-11 items-center rounded-t-md border-b-4 px-4 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-                  active ? "border-terracota font-semibold text-tinta" : "border-transparent font-medium text-gris-texto hover:border-borde hover:text-tinta",
-                )}
+                className={tabClassName(active)}
               >
+                <Icon size={18} aria-hidden="true" className="shrink-0" />
                 {tabLabel(tab, counts[tab.key])}
               </Link>
             </li>
@@ -111,10 +115,7 @@ export function PendingInboxFrame({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">{PENDING_TITLE}</h1>
-        <p className="text-base text-gris-texto">{PENDING_HINT}</p>
-      </header>
+      <PageHeader title={PENDING_TITLE} description={PENDING_HINT} />
       {tabs.length === 0 ? (
         <PermissionNotice>{NO_PENDING_TABS_NOTICE}</PermissionNotice>
       ) : (

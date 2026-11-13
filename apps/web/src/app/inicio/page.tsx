@@ -2,7 +2,9 @@
 
 /**
  * Pantalla 2 — Inicio como guía de tareas (change `inicio-guia-de-tareas`): «¿Qué desea hacer?»,
- * tarjetas de tarea según el rol y una sola línea con el estado del catálogo (RF-035, RF-039).
+ * tarjetas de tarea según el rol y el estado del catálogo (RF-035, RF-039).
+ *
+ * Diseño: change `remodelacion-visual` (docs/guia-visual.md).
  *
  * El tablero de completitud (tabla por colección, evolución de 14 días, últimas cargas y tabla de
  * piezas incompletas) ya no está aquí: los indicadores siguen en la API y en Reportes ›
@@ -10,7 +12,8 @@
  */
 import { useEffect, useState } from "react";
 
-import { CatalogStatusLine, TaskCards } from "@/components/domain/HomeGuide";
+import { CatalogStatusChips, HomeSearch, TaskCards } from "@/components/domain/HomeGuide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
 import { listPendingAiSuggestions } from "@/lib/data/ai";
@@ -24,7 +27,7 @@ function numerator(kpis: CompletenessKpis, alert: AlertType): number {
 }
 
 function InicioContent() {
-  const { currentRole, currentUser, hasPermission } = useSession();
+  const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const demo = getApiMode() === "mock";
   const [status, setStatus] = useState<CatalogStatus | null>(null);
@@ -69,22 +72,23 @@ function InicioContent() {
     };
   }, [canReviewDuplicates, canReviewSuggestions, demo, devUser]);
 
+  const tasks = visibleTasks(hasPermission);
+  const searchTask = tasks.find((task) => task.id === "search");
+
+  // La insignia de demostración vive solo en el menú.
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">¿Qué desea hacer?</h1>
-        {demo && (
-          <p className="text-base text-gris-texto">
-            Sesión de demostración como <strong className="text-tinta">{currentRole?.name}</strong>. Todos los datos son sintéticos y los cambios que haga
-            aquí no se guardan al recargar la página.
-          </p>
-        )}
-      </header>
+    <div className="flex flex-col gap-5">
+      <PageHeader size="grande" eyebrow={<span translate="no">Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»</span>} title="¿Qué desea hacer?">
+        {searchTask && <HomeSearch task={searchTask} />}
+      </PageHeader>
 
-      <TaskCards tasks={visibleTasks(hasPermission)} pending={pending} />
+      <TaskCards tasks={tasks} pending={pending} />
 
-      <section aria-label="Estado del catálogo">
-        <CatalogStatusLine status={status} failed={statusFailed} />
+      <section aria-labelledby="catalog-status-title" className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <h2 id="catalog-status-title" className="text-base font-semibold text-gris-texto">
+          El catálogo hoy
+        </h2>
+        <CatalogStatusChips status={status} failed={statusFailed} />
       </section>
     </div>
   );

@@ -22,6 +22,7 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, Plus, Save, Settings, X
 import Link from "next/link";
 import { useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
 import { ErrorNotice } from "@/components/domain/ImportWizard";
 import { mappingDraftStatus } from "@/components/domain/status-intents";
 import { StatusBadge } from "@/components/domain/StatusBadges";
@@ -331,30 +332,32 @@ export function ValueMapEditor({
       </p>
       {terms.length === 0 && <p className="text-sm text-ambar-texto">No hay términos activos en el vocabulario {vocabulary} para asociar.</p>}
       {entries.length > 0 && (
-        <table className="w-full text-left text-sm">
-          <thead className="text-gris-texto">
-            <tr>
-              <th className="py-1 pr-3 font-medium">Texto de origen</th>
-              <th className="py-1 pr-3 font-medium">Término</th>
-              <th className="py-1 font-medium">
-                <span className="sr-only">Acciones</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map(([original, term]) => (
-              <tr key={original} className="border-t border-borde align-top">
-                <td className="py-1 pr-3 text-tinta">{original}</td>
-                <td className="py-1 pr-3">
-                  {termSelect(term, `Término para «${original}»`, (next) => next && onChange(putMapping(map, original, next)))}
-                </td>
-                <td className="py-1">
-                  <Button variant="secondary" icon={X} aria-label={`Quitar la correspondencia de «${original}»`} onClick={() => onChange(dropMapping(map, original))} />
-                </td>
+        <div className={TABLE_BOX_CLASS}>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
+              <tr>
+                <th className={TH_CLASS}>Texto de origen</th>
+                <th className={TH_CLASS}>Término</th>
+                <th className={TH_CLASS}>
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map(([original, term]) => (
+                <tr key={original}>
+                  <td className={`${TD_CLASS} text-tinta`}>{original}</td>
+                  <td className={`${TD_CLASS}`}>
+                    {termSelect(term, `Término para «${original}»`, (next) => next && onChange(putMapping(map, original, next)))}
+                  </td>
+                  <td className={`${TD_CLASS}`}>
+                    <Button variant="secondary" icon={X} aria-label={`Quitar la correspondencia de «${original}»`} onClick={() => onChange(dropMapping(map, original))} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <div className="flex flex-wrap items-end gap-2">
         <Input label="Texto de origen" value={text} error={addError ?? undefined} onChange={(event) => setText(event.target.value)} fieldClassName="min-w-48" />

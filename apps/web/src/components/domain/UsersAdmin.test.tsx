@@ -67,7 +67,7 @@ describe("UsersTable", () => {
     expect(html).toContain('aria-label="Desactivar a Ana García"');
     expect(html).toContain('aria-label="Restablecer contraseña de Ana García"');
     expect(html).toContain('title="Desactivar"');
-    expect(html).toContain("min-h-8"); // botones compactos
+    expect(html).toContain("min-h-11 gap-1.5 px-3.5"); // botones compactos, de 44 px
     expect(text).not.toMatch(/Desactivar\s+Restablecer/); // sin texto en los botones de icono
   });
 

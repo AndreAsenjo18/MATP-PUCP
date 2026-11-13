@@ -4,8 +4,11 @@ import { describe, expect, it } from "vitest";
 import { render, visibleText } from "@/test/render";
 
 import { Badge, BADGE_INTENTS, badgeIntentClass } from "./Badge";
-import { Button, BUTTON_VARIANTS, buttonClassName } from "./Button";
+import { Button, BUTTON_VARIANTS, buttonClassName, DISABLED_STYLES } from "./Button";
 import { Card, cardClassName } from "./Card";
+import { stepClassName } from "./Steps";
+import { TAB_LIST_CLASS, tabClassName, UNDERLINE_TAB_LIST_CLASS, underlineTabClassName } from "./Tabs";
+import { scrollEdges, TableScroller } from "./TableScroller";
 import { Input } from "./Input";
 import { Select } from "./Select";
 import { Textarea } from "./Textarea";
@@ -42,33 +45,146 @@ describe("Button", () => {
   it("refleja el estado deshabilitado", () => {
     const html = render(<Button disabled>Aprobar</Button>);
     expect(html).toContain('disabled=""');
-    expect(html).toContain("disabled:opacity-50");
+    // El estilo único de lo deshabilitado (gris cálido, sin transparencia que lo haga parecer otro botón).
+    expect(html).toContain("disabled:bg-borde");
+    expect(html).not.toContain("disabled:opacity");
   });
 
   it("buttonClassName recurre a primary/md ante valores desconocidos", () => {
     const cls = buttonClassName({ variant: "rara" as never, size: "xl" as never });
     expect(cls).toContain("bg-terracota");
-    expect(cls).toContain("px-4 py-2");
+    expect(cls).toContain("px-5 py-2.5");
   });
 
-  it("size sm es compacto (32 px) y los demás conservan los 44 px", () => {
+  it("todos los tamaños miden 44 px o más y usan letra de 16 px o más; sm solo tiene menos relleno", () => {
     const small = render(<Button size="sm">Editar</Button>);
-    expect(small).toContain("min-h-8");
-    expect(small).toContain("text-sm");
-    expect(small).not.toContain("min-h-11");
+    expect(small).toContain("min-h-11");
+    expect(small).toContain("px-3.5");
+    expect(small).toContain("text-base");
     expect(render(<Button>Guardar</Button>)).toContain("min-h-11");
-    expect(render(<Button size="lg">Guardar</Button>)).toContain("min-h-11");
+    expect(render(<Button size="lg">Guardar</Button>)).toContain("min-h-14");
+    for (const size of ["sm", "md", "lg", "touch"] as const) {
+      expect(buttonClassName({ size })).not.toMatch(/min-h-(8|9|10)\b|text-(xs|sm)\b/);
+    }
   });
 
-  it("size touch es táctil en celular y compacto desde md", () => {
+  it("size touch tiene más relleno en pantallas estrechas y menos desde lg, sin bajar de 44 px", () => {
     const html = render(<Button size="touch">Registrar</Button>);
-    expect(html).toContain("min-h-11");
-    expect(html).toContain("md:min-h-9");
-    expect(html).toContain("md:text-sm");
+    expect(html).toContain("min-h-12");
+    expect(html).toContain("lg:min-h-11");
+    expect(html).not.toContain("md:min-h-9");
+  });
+
+  it("es una píldora, la etiqueta salta de línea en vez de cortarse y el movimiento respeta la preferencia", () => {
+    const html = render(<Button>Registrar una pieza nueva</Button>);
+    expect(html).toContain("rounded-full");
+    expect(html).not.toMatch(/truncate|whitespace-nowrap/);
+    expect(html).toContain("motion-safe:enabled:hover:-translate-y-px");
+  });
+
+  it("la variante create es verde, para la acción principal de crear o registrar", () => {
+    expect(render(<Button variant="create">Nueva pieza</Button>)).toContain("bg-verde-exito text-white");
   });
 
   it("size lg produce una acción grande para depósito", () => {
     expect(render(<Button size="lg">Registrar movimiento</Button>)).toContain("text-lg");
+  });
+});
+
+describe("Pestañas (un solo estilo en todo el sistema)", () => {
+  it("píldoras de 44 px y 16 px; la activa en terracota sólido y en seminegrita, no solo por color", () => {
+    expect(tabClassName(true)).toContain("bg-terracota");
+    expect(tabClassName(true)).toContain("font-semibold");
+    expect(tabClassName(false)).toContain("font-medium");
+    expect(tabClassName(false)).not.toContain("bg-terracota");
+    for (const selected of [true, false]) {
+      expect(tabClassName(selected)).toContain("min-h-11");
+      expect(tabClassName(selected)).toContain("text-base");
+      expect(tabClassName(selected)).toContain("rounded-full");
+      expect(tabClassName(selected)).toContain("focus-visible:outline-3");
+    }
+  });
+
+  it("en pantallas estrechas la fila se desplaza dentro de su cuadro, con sitio para el foco", () => {
+    expect(TAB_LIST_CLASS).toContain("overflow-x-auto");
+    expect(TAB_LIST_CLASS).toContain("p-1.5");
+    expect(tabClassName(false)).toContain("whitespace-nowrap");
+    expect(tabClassName(false)).toContain("shrink-0");
+  });
+});
+
+describe("TableScroller (flechas de la tabla de Reportes)", () => {
+  it("sabe hacia qué lados queda tabla por ver", () => {
+    expect(scrollEdges(0, 1200, 800)).toEqual({ left: false, right: true });
+    expect(scrollEdges(200, 1200, 800)).toEqual({ left: true, right: true });
+    expect(scrollEdges(400, 1200, 800)).toEqual({ left: true, right: false });
+    // Una tabla que cabe no tiene a dónde ir; 1 px de redondeo no cuenta.
+    expect(scrollEdges(0, 800, 800)).toEqual({ left: false, right: false });
+    expect(scrollEdges(0.5, 801, 800)).toEqual({ left: false, right: false });
+  });
+
+  it("el cuadro es una región con nombre que recibe el foco; sin medir el ancho no muestra flechas", () => {
+    const html = render(
+      <TableScroller label="Tabla del reporte">
+        <table>
+          <tbody>
+            <tr>
+              <td>Toro de Pucará</td>
+            </tr>
+          </tbody>
+        </table>
+      </TableScroller>,
+    );
+    expect(html).toMatch(/<div id="[^"]+" role="region" aria-label="Tabla del reporte" tabindex="0" class="[^"]*overflow-auto/);
+    expect(html).not.toContain("Ver las columnas");
+    expect(visibleText(html)).toContain("Toro de Pucará");
+  });
+});
+
+describe("deshabilitado, igual en todo el sistema", () => {
+  it("gris cálido neutro, texto legible, sin sombra ni hover y cursor de no permitido", () => {
+    for (const piece of ["disabled:bg-borde", "disabled:text-gris-texto", "disabled:shadow-none", "disabled:cursor-not-allowed", "disabled:hover:bg-borde"]) {
+      expect(DISABLED_STYLES).toContain(piece);
+    }
+    expect(DISABLED_STYLES).not.toContain("opacity");
+    for (const variant of Object.keys(BUTTON_VARIANTS)) {
+      expect(buttonClassName({ variant: variant as keyof typeof BUTTON_VARIANTS })).toContain(DISABLED_STYLES);
+    }
+    expect(stepClassName("pendiente")).toContain("disabled:bg-borde");
+  });
+});
+
+describe("pestañas sin barra vertical", () => {
+  it("las filas solo se desplazan a los lados y el subrayado no usa márgenes negativos", () => {
+    expect(TAB_LIST_CLASS).toContain("overflow-y-hidden");
+    expect(UNDERLINE_TAB_LIST_CLASS).toContain("overflow-y-hidden");
+    expect(UNDERLINE_TAB_LIST_CLASS).toContain("overflow-x-auto");
+    expect(underlineTabClassName(true)).not.toMatch(/-m[by]-/);
+    expect(underlineTabClassName(true)).toContain("min-h-11");
+  });
+});
+
+describe("Badge tenue", () => {
+  it("más chica pero de 16 px, sin relleno y con texto visible", () => {
+    const html = render(
+      <Badge intent="warning" subtle>
+        Sin código I
+      </Badge>,
+    );
+    expect(html).toContain("text-sm");
+    expect(html).toContain("bg-white");
+    expect(html).toContain("px-2");
+    expect(html).not.toContain("bg-ambar-bg");
+    expect(visibleText(html)).toBe("Sin código I");
+  });
+});
+
+describe("Button «danger-outline»", () => {
+  it("es discreto: borde y texto ladrillo sobre blanco, nunca relleno", () => {
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("border-carmin-peligro");
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("text-carmin-texto");
+    expect(BUTTON_VARIANTS["danger-outline"]).toContain("bg-white");
+    expect(BUTTON_VARIANTS["danger-outline"]).not.toMatch(/\bbg-carmin-peligro\b/);
   });
 });
 

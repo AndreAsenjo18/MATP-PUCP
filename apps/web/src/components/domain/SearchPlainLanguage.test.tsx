@@ -25,6 +25,26 @@ describe("buscador siempre visible (rediseno-ux-busqueda D1, D2)", () => {
     expect(html).toContain('spellCheck="false"');
   });
 
+  it("es una píldora con el botón oscuro «Buscar» dentro, en un formulario, y la ayuda enlazada (maqueta B)", () => {
+    const html = render(<SearchBox value="" onChange={noop} />);
+    expect(html).toMatch(/<form[^>]*role="search"/);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*class="[^"]*bg-tinta[^"]*"[^>]*>Buscar<\/button>/);
+    expect(html).toContain('for="q"');
+    expect(html).toContain('aria-describedby="q-hint"');
+    expect(html).toContain("sm:rounded-full");
+  });
+
+  it("en Búsqueda los filtros van en fila, sin tarjeta propia, compactos y con campos de 44 px; Reportes los conserva en columna", () => {
+    const row = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} withQuery={false} layout="fila" />);
+    expect(row).not.toContain('aria-label="Filtros de búsqueda"');
+    expect(row).toContain("xl:grid-cols-4");
+    expect(row).toContain("gap-y-3");
+    expect(row).not.toContain("min-h-13");
+    const column = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} />);
+    expect(column).toContain('aria-label="Filtros de búsqueda"');
+    expect(column).not.toContain("min-h-13");
+  });
+
   it("en Búsqueda ya no está dentro del panel de filtros; Reportes lo conserva", () => {
     const search = render(<SearchFiltersPanel filters={EMPTY_FILTERS} options={EMPTY_OPTIONS} onChange={noop} onClear={noop} withQuery={false} />);
     expect(search).not.toContain('id="q"');

@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { AiSuggestionCard } from "@/components/domain/AiSuggestionCard";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { Card } from "@/components/ui/Card";
@@ -92,12 +93,10 @@ export function AiSuggestionsLive({
   return (
     <div className="flex flex-col gap-5">
       {!embedded && (
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-tinta">Sugerencias de IA</h1>
-          <p className="max-w-3xl text-base text-gris-texto">
-            Propuestas de la IA pendientes de revisión, de cualquier pieza. Ninguna se aplica al catálogo sin que una persona la apruebe (RN-009).
-          </p>
-        </header>
+        <PageHeader
+          title="Sugerencias de IA"
+          description="Propuestas de la IA pendientes de revisión, de cualquier pieza. Ninguna se aplica al catálogo sin que una persona la apruebe (RN-009)."
+        />
       )}
 
       {error && (
@@ -122,7 +121,7 @@ export function AiSuggestionsLive({
               onReject={(reason) => handleReject(suggestion, reason)}
               footer={
                 suggestion.piece_id && (
-                  <Link href={`/piezas/${suggestion.piece_id}`} className="text-sm text-terracota underline">
+                  <Link href={`/piezas/${suggestion.piece_id}`} className="inline-flex min-h-11 items-center text-base font-semibold text-terracota underline underline-offset-4">
                     Ver la ficha de la pieza
                   </Link>
                 )

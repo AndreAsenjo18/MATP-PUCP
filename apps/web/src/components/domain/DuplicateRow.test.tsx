@@ -209,7 +209,7 @@ describe("fila compacta (Req: Lista compacta de posibles duplicados)", () => {
 
   it("en celular apila las dos piezas y el botón ocupa el ancho", () => {
     const html = row(PAIR);
-    expect(html).toMatch(/class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2"/);
+    expect(html).toMatch(/class="grid min-w-0 flex-1 items-stretch gap-2 sm:grid-cols-\[minmax\(0,1fr\)_auto_minmax\(0,1fr\)\]/);
     expect(html).toMatch(/<button[^>]*class="[^"]*w-full lg:w-auto/);
     expect(html).toMatch(/<button[^>]*class="[^"]*min-h-11/);
   });
@@ -253,7 +253,8 @@ describe("legibilidad de la cola (Req: Legibilidad de la bandeja de pendientes)"
     for (const link of pieceLinks) expect(link).toMatch(/\bmin-h-11\b/);
     const selects = html.match(/<select\b[^>]*>/g) ?? [];
     expect(selects).toHaveLength(4);
-    for (const select of selects) expect(select).toMatch(/\bmin-h-11\b/);
+    // 44 px o más: los filtros de la cola miden 52 px (maqueta B).
+    for (const select of selects) expect(select).toMatch(/\bmin-h-1[13]\b/);
     expect(html).toContain("[&amp;_label]:text-base");
   });
 });

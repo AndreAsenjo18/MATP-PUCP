@@ -57,8 +57,9 @@ export function LivePieceHeaderActions({
         </Link>
       )}
       {registerSimilar}
+      {/* Lo destructivo, aparte y discreto (maqueta B). */}
       {canDelete && (
-        <Button variant="danger" icon={Trash2} onClick={onDelete}>
+        <Button variant="danger-outline" icon={Trash2} onClick={onDelete} className="sm:ml-auto">
           Eliminar pieza
         </Button>
       )}

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/inter/wght.css";
-import "@fontsource/poppins/600.css";
-import "@fontsource/poppins/700.css";
+import "@fontsource-variable/manrope/wght.css";
 import "./globals.css";
 
 import { MainLayout } from "@/components/layout/MainLayout";

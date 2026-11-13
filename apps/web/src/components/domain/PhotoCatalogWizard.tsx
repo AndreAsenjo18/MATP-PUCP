@@ -16,12 +16,13 @@
 import { ArrowLeft, ArrowRight, Check, FolderPlus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { STEP_LIST_CLASS, stepClassName } from "@/components/ui/Steps";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { PhotoReadingStep } from "@/components/domain/PhotoReadingStep";
 import { PhotoReviewStep } from "@/components/domain/PhotoReviewStep";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import { batchStateText, fetchImportBatch, type ImportBatch } from "@/lib/data/imports";
 import { createPhotoBatch } from "@/lib/data/photoBatches";
@@ -93,14 +94,12 @@ export function PhotoCatalogWizard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Importar fotografías al catálogo</h1>
-        <p className="text-base text-gris-texto">
-          Archivo fotográfico de piezas ya registradas, sin Excel.{batch && ` Lote: ${batch.file_name} · ${batchStateText(batch)}.`}
-        </p>
-      </header>
+      <PageHeader
+        title="Importar fotografías al catálogo"
+        description={<>Archivo fotográfico de piezas ya registradas, sin Excel.{batch && ` Lote: ${batch.file_name} · ${batchStateText(batch)}.`}</>}
+      />
 
-      <ol className="flex flex-wrap gap-2" aria-label="Pasos de la importación de fotografías">
+      <ol className={STEP_LIST_CLASS} aria-label="Pasos de la importación de fotografías">
         {PHOTO_WIZARD_STEPS.map((label, index) => (
           <li key={label}>
             <button
@@ -108,10 +107,7 @@ export function PhotoCatalogWizard() {
               aria-current={index === step ? "step" : undefined}
               disabled={!batchId && index > 0}
               onClick={() => setStep(index)}
-              className={cn(
-                "flex min-h-11 items-center gap-1 rounded-full px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:opacity-50",
-                index === step ? "bg-terracota text-white" : index < step ? "bg-verde-bg text-verde-exito" : "bg-crema text-tinta hover:bg-borde",
-              )}
+              className={stepClassName(index === step ? "actual" : index < step ? "hecho" : "pendiente")}
             >
               {index < step && <Check size={16} aria-hidden="true" />}
               {index + 1}. {label}

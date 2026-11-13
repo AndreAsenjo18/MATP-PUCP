@@ -30,6 +30,7 @@ import {
 import type { Person } from "@/lib/data/trash";
 
 import { originLabel } from "./AuditChangeSetList";
+import { DisclosureSummary } from "./DisclosureSummary";
 import { auditActionStatus } from "./status-intents";
 
 /** Primera letra en mayúscula, para usar una etiqueta de frase como opción de lista. */
@@ -120,8 +121,8 @@ export function AuditLogFilterBar({ filters, people, disabled = false, onApply }
           />
         </div>
 
-        <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="rounded-md border border-borde p-3">
-          <summary className="min-h-6 cursor-pointer text-base font-medium text-tinta">Más filtros</summary>
+        <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group rounded-md border border-borde px-3 py-1">
+          <DisclosureSummary>Más filtros</DisclosureSummary>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Select label="Persona que hizo el cambio" value={draft.userId} disabled={disabled} onChange={(event) => change({ userId: event.target.value })}>
               <option value="">Cualquier persona</option>

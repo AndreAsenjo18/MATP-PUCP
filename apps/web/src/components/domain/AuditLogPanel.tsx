@@ -154,7 +154,7 @@ export function AuditLogPanel({ demoEntries }: AuditLogPanelProps) {
 
       {current?.status === "unavailable" && (
         <Card role="alert" className="flex flex-col gap-2 text-base text-carmin-texto">
-          <p>{current.message}</p>
+          <p className="texto-error">{current.message}</p>
           <Button variant="secondary" className="self-start" onClick={() => setReloads((count) => count + 1)}>
             Reintentar
           </Button>

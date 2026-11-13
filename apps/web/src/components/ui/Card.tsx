@@ -1,7 +1,8 @@
 /**
- * Contenedor base (docs/system-design.md §3): fondo blanco, borde `borde`, esquinas redondeadas.
- * `interactive` añade el realce al pasar el cursor; `cardClassName` aplica el mismo estilo a un
- * `Link` u otro elemento.
+ * Superficie base (docs/guia-visual.md): fondo blanco, borde arena, esquinas de 24 px y sombra
+ * cálida suave. `interactive` añade las respuestas a cursor, pulsación y teclado, con un movimiento
+ * corto que desaparece si la persona pidió menos movimiento. `cardClassName` aplica el mismo estilo
+ * a un `Link` u otro elemento.
  */
 import type { HTMLAttributes, ReactNode } from "react";
 
@@ -22,9 +23,10 @@ export function cardClassName({
   className,
 }: { interactive?: boolean; padded?: boolean; className?: string } = {}): string {
   return cn(
-    "rounded-lg border border-borde bg-white shadow-sm",
-    padded && "p-4",
-    interactive && "transition-shadow hover:border-terracota hover:shadow-md",
+    "rounded-tarjeta border border-borde bg-white shadow-sm",
+    padded && "p-5",
+    interactive &&
+      "transition-[translate] duration-150 ease-out hover:border-terracota hover:shadow-md focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0",
     className,
   );
 }

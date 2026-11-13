@@ -11,6 +11,9 @@ import { ArrowLeft, ArrowRight, Check, Download, FileSpreadsheet, MinusCircle, S
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { STEP_LIST_CLASS, stepClassName } from "@/components/ui/Steps";
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportConflictModal } from "@/components/domain/ImportConflictModal";
 import { ImportOriginPicker } from "@/components/domain/ImportOriginPicker";
@@ -43,27 +46,21 @@ function ImportacionContent() {
   const template = IMPORT_TEMPLATES[0];
 
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Asistente de importación</h1>
-        <p className="text-base text-gris-texto">Lote de demostración: {batch.file_name} ({batch.source_name}).</p>
-      </header>
+      <PageHeader title="Asistente de importación" description={`Lote de demostración: ${batch.file_name} (${batch.source_name}).`} />
 
-      <ol className="flex flex-wrap gap-2" aria-label="Pasos de la importación">
+      <ol className={STEP_LIST_CLASS} aria-label="Pasos de la importación">
         {STEPS.map((label, index) => (
           <li key={label}>
             <button
               type="button"
               aria-current={index === step ? "step" : undefined}
               onClick={() => setStep(index)}
-              className={cn(
-                "flex min-h-11 items-center gap-1 rounded-full px-4 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-                index === step ? "bg-terracota text-white" : index < step ? "bg-verde-bg text-verde-exito" : "bg-crema text-tinta hover:bg-borde",
-              )}
+              className={stepClassName(index === step ? "actual" : index < step ? "hecho" : "pendiente")}
             >
               {index < step && <Check size={16} aria-hidden="true" />}
               {index + 1}. {label}
@@ -91,21 +88,21 @@ function ImportacionContent() {
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Plantilla de mapeo: {template.name}</h2>
           <p className="text-sm text-gris-texto">{template.description}</p>
-          <div className="overflow-x-auto">
-          <table className="w-full text-left text-base">
-            <thead className="text-sm text-gris-texto">
+          <div className={TABLE_BOX_CLASS}>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="py-1 pr-4 font-medium">Columna de origen</th>
-                <th className="py-1 pr-4 font-medium">Campo destino</th>
-                <th className="py-1 pr-4 font-medium">Celda con varios códigos</th>
+                <th className={TH_CLASS}>Columna de origen</th>
+                <th className={TH_CLASS}>Campo destino</th>
+                <th className={TH_CLASS}>Celda con varios códigos</th>
               </tr>
             </thead>
             <tbody>
               {template.columns.map((col) => (
-                <tr key={col.source_column} className="border-t border-borde">
-                  <td className="py-1 pr-4 text-tinta">{col.source_column}</td>
-                  <td className="py-1 pr-4 text-gris-texto">{col.target_field ?? "(se conserva como dato de origen)"}</td>
-                  <td className="py-1 pr-4 text-gris-texto">{col.split_compound ? "Sí" : "—"}</td>
+                <tr key={col.source_column}>
+                  <td className={`${TD_CLASS} text-tinta`}>{col.source_column}</td>
+                  <td className={`${TD_CLASS} text-gris-texto`}>{col.target_field ?? "(se conserva como dato de origen)"}</td>
+                  <td className={`${TD_CLASS} text-gris-texto`}>{col.split_compound ? "Sí" : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -130,7 +127,7 @@ function ImportacionContent() {
             {rows
               .filter((r) => r.validation_errors.length > 0)
               .map((r) => (
-                <li key={r.id} className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
+                <li key={r.id} className="aviso-error rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
                   Fila {r.source_row_number}:{" "}
                   {r.validation_errors.map((e) => (e as { message?: string }).message ?? JSON.stringify(e)).join("; ")}
                 </li>
@@ -306,7 +303,7 @@ function ImportacionRouter() {
   const { hasPermission } = useSession();
   const params = useSearchParams();
   if (!hasPermission("imports.prepare")) {
-    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para preparar cargas masivas. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
   if (importScreen(params) === "picker") return <ImportOriginPicker />;
   return getApiMode() === "live" ? <LiveImportWizard /> : <ImportacionContent />;

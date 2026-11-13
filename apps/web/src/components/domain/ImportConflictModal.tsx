@@ -9,6 +9,7 @@
 import { Ban, Check, MinusCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
@@ -99,22 +100,22 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
         </div>
 
         {row.diff.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-base">
+          <div className={TABLE_BOX_CLASS}>
+            <table className={TABLE_CLASS}>
               <caption className="pb-2 text-left text-sm text-gris-texto">Diferencias entre el catálogo y la fila del Excel</caption>
-              <thead className="text-sm text-gris-texto">
+              <thead className={THEAD_CLASS}>
                 <tr>
-                  <th className="py-1 pr-4 font-medium">Campo</th>
-                  <th className="py-1 pr-4 font-medium">Valor actual en el catálogo</th>
-                  <th className="py-1 pr-4 font-medium">Valor de la fila</th>
+                  <th className={TH_CLASS}>Campo</th>
+                  <th className={TH_CLASS}>Valor actual en el catálogo</th>
+                  <th className={TH_CLASS}>Valor de la fila</th>
                 </tr>
               </thead>
               <tbody>
                 {row.diff.map((d) => (
-                  <tr key={d.field} className="border-t border-borde">
-                    <td className="py-1 pr-4 font-medium">{fieldLabel(d.field)}</td>
-                    <td className="py-1 pr-4">{display(d.current_value)}</td>
-                    <td className="py-1 pr-4 font-medium text-terracota-dark">{display(d.incoming_value)}</td>
+                  <tr key={d.field}>
+                    <td className={`${TD_CLASS} font-medium`}>{fieldLabel(d.field)}</td>
+                    <td className={`${TD_CLASS}`}>{display(d.current_value)}</td>
+                    <td className={`${TD_CLASS} font-medium text-terracota-dark`}>{display(d.incoming_value)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -125,7 +126,7 @@ export function ImportConflictModal({ row, open, onClose, onDecide }: ImportConf
         )}
 
         {row.validation_errors.length > 0 && (
-          <p className="rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
+          <p className="aviso-error rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto">
             {row.validation_errors.map((e) => plainMessage((e as { message?: string }).message ?? JSON.stringify(e))).join("; ")}
           </p>
         )}

@@ -183,3 +183,19 @@ const IDENTIFIER_TYPE_LABELS: Record<string, string> = {
 export function identifierTypeLabel(code: string): string {
   return IDENTIFIER_TYPE_LABELS[code] ?? code;
 }
+
+/**
+ * Color del estado de conservación en la ficha, solo para los términos de la lista cerrada del
+ * vocabulario `CONSERVATION_STATUS`: bueno en verde, regular o en restauración en ámbar, malo en
+ * ladrillo. Un término que no está aquí (uno agregado después) devuelve `null` y se muestra como texto.
+ */
+const CONSERVATION_INTENTS: Readonly<Record<string, BadgeIntent>> = {
+  BUENO: "success",
+  REGULAR: "warning",
+  EN_RESTAURACION: "warning",
+  MALO: "danger",
+};
+
+export function conservationIntent(code: string | null | undefined): BadgeIntent | null {
+  return code ? (CONSERVATION_INTENTS[code] ?? null) : null;
+}

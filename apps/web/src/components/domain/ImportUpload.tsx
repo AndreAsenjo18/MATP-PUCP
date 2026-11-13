@@ -89,7 +89,7 @@ export function DropZone({ file, error, disabled, onFile, onReject }: { file: Fi
         />
       </label>
       {error && (
-        <p id={messageId} role="alert" className="text-sm font-medium text-carmin-texto">
+        <p id={messageId} role="alert" className="texto-error text-sm font-medium text-carmin-texto">
           {error}
         </p>
       )}

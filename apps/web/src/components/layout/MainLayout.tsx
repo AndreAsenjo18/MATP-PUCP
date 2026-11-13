@@ -1,27 +1,32 @@
 "use client";
 
 /**
- * Estructura común de las pantallas autenticadas (docs/system-design.md §5): barra lateral en
- * escritorio, botón «Menú» con panel en móvil (RNF-001) y encabezado con usuario, rol, cambio de
- * rol y aviso de modo demostración. Las secciones se filtran por el permiso del rol simulado
- * (RF-039). Sin sesión (pantalla de acceso) devuelve solo el contenido. Al imprimir solo queda el
- * contenido (vista imprimible de reportes, `reportes-inventario` 3.2). En pantallas angostas el
- * cierre de sesión va al final del panel del menú, no en el encabezado (`rediseno-ux-deposito`).
+ * Estructura común de las pantallas autenticadas (change `remodelacion-visual`, D4 y D6;
+ * docs/guia-visual.md):
+ *
+ * - Desde 1024 px, un menú lateral flotante y oscuro que ocupa toda la altura visible, con «Contraer
+ *   menú» y, al pie, la cuenta de la persona (`MenuAccount`).
+ * - Bajo 1024 px, un botón «Menú» abre el mismo menú como diálogo modal: atrapa el foco, se cierra con
+ *   Escape, al tocar fuera o al elegir una sección, y devuelve el foco al botón.
+ * - Sin franja superior. El contenido va centrado con un ancho máximo.
+ *
+ * Las secciones se filtran por el permiso del rol (RF-039). Sin sesión (pantalla de acceso) devuelve
+ * solo el contenido. Al imprimir solo queda el contenido (vista imprimible de reportes).
  */
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { BrandMark } from "@/components/brand/TextileMotif";
+import { buttonClassName } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/auth/session";
 import { signOut } from "@/lib/auth/api";
 import { getApiMode } from "@/lib/data/mode";
 
-import { mobileMenuReducer, readSidebarCollapsed, visibleNavItems, writeSidebarCollapsed } from "./navigation";
-import { MobileAccount } from "./MobileAccount";
+import { MenuAccount } from "./MenuAccount";
+import { mobileMenuReducer, readSidebarCollapsed, visibleNavItems, writeSidebarCollapsed, type NavItem } from "./navigation";
 import { Sidebar } from "./Sidebar";
 
 const MOBILE_NAV_ID = "navegacion-movil";
@@ -61,12 +66,62 @@ function toggleSidebar() {
   sidebarListeners.forEach((listener) => listener());
 }
 
-function Brand({ className }: { className?: string }) {
+const ON_DARK_CONTROL =
+  "rounded-full text-crema hover:bg-white/10 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema";
+
+function Brand({ collapsed }: { collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <Link href="/inicio" translate="no" aria-label="MATP, ir al inicio" title="MATP" className={cn(ON_DARK_CONTROL, "flex size-12 items-center justify-center font-heading text-xl font-extrabold")}>
+        M
+      </Link>
+    );
+  }
   return (
-    <Link href="/inicio" className={className}>
-      <span className="block font-heading text-xl font-bold">MATP</span>
-      <span className="block text-sm opacity-80">Gestión de colecciones</span>
+    <Link href="/inicio" translate="no" className={cn(ON_DARK_CONTROL, "flex items-center gap-3 rounded-2xl px-3 py-1")}>
+      <BrandMark />
+      <span className="flex flex-col">
+        <span className="text-2xl font-extrabold tracking-tight">MATP</span>
+        <span className="text-base text-crema/80">Gestión de colecciones</span>
+      </span>
     </Link>
+  );
+}
+
+interface MenuPanelProps {
+  items: NavItem[];
+  pathname: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  /** Control junto a la marca: cerrar el panel en pantallas estrechas. */
+  topControl?: ReactNode;
+  /** Control pegado a la lista de secciones: contraer o expandir el menú en escritorio. */
+  collapseControl?: ReactNode;
+  account: ReactNode;
+}
+
+/**
+ * Panel del menú, alto como la ventana. Las secciones hacen scroll dentro de su zona solo si no
+ * caben, y el pie (cuenta y cierre de sesión) queda siempre a la vista. Si la ventana es tan baja
+ * que ni así cabe la zona mínima de secciones, se desplaza el panel entero y el cierre de sesión
+ * queda al final, nunca oculto.
+ */
+function MenuPanel({ items, pathname, collapsed, onNavigate, topControl, collapseControl, account }: MenuPanelProps) {
+  return (
+    <div className="scroll-menu flex h-full flex-col overflow-y-auto overscroll-contain rounded-panel bg-tinta text-crema shadow-md">
+      <div className={cn("flex shrink-0 items-start justify-between gap-2 pt-4 pb-2", collapsed ? "flex-col items-center px-2" : "px-3")}>
+        <Brand collapsed={collapsed} />
+        {topControl}
+      </div>
+      {/* Si no caben, un brillo en el borde (scroll-pista) y la barra fina avisan de que hay más. */}
+      <div data-menu-sections className="scroll-menu scroll-pista min-h-28 flex-1 scroll-py-2 overflow-y-auto overscroll-contain py-1">
+        <Sidebar items={items} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+        {collapseControl && <div className={cn("pt-1", collapsed ? "px-2" : "px-3")}>{collapseControl}</div>}
+      </div>
+      <div data-menu-account className="shrink-0 border-t border-white/15 pt-3 pb-3">
+        {account}
+      </div>
+    </div>
   );
 }
 
@@ -78,18 +133,28 @@ export function MainLayout({ children }: { children: ReactNode }) {
   const [menuOpenAt, setMenuOpenAt] = useState<string | null>(null);
   const menuOpen = menuOpenAt === pathname;
   const collapsed = useSyncExternalStore(subscribeSidebar, sidebarSnapshot, sidebarServerSnapshot);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  // Al elegir una sección el foco sigue a la pantalla nueva, no vuelve al botón «Menú».
+  const closingForNavigation = useRef(false);
 
-  const dispatchMenu = (action: Parameters<typeof mobileMenuReducer>[1]) =>
+  const dispatchMenu = (action: Parameters<typeof mobileMenuReducer>[1]) => {
+    if (action === "navigate") closingForNavigation.current = true;
     setMenuOpenAt(mobileMenuReducer(menuOpen, action) ? pathname : null);
+  };
 
+  // El diálogo nativo atrapa el foco y deja inerte el resto de la pantalla mientras está abierto.
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpenAt(mobileMenuReducer(true, "escape") ? pathname : null);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen, pathname]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (menuOpen && !dialog.open) {
+      dialog.showModal();
+      // Al abrir, el foco va a la sección actual (o a «Cerrar menú»), no a la marca.
+      const target = dialog.querySelector<HTMLElement>("[aria-current='page']") ?? dialog.querySelector<HTMLElement>("button[aria-label='Cerrar menú']");
+      target?.focus();
+    }
+    if (!menuOpen && dialog.open) dialog.close();
+  }, [menuOpen]);
 
   if (!session) {
     return <>{children}</>;
@@ -104,81 +169,111 @@ export function MainLayout({ children }: { children: ReactNode }) {
     router.push("/");
   };
 
+  // El diálogo deja inerte la pantalla, pero el navegador saca el foco a su propia barra tras el
+  // último control: aquí el Tab da la vuelta dentro del panel.
+  const keepFocusInside = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")];
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleDialogClose = () => {
+    setMenuOpenAt(null);
+    if (!closingForNavigation.current) menuButtonRef.current?.focus();
+    closingForNavigation.current = false;
+  };
+
+  const account = (isCollapsed: boolean) => (
+    <MenuAccount
+      name={currentUser?.full_name}
+      role={currentRole?.name}
+      logoutLabel={logoutLabel}
+      onLogout={handleLogout}
+      demo={!live}
+      collapsed={isCollapsed}
+    />
+  );
+
   return (
-    <div className="flex min-h-full flex-1">
-      <aside
-        className={cn(
-          "hidden shrink-0 print:!hidden bg-tinta text-crema transition-[width] duration-150 motion-reduce:transition-none md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto",
-          collapsed ? "md:w-16" : "md:w-64",
-        )}
-      >
-        {collapsed ? (
-          <Link href="/inicio" aria-label="MATP, ir al inicio" title="MATP" className="px-2 pt-6 pb-4 text-center font-heading text-xl font-bold text-crema">
-            M
-          </Link>
-        ) : (
-          <Brand className="px-6 pt-6 pb-4 text-crema" />
-        )}
-        <Sidebar items={items} pathname={pathname} collapsed={collapsed} />
-        <div className={cn("mt-auto", collapsed ? "p-2" : "p-3")}>
-          <button
-            type="button"
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-            title={collapsed ? "Expandir menú" : undefined}
-            onClick={toggleSidebar}
-            className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-base font-medium text-crema hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crema",
-              collapsed && "justify-center px-0",
-            )}
-          >
-            {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
-            {!collapsed && "Contraer menú"}
-          </button>
+    <div className="flex min-h-dvh flex-1">
+      <div className={cn("hidden shrink-0 print:hidden lg:block", collapsed ? "w-24" : "w-72")}>
+        <div className="sticky top-0 h-dvh p-3">
+          <MenuPanel
+            items={items}
+            pathname={pathname}
+            collapsed={collapsed}
+            account={account(collapsed)}
+            collapseControl={
+              <button
+                type="button"
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+                title={collapsed ? "Expandir menú" : undefined}
+                onClick={toggleSidebar}
+                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
+              >
+                {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
+                {!collapsed && "Contraer menú"}
+              </button>
+            }
+          />
         </div>
-      </aside>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-borde bg-white print:hidden">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="secondary"
-                icon={menuOpen ? X : Menu}
-                className="whitespace-nowrap md:hidden"
-                aria-expanded={menuOpen}
-                aria-controls={MOBILE_NAV_ID}
-                onClick={() => dispatchMenu("toggle")}
-              >
-                {menuOpen ? "Cerrar menú" : "Menú"}
-              </Button>
-              <Link href="/inicio" className="font-heading text-lg font-bold text-tinta md:hidden">
-                MATP
-              </Link>
-              {!live && <Badge intent="warning" className="whitespace-nowrap">Modo demostración (datos sintéticos)</Badge>}
-            </div>
-            <div className="flex min-w-0 items-center gap-3 text-sm">
-              <span className="min-w-0 truncate text-gris-texto">
-                <span className="hidden md:inline">{currentUser?.full_name} · </span>
-                <span className="font-medium text-tinta">{currentRole?.name}</span>
-              </span>
-              <div className="hidden md:block">
-                <Button variant="outline" icon={LogOut} onClick={handleLogout}>
-                  {logoutLabel}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <div className="flex flex-wrap items-center gap-3 px-4 pt-4 sm:px-6 lg:hidden print:hidden">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            aria-controls={MOBILE_NAV_ID}
+            onClick={() => dispatchMenu("toggle")}
+            className={buttonClassName({ variant: "secondary" })}
+          >
+            <Menu size={20} aria-hidden="true" />
+            Menú
+          </button>
+          <Link href="/inicio" translate="no" className="inline-flex min-h-11 items-center rounded-full px-2 font-heading text-xl font-extrabold text-tinta">
+            MATP
+          </Link>
+        </div>
 
-        {menuOpen && (
-          <div className="bg-tinta text-crema md:hidden print:hidden">
-            <Sidebar id={MOBILE_NAV_ID} items={items} pathname={pathname} onNavigate={() => dispatchMenu("navigate")} />
-            <MobileAccount name={currentUser?.full_name} role={currentRole?.name} logoutLabel={logoutLabel} onLogout={handleLogout} />
-          </div>
-        )}
+        <dialog
+          ref={dialogRef}
+          id={MOBILE_NAV_ID}
+          aria-label="Menú"
+          onClose={handleDialogClose}
+          onKeyDown={keepFocusInside}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) dispatchMenu("close");
+          }}
+          className="m-0 h-dvh max-h-dvh w-[min(22rem,calc(100vw-1rem))] max-w-none bg-transparent p-2 lg:hidden"
+        >
+          <MenuPanel
+            items={items}
+            pathname={pathname}
+            collapsed={false}
+            onNavigate={() => dispatchMenu("navigate")}
+            account={account(false)}
+            topControl={
+              <button type="button" aria-label="Cerrar menú" onClick={() => dispatchMenu("close")} className={cn(ON_DARK_CONTROL, "flex size-12 shrink-0 items-center justify-center")}>
+                <X size={22} aria-hidden="true" />
+              </button>
+            }
+          />
+        </dialog>
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 print:max-w-none print:p-0">{children}</main>
+        <main className="mx-auto flex w-full max-w-contenido min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:max-w-none print:p-0">{children}</main>
       </div>
     </div>
   );

@@ -7,9 +7,11 @@
  * genera el archivo (design D3): no calcula filas, subtotales ni totales por su cuenta.
  */
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { TABLE_CLASS, TD_CLASS, TH_CLASS } from "@/components/ui/Table";
+import { TableScroller } from "@/components/ui/TableScroller";
 import { DisclosureSummary } from "@/components/domain/DisclosureSummary";
 import {
   DESCRIPTION_COLUMN,
@@ -46,9 +48,9 @@ export function DescriptionCell({ text, initialExpanded = false }: { text: strin
 
 function ReportRow({ columns, row, visible }: { columns: string[]; row: unknown[]; visible: readonly number[] }) {
   return (
-    <tr className="border-t border-borde">
+    <tr>
       {visible.map((index) => (
-        <td key={index} className="px-2 py-1 align-top">
+        <td key={index} className={TD_CLASS}>
           {columns[index] === DESCRIPTION_COLUMN ? <DescriptionCell text={cellText(row[index], DESCRIPTION_COLUMN)} /> : cellText(row[index])}
         </td>
       ))}
@@ -68,13 +70,13 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
   }
 
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-md border border-borde">
-      <table className="w-full text-left text-base">
-        <thead className="text-gris-texto">
+    <TableScroller label="Tabla del reporte">
+      <table className={TABLE_CLASS}>
+        <thead className="text-tinta">
           <tr>
             {/* En cada celda y no en `thead`: Safari de tablet no siempre fija `thead`. */}
             {visible.map((index) => report.columns[index]).map((column) => (
-              <th key={column} scope="col" className="sticky top-0 z-10 bg-white px-2 py-2 font-medium shadow-[inset_0_-1px_0_var(--color-borde)]">
+              <th key={column} scope="col" className={`sticky top-0 z-10 bg-crema ${TH_CLASS}`}>
                 {column}
               </th>
             ))}
@@ -87,9 +89,9 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
           return (
             <tbody key={`${label}-${index}`} className="text-tinta">
               {label !== null && (
-                <tr className="border-t border-borde bg-crema">
-                  <th colSpan={visible.length} scope="colgroup" className="p-0 font-semibold">
-                    <button type="button" aria-expanded={!folded} onClick={() => toggle(label)} className={`sticky left-0 flex min-h-11 items-center gap-2 px-2 text-left ${FOCUS_RING}`}>
+                <tr className="bg-crema-light">
+                  <th colSpan={visible.length} scope="colgroup" className="border-t border-borde p-0 font-semibold">
+                    <button type="button" aria-expanded={!folded} onClick={() => toggle(label)} className={`sticky left-0 flex min-h-11 items-center gap-2 px-4 text-left ${FOCUS_RING}`}>
                       <Icon size={18} aria-hidden="true" />
                       {groupTitle(group)}
                     </button>
@@ -101,7 +103,7 @@ function ReportTable({ report, initialCollapsed, visible }: { report: Report; in
           );
         })}
       </table>
-    </div>
+    </TableScroller>
   );
 }
 
@@ -133,6 +135,7 @@ export function ReportPreview({
   onPage,
   initialCollapsed = [],
   initialShowAll = false,
+  actions,
 }: {
   report: Report;
   onPage?: (page: number) => void;
@@ -140,6 +143,8 @@ export function ReportPreview({
   initialCollapsed?: readonly string[];
   /** Todas las columnas desde el inicio (pruebas; por defecto, solo las principales). */
   initialShowAll?: boolean;
+  /** Acciones del reporte junto al título (maqueta B): exportar e imprimir. */
+  actions?: ReactNode;
 }) {
   const pages = Math.max(1, Math.ceil(report.total_rows / Math.max(1, report.page_size)));
   const masked = report.masked_columns ?? [];
@@ -150,25 +155,31 @@ export function ReportPreview({
   const columnsNotice = previewColumnsNotice(previewColumns(report, false).length, report.columns.length);
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-lg font-semibold text-tinta">{report.title}</h2>
-        <p className="text-base text-gris-texto">
-          Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
-          {report.generated_by ? ` por ${report.generated_by}` : ""}.
-        </p>
-        <p className="text-base text-gris-texto">Filtros: {filtersText(report)}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-tinta">{report.title}</h2>
+          <p className="text-base text-gris-texto">
+            Generado el {new Date(report.generated_at).toLocaleString("es-PE")}
+            {report.generated_by ? ` por ${report.generated_by}` : ""}.
+          </p>
+          <p className="text-base text-gris-texto">Filtros: {filtersText(report)}</p>
+        </div>
+        {actions}
       </div>
-      <p className="text-base font-semibold text-tinta">{totalsText(report)}</p>
+      {/* La cantidad como etiqueta y, al lado, qué columnas se ven (maqueta B). */}
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="rounded-full bg-crema px-3 py-1 text-base font-semibold text-tinta">{totalsText(report)}</p>
+        {report.rows.length > 0 && columnsNotice && (
+          <>
+            <p className="text-base text-gris-texto">{columnsNotice}</p>
+            <Button variant="outline" size="sm" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
+              {showAll ? "Ver solo las principales" : `Ver las ${report.columns.length} columnas`}
+            </Button>
+          </>
+        )}
+      </div>
       {masked.length > 0 && <p className="rounded-md bg-crema px-3 py-2 text-base text-tinta">{maskedNotice(masked)}</p>}
       {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
-      {report.rows.length > 0 && columnsNotice && (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-base text-tinta">{columnsNotice}</p>
-          <Button variant="outline" aria-pressed={showAll} onClick={() => setShowAll(!showAll)}>
-            {showAll ? "Ver solo las principales" : `Ver las ${report.columns.length} columnas`}
-          </Button>
-        </div>
-      )}
       {report.rows.length > 0 && <ReportTable report={report} initialCollapsed={initialCollapsed} visible={visible} />}
       {report.total_rows > report.page_size && onPage && (
         <div className="flex items-center justify-between gap-3">

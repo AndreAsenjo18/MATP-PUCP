@@ -1,14 +1,16 @@
 import { useId, type ReactNode, type SelectHTMLAttributes } from "react";
 
-import { Field, controlClassName, fieldIds, type FieldProps } from "./Field";
+import { Field, controlClassName, fieldIds, type ControlSize, type FieldProps } from "./Field";
 
 export interface SelectProps extends FieldProps, SelectHTMLAttributes<HTMLSelectElement> {
   children: ReactNode;
   fieldClassName?: string;
+  /** Alto del campo: 44 px (`md`, por defecto) o 52 px (`lg`). */
+  controlSize?: ControlSize;
 }
 
 /** Lista desplegable con etiqueta visible, ayuda y error accesibles (RNF-010). */
-export function Select({ label, hint, error, id, className, fieldClassName, children, ...props }: SelectProps) {
+export function Select({ label, hint, error, id, className, fieldClassName, controlSize, children, ...props }: SelectProps) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
   const ids = fieldIds(selectId, { hint, error });
@@ -18,7 +20,7 @@ export function Select({ label, hint, error, id, className, fieldClassName, chil
         id={selectId}
         aria-invalid={error ? true : undefined}
         aria-describedby={ids.describedBy}
-        className={controlClassName(Boolean(error), className)}
+        className={controlClassName(Boolean(error), className, controlSize)}
         {...props}
       >
         {children}

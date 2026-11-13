@@ -44,6 +44,14 @@ const REQUIRED_TOKENS = [
   "carmin-texto",
 ];
 
+/** Colores de icono por tipo de tarea (docs/guia-visual.md). */
+const TASK_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
+
+/** Colores solo decorativos (docs/guia-visual.md): nunca se usan como color de texto. */
+const DECORATIVE_TOKENS = ["terracota-vivo"];
+
+const LAYOUT = readFileSync(path.resolve(__dirname, "../../app/layout.tsx"), "utf-8");
+
 describe("contrastRatio", () => {
   it("da 21 para negro sobre blanco y 1 para colores iguales", () => {
     expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5);
@@ -60,13 +68,47 @@ describe("contrastRatio", () => {
 });
 
 describe("tokens del sistema de diseño (globals.css)", () => {
-  it("define los 16 colores institucionales", () => {
-    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS].sort());
+  it("define los 16 colores institucionales, los 4 de icono por tipo de tarea y el decorativo, y ninguno más", () => {
+    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS, ...DECORATIVE_TOKENS].sort());
+  });
+
+  it("los avisos de error llevan un icono además del color ladrillo (con o sin recuadro)", () => {
+    expect(GLOBALS_CSS).toMatch(/:where\(\[role="alert"\]\.bg-carmin-bg, \.aviso-error, \.texto-error\)::before \{[^}]*mask:/);
+    expect(GLOBALS_CSS).toContain("background-color: CanvasText");
+  });
+
+  it("los colores decorativos no aparecen como color de texto en ningún par de contraste", () => {
+    for (const token of DECORATIVE_TOKENS) expect(CONTRAST_PAIRS.some((pair) => pair.text === token)).toBe(false);
   });
 
   it("define las tipografías heading y sans con respaldo del sistema", () => {
     expect(GLOBALS_CSS).toMatch(/--font-heading:[^;]*system-ui/);
     expect(GLOBALS_CSS).toMatch(/--font-sans:[^;]*system-ui/);
+  });
+
+  it("toda la aplicación usa Manrope autoalojada, sin las tipografías anteriores (docs/guia-visual.md)", () => {
+    expect(GLOBALS_CSS).toMatch(/--font-heading:\s*var\(--font-manrope\)/);
+    // Toda la aplicación en Manrope (cuerpo, formularios y tablas), sin Inter.
+    expect(GLOBALS_CSS).toMatch(/--font-sans:\s*var\(--font-manrope\)/);
+    expect(GLOBALS_CSS).not.toMatch(/--font-inter/);
+    expect(LAYOUT).not.toMatch(/fontsource-variable\/inter/);
+    expect(GLOBALS_CSS).toContain('--font-manrope: "Manrope Variable"');
+    expect(GLOBALS_CSS).not.toMatch(/poppins|fraunces|--font-display/i);
+    expect(LAYOUT).toContain('import "@fontsource-variable/manrope/wght.css"');
+    expect(LAYOUT).not.toMatch(/poppins|fraunces/i);
+  });
+
+  it("ningún tamaño de letra de la escala baja de 16 px", () => {
+    for (const step of ["xs", "sm"]) {
+      expect(GLOBALS_CSS).toMatch(new RegExp(`--text-${step}:\\s*1rem;`));
+    }
+    expect(GLOBALS_CSS).toMatch(/--text-titulo:\s*clamp\(2\.25rem,[^;]*4rem\)/);
+  });
+
+  it("define el espaciado, los radios, las sombras y el ancho máximo con nombre en el mismo lugar", () => {
+    for (const token of ["--spacing-tarjeta", "--spacing-tarjetas", "--spacing-seccion", "--radius-tarjeta", "--radius-panel", "--shadow-sm", "--shadow-md", "--container-contenido"]) {
+      expect(GLOBALS_CSS).toContain(`${token}:`);
+    }
   });
 
   it.each(CONTRAST_PAIRS)("$text sobre $background ($usage) cumple contraste AA", ({ text, background }) => {

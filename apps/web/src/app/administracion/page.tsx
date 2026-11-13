@@ -13,6 +13,8 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_BASE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { AdminNav, SectionHeader, initialSection, visibleSections } from "@/components/domain/AdminShell";
 import { AuditLogPanel } from "@/components/domain/AuditLogPanel";
 import { LocationsLive } from "@/components/domain/LocationsAdmin";
@@ -23,7 +25,7 @@ import { StorageEstimateCard } from "@/components/domain/StorageEstimateCard";
 import { TrashPanel } from "@/components/domain/TrashPanel";
 import { CollectionsLive, IdentifierTypesLive, VocabulariesLive } from "@/components/domain/VocabulariesAdmin";
 import { FullExportPanel } from "@/components/domain/SearchLive";
-import { PermissionMatrixLive, UsersLive } from "@/components/domain/UsersAdmin";
+import { PermissionMatrixLive, UserInitials, UsersLive } from "@/components/domain/UsersAdmin";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { Badge } from "@/components/ui/Badge";
@@ -59,26 +61,33 @@ function DemoUsers() {
   return (
     <Card className="flex flex-col gap-3 overflow-x-auto">
       <SectionHeader title="Usuarios" description="Datos sintéticos de la demostración." />
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs text-gris-texto">
+      <div className={TABLE_BOX_CLASS}>
+        <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="py-1.5 pr-3 font-medium">Nombre</th>
-            <th className="py-1.5 pr-3 font-medium">Rol</th>
-            <th className="py-1.5 font-medium">Estado</th>
+            <th className={TH_CLASS}>Nombre</th>
+            <th className={TH_CLASS}>Rol</th>
+            <th className={TH_CLASS}>Estado</th>
           </tr>
         </thead>
         <tbody>
           {USERS.map((u) => (
-            <tr key={u.id} className="border-t border-borde">
-              <td className="py-1.5 pr-3 text-tinta">{u.full_name}</td>
-              <td className="py-1.5 pr-3 text-gris-texto">{ROLES.find((r) => r.code === u.roles[0])?.name}</td>
-              <td className="py-1.5">
+            <tr key={u.id}>
+              <td className={`${TD_BASE_CLASS} text-tinta`}>
+                <span className="flex items-center gap-3">
+                  <UserInitials name={u.full_name} />
+                  <span className="font-semibold">{u.full_name}</span>
+                </span>
+              </td>
+              <td className={`${TD_BASE_CLASS} text-gris-texto`}>{ROLES.find((r) => r.code === u.roles[0])?.name}</td>
+              <td className={TD_BASE_CLASS}>
                 <StatusBadge status={u.is_active ? { label: "Activo", intent: "success" } : { label: "Desactivado", intent: "default" }} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }
@@ -130,28 +139,30 @@ function DemoIdentifierTypes() {
   return (
     <Card className="flex flex-col gap-3 overflow-x-auto">
       <SectionHeader title="Tipos de código" description="Las clases de código que puede tener una pieza." />
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs text-gris-texto">
+      <div className={TABLE_BOX_CLASS}>
+        <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="py-1.5 pr-3 font-medium">Código</th>
-            <th className="py-1.5 pr-3 font-medium">Etiqueta</th>
-            <th className="py-1.5 pr-3 font-medium">Único vigente</th>
-            <th className="py-1.5 pr-3 font-medium">Bloquea al asignar</th>
-            <th className="py-1.5 font-medium">Solo piezas propias</th>
+            <th className={TH_CLASS}>Código</th>
+            <th className={TH_CLASS}>Etiqueta</th>
+            <th className={TH_CLASS}>Único vigente</th>
+            <th className={TH_CLASS}>Bloquea al asignar</th>
+            <th className={TH_CLASS}>Solo piezas propias</th>
           </tr>
         </thead>
         <tbody className="text-tinta">
           {IDENTIFIER_TYPES.map((type) => (
-            <tr key={type.code} className="border-t border-borde">
-              <td className="py-1.5 pr-3 font-mono font-medium">{type.code}</td>
-              <td className="py-1.5 pr-3 text-gris-texto">{type.label}</td>
-              <td className="py-1.5 pr-3">{type.is_unique_when_current ? "Sí" : "No"}</td>
-              <td className="py-1.5 pr-3">{type.locks_on_assignment ? "Sí" : "No"}</td>
-              <td className="py-1.5">{type.owned_pieces_only ? "Sí" : "No"}</td>
+            <tr key={type.code}>
+              <td className={`${TD_CLASS} font-mono`}>{type.code}</td>
+              <td className={`${TD_CLASS} text-gris-texto`}>{type.label}</td>
+              <td className={TD_CLASS}>{type.is_unique_when_current ? "Sí" : "No"}</td>
+              <td className={TD_CLASS}>{type.locks_on_assignment ? "Sí" : "No"}</td>
+              <td className={TD_CLASS}>{type.owned_pieces_only ? "Sí" : "No"}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }
@@ -213,15 +224,12 @@ function AdministracionContent() {
   const current = initialSection(requested ?? params.get("pestana"), sections);
 
   if (!current) {
-    return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde la cabecera para probarlo.</PermissionNotice>;
+    return <PermissionNotice>Su rol no tiene permiso para administrar el sistema. Cambie de rol desde el menú para probarlo.</PermissionNotice>;
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-tinta">Administración</h1>
-        <p className="text-base text-gris-texto">Personas, catálogo, importación y control del sistema.</p>
-      </header>
+      <PageHeader title="Administración" description="Personas, catálogo, importación y control del sistema." />
 
       <AdminNav
         sections={sections}

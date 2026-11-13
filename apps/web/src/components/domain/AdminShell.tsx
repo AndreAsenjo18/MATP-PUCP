@@ -16,8 +16,8 @@
 import { FileSpreadsheet, Library, ShieldCheck, Users, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import { TAB_LIST_CLASS, tabClassName, UNDERLINE_TAB_LIST_CLASS, underlineTabClassName } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/cn";
 
 export type AdminArea = "personas" | "catalogo" | "importacion" | "control";
 
@@ -85,7 +85,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
   if (!active) return null;
   return (
     <nav aria-label="Administración" className="flex flex-col gap-3">
-      <div role="tablist" aria-label="Áreas de administración" className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label="Áreas de administración" className={TAB_LIST_CLASS}>
         {areas.map((area) => {
           const Icon = area.icon;
           const selected = area.id === active.id;
@@ -96,18 +96,15 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
               role="tab"
               aria-selected={selected}
               onClick={() => onSelect(area.sections[0].slug)}
-              className={cn(
-                "inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium md:min-h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-                selected ? "bg-terracota text-white" : "bg-crema text-tinta hover:bg-borde",
-              )}
+              className={tabClassName(selected)}
             >
-              <Icon size={16} aria-hidden="true" />
+              <Icon size={18} aria-hidden="true" />
               {area.label}
             </button>
           );
         })}
       </div>
-      <div role="tablist" aria-label={`Secciones de ${active.label}`} className="flex flex-wrap gap-1 border-b border-borde">
+      <div role="tablist" aria-label={`Secciones de ${active.label}`} className={UNDERLINE_TAB_LIST_CLASS}>
         {active.sections.map((section) => {
           const selected = section.slug === current;
           return (
@@ -118,10 +115,7 @@ export function AdminNav({ sections, current, onSelect }: { sections: readonly A
               aria-selected={selected}
               aria-current={selected ? "page" : undefined}
               onClick={() => onSelect(section.slug)}
-              className={cn(
-                "min-h-11 rounded-t-md px-3 py-1.5 text-sm font-medium md:min-h-9 focus-visible:outline-2 focus-visible:outline-terracota",
-                selected ? "border-b-2 border-terracota text-terracota" : "text-gris-texto hover:text-tinta",
-              )}
+              className={underlineTabClassName(selected)}
             >
               {section.label}
             </button>

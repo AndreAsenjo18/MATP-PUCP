@@ -218,7 +218,7 @@ export function ImportRowCard({
       {photos}
 
       {errors.length > 0 && (
-        <ul className="flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
+        <ul className="aviso-error flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
           {errors.map((error) => (
             <li key={error.message}>
               <span className="font-medium">{error.message}</span>

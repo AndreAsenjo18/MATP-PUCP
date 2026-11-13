@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge, type BadgeIntent } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { fetchHealth, type ServiceHealth, type ServiceState } from "@/lib/health";
@@ -38,15 +39,11 @@ export default async function EstadoPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm font-medium uppercase tracking-wide text-terracota">
-          Uso interno · Fase 1
-        </p>
-        <h1 className="text-3xl font-bold text-tinta">Estado de los servicios</h1>
-        <p className="text-base text-gris-texto">
-          Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot; — entorno de desarrollo.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Uso interno · Fase 1"
+        title="Estado de los servicios"
+        description={<>Museo de Artes y Tradiciones Populares &quot;Luis Repetto Málaga&quot; — entorno de desarrollo.</>}
+      />
       <section aria-labelledby="estado-servicios" className="flex flex-col gap-3">
         <h2 id="estado-servicios" className="text-xl font-semibold text-tinta">
           Servicios backend (modo conectado)
