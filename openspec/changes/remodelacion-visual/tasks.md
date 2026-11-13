@@ -29,7 +29,7 @@ Cada grupo cierra con la auditoría de web-design-guidelines, sus correcciones y
 
 ## 3. Cierre
 
-- [ ] 3.1 Barrido de consistencia, capturas «después», `docs/guia-visual.md` en la dirección B y reemplazo de las capturas del piloto
+- [x] 3.1 Barrido de consistencia, capturas «después» (22 pantallas en local; conjunto mínimo en `docs/capturas-remodelacion/`), `docs/guia-visual.md` en la dirección B y reemplazo de las capturas del piloto
 - [ ] 3.2 Prueba humana con la lista de «los zapatos del usuario» (la hace el equipo; no se marca ninguna historia como revisada por un humano)
-- [ ] 3.3 Alinear los nombres del menú con `inicio-guia-de-tareas` antes de archivar cualquiera de los dos
+- [x] 3.3 Alinear los nombres del menú con `inicio-guia-de-tareas` antes de archivar cualquiera de los dos (hecho; quedan los dos puntos de R1 en `docs/propuestas-ux-para-sergio.md`)
 - [ ] 3.4 Tras aprobar el PR: `openspec archive remodelacion-visual -y`

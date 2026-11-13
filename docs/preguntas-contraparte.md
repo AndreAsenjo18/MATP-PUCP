@@ -151,7 +151,7 @@ Fuente: `docs/fuentes/system-design-frontend.md` (documento del equipo). Change:
 
 | ID | Pregunta | Supuesto actual | Impacto | Prioridad |
 |---|---|---|---|---|
-| J1 | ¿Los colores Terracota (`#A23C16`), Tinta (`#0C0F14`) y Crema (`#F5F0DA`) y las tipografías Poppins e Inter corresponden a la identidad visual oficial del museo o de la Dirección de Cultura? ¿Hay un manual de marca? | Se usan los valores del documento del equipo, declarados como tokens para poder cambiarlos en un solo lugar | `plataforma` (RNF-004, RNF-010) | C |
+| J1 | ¿Los colores Terracota (`#A23C16`), Tinta (`#0C0F14`) y Crema (`#F5F0DA`) y la tipografía Manrope (antes Poppins e Inter) corresponden a la identidad visual oficial del museo o de la Dirección de Cultura? ¿Hay un manual de marca? | Se usan los valores del documento del equipo, declarados como tokens para poder cambiarlos en un solo lugar | `plataforma` (RNF-004, RNF-010) | C |
 | J2 | ¿Hay un logotipo autorizado del MATP o de la PUCP para la barra lateral de una herramienta interna? | Solo el texto «MATP · Colecciones», sin logotipo | `plataforma` | C |
 | J3 | ¿Los nombres de los tokens de color se mantienen en español (`terracota`, `tinta`, `crema`) como en el documento o se traducen al inglés (ADR-002)? | Se mantienen en español porque nombran la identidad visual | Interna (ADR-002, ADR-012) | C |
 

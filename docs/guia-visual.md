@@ -2,7 +2,7 @@
 
 Reglas, tokens y componentes que comparten todas las pantallas. Sale del change `remodelacion-visual`; el seguimiento por pantalla está en [remodelacion-visual.md](remodelacion-visual.md). Complementa a [system-design.md](system-design.md), que sigue describiendo los niveles de componentes.
 
-**Estado:** la base (fase 1) está aplicada a todas las pantallas por herencia. El Inicio sigue la maqueta B y las pantallas principales ya tienen su cabecera (grupo 2a). El ajuste fino de cada pantalla llega por grupos en la fase 2; esta guía se completa al cerrar.
+**Estado:** completa. La dirección B está aplicada a todas las pantallas (fases 1 a 3 de `remodelacion-visual`), siguiendo las maquetas del Inicio, Buscar, la ficha, Importación, Revisar pendientes, Reportes y Administración. Capturas de referencia en `docs/capturas-remodelacion/`.
 
 > [SUPUESTO] La paleta y la trama no son identidad oficial de la Dirección de Cultura (pregunta J1 de [preguntas-contraparte.md](preguntas-contraparte.md)).
 

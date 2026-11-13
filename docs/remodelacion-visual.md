@@ -19,7 +19,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 2e | Reportes y vista de impresión | Hecha, esperando revisión |
 | 2f | Administración | Hecha, esperando revisión |
 | 2g | Acceso, cambio de contraseña, estado y 404 | Hecha, esperando revisión |
-| 3 | Cierre: consistencia, capturas «después», informe | Pendiente |
+| 3 | Cierre: consistencia, capturas «después», informe | Hecha, esperando revisión |
 
 ## Qué queda del piloto y qué se hace con cada cosa
 
@@ -39,7 +39,7 @@ El piloto `piloto-identidad-visual-inicio` (commits `1d7ab91` a `240a005`, nunca
 | Poppins (`@fontsource/poppins`) | **Se reemplaza** | Por Manrope; queda sin uso y se retira |
 | Disposición del Inicio (dos tarjetas grandes arriba) | **Se reemplaza** | Inicio B en la fase 2a |
 | `docs/guia-visual.md` | **Se reemplaza** | Por la dirección B |
-| Capturas de `docs/capturas-piloto/*.png` | **Se reemplazan** | Al terminar, por las de la B |
+| Capturas de `docs/capturas-piloto/*.png` | **Se reemplazaron** | Por el conjunto mínimo de la B en `docs/capturas-remodelacion/` |
 | Cenefa al pie (`TextileBand`) | **Se elimina** | Ya no se usa |
 | `span` provisional del título del Inicio | **Se elimina** | La regla global de títulos usa la tipografía nueva |
 | Change `openspec/changes/piloto-identidad-visual-inicio` | **Se elimina** | Lo reemplaza `remodelacion-visual` |
@@ -93,7 +93,7 @@ En ventanas de poca altura, el menú flotante no cabía y el pie (insignia, pers
 | Barra de desplazamiento fina en el menú y en las secciones | 97 de 97 |
 | Hueco entre la última sección y «Contraer menú» | 4 px |
 
-Con el teclado, 20 de 20 comprobaciones del menú de pantallas estrechas. Capturas en `docs/capturas-piloto/remodelacion/fase1-menu/`.
+Con el teclado, 20 de 20 comprobaciones del menú de pantallas estrechas. Las capturas de esta corrección quedaron solo en local (ver «Cierre»).
 
 **Decisión del texto de la insignia (aceptada el 2026-11-13):** A 16 px, la insignia completa, «Modo demostración (datos sintéticos)», mide 334 px, y el pie del menú deja 240 px. Para que entre en una línea, la insignia muestra «Modo demostración». El resto, «(datos sintéticos)», sigue en la ayuda que aparece al pasar el cursor y en el texto para el lector de pantalla. Si debe verse entero, la alternativa es ensanchar el menú de 288 a 384 px, lo que resta ese espacio al contenido en todas las pantallas. André decidió dejarla corta y no ensanchar el menú.
 
@@ -137,117 +137,50 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
 
-## Grupo 2g: acceso, cambio de contraseña, estado y 404
+## Tipografía: Manrope en toda la aplicación
 
-Sin maqueta propia: el mismo lenguaje que el resto. Comparado a 1366 × 768, 150 % y 50 %, y verificado a 320 px.
+Decidido por André el 2026-11-13: el cuerpo, los formularios y las tablas pasan de Inter a Manrope, como toda la maqueta B. Se retira `@fontsource-variable/inter`.
 
-**Qué cambió:**
+Medido antes y después en 22 pantallas a 320, 911, 1366 y 1920 px:
 
-- **Acceso** (demostración y real), **Cambiar contraseña** (con y sin sesión) y **Estado de los servicios** abren con la banda terracota y la trama, centrados, con los mismos textos de siempre; «Uso interno · Fase 1» va como texto chico sobre el título. El acceso, el cambio de contraseña y la 404 usan una columna de 672 px para que el título quepa en dos líneas junto a la trama.
-- **404** (`app/not-found.tsx`, nueva): hasta ahora se veía la página por defecto de Next.js, en inglés. Ahora tiene la banda con «No encontramos esta página», una línea de ayuda y «Ir al inicio». Con sesión lleva el menú; sin sesión, no.
-- **Sin menú donde hoy no lo hay:** el acceso y las pantallas sin sesión siguen sin menú lateral.
-
-**Textos nuevos (la 404 no tenía textos en español):** «No encontramos esta página», «La dirección no existe o cambió. Vuelva al inicio para seguir desde allí.» e «Ir al inicio». Anotados para Sergio (aviso A5).
-
-**Lo que no se hizo, y por qué:** no se creó una pantalla de error (`app/error.tsx`): capturar los errores de la aplicación es un comportamiento nuevo, no solo diseño. Queda anotado para Sergio (propuesta 14).
-
-**Verificación:** acceso, Estado y Cambiar contraseña en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px; la 404, con y sin sesión, a 1366 px y a 320 px.
-
-## Grupo 2f: Administración (maqueta B de Administración)
-
-Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismas secciones, columnas, acciones, textos y lógica, en los dos modos.
-
-**Qué cambió:**
-
-- **Pestañas:** las áreas (Personas, Catálogo, Importación, Control) en el contenedor blanco con la activa en terracota; las secciones de cada área, subrayadas y distintas de las principales, de 44 px (antes 36).
-- **Lista de usuarios:** cada persona con un círculo de iniciales (decorativo; el nombre va al lado), filas de unos 68 px centradas en alto, fila de títulos en crema y el estado como etiqueta de color. Las iniciales salen del nombre, sin lo que va entre paréntesis.
-- **Tablas** de usuarios, listas del catálogo, plantillas de mapeo, normalización, tipos de código y la de identificadores de la ficha, con el estilo común. La de almacenamiento de fotos, que es de clave y valor, queda como estaba.
-- **Auditoría:** «Más filtros» usa la cabecera de desplegable común (44 px, con flecha); «Descargar en CSV» mide 44 px en todos los anchos (antes 36 desde 768 px); los motivos y los nombres de la papelera saltan de línea en vez de cortarse. Resuelve los pendientes de la fase 1: 2 controles chicos y 5 textos cortados.
-
-**Lo que no sigue a la maqueta, y por qué:**
-
-| En la maqueta | En la aplicación | Motivo |
+| Comprobación | Inter | Manrope |
 |---|---|---|
-| Píldora «7 personas» junto al título | Sin ella | Texto nuevo que no se pidió |
-| Iniciales «EC» para Especialista de Conservación | «ED» | Las iniciales salen de las dos primeras palabras del nombre real («Especialista de…») |
-| Catálogo, Importación y Control con datos | En demostración, Catálogo dice «Disponible con la API (modo live).» | Es el comportamiento del modo demostración; el texto queda anotado para Sergio (propuesta 5c) |
+| Desplazamiento lateral de la página | 0 | 0 |
+| Letra de menos de 16 px | 0 | 0 |
+| Texto que se sale de su caja | 28 | 26 (los mismos, menos 2) |
+| Botones, píldoras y pestañas en dos líneas | 67 | 67 (los mismos) |
+| Tablas más anchas que su cuadro, sin desplazamiento propio | 0 | 0 |
+| Control más bajo | 36 px (pestañas de Administración, punto pendiente) | 36 px |
 
-**Verificación:** las cuatro áreas de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px, sin controles de menos de 44 px y sin textos cortados. La tabla de usuarios es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
+En 1366 y 1920 px no se parte ningún botón: lo que va en dos líneas es la marca del menú y las tarjetas de tipo de reporte, que llevan título y descripción a propósito.
 
-## Grupo 2e: Reportes (maqueta B de Reportes)
+`npm ci` con el lockfile sin Inter, corrido con el servidor detenido: instala bien y solo queda Manrope entre las fuentes.
 
-Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos tipos de reporte, columnas, filtros, textos y lógica, en los dos modos.
+## Buscar según la maqueta B (imagen 2, izquierda)
 
-**Qué cambió:**
+Recibida el 2026-11-13. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
 
-- **Tipos de reporte** como tarjetas con el icono en un círculo de color, tres arriba y dos abajo desde 1024 px. El elegido lleva borde terracota y una marca de visto, además de `aria-pressed`.
-- **Resultado:** el título en negrita y, a su lado, «Exportar a Excel» en verde sólido (y «Vista imprimible» con datos reales). Debajo, la cantidad como etiqueta, la línea de columnas en pantalla y «Ver las N columnas» con borde.
-- **Tabla** con el estilo común: fila de títulos en crema y fija, grupos en crema suave y desplazamiento solo dentro de su cuadro.
-- **Vista de impresión:** sin cambios de diseño. Sigue en blanco y negro limpio, sin cabecera terracota ni trama; solo toma la letra Manrope del resto del sistema.
+**Qué cambió (mismos filtros, textos y lógica, en los dos modos):**
 
-**Lo que no sigue a la maqueta, y por qué:**
+- **Tarjeta blanca de filtros** arriba, a todo el ancho, en lugar de la columna lateral. Dentro, el buscador «Código o texto» como píldora con la lupa y el botón oscuro «Buscar» (`SearchPill`), y debajo los filtros en una fila. Las listas miden 52 px (`controlSize="lg"`). En demostración, las cinco listas van en una fila desde 1280 px; con datos reales, los cuatro filtros principales y «Más filtros» con los demás. «Limpiar filtros» va en píldora blanca con borde (variante `neutral` de `Button`).
+- **Resultados en filas** de 84 px o más (`PieceCard`): el código en terracota, el nombre grande, debajo la colección y la ubicación en tono tenue, las insignias (tenencia, alertas, «Sin foto») y una flecha. Toda la fila es el enlace, con foco visible. Por debajo de 1024 px se apilan; con datos reales, la casilla para mover piezas queda al lado de la fila. Los nombres largos saltan de línea en vez de cortarse a dos líneas.
+- **Paginación, orden, exportación y «Ver por ubicación»:** sin cambios.
 
-| En la maqueta | En la aplicación | Motivo |
+**Lo que no sigue a la imagen, y por qué:**
+
+| En la imagen | En la aplicación | Motivo |
 |---|---|---|
-| Columnas Código, Nombre, Categoría, Ubicación y Estado | Las columnas principales reales del reporte (Denominación, Descripción, Colección, Código I, Régimen) | No se inventan columnas |
-| Iconos de la maqueta | Iconos de lucide parecidos (barras, biblioteca, ubicación, capas, lupa) | Los de la maqueta no tienen nombre |
+| Título «Buscar piezas» y la ayuda «Encuentre una pieza por su código, su nombre o su categoría.» | «Búsqueda», sin ayuda en la banda | No se cambian textos fuera del Inicio; la ayuda de siempre está bajo el buscador |
+| «14 piezas encontradas» y «Toque una pieza para abrir su ficha» | «14 resultados» | Mismo motivo |
+| Buscador sin etiqueta | Con la etiqueta «Código o texto» y su ayuda | Mismo motivo, y el campo necesita su nombre visible |
+| Tres listas: Categoría, Estado de conservación y Fotografías | Las listas reales: Colección, Categoría, Material, Estado de conservación y Régimen de tenencia, más las dos casillas | No se inventan filtros |
+| Subtítulo «Cerámica · Puno» (categoría y procedencia) | Colección y ubicación | Son los datos que trae cada resultado |
+| Una insignia de estado de conservación | Tenencia, alertas y «Sin foto» | Mismo motivo |
+| «Nueva pieza» no aparece | En la banda | Es la acción principal de la pantalla y ya existía |
 
-**Verificación:** Reportes y la vista de impresión en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla es más ancha que la pantalla a 320 y 683 px y se desplaza dentro de su cuadro.
+El botón «Buscar» envía el formulario, pero la búsqueda ya se aplica mientras se escribe, así que no hace nada más. Anotado para Sergio (propuesta 9).
 
-## Grupo 2d: Importación (maqueta B de Importación)
-
-Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos flujos, pasos, textos y lógica.
-
-**Qué cambió:**
-
-- **«¿Qué desea importar?»:** las tres opciones son tarjetas grandes (unos 300 px de alto) con el icono en un círculo de color (añil, ciruela y verde), el título a 27 px y la descripción a 19 px (tokens `text-opcion` y `text-opcion-texto`), una etiqueta corta del tipo en su color y un botón redondo terracota con una flecha. Toda la tarjeta es el enlace; el botón es solo la señal.
-- **Pasos de los asistentes** (Excel en demostración y fotos): el mismo contenedor blanco que las pestañas, con el paso actual en terracota, los hechos en verde con su visto y los que faltan sin fondo (`components/ui/Steps.ts`).
-- **Tablas** de mapeo, conflicto de una fila, lectura de nombres de fotos y mapeo de términos con el estilo común de tablas.
-
-**Texto nuevo, pedido expresamente:** las etiquetas de tipo «Para piezas nuevas», «Para fotos» y «Paso a paso», tomadas de la maqueta. Anotado para Sergio (aviso A4).
-
-**Lo que no sigue a la maqueta, y por qué:**
-
-| En la maqueta | En la aplicación | Motivo |
-|---|---|---|
-| Ayuda «Elija una opción para empezar.» en la banda | Sin ayuda | Texto nuevo que no se pidió |
-| Iconos de documento, imagen y capas | Los de siempre (hoja de cálculo, imágenes y capas) | Mismo significado; no se cambian sin motivo |
-
-El indicador de avance del asistente con datos reales (círculos y líneas) conserva su forma; ya seguía la paleta.
-
-**Verificación:** Importación, Importación de fotos, el asistente de Excel y la pestaña Importación de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
-
-## Grupo 2c: Revisar pendientes (maqueta B de Pendientes)
-
-Las cuatro maquetas de Importación, Pendientes, Reportes y Administración llegaron el 2026-11-13 y se usan como referencia visual: datos, filtros, pestañas, textos y lógica son los reales. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
-
-**Qué cambió:**
-
-- **Pestañas del sistema** dentro de un contenedor blanco redondeado, como en las maquetas: la activa en terracota sólido y las demás sin fondo (`components/ui/Tabs.ts`). Las de Revisar pendientes llevan icono. Las secciones de Administración pasan a pestañas subrayadas de 44 px, distintas de las principales.
-- **«Buscar en todo el catálogo»** con el icono en un círculo añil y «Buscar duplicados» con borde. En pantallas estrechas el botón baja a su propia línea.
-- **Filtros de la cola** en su propia tarjeta, con listas de 52 px.
-- **Cada par** es una tarjeta: las dos piezas en paneles de color suave (ámbar y ciruela) separadas por un «vs» decorativo; el nivel de parecido («Muy parecidas») como píldora; el motivo debajo; y «Revisar» en terracota sólido. El conteo («2 pares») va con peso de encabezado.
-- **Piezas incompletas** con el estilo común de tablas (`components/ui/Table.ts`): fila de títulos en crema y fija, y el desplazamiento solo dentro del cuadro. Los botones de descarga y de página usan la píldora neutra.
-- **Sugerencias:** el nombre de cada pieza es un enlace de 16 px y 44 px de alto (antes 22 px). Resuelve los dos pendientes de la fase 1 de esta pestaña.
-
-**Lo que no sigue a la maqueta, y por qué:**
-
-| En la maqueta | En la aplicación | Motivo |
-|---|---|---|
-| «2 pares por revisar» | «2 pares» | No se cambian textos |
-| Código «I-0236 · Colección MMZ» | «Código I I-0236 · Colección MMZ (ficticia)» | Mismo motivo |
-| Pestañas con los iconos de la maqueta | Iconos de lucide parecidos (copiar, chispas, portapapeles) | Los de la maqueta no tienen nombre; se eligieron los más cercanos |
-
-**Verificación:** las tres pestañas, `/duplicados` y `/ia/sugerencias` en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla de Piezas incompletas es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
-
-**Auditoría web-design-guidelines:** un hallazgo, corregido: en 320 px el texto de «Buscar en todo el catálogo» quedaba en una columna de una palabra por línea.
-
-## Decisiones tras el grupo 2b (2026-11-13)
-
-- **Descripción y Observaciones a 18 px:** aprobado.
-- **Estado de conservación en la ficha:** como insignia de color, solo si es uno de los cuatro términos de la lista cerrada (`BUENO` en verde; `REGULAR` y `EN_RESTAURACION` en ámbar; `MALO` en ladrillo), con el mismo texto. Un término agregado después se muestra como texto.
-- **Avisos de error:** todos llevan un icono además del color ladrillo, con recuadro o sin él (el error de cada campo incluido).
-- **Antes de cualquier `npm ci`:** detener el servidor, comprobar que el puerto 3000 quedó libre y, si queda un proceso, cerrarlo por su número.
+**Verificación:** Buscar, Inicio y Reportes en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
 
 ## Grupo 2b: la ficha según la maqueta B (imagen 2, derecha)
 
@@ -278,50 +211,213 @@ Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos campos, pes
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: los subtítulos de los grupos de datos son `h2`, como los de las demás pestañas de la ficha, y no `h3` directamente bajo el título. Queda anotado sin cambiar: las pestañas de Administración no se recorren con las flechas, como sí las de la ficha (es lógica de teclado, no de estilo).
 
-## Buscar según la maqueta B (imagen 2, izquierda)
+## Decisiones tras el grupo 2b (2026-11-13)
 
-Recibida el 2026-11-13. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
+- **Descripción y Observaciones a 18 px:** aprobado.
+- **Estado de conservación en la ficha:** como insignia de color, solo si es uno de los cuatro términos de la lista cerrada (`BUENO` en verde; `REGULAR` y `EN_RESTAURACION` en ámbar; `MALO` en ladrillo), con el mismo texto. Un término agregado después se muestra como texto.
+- **Avisos de error:** todos llevan un icono además del color ladrillo, con recuadro o sin él (el error de cada campo incluido).
+- **Antes de cualquier `npm ci`:** detener el servidor, comprobar que el puerto 3000 quedó libre y, si queda un proceso, cerrarlo por su número.
 
-**Qué cambió (mismos filtros, textos y lógica, en los dos modos):**
+## Grupo 2c: Revisar pendientes (maqueta B de Pendientes)
 
-- **Tarjeta blanca de filtros** arriba, a todo el ancho, en lugar de la columna lateral. Dentro, el buscador «Código o texto» como píldora con la lupa y el botón oscuro «Buscar» (`SearchPill`), y debajo los filtros en una fila. Las listas miden 52 px (`controlSize="lg"`). En demostración, las cinco listas van en una fila desde 1280 px; con datos reales, los cuatro filtros principales y «Más filtros» con los demás. «Limpiar filtros» va en píldora blanca con borde (variante `neutral` de `Button`).
-- **Resultados en filas** de 84 px o más (`PieceCard`): el código en terracota, el nombre grande, debajo la colección y la ubicación en tono tenue, las insignias (tenencia, alertas, «Sin foto») y una flecha. Toda la fila es el enlace, con foco visible. Por debajo de 1024 px se apilan; con datos reales, la casilla para mover piezas queda al lado de la fila. Los nombres largos saltan de línea en vez de cortarse a dos líneas.
-- **Paginación, orden, exportación y «Ver por ubicación»:** sin cambios.
+Las cuatro maquetas de Importación, Pendientes, Reportes y Administración llegaron el 2026-11-13 y se usan como referencia visual: datos, filtros, pestañas, textos y lógica son los reales. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
 
-**Lo que no sigue a la imagen, y por qué:**
+**Qué cambió:**
 
-| En la imagen | En la aplicación | Motivo |
+- **Pestañas del sistema** dentro de un contenedor blanco redondeado, como en las maquetas: la activa en terracota sólido y las demás sin fondo (`components/ui/Tabs.ts`). Las de Revisar pendientes llevan icono. Las secciones de Administración pasan a pestañas subrayadas de 44 px, distintas de las principales.
+- **«Buscar en todo el catálogo»** con el icono en un círculo añil y «Buscar duplicados» con borde. En pantallas estrechas el botón baja a su propia línea.
+- **Filtros de la cola** en su propia tarjeta, con listas de 52 px.
+- **Cada par** es una tarjeta: las dos piezas en paneles de color suave (ámbar y ciruela) separadas por un «vs» decorativo; el nivel de parecido («Muy parecidas») como píldora; el motivo debajo; y «Revisar» en terracota sólido. El conteo («2 pares») va con peso de encabezado.
+- **Piezas incompletas** con el estilo común de tablas (`components/ui/Table.ts`): fila de títulos en crema y fija, y el desplazamiento solo dentro del cuadro. Los botones de descarga y de página usan la píldora neutra.
+- **Sugerencias:** el nombre de cada pieza es un enlace de 16 px y 44 px de alto (antes 22 px). Resuelve los dos pendientes de la fase 1 de esta pestaña.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
 |---|---|---|
-| Título «Buscar piezas» y la ayuda «Encuentre una pieza por su código, su nombre o su categoría.» | «Búsqueda», sin ayuda en la banda | No se cambian textos fuera del Inicio; la ayuda de siempre está bajo el buscador |
-| «14 piezas encontradas» y «Toque una pieza para abrir su ficha» | «14 resultados» | Mismo motivo |
-| Buscador sin etiqueta | Con la etiqueta «Código o texto» y su ayuda | Mismo motivo, y el campo necesita su nombre visible |
-| Tres listas: Categoría, Estado de conservación y Fotografías | Las listas reales: Colección, Categoría, Material, Estado de conservación y Régimen de tenencia, más las dos casillas | No se inventan filtros |
-| Subtítulo «Cerámica · Puno» (categoría y procedencia) | Colección y ubicación | Son los datos que trae cada resultado |
-| Una insignia de estado de conservación | Tenencia, alertas y «Sin foto» | Mismo motivo |
-| «Nueva pieza» no aparece | En la banda | Es la acción principal de la pantalla y ya existía |
+| «2 pares por revisar» | «2 pares» | No se cambian textos |
+| Código «I-0236 · Colección MMZ» | «Código I I-0236 · Colección MMZ (ficticia)» | Mismo motivo |
+| Pestañas con los iconos de la maqueta | Iconos de lucide parecidos (copiar, chispas, portapapeles) | Los de la maqueta no tienen nombre; se eligieron los más cercanos |
 
-El botón «Buscar» envía el formulario, pero la búsqueda ya se aplica mientras se escribe, así que no hace nada más. Anotado para Sergio (propuesta 9).
+**Verificación:** las tres pestañas, `/duplicados` y `/ia/sugerencias` en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla de Piezas incompletas es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
 
-**Verificación:** Buscar, Inicio y Reportes en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
+**Auditoría web-design-guidelines:** un hallazgo, corregido: en 320 px el texto de «Buscar en todo el catálogo» quedaba en una columna de una palabra por línea.
 
-## Tipografía: Manrope en toda la aplicación
+## Grupo 2d: Importación (maqueta B de Importación)
 
-Decidido por André el 2026-11-13: el cuerpo, los formularios y las tablas pasan de Inter a Manrope, como toda la maqueta B. Se retira `@fontsource-variable/inter`.
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos flujos, pasos, textos y lógica.
 
-Medido antes y después en 22 pantallas a 320, 911, 1366 y 1920 px:
+**Qué cambió:**
 
-| Comprobación | Inter | Manrope |
+- **«¿Qué desea importar?»:** las tres opciones son tarjetas grandes (unos 300 px de alto) con el icono en un círculo de color (añil, ciruela y verde), el título a 27 px y la descripción a 19 px (tokens `text-opcion` y `text-opcion-texto`), una etiqueta corta del tipo en su color y un botón redondo terracota con una flecha. Toda la tarjeta es el enlace; el botón es solo la señal.
+- **Pasos de los asistentes** (Excel en demostración y fotos): el mismo contenedor blanco que las pestañas, con el paso actual en terracota, los hechos en verde con su visto y los que faltan sin fondo (`components/ui/Steps.ts`).
+- **Tablas** de mapeo, conflicto de una fila, lectura de nombres de fotos y mapeo de términos con el estilo común de tablas.
+
+**Texto nuevo, pedido expresamente:** las etiquetas de tipo «Para piezas nuevas», «Para fotos» y «Paso a paso», tomadas de la maqueta. Anotado para Sergio (aviso A4).
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
 |---|---|---|
-| Desplazamiento lateral de la página | 0 | 0 |
-| Letra de menos de 16 px | 0 | 0 |
-| Texto que se sale de su caja | 28 | 26 (los mismos, menos 2) |
-| Botones, píldoras y pestañas en dos líneas | 67 | 67 (los mismos) |
-| Tablas más anchas que su cuadro, sin desplazamiento propio | 0 | 0 |
-| Control más bajo | 36 px (pestañas de Administración, punto pendiente) | 36 px |
+| Ayuda «Elija una opción para empezar.» en la banda | Sin ayuda | Texto nuevo que no se pidió |
+| Iconos de documento, imagen y capas | Los de siempre (hoja de cálculo, imágenes y capas) | Mismo significado; no se cambian sin motivo |
 
-En 1366 y 1920 px no se parte ningún botón: lo que va en dos líneas es la marca del menú y las tarjetas de tipo de reporte, que llevan título y descripción a propósito.
+El indicador de avance del asistente con datos reales (círculos y líneas) conserva su forma; ya seguía la paleta.
 
-`npm ci` con el lockfile sin Inter, corrido con el servidor detenido: instala bien y solo queda Manrope entre las fuentes.
+**Verificación:** Importación, Importación de fotos, el asistente de Excel y la pestaña Importación de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
+
+## Grupo 2e: Reportes (maqueta B de Reportes)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismos tipos de reporte, columnas, filtros, textos y lógica, en los dos modos.
+
+**Qué cambió:**
+
+- **Tipos de reporte** como tarjetas con el icono en un círculo de color, tres arriba y dos abajo desde 1024 px. El elegido lleva borde terracota y una marca de visto, además de `aria-pressed`.
+- **Resultado:** el título en negrita y, a su lado, «Exportar a Excel» en verde sólido (y «Vista imprimible» con datos reales). Debajo, la cantidad como etiqueta, la línea de columnas en pantalla y «Ver las N columnas» con borde.
+- **Tabla** con el estilo común: fila de títulos en crema y fija, grupos en crema suave y desplazamiento solo dentro de su cuadro.
+- **Vista de impresión:** sin cambios de diseño. Sigue en blanco y negro limpio, sin cabecera terracota ni trama; solo toma la letra Manrope del resto del sistema.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| Columnas Código, Nombre, Categoría, Ubicación y Estado | Las columnas principales reales del reporte (Denominación, Descripción, Colección, Código I, Régimen) | No se inventan columnas |
+| Iconos de la maqueta | Iconos de lucide parecidos (barras, biblioteca, ubicación, capas, lupa) | Los de la maqueta no tienen nombre |
+
+**Verificación:** Reportes y la vista de impresión en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px. La tabla es más ancha que la pantalla a 320 y 683 px y se desplaza dentro de su cuadro.
+
+## Grupo 2f: Administración (maqueta B de Administración)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismas secciones, columnas, acciones, textos y lógica, en los dos modos.
+
+**Qué cambió:**
+
+- **Pestañas:** las áreas (Personas, Catálogo, Importación, Control) en el contenedor blanco con la activa en terracota; las secciones de cada área, subrayadas y distintas de las principales, de 44 px (antes 36).
+- **Lista de usuarios:** cada persona con un círculo de iniciales (decorativo; el nombre va al lado), filas de unos 68 px centradas en alto, fila de títulos en crema y el estado como etiqueta de color. Las iniciales salen del nombre, sin lo que va entre paréntesis.
+- **Tablas** de usuarios, listas del catálogo, plantillas de mapeo, normalización, tipos de código y la de identificadores de la ficha, con el estilo común. La de almacenamiento de fotos, que es de clave y valor, queda como estaba.
+- **Auditoría:** «Más filtros» usa la cabecera de desplegable común (44 px, con flecha); «Descargar en CSV» mide 44 px en todos los anchos (antes 36 desde 768 px); los motivos y los nombres de la papelera saltan de línea en vez de cortarse. Resuelve los pendientes de la fase 1: 2 controles chicos y 5 textos cortados.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| Píldora «7 personas» junto al título | Sin ella | Texto nuevo que no se pidió |
+| Iniciales «EC» para Especialista de Conservación | «ED» | Las iniciales salen de las dos primeras palabras del nombre real («Especialista de…») |
+| Catálogo, Importación y Control con datos | En demostración, Catálogo dice «Disponible con la API (modo live).» | Es el comportamiento del modo demostración; el texto queda anotado para Sergio (propuesta 5c) |
+
+**Verificación:** las cuatro áreas de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px, sin controles de menos de 44 px y sin textos cortados. La tabla de usuarios es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
+
+## Grupo 2g: acceso, cambio de contraseña, estado y 404
+
+Sin maqueta propia: el mismo lenguaje que el resto. Comparado a 1366 × 768, 150 % y 50 %, y verificado a 320 px.
+
+**Qué cambió:**
+
+- **Acceso** (demostración y real), **Cambiar contraseña** (con y sin sesión) y **Estado de los servicios** abren con la banda terracota y la trama, centrados, con los mismos textos de siempre; «Uso interno · Fase 1» va como texto chico sobre el título. El acceso, el cambio de contraseña y la 404 usan una columna de 672 px para que el título quepa en dos líneas junto a la trama.
+- **404** (`app/not-found.tsx`, nueva): hasta ahora se veía la página por defecto de Next.js, en inglés. Ahora tiene la banda con «No encontramos esta página», una línea de ayuda y «Ir al inicio». Con sesión lleva el menú; sin sesión, no.
+- **Sin menú donde hoy no lo hay:** el acceso y las pantallas sin sesión siguen sin menú lateral.
+
+**Textos nuevos (la 404 no tenía textos en español):** «No encontramos esta página», «La dirección no existe o cambió. Vuelva al inicio para seguir desde allí.» e «Ir al inicio». Anotados para Sergio (aviso A5).
+
+**Lo que no se hizo, y por qué:** no se creó una pantalla de error (`app/error.tsx`): capturar los errores de la aplicación es un comportamiento nuevo, no solo diseño. Queda anotado para Sergio (propuesta 14).
+
+**Verificación:** acceso, Estado y Cambiar contraseña en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px; la 404, con y sin sesión, a 1366 px y a 320 px.
+
+## Cierre (fase 3)
+
+**Resultado final**, medido en las 21 rutas de siempre en los siete anchos (320, 683, 911, 1366, 1920, 2560 y 3200 px), en modo demostración como Administrador, más la 404:
+
+| Comprobación | Antes de la remodelación | Al cerrar |
+|---|---|---|
+| Desplazamiento lateral de la página | ninguno | ninguno |
+| Pantallas con letra de menos de 16 px | 21 de 21 (hasta 91 elementos) | 0 |
+| Controles de menos de 44 px (máximo por pantalla) | hasta 26 (Administración › Control) | 0 en todas |
+| Textos cortados | 5 (Auditoría) | 0 |
+| Tablas más anchas que la pantalla | se desplazaban dentro de su cuadro, sin fila de títulos fija | se desplazan dentro de su cuadro con la fila de títulos fija (Piezas incompletas y Usuarios a 320 px; Reportes a 320 y 683 px) |
+
+**Restos del piloto:** no queda ninguno en el código ni en la guía. Fraunces, Poppins e Inter están retiradas; la cenefa y el rombo escalonado, eliminados; las capturas del piloto, reemplazadas. Solo los nombran el documento original del equipo (`docs/fuentes/`, referencia histórica), la nota del ADR-012 y las pruebas que comprueban que no vuelvan.
+
+**Capturas:** las de las 22 pantallas en los siete anchos están en `capturas-locales/remodelacion/final/` (local, ignorada por git), con `results.json`. En el repositorio, solo `docs/capturas-remodelacion/inicio-1366.png`, `buscar-1366.png` y `ficha-1366.png`. Las 96 capturas de las fases anteriores salieron de `docs/`, aunque siguen en el historial de la rama.
+
+**Lo que no se pudo reproducir fiel:** está en la tabla de cada grupo. Lo común a todos es esto: los textos de las maquetas no se aplicaron fuera del Inicio; los datos, columnas, filtros y pestañas son los reales; todo se mantiene en 16 px como mínimo y en 44 px para lo que se pulsa.
+
+**Archivos compartidos** (tocados por la remodelación y también por otras personas, según `git log`; rutas desde `apps/web/src/`). Conviene avisar antes de integrar.
+
+Base, que afecta a todas las pantallas:
+
+| Archivo | También lo tocaron |
+|---|---|
+| `app/globals.css` | SergioCB20, amvz1704 |
+| `app/layout.tsx` | SergioCB20, amvz1704 |
+| `components/domain/status-intents.ts` | FelixElCoder, Josmar, SergioCB20, SergioHuaman2002, amvz1704, itzmagito |
+| `components/layout/MainLayout.tsx` | SergioCB20, amvz1704 |
+| `components/layout/PermissionNotice.tsx` | SergioCB20 |
+| `components/layout/Sidebar.tsx` | SergioCB20, amvz1704 |
+| `components/layout/navigation.ts` | SergioCB20, amvz1704 |
+| `components/ui/Badge.tsx` | SergioCB20 |
+| `components/ui/Button.tsx` | SergioCB20, amvz1704 |
+| `components/ui/Card.tsx` | SergioCB20 |
+| `components/ui/Field.tsx` | SergioCB20 |
+| `components/ui/Input.tsx` | SergioCB20 |
+| `components/ui/Select.tsx` | SergioCB20 |
+| `lib/design/contrast-pairs.ts` | SergioCB20 |
+
+Pantallas y componentes de dominio:
+
+| Archivo | También lo tocaron |
+|---|---|
+| `app/administracion/page.tsx` | FelixElCoder, Josue, SergioCB20, amvz1704 |
+| `app/busqueda/page.tsx` | FelixElCoder, Josmar, SergioCB20, YessicaOchante, amvz1704, itzmagito |
+| `app/cambiar-clave/page.tsx` | amvz1704 |
+| `app/estado/page.tsx` | SergioCB20, amvz1704 |
+| `app/importacion/fotos/page.tsx` | SergioCB20 |
+| `app/importacion/page.tsx` | FelixElCoder, Josue, SergioCB20, amvz1704 |
+| `app/inicio/page.tsx` | FelixElCoder, Josue, SergioCB20, SergioHuaman2002, amvz1704, itzmagito |
+| `app/page.tsx` | FelixElCoder, SergioCB20, amvz1704 |
+| `app/piezas/[id]/editar/page.tsx` | FelixElCoder, Josue, Manuel Barrantes, SergioCB20, YessicaOchante, amvz1704 |
+| `app/piezas/nueva/page.tsx` | FelixElCoder, YessicaOchante |
+| `app/reportes/page.tsx` | FelixElCoder, SergioCB20, SergioHuaman2002, amvz1704 |
+| `components/domain/AdminShell.tsx` | FelixElCoder, amvz1704 |
+| `components/domain/AiSuggestionsLive.tsx` | FelixElCoder, SergioHuaman2002 |
+| `components/domain/AiSuggestionsQueue.tsx` | FelixElCoder |
+| `components/domain/AuditLogChangeSetList.tsx` | amvz1704 |
+| `components/domain/AuditLogExport.tsx` | amvz1704 |
+| `components/domain/AuditLogFilterBar.tsx` | amvz1704 |
+| `components/domain/AuditLogPanel.tsx` | amvz1704 |
+| `components/domain/DuplicateQueue.tsx` | FelixElCoder |
+| `components/domain/DuplicateReview.tsx` | FelixElCoder, amvz1704 |
+| `components/domain/HomeGuide.tsx` | Josue |
+| `components/domain/ImportConflictModal.tsx` | SergioCB20, amvz1704 |
+| `components/domain/ImportMappingEditor.tsx` | FelixElCoder, SergioCB20, amvz1704 |
+| `components/domain/ImportOriginPicker.tsx` | Josue |
+| `components/domain/ImportTemplatePanels.tsx` | FelixElCoder, Josue, amvz1704 |
+| `components/domain/ImportUpload.tsx` | Josue, amvz1704 |
+| `components/domain/ImportWizard.tsx` | FelixElCoder, Germán Asenjo, Josue, SergioCB20, SergioHuaman2002, amvz1704 |
+| `components/domain/IncompleteReportPanel.tsx` | FelixElCoder, SergioHuaman2002 |
+| `components/domain/LiveImportWizard.tsx` | FelixElCoder, Josue, SergioCB20, SergioHuaman2002, amvz1704 |
+| `components/domain/MappingTemplatesAdmin.tsx` | FelixElCoder, Josue, amvz1704 |
+| `components/domain/NormalizationAdmin.tsx` | FelixElCoder, SergioCB20, amvz1704 |
+| `components/domain/PendingInbox.tsx` | FelixElCoder |
+| `components/domain/PhotoCatalogWizard.tsx` | SergioCB20 |
+| `components/domain/PhotoReadingStep.tsx` | SergioCB20 |
+| `components/domain/PieceCard.tsx` | Josmar, Josue, SergioCB20, SergioHuaman2002 |
+| `components/domain/PieceForm.tsx` | Manuel Barrantes, SergioCB20, YessicaOchante |
+| `components/domain/PieceSheet.tsx` | FelixElCoder, Josmar, Josue, Manuel Barrantes, SergioCB20, SergioHuaman2002 |
+| `components/domain/ReportPreview.tsx` | FelixElCoder |
+| `components/domain/ReportSelector.tsx` | FelixElCoder |
+| `components/domain/ReportsLive.tsx` | FelixElCoder, SergioCB20 |
+| `components/domain/SearchFilters.tsx` | FelixElCoder, SergioCB20, amvz1704 |
+| `components/domain/SearchLive.tsx` | SergioCB20, amvz1704 |
+| `components/domain/TrashEntryList.tsx` | amvz1704 |
+| `components/domain/UsersAdmin.tsx` | amvz1704 |
+| `components/domain/VocabulariesAdmin.tsx` | SergioCB20, amvz1704 |
+| `components/domain/piece-detail/PieceDetailContent.tsx` | Manuel Barrantes |
+| `components/domain/piece-detail/PieceDetailTabs.tsx` | Manuel Barrantes |
+| `lib/help/tasks.ts` | Josue |
+
+Archivos nuevos de la remodelación: `components/layout/PageHeader.tsx`, `components/ui/Tabs.ts`, `components/ui/Table.ts`, `components/ui/Steps.ts`, `components/ui/SearchPill.tsx`, `components/brand/TextileMotif.tsx` (reescrito) y `app/not-found.tsx`.
+
+**Hallazgos sin resolver:** las pestañas de Administración no se recorren con las flechas, como las de la ficha. Es lógica de teclado y queda anotado; no se cambió.
 
 ## Pantallas y rutas
 
@@ -333,32 +429,34 @@ Medición «antes»: el máximo, entre los siete anchos, de elementos con letra 
 
 | Ruta | Archivo | Grupo | Cabecera | Letra < 16 px | Controles < 44 px | Estado |
 |---|---|---|---|---|---|---|
-| `/` (acceso) | `app/page.tsx` | g | sin menú | 12 | 0 | Pendiente |
+| `/` (acceso) | `app/page.tsx` | g | sin menú | 12 | 0 | Hecha |
 | `/inicio` | `app/inicio/page.tsx` | a | principal | 4 | 1 | Hecha (2a), según la maqueta B |
-| `/busqueda` | `app/busqueda/page.tsx` | a | trabajo | 91 | 6 | Cabecera hecha (2a) |
-| `/piezas/nueva` | `app/piezas/nueva/page.tsx` | b | trabajo | 24 | 2 | Pendiente |
-| `/piezas/[id]` | `app/piezas/[id]/page.tsx` | b | trabajo | 23 | 2 | Pendiente |
-| `/piezas/[id]/editar` | `app/piezas/[id]/editar/page.tsx` | b | trabajo | 5 | 2 | Pendiente |
-| `/pendientes` (lleva a la primera pestaña) | `app/pendientes/page.tsx`, `layout.tsx` | c | trabajo | — | — | Pendiente |
-| `/pendientes/duplicados` | `app/pendientes/duplicados/page.tsx` | c | trabajo | 4 | 1 | Pendiente |
-| `/pendientes/sugerencias` | `app/pendientes/sugerencias/page.tsx` | c | trabajo | 56 | 5 | Pendiente |
-| `/pendientes/incompletas` | `app/pendientes/incompletas/page.tsx` | c | trabajo | 4 | 1 | Pendiente |
+| `/busqueda` | `app/busqueda/page.tsx` | a | trabajo | 91 | 6 | Hecha |
+| `/piezas/nueva` | `app/piezas/nueva/page.tsx` | b | trabajo | 24 | 2 | Hecha |
+| `/piezas/[id]` | `app/piezas/[id]/page.tsx` | b | trabajo | 23 | 2 | Hecha |
+| `/piezas/[id]/editar` | `app/piezas/[id]/editar/page.tsx` | b | trabajo | 5 | 2 | Hecha |
+| `/pendientes` (lleva a la primera pestaña) | `app/pendientes/page.tsx`, `layout.tsx` | c | trabajo | — | — | Hecha |
+| `/pendientes/duplicados` | `app/pendientes/duplicados/page.tsx` | c | trabajo | 4 | 1 | Hecha |
+| `/pendientes/sugerencias` | `app/pendientes/sugerencias/page.tsx` | c | trabajo | 56 | 5 | Hecha |
+| `/pendientes/incompletas` | `app/pendientes/incompletas/page.tsx` | c | trabajo | 4 | 1 | Hecha |
 | `/duplicados`, `/ia/sugerencias` | redirigen a `/pendientes/…` | c | — | — | — | Sin pantalla propia |
-| `/importacion` | `app/importacion/page.tsx` | d | trabajo | 4 | 1 | Cabecera hecha (2a) |
-| `/importacion/fotos` | `app/importacion/fotos/page.tsx` | d | trabajo | 7 | 1 | Pendiente |
-| `/reportes` | `app/reportes/page.tsx` | e | trabajo | 4 | 1 | Cabecera hecha (2a) |
-| `/reportes/imprimir/[tipo]` | `app/reportes/imprimir/[tipo]/page.tsx` | e | impresión | 4 | 1 | Pendiente |
-| `/administracion` (Personas) | `app/administracion/page.tsx` | f | trabajo | 35 | 6 | Pendiente |
-| `/administracion` (Catálogo) | ídem | f | trabajo | 13 | 8 | Pendiente |
-| `/administracion` (Importación) | ídem | f | trabajo | 11 | 6 | Pendiente |
-| `/administracion` (Control) | ídem | f | trabajo | 72 | 26 | Pendiente |
-| `/estado` | `app/estado/page.tsx` | g | trabajo | 7 | 1 | Pendiente |
-| `/cambiar-clave` | `app/cambiar-clave/page.tsx` | g | trabajo | 4 | 1 | Pendiente |
+| `/importacion` | `app/importacion/page.tsx` | d | trabajo | 4 | 1 | Hecha |
+| `/importacion/fotos` | `app/importacion/fotos/page.tsx` | d | trabajo | 7 | 1 | Hecha |
+| `/reportes` | `app/reportes/page.tsx` | e | trabajo | 4 | 1 | Hecha |
+| `/reportes/imprimir/[tipo]` | `app/reportes/imprimir/[tipo]/page.tsx` | e | impresión | 4 | 1 | Hecha |
+| `/administracion` (Personas) | `app/administracion/page.tsx` | f | trabajo | 35 | 6 | Hecha |
+| `/administracion` (Catálogo) | ídem | f | trabajo | 13 | 8 | Hecha |
+| `/administracion` (Importación) | ídem | f | trabajo | 11 | 6 | Hecha |
+| `/administracion` (Control) | ídem | f | trabajo | 72 | 26 | Hecha |
+| `/estado` | `app/estado/page.tsx` | g | trabajo | 7 | 1 | Hecha |
+| `/cambiar-clave` | `app/cambiar-clave/page.tsx` | g | trabajo | 4 | 1 | Hecha |
 | `/deposito` | redirige a `/busqueda` | — | — | — | — | Sin pantalla propia |
 
 Lo que se repite en todas las pantallas autenticadas viene de la estructura, no de la pantalla: el nombre del sistema, la insignia «Modo demostración», el nombre y el rol de la persona, todo a 14 px, y la marca «MATP» de 28 px en móvil. La fase 1 lo resuelve para todas a la vez.
 
 ## Componentes base
+
+> Inventario de la fase 0, antes de la remodelación. Los componentes actuales están en [guia-visual.md](guia-visual.md).
 
 ### Átomos (`components/ui/`)
 
@@ -409,4 +507,4 @@ Cada pantalla se abre en modo demostración como Administrador, en siete anchos 
 
 En cada ancho se mide: desplazamiento lateral de la página, elementos con letra de menos de 16 px, controles de menos de 44 px de alto (sin contar enlaces dentro de un párrafo), texto cortado, tablas más anchas que la página y si el menú ocupa toda la altura. El script y los resultados completos están fuera del repositorio; las capturas que se guardan están en `docs/capturas-piloto/remodelacion/`.
 
-**Capturas guardadas en el repositorio:** todas las pantallas a 1366 px, y el Inicio, la Búsqueda y Administración › Control en los siete anchos. Cada pasada completa son 147 capturas y unos 11 MB, demasiado para el repositorio.
+**Capturas:** las de cada grupo y las finales de las 22 pantallas quedan solo en local, en `capturas-locales/remodelacion/` (ignorada por git con `.git/info/exclude`). En el repositorio está el conjunto mínimo: Inicio, Buscar y Ficha a 1366 px, en `docs/capturas-remodelacion/`.

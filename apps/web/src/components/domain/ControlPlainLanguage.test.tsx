@@ -84,10 +84,13 @@ describe("filas compactas y pestañas táctiles", () => {
     expect(trash).toContain("lg:grid");
   });
 
-  it("las pestañas de Administración miden 44 px en celular y son compactas desde md", () => {
+  it("las pestañas de Administración miden 44 px en todos los anchos (remodelacion-visual)", () => {
     const html = render(<AdminNav sections={ADMIN_SECTIONS} current="papelera" onSelect={noop} />);
     const tabs = html.match(/<button[^>]*role="tab"[^>]*>/g) ?? [];
     expect(tabs.length).toBeGreaterThan(0);
-    for (const tab of tabs) expect(tab).toMatch(/min-h-11[^"]*md:min-h-9/);
+    for (const tab of tabs) {
+      expect(tab).toMatch(/\bmin-h-11\b/);
+      expect(tab).not.toMatch(/md:min-h-9/);
+    }
   });
 });
