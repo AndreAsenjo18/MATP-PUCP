@@ -35,4 +35,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { text: "carmin-texto", background: "white", usage: "Mensajes de error de campos" },
   { text: "ambar-texto", background: "white", usage: "Aviso «Sin foto» en tarjetas" },
   { text: "verde-exito", background: "white", usage: "Mensajes de éxito" },
+  // Piloto de identidad visual (docs/guia-visual.md)
+  { text: "terracota-dark", background: "crema-light", usage: "Nombre del museo en el Inicio" },
+  { text: "anil", background: "anil-bg", usage: "IconCircle añil" },
+  { text: "white", background: "anil", usage: "IconCircle añil sólido" },
+  { text: "ciruela", background: "ciruela-bg", usage: "IconCircle ciruela" },
+  { text: "white", background: "ciruela", usage: "IconCircle ciruela sólido" },
+  { text: "white", background: "verde-exito", usage: "IconCircle verde sólido" },
+  { text: "white", background: "ambar-texto", usage: "IconCircle ámbar sólido" },
+  { text: "white", background: "gris-texto", usage: "IconCircle piedra sólido" },
 ];

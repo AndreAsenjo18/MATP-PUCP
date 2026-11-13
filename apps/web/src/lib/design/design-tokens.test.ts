@@ -44,6 +44,9 @@ const REQUIRED_TOKENS = [
   "carmin-texto",
 ];
 
+/** Colores por tipo de tarea del piloto de identidad visual (docs/guia-visual.md). */
+const PILOT_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
+
 describe("contrastRatio", () => {
   it("da 21 para negro sobre blanco y 1 para colores iguales", () => {
     expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5);
@@ -60,13 +63,20 @@ describe("contrastRatio", () => {
 });
 
 describe("tokens del sistema de diseño (globals.css)", () => {
-  it("define los 16 colores institucionales", () => {
-    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS].sort());
+  it("define los 16 colores institucionales y los 4 del piloto de identidad visual, y ninguno más", () => {
+    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...PILOT_TOKENS].sort());
   });
 
   it("define las tipografías heading y sans con respaldo del sistema", () => {
     expect(GLOBALS_CSS).toMatch(/--font-heading:[^;]*system-ui/);
     expect(GLOBALS_CSS).toMatch(/--font-sans:[^;]*system-ui/);
+  });
+
+  it("define la tipografía, el espaciado, los radios y las sombras del piloto en el mismo lugar (docs/guia-visual.md)", () => {
+    expect(GLOBALS_CSS).toMatch(/--font-display:[^;]*serif/);
+    for (const token of ["--spacing-tarjeta", "--spacing-tarjetas", "--spacing-seccion", "--radius-tarjeta", "--shadow-suave", "--shadow-elevada"]) {
+      expect(GLOBALS_CSS).toContain(`${token}:`);
+    }
   });
 
   it.each(CONTRAST_PAIRS)("$text sobre $background ($usage) cumple contraste AA", ({ text, background }) => {

@@ -26,12 +26,38 @@
 
   --font-heading: var(--font-poppins), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /*
+   * Piloto de identidad visual (change piloto-identidad-visual-inicio, docs/guia-visual.md).
+   * Solo se añaden tokens: los de arriba no cambian, así que ninguna otra pantalla cambia.
+   */
+  /* Color por tipo de tarea, además de terracota, verde y ámbar: tintes de tejido. */
+  --color-anil: #2c4a7c;
+  --color-anil-bg: #dfe7f3;
+  --color-ciruela: #6b3566;
+  --color-ciruela-bg: #efe0ec;
+
+  /* Títulos con carácter: serif de trazo suave. */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+
+  /* Espaciado con nombre: p-tarjeta, gap-tarjetas, gap-seccion. */
+  --spacing-tarjeta: 1.5rem;
+  --spacing-tarjetas: 1rem;
+  --spacing-seccion: 1.5rem;
+
+  /* Radios: rounded-tarjeta. Las fichas y los círculos usan rounded-full. */
+  --radius-tarjeta: 1rem;
+
+  /* Sombras cálidas (tinte terracota): en reposo y al pasar el cursor. */
+  --shadow-suave: 0 1px 2px rgb(12 15 20 / 0.05), 0 4px 14px rgb(133 47 15 / 0.07);
+  --shadow-elevada: 0 2px 4px rgb(12 15 20 / 0.06), 0 14px 30px rgb(133 47 15 / 0.14);
 }
 
 /* Familias autoalojadas con Fontsource (importadas en app/layout.tsx; sin Google Fonts, RNF-008). */
 :root {
   --font-inter: "Inter Variable";
   --font-poppins: "Poppins";
+  --font-fraunces: "Fraunces Variable";
 }
 
 body {
