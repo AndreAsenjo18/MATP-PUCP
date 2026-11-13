@@ -48,7 +48,7 @@ export function MenuAccount({ name, role, logoutLabel, onLogout, demo = false, c
   }
   const showRole = !roleIsRedundant(name, role);
   return (
-    <div className="flex flex-col gap-2 px-3 font-heading">
+    <div className="flex flex-col gap-2 px-3">
       {demo && (
         // Dos palabras en una línea, a 16 px; lo de «datos sintéticos» queda para la ayuda y el lector de pantalla.
         <span title={DEMO_LABEL} className="inline-flex items-center gap-1.5 self-start rounded-full bg-ambar-bg px-2.5 py-0.5 text-base font-medium text-ambar-texto">

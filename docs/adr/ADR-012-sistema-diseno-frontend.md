@@ -31,3 +31,5 @@ El equipo entregó un sistema de diseño (`docs/fuentes/system-design-frontend.m
 - Cambiar un color institucional es editar un bloque de `globals.css`.
 - Dos dependencias de runtime nuevas (`lucide-react`, Fontsource); peso de fuentes acotado a Inter variable y Poppins 600/700, con `font-display: swap`.
 - Referencia de uso: [`docs/system-design.md`](../system-design.md).
+
+> **Nota (2026-11-13):** las fuentes cambiaron con el change `remodelacion-visual`: toda la aplicación usa Manrope (`@fontsource-variable/manrope`), autoalojada. Ya no se usan Inter ni Poppins. Ver su `design.md`, D3.

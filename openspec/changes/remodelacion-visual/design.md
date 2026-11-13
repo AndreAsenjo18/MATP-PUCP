@@ -30,9 +30,9 @@ La dirección B se describió con colores medidos de capturas. Todos coinciden c
 
 ### D3. Tipografía
 
-Manrope Variable (Fontsource, autoalojada) en peso 800 para los títulos, cargada en el layout raíz; Inter sigue para el texto. La regla global de `h1`, `h2` y `h3` usa `--font-heading`, que pasa a Manrope; por eso desaparece el `span` provisional del Inicio. Se retiran Poppins y Fraunces. El título de la cabecera principal usa `clamp()` entre 36 y 64 px, y el de la compacta, entre 28 y 40 px.
+Manrope Variable (Fontsource, autoalojada) en peso 800 para los títulos, cargada en el layout raíz. La regla global de `h1`, `h2` y `h3` usa `--font-heading`, que pasa a Manrope; por eso desaparece el `span` provisional del Inicio. Se retiran Poppins y Fraunces. El título de la cabecera principal usa `clamp()` entre 36 y 64 px, y el de la compacta, entre 28 y 40 px.
 
-La maqueta B usa Manrope en todo el texto. Para seguirla sin cambiar la lectura de tablas y formularios, van enteros en Manrope el Inicio, el menú y las cabeceras; el resto del texto sigue en Inter.
+La maqueta B usa Manrope en todo el texto, y André decidió el 2026-11-13 pasar toda la aplicación a Manrope (cuerpo, formularios y tablas). Se retira Inter. Medido en 22 pantallas y cuatro anchos (320, 911, 1366 y 1920 px): ningún desborde nuevo, ningún control nuevo en dos líneas y ningún texto bajo 16 px.
 
 ### D4. Menú flotante y sin franja superior
 

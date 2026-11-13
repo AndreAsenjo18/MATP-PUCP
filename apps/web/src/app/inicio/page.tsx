@@ -75,9 +75,9 @@ function InicioContent() {
   const tasks = visibleTasks(hasPermission);
   const searchTask = tasks.find((task) => task.id === "search");
 
-  // Todo el Inicio en Manrope, como la maqueta B; la insignia de demostración vive solo en el menú.
+  // La insignia de demostración vive solo en el menú.
   return (
-    <div className="flex flex-col gap-5 font-heading">
+    <div className="flex flex-col gap-5">
       <PageHeader size="grande" eyebrow={<span translate="no">Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»</span>} title="¿Qué desea hacer?">
         {searchTask && <HomeSearch task={searchTask} />}
       </PageHeader>

@@ -137,6 +137,25 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
 
+## Tipografía: Manrope en toda la aplicación
+
+Decidido por André el 2026-11-13: el cuerpo, los formularios y las tablas pasan de Inter a Manrope, como toda la maqueta B. Se retira `@fontsource-variable/inter`.
+
+Medido antes y después en 22 pantallas a 320, 911, 1366 y 1920 px:
+
+| Comprobación | Inter | Manrope |
+|---|---|---|
+| Desplazamiento lateral de la página | 0 | 0 |
+| Letra de menos de 16 px | 0 | 0 |
+| Texto que se sale de su caja | 28 | 26 (los mismos, menos 2) |
+| Botones, píldoras y pestañas en dos líneas | 67 | 67 (los mismos) |
+| Tablas más anchas que su cuadro, sin desplazamiento propio | 0 | 0 |
+| Control más bajo | 36 px (pestañas de Administración, punto pendiente) | 36 px |
+
+En 1366 y 1920 px no se parte ningún botón: lo que va en dos líneas es la marca del menú y las tarjetas de tipo de reporte, que llevan título y descripción a propósito.
+
+**Pendiente:** `npm ci` con el lockfile sin Inter. Al detener el servidor de desarrollo quedó un proceso en el puerto 3000 que no se pudo cerrar, y `npm ci` no se corre con el servidor arriba. `npm ls --package-lock-only` no marca a Inter como faltante ni sobrante.
+
 ## Pantallas y rutas
 
 Grupos: **a** Inicio y Búsqueda · **b** Ficha · **c** Revisar pendientes · **d** Importación · **e** Reportes · **f** Administración · **g** Acceso, contraseña y estado.

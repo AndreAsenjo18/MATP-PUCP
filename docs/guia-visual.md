@@ -46,8 +46,8 @@ La dirección B usa la paleta existente, más un color solo decorativo medido en
 
 | Token | Valor | Uso |
 |---|---|---|
-| `font-heading` | Manrope Variable (autoalojada; respaldo `system-ui`) | Todos los títulos (`h1`, `h2`, `h3`) y, enteros, el Inicio, el menú y las cabeceras, como en la maqueta B |
-| `font-sans` | Inter Variable | Texto de lectura de las pantallas de trabajo |
+| `font-heading` | Manrope Variable (autoalojada; respaldo `system-ui`) | Títulos (`h1`, `h2`, `h3`) |
+| `font-sans` | Manrope Variable | Todo lo demás: cuerpo, formularios, tablas, botones y píldoras. Como en la maqueta B, toda la aplicación va en Manrope |
 | `text-titulo` | 36 a 64 px, fluido (`clamp`) | Título de la cabecera principal (Inicio) |
 | `text-titulo-trabajo` | 28 a 40 px, fluido | Título de la cabecera compacta |
 | `text-xs`, `text-sm`, `text-base` | 16 px | Todo el texto de lectura |

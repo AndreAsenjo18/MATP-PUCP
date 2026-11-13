@@ -78,7 +78,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     );
   }
   return (
-    <Link href="/inicio" translate="no" className={cn(ON_DARK_CONTROL, "flex items-center gap-3 rounded-2xl px-3 py-1 font-heading")}>
+    <Link href="/inicio" translate="no" className={cn(ON_DARK_CONTROL, "flex items-center gap-3 rounded-2xl px-3 py-1")}>
       <BrandMark />
       <span className="flex flex-col">
         <span className="text-2xl font-extrabold tracking-tight">MATP</span>
@@ -219,7 +219,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
                 aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
                 title={collapsed ? "Expandir menú" : undefined}
                 onClick={toggleSidebar}
-                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 font-heading text-base font-semibold", collapsed && "justify-center px-0")}
+                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
               >
                 {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
                 {!collapsed && "Contraer menú"}

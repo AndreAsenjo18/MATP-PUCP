@@ -39,7 +39,7 @@ Declarados en `apps/web/src/app/globals.css`. Generan clases como `bg-terracota`
 | `verde-exito` / `verde-bg` | `#007438` / `#E1EFD8` | Estado correcto |
 | `ambar-alerta` / `ambar-bg` / `ambar-texto` | `#C8791E` / `#F5E4CC` / `#8A4F0C` | Advertencia: borde e icono / fondo / **texto** |
 | `carmin-peligro` / `carmin-bg` / `carmin-texto` | `#DA2A4E` / `#F7D9DF` / `#A3183A` | Error: fondo sólido y borde / fondo suave / **texto** y hover |
-| `font-heading` / `font-sans` | Manrope / Inter (respaldo `system-ui`) | Títulos / cuerpo |
+| `font-heading` / `font-sans` | Manrope en los dos (respaldo `system-ui`) | Títulos / cuerpo |
 
 La escala de letra, los radios, las sombras, el ancho máximo y los colores de icono por tipo de tarea están en [guia-visual.md](guia-visual.md), que manda sobre esta sección desde la remodelación visual.
 

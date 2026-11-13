@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/manrope/wght.css";
 import "./globals.css";
 

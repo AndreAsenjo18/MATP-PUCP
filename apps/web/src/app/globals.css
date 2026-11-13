@@ -33,7 +33,8 @@
   --color-terracota-vivo: #e07040;
 
   --font-heading: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Toda la aplicación en Manrope, como la maqueta B (cuerpo, formularios y tablas). */
+  --font-sans: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /*
    * Escala de letra sin nada por debajo de 16 px (docs/historias-de-usuario.md, sección 1).
@@ -73,7 +74,6 @@
 
 /* Familias autoalojadas con Fontsource (importadas en app/layout.tsx; sin Google Fonts, RNF-008). */
 :root {
-  --font-inter: "Inter Variable";
   --font-manrope: "Manrope Variable";
 }
 

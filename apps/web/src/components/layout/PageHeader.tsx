@@ -45,7 +45,7 @@ export function PageHeader({ title, description, eyebrow, actions, children, siz
   return (
     <header
       className={cn(
-        "relative isolate overflow-hidden rounded-panel bg-terracota font-heading text-crema shadow-sm",
+        "relative isolate overflow-hidden rounded-panel bg-terracota text-crema shadow-sm",
         // Compacta: de 96 px (solo título) a 128 px (título y dos líneas de ayuda), centrada en alto.
         large ? "px-6 py-8 sm:px-10 sm:py-10" : "flex min-h-24 flex-col justify-center px-5 py-4 sm:px-7",
         className,

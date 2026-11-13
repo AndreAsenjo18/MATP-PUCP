@@ -81,8 +81,12 @@ describe("tokens del sistema de diseño (globals.css)", () => {
     expect(GLOBALS_CSS).toMatch(/--font-sans:[^;]*system-ui/);
   });
 
-  it("los títulos usan Manrope autoalojada, sin las tipografías anteriores (docs/guia-visual.md)", () => {
+  it("toda la aplicación usa Manrope autoalojada, sin las tipografías anteriores (docs/guia-visual.md)", () => {
     expect(GLOBALS_CSS).toMatch(/--font-heading:\s*var\(--font-manrope\)/);
+    // Toda la aplicación en Manrope (cuerpo, formularios y tablas), sin Inter.
+    expect(GLOBALS_CSS).toMatch(/--font-sans:\s*var\(--font-manrope\)/);
+    expect(GLOBALS_CSS).not.toMatch(/--font-inter/);
+    expect(LAYOUT).not.toMatch(/fontsource-variable\/inter/);
     expect(GLOBALS_CSS).toContain('--font-manrope: "Manrope Variable"');
     expect(GLOBALS_CSS).not.toMatch(/poppins|fraunces|--font-display/i);
     expect(LAYOUT).toContain('import "@fontsource-variable/manrope/wght.css"');
