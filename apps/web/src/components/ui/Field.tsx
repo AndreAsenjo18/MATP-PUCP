@@ -28,11 +28,16 @@ export function fieldIds(id: string, { hint, error }: Pick<FieldProps, "hint" | 
 
 /** Campos de 44 px o más, con radio alto y borde arena (docs/guia-visual.md). */
 export const CONTROL_STYLES =
-  "w-full min-h-11 rounded-md border bg-white px-3.5 py-2 text-base text-tinta shadow-sm placeholder:text-gris-texto focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-terracota disabled:cursor-not-allowed disabled:bg-crema-light disabled:text-gris-texto";
+  "w-full rounded-md border bg-white px-3.5 py-2 text-base text-tinta shadow-sm placeholder:text-gris-texto focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-terracota disabled:cursor-not-allowed disabled:bg-crema-light disabled:text-gris-texto";
 
-export function controlClassName(hasError: boolean, className?: string): string {
+/** `md`: 44 px, el de siempre. `lg`: 52 px, para las barras de filtros (maqueta B de Buscar). */
+export type ControlSize = "md" | "lg";
+
+const CONTROL_SIZES: Record<ControlSize, string> = { md: "min-h-11", lg: "min-h-13" };
+
+export function controlClassName(hasError: boolean, className?: string, size: ControlSize = "md"): string {
   // Con error el borde rojo se mantiene también al pasar el cursor.
-  return cn(CONTROL_STYLES, hasError ? "border-carmin-peligro" : "border-borde enabled:hover:border-gris-texto", className);
+  return cn(CONTROL_STYLES, CONTROL_SIZES[size], hasError ? "border-carmin-peligro" : "border-borde enabled:hover:border-gris-texto", className);
 }
 
 export function Field({

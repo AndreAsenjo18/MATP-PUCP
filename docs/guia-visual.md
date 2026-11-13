@@ -96,6 +96,11 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 - **Las demás tareas:** tarjetas blancas en una fila (dos columnas bajo 1280 px y una bajo 640 px), con el icono en un cuadrado redondeado de color suave: añil para cargar, ámbar para revisar (con la insignia «N por revisar»), ciruela para reportes y piedra para configuración.
 - **«El catálogo hoy»:** píldoras `StatChip`, el total en blanco y lo que falta en ámbar suave, como enlaces con flecha.
 
+## Buscar (maqueta B)
+
+- **Tarjeta de filtros** arriba: el buscador en píldora y, debajo, los filtros en una fila de listas de 52 px, alineadas por abajo. «Limpiar filtros» en píldora blanca con borde.
+- **Resultados en filas** de 84 px o más, una bajo otra, con `gap` de 12 px. Toda la fila es el enlace; sube 2 px al pasar el cursor.
+
 ## Movimiento
 
 - Solo se anima el desplazamiento (`translate`), en 150 ms: tarjetas que suben 2 px y botones que suben 1 px al pasar el cursor.
@@ -106,13 +111,15 @@ Un solo componente, `PageHeader` (`components/layout/PageHeader.tsx`), con dos t
 
 | Componente | Archivo | Para qué |
 |---|---|---|
-| `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `outline`, `danger`; tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
+| `Button` | `components/ui/Button.tsx` | Píldora de 44 px o más. Variantes `primary` (terracota), `create` (verde), `secondary`, `neutral` (blanca con borde arena), `outline`, `danger`; tamaños `sm`, `md`, `lg` y `touch`. La etiqueta salta de línea; no se trunca |
 | `Card`, `cardClassName` | `components/ui/Card.tsx` | Superficie base: blanco, borde arena, 24 px, sombra suave. Con `interactive`: realce, foco y movimiento corto |
 | `Badge` | `components/ui/Badge.tsx` | Insignia de estado, en píldora, con texto siempre |
-| `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
+| `Field`, `Input`, `Select`, `Textarea` | `components/ui/` | Etiqueta de 16 px en negrita, campo de 44 px con radio de 14 px, ayuda y error accesibles. `controlSize="lg"` lo sube a 52 px, para las barras de filtros. Al enfocarlo, contorno terracota de 3 px que sigue el radio del campo. Las listas desplegables no usan el aspecto nativo: llevan una flecha propia (`globals.css`), y con colores forzados vuelve el control nativo |
 | `IconCircle` | `components/ui/IconCircle.tsx` | Icono en círculo de color por tipo de tarea; con `shape="square"`, en cuadrado redondeado |
 | `StatChip` | `components/ui/StatChip.tsx` | Píldora de un dato, `neutro` (blanca) o `alerta` (ámbar); con `href`, es enlace y lleva flecha |
 | `BrandMark` | `components/brand/TextileMotif.tsx` | Rombo de la marca, decorativo |
+| `SearchPill` | `components/ui/SearchPill.tsx` | Buscador en píldora con la lupa y el botón oscuro «Buscar» dentro; sobre terracota (Inicio) o sobre blanco (Buscar) |
+| `PieceCard` | `components/domain/PieceCard.tsx` | Fila de resultado: código en terracota, nombre, colección y ubicación, insignias y flecha; toda la fila es el enlace |
 | `PageHeader`, `PageBackLink`, `headerActionClassName` | `components/layout/PageHeader.tsx` | Cabecera grande o compacta, enlace para volver y acciones en la banda |
 | `MainLayout`, `Sidebar`, `MenuAccount` | `components/layout/` | Estructura, menú y cuenta |
 

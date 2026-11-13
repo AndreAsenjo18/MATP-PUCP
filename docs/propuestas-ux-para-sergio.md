@@ -88,6 +88,20 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Propuesta:** que la versión de demostración también lea `q` de la dirección, como ya hace con «Solo piezas incompletas». Es un cambio de lógica, así que no lo apliqué.
 - **Motivo:** en una demostración parece que el buscador del Inicio no hace nada.
 
+### 9. El botón «Buscar» de Buscar no hace nada nuevo
+
+- **Pantalla:** Buscar.
+- **Hoy:** la maqueta B pone un botón oscuro «Buscar» dentro del campo. Está, pero los resultados ya cambian mientras se escribe, así que pulsarlo no hace nada más.
+- **Propuesta:** que al pulsarlo lleve el foco a «N resultados», para que quien usa el teclado o un lector de pantalla llegue a la lista, o quitar el botón en esta pantalla.
+- **Motivo:** un botón que no responde confunde.
+
+### 10. Textos de la maqueta B en Buscar
+
+- **Pantalla:** Buscar.
+- **Hoy:** «Búsqueda», «14 resultados» y el buscador con la etiqueta «Código o texto».
+- **En la maqueta:** «Buscar piezas» con la ayuda «Encuentre una pieza por su código, su nombre o su categoría.», «14 piezas encontradas» y «Toque una pieza para abrir su ficha».
+- **Propuesta:** decidir si se adoptan; coinciden con el nombre del menú («Buscar») y son más claros que «resultados».
+
 ### 8. Textos de ejemplo cortados a 320 px
 
 - **Pantallas:** el buscador del Inicio («Código o nombre, por ejemplo I-0236») y el de Buscar («p. ej. I-0236, mmz 15, cerámica huánuco»).

@@ -137,6 +137,15 @@ describe("ConfirmButton", () => {
 });
 
 describe("PieceCard", () => {
+  it("es una fila (maqueta B): todo es un solo enlace de 84 px o más, con foco visible y una flecha", () => {
+    const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toMatch(/^<a [^>]*class="[^"]*min-h-21/);
+    expect(html).toContain("focus-visible:outline-3");
+    expect(html).toContain("motion-safe:hover:-translate-y-0.5");
+    expect(html.match(/<svg /g)!.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("una pieza en comodato muestra el badge Comodato y el aviso Sin código I", () => {
     const html = render(<PieceCard {...pieceCardProps(toSummary(loanPiece), alertsForPiece(loanPiece))} />);
     expect(html).toContain(`href="/piezas/${loanPiece.id}"`);
@@ -151,7 +160,7 @@ describe("PieceCard", () => {
     expect(html).toContain("text-ambar-texto");
   });
 
-  it("muestra el código en monoespaciada terracota y trunca títulos largos", () => {
+  it("muestra el código en monoespaciada terracota y no corta los títulos largos: saltan de línea", () => {
     const html = render(
       <PieceCard
         href="/piezas/x"
@@ -165,7 +174,8 @@ describe("PieceCard", () => {
     );
     expect(html).toContain("font-mono");
     expect(html).toContain("text-terracota");
-    expect(html).toContain("line-clamp-2");
+    expect(html).not.toContain("line-clamp");
+    expect(html).toContain("break-words");
     expect(visibleText(html)).toContain("Sin colección");
     expect(visibleText(html)).toContain("Sin ubicación");
     expect(visibleText(html)).not.toContain("Sin foto");

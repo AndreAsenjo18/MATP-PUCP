@@ -14,7 +14,9 @@ import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { LocationTreeSelect, type LocationTreeActions } from "@/components/domain/LocationTreeSelect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import type { ControlSize } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { SearchPill } from "@/components/ui/SearchPill";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { fetchLocationsTree, type LocationNode } from "@/lib/data/locations";
@@ -63,14 +65,16 @@ function OptionSelect({
   value,
   options,
   onChange,
+  size,
 }: {
   label: string;
   value: string | null;
   options: TermOption[];
   onChange: (value: string | null) => void;
+  size?: ControlSize;
 }) {
   return (
-    <Select label={label} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)}>
+    <Select label={label} value={value ?? ""} onChange={(event) => onChange(event.target.value || null)} controlSize={size}>
       <option value="">Todas</option>
       {options.map((option) => (
         <option key={option.id} value={option.id}>
@@ -112,23 +116,28 @@ export function FiltersDrawer({
 /** Ayuda única del buscador (rediseno-ux-busqueda D2): reemplaza al subtítulo de la pantalla. */
 export const SEARCH_BOX_HINT = "Cualquier código, vigente o histórico, con o sin formato. No distingue mayúsculas ni tildes.";
 
-/** Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1). */
+/**
+ * Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1).
+ * Píldora con el botón «Buscar» dentro (maqueta B). La búsqueda ya se aplica mientras se escribe, así
+ * que enviar el formulario no hace nada más: no recarga la página.
+ */
 export function SearchBox({ value, onChange }: { value: string; onChange: (q: string) => void }) {
   return (
-    <div role="search" className="max-w-3xl">
-      <Input
+    <form role="search" onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-1.5">
+      <label htmlFor="q" className="text-base font-semibold text-tinta">
+        Código o texto
+      </label>
+      <SearchPill
         id="q"
-        type="search"
-        label="Código o texto"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
-        hint={SEARCH_BOX_HINT}
-        autoComplete="off"
-        spellCheck={false}
-        className="p-3 lg:p-2.5"
+        aria-describedby="q-hint"
       />
-    </div>
+      <p id="q-hint" className="text-base text-gris-texto">
+        {SEARCH_BOX_HINT}
+      </p>
+    </form>
   );
 }
 
@@ -141,6 +150,7 @@ export function SearchFiltersPanel({
   locationActions,
   locationNotice = null,
   withQuery = true,
+  layout = "columna",
 }: {
   filters: SearchFilters;
   options: SearchOptions;
@@ -156,8 +166,17 @@ export function SearchFiltersPanel({
    * porque lo muestra arriba y siempre a la vista (`SearchBox`, rediseno-ux-busqueda D1).
    */
   withQuery?: boolean;
+  /**
+   * `columna`: en su propia tarjeta, un filtro bajo otro (Reportes). `fila`: sin tarjeta, en una
+   * cuadrícula de campos de 52 px, para ir dentro de la tarjeta de filtros de Buscar (maqueta B).
+   */
+  layout?: "columna" | "fila";
 }) {
   const secondary = secondaryFiltersActive(filters);
+  const fila = layout === "fila";
+  // Los campos se alinean por abajo: si una etiqueta salta de línea, su campo no se descuadra.
+  const fields = fila ? "grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-4" : "flex flex-col gap-4";
+  const size = fila ? "lg" : "md";
   const [moreOpen, setMoreOpen] = useState(secondary || openMore);
   // Se abre al llegar un filtro secundario; ajustar el estado al renderizar evita un efecto.
   const [wasSecondary, setWasSecondary] = useState(secondary);
@@ -166,8 +185,8 @@ export function SearchFiltersPanel({
     if (secondary) setMoreOpen(true);
   }
 
-  return (
-    <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
+  const body = (
+    <>
       {withQuery && (
         <Input
           id="q"
@@ -179,46 +198,56 @@ export function SearchFiltersPanel({
           className="p-2.5"
         />
       )}
-      <Input
-        id="denomination"
-        label="Denominación"
-        value={filters.denomination}
-        onChange={(event) => onChange({ denomination: event.target.value })}
-        placeholder="p. ej. mate burilado"
-      />
-      <OptionSelect label="Categoría" value={filters.categoryId} options={options.categories} onChange={(categoryId) => onChange({ categoryId })} />
-      <OptionSelect label="Material" value={filters.materialId} options={options.materials} onChange={(materialId) => onChange({ materialId })} />
-      <Input
-        id="description"
-        label="Descripción contiene"
-        value={filters.description}
-        onChange={(event) => onChange({ description: event.target.value })}
-        placeholder="p. ej. paja toquilla"
-      />
+      <div className={fields}>
+        <Input
+          id="denomination"
+          label="Denominación"
+          value={filters.denomination}
+          onChange={(event) => onChange({ denomination: event.target.value })}
+          placeholder="p. ej. mate burilado"
+          controlSize={size}
+        />
+        <OptionSelect label="Categoría" value={filters.categoryId} options={options.categories} onChange={(categoryId) => onChange({ categoryId })} size={size} />
+        <OptionSelect label="Material" value={filters.materialId} options={options.materials} onChange={(materialId) => onChange({ materialId })} size={size} />
+        <Input
+          id="description"
+          label="Descripción contiene"
+          value={filters.description}
+          onChange={(event) => onChange({ description: event.target.value })}
+          placeholder="p. ej. paja toquilla"
+          controlSize={size}
+        />
+      </div>
       <details open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)} className="group">
         <DisclosureSummary>{withActiveCount("Más filtros", secondaryFiltersCount(filters))}</DisclosureSummary>
-        <div className="mt-2 flex flex-col gap-4">
+        <div className={cn("mt-2", fields)}>
           <OptionSelect
             label="Colección (con subcolecciones)"
             value={filters.collectionId}
             options={options.collections}
             onChange={(collectionId) => onChange({ collectionId })}
+            size={size}
           />
           <OptionSelect
             label="Estado de conservación"
             value={filters.conservationStateId}
             options={options.conservationStates}
             onChange={(conservationStateId) => onChange({ conservationStateId })}
+            size={size}
           />
-          <LocationTreeSelect
-            label="Ubicación"
-            nodes={options.locationTree}
-            value={filters.locationId}
-            onChange={(locationId) => onChange({ locationId })}
-            actions={locationActions}
-            notice={locationNotice}
-          />
+          {/* El árbol de lugares necesita el ancho entero de la fila. */}
+          <div className={fila ? "sm:col-span-full" : undefined}>
+            <LocationTreeSelect
+              label="Ubicación"
+              nodes={options.locationTree}
+              value={filters.locationId}
+              onChange={(locationId) => onChange({ locationId })}
+              actions={locationActions}
+              notice={locationNotice}
+            />
+          </div>
           <Select
+            controlSize={size}
             label="Régimen de tenencia"
             value={filters.tenureRegime ?? ""}
             onChange={(event) => onChange({ tenureRegime: (event.target.value || null) as TenureRegimeLabel | null })}
@@ -231,6 +260,7 @@ export function SearchFiltersPanel({
             ))}
           </Select>
           <Select
+            controlSize={size}
             label="Código I"
             value={filters.hasInventoryCode === null ? "" : String(filters.hasInventoryCode)}
             onChange={(event) => onChange({ hasInventoryCode: toBoolean(event.target.value) })}
@@ -241,21 +271,24 @@ export function SearchFiltersPanel({
           </Select>
           <div className="grid grid-cols-2 gap-2">
             <Input
+              controlSize={size}
               label="Época desde (año)"
               type="number"
               value={filters.epochStartYear ?? ""}
               onChange={(event) => onChange({ epochStartYear: toYear(event.target.value) })}
             />
             <Input
+              controlSize={size}
               label="Época hasta (año)"
               type="number"
               value={filters.epochEndYear ?? ""}
               onChange={(event) => onChange({ epochEndYear: toYear(event.target.value) })}
             />
           </div>
-          <Input id="author" label="Autor" value={filters.author} onChange={(event) => onChange({ author: event.target.value })} />
-          <Input id="provenance" label="Procedencia" value={filters.provenance} onChange={(event) => onChange({ provenance: event.target.value })} />
+          <Input id="author" label="Autor" value={filters.author} onChange={(event) => onChange({ author: event.target.value })} controlSize={size} />
+          <Input id="provenance" label="Procedencia" value={filters.provenance} onChange={(event) => onChange({ provenance: event.target.value })} controlSize={size} />
           <Select
+            controlSize={size}
             label="Completitud de la ficha"
             value={filters.hasAlerts === null ? "" : String(filters.hasAlerts)}
             onChange={(event) => onChange({ hasAlerts: toBoolean(event.target.value) })}
@@ -266,9 +299,15 @@ export function SearchFiltersPanel({
           </Select>
         </div>
       </details>
-      <Button variant="secondary" icon={Eraser} onClick={onClear}>
+      <Button variant={fila ? "neutral" : "secondary"} icon={Eraser} onClick={onClear} className={fila ? "self-start sm:self-end" : undefined}>
         Limpiar filtros
       </Button>
+    </>
+  );
+  if (fila) return <div className="flex flex-col gap-4">{body}</div>;
+  return (
+    <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
+      {body}
     </Card>
   );
 }

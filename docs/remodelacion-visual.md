@@ -137,6 +137,32 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
 
+## Buscar según la maqueta B (imagen 2, izquierda)
+
+Recibida el 2026-11-13. Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px.
+
+**Qué cambió (mismos filtros, textos y lógica, en los dos modos):**
+
+- **Tarjeta blanca de filtros** arriba, a todo el ancho, en lugar de la columna lateral. Dentro, el buscador «Código o texto» como píldora con la lupa y el botón oscuro «Buscar» (`SearchPill`), y debajo los filtros en una fila. Las listas miden 52 px (`controlSize="lg"`). En demostración, las cinco listas van en una fila desde 1280 px; con datos reales, los cuatro filtros principales y «Más filtros» con los demás. «Limpiar filtros» va en píldora blanca con borde (variante `neutral` de `Button`).
+- **Resultados en filas** de 84 px o más (`PieceCard`): el código en terracota, el nombre grande, debajo la colección y la ubicación en tono tenue, las insignias (tenencia, alertas, «Sin foto») y una flecha. Toda la fila es el enlace, con foco visible. Por debajo de 1024 px se apilan; con datos reales, la casilla para mover piezas queda al lado de la fila. Los nombres largos saltan de línea en vez de cortarse a dos líneas.
+- **Paginación, orden, exportación y «Ver por ubicación»:** sin cambios.
+
+**Lo que no sigue a la imagen, y por qué:**
+
+| En la imagen | En la aplicación | Motivo |
+|---|---|---|
+| Título «Buscar piezas» y la ayuda «Encuentre una pieza por su código, su nombre o su categoría.» | «Búsqueda», sin ayuda en la banda | No se cambian textos fuera del Inicio; la ayuda de siempre está bajo el buscador |
+| «14 piezas encontradas» y «Toque una pieza para abrir su ficha» | «14 resultados» | Mismo motivo |
+| Buscador sin etiqueta | Con la etiqueta «Código o texto» y su ayuda | Mismo motivo, y el campo necesita su nombre visible |
+| Tres listas: Categoría, Estado de conservación y Fotografías | Las listas reales: Colección, Categoría, Material, Estado de conservación y Régimen de tenencia, más las dos casillas | No se inventan filtros |
+| Subtítulo «Cerámica · Puno» (categoría y procedencia) | Colección y ubicación | Son los datos que trae cada resultado |
+| Una insignia de estado de conservación | Tenencia, alertas y «Sin foto» | Mismo motivo |
+| «Nueva pieza» no aparece | En la banda | Es la acción principal de la pantalla y ya existía |
+
+El botón «Buscar» envía el formulario, pero la búsqueda ya se aplica mientras se escribe, así que no hace nada más. Anotado para Sergio (propuesta 9).
+
+**Verificación:** Buscar, Inicio y Reportes en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px.
+
 ## Tipografía: Manrope en toda la aplicación
 
 Decidido por André el 2026-11-13: el cuerpo, los formularios y las tablas pasan de Inter a Manrope, como toda la maqueta B. Se retira `@fontsource-variable/inter`.

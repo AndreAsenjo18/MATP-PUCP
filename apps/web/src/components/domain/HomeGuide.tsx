@@ -4,13 +4,14 @@
  * tarjetas blancas y las píldoras del estado del catálogo. Solo presentación; la pantalla hace las
  * consultas.
  */
-import { ArrowRight, ChartNoAxesColumn, ClipboardCheck, Plus, Search, SlidersHorizontal, Upload, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChartNoAxesColumn, ClipboardCheck, Plus, SlidersHorizontal, Upload, type LucideIcon } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
 import { useId } from "react";
 
 import { cardClassName } from "@/components/ui/Card";
 import { IconCircle, type Tone } from "@/components/ui/IconCircle";
+import { SearchPill } from "@/components/ui/SearchPill";
 import { StatChip, type StatChipTone } from "@/components/ui/StatChip";
 import { cn } from "@/lib/cn";
 import { pendingLabel, statusParts, type CatalogStatus, type StatusPart, type Task, type TaskId } from "@/lib/help/tasks";
@@ -35,29 +36,7 @@ export function HomeSearch({ task }: { task: Task }) {
       <label htmlFor={id} className="text-lg font-bold">
         {task.verb}
       </label>
-      {/* Una píldora con el botón dentro; bajo 640 px el botón pasa a su propia fila para dejarle sitio al campo. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-1.5 shadow-sm has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-crema sm:flex-nowrap sm:rounded-full">
-        <span className="flex min-w-0 flex-1 basis-48 items-center gap-2 pl-3.5">
-          <Search size={20} aria-hidden="true" className="shrink-0 text-terracota" />
-          <input
-            id={id}
-            name="q"
-            type="search"
-            autoComplete="off"
-            spellCheck={false}
-            enterKeyHint="search"
-            placeholder="Código o nombre, por ejemplo I-0236"
-            aria-describedby={hintId}
-            className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-base text-tinta placeholder:text-gris-texto focus-visible:outline-none"
-          />
-        </span>
-        <button
-          type="submit"
-          className="min-h-11 w-full shrink-0 rounded-full bg-tinta px-6 py-2 text-base font-bold text-crema hover:bg-black focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota sm:w-auto"
-        >
-          Buscar
-        </button>
-      </div>
+      <SearchPill sobre="terracota" id={id} name="q" placeholder="Código o nombre, por ejemplo I-0236" aria-describedby={hintId} />
       <p id={hintId} className="text-base">
         {task.description}
       </p>

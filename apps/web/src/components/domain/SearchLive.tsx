@@ -205,7 +205,8 @@ export function SearchResults({
           {selection && onSelectionChange && (
             <PageSelection hits={page.items} selection={selection} onSelectionChange={onSelectionChange} />
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* Una fila por pieza (maqueta B); toda la fila es el enlace a la ficha. */}
+          <div className="flex flex-col gap-3">
             {page.items.map((hit) => {
               const card = (
                 <PieceCard
@@ -217,15 +218,15 @@ export function SearchResults({
                 />
               );
               if (!selection || !onSelectionChange) return <div key={hit.piece.id}>{card}</div>;
-              // La casilla va al lado de la tarjeta, que es un enlace a la ficha.
+              // La casilla va al lado de la fila, que es un enlace a la ficha.
               return (
-                <div key={hit.piece.id} className="flex items-start gap-2">
+                <div key={hit.piece.id} className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={selection.has(hit.piece.id)}
                     onChange={() => onSelectionChange(toggleSelected(selection, hit))}
                     aria-label={`Seleccionar ${hit.piece.denomination}`}
-                    className="mt-3 size-7 shrink-0 accent-terracota lg:mt-4 lg:size-6"
+                    className="size-7 shrink-0 accent-terracota lg:size-6"
                   />
                   <div className="min-w-0 flex-1">{card}</div>
                 </div>
@@ -646,38 +647,41 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
           )
         }
       />
-      {/* El buscador queda a la vista en todos los tamaños, fuera de «Filtros» (rediseno-ux-busqueda D1). */}
-      <SearchBox value={filters.q} onChange={(q) => update({ q })} />
-
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
-          <SearchFiltersPanel
-            key={locationRevealKey}
-            withQuery={false}
-            filters={filters}
-            options={options}
-            onChange={update}
-            onClear={() => setFilters(EMPTY_FILTERS)}
-            openMore={locationRevealKey > 0}
-            locationActions={
-              canManagePlaces
-                ? {
-                    onAdd: (node) => setPlaceAction({ kind: "add", node }),
-                    onEdit: (node) => setPlaceAction({ kind: "edit", node }),
-                    onDeactivate: (node) => setPlaceAction({ kind: "deactivate", node }),
-                  }
-                : undefined
-            }
-            locationNotice={placeNotice}
-          />
-        </FiltersDrawer>
+      <div className="flex flex-col gap-6">
+        {/* Tarjeta de filtros de la maqueta B. El buscador queda a la vista en todos los tamaños, fuera de
+            «Filtros», que en tableta se abre con un botón (rediseno-ux-busqueda D1). */}
+        <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-5">
+          <SearchBox value={filters.q} onChange={(q) => update({ q })} />
+          <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
+            <SearchFiltersPanel
+              layout="fila"
+              key={locationRevealKey}
+              withQuery={false}
+              filters={filters}
+              options={options}
+              onChange={update}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              openMore={locationRevealKey > 0}
+              locationActions={
+                canManagePlaces
+                  ? {
+                      onAdd: (node) => setPlaceAction({ kind: "add", node }),
+                      onEdit: (node) => setPlaceAction({ kind: "edit", node }),
+                      onDeactivate: (node) => setPlaceAction({ kind: "deactivate", node }),
+                    }
+                  : undefined
+              }
+              locationNotice={placeNotice}
+            />
+          </FiltersDrawer>
+        </Card>
         <LocationPlaceDialogs action={placeAction} nodes={options.locationTree} devUser={devUser} onClose={() => setPlaceAction(null)} onChanged={handlePlaceChanged} />
 
         {/* En tableta la barra de la selección va fija abajo: el final de la lista queda a la vista. */}
         <section className={cn("flex flex-col gap-4", canMove && (selection.size > 0 || feedback) && "pb-48 lg:pb-0")} aria-label="Resultados">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-base text-gris-texto" aria-live="polite">
-              <strong className="text-tinta">{result?.total ?? 0}</strong> resultado{result?.total === 1 ? "" : "s"}
+            <p className="text-lg font-bold text-tinta" aria-live="polite">
+              {result?.total ?? 0} resultado{result?.total === 1 ? "" : "s"}
             </p>
             <Button
               variant="outline"

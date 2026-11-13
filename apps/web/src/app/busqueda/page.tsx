@@ -84,10 +84,10 @@ function BusquedaContent() {
           )
         }
       />
-      <SearchBox value={q} onChange={setQ} />
-
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-4">
+      {/* Tarjeta de filtros de la maqueta B: el buscador arriba y los filtros en una fila. */}
+      <Card as="aside" aria-label="Filtros de búsqueda" className="flex flex-col gap-5">
+        <SearchBox value={q} onChange={setQ} />
+        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <FilterSelect label="Colección" value={collectionId} onChange={setCollectionId} options={COLLECTIONS.map((c) => ({ value: c.id, label: c.name }))} />
           <FilterSelect label="Categoría" value={categoryCode} onChange={setCategoryCode} options={categories.map((c) => ({ value: c.code, label: c.label }))} />
           <FilterSelect label="Material" value={materialCode} onChange={setMaterialCode} options={materials.map((c) => ({ value: c.code, label: c.label }))} />
@@ -102,55 +102,57 @@ function BusquedaContent() {
               { value: "Préstamo Temporal", label: "Préstamo temporal" },
             ]}
           />
-
-          <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
-            <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} className="size-5 accent-terracota" />
-            Solo piezas incompletas
-          </label>
-
-          <label className="flex min-h-11 items-center gap-2 text-sm text-tinta">
-            <input type="checkbox" checked={withoutInventoryCode} onChange={(event) => setWithoutInventoryCode(event.target.checked)} className="size-5 accent-terracota" />
-            Solo piezas sin código I
-          </label>
-
-          <Button variant="secondary" icon={Eraser} onClick={clearFilters}>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          <div className="flex flex-wrap gap-x-6">
+            <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
+              <input type="checkbox" checked={incompleteOnly} onChange={(event) => setIncompleteOnly(event.target.checked)} className="size-5 accent-terracota" />
+              Solo piezas incompletas
+            </label>
+            <label className="flex min-h-11 items-center gap-2 text-base text-tinta">
+              <input type="checkbox" checked={withoutInventoryCode} onChange={(event) => setWithoutInventoryCode(event.target.checked)} className="size-5 accent-terracota" />
+              Solo piezas sin código I
+            </label>
+          </div>
+          <Button variant="neutral" icon={Eraser} onClick={clearFilters}>
             Limpiar filtros
           </Button>
-        </Card>
+        </div>
+      </Card>
 
-        <section className="flex flex-col gap-3" aria-label="Resultados">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-base text-gris-texto">
-              <strong className="text-tinta">{result.total}</strong> resultado{result.total === 1 ? "" : "s"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {hasPermission("exports.run") && (
-                <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
-                  Exportar a Excel
-                </Button>
-              )}
-            </div>
-          </div>
-          {exported && (
-            <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-sm text-verde-exito">
-              En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con estos resultados.
-            </p>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {result.items.map((piece) => {
-              const detail = getPieceDetail(piece.id);
-              return <PieceCard key={piece.id} {...pieceCardProps(piece, detail ? alertsForPiece(detail) : [])} />;
-            })}
-            {result.items.length === 0 && (
-              <Card className="flex flex-col items-center gap-2 border-dashed text-center text-base text-gris-texto sm:col-span-2">
-                <SearchX size={24} aria-hidden="true" />
-                No se encontraron piezas con estos filtros.
-              </Card>
+      <section className="flex flex-col gap-3" aria-label="Resultados">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-lg font-bold text-tinta">
+            {result.total} resultado{result.total === 1 ? "" : "s"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {hasPermission("exports.run") && (
+              <Button variant="outline" icon={FileSpreadsheet} onClick={() => setExported(true)}>
+                Exportar a Excel
+              </Button>
             )}
           </div>
-        </section>
-      </div>
+        </div>
+        {exported && (
+          <p role="status" className="rounded-md bg-verde-bg px-3 py-2 text-base text-verde-exito">
+            En el modo demostración no se genera el archivo; con datos reales se descarga un Excel con estos resultados.
+          </p>
+        )}
+
+        {/* Una fila por pieza (maqueta B); toda la fila es el enlace a la ficha. */}
+        <div className="flex flex-col gap-3">
+          {result.items.map((piece) => {
+            const detail = getPieceDetail(piece.id);
+            return <PieceCard key={piece.id} {...pieceCardProps(piece, detail ? alertsForPiece(detail) : [])} />;
+          })}
+          {result.items.length === 0 && (
+            <Card className="flex flex-col items-center gap-2 border-dashed text-center text-base text-gris-texto">
+              <SearchX size={24} aria-hidden="true" />
+              No se encontraron piezas con estos filtros.
+            </Card>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -167,7 +169,7 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <Select label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+    <Select label={label} value={value} onChange={(event) => onChange(event.target.value)} controlSize="lg">
       <option value="">Todas</option>
       {options.map((option) => (
         <option key={option.value} value={option.value}>

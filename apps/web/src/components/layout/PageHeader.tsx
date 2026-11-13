@@ -60,7 +60,7 @@ export function PageHeader({ title, description, eyebrow, actions, children, siz
           large ? "w-[40%]" : "w-[min(34%,20rem)] [--trama-tamano:3.5rem]",
         )}
       />
-      <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : "gap-4 md:pr-[min(28%,16rem)] lg:flex-row lg:items-center lg:justify-between")}>
+      <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : "gap-4 md:flex-row md:items-center md:justify-between md:pr-[min(28%,16rem)]")}>
         <div className="flex min-w-0 flex-col gap-1.5">
           {eyebrow && <p className="text-base font-semibold">{eyebrow}</p>}
           <h1 id={titleId} className={cn("text-balance break-words", large ? "text-titulo" : "text-titulo-trabajo")}>
