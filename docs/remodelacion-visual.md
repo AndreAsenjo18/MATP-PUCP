@@ -18,7 +18,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 2d | Importación e importación de fotos | Hecha, esperando revisión |
 | 2e | Reportes y vista de impresión | Hecha, esperando revisión |
 | 2f | Administración | Hecha, esperando revisión |
-| 2g | Acceso, cambio de contraseña y estado | Pendiente |
+| 2g | Acceso, cambio de contraseña, estado y 404 | Hecha, esperando revisión |
 | 3 | Cierre: consistencia, capturas «después», informe | Pendiente |
 
 ## Qué queda del piloto y qué se hace con cada cosa
@@ -136,6 +136,22 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 **Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
+## Grupo 2g: acceso, cambio de contraseña, estado y 404
+
+Sin maqueta propia: el mismo lenguaje que el resto. Comparado a 1366 × 768, 150 % y 50 %, y verificado a 320 px.
+
+**Qué cambió:**
+
+- **Acceso** (demostración y real), **Cambiar contraseña** (con y sin sesión) y **Estado de los servicios** abren con la banda terracota y la trama, centrados, con los mismos textos de siempre; «Uso interno · Fase 1» va como texto chico sobre el título. El acceso, el cambio de contraseña y la 404 usan una columna de 672 px para que el título quepa en dos líneas junto a la trama.
+- **404** (`app/not-found.tsx`, nueva): hasta ahora se veía la página por defecto de Next.js, en inglés. Ahora tiene la banda con «No encontramos esta página», una línea de ayuda y «Ir al inicio». Con sesión lleva el menú; sin sesión, no.
+- **Sin menú donde hoy no lo hay:** el acceso y las pantallas sin sesión siguen sin menú lateral.
+
+**Textos nuevos (la 404 no tenía textos en español):** «No encontramos esta página», «La dirección no existe o cambió. Vuelva al inicio para seguir desde allí.» e «Ir al inicio». Anotados para Sergio (aviso A5).
+
+**Lo que no se hizo, y por qué:** no se creó una pantalla de error (`app/error.tsx`): capturar los errores de la aplicación es un comportamiento nuevo, no solo diseño. Queda anotado para Sergio (propuesta 14).
+
+**Verificación:** acceso, Estado y Cambiar contraseña en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px y sin controles de menos de 44 px; la 404, con y sin sesión, a 1366 px y a 320 px.
 
 ## Grupo 2f: Administración (maqueta B de Administración)
 

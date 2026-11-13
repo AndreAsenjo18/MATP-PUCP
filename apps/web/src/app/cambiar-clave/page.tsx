@@ -8,6 +8,7 @@ import { KeyRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -25,7 +26,8 @@ export default function ChangePasswordPage() {
 
   if (!session?.live) {
     return (
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-4 px-4 py-10">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-10">
+        <PageHeader title="Cambiar contraseña" />
         <p className="text-base text-tinta">Inicie sesión para cambiar su contraseña.</p>
         <Button onClick={() => router.push("/")}>Ir al inicio de sesión</Button>
       </main>
@@ -34,15 +36,11 @@ export default function ChangePasswordPage() {
   const live = session.live;
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center gap-8 px-4 py-10">
-      <header className="flex flex-col gap-2 text-center">
-        <h1 className="text-3xl font-bold text-tinta">Cambiar contraseña</h1>
-        {live.mustChangePassword && (
-          <p className="text-base text-gris-texto">
-            Su contraseña es temporal: defina una nueva para continuar.
-          </p>
-        )}
-      </header>
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-10">
+      <PageHeader
+        title="Cambiar contraseña"
+        description={live.mustChangePassword ? "Su contraseña es temporal: defina una nueva para continuar." : undefined}
+      />
       <Card as="section" aria-label="Cambio de contraseña" className="p-6">
         <form
           className="flex flex-col gap-5"

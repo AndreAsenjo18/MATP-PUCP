@@ -41,6 +41,13 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Ahora:** cada tarjeta lleva una etiqueta corta, tomada de la maqueta B: «Para piezas nuevas» (Solo Excel), «Para fotos» (Solo imágenes) y «Paso a paso» (Excel e imágenes).
 - **Motivo:** André las pidió expresamente para el grupo de Importación.
 
+### A5. Página no encontrada (404) en español
+
+- **Pantalla:** cualquier dirección que no existe.
+- **Antes:** la página por defecto de Next.js, en inglés («404 · This page could not be found.»).
+- **Ahora:** la banda terracota con «No encontramos esta página», la ayuda «La dirección no existe o cambió. Vuelva al inicio para seguir desde allí.» y el botón «Ir al inicio».
+- **Motivo:** André pidió dar a la 404 el mismo lenguaje visual; no había textos en español que conservar.
+
 ## Urgentes: textos que la remodelación deja desactualizados
 
 ### 2. Manual de usuario con los nombres antiguos del menú
@@ -134,6 +141,13 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Hoy:** «Búsqueda», «14 resultados» y el buscador con la etiqueta «Código o texto».
 - **En la maqueta:** «Buscar piezas» con la ayuda «Encuentre una pieza por su código, su nombre o su categoría.», «14 piezas encontradas» y «Toque una pieza para abrir su ficha».
 - **Propuesta:** decidir si se adoptan; coinciden con el nombre del menú («Buscar») y son más claros que «resultados».
+
+### 14. Pantalla de error
+
+- **Pantallas:** todas, cuando algo falla al mostrar una pantalla.
+- **Hoy:** no hay una pantalla de error propia: se ve la de Next.js.
+- **Propuesta:** una pantalla con la banda terracota, un mensaje claro («Algo salió mal al mostrar esta pantalla»), «Intentar de nuevo» e «Ir al inicio».
+- **Motivo:** capturar el error y ofrecer reintentar es un comportamiento nuevo, así que no se hizo dentro de la remodelación visual.
 
 ### 8. Textos de ejemplo cortados a 320 px
 

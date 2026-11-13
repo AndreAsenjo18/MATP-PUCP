@@ -23,7 +23,7 @@
 - [x] 2.4 Importación según la maqueta B: tarjetas grandes de origen con icono, etiqueta de tipo y botón redondo; pasos de los asistentes en el contenedor de las pestañas; tablas de importación con el estilo común (Req: Identidad visual «Cabecera audaz»)
 - [x] 2.5 Reportes según la maqueta B: tipos en tarjetas con icono y el elegido con borde y visto, resultado con «Exportar a Excel» en verde junto al título, cantidad como etiqueta y tabla común; la vista de impresión sigue en blanco y negro (Req: Identidad visual «Cabecera audaz»)
 - [x] 2.6 Administración según la maqueta B: áreas en el contenedor de pestañas y secciones subrayadas de 44 px, usuarios con iniciales y filas de 68 px, tablas comunes y Auditoría sin controles chicos ni textos cortados (Req: Controles compactos con color e icono en Administración)
-- [ ] 2.7 Acceso, cambio de contraseña y estado de los servicios
+- [x] 2.7 Acceso, cambio de contraseña, estado de los servicios y 404 con la banda terracota y la trama, centrados y sin menú donde no lo hay (Req: Identidad visual «Cabecera audaz»)
 
 Cada grupo cierra con la auditoría de web-design-guidelines, sus correcciones y la verificación en los siete anchos.
 
