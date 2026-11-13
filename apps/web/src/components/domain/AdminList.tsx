@@ -9,6 +9,7 @@
 import { Archive, Pencil, Plus, RotateCcw } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { AdminToolbar, FormDialog } from "@/components/domain/AdminShell";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -73,18 +74,18 @@ function AdminTable<T>({
   actions?: (item: T) => ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+    <div className={TABLE_BOX_CLASS}>
+      <table className={TABLE_CLASS}>
         <caption className="sr-only">{caption}</caption>
-        <thead className="text-xs text-gris-texto">
+        <thead className={THEAD_CLASS}>
           <tr>
             {columns.map((column) => (
-              <th key={column.header} scope="col" className={cn("py-1.5 pr-3 font-medium", column.align === "right" && "text-right")}>
+              <th key={column.header} scope="col" className={cn(TH_CLASS, column.align === "right" && "text-right")}>
                 {column.header}
               </th>
             ))}
             {actions && (
-              <th scope="col" className="py-1.5 text-right font-medium">
+              <th scope="col" className={`${TH_CLASS} text-right`}>
                 Acciones
               </th>
             )}
@@ -92,14 +93,14 @@ function AdminTable<T>({
         </thead>
         <tbody className="text-tinta">
           {items.map((item) => (
-            <tr key={rowKey(item)} className="border-t border-borde">
+            <tr key={rowKey(item)}>
               {columns.map((column) => (
-                <td key={column.header} className={cn("py-1.5 pr-3", column.align === "right" && "text-right")}>
+                <td key={column.header} className={cn(TD_CLASS, column.align === "right" && "text-right")}>
                   {column.cell(item)}
                 </td>
               ))}
               {actions && (
-                <td className="py-1.5">
+                <td className={TD_CLASS}>
                   <div className="flex flex-wrap justify-end gap-1.5">{actions(item)}</div>
                 </td>
               )}

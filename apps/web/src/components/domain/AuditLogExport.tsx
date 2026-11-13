@@ -33,7 +33,7 @@ export function AuditLogExport({ filters, available }: AuditLogExportProps) {
   return (
     // Plegado por defecto: casi nunca se usa y ocupaba un bloque entero (change `administracion-control`, D3).
     <details aria-label="Descargar en CSV" className="group flex flex-col gap-2">
-      <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start rounded-md text-sm font-medium text-terracota focus-visible:outline-2 focus-visible:outline-terracota md:min-h-9">
+      <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start rounded-md text-base font-medium text-terracota focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota">
         <Download size={18} aria-hidden="true" />
         Descargar en CSV
       </summary>

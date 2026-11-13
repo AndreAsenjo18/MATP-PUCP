@@ -113,7 +113,7 @@ export function AuditLogChangeSetList({ changeSets, hasFilters = false, openChan
                 <span>Origen: {originLabel(summary.origin)}</span>
               </p>
             </div>
-            <p className="min-w-0 truncate text-sm text-gris-texto" title={reason}>
+            <p className="min-w-0 text-sm break-words text-gris-texto" title={reason}>
               {reason}
               {summary.origin_ref && ` · Carga o sugerencia de origen: ${summary.origin_ref}`}
             </p>

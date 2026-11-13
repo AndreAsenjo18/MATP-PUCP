@@ -85,6 +85,13 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Propuesta:** «La vista para imprimir solo está disponible con los datos reales del museo.»
 - **Motivo:** muestra el nombre de una variable de configuración y la palabra «API».
 
+### 5c. «Disponible con la API (modo live)» en Administración
+
+- **Pantalla:** Administración (Catálogo y otras secciones), en modo demostración.
+- **Hoy:** «Disponible con la API (modo live).»
+- **Propuesta:** «Esta sección se usa con los datos reales del museo; en la demostración no está disponible.»
+- **Motivo:** «API» y «modo live» son términos internos.
+
 ## Coherencia de textos
 
 ### 6. «Volver a la búsqueda» y «Volver a búsqueda»

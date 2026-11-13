@@ -7,6 +7,7 @@
 import { ImageOff, Lock, MapPin, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -142,39 +143,39 @@ export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
 export function PieceIdentifiersTable({ piece, children }: { piece: PieceDetail; children?: ReactNode }) {
   return (
     <Card as="section" aria-label="Identificadores" className="flex flex-col gap-3">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-base">
-          <thead className="text-sm text-gris-texto">
+      <div className={TABLE_BOX_CLASS}>
+        <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="py-2 pr-4 font-medium">Tipo</th>
-              <th className="py-2 pr-4 font-medium">Valor original</th>
-              <th className="py-2 pr-4 font-medium">Normalizado</th>
-              <th className="py-2 pr-4 font-medium">Vigente</th>
-              <th className="py-2 pr-4 font-medium">Notas</th>
+              <th className={TH_CLASS}>Tipo</th>
+              <th className={TH_CLASS}>Valor original</th>
+              <th className={TH_CLASS}>Normalizado</th>
+              <th className={TH_CLASS}>Vigente</th>
+              <th className={TH_CLASS}>Notas</th>
             </tr>
           </thead>
           <tbody>
             {piece.identifiers.map((identifier) => (
-              <tr key={identifier.id} className="border-t border-borde align-top">
-                <td className="py-2 pr-4 font-medium text-tinta">
+              <tr key={identifier.id} className="align-top">
+                <td className={`${TD_CLASS} text-tinta`}>
                   <span className="inline-flex items-center gap-1">
                     {identifierTypeLabel(identifier.identifier_type_code)}
                     {identifier.is_locked && <Lock size={16} role="img" aria-label="Bloqueado" className="text-gris-texto" />}
                   </span>
                 </td>
-                <td className="py-2 pr-4 text-tinta">{identifier.original_value}</td>
-                <td className="py-2 pr-4 text-tinta">
+                <td className={`${TD_CLASS} text-tinta`}>{identifier.original_value}</td>
+                <td className={`${TD_CLASS} text-tinta`}>
                   {identifier.normalized_value ?? <span className="font-medium text-carmin-texto">No normalizable</span>}
                 </td>
-                <td className="py-2 pr-4">
+                <td className={TD_CLASS}>
                   <StatusBadge status={identifierCurrencyStatus(identifier.is_current)} />
                 </td>
-                <td className="py-2 pr-4 text-sm text-gris-texto">{identifier.notes ?? "—"}</td>
+                <td className={`${TD_CLASS} text-sm text-gris-texto`}>{identifier.notes ?? "—"}</td>
               </tr>
             ))}
             {piece.identifiers.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-4 text-center text-gris-texto">
+                <td colSpan={5} className={`${TD_CLASS} text-center text-gris-texto`}>
                   Sin identificadores registrados.
                 </td>
               </tr>

@@ -17,7 +17,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | 2c | Revisar pendientes | Hecha, esperando revisión |
 | 2d | Importación e importación de fotos | Hecha, esperando revisión |
 | 2e | Reportes y vista de impresión | Hecha, esperando revisión |
-| 2f | Administración | Pendiente |
+| 2f | Administración | Hecha, esperando revisión |
 | 2g | Acceso, cambio de contraseña y estado | Pendiente |
 | 3 | Cierre: consistencia, capturas «después», informe | Pendiente |
 
@@ -136,6 +136,27 @@ A 320 px el texto de ejemplo del buscador se ve cortado («Código o nombre, por
 **Verificación:** las 21 pantallas en los siete anchos, sin desplazamiento lateral ni letra de menos de 16 px. En las 11 pantallas con cabecera compacta, la trama nunca queda detrás de un texto y se oculta a 320 px. Altura de la cabecera compacta: de 96 a 128 px en 1366 px y de 96 a 129 px en 911 px; a 320 px crece hasta 222 px con las ayudas largas, sin cortar texto. El buscador del Inicio lleva a `/busqueda?q=toro` sin recargar la página. Sin cambios en lo que quedaba por pantalla: Sugerencias (4 enlaces chicos), Administración (pestañas y 5 textos cortados en Auditoría) y tablas anchas, para los grupos c, e y f.
 
 **Auditoría web-design-guidelines:** un hallazgo, corregido: el buscador del Inicio admite códigos y no debe pasarles el corrector ortográfico (`spellCheck={false}`).
+
+## Grupo 2f: Administración (maqueta B de Administración)
+
+Comparada a 1366 × 768, 150 % y 50 %, y verificada a 320 px. Mismas secciones, columnas, acciones, textos y lógica, en los dos modos.
+
+**Qué cambió:**
+
+- **Pestañas:** las áreas (Personas, Catálogo, Importación, Control) en el contenedor blanco con la activa en terracota; las secciones de cada área, subrayadas y distintas de las principales, de 44 px (antes 36).
+- **Lista de usuarios:** cada persona con un círculo de iniciales (decorativo; el nombre va al lado), filas de unos 68 px centradas en alto, fila de títulos en crema y el estado como etiqueta de color. Las iniciales salen del nombre, sin lo que va entre paréntesis.
+- **Tablas** de usuarios, listas del catálogo, plantillas de mapeo, normalización, tipos de código y la de identificadores de la ficha, con el estilo común. La de almacenamiento de fotos, que es de clave y valor, queda como estaba.
+- **Auditoría:** «Más filtros» usa la cabecera de desplegable común (44 px, con flecha); «Descargar en CSV» mide 44 px en todos los anchos (antes 36 desde 768 px); los motivos y los nombres de la papelera saltan de línea en vez de cortarse. Resuelve los pendientes de la fase 1: 2 controles chicos y 5 textos cortados.
+
+**Lo que no sigue a la maqueta, y por qué:**
+
+| En la maqueta | En la aplicación | Motivo |
+|---|---|---|
+| Píldora «7 personas» junto al título | Sin ella | Texto nuevo que no se pidió |
+| Iniciales «EC» para Especialista de Conservación | «ED» | Las iniciales salen de las dos primeras palabras del nombre real («Especialista de…») |
+| Catálogo, Importación y Control con datos | En demostración, Catálogo dice «Disponible con la API (modo live).» | Es el comportamiento del modo demostración; el texto queda anotado para Sergio (propuesta 5c) |
+
+**Verificación:** las cuatro áreas de Administración en los siete anchos, sin desplazamiento lateral, sin letra de menos de 16 px, sin controles de menos de 44 px y sin textos cortados. La tabla de usuarios es más ancha que la pantalla a 320 px y se desplaza dentro de su cuadro.
 
 ## Grupo 2e: Reportes (maqueta B de Reportes)
 

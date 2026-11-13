@@ -18,6 +18,7 @@
 import { CircleCheck, CircleOff, KeyRound, Plus, UserCheck, UserX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_BASE_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { AdminToolbar, FormDialog, Notice, SectionHeader } from "@/components/domain/AdminShell";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -139,6 +140,24 @@ export function RoleChoice({
 // Usuarios
 // ---------------------------------------------------------------------------------------------
 
+/** Iniciales de un nombre, sin lo que va entre paréntesis («Administrador MATP (sintético)» → «AM»). */
+export function userInitials(name: string): string {
+  const words = name.replace(/\([^)]*\)/g, " ").split(/\s+/).filter(Boolean);
+  return words
+    .slice(0, 2)
+    .map((word) => word[0].toLocaleUpperCase("es"))
+    .join("");
+}
+
+/** Círculo con las iniciales de la persona (maqueta B); decorativo, el nombre va al lado. */
+export function UserInitials({ name }: { name: string }) {
+  return (
+    <span aria-hidden="true" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-crema text-base font-bold text-ambar-texto">
+      {userInitials(name)}
+    </span>
+  );
+}
+
 /** Tabla compacta: estado con etiquetas de color y acciones como botones de icono con su nombre. */
 export function UsersTable({
   users,
@@ -153,26 +172,31 @@ export function UsersTable({
 }) {
   if (users.length === 0) return <p className="py-3 text-sm text-gris-texto">No hay usuarios con estos filtros.</p>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs text-gris-texto">
+    <div className={TABLE_BOX_CLASS}>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="py-1.5 pr-3 font-medium">Persona</th>
-            <th className="py-1.5 pr-3 font-medium">Rol</th>
-            <th className="py-1.5 pr-3 font-medium">Estado</th>
-            <th className="py-1.5 text-right font-medium">
+            <th className={TH_CLASS}>Persona</th>
+            <th className={TH_CLASS}>Rol</th>
+            <th className={TH_CLASS}>Estado</th>
+            <th className={`${TH_CLASS} text-right`}>
               <span className="sr-only">Acciones</span>
             </th>
           </tr>
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id} className="border-t border-borde align-middle">
-              <td className="py-1.5 pr-3 text-tinta">
-                {user.full_name}
-                <span className="block text-xs text-gris-texto">{user.email}</span>
+            <tr key={user.id} className="align-middle">
+              <td className={`${TD_BASE_CLASS} text-tinta`}>
+                <span className="flex items-center gap-3">
+                  <UserInitials name={user.full_name} />
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{user.full_name}</span>
+                    <span className="block text-xs text-gris-texto">{user.email}</span>
+                  </span>
+                </span>
               </td>
-              <td className="py-1.5 pr-3">
+              <td className={TD_BASE_CLASS}>
                 <span className="flex flex-wrap gap-1">
                   {user.roles.map((code) => (
                     <Badge key={code} intent="info" className="px-2 py-0 text-xs">
@@ -181,7 +205,7 @@ export function UsersTable({
                   ))}
                 </span>
               </td>
-              <td className="py-1.5 pr-3">
+              <td className={TD_BASE_CLASS}>
                 <span className="flex flex-wrap gap-1">
                   {user.is_active ? (
                     <Badge intent="success" icon={CircleCheck} className="px-2 py-0 text-xs">
@@ -199,7 +223,7 @@ export function UsersTable({
                   )}
                 </span>
               </td>
-              <td className="py-1.5 text-right">
+              <td className={`${TD_BASE_CLASS} text-right`}>
                 <span className="inline-flex gap-1">
                   <Button
                     variant="outline"

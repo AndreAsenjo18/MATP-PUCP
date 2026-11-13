@@ -101,7 +101,7 @@ function TrashEntryRow({ entry, canRestore, highlighted, open, restorePanel, onR
         {/* En celular «Restaurar» va a la derecha del nombre; desde lg, al final de la fila (`lg:contents`). */}
         <div className="flex items-start justify-between gap-2 lg:contents">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="min-w-0 truncate text-base font-semibold text-tinta" title={entry.entity_label}>
+            <h3 className="min-w-0 text-base font-semibold break-words text-tinta" title={entry.entity_label}>
               {entry.entity_label}
             </h3>
             <Badge>{typeLabel}</Badge>
@@ -123,7 +123,7 @@ function TrashEntryRow({ entry, canRestore, highlighted, open, restorePanel, onR
           )}
         </div>
         <p className="text-sm text-gris-texto">{deletedBySentence(entry)}</p>
-        <p className="min-w-0 text-sm text-tinta lg:truncate" title={reason}>
+        <p className="min-w-0 text-sm break-words text-tinta" title={reason}>
           <span className="font-medium">Motivo: </span>
           {reason}
         </p>

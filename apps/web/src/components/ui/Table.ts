@@ -13,4 +13,8 @@ export const THEAD_CLASS = "sticky top-0 z-10 bg-crema text-tinta";
 
 export const TH_CLASS = "px-4 py-3 font-semibold whitespace-nowrap";
 
-export const TD_CLASS = "border-t border-borde px-4 py-3 align-top";
+/** Celda sin alineación vertical propia (las filas centradas, como la lista de usuarios). */
+export const TD_BASE_CLASS = "border-t border-borde px-4 py-3";
+
+/** Celda de datos, alineada arriba: los textos largos no descuadran la fila. */
+export const TD_CLASS = `${TD_BASE_CLASS} align-top`;

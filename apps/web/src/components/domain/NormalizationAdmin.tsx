@@ -23,6 +23,7 @@
 import { ChevronRight, Plus, Save, Trash2, TriangleAlert, Undo2, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { SectionHeader } from "@/components/domain/AdminShell";
 import { ErrorNotice } from "@/components/domain/ImportWizard";
@@ -83,25 +84,25 @@ export function NormalizationImpactNotice({ impact, onDiscard }: { impact: Norma
         aplicarlo hace falta revisar el impacto y confirmar el recálculo, que todavía no está disponible desde esta pantalla.
       </p>
       {impact.examples.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-tinta">
-            <thead className="text-gris-texto">
+        <div className={TABLE_BOX_CLASS}>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="py-1 pr-3 font-medium">Tipo</th>
-                <th className="py-1 pr-3 font-medium">Texto original</th>
-                <th className="py-1 pr-3 font-medium">Hoy</th>
-                <th className="py-1 pr-3 font-medium">Quedaría</th>
-                <th className="py-1 font-medium">Motivo</th>
+                <th className={TH_CLASS}>Tipo</th>
+                <th className={TH_CLASS}>Texto original</th>
+                <th className={TH_CLASS}>Hoy</th>
+                <th className={TH_CLASS}>Quedaría</th>
+                <th className={TH_CLASS}>Motivo</th>
               </tr>
             </thead>
             <tbody>
               {impact.examples.map((example, index) => (
-                <tr key={`${example.originalValue}-${index}`} className="border-t border-borde">
-                  <td className="py-1 pr-3">{example.typeCode}</td>
-                  <td className="py-1 pr-3 font-mono">{example.originalValue}</td>
-                  <td className="py-1 pr-3 font-mono">{codeValue(example.normalizedValue)}</td>
-                  <td className="py-1 pr-3 font-mono">{codeValue(example.proposedValue)}</td>
-                  <td className="py-1">{impactReasonLabel(example.reason)}</td>
+                <tr key={`${example.originalValue}-${index}`}>
+                  <td className={TD_CLASS}>{example.typeCode}</td>
+                  <td className={`${TD_CLASS} font-mono`}>{example.originalValue}</td>
+                  <td className={`${TD_CLASS} font-mono`}>{codeValue(example.normalizedValue)}</td>
+                  <td className={`${TD_CLASS} font-mono`}>{codeValue(example.proposedValue)}</td>
+                  <td className={TD_CLASS}>{impactReasonLabel(example.reason)}</td>
                 </tr>
               ))}
             </tbody>

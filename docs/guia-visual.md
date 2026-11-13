@@ -119,6 +119,12 @@ En pantallas estrechas la fila se desplaza dentro de su cuadro, sin partir ni co
 
 Estilo común en `components/ui/Table.ts`: la fila de títulos en crema, en seminegrita y fija al desplazarse; filas con una línea fina arriba; y el desplazamiento solo dentro del cuadro de la tabla (alto máximo de 70 % de la pantalla), nunca de la página.
 
+## Administración (maqueta B)
+
+- **Pestañas:** áreas en el contenedor de las pestañas principales; secciones subrayadas.
+- **Lista de usuarios:** círculo de iniciales (`UserInitials`, decorativo), filas de unos 68 px centradas y estado como etiqueta de color.
+- **Desplegables** (`<details>`) siempre con `DisclosureSummary`: 44 px y flecha que gira.
+
 ## Reportes (maqueta B)
 
 - **Tipos de reporte** en tarjetas con icono de color; el elegido con borde terracota y marca de visto.

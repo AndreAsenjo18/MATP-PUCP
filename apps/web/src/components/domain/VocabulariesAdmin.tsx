@@ -18,6 +18,7 @@
 import { Check, EyeOff, Eye, Lock, Pencil, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { AdminList, RetireDialog } from "@/components/domain/AdminList";
 import { AdminToolbar, FormDialog, Notice, SectionHeader } from "@/components/domain/AdminShell";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
@@ -188,15 +189,15 @@ export function IdentifierTypesTable({
   onSelect: (code: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs text-gris-texto">
+    <div className={TABLE_BOX_CLASS}>
+      <table className={TABLE_CLASS}>
+        <thead className={THEAD_CLASS}>
           <tr>
-            <th className="py-1.5 pr-3 font-medium">Código</th>
-            <th className="py-1.5 pr-3 font-medium">Etiqueta</th>
-            <th className="py-1.5 pr-3 font-medium">Cómo se escribe</th>
-            <th className="py-1.5 pr-3 font-medium">Reglas fijas</th>
-            <th className="py-1.5 font-medium">
+            <th className={TH_CLASS}>Código</th>
+            <th className={TH_CLASS}>Etiqueta</th>
+            <th className={TH_CLASS}>Cómo se escribe</th>
+            <th className={TH_CLASS}>Reglas fijas</th>
+            <th className={TH_CLASS}>
               <span className="sr-only">Acciones</span>
             </th>
           </tr>
@@ -206,19 +207,19 @@ export function IdentifierTypesTable({
             const locked = lockedRules(type);
             return (
               <tr key={type.code} className={cn("border-t border-borde", selected === type.code && "bg-crema-light")}>
-                <td className="py-1.5 pr-3 font-mono font-medium">
+                <td className={`${TD_CLASS} font-mono`}>
                   <span className="inline-flex items-center gap-1">
                     {type.is_system && <Lock size={14} aria-label="Tipo del sistema" className="text-terracota" />}
                     {type.code}
                   </span>
                 </td>
-                <td className="py-1.5 pr-3">{type.label}</td>
-                <td className="py-1.5 pr-3 text-gris-texto">{ruleLabel(type.normalization_rule)}</td>
-                <td className="py-1.5 pr-3 text-xs text-gris-texto">
+                <td className={TD_CLASS}>{type.label}</td>
+                <td className={`${TD_CLASS} text-gris-texto`}>{ruleLabel(type.normalization_rule)}</td>
+                <td className={`${TD_CLASS} text-xs text-gris-texto`}>
                   {type.is_system ? <Badge intent="info" className="px-2 py-0 text-xs">Del sistema</Badge> : <Badge className="px-2 py-0 text-xs">Configurable</Badge>}
                   {type.is_system && locked.length > 0 && <span className="mt-0.5 block">{locked.join(", ")}.</span>}
                 </td>
-                <td className="py-1.5">
+                <td className={TD_CLASS}>
                   <Button variant="outline" size="sm" icon={Pencil} title="Editar" aria-label={`Editar ${type.code}`} onClick={() => onSelect(type.code)} />
                 </td>
               </tr>
@@ -251,21 +252,21 @@ export function RulePreviewPanel({
       </h3>
       <p className="text-sm text-tinta">{previewSentence(preview)}</p>
       {preview.changed_examples.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-gris-texto">
+        <div className={TABLE_BOX_CLASS}>
+          <table className={TABLE_CLASS}>
+            <thead className={THEAD_CLASS}>
               <tr>
-                <th className="py-1 pr-3 font-medium">Valor original</th>
-                <th className="py-1 pr-3 font-medium">Normalizado hoy</th>
-                <th className="py-1 font-medium">Quedará como</th>
+                <th className={TH_CLASS}>Valor original</th>
+                <th className={TH_CLASS}>Normalizado hoy</th>
+                <th className={TH_CLASS}>Quedará como</th>
               </tr>
             </thead>
             <tbody className="text-tinta">
               {preview.changed_examples.map((item) => (
-                <tr key={item.identifier_id} className="border-t border-borde">
-                  <td className="py-1 pr-3">{item.original_value}</td>
-                  <td className="py-1 pr-3">{item.normalized_value ?? "—"}</td>
-                  <td className="py-1">{item.proposed_value ?? "No se reconoce"}</td>
+                <tr key={item.identifier_id}>
+                  <td className={TD_CLASS}>{item.original_value}</td>
+                  <td className={TD_CLASS}>{item.normalized_value ?? "—"}</td>
+                  <td className={TD_CLASS}>{item.proposed_value ?? "No se reconoce"}</td>
                 </tr>
               ))}
             </tbody>

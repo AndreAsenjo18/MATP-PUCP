@@ -16,6 +16,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { TABLE_BOX_CLASS, TABLE_CLASS, TD_CLASS, THEAD_CLASS, TH_CLASS } from "@/components/ui/Table";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ErrorNotice } from "@/components/domain/ImportWizard";
 import { Button } from "@/components/ui/Button";
@@ -189,24 +190,26 @@ function TemplateAdminItem({
       {!editing && <ErrorNotice message={error} />}
       <details className="text-sm">
         <summary className="cursor-pointer text-gris-texto">Columnas ({template.columns.length})</summary>
-        <table className="mt-2 w-full text-left">
-          <thead className="text-gris-texto">
+        <div className={TABLE_BOX_CLASS}>
+          <table className={TABLE_CLASS}>
+          <thead className={THEAD_CLASS}>
             <tr>
-              <th className="py-1 pr-3 font-medium">Columna del archivo</th>
-              <th className="py-1 pr-3 font-medium">Destino</th>
-              <th className="py-1 font-medium">Transformaciones</th>
+              <th className={TH_CLASS}>Columna del archivo</th>
+              <th className={TH_CLASS}>Destino</th>
+              <th className={TH_CLASS}>Transformaciones</th>
             </tr>
           </thead>
           <tbody className="text-tinta">
             {template.columns.map((column) => (
-              <tr key={column.source_column} className="border-t border-borde align-top">
-                <td className="py-1 pr-3">{column.source_column}</td>
-                <td className="py-1 pr-3 text-gris-texto">{column.target_field ? targetLabel(column) : "Dato de origen (se conserva sin mapear)"}</td>
-                <td className="py-1 font-mono text-gris-texto">{column.transforms?.length ? column.transforms.join(" → ") : "—"}</td>
+              <tr key={column.source_column} className="align-top">
+                <td className={TD_CLASS}>{column.source_column}</td>
+                <td className={`${TD_CLASS} text-gris-texto`}>{column.target_field ? targetLabel(column) : "Dato de origen (se conserva sin mapear)"}</td>
+                <td className={`${TD_CLASS} font-mono text-gris-texto`}>{column.transforms?.length ? column.transforms.join(" → ") : "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </details>
     </li>
   );
