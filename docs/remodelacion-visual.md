@@ -347,7 +347,7 @@ Verificado a 1366 × 768, 150 % y 320 px: ninguna fila de pestañas desborda en 
 
 **Restos del piloto:** no queda ninguno en el código ni en la guía. Fraunces, Poppins e Inter están retiradas; la cenefa y el rombo escalonado, eliminados; las capturas del piloto, reemplazadas. Solo los nombran el documento original del equipo (`docs/fuentes/`, referencia histórica), la nota del ADR-012 y las pruebas que comprueban que no vuelvan.
 
-**Capturas:** las de las 22 pantallas en los siete anchos están en `capturas-locales/remodelacion/final/` (local, ignorada por git), con `results.json`. En el repositorio, solo `docs/capturas-remodelacion/inicio-1366.png`, `buscar-1366.png` y `ficha-1366.png`. Las 96 capturas de las fases anteriores salieron de `docs/`, aunque siguen en el historial de la rama.
+**Capturas:** las de las 22 pantallas en los siete anchos están en `capturas-locales/remodelacion/final/` (local, ignorada por git), con `results.json`. En el repositorio, solo `docs/capturas-remodelacion/inicio-1366.png`, `buscar-1366.png` y `ficha-1366.png`. Las 96 capturas de las fases anteriores salieron de `docs/` y también del historial de la rama, antes de subirla.
 
 **Lo que no se pudo reproducir fiel:** está en la tabla de cada grupo. Lo común a todos es esto: los textos de las maquetas no se aplicaron fuera del Inicio; los datos, columnas, filtros y pestañas son los reales; todo se mantiene en 16 px como mínimo y en 44 px para lo que se pulsa.
 
@@ -425,7 +425,7 @@ Pantallas y componentes de dominio:
 | `components/domain/piece-detail/PieceDetailTabs.tsx` | Manuel Barrantes |
 | `lib/help/tasks.ts` | Josue |
 
-Archivos nuevos de la remodelación: `components/layout/PageHeader.tsx`, `components/ui/Tabs.ts`, `components/ui/Table.ts`, `components/ui/Steps.ts`, `components/ui/SearchPill.tsx`, `components/brand/TextileMotif.tsx` (reescrito) y `app/not-found.tsx`.
+Archivos nuevos de la remodelación: `components/layout/PageHeader.tsx`, `components/layout/MenuAccount.tsx` (reemplaza a `MobileAccount.tsx`), `components/ui/Tabs.ts`, `components/ui/Table.ts`, `components/ui/TableScroller.tsx`, `components/ui/Steps.ts`, `components/ui/SearchPill.tsx`, `components/ui/IconCircle.tsx`, `components/ui/StatChip.tsx`, `components/brand/TextileMotif.tsx` (reescrito) y `app/not-found.tsx`.
 
 **Hallazgos sin resolver:** las pestañas de Administración no se recorren con las flechas, como las de la ficha. Es lógica de teclado y queda anotado; no se cambió.
 
@@ -515,6 +515,6 @@ Cada pantalla se abre en modo demostración como Administrador, en siete anchos 
 | 2560 | zoom 75 % | 1440 |
 | 3200 | zoom 50 % a 67 % | 1800 |
 
-En cada ancho se mide: desplazamiento lateral de la página, elementos con letra de menos de 16 px, controles de menos de 44 px de alto (sin contar enlaces dentro de un párrafo), texto cortado, tablas más anchas que la página y si el menú ocupa toda la altura. El script y los resultados completos están fuera del repositorio; las capturas que se guardan están en `docs/capturas-piloto/remodelacion/`.
+En cada ancho se mide: desplazamiento lateral de la página, elementos con letra de menos de 16 px, controles de menos de 44 px de alto (sin contar enlaces dentro de un párrafo), texto cortado, tablas más anchas que la página y si el menú ocupa toda la altura. El script y los resultados completos están fuera del repositorio, igual que las capturas (ver el párrafo siguiente).
 
 **Capturas:** las de cada grupo y las finales de las 22 pantallas quedan solo en local, en `capturas-locales/remodelacion/` (ignorada por git con `.git/info/exclude`). En el repositorio está el conjunto mínimo: Inicio, Buscar y Ficha a 1366 px, en `docs/capturas-remodelacion/`.

@@ -85,14 +85,6 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Ahora:** «Buscar una pieza» es un buscador dentro de la cabecera, con el texto de ejemplo nuevo «Código o nombre, por ejemplo I-0236» y el botón «Buscar». La línea de demostración ya no está: la insignia vive solo en el menú. Los demás textos son los de siempre.
 - **Motivo:** el Inicio es una de las excepciones decididas de la remodelación, y la maqueta B lo dibuja así.
 
-## Para resolver antes de archivar
-
-### R1. El change `inicio-guia-de-tareas` y la remodelación dicen cosas distintas
-
-- **Escenario «Escritorio»** de su requisito de navegación: pide «un encabezado con su nombre, su rol y el cambio de rol». La remodelación quitó esa franja y puso la cuenta al pie del menú. André decidió no tocarlo todavía.
-- **Requisito del Inicio:** pide «tarjetas grandes» para las seis tareas, entre ellas «Buscar una pieza» con su enlace. En la maqueta B buscar es un formulario en la cabecera.
-- **Propuesta:** antes de archivar cualquiera de los dos changes, reescribir esos dos puntos de `inicio-guia-de-tareas` como en la remodelación.
-
 ### A4. Etiquetas de tipo en «¿Qué desea importar?»
 
 - **Pantalla:** Importación, la elección del origen.
@@ -105,6 +97,14 @@ Cambios de texto o de contenido que André decidió aplicar el 2026-11-13 como c
 - **Antes:** la página por defecto de Next.js, en inglés («404 · This page could not be found.»).
 - **Ahora:** la banda terracota con «No encontramos esta página», la ayuda «La dirección no existe o cambió. Vuelva al inicio para seguir desde allí.» y el botón «Ir al inicio».
 - **Motivo:** André pidió dar a la 404 el mismo lenguaje visual; no había textos en español que conservar.
+
+## Para resolver antes de archivar
+
+### R1. El change `inicio-guia-de-tareas` y la remodelación dicen cosas distintas
+
+- **Escenario «Escritorio»** de su requisito de navegación: pide «un encabezado con su nombre, su rol y el cambio de rol». La remodelación quitó esa franja y puso la cuenta al pie del menú. André decidió no tocarlo todavía.
+- **Requisito del Inicio:** pide «tarjetas grandes» para las seis tareas, entre ellas «Buscar una pieza» con su enlace. En la maqueta B buscar es un formulario en la cabecera.
+- **Propuesta:** antes de archivar cualquiera de los dos changes, reescribir esos dos puntos de `inicio-guia-de-tareas` como en la remodelación.
 
 ## Urgentes: textos que la remodelación deja desactualizados
 
