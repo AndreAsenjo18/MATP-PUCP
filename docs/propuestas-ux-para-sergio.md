@@ -26,6 +26,13 @@ Salen de la remodelación visual (change `remodelacion-visual`). La remodelació
 - **Además:** el change `inicio-guia-de-tareas` propone para el menú «Buscar piezas» y «Configuración», y la remodelación usa «Buscar» y «Administración», como se decidió.
 - **Propuesta:** un solo nombre en el Inicio y en el menú, y alinear los dos changes antes de archivarlos.
 
+### 3b. Enlace para saltar al contenido
+
+- **Pantallas:** todas las que tienen menú.
+- **Hoy:** con el teclado hay que pasar por las seis entradas del menú y la cuenta antes de llegar al contenido.
+- **Propuesta:** un enlace «Saltar al contenido» que solo aparece al usar el teclado, como primer elemento de la página.
+- **Motivo:** lo pide la auditoría de web-design-guidelines. Es texto nuevo de pantalla, así que no lo añadí.
+
 ## Términos internos o siglas en pantalla
 
 ### 4. «Fuera del MVP»

@@ -48,23 +48,37 @@ describe("Button", () => {
   it("buttonClassName recurre a primary/md ante valores desconocidos", () => {
     const cls = buttonClassName({ variant: "rara" as never, size: "xl" as never });
     expect(cls).toContain("bg-terracota");
-    expect(cls).toContain("px-4 py-2");
+    expect(cls).toContain("px-5 py-2.5");
   });
 
-  it("size sm es compacto (32 px) y los demás conservan los 44 px", () => {
+  it("todos los tamaños miden 44 px o más y usan letra de 16 px o más; sm solo tiene menos relleno", () => {
     const small = render(<Button size="sm">Editar</Button>);
-    expect(small).toContain("min-h-8");
-    expect(small).toContain("text-sm");
-    expect(small).not.toContain("min-h-11");
+    expect(small).toContain("min-h-11");
+    expect(small).toContain("px-3.5");
+    expect(small).toContain("text-base");
     expect(render(<Button>Guardar</Button>)).toContain("min-h-11");
-    expect(render(<Button size="lg">Guardar</Button>)).toContain("min-h-11");
+    expect(render(<Button size="lg">Guardar</Button>)).toContain("min-h-14");
+    for (const size of ["sm", "md", "lg", "touch"] as const) {
+      expect(buttonClassName({ size })).not.toMatch(/min-h-(8|9|10)\b|text-(xs|sm)\b/);
+    }
   });
 
-  it("size touch es táctil en celular y compacto desde md", () => {
+  it("size touch tiene más relleno en pantallas estrechas y menos desde lg, sin bajar de 44 px", () => {
     const html = render(<Button size="touch">Registrar</Button>);
-    expect(html).toContain("min-h-11");
-    expect(html).toContain("md:min-h-9");
-    expect(html).toContain("md:text-sm");
+    expect(html).toContain("min-h-12");
+    expect(html).toContain("lg:min-h-11");
+    expect(html).not.toContain("md:min-h-9");
+  });
+
+  it("es una píldora, la etiqueta salta de línea en vez de cortarse y el movimiento respeta la preferencia", () => {
+    const html = render(<Button>Registrar una pieza nueva</Button>);
+    expect(html).toContain("rounded-full");
+    expect(html).not.toMatch(/truncate|whitespace-nowrap/);
+    expect(html).toContain("motion-safe:enabled:hover:-translate-y-px");
+  });
+
+  it("la variante create es verde, para la acción principal de crear o registrar", () => {
+    expect(render(<Button variant="create">Nueva pieza</Button>)).toContain("bg-verde-exito text-white");
   });
 
   it("size lg produce una acción grande para depósito", () => {

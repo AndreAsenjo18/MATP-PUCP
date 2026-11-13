@@ -181,9 +181,9 @@ function MockLogin() {
           <h2 className="text-sm font-semibold text-gris-texto">Roles del sistema</h2>
           <ul className="mt-2 flex flex-col gap-1 text-sm text-tinta">
             {ROLES.map((role) => (
-              <li key={role.code} className="flex items-center justify-between gap-2">
+              <li key={role.code} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                 <span className={role.is_enabled ? "" : "text-gris-texto line-through"}>{role.name}</span>
-                {!role.is_enabled && <Badge className="shrink-0 whitespace-nowrap">Desactivado en fase 1</Badge>}
+                {!role.is_enabled && <Badge>Desactivado en fase 1</Badge>}
               </li>
             ))}
           </ul>

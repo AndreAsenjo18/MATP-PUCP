@@ -1,14 +1,14 @@
 /**
  * Piezas del Inicio como guía de tareas (changes `inicio-guia-de-tareas` y
- * `piloto-identidad-visual-inicio`): las tarjetas de tarea, con las dos principales destacadas, y
+ * `remodelacion-visual`): las tarjetas de tarea, con las dos principales destacadas, y
  * las fichas del estado del catálogo. Solo presentación; la pantalla hace las consultas.
  */
 import { ArrowRight, ClipboardCheck, FileSpreadsheet, FileText, Hash, ImageOff, Package, PackagePlus, Search, Settings, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
+import { cardClassName } from "@/components/ui/Card";
 import { IconCircle, type Tone } from "@/components/ui/IconCircle";
 import { StatChip } from "@/components/ui/StatChip";
-import { surfaceClassName } from "@/components/ui/Surface";
 import { pendingLabel, statusParts, type CatalogStatus, type StatusPart, type Task, type TaskId } from "@/lib/help/tasks";
 
 /** Icono y color de cada tipo de tarea. El color acompaña al icono y al nombre, nunca los reemplaza. */
@@ -27,16 +27,16 @@ const MAIN_TASKS: ReadonlySet<TaskId> = new Set(["search", "register"]);
 function MainTaskCard({ task }: { task: Task }) {
   const { icon, tone } = LOOK[task.id];
   return (
-    <Link href={task.href} className={surfaceClassName({ interactive: true, className: "group flex min-h-11 w-full items-center gap-5 p-tarjeta" })}>
+    <Link href={task.href} className={cardClassName({ interactive: true, padded: false, className: "group flex min-h-11 w-full items-center gap-5 p-tarjeta" })}>
       <IconCircle icon={icon} tone={tone} size="lg" solid />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="font-display text-2xl font-semibold text-tinta">{task.verb}</span>
+        <span className="font-heading text-2xl font-extrabold text-tinta">{task.verb}</span>
         <span className="text-base text-gris-texto">{task.description}</span>
       </span>
       <ArrowRight
         size={24}
         aria-hidden="true"
-        className="shrink-0 text-terracota transition-[translate] duration-150 ease-out group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+        className="shrink-0 text-terracota transition-[translate] duration-150 ease-out group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
       />
     </Link>
   );
@@ -45,7 +45,7 @@ function MainTaskCard({ task }: { task: Task }) {
 function TaskCard({ task, badge }: { task: Task; badge: string | null }) {
   const { icon, tone } = LOOK[task.id];
   return (
-    <Link href={task.href} className={surfaceClassName({ interactive: true, className: "flex min-h-11 w-full flex-col gap-2 p-4" })}>
+    <Link href={task.href} className={cardClassName({ interactive: true, padded: false, className: "flex min-h-11 w-full flex-col gap-2 p-5" })}>
       <span className="flex items-center justify-between gap-2">
         <IconCircle icon={icon} tone={tone} />
         {badge && <span className="rounded-full bg-ambar-bg px-3 py-1 text-base font-semibold text-ambar-texto tabular-nums">{badge}</span>}

@@ -109,7 +109,7 @@ describe("formatos por fuente", () => {
 
   it("los botones de la lista son compactos", () => {
     const html = list();
-    expect(html).toContain("min-h-8");
+    expect(html).toContain("min-h-11 gap-1.5 px-3.5");
     expect(visibleText(html)).not.toMatch(/\b(RF|RN)-0/);
   });
 });

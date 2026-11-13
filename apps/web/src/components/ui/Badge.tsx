@@ -34,12 +34,12 @@ export function Badge({ children, intent = "default", icon: Icon, title, classNa
     <span
       title={title}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold",
         badgeIntentClass(intent),
         className,
       )}
     >
-      {Icon && <Icon size={14} aria-hidden="true" />}
+      {Icon && <Icon size={16} aria-hidden="true" className="shrink-0" />}
       {children}
     </span>
   );

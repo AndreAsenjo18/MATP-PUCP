@@ -1,37 +1,34 @@
 /**
  * Secciones de la navegación principal y reglas puras de visibilidad por permiso (RF-039) y de
- * apertura/cierre del menú móvil (RNF-001). Sin React, para poder probarlas directamente.
+ * apertura/cierre del menú en pantallas estrechas (RNF-001). Sin React, para poder probarlas
+ * directamente.
  */
-import {
-  ChartColumn,
-  CopyCheck,
-  FileSpreadsheet,
-  House,
-  Search,
-  Sparkles,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { ChartColumn, ClipboardCheck, FileUp, House, Search, Settings, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  permission?: string;
+  /** Basta uno de estos permisos; sin permisos, la ve cualquier persona con sesión. */
+  permissions?: readonly string[];
 }
 
+/**
+ * Seis entradas con nombre de tarea (change `remodelacion-visual`, D5). «Revisar pendientes» reúne
+ * duplicados, sugerencias y piezas incompletas en la bandeja (`revisar-pendientes-unificado`); las
+ * direcciones `/duplicados` y `/ia/sugerencias` siguen llevando allí.
+ */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: House },
-  { href: "/busqueda", label: "Búsqueda", icon: Search },
-  { href: "/importacion", label: "Importación", icon: FileSpreadsheet, permission: "imports.prepare" },
-  { href: "/duplicados", label: "Duplicados", icon: CopyCheck, permission: "duplicates.resolve" },
-  { href: "/ia/sugerencias", label: "Sugerencias IA", icon: Sparkles, permission: "ai.review" },
-  { href: "/reportes", label: "Reportes", icon: ChartColumn, permission: "reports.view" },
-  { href: "/administracion", label: "Administración", icon: Users, permission: "users.manage" },
+  { href: "/busqueda", label: "Buscar", icon: Search },
+  { href: "/importacion", label: "Cargar datos", icon: FileUp, permissions: ["imports.prepare"] },
+  { href: "/pendientes", label: "Revisar pendientes", icon: ClipboardCheck, permissions: ["duplicates.resolve", "ai.review", "reports.view"] },
+  { href: "/reportes", label: "Reportes", icon: ChartColumn, permissions: ["reports.view"] },
+  { href: "/administracion", label: "Administración", icon: Settings, permissions: ["users.manage"] },
 ];
 
 export function visibleNavItems(hasPermission: (permission: string) => boolean, items: NavItem[] = NAV_ITEMS): NavItem[] {
-  return items.filter((item) => !item.permission || hasPermission(item.permission));
+  return items.filter((item) => !item.permissions?.length || item.permissions.some(hasPermission));
 }
 
 /** La sección está activa si la ruta es la suya o una subruta (p. ej. `/busqueda/...`). */
@@ -41,7 +38,7 @@ export function isActive(pathname: string, href: string): boolean {
 
 export type MobileMenuAction = "toggle" | "close" | "escape" | "navigate";
 
-/** Estado del menú móvil: se abre y cierra con el botón, y se cierra con Escape o al navegar. */
+/** Estado del menú en pantallas estrechas: se abre y cierra con el botón, y se cierra con Escape o al navegar. */
 export function mobileMenuReducer(open: boolean, action: MobileMenuAction): boolean {
   switch (action) {
     case "toggle":

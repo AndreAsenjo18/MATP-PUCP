@@ -35,7 +35,9 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { text: "carmin-texto", background: "white", usage: "Mensajes de error de campos" },
   { text: "ambar-texto", background: "white", usage: "Aviso «Sin foto» en tarjetas" },
   { text: "verde-exito", background: "white", usage: "Mensajes de éxito" },
-  // Piloto de identidad visual (docs/guia-visual.md)
+  // Dirección «B · Cabecera audaz» (docs/guia-visual.md)
+  { text: "crema", background: "terracota", usage: "Título y texto de la cabecera principal" },
+  { text: "crema-light", background: "terracota", usage: "Texto claro de la cabecera principal" },
   { text: "terracota-dark", background: "crema-light", usage: "Nombre del museo en el Inicio" },
   { text: "anil", background: "anil-bg", usage: "IconCircle añil" },
   { text: "white", background: "anil", usage: "IconCircle añil sólido" },

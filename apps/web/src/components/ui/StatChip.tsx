@@ -28,7 +28,7 @@ export function StatChip({ icon, tone, value, label, href }: { icon: LucideIcon;
       href={href}
       className={cn(
         BASE,
-        "shadow-suave transition-[box-shadow,border-color] duration-150 ease-out hover:border-terracota hover:shadow-elevada active:shadow-suave focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota motion-reduce:transition-none",
+        "shadow-sm hover:border-terracota hover:shadow-md active:shadow-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
       )}
     >
       {content}

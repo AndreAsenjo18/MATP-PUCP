@@ -6,15 +6,15 @@
 
 ## 1. Base
 
-- [ ] 1.1 Limpieza del piloto: Manrope en el layout raíz, regla global de títulos, sin Fraunces, Poppins, cenefa ni `span` provisional; retirar el change del piloto (Req: Tipografía e iconos disponibles sin internet; RNF-008)
-- [ ] 1.2 Tokens: escala de letra con mínimo de 16 px, radios, sombras, ancho máximo y par crema sobre terracota, con sus pruebas (Req: Sistema de diseño institucional con tokens y contraste accesible; RNF-010)
-- [ ] 1.3 Átomos con el estilo B: `Button` (44 px en todos los tamaños), `Badge`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `IconCircle`, `StatChip` y la superficie; estilos de base para diálogos, casillas, tablas y foco (Req: Botones que se adaptan al dispositivo; Identidad visual «Cabecera audaz»)
-- [ ] 1.4 Estructura: menú flotante con la cuenta al pie, botón «Menú» bajo 1024 px con foco atrapado, sin franja superior, contenedor con ancho máximo, nombres de tarea en el menú y cabecera en dos variantes (Req: Navegación principal con barra lateral responsive; Cuenta de la persona al pie del menú; Barra lateral de navegación retraíble)
-- [ ] 1.5 Verificación en los siete anchos de todas las pantallas, pruebas del módulo, lint, `tsc`, `openspec validate --strict` y `openapi:check`
+- [x] 1.1 Limpieza del piloto: Manrope en el layout raíz, regla global de títulos, sin Fraunces, Poppins, cenefa ni `span` provisional; retirar el change del piloto (Req: Tipografía e iconos disponibles sin internet; RNF-008)
+- [x] 1.2 Tokens: escala de letra con mínimo de 16 px, radios, sombras, ancho máximo y par crema sobre terracota, con sus pruebas (Req: Sistema de diseño institucional con tokens y contraste accesible; RNF-010)
+- [x] 1.3 Átomos con el estilo B: `Button` (44 px en todos los tamaños), `Badge`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `IconCircle`, `StatChip` y la superficie; estilos de base para diálogos, casillas, foco y realce al tocar (Req: Botones que se adaptan al dispositivo; Identidad visual «Cabecera audaz»)
+- [x] 1.4 Estructura: menú flotante con la cuenta al pie, botón «Menú» bajo 1024 px con foco atrapado, sin franja superior, contenedor con ancho máximo y nombres de tarea en el menú (Req: Navegación principal con barra lateral responsive; Cuenta de la persona al pie del menú; Barra lateral de navegación retraíble)
+- [x] 1.5 Verificación en los siete anchos de todas las pantallas, pruebas del módulo, lint, `tsc`, `openspec validate --strict` y `openapi:check`
 
 ## 2. Pantallas por grupos
 
-- [ ] 2.1 Inicio y Búsqueda (Req: Identidad visual «Cabecera audaz»; D8)
+- [ ] 2.1 Inicio y Búsqueda, con el componente de cabecera en sus dos variantes (principal y de trabajo) que usarán los demás grupos (Req: Identidad visual «Cabecera audaz»; D7, D8)
 - [ ] 2.2 Ficha: alta, vista y edición de pieza
 - [ ] 2.3 Revisar pendientes: duplicados, sugerencias y piezas incompletas
 - [ ] 2.4 Importación e importación de fotos

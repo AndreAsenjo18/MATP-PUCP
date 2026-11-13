@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TextileBand, TextileMark } from "@/components/brand/TextileMotif";
+import { TextileMark } from "@/components/brand/TextileMotif";
 import { TASKS, visibleTasks } from "@/lib/help/tasks";
 import { render, visibleText } from "@/test/render";
 
@@ -39,7 +39,7 @@ describe("tarjetas de tarea", () => {
     expect(others.match(/<a /g)).toHaveLength(4);
     expect(html.indexOf("Lo más frecuente")).toBeLessThan(html.indexOf("Otras tareas"));
     expect(main).toContain("text-2xl");
-    expect(main).toContain("font-display");
+    expect(main).toContain("font-heading");
     expect(others).not.toContain("text-2xl");
   });
 
@@ -76,10 +76,12 @@ describe("tarjetas de tarea", () => {
 
   it("responde a cursor, pulsación y teclado, y respeta el movimiento reducido", () => {
     const html = render(<TaskCards tasks={ALL} />);
-    expect(html).toContain("hover:shadow-elevada");
-    expect(html).toContain("active:translate-y-0");
+    expect(html).toContain("hover:shadow-md");
+    expect(html).toContain("motion-safe:active:translate-y-0");
     expect(html).toContain("focus-visible:outline-3");
-    expect(html).toContain("motion-reduce:transition-none");
+    // El desplazamiento solo ocurre si la persona no pidió menos movimiento.
+    expect(html).toContain("motion-safe:hover:-translate-y-0.5");
+    expect(html).not.toMatch(/(?<!motion-safe:)hover:-translate/);
     expect(html).not.toContain("transition-all");
   });
 
@@ -138,11 +140,10 @@ describe("fichas del estado del catálogo", () => {
 
 describe("motivo de tejido", () => {
   it("es decorativo: oculto a lectores de pantalla, sin texto y con colores de los tokens", () => {
-    for (const html of [render(<TextileBand />), render(<TextileMark />)]) {
-      expect(html).toContain('aria-hidden="true"');
-      expect(visibleText(html)).toBe("");
-      expect(html).toContain("fill-terracota");
-      expect(html).not.toMatch(/#[0-9a-f]{6}/i);
-    }
+    const html = render(<TextileMark />);
+    expect(html).toContain('aria-hidden="true"');
+    expect(visibleText(html)).toBe("");
+    expect(html).toContain("fill-terracota");
+    expect(html).not.toMatch(/#[0-9a-f]{6}/i);
   });
 });

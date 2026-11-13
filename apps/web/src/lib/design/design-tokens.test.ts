@@ -44,8 +44,10 @@ const REQUIRED_TOKENS = [
   "carmin-texto",
 ];
 
-/** Colores por tipo de tarea del piloto de identidad visual (docs/guia-visual.md). */
-const PILOT_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
+/** Colores de icono por tipo de tarea (docs/guia-visual.md). */
+const TASK_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
+
+const LAYOUT = readFileSync(path.resolve(__dirname, "../../app/layout.tsx"), "utf-8");
 
 describe("contrastRatio", () => {
   it("da 21 para negro sobre blanco y 1 para colores iguales", () => {
@@ -63,8 +65,8 @@ describe("contrastRatio", () => {
 });
 
 describe("tokens del sistema de diseño (globals.css)", () => {
-  it("define los 16 colores institucionales y los 4 del piloto de identidad visual, y ninguno más", () => {
-    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...PILOT_TOKENS].sort());
+  it("define los 16 colores institucionales y los 4 de icono por tipo de tarea, y ninguno más", () => {
+    expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS].sort());
   });
 
   it("define las tipografías heading y sans con respaldo del sistema", () => {
@@ -72,9 +74,23 @@ describe("tokens del sistema de diseño (globals.css)", () => {
     expect(GLOBALS_CSS).toMatch(/--font-sans:[^;]*system-ui/);
   });
 
-  it("define la tipografía, el espaciado, los radios y las sombras del piloto en el mismo lugar (docs/guia-visual.md)", () => {
-    expect(GLOBALS_CSS).toMatch(/--font-display:[^;]*serif/);
-    for (const token of ["--spacing-tarjeta", "--spacing-tarjetas", "--spacing-seccion", "--radius-tarjeta", "--shadow-suave", "--shadow-elevada"]) {
+  it("los títulos usan Manrope autoalojada, sin las tipografías anteriores (docs/guia-visual.md)", () => {
+    expect(GLOBALS_CSS).toMatch(/--font-heading:\s*var\(--font-manrope\)/);
+    expect(GLOBALS_CSS).toContain('--font-manrope: "Manrope Variable"');
+    expect(GLOBALS_CSS).not.toMatch(/poppins|fraunces|--font-display/i);
+    expect(LAYOUT).toContain('import "@fontsource-variable/manrope/wght.css"');
+    expect(LAYOUT).not.toMatch(/poppins|fraunces/i);
+  });
+
+  it("ningún tamaño de letra de la escala baja de 16 px", () => {
+    for (const step of ["xs", "sm"]) {
+      expect(GLOBALS_CSS).toMatch(new RegExp(`--text-${step}:\\s*1rem;`));
+    }
+    expect(GLOBALS_CSS).toMatch(/--text-titulo:\s*clamp\(2\.25rem,[^;]*4rem\)/);
+  });
+
+  it("define el espaciado, los radios, las sombras y el ancho máximo con nombre en el mismo lugar", () => {
+    for (const token of ["--spacing-tarjeta", "--spacing-tarjetas", "--spacing-seccion", "--radius-tarjeta", "--radius-panel", "--shadow-sm", "--shadow-md", "--container-contenido"]) {
       expect(GLOBALS_CSS).toContain(`${token}:`);
     }
   });

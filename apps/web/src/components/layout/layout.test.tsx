@@ -6,7 +6,7 @@ import { render, visibleText } from "@/test/render";
 import { memoryStorage } from "@/test/memory-storage";
 
 import { isActive, mobileMenuReducer, NAV_ITEMS, readSidebarCollapsed, SIDEBAR_STORAGE_KEY, visibleNavItems, writeSidebarCollapsed } from "./navigation";
-import { MobileAccount } from "./MobileAccount";
+import { MenuAccount } from "./MenuAccount";
 import { PermissionNotice } from "./PermissionNotice";
 import { Sidebar } from "./Sidebar";
 
@@ -21,15 +21,28 @@ describe("visibleNavItems", () => {
     expect(labelsFor("ADMIN")).toEqual(NAV_ITEMS.map((item) => item.label));
   });
 
-  it("el Personal auxiliar de depósito ve Inicio y Búsqueda, donde verifica y mueve, sin Administración", () => {
+  it("el menú tiene como máximo seis entradas, con nombre de tarea (remodelacion-visual, D5)", () => {
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Inicio", "Buscar", "Cargar datos", "Revisar pendientes", "Reportes", "Administración"]);
+    expect(NAV_ITEMS.find((item) => item.label === "Revisar pendientes")?.href).toBe("/pendientes");
+  });
+
+  it("«Revisar pendientes» se ve con cualquiera de sus permisos", () => {
+    for (const permission of ["duplicates.resolve", "ai.review", "reports.view"]) {
+      const labels = visibleNavItems((p) => p === permission).map((item) => item.label);
+      expect(labels).toContain("Revisar pendientes");
+    }
+    expect(visibleNavItems(() => false).map((item) => item.label)).not.toContain("Revisar pendientes");
+  });
+
+  it("el Personal auxiliar de depósito ve Inicio y Buscar, donde verifica y mueve, sin Administración", () => {
     const labels = labelsFor("STORAGE_STAFF");
     expect(labels).toContain("Inicio");
-    expect(labels).toContain("Búsqueda");
+    expect(labels).toContain("Buscar");
     // La vista de depósito se fusionó con la búsqueda (fusion-busqueda-deposito 4.1).
     expect(labels).not.toContain("Vista de depósito");
     expect(NAV_ITEMS.some((item) => item.href === "/deposito")).toBe(false);
     expect(labels).not.toContain("Administración");
-    expect(labels).not.toContain("Importación");
+    expect(labels).not.toContain("Cargar datos");
   });
 
   it("sin permisos solo quedan las secciones públicas del sistema interno", () => {
@@ -74,14 +87,17 @@ describe("Sidebar", () => {
     expect(html).toMatch(/aria-current="page"[^>]*class="[^"]*bg-crema text-tinta[^"]*"[^>]*href="\/busqueda"|href="\/busqueda"[^>]*aria-current="page"/);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html.match(/<svg[^>]*aria-hidden="true"/g)).toHaveLength(3);
-    expect(visibleText(html)).toBe("Inicio Búsqueda Importación");
+    expect(visibleText(html)).toBe("Inicio Buscar Cargar datos");
+    // Cada sección es una píldora de 48 px.
+    expect(html.match(/rounded-full/g)).toHaveLength(3);
+    expect(html.match(/min-h-12/g)).toHaveLength(3);
   });
 });
 
 describe("Sidebar contraída", () => {
   it("deja solo los iconos, con el nombre de cada sección como ayuda y para el lector de pantalla", () => {
     const html = render(<Sidebar items={NAV_ITEMS.slice(0, 3)} pathname="/busqueda" collapsed />);
-    expect(html.match(/title="(Inicio|Búsqueda|Importación)"/g)).toHaveLength(3);
+    expect(html.match(/title="(Inicio|Buscar|Cargar datos)"/g)).toHaveLength(3);
     expect(html.match(/class="sr-only"/g)).toHaveLength(3);
     expect(html).toContain("justify-center");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
@@ -129,17 +145,30 @@ describe("PermissionNotice", () => {
   });
 });
 
-describe("MobileAccount", () => {
-  it("muestra nombre, rol y el botón de cierre de sesión a todo el ancho", () => {
-    const html = render(<MobileAccount name="Ana García" role="Administrador" logoutLabel="Cerrar sesión" onLogout={() => {}} />);
+describe("MenuAccount (cuenta al pie del menú)", () => {
+  it("muestra nombre, rol y el botón de cierre de sesión a todo el ancho, sin cortar el texto", () => {
+    const html = render(<MenuAccount name="Ana García" role="Administrador" logoutLabel="Cerrar sesión" onLogout={() => {}} />);
     expect(visibleText(html)).toContain("Ana García");
     expect(visibleText(html)).toContain("Administrador");
     expect(visibleText(html)).toContain("Cerrar sesión");
     expect(html).toContain("w-full");
-    expect(html).toContain("min-h-11");
+    expect(html).toContain("min-h-12");
+    expect(html).not.toContain("truncate");
+    expect(visibleText(html)).not.toContain("Modo demostración");
   });
 
-  it("usa «Cambiar de rol» en modo demostración", () => {
-    expect(visibleText(render(<MobileAccount logoutLabel="Cambiar de rol" onLogout={() => {}} />))).toContain("Cambiar de rol");
+  it("en demostración dice «Cambiar de rol» y muestra la insignia una sola vez", () => {
+    const text = visibleText(render(<MenuAccount name="Ana García" role="Administrador" logoutLabel="Cambiar de rol" onLogout={() => {}} demo />));
+    expect(text).toContain("Cambiar de rol");
+    expect(text.match(/Modo demostración/g)).toHaveLength(1);
+  });
+
+  it("contraída deja botones de icono de 48 px con su nombre como ayuda y para el lector de pantalla", () => {
+    const html = render(<MenuAccount name="Ana García" role="Administrador" logoutLabel="Cambiar de rol" onLogout={() => {}} demo collapsed />);
+    expect(html).toContain('aria-label="Cambiar de rol"');
+    expect(html).toContain('title="Cambiar de rol"');
+    expect(html).toContain("size-12");
+    expect(html).toContain('class="sr-only">Modo demostración');
+    expect(visibleText(html)).not.toContain("Ana García");
   });
 });

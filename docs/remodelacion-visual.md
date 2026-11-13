@@ -11,7 +11,7 @@ Reglas visuales: [guia-visual.md](guia-visual.md) (se actualiza a la dirección 
 | Fase | Qué | Estado |
 |---|---|---|
 | 0 | Inventario, change, capturas «antes» | Hecha |
-| 1 | Base: tokens, átomos, estructura y menú | Pendiente |
+| 1 | Base: tokens, átomos, estructura y menú | Hecha, esperando revisión |
 | 2a | Inicio y Búsqueda | Pendiente |
 | 2b | Ficha: alta, vista y edición | Pendiente |
 | 2c | Revisar pendientes | Pendiente |
@@ -44,6 +44,30 @@ El piloto `piloto-identidad-visual-inicio` (commits `1d7ab91` a `240a005`, nunca
 | `span` provisional del título del Inicio | **Se elimina** | La regla global de títulos usa la tipografía nueva |
 | Change `openspec/changes/piloto-identidad-visual-inicio` | **Se elimina** | Lo reemplaza `remodelacion-visual` |
 | Cambio no pedido en `package-lock.json` (quitó `@emnapi/core` y `@emnapi/runtime`) | **Se revierte** | Se parte del lockfile de `main` |
+
+## Resultado de la fase 1 (base)
+
+Medido en las 21 pantallas y los 7 anchos, en modo demostración como Administrador:
+
+| Comprobación | Antes | Después de la base |
+|---|---|---|
+| Desplazamiento lateral de la página | ninguno | ninguno |
+| Pantallas con letra de menos de 16 px | 21 de 21 (hasta 91 elementos) | 0 |
+| Menú y fondo ocupan toda la altura | sí | sí, también a 3200 px |
+| Contenido centrado con ancho máximo en pantallas anchas | no (72 rem pegado al menú) | sí (85 rem) |
+| Insignia «Modo demostración» | en la franja superior | una vez, al pie del menú |
+
+Menú con teclado: 19 de 19 comprobaciones. En 911 px, «Menú» mide 44 px, abre un diálogo modal, el Tab da la vuelta dentro, Escape y tocar fuera lo cierran y el foco vuelve al botón. En 1366 px, el menú flota con esquinas de 28 px, la cuenta va al pie, el riel conserva los nombres y, con «reducir movimiento», nada se desplaza.
+
+**Lo que queda por pantalla (fase 2):**
+
+- Pestañas de área de Administración: 36 px desde 768 px (grupo f).
+- Nombres de pieza en Sugerencias, como enlaces de 20 px (grupo c).
+- Enlaces «Volver» de alta, ficha y edición: 24 px (grupo b).
+- Textos cortados a propósito en Auditoría: los mismos 5 que antes (grupo f).
+- Tablas más anchas que la página a 320 px en Reportes, Piezas incompletas y Usuarios. Se desplazan dentro de su cuadro y la página no se mueve; falta comprobar que la fila de títulos quede visible (grupos c, e y f).
+
+**Regresiones corregidas en esta fase:** a 320 px desbordaban la insignia «Desactivado en fase 1» del acceso, que tenía `whitespace-nowrap`, y el botón «Ver cambios» de Auditoría, al que el tamaño `touch` le había ganado relleno.
 
 ## Pantallas y rutas
 

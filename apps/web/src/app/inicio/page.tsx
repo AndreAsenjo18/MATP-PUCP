@@ -4,19 +4,15 @@
  * Pantalla 2 — Inicio como guía de tareas (change `inicio-guia-de-tareas`): «¿Qué desea hacer?»,
  * tarjetas de tarea según el rol y el estado del catálogo (RF-035, RF-039).
  *
- * Es además la pantalla piloto de la identidad visual (change `piloto-identidad-visual-inicio`,
- * docs/guia-visual.md): nombre del museo, título en `font-display` y cenefa de tejido. La
- * tipografía se importa aquí y no en el layout para que ninguna otra pantalla cambie (D1).
+ * Diseño: change `remodelacion-visual` (docs/guia-visual.md).
  *
  * El tablero de completitud (tabla por colección, evolución de 14 días, últimas cargas y tabla de
  * piezas incompletas) ya no está aquí: los indicadores siguen en la API y en Reportes ›
  * Información incompleta. En modo real no se lee el almacén de demostración.
  */
-import "@fontsource-variable/fraunces/wght.css";
-
 import { useEffect, useState } from "react";
 
-import { TextileBand, TextileMark } from "@/components/brand/TextileMotif";
+import { TextileMark } from "@/components/brand/TextileMotif";
 import { CatalogStatusChips, TaskCards } from "@/components/domain/HomeGuide";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
@@ -83,10 +79,7 @@ function InicioContent() {
           <TextileMark />
           Museo de Artes y Tradiciones Populares «Luis Repetto Málaga»
         </p>
-        <h1 className="text-4xl font-semibold text-balance text-tinta">
-          {/* El span evita la regla global que pone Poppins en todo h1 (globals.css). */}
-          <span className="font-display">¿Qué desea hacer?</span>
-        </h1>
+        <h1 className="text-4xl text-balance text-tinta">¿Qué desea hacer?</h1>
         {demo && (
           <p className="text-base text-gris-texto">
             Sesión de demostración como <strong className="text-tinta">{currentRole?.name}</strong>: los datos son de ejemplo y no se guardan.
@@ -97,13 +90,11 @@ function InicioContent() {
       <TaskCards tasks={visibleTasks(hasPermission)} pending={pending} />
 
       <section aria-labelledby="catalog-status-title" className="flex flex-col gap-3">
-        <h2 id="catalog-status-title" className="text-base font-semibold text-gris-texto">
-          <span className="font-sans">El catálogo hoy</span>
+        <h2 id="catalog-status-title" className="font-sans text-base font-semibold text-gris-texto">
+          El catálogo hoy
         </h2>
         <CatalogStatusChips status={status} failed={statusFailed} />
       </section>
-
-      <TextileBand className="opacity-60" />
     </div>
   );
 }
