@@ -7,7 +7,7 @@ import pytest
 
 from matp_ai.config import load_settings
 from matp_ai.providers import LLMProvider, MockProvider, ProviderUnavailable, get_provider
-from matp_ai.schemas import PieceContext
+from matp_ai.schemas import PieceContext, SearchValidValues
 
 TEXT = "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998. Regular estado."
 
@@ -292,3 +292,65 @@ def test_llm_extract_structured_live() -> None:
 def test_piece_context_rejects_sensitive_fields() -> None:
     with pytest.raises(ValueError, match="lender_name"):
         PieceContext.model_validate({"title": "x", "lender_name": "Comodante"})
+
+
+_VALID_VALUES = SearchValidValues(
+    collections={"MMZ": "Colección MMZ"},
+    categories=["Figura zoomorfa"],
+    materials=["Cerámica"],
+    conservation_states=["Bueno", "Regular", "Malo"],
+    locations=["Depósito 1"],
+    tenure_regimes=["Propia", "Comodato", "Préstamo temporal"],
+    alert_labels={"MISSING_PHOTO": "sin foto"},
+)
+
+
+def test_mock_interpret_search_is_deterministic() -> None:
+    text = "figuras zoomorfas de ceramica sin foto en deposito 1"
+    provider = MockProvider()
+    first = provider.interpret_search(text, _VALID_VALUES)
+    second = provider.interpret_search(text, _VALID_VALUES)
+    assert first == second
+
+
+def test_mock_interpret_search_matches_known_values() -> None:
+    result = MockProvider().interpret_search("ceramica sin foto en deposito 1", _VALID_VALUES)
+    assert result.material == "Cerámica"
+    assert result.alert_code == "MISSING_PHOTO"
+    assert result.location == "Depósito 1"
+
+
+def test_mock_interpret_search_nothing_recognizable_keeps_text_as_q() -> None:
+    result = MockProvider().interpret_search("algo que no calza con nada conocido", _VALID_VALUES)
+    assert result.q == "algo que no calza con nada conocido"
+    assert result.material is None
+    assert result.category is None
+
+
+def test_llm_interpret_search_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"material": "Cerámica", "alert_code": "MISSING_PHOTO", '
+        '"location": "Depósito 1", "q": null}'
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.interpret_search("cerámica sin foto en depósito 1", _VALID_VALUES)
+    assert result.material == "Cerámica"
+    assert result.alert_code == "MISSING_PHOTO"
+    assert result.location == "Depósito 1"
+    assert result.q is None
+
+
+def test_llm_interpret_search_drops_hallucinated_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un valor que el modelo inventa fuera de ``valid_values`` nunca llega al filtro (D2/D3)."""
+    content = '{"material": "Oro macizo", "collection_key": "NO-EXISTE", "alert_code": "FAKE_CODE"}'
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.interpret_search("piezas de oro", _VALID_VALUES)
+    assert result.material is None
+    assert result.collection_key is None
+    assert result.alert_code is None
+
+
+def test_llm_interpret_search_invalid_json_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _llm_provider(monkeypatch, "esto no es JSON")
+    with pytest.raises(ProviderUnavailable):
+        provider.interpret_search("cualquier cosa", _VALID_VALUES)

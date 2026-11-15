@@ -7,7 +7,7 @@
  * sugerencia) y nunca se cierra solo.
  */
 import { Eraser, SlidersHorizontal } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { DisclosureSummary, withActiveCount } from "@/components/domain/DisclosureSummary";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
@@ -116,23 +116,115 @@ export function FiltersDrawer({
 /** Ayuda única del buscador (rediseno-ux-busqueda D2): reemplaza al subtítulo de la pantalla. */
 export const SEARCH_BOX_HINT = "Cualquier código, vigente o histórico, con o sin formato. No distingue mayúsculas ni tildes.";
 
+/** Espera tras la última tecla antes de interpretar la frase con IA (change `busqueda-lenguaje-natural`, D7). */
+const INTERPRET_DEBOUNCE_MS = 900;
+
+/** Forma mínima del `SpeechRecognition` del navegador (Chrome/Edge); no hay tipos DOM estándar para esto. */
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+}
+
+function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
 /**
  * Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1).
  * Píldora con el botón «Buscar» dentro (maqueta B). La búsqueda ya se aplica mientras se escribe, así
  * que enviar el formulario no hace nada más: no recarga la página.
+ *
+ * `onInterpret` (change `busqueda-lenguaje-natural`, D7): la misma caja, sin una aparte. Al dejar de
+ * escribir, al pulsar Buscar o al terminar de dictar, se pide la interpretación en segundo plano —
+ * nunca en cada tecla, para no interrumpir la búsqueda instantánea de texto. Solo `SearchLive` la
+ * pasa; el modo demostración no, así que ahí la caja se comporta exactamente igual que antes.
  */
-export function SearchBox({ value, onChange }: { value: string; onChange: (q: string) => void }) {
+export function SearchBox({
+  value,
+  onChange,
+  onInterpret,
+}: {
+  value: string;
+  onChange: (q: string) => void;
+  onInterpret?: (text: string) => void;
+}) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function scheduleInterpret(text: string) {
+    if (!onInterpret) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!text.trim()) return;
+    debounceRef.current = setTimeout(() => onInterpret(text), INTERPRET_DEBOUNCE_MS);
+  }
+
+  function handleChange(next: string) {
+    onChange(next);
+    scheduleInterpret(next);
+  }
+
+  function handleSubmit() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (onInterpret && value.trim()) onInterpret(value);
+  }
+
+  function toggleVoice() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = speechRecognitionCtor();
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "es-PE";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? "";
+      if (transcript.trim()) {
+        onChange(transcript);
+        onInterpret?.(transcript);
+      }
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  }
+
   return (
-    <form role="search" onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-1">
+    <form
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSubmit();
+      }}
+      className="flex flex-col gap-1"
+    >
       <label htmlFor="q" className="text-base font-semibold text-tinta">
         Código o texto
       </label>
       <SearchPill
         id="q"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => handleChange(event.target.value)}
         placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
         aria-describedby="q-hint"
+        onVoiceClick={onInterpret && speechRecognitionCtor() ? toggleVoice : undefined}
+        voiceListening={listening}
       />
       <p id="q-hint" className="text-base text-gris-texto">
         {SEARCH_BOX_HINT}

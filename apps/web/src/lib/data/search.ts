@@ -9,6 +9,7 @@ import type { paths } from "@/lib/api/schema";
 
 import { IMPORT_ERROR_MESSAGES, call, type ImportFailure, type ImportResult } from "./imports";
 import { apiBaseUrl, getApiMode } from "./mode";
+import type { TermOption } from "./pieces";
 
 export type SearchHit = ApiSchemas["SearchHit"];
 export type SearchPage = ApiSchemas["SearchResultPage"];
@@ -38,6 +39,8 @@ export interface SearchFilters {
   epochStartYear: number | null;
   epochEndYear: number | null;
   hasAlerts: boolean | null;
+  /** Una alerta de completitud puntual (p. ej. «sin foto»), más específica que `hasAlerts`. */
+  alertCode: AlertCode | null;
 }
 
 export const EMPTY_FILTERS: SearchFilters = {
@@ -56,6 +59,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   epochStartYear: null,
   epochEndYear: null,
   hasAlerts: null,
+  alertCode: null,
 };
 
 /** Nombre del filtro en la API (`PieceFilter`) para cada filtro de la pantalla. */
@@ -75,6 +79,7 @@ const API_KEYS: Record<keyof SearchFilters, string> = {
   epochStartYear: "epoch_start_year",
   epochEndYear: "epoch_end_year",
   hasAlerts: "has_alerts",
+  alertCode: "alert_code",
 };
 
 export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
@@ -93,6 +98,17 @@ export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   epochStartYear: "Época desde",
   epochEndYear: "Época hasta",
   hasAlerts: "Completitud",
+  alertCode: "Completitud",
+};
+
+/** Lo que diría una persona al buscar cada alerta de completitud, para el chip y la IA del buscador. */
+export const ALERT_SEARCH_LABELS: Record<AlertCode, string> = {
+  MISSING_INVENTORY_CODE: "sin código I",
+  MISSING_PHOTO: "sin foto",
+  MISSING_LOCATION: "sin ubicación",
+  MISSING_REQUIRED_FIELDS: "campos obligatorios incompletos",
+  MISSING_RECOMMENDED_FIELDS: "campos recomendados incompletos",
+  UNNORMALIZABLE_IDENTIFIER: "identificador no normalizable",
 };
 
 /** Los cinco filtros que el museo usa más, a la vista; el resto va en «Más filtros» (fusion-busqueda-deposito 2.1). */
@@ -168,6 +184,7 @@ export function filtersFromSearchParams(params: { get(name: string): string | nu
   filters.hasAlerts = booleanParam(params.get(API_KEYS.hasAlerts)) ?? (params.get("incompleteOnly") === "1" ? true : null);
   filters.epochStartYear = yearParam(params.get(API_KEYS.epochStartYear));
   filters.epochEndYear = yearParam(params.get(API_KEYS.epochEndYear));
+  filters.alertCode = (params.get(API_KEYS.alertCode)?.trim() as AlertCode | undefined) || null;
   return filters;
 }
 
@@ -198,6 +215,7 @@ export function activeChips(filters: SearchFilters, names: Record<string, string
   if (filters.epochStartYear !== null) add("epochStartYear", String(filters.epochStartYear));
   if (filters.epochEndYear !== null) add("epochEndYear", String(filters.epochEndYear));
   if (filters.hasAlerts !== null) add("hasAlerts", filters.hasAlerts ? "Solo piezas incompletas" : "Solo piezas completas");
+  if (filters.alertCode) add("alertCode", ALERT_SEARCH_LABELS[filters.alertCode] ?? filters.alertCode);
   return chips;
 }
 
@@ -280,7 +298,17 @@ export const SEARCH_ERROR_MESSAGES: Record<string, string> = {
   not_implemented: "Ese filtro todavía no está disponible.",
   gone: "El archivo de esa exportación ya caducó: genérela de nuevo.",
   conflict: "La exportación todavía no está lista.",
+  ai_unavailable: "No se pudo interpretar la frase en este momento; siga escribiendo como texto libre.",
 };
+
+/** Las cinco listas que `POST /ai/interpret-search` reconoce; las mismas que ya carga la pantalla. */
+export interface SearchInterpretValues {
+  collections: TermOption[];
+  categories: TermOption[];
+  materials: TermOption[];
+  conservationStates: TermOption[];
+  locations: TermOption[];
+}
 
 function client(devUser: string | undefined) {
   return createApiClient({ baseUrl: apiBaseUrl(), devUser });
@@ -299,6 +327,57 @@ export async function fetchSearch(
       }) as Promise<{ data?: SearchPage; error?: unknown }>,
     SEARCH_ERROR_MESSAGES,
   );
+}
+
+type InterpretedFiltersOut = ApiSchemas["InterpretedFilters"];
+
+/**
+ * Change `busqueda-lenguaje-natural` (RIA-06): traduce una frase (escrita o dictada) a los mismos
+ * filtros que ya existen, usando las listas ya cargadas para los desplegables — nunca vuelve a
+ * consultar el catálogo. Sin proveedor de IA disponible, degrada a `unavailable`: quien llama debe
+ * seguir dejando la caja como búsqueda de texto libre (D7 de `design.md`).
+ */
+export async function interpretSearch(
+  text: string,
+  values: SearchInterpretValues,
+  devUser?: string,
+): Promise<ImportResult<Partial<SearchFilters>>> {
+  const result = await call(
+    () =>
+      client(devUser).POST("/api/v1/ai/interpret-search", {
+        body: {
+          text,
+          collections: values.collections,
+          categories: values.categories,
+          materials: values.materials,
+          conservation_states: values.conservationStates,
+          locations: values.locations,
+        },
+      }) as Promise<{ data?: InterpretedFiltersOut; error?: unknown }>,
+    SEARCH_ERROR_MESSAGES,
+  );
+  if (result.status !== "ok") return result;
+  const raw = result.value;
+  // Cada campo se fija siempre, aunque quede vacío: una frase nueva describe la búsqueda completa
+  // que se quiere ahora, no un añadido sobre la anterior. Sin esto, un filtro de una interpretación
+  // previa (p. ej. Material: Madera de "retablos de madera") sobrevivía a una frase nueva que no lo
+  // mencionaba ("piezas de cerámica de Puno"), dejando una combinación imposible ("Cerámica de
+  // madera") — hallazgo al probar en vivo.
+  const filters: Partial<SearchFilters> = {
+    q: raw.q?.trim() || "",
+    collectionId: raw.collection_id ?? null,
+    categoryId: raw.category_id ?? null,
+    materialId: raw.material_id ?? null,
+    conservationStateId: raw.conservation_state_id ?? null,
+    locationId: raw.location_id ?? null,
+    tenureRegime: (raw.tenure_regime as TenureRegimeLabel | null | undefined) ?? null,
+    provenance: raw.provenance ?? "",
+    author: raw.author ?? "",
+    alertCode: (raw.alert_code as AlertCode | null | undefined) ?? null,
+    epochStartYear: raw.epoch_start_year ?? null,
+    epochEndYear: raw.epoch_end_year ?? null,
+  };
+  return { status: "ok", value: filters };
 }
 
 // ---------------------------------------------------------------------------------------------

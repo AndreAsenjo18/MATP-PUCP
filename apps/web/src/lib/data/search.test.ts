@@ -13,6 +13,7 @@ import {
   filtersFromSearchParams,
   filtersToSearchParams,
   hasPendingJobs,
+  interpretSearch,
   jobStatusLabel,
   matchReasonText,
   removeFilter,
@@ -20,6 +21,7 @@ import {
   startFullExport,
   suggestionText,
   type SearchFilters,
+  type SearchInterpretValues,
 } from "./search";
 
 // Modo `mock` por defecto; `useLive` sustituye `fetch` por un simulacro (sin API real ni red).
@@ -96,6 +98,14 @@ describe("filtros de la pantalla", () => {
     ]);
     expect(suggestionText("remove_filter:denomination")).toBe("Quite el filtro «Denominación».");
     expect(filterOfSuggestion("remove_filter:description")).toBe("description");
+  });
+
+  it("una alerta puntual (change busqueda-lenguaje-natural) tiene su chip y viaja en la dirección", () => {
+    const filters = { ...EMPTY_FILTERS, alertCode: "MISSING_PHOTO" as const };
+    expect(apiFilters(filters)).toEqual({ alert_code: "MISSING_PHOTO" });
+    expect(activeChips(filters).map((chip) => `${chip.label}: ${chip.value}`)).toEqual(["Completitud: sin foto"]);
+    expect(filtersFromSearchParams(filtersToSearchParams(filters))).toEqual(filters);
+    expect(removeFilter(filters, "alertCode").alertCode).toBeNull();
   });
 
   it("los filtros viajan en la dirección con los nombres de la API y vuelven iguales", () => {
@@ -247,6 +257,93 @@ describe("modo live", () => {
     const result = await startFullExport(DEV_USER);
     expect(result).toMatchObject({ status: "ok", value: { id: "job-full" } });
     expect(new URL((fetchMock.mock.calls[0][0] as Request).url).pathname).toBe("/api/v1/exports/full");
+  });
+
+  const VALUES: SearchInterpretValues = {
+    collections: [],
+    categories: [{ id: "cat-1", label: "Figura zoomorfa" }],
+    materials: [{ id: "mat-1", label: "Cerámica" }],
+    conservationStates: [],
+    locations: [{ id: "loc-1", label: "Depósito 1" }],
+  };
+
+  it("busqueda-lenguaje-natural: manda las listas ya cargadas y traduce la respuesta a filtros de la pantalla", async () => {
+    const fetchMock = useLive(async () =>
+      json(200, { material_id: "mat-1", location_id: "loc-1", alert_code: "MISSING_PHOTO", q: "" }),
+    );
+    const result = await interpretSearch("cerámica sin foto en depósito 1", VALUES, DEV_USER);
+    expect(result).toEqual({
+      status: "ok",
+      value: {
+        q: "",
+        collectionId: null,
+        categoryId: null,
+        materialId: "mat-1",
+        conservationStateId: null,
+        locationId: "loc-1",
+        tenureRegime: null,
+        provenance: "",
+        author: "",
+        alertCode: "MISSING_PHOTO",
+        epochStartYear: null,
+        epochEndYear: null,
+      },
+    });
+    const body = JSON.parse(await (fetchMock.mock.calls[0][0] as Request).text());
+    expect(body).toEqual({
+      text: "cerámica sin foto en depósito 1",
+      collections: [],
+      categories: VALUES.categories,
+      materials: VALUES.materials,
+      conservation_states: [],
+      locations: VALUES.locations,
+    });
+  });
+
+  it("busqueda-lenguaje-natural: sin nada reconocido, deja el texto como búsqueda libre", async () => {
+    useLive(async () => json(200, { q: "nada reconocible" }));
+    const result = await interpretSearch("nada reconocible", VALUES, DEV_USER);
+    expect(result).toEqual({
+      status: "ok",
+      value: {
+        q: "nada reconocible",
+        collectionId: null,
+        categoryId: null,
+        materialId: null,
+        conservationStateId: null,
+        locationId: null,
+        tenureRegime: null,
+        provenance: "",
+        author: "",
+        alertCode: null,
+        epochStartYear: null,
+        epochEndYear: null,
+      },
+    });
+  });
+
+  it("busqueda-lenguaje-natural: una frase nueva reemplaza los filtros de la anterior, no los acumula", async () => {
+    // Hallazgo al probar en vivo: "retablos de madera" deja Material: Madera: una frase nueva que
+    // no menciona material ("piezas de cerámica de Puno") no debe arrastrarlo.
+    useLive(async () => json(200, { category_id: "cat-1", material_id: "mat-1", q: "" }));
+    const first = await interpretSearch("retablos de madera", VALUES, DEV_USER);
+    if (first.status !== "ok") throw new Error("se esperaba ok");
+    expect(first.value.materialId).toBe("mat-1");
+
+    useLive(async () => json(200, { category_id: "cat-1", provenance: "Puno", q: "" }));
+    const second = await interpretSearch("piezas de cerámica de Puno", VALUES, DEV_USER);
+    if (second.status !== "ok") throw new Error("se esperaba ok");
+    expect(second.value.materialId).toBeNull();
+    expect(second.value.provenance).toBe("Puno");
+  });
+
+  it("busqueda-lenguaje-natural: degrada sin bloquear cuando el proveedor de IA no responde", async () => {
+    useLive(async () => json(503, { code: "ai_unavailable", message: "x" }));
+    const result = await interpretSearch("cualquier cosa", VALUES, DEV_USER);
+    expect(result).toMatchObject({
+      status: "rejected",
+      message: "No se pudo interpretar la frase en este momento; siga escribiendo como texto libre.",
+    });
   });
 
   it("en modo mock no llama a la API", async () => {

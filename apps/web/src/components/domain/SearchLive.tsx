@@ -56,6 +56,7 @@ import {
   fetchSearch,
   filterOfSuggestion,
   hasPendingJobs,
+  interpretSearch,
   jobKindLabel,
   jobStatusLabel,
   matchReasonText,
@@ -634,6 +635,28 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
   const remove = (key: FilterChip["key"]) => setFilters((current) => removeFilter(current, key));
 
+  // Change `busqueda-lenguaje-natural` (RIA-06): interpreta la frase de la misma caja de búsqueda
+  // y aplica lo que reconozca como los mismos filtros de siempre — el texto que sobra reemplaza lo
+  // escrito (la persona ve «el texto limpio», idea 1 del PDF). Nunca bloquea: si el proveedor no
+  // responde, la caja ya quedó buscando el texto tal cual desde que se escribió.
+  async function handleInterpret(text: string) {
+    const result = await interpretSearch(
+      text,
+      {
+        collections: options.collections,
+        categories: options.categories,
+        materials: options.materials,
+        conservationStates: options.conservationStates,
+        locations: options.locations,
+      },
+      devUser,
+    );
+    if (result.status !== "ok") return;
+    // Si la persona ya escribió algo distinto mientras se esperaba la respuesta, se descarta: no
+    // se le sobrescribe lo que está escribiendo ahora con una interpretación de un texto anterior.
+    setFilters((current) => (current.q === text ? { ...current, ...result.value } : current));
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -651,7 +674,7 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
         {/* Tarjeta de filtros de la maqueta B. El buscador queda a la vista en todos los tamaños, fuera de
             «Filtros», que en tableta se abre con un botón (rediseno-ux-busqueda D1). */}
         <Card as="aside" aria-label="Filtros de búsqueda" padded={false} className="flex flex-col gap-3 p-4 sm:px-5">
-          <SearchBox value={filters.q} onChange={(q) => update({ q })} />
+          <SearchBox value={filters.q} onChange={(q) => update({ q })} onInterpret={handleInterpret} />
           <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
             <SearchFiltersPanel
               layout="fila"

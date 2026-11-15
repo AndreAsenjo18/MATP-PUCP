@@ -130,6 +130,66 @@ class ColumnMappingSuggestionOut(BaseModel):
     message: str | None = None
 
 
+class SearchOptionIn(BaseModel):
+    """Una opción ya cargada por el frontend para sus filtros manuales (change
+    `busqueda-lenguaje-natural`): se reenvía tal cual, sin volver a consultar el catálogo aquí."""
+
+    id: uuid.UUID
+    label: str
+
+
+class InterpretSearchRequest(BaseModel):
+    """Body de ``POST /ai/interpret-search``: las listas son las mismas que ya carga la pantalla
+    de Búsqueda para sus desplegables (``SearchOptions`` del frontend)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "text": "toros de cerámica de Puno que no tengan foto",
+                    "collections": [],
+                    "categories": [
+                        {"id": "01900000-0000-7000-8000-000000000001", "label": "Figura zoomorfa"}
+                    ],
+                    "materials": [
+                        {"id": "01900000-0000-7000-8000-000000000002", "label": "Cerámica"}
+                    ],
+                    "conservation_states": [],
+                    "locations": [],
+                }
+            ]
+        }
+    )
+
+    text: str = Field(min_length=1, max_length=2000)
+    collections: list[SearchOptionIn] = Field(default_factory=list)
+    categories: list[SearchOptionIn] = Field(default_factory=list)
+    materials: list[SearchOptionIn] = Field(default_factory=list)
+    conservation_states: list[SearchOptionIn] = Field(default_factory=list)
+    locations: list[SearchOptionIn] = Field(default_factory=list)
+
+
+class InterpretedFilters(BaseModel):
+    """Filtros ya resueltos contra las listas recibidas (ids reales, nunca inventados por el
+    modelo — D2/D3 de `busqueda-lenguaje-natural`): el mismo vocabulario que ya usan los filtros
+    manuales de Búsqueda, listos para aplicarse como los chips que ya existen."""
+
+    q: str | None = None
+    collection_id: uuid.UUID | None = None
+    category_id: uuid.UUID | None = None
+    material_id: uuid.UUID | None = None
+    conservation_state_id: uuid.UUID | None = None
+    location_id: uuid.UUID | None = None
+    tenure_regime: str | None = Field(
+        None, description="Etiqueta en español (Propia, Comodato, Préstamo temporal)."
+    )
+    provenance: str | None = None
+    author: str | None = None
+    alert_code: str | None = None
+    epoch_start_year: int | None = None
+    epoch_end_year: int | None = None
+
+
 class AiSuggestionApproval(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

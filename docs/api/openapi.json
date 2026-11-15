@@ -5781,6 +5781,222 @@
         "title": "IncompletePiece",
         "type": "object"
       },
+      "InterpretSearchRequest": {
+        "description": "Body de ``POST /ai/interpret-search``: las listas son las mismas que ya carga la pantalla\nde Búsqueda para sus desplegables (``SearchOptions`` del frontend).",
+        "examples": [
+          {
+            "categories": [
+              {
+                "id": "01900000-0000-7000-8000-000000000001",
+                "label": "Figura zoomorfa"
+              }
+            ],
+            "collections": [],
+            "conservation_states": [],
+            "locations": [],
+            "materials": [
+              {
+                "id": "01900000-0000-7000-8000-000000000002",
+                "label": "Cerámica"
+              }
+            ],
+            "text": "toros de cerámica de Puno que no tengan foto"
+          }
+        ],
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOptionIn"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "collections": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOptionIn"
+            },
+            "title": "Collections",
+            "type": "array"
+          },
+          "conservation_states": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOptionIn"
+            },
+            "title": "Conservation States",
+            "type": "array"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOptionIn"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOptionIn"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "InterpretSearchRequest",
+        "type": "object"
+      },
+      "InterpretedFilters": {
+        "description": "Filtros ya resueltos contra las listas recibidas (ids reales, nunca inventados por el\nmodelo — D2/D3 de `busqueda-lenguaje-natural`): el mismo vocabulario que ya usan los filtros\nmanuales de Búsqueda, listos para aplicarse como los chips que ya existen.",
+        "properties": {
+          "alert_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Code"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "collection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Id"
+          },
+          "conservation_state_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conservation State Id"
+          },
+          "epoch_end_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch End Year"
+          },
+          "epoch_start_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Start Year"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Etiqueta en español (Propia, Comodato, Préstamo temporal).",
+            "title": "Tenure Regime"
+          }
+        },
+        "title": "InterpretedFilters",
+        "type": "object"
+      },
       "InventoryCodeCorrection": {
         "description": "Audited correction of a locked code I (Administrator only, RN-002).",
         "examples": [
@@ -11789,6 +12005,26 @@
         "title": "SearchHit",
         "type": "object"
       },
+      "SearchOptionIn": {
+        "description": "Una opción ya cargada por el frontend para sus filtros manuales (change\n`busqueda-lenguaje-natural`): se reenvía tal cual, sin volver a consultar el catálogo aquí.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "SearchOptionIn",
+        "type": "object"
+      },
       "SearchResultPage": {
         "description": "Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).\n\nA diferencia de `Page[T]` (usada por los dems listados, `{..., page_size}`), el contrato de\n`/search` pide el campo de tamao de pgina como `limit`  se modela aparte en vez de tocar\nla paginacin compartida que usan otros endpoints (`app/api/pagination.py`).",
         "examples": [
@@ -13454,6 +13690,84 @@
         ],
         "x-change": "ia-enriquecimiento-lote",
         "x-status": "stub"
+      }
+    },
+    "/api/v1/ai/interpret-search": {
+      "post": {
+        "description": "Change `busqueda-lenguaje-natural` (RIA-06). Solo de lectura: no persiste nada, no hay\naprobación que gestionar (RN-009 no aplica). Nunca propone campos sensibles (valorización,\ncomodante, préstamo) porque ni siquiera se le ofrecen al modelo (D3).",
+        "operationId": "interpretSearch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterpretSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretedFilters"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El servicio de IA no respondió."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Traducir una frase de búsqueda (lenguaje natural o voz) a los filtros ya existentes",
+        "tags": [
+          "IA asistiva"
+        ],
+        "x-status": "implemented"
       }
     },
     "/api/v1/ai/suggest-cataloging": {

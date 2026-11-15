@@ -84,6 +84,7 @@ No se eliminan por ahora: sostienen reglas que `CLAUDE.md` marca como no negocia
 |---|---|
 | `POST /ai/suggestions/{id}/approve` · `/reject`, `GET /ai/suggestions` | RN-009: ninguna salida de IA se guarda sin aprobación humana registrada |
 | `POST /ai/suggest-column-mapping` | RF-022, RF-048 [SUPUESTO]: cuando ninguna plantilla reconoce un archivo, la IA propone a qué campo corresponde cada columna a partir de los encabezados y una muestra de filas, sin datos sensibles (`lender_name`, `loan_agreement_ref` ni columnas cuyo encabezado los sugiera); no escribe nada, queda precargado en «Ajustar columnas» (`carga-masiva-con-ia`, tarea 1.1, diseño D2) |
+| `POST /ai/interpret-search` | RF-049, RIA-06 [SUPUESTO]: traduce una frase de búsqueda en lenguaje natural o dictada por voz a los filtros ya existentes (`PieceFilter`), sin proponer campos sensibles (valorización, comodante, préstamo); no escribe nada, no hay aprobación que gestionar porque no hay nada que guardar (`busqueda-lenguaje-natural`, D1/D2/D3) |
 | `GET /quality/duplicates`, `POST /quality/duplicates/{id}/resolve`, `POST /quality/duplicates/scan`, `GET /quality/jobs/{job_id}` | RF-030: cola de revisión de duplicados, detección completa en segundo plano y su avance (`deteccion-duplicados-y-cola-revision`, tarea 2.3) |
 | `GET /vocabularies*`, `POST /vocabularies/{code}/terms`, … | RN-010: vocabularios parametrizables (materiales, técnicas, tipos de vista) |
 | `GET /identifier-types`, `POST /identifiers/normalize` | RF-023, RN-010: tipos de identificador y normalizador como datos |
