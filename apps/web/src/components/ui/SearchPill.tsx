@@ -6,7 +6,7 @@
  * - `sobre="terracota"`: en la cabecera del Inicio; el foco del campo es crema.
  * - `sobre="claro"`: en una tarjeta blanca; borde arena y foco terracota.
  */
-import { Search } from "lucide-react";
+import { Mic, Search } from "lucide-react";
 import type { InputHTMLAttributes } from "react";
 
 import { cn } from "@/lib/cn";
@@ -14,9 +14,12 @@ import { cn } from "@/lib/cn";
 export interface SearchPillProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "className" | "size"> {
   id: string;
   sobre?: "terracota" | "claro";
+  /** Dictado por voz (change `busqueda-lenguaje-natural`, D5): oculto si el navegador no lo soporta. */
+  onVoiceClick?: () => void;
+  voiceListening?: boolean;
 }
 
-export function SearchPill({ sobre = "claro", ...input }: SearchPillProps) {
+export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = false, ...input }: SearchPillProps) {
   return (
     <div
       className={cn(
@@ -34,6 +37,21 @@ export function SearchPill({ sobre = "claro", ...input }: SearchPillProps) {
           {...input}
           className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-base text-tinta placeholder:text-gris-texto focus-visible:outline-none"
         />
+        {onVoiceClick && (
+          <button
+            type="button"
+            onClick={onVoiceClick}
+            aria-pressed={voiceListening}
+            aria-label={voiceListening ? "Detener el dictado" : "Buscar por voz"}
+            title={voiceListening ? "Detener el dictado" : "Buscar por voz"}
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+              voiceListening ? "bg-carmin-bg text-carmin-texto animate-pulse" : "text-gris-texto hover:text-terracota",
+            )}
+          >
+            <Mic size={18} aria-hidden="true" />
+          </button>
+        )}
       </span>
       <button
         type="submit"

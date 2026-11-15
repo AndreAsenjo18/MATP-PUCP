@@ -15,6 +15,8 @@ from matp_ai.schemas import (
     ExtractionResult,
     PieceContext,
     ProposedField,
+    SearchInterpretation,
+    SearchValidValues,
     TermSuggestion,
     TermSuggestionResult,
 )
@@ -259,3 +261,44 @@ class MockProvider(AIProvider):
             )
         message = None if used_fields else "No se reconoció un campo claro para ninguna columna."
         return ColumnMappingResult(mappings=mappings, message=message)
+
+    def interpret_search(self, text: str, valid_values: SearchValidValues) -> SearchInterpretation:
+        folded = _fold(text)
+        result: dict[str, object] = {}
+        remainder = text
+
+        def _consume(label: str) -> None:
+            # [SUPUESTO] quita la primera coincidencia literal (sin distinguir mayúsculas) del
+            # texto que sobra; si no calza exacto (p. ej. por tildes distintas) se deja tal cual —
+            # el residuo solo se usa como búsqueda de texto libre adicional, no es crítico.
+            nonlocal remainder
+            match = re.search(re.escape(label), remainder, re.IGNORECASE)
+            if match:
+                remainder = (remainder[: match.start()] + remainder[match.end() :]).strip()
+
+        for code, name in valid_values.collections.items():
+            if "collection_key" not in result and (_fold(code) in folded or _fold(name) in folded):
+                result["collection_key"] = code
+                _consume(name)
+
+        def _match_first(options: list[str], key: str) -> None:
+            for label in options:
+                if _fold(label) in folded:
+                    result[key] = label
+                    _consume(label)
+                    return
+
+        _match_first(valid_values.categories, "category")
+        _match_first(valid_values.materials, "material")
+        _match_first(valid_values.conservation_states, "conservation_state")
+        _match_first(valid_values.locations, "location")
+        _match_first(valid_values.tenure_regimes, "tenure_regime")
+
+        for code, label in valid_values.alert_labels.items():
+            if _fold(label) in folded:
+                result["alert_code"] = code
+                _consume(label)
+                break
+
+        result["q"] = remainder.strip() or None
+        return SearchInterpretation(**result)

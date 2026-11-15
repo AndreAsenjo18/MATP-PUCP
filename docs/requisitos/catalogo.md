@@ -77,8 +77,11 @@
 | RF-038 | Búsqueda resuelta en segundos | Must | busqueda-reportes |
 | RF-044 | Exportación completa de la BD en formato abierto (Excel/CSV) | Must | busqueda-reportes |
 | RF-047 | Reporte de piezas agrupadas por atributo de la ficha | Should | busqueda-reportes |
+| RF-049 | Interpretación de la búsqueda en lenguaje natural o por voz, traducida a los filtros ya existentes | Should | busqueda-reportes (apoya ia-asistiva) |
 
 > RF-047 no está en el Expediente original: lo pidió el museo en la reunión del 2026-10-31 y lo cubre el change `reportes-por-atributo`. Debe incorporarse al Expediente.
+
+> RF-049 tampoco está en el Expediente original: surge de la propuesta de IA generativa del equipo (`ideas-ia-generativa-matp.pdf`, idea 1, priorizada) y lo cubre el change propuesto `busqueda-lenguaje-natural`. **[SUPUESTO]** Debe validarse con el museo y con la jefa de práctica antes de incorporarse al Expediente.
 
 ## 5. Usuarios y seguridad
 
@@ -120,6 +123,13 @@
 | RIA-03 | Sugerencia de categorías / términos normalizados (camino a tesauro Getty AAT) | 3 | ia-asistiva |
 | RIA-04 | Descripción preliminar desde metadatos | 4 (por validar) | ia-asistiva |
 | RIA-05 | Asistente de consulta sobre catálogo autorizado | 5 (pendiente) | ia-asistiva |
+| RIA-06 | Traducción de una búsqueda en lenguaje natural o por voz a los filtros ya existentes | 1 (priorizada) | ia-asistiva (apoya busqueda-reportes) |
+
+> RIA-06 no estaba en el catálogo original de funciones de IA (RIA-01..05 del prompt base): surge
+> de la propuesta de IA generativa del equipo, idea 1, marcada como prioridad. A diferencia de
+> RIA-05 (que responde con texto y cita piezas, y sigue desactivado en fase 1), RIA-06 no genera
+> ninguna respuesta: solo propone filtros ya existentes, de solo lectura. Change propuesto
+> `busqueda-lenguaje-natural`. **[SUPUESTO]**.
 
 > RIA-01 ya no se ofrece desde la ficha individual de una pieza (el panel «Sugerencias de IA» se
 > quitó de esa pantalla tras evaluarlo en vivo: solo cubre medidas, estado de conservación y

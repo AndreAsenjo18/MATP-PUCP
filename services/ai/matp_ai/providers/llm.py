@@ -22,6 +22,8 @@ from matp_ai.schemas import (
     ExtractionResult,
     PieceContext,
     ProposedField,
+    SearchInterpretation,
+    SearchValidValues,
     TermSuggestionResult,
 )
 
@@ -127,6 +129,51 @@ class LLMProvider(AIProvider):
         )
         return ColumnMappingResult(mappings=mappings, message=message)
 
+    def interpret_search(self, text: str, valid_values: SearchValidValues) -> SearchInterpretation:
+        def _dump(value: object) -> str:
+            return json.dumps(value, ensure_ascii=False)
+
+        system_prompt = (
+            "Traduces una frase de búsqueda en español, de un sistema de un museo peruano, a "
+            "filtros ya existentes. Devuelve SOLO un objeto JSON, sin explicación ni markdown, con "
+            "esta forma exacta (todas las claves opcionales, usa null si no aplica):\n\n"
+            '{"q": "<texto que sobra, para buscar como texto libre, o null>", '
+            '"collection_key": "<una de las siglas listadas, o null>", '
+            '"category": "<una de las categorías listadas, o null>", '
+            '"material": "<uno de los materiales listados, o null>", '
+            '"conservation_state": "<uno de los estados listados, o null>", '
+            '"location": "<una de las ubicaciones listadas, o null>", '
+            '"tenure_regime": "<uno de los regímenes listados, o null>", '
+            '"provenance": "<procedencia mencionada en la frase, o null>", '
+            '"author": "<autor mencionado en la frase, o null>", '
+            '"alert_code": "<uno de los códigos de alerta listados, o null>", '
+            '"epoch_start_year": <año entero o null>, "epoch_end_year": <año entero o null>}\n\n'
+            f"Colecciones válidas (sigla: nombre): {_dump(valid_values.collections)}\n"
+            f"Categorías válidas: {_dump(valid_values.categories)}\n"
+            f"Materiales válidos: {_dump(valid_values.materials)}\n"
+            f"Estados de conservación válidos: {_dump(valid_values.conservation_states)}\n"
+            f"Ubicaciones válidas: {_dump(valid_values.locations)}\n"
+            f"Regímenes de tenencia válidos: {_dump(valid_values.tenure_regimes)}\n"
+            f"Alertas válidas (código: lo que significa): {_dump(valid_values.alert_labels)}\n\n"
+            "Reglas:\n"
+            "- Cada valor que devuelvas MUST ser EXACTO a uno de los listados arriba. Si la frase "
+            "menciona algo que no está en ninguna lista, no lo devuelvas en ese campo.\n"
+            '- Quita muletillas ("eh", "o sea") y corrige errores de dictado antes de decidir, '
+            "pero no inventes datos que no estén en la frase.\n"
+            '- Deja en "q" solo lo que no corresponda a ningún filtro de la lista.'
+        )
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text},
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        raw = self._chat_completion(payload)
+        return self._parse_search_interpretation(raw, valid_values)
+
     def _chat_completion(self, payload: dict[str, Any]) -> str:
         if not self.base_url or not self._api_key:
             raise ProviderUnavailable("LLM_BASE_URL/LLM_API_KEY no están configurados.")
@@ -216,3 +263,55 @@ class LLMProvider(AIProvider):
                 )
             )
         return candidates
+
+    def _parse_search_interpretation(
+        self, raw: str, valid_values: SearchValidValues
+    ) -> SearchInterpretation:
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.strip("`")
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:]
+            cleaned = cleaned.strip()
+        try:
+            data = json.loads(cleaned)
+        except ValueError as exc:
+            raise ProviderUnavailable(f"El proveedor de IA no devolvió JSON válido: {exc}") from exc
+        if not isinstance(data, dict):
+            return SearchInterpretation()
+
+        def _valid_choice(value: Any, options: list[str]) -> str | None:
+            return value if isinstance(value, str) and value in options else None
+
+        def _valid_year(value: Any) -> int | None:
+            try:
+                return int(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        collection_key = data.get("collection_key")
+        if not isinstance(collection_key, str) or collection_key not in valid_values.collections:
+            collection_key = None
+        alert_code = data.get("alert_code")
+        if not isinstance(alert_code, str) or alert_code not in valid_values.alert_labels:
+            alert_code = None
+        q = data.get("q")
+
+        # Trazabilidad (D2/D3, mismo espíritu que extract_structured): cada valor se valida contra
+        # la lista recibida, nunca se confía en lo que diga el modelo a ciegas.
+        return SearchInterpretation(
+            q=q if isinstance(q, str) and q.strip() else None,
+            collection_key=collection_key,
+            category=_valid_choice(data.get("category"), valid_values.categories),
+            material=_valid_choice(data.get("material"), valid_values.materials),
+            conservation_state=_valid_choice(
+                data.get("conservation_state"), valid_values.conservation_states
+            ),
+            location=_valid_choice(data.get("location"), valid_values.locations),
+            tenure_regime=_valid_choice(data.get("tenure_regime"), valid_values.tenure_regimes),
+            provenance=data.get("provenance") if isinstance(data.get("provenance"), str) else None,
+            author=data.get("author") if isinstance(data.get("author"), str) else None,
+            alert_code=alert_code,
+            epoch_start_year=_valid_year(data.get("epoch_start_year")),
+            epoch_end_year=_valid_year(data.get("epoch_end_year")),
+        )

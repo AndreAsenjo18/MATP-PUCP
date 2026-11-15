@@ -18,6 +18,8 @@ from matp_ai.schemas import (
     ExtractionResult,
     ExtractRequest,
     PieceContext,
+    SearchInterpretation,
+    SearchInterpretRequest,
     SuggestionEnvelope,
     TermSuggestionResult,
 )
@@ -131,5 +133,15 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
     )
     def suggest_column_mapping(body: ColumnMappingRequest) -> ColumnMappingResult:
         return provider.suggest_column_mapping(body.headers, body.sample_rows, body.target_fields)
+
+    @app.post(
+        "/v1/interpret-search",
+        response_model=SearchInterpretation,
+        responses=ERRORS,
+        tags=["IA asistiva"],
+        summary="RIA-06: traducir una frase de búsqueda a los filtros que ya existen",
+    )
+    def interpret_search(body: SearchInterpretRequest) -> SearchInterpretation:
+        return provider.interpret_search(body.text, body.valid_values)
 
     return app

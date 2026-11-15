@@ -19,6 +19,7 @@ from app.api.deps import (
     require_permission,
     writer,
 )
+from app.api.enums import TENURE_REGIME_LABELS
 from app.api.errors import COMMON_ERROR_RESPONSES, ErrorResponse
 from app.api.pagination import Page, PageParams, page_params, paginate
 from app.api.stubs import (
@@ -49,6 +50,9 @@ from app.modules.ai_suggestions.schemas import (
     CatalogingSuggestionRequest,
     ColumnMappingSuggestionOut,
     ColumnMappingSuggestRequest,
+    InterpretedFilters,
+    InterpretSearchRequest,
+    SearchOptionIn,
 )
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditAction, AuditOrigin
@@ -66,6 +70,7 @@ from app.modules.audit.query import (
 from app.modules.audit.schemas import AuditEntryOut
 from app.modules.catalog.queries import get_piece
 from app.modules.imports.mapping import ai_mapping_targets
+from app.modules.quality.completeness import ALERTS
 from app.modules.users import admin as users_admin
 from app.modules.users import auth
 from app.modules.users.admin import user_roles
@@ -568,6 +573,86 @@ def suggest_column_mapping(
     client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
     result = client.suggest_column_mapping(body.headers, sample_rows, target_fields)
     return ColumnMappingSuggestionOut.model_validate(result)
+
+
+# [SUPUESTO] Frase corta para que el modelo (y quien dicte o escriba) reconozca cada alerta de
+# completitud, igual de espíritu que las insignias ya usadas en la ficha y en PieceCard
+# ("Sin foto", "Sin ubicación"); el mensaje largo de ALERTS[...].message no calza con cómo
+# alguien realmente lo diría al buscar.
+_ALERT_SEARCH_LABELS: dict[str, str] = {
+    "MISSING_INVENTORY_CODE": "sin código I",
+    "MISSING_PHOTO": "sin foto",
+    "MISSING_LOCATION": "sin ubicación",
+    "MISSING_REQUIRED_FIELDS": "campos obligatorios incompletos",
+    "MISSING_RECOMMENDED_FIELDS": "campos recomendados incompletos",
+    "UNNORMALIZABLE_IDENTIFIER": "identificador no normalizable",
+}
+
+
+@router.post(
+    "/ai/interpret-search",
+    response_model=InterpretedFilters,
+    responses={503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."}},
+    summary="Traducir una frase de búsqueda (lenguaje natural o voz) a los filtros ya existentes",
+    tags=["IA asistiva"],
+    **implemented(),
+)
+def interpret_search(
+    body: InterpretSearchRequest, user: Reader, request: Request
+) -> InterpretedFilters:
+    """Change `busqueda-lenguaje-natural` (RIA-06). Solo de lectura: no persiste nada, no hay
+    aprobación que gestionar (RN-009 no aplica). Nunca propone campos sensibles (valorización,
+    comodante, préstamo) porque ni siquiera se le ofrecen al modelo (D3)."""
+    del user  # solo gatea el mismo permiso que ya exige buscar; esta operación no persiste nada
+    valid_values = {
+        "collections": {str(option.id): option.label for option in body.collections},
+        "categories": [option.label for option in body.categories],
+        "materials": [option.label for option in body.materials],
+        "conservation_states": [option.label for option in body.conservation_states],
+        "locations": [option.label for option in body.locations],
+        "tenure_regimes": list(TENURE_REGIME_LABELS.values()),
+        "alert_labels": {
+            code.value: _ALERT_SEARCH_LABELS[code.value]
+            for code in ALERTS
+            if code.value in _ALERT_SEARCH_LABELS
+        },
+    }
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    raw = client.interpret_search(body.text, valid_values)
+
+    def _resolve_id(options: list[SearchOptionIn], label: str | None) -> uuid.UUID | None:
+        if not label:
+            return None
+        return next((option.id for option in options if option.label == label), None)
+
+    collection_id = None
+    collection_key = raw.get("collection_key")
+    if collection_key:
+        collection_id = next(
+            (option.id for option in body.collections if str(option.id) == collection_key), None
+        )
+    alert_code = raw.get("alert_code")
+    if alert_code not in valid_values["alert_labels"]:
+        alert_code = None
+
+    return InterpretedFilters(
+        q=raw.get("q") or None,
+        collection_id=collection_id,
+        category_id=_resolve_id(body.categories, raw.get("category")),
+        material_id=_resolve_id(body.materials, raw.get("material")),
+        conservation_state_id=_resolve_id(body.conservation_states, raw.get("conservation_state")),
+        location_id=_resolve_id(body.locations, raw.get("location")),
+        tenure_regime=(
+            raw.get("tenure_regime")
+            if raw.get("tenure_regime") in TENURE_REGIME_LABELS.values()
+            else None
+        ),
+        provenance=raw.get("provenance") or None,
+        author=raw.get("author") or None,
+        alert_code=alert_code,
+        epoch_start_year=raw.get("epoch_start_year"),
+        epoch_end_year=raw.get("epoch_end_year"),
+    )
 
 
 @router.post(

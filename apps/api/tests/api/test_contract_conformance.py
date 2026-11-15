@@ -53,6 +53,8 @@ CAMPOS_ANADIDOS: set[tuple[str, str]] = {
 ANADIDOS: set[tuple[str, str]] = {
     # Mapeo de columnas por IA (change carga-masiva-con-ia, tarea 1.1).
     ("post", "/ai/suggest-column-mapping"),
+    # Búsqueda en lenguaje natural o por voz (change busqueda-lenguaje-natural, RIA-06).
+    ("post", "/ai/interpret-search"),
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),

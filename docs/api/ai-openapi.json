@@ -414,6 +414,261 @@
         "title": "ProposedField",
         "type": "object"
       },
+      "SearchInterpretRequest": {
+        "examples": [
+          {
+            "text": "toros de cerámica de Puno que no tengan foto",
+            "valid_values": {
+              "alert_labels": {
+                "MISSING_PHOTO": "sin foto"
+              },
+              "categories": [
+                "Figura zoomorfa"
+              ],
+              "collections": {
+                "MMZ": "Colección MMZ"
+              },
+              "conservation_states": [
+                "Bueno",
+                "Regular",
+                "Malo"
+              ],
+              "locations": [
+                "Depósito 1"
+              ],
+              "materials": [
+                "Cerámica"
+              ],
+              "tenure_regimes": [
+                "Propia",
+                "Comodato",
+                "Préstamo temporal"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "text": {
+            "description": "Frase en lenguaje natural, escrita o dictada.",
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          },
+          "valid_values": {
+            "$ref": "#/components/schemas/SearchValidValues"
+          }
+        },
+        "required": [
+          "text",
+          "valid_values"
+        ],
+        "title": "SearchInterpretRequest",
+        "type": "object"
+      },
+      "SearchInterpretation": {
+        "description": "Filtros que la IA reconoció, en el mismo vocabulario que el filtro único de búsqueda\n(`PieceFilter`, D2 de `design.md`): el backend valida cada valor contra el catálogo real y\ndescarta lo que no exista o lo que el permiso de quien pregunta no permita (D3) antes de\naplicarlo. Nunca incluye campos sensibles (valorización, comodante, préstamo): ni siquiera se\nle ofrece esa opción al modelo.",
+        "properties": {
+          "alert_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código de alerta de completitud (p. ej. MISSING_PHOTO) de los que estén en valid_values.alert_labels.",
+            "title": "Alert Code"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "collection_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Key"
+          },
+          "conservation_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conservation State"
+          },
+          "epoch_end_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch End Year"
+          },
+          "epoch_start_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Start Year"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lo que sobra de la frase sin calzar con ningún filtro.",
+            "title": "Q"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenure Regime"
+          }
+        },
+        "title": "SearchInterpretation",
+        "type": "object"
+      },
+      "SearchValidValues": {
+        "description": "Valores vigentes del museo que la IA puede reconocer en una frase de búsqueda (change\n`busqueda-lenguaje-natural`, D2): cualquier valor que no aparezca aquí no se propone como\nfiltro. Las listas vienen de los mismos catálogos que ya alimentan los filtros manuales.",
+        "properties": {
+          "alert_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Código de alerta de completitud -> etiqueta en lenguaje llano, p. ej. MISSING_PHOTO -> 'sin foto'.",
+            "title": "Alert Labels",
+            "type": "object"
+          },
+          "categories": {
+            "description": "Categorías activas.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "collections": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Identificador de colección (sigla o id, lo decide quien llama) -> nombre.",
+            "title": "Collections",
+            "type": "object"
+          },
+          "conservation_states": {
+            "description": "Estados de conservación activos.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Conservation States",
+            "type": "array"
+          },
+          "locations": {
+            "description": "Nombres de ubicación vigentes.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "materials": {
+            "description": "Materiales activos.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "tenure_regimes": {
+            "description": "Etiquetas de régimen de tenencia.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tenure Regimes",
+            "type": "array"
+          }
+        },
+        "title": "SearchValidValues",
+        "type": "object"
+      },
       "SuggestionEnvelope_DescriptionResult_": {
         "properties": {
           "function_code": {
@@ -724,6 +979,57 @@
           }
         },
         "summary": "RIA-01: proponer datos estructurados desde texto libre",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/interpret-search": {
+      "post": {
+        "operationId": "interpret_search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchInterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchInterpretation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-06: traducir una frase de búsqueda a los filtros que ya existen",
         "tags": [
           "IA asistiva"
         ]

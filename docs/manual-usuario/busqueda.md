@@ -25,6 +25,16 @@ Al escribir un código, el sistema entiende sus distintas formas: `I-00100`, `i 
 
 Cada resultado dice qué coincidió, por ejemplo *«Coincide por código de colección «M.M.Z. 15»»*, *«Coincide en denominación y procedencia»* o *«Coincide en la descripción»*. Si la pieza tiene fotografías, la tarjeta muestra una miniatura de la foto principal.
 
+### Escribir o dictar en lenguaje natural
+
+En la misma caja «Código o texto», además de un código o una palabra suelta, puede escribir (o dictar, con el ícono del micrófono) una frase completa: por ejemplo, «toros de cerámica de Puno que no tengan foto y estén en el depósito 1».
+
+- Mientras escribe, la búsqueda por texto sigue funcionando igual que siempre, al instante.
+- Al dejar de escribir, al dictar o al presionar **Buscar**, el sistema interpreta la frase y aplica los filtros que reconozca (categoría, material, colección, ubicación, régimen de tenencia, procedencia, autor, año, o una alerta de completitud como «sin foto») como las mismas etiquetas de filtro de siempre. Lo que no se reconoce queda como texto libre en la caja.
+- Cada filtro aplicado se puede quitar con su etiqueta, igual que un filtro elegido a mano.
+- El micrófono solo aparece si su navegador lo admite (Chrome o Edge, por ejemplo). Usa el reconocimiento de voz del propio navegador: no hace falta configurar nada.
+- Si la interpretación no está disponible en ese momento, la caja sigue funcionando como búsqueda de texto normal: nunca se bloquea.
+
 ---
 
 ## 2. Filtros

@@ -145,6 +145,91 @@ class ColumnMappingResult(BaseModel):
     message: str | None = None
 
 
+class SearchValidValues(BaseModel):
+    """Valores vigentes del museo que la IA puede reconocer en una frase de búsqueda (change
+    `busqueda-lenguaje-natural`, D2): cualquier valor que no aparezca aquí no se propone como
+    filtro. Las listas vienen de los mismos catálogos que ya alimentan los filtros manuales.
+    """
+
+    collections: dict[str, str] = Field(
+        default_factory=dict,
+        description="Identificador de colección (sigla o id, lo decide quien llama) -> nombre.",
+    )
+    categories: list[str] = Field(default_factory=list, description="Categorías activas.")
+    materials: list[str] = Field(default_factory=list, description="Materiales activos.")
+    conservation_states: list[str] = Field(
+        default_factory=list, description="Estados de conservación activos."
+    )
+    locations: list[str] = Field(default_factory=list, description="Nombres de ubicación vigentes.")
+    tenure_regimes: list[str] = Field(
+        default_factory=list, description="Etiquetas de régimen de tenencia."
+    )
+    alert_labels: dict[str, str] = Field(
+        default_factory=dict,
+        description="Código de alerta de completitud -> etiqueta en lenguaje llano, p. ej. "
+        "MISSING_PHOTO -> 'sin foto'.",
+    )
+
+
+class SearchInterpretRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "text": "toros de cerámica de Puno que no tengan foto",
+                    "valid_values": {
+                        "collections": {"MMZ": "Colección MMZ"},
+                        "categories": ["Figura zoomorfa"],
+                        "materials": ["Cerámica"],
+                        "conservation_states": ["Bueno", "Regular", "Malo"],
+                        "locations": ["Depósito 1"],
+                        "tenure_regimes": ["Propia", "Comodato", "Préstamo temporal"],
+                        "alert_labels": {"MISSING_PHOTO": "sin foto"},
+                    },
+                }
+            ]
+        }
+    )
+
+    text: str = Field(max_length=2000, description="Frase en lenguaje natural, escrita o dictada.")
+    valid_values: SearchValidValues
+
+    @field_validator("text")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("El texto es obligatorio.")
+        return value
+
+
+class SearchInterpretation(BaseModel):
+    """Filtros que la IA reconoció, en el mismo vocabulario que el filtro único de búsqueda
+    (`PieceFilter`, D2 de `design.md`): el backend valida cada valor contra el catálogo real y
+    descarta lo que no exista o lo que el permiso de quien pregunta no permita (D3) antes de
+    aplicarlo. Nunca incluye campos sensibles (valorización, comodante, préstamo): ni siquiera se
+    le ofrece esa opción al modelo.
+    """
+
+    q: str | None = Field(
+        None, description="Lo que sobra de la frase sin calzar con ningún filtro."
+    )
+    collection_key: str | None = None
+    category: str | None = None
+    material: str | None = None
+    conservation_state: str | None = None
+    location: str | None = None
+    tenure_regime: str | None = None
+    provenance: str | None = None
+    author: str | None = None
+    alert_code: str | None = Field(
+        None,
+        description="Código de alerta de completitud (p. ej. MISSING_PHOTO) de los que estén en "
+        "valid_values.alert_labels.",
+    )
+    epoch_start_year: int | None = None
+    epoch_end_year: int | None = None
+
+
 class SuggestionEnvelope[T](BaseModel):
     function_code: Literal["RIA_01", "RIA_03", "RIA_04"]
     provider: str

@@ -50,6 +50,26 @@ class AiServiceClient:
             )
         return response.json()
 
+    def interpret_search(self, text: str, valid_values: dict[str, Any]) -> dict[str, Any]:
+        """Change `busqueda-lenguaje-natural` (RIA-06). Degrada igual que las demás operaciones:
+        ``ServiceUnavailable`` (503) nunca bloquea la búsqueda, la caja sigue sirviendo como texto
+        libre normal."""
+        try:
+            response = self._client.post(
+                "/v1/interpret-search", json={"text": text, "valid_values": valid_values}
+            )
+        except httpx.HTTPError as exc:
+            raise ServiceUnavailable(
+                "El servicio de IA no respondió a tiempo.", code="ai_unavailable"
+            ) from exc
+        if response.status_code >= 400:
+            raise ServiceUnavailable(
+                "El servicio de IA no está disponible en este momento.",
+                code="ai_unavailable",
+                details={"upstream_status": response.status_code},
+            )
+        return response.json()
+
     def suggest_column_mapping(
         self,
         headers: list[str],

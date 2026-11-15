@@ -7,6 +7,8 @@ from matp_ai.schemas import (
     DescriptionResult,
     ExtractionResult,
     PieceContext,
+    SearchInterpretation,
+    SearchValidValues,
     TermSuggestionResult,
 )
 
@@ -40,3 +42,8 @@ class AIProvider(ABC):
     ) -> ColumnMappingResult:
         """Carga masiva con IA (change carga-masiva-con-ia): a qué campo de ``target_fields``
         corresponde cada columna de un archivo que ninguna plantilla guardada reconoció."""
+
+    @abstractmethod
+    def interpret_search(self, text: str, valid_values: SearchValidValues) -> SearchInterpretation:
+        """RIA-06 (change busqueda-lenguaje-natural): traduce una frase de búsqueda, escrita o
+        dictada, a los filtros que ya entiende el buscador — solo de lectura, nunca escribe nada."""

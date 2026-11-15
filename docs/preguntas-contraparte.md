@@ -469,3 +469,16 @@ Surge de una observación del equipo en la exposición del prototipo: sugerir te
 | CM2 | ¿Qué tamaño de muestra de filas se envía a la IA para sugerir el mapeo de columnas? | **[SUPUESTO]** Las primeras 20 filas con datos, suficiente para inferir el tipo de cada columna sin enviar el archivo completo | ia-asistiva | B |
 | CM3 | ¿Qué tamaño de página por defecto debe traer la hoja de revisión con sugerencias de IA? | **[SUPUESTO]** 25, igual que la paginación ya usada en la revisión del lote; la persona puede cambiarlo | importacion-datos (RF-048) | B |
 | CM4 | ¿Es «Should» o «Must» priorizar esta carga masiva con IA frente al resto del backlog de IA (RIA-02 a RIA-05)? | **[SUPUESTO]** Should: depende de que el museo valide que el volumen de carga lo justifica | importacion-datos (RF-048) | B |
+
+## BL. Búsqueda en lenguaje natural o por voz (propuesta `busqueda-lenguaje-natural`, 2026-11-14)
+
+Surge de `ideas-ia-generativa-matp.pdf` (idea 1, marcada como prioridad por el equipo): escribir o
+dictar lo que se busca, en vez de elegir cada filtro por desplegable. Supuestos de diseño, no
+confirmados con el museo ni con la jefa de práctica.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| BL1 | ¿RIA-06 es un ID nuevo o una realización de RIA-05 («Asistente de consulta»)? | **[SUPUESTO]** ID nuevo (RIA-06): RIA-05 responde con texto y cita piezas, y sigue desactivado en fase 1; esto solo traduce la frase a filtros, sin generar ninguna respuesta, y es justo lo que el equipo quiere activo ahora | ia-asistiva | A |
+| BL2 | ¿Qué tan atrás se espera (en segundos) la interpretación tras dejar de escribir o de dictar? | **[SUPUESTO]** 900 ms de pausa tras la última tecla, o inmediato al terminar de dictar o al pulsar «Buscar»; nunca en cada tecla, para no interrumpir la búsqueda instantánea de texto que ya existe | busqueda-reportes (RF-038) | B |
+| BL3 | ¿El dictado por voz (reconocimiento de voz del propio navegador, sin servicio propio) es aceptable para el museo, dado que ese reconocimiento no lo controla el sistema? | **[SUPUESTO]** Sí, para esta iteración: ningún dato personal cruza esa capa (nombres de piezas y colecciones, no datos de donantes ni propietarios); se avisa en la interfaz qué navegador lo soporta | ia-asistiva (RNF-008) | B |
+| BL4 | ¿Se espera poder editar en el lugar un filtro mal interpretado, o alcanza con quitarlo y volver a elegirlo a mano? | **[SUPUESTO]** Alcanza con quitarlo (mismo chip removible que ya existe) y corregirlo con el control manual de esa categoría; no se construye edición en línea del chip en esta iteración | busqueda-reportes (RF-032) | B |

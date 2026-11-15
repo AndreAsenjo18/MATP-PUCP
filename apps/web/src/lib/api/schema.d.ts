@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 6b0099e59fe2b5b45d5d9fe14ebc14c9350d1decc688d6a9d7ebcd745cdc32fd
+ * openapi-sha256: 34827bf3d26d96516478a487572e7bb6a4ed739126d9e45909ce3826b63697c9
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -18,6 +18,28 @@ export interface paths {
          * @description Cada borrador queda como sugerencia PENDIENTE; ninguna ficha cambia sin aprobación.
          */
         post: operations["batchAiEnrichment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/interpret-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Traducir una frase de búsqueda (lenguaje natural o voz) a los filtros ya existentes
+         * @description Change `busqueda-lenguaje-natural` (RIA-06). Solo de lectura: no persiste nada, no hay
+         *     aprobación que gestionar (RN-009 no aplica). Nunca propone campos sensibles (valorización,
+         *     comodante, préstamo) porque ni siquiera se le ofrecen al modelo (D3).
+         */
+        post: operations["interpretSearch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4883,6 +4905,78 @@ export interface components {
             title: string;
         };
         /**
+         * InterpretedFilters
+         * @description Filtros ya resueltos contra las listas recibidas (ids reales, nunca inventados por el
+         *     modelo — D2/D3 de `busqueda-lenguaje-natural`): el mismo vocabulario que ya usan los filtros
+         *     manuales de Búsqueda, listos para aplicarse como los chips que ya existen.
+         */
+        InterpretedFilters: {
+            /** Alert Code */
+            alert_code?: string | null;
+            /** Author */
+            author?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Collection Id */
+            collection_id?: string | null;
+            /** Conservation State Id */
+            conservation_state_id?: string | null;
+            /** Epoch End Year */
+            epoch_end_year?: number | null;
+            /** Epoch Start Year */
+            epoch_start_year?: number | null;
+            /** Location Id */
+            location_id?: string | null;
+            /** Material Id */
+            material_id?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /** Q */
+            q?: string | null;
+            /**
+             * Tenure Regime
+             * @description Etiqueta en español (Propia, Comodato, Préstamo temporal).
+             */
+            tenure_regime?: string | null;
+        };
+        /**
+         * InterpretSearchRequest
+         * @description Body de ``POST /ai/interpret-search``: las listas son las mismas que ya carga la pantalla
+         *     de Búsqueda para sus desplegables (``SearchOptions`` del frontend).
+         * @example {
+         *       "categories": [
+         *         {
+         *           "id": "01900000-0000-7000-8000-000000000001",
+         *           "label": "Figura zoomorfa"
+         *         }
+         *       ],
+         *       "collections": [],
+         *       "conservation_states": [],
+         *       "locations": [],
+         *       "materials": [
+         *         {
+         *           "id": "01900000-0000-7000-8000-000000000002",
+         *           "label": "Cerámica"
+         *         }
+         *       ],
+         *       "text": "toros de cerámica de Puno que no tengan foto"
+         *     }
+         */
+        InterpretSearchRequest: {
+            /** Categories */
+            categories?: components["schemas"]["SearchOptionIn"][];
+            /** Collections */
+            collections?: components["schemas"]["SearchOptionIn"][];
+            /** Conservation States */
+            conservation_states?: components["schemas"]["SearchOptionIn"][];
+            /** Locations */
+            locations?: components["schemas"]["SearchOptionIn"][];
+            /** Materials */
+            materials?: components["schemas"]["SearchOptionIn"][];
+            /** Text */
+            text: string;
+        };
+        /**
          * InventoryCodeCorrection
          * @description Audited correction of a locked code I (Administrator only, RN-002).
          * @example {
@@ -7580,6 +7674,20 @@ export interface components {
             thumbnail_url?: string | null;
         };
         /**
+         * SearchOptionIn
+         * @description Una opción ya cargada por el frontend para sus filtros manuales (change
+         *     `busqueda-lenguaje-natural`): se reenvía tal cual, sin volver a consultar el catálogo aquí.
+         */
+        SearchOptionIn: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /**
          * SearchResultPage
          * @description Respuesta de `GET /search` (contrato `PieceSearchResponse`, RF-031/RF-032).
          *
@@ -8436,6 +8544,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotImplementedResponse"];
+                };
+            };
+        };
+    };
+    interpretSearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterpretSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterpretedFilters"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El servicio de IA no respondió. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
