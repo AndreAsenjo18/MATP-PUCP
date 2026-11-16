@@ -196,7 +196,7 @@ Cada sección del panel aparece solo si su rol puede hacer ese cambio (editar fi
 
 #### Completar con Gemini
 
-Si su rol puede pedir y aprobar sugerencias de IA (hoy, Administrador y Gestor de colecciones), al abrir el panel Gemini lee **solo lo que ya dice esa ficha**: la denominación, la descripción, las observaciones y, si se puede, la foto principal. Con eso propone valores para los datos que faltan.
+Si su rol puede pedir y aprobar sugerencias de IA (hoy, Administrador y Gestor de colecciones), al abrir el panel Gemini lee **solo lo que ya dice esa ficha**: la denominación, la descripción y, si se puede, la foto principal. Las observaciones no se le envían, porque pueden tener datos personales. Con eso propone valores para los datos que faltan.
 
 1. Mientras lee, el panel dice «Gemini está leyendo la ficha…». Puede ir llenando lo demás.
 2. Cada propuesta aparece en su campo como **Sugerido por Gemini**, con su prueba debajo, por ejemplo «De la descripción: «madera de cedro»». La cita también queda resaltada en **Lo que ya dice la ficha**. Si viene de la foto dice **De la foto principal**.

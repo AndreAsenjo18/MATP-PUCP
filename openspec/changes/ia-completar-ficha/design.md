@@ -38,11 +38,14 @@ leyendo la ficha…». Si tarda o falla, el panel sigue usable sin propuestas.
 Las decisiones D1 a D5 eran propuestas. Al contrastarlas con el código quedaron así:
 
 ### D1, ajustada: qué se le envía al proveedor
-- **Texto:** denominación, descripción y observaciones (`notes`) de la ficha. No se envía nada
-  más: ni comodante (`lender_name`), ni convenio, ni propietario legal, ni registrador
-  (`recorded_by`), ni el registro de origen (`piece_source_record.payload`), ni la ubicación
-  (RNF-014). El cuerpo del servicio de IA no acepta otros campos (`extra="forbid"`) y hay una
-  prueba que revisa lo enviado.
+- **Texto:** denominación y descripción de la ficha. No se envía nada más: ni comodante
+  (`lender_name`), ni convenio, ni propietario legal, ni registrador (`recorded_by`), ni el
+  registro de origen (`piece_source_record.payload`), ni la ubicación (RNF-014). El cuerpo del
+  servicio de IA no acepta otros campos (`extra="forbid"`) y hay una prueba que revisa lo enviado.
+- **Observaciones (`notes`):** no se envían por defecto, porque pueden tener datos personales
+  (RNF-014, Ley 29733). La constante `SEND_NOTES_TO_AI`, en
+  `apps/api/app/modules/ai_suggestions/completion.py`, las habilita cuando el museo confirme
+  que no los tienen (pregunta CF3) [SUPUESTO] pendiente. Una prueba verifica que hoy no salen.
 - **Campos:** solo los de `missing_fields` que la IA puede probar con la ficha: categoría,
   materiales, procedencia, época, medidas y estado de conservación. La colección y la
   descripción no se piden. La colección no sale del texto de la pieza con una cita, y redactar

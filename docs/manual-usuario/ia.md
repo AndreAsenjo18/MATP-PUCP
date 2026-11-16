@@ -13,4 +13,4 @@ La IA ayuda en cuatro lugares. En todos, **sin su aprobación no se guarda nada 
 
 ## Qué datos ve Gemini
 
-Solo los datos de catálogo que necesita para la tarea: la denominación, la descripción, las observaciones y, para completar una ficha, su foto principal. Nunca el comodante, el convenio, el propietario, quien registró la pieza ni el registro original del Excel. La foto no se envía si la pieza está en comodato o tiene una restricción de uso.
+Solo los datos de catálogo que necesita para la tarea. Para completar una ficha, la denominación, la descripción y su foto principal; las observaciones no se envían, porque pueden tener datos personales. Nunca el comodante, el convenio, el propietario, quien registró la pieza ni el registro original del Excel. La foto no se envía si la pieza está en comodato o tiene una restricción de uso.
