@@ -190,6 +190,85 @@ class InterpretedFilters(BaseModel):
     epoch_end_year: int | None = None
 
 
+class CompletionEvidenceOut(BaseModel):
+    source: Literal["text", "image"] = Field(
+        description="`text`: cita literal de la ficha; `image`: leído de la foto principal."
+    )
+    quote: str | None = Field(None, description="Fragmento literal (solo `text`).")
+    text_field: Literal["denomination", "description", "notes"] | None = None
+
+
+class CompletionProposalOut(BaseModel):
+    field: Literal[
+        "category", "materials", "provenance", "epoch", "dimensions_text", "conservation_status"
+    ] = Field(description="Dato propuesto, con el nombre que se usa al aprobar.")
+    piece_field: str = Field(
+        description="Campo de la ficha que completa, como en `IncompletePiece.missing_fields`."
+    )
+    value: str = Field(description="Código del término o el texto propuesto.")
+    label: str = Field(description="Cómo se muestra (etiqueta del término o el texto).")
+    term_id: uuid.UUID | None = Field(None, description="Término de la lista, si es de una.")
+    confidence: float = Field(ge=0, le=1)
+    evidence: CompletionEvidenceOut
+
+
+class PieceCompletionOut(BaseModel):
+    """«Completar ficha» (change `ia-completar-ficha`): propuestas PENDIENTES para los campos que
+    le faltan a la pieza, cada una con su prueba. Nada se escribe hasta que la persona acepta y
+    guarda (RN-009): lo aceptado se aprueba con `POST /ai/suggestions/{id}/approve`."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "suggestion_id": EX_SUGGESTION_ID,
+                    "provider": "mock",
+                    "model": "mock-deterministic-v1",
+                    "prompt_version": "completar-ficha-v1",
+                    "fields": ["materials", "epoch"],
+                    "proposals": [
+                        {
+                            "field": "materials",
+                            "piece_field": "materials",
+                            "value": "MADERA",
+                            "label": "Madera",
+                            "term_id": "01900000-0000-7000-8000-000000000002",
+                            "confidence": 0.8,
+                            "evidence": {
+                                "source": "text",
+                                "quote": "madera de cedro",
+                                "text_field": "description",
+                            },
+                        }
+                    ],
+                    "not_found": ["epoch_original_text"],
+                    "image_used": False,
+                    "reused": False,
+                }
+            ]
+        }
+    )
+
+    suggestion_id: uuid.UUID | None = Field(
+        None, description="Sugerencia pendiente; null si no había nada que pedir."
+    )
+    provider: str | None = None
+    model: str | None = None
+    prompt_version: str | None = None
+    fields: list[str] = Field(
+        default_factory=list, description="Datos que se pidieron (los que le faltan a la pieza)."
+    )
+    proposals: list[CompletionProposalOut] = Field(default_factory=list)
+    not_found: list[str] = Field(
+        default_factory=list,
+        description="Campos de la ficha (`missing_fields`) que la IA no encontró en la ficha.",
+    )
+    image_used: bool = Field(False, description="Si se leyó también la foto principal.")
+    reused: bool = Field(
+        False, description="La misma propuesta pendiente de antes; no se volvió a llamar a la IA."
+    )
+
+
 class AiSuggestionApproval(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={

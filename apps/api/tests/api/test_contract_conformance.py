@@ -57,6 +57,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/ai/suggest-column-mapping"),
     # Búsqueda en lenguaje natural o por voz (change busqueda-lenguaje-natural, RIA-06).
     ("post", "/ai/interpret-search"),
+    # «Completar ficha» con IA (change ia-completar-ficha, D7; RIA-01, RIA-03, RN-009).
+    ("post", "/ai/pieces/{}/completion"),
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),

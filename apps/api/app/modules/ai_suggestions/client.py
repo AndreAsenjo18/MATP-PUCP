@@ -100,3 +100,21 @@ class AiServiceClient:
                 details={"upstream_status": response.status_code},
             )
         return response.json()
+
+    def complete_piece(self, body: dict[str, Any]) -> dict[str, Any]:
+        """«Completar ficha» (change ia-completar-ficha). Degrada igual que las demás: sin
+        respuesta, ``ServiceUnavailable`` (503) y el panel sigue sin propuestas (D5)."""
+        try:
+            response = self._client.post("/v1/complete-piece", json=body)
+        except httpx.HTTPError as exc:
+            raise ServiceUnavailable(
+                "El servicio de IA no respondió a tiempo. La ficha no cambió.",
+                code="ai_unavailable",
+            ) from exc
+        if response.status_code >= 400:
+            raise ServiceUnavailable(
+                "El servicio de IA no está disponible en este momento. La ficha no cambió.",
+                code="ai_unavailable",
+                details={"upstream_status": response.status_code},
+            )
+        return response.json()
