@@ -1,21 +1,25 @@
 "use client";
 
 /**
- * Pestaña «Piezas incompletas» de la bandeja (change `revisar-pendientes-unificado`, tarea 2.5): el
- * mismo reporte de Reportes (RF-019, RF-035), sin cambios.
+ * Pestaña «Piezas incompletas» de la bandeja (change `revisar-pendientes-unificado`, tarea 2.5;
+ * rediseñada en `completar-piezas-incompletas`): qué les falta a las piezas, con tarjetas que filtran,
+ * y un panel para completarlas sin salir de la lista. Reportes conserva su reporte.
  */
-import { IncompleteReportPanel } from "@/components/domain/IncompleteReportPanel";
+import { IncompleteTriage } from "@/components/domain/IncompleteTriage";
 import { PendingTabBody } from "@/components/domain/PendingInbox";
-import { Card } from "@/components/ui/Card";
 import { useSession } from "@/lib/auth/session";
 
 export default function PendientesIncompletasPage() {
   const { hasPermission, currentUser } = useSession();
   return (
     <PendingTabBody tabKey="incomplete" allowed={hasPermission("reports.view")}>
-      <Card as="section" aria-label="Piezas con información incompleta" className="flex flex-col gap-3">
-        <IncompleteReportPanel devUser={currentUser?.email} canDownload={hasPermission("exports.run")} />
-      </Card>
+      <IncompleteTriage
+        devUser={currentUser?.email}
+        canDownload={hasPermission("exports.run")}
+        canEdit={hasPermission("pieces.update")}
+        canMove={hasPermission("movements.register")}
+        canUpload={hasPermission("media.upload")}
+      />
     </PendingTabBody>
   );
 }

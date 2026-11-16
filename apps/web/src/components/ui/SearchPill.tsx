@@ -5,9 +5,11 @@
  *
  * - `sobre="terracota"`: en la cabecera del Inicio; el foco del campo es crema.
  * - `sobre="claro"`: en una tarjeta blanca; borde arena y foco terracota.
+ * - `ia`: borde fino con el degradado de Gemini, para la búsqueda con IA del Inicio (change
+ *   `inicio-busqueda-ia`, D5). Con `pensando`, el borde brilla mientras se interpreta.
  */
 import { Mic, Search } from "lucide-react";
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -17,10 +19,16 @@ export interface SearchPillProps extends Omit<InputHTMLAttributes<HTMLInputEleme
   /** Dictado por voz (change `busqueda-lenguaje-natural`, D5): oculto si el navegador no lo soporta. */
   onVoiceClick?: () => void;
   voiceListening?: boolean;
+  ia?: boolean;
+  pensando?: boolean;
+  /** Texto del botón; «Buscar» por omisión. */
+  submitLabel?: ReactNode;
+  /** Algo pequeño junto al micrófono, como el ícono de ayuda de «Código o nombre». */
+  adorno?: ReactNode;
 }
 
-export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = false, ...input }: SearchPillProps) {
-  return (
+export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = false, ia = false, pensando = false, submitLabel = "Buscar", adorno, ...input }: SearchPillProps) {
+  const pill = (
     <div
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-xl bg-white p-1.5 shadow-sm has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 sm:flex-nowrap sm:rounded-full",
@@ -37,6 +45,7 @@ export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = fal
           {...input}
           className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-base text-tinta placeholder:text-gris-texto focus-visible:outline-none"
         />
+        {adorno}
         {onVoiceClick && (
           <button
             type="button"
@@ -55,10 +64,22 @@ export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = fal
       </span>
       <button
         type="submit"
-        className="min-h-11 w-full shrink-0 rounded-full bg-tinta px-6 py-2 text-base font-bold text-crema hover:bg-black focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota sm:w-auto"
+        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-tinta px-6 py-2 text-base font-bold text-crema hover:bg-black focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota sm:w-auto"
       >
-        Buscar
+        {submitLabel}
       </button>
+    </div>
+  );
+  if (!ia) return pill;
+  return (
+    <div
+      data-borde-ia=""
+      className={cn(
+        "rounded-[calc(var(--radius-xl)+2px)] bg-linear-to-r from-gemini-azul via-gemini-violeta to-gemini-rosa p-0.5 shadow-[0_6px_26px_rgb(120_120_255/0.3)] sm:rounded-full",
+        pensando && "borde-ia-pensando",
+      )}
+    >
+      {pill}
     </div>
   );
 }

@@ -10,7 +10,7 @@
  * de los parámetros: un layout no se vuelve a pintar al navegar y no los recibe (tarea 1.1). Los
  * contadores se piden al montar y cuando una pestaña avisa con `refresh` (design D3).
  */
-import { ClipboardList, Copy, Sparkles, type LucideIcon } from "lucide-react";
+import { ClipboardList, Copy, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -19,7 +19,6 @@ import { TAB_LIST_CLASS, tabClassName } from "@/components/ui/Tabs";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { useSession } from "@/lib/auth/session";
-import { useMockStore } from "@/lib/data/mock-store";
 import {
   UNKNOWN_COUNTS,
   fetchPendingCounts,
@@ -38,7 +37,6 @@ export const NO_PENDING_TABS_NOTICE = "Su rol no tiene pendientes que revisar.";
 /** Aviso de cada pestaña cuando se abre por su dirección sin el permiso (escenario de la spec). */
 export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
   duplicates: "Su rol no puede resolver posibles duplicados.",
-  suggestions: "Su rol no puede revisar sugerencias de IA.",
   incomplete: "Su rol no puede ver el reporte de piezas incompletas.",
 };
 
@@ -48,7 +46,7 @@ export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
 
 /** Pestañas como enlaces: 16 px, 44 px de alto, la activa con `aria-current` y una marca gruesa. */
 /** Icono de cada pestaña (maqueta B); el nombre va siempre al lado. */
-const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { duplicates: Copy, suggestions: Sparkles, incomplete: ClipboardList };
+const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { duplicates: Copy, incomplete: ClipboardList };
 
 export function PendingTabsNav({
   tabs,
@@ -151,30 +149,28 @@ export function usePendingInbox(): PendingInboxValue {
 
 export function PendingInbox({ children }: { children: ReactNode }) {
   const { hasPermission, currentUser } = useSession();
-  const store = useMockStore();
   const pathname = usePathname();
   const devUser = currentUser?.email;
 
   const tabs = useMemo(() => pendingTabs(hasPermission), [hasPermission]);
   const keys = useMemo(() => tabs.map((tab) => tab.key), [tabs]);
   // En demostración las sugerencias viven en el almacén de React (design D3).
-  const mockPendingSuggestions = store.aiSuggestions.filter((s) => s.status === "PENDING").length;
 
   const [version, setVersion] = useState(0);
   const [loaded, setLoaded] = useState<{ key: string; counts: PendingCounts } | null>(null);
   const refresh = useCallback(() => setVersion((n) => n + 1), []);
-  const requestKey = JSON.stringify({ keys, devUser, mockPendingSuggestions, version });
+  const requestKey = JSON.stringify({ keys, devUser, version });
 
   useEffect(() => {
     let active = true;
     const key = requestKey;
-    fetchPendingCounts(keys, { devUser, mockPendingSuggestions }).then((counts) => {
+    fetchPendingCounts(keys, { devUser }).then((counts) => {
       if (active) setLoaded({ key, counts });
     });
     return () => {
       active = false;
     };
-  }, [keys, devUser, mockPendingSuggestions, requestKey]);
+  }, [keys, devUser, requestKey]);
 
   // Mientras se recalculan, se conservan los números anteriores (sin parpadeo).
   const counts = loaded?.counts ?? UNKNOWN_COUNTS;

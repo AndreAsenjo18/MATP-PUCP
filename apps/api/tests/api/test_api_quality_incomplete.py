@@ -41,6 +41,28 @@ def test_incomplete_report_lists_piece_with_its_active_alerts(seeded_api: Seeded
     assert "MISSING_LOCATION" in row["alerts"]
 
 
+def test_each_row_says_which_fields_are_missing(seeded_api: SeededApi) -> None:
+    """Change completar-piezas-incompletas: qué campos faltan, no solo qué alerta tiene."""
+    with seeded_api.session() as session:
+        _as_admin(session)
+        piece = create_piece(
+            session,
+            denomination="Pieza con procedencia (campos, API)",
+            tenure_regime=TenureRegime.OWNED,
+            provenance="Ayacucho",
+        )
+        session.commit()
+        piece_id = piece.id
+
+    client = seeded_api.login_as("ADMIN")
+    body = client.get("/api/v1/quality/incomplete", params={"page_size": 100}).json()
+    row = next(item for item in body["items"] if item["piece_id"] == str(piece_id))
+    assert "MISSING_RECOMMENDED_FIELDS" in row["alerts"]
+    assert {"category_id", "materials", "description"} <= set(row["missing_fields"])
+    assert "provenance" not in row["missing_fields"]
+    assert "denomination" not in row["missing_fields"]
+
+
 def test_alert_filter_excludes_pieces_that_already_have_a_code(seeded_api: SeededApi) -> None:
     with seeded_api.session() as session:
         _as_admin(session)

@@ -6,8 +6,8 @@
  * conserva en el panel con `withQuery`); luego denominación, categoría, material y descripción, y el resto en «Más filtros», que se abre solo cuando alguno de esos filtros está activo (un enlace, una
  * sugerencia) y nunca se cierra solo.
  */
-import { Eraser, SlidersHorizontal } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { CircleHelp, Eraser, SlidersHorizontal } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { DisclosureSummary, withActiveCount } from "@/components/domain/DisclosureSummary";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
@@ -50,6 +50,12 @@ export async function loadSearchOptions(devUser?: string): Promise<SearchOptions
   };
 }
 
+/** Nombre de cada colección, término y ubicación por su `id`, para las etiquetas de filtros. */
+export function optionNames(options: SearchOptions): Record<string, string> {
+  const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
+  return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
+}
+
 function toBoolean(value: string): boolean | null {
   return value === "" ? null : value === "true";
 }
@@ -60,7 +66,7 @@ function toYear(value: string): number | null {
   return Number.isFinite(year) ? Math.trunc(year) : null;
 }
 
-function OptionSelect({
+export function OptionSelect({
   label,
   value,
   options,
@@ -116,9 +122,6 @@ export function FiltersDrawer({
 /** Ayuda única del buscador (rediseno-ux-busqueda D2): reemplaza al subtítulo de la pantalla. */
 export const SEARCH_BOX_HINT = "Cualquier código, vigente o histórico, con o sin formato. No distingue mayúsculas ni tildes.";
 
-/** Espera tras la última tecla antes de interpretar la frase con IA (change `busqueda-lenguaje-natural`, D7). */
-const INTERPRET_DEBOUNCE_MS = 900;
-
 /** Forma mínima del `SpeechRecognition` del navegador (Chrome/Edge); no hay tipos DOM estándar para esto. */
 interface SpeechRecognitionLike extends EventTarget {
   lang: string;
@@ -140,47 +143,28 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+/** La compatibilidad del navegador con el dictado no cambia durante la visita. */
+function subscribeNever(): () => void {
+  return () => {};
+}
+
 /**
- * Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1).
- * Píldora con el botón «Buscar» dentro (maqueta B). La búsqueda ya se aplica mientras se escribe, así
- * que enviar el formulario no hace nada más: no recarga la página.
- *
- * `onInterpret` (change `busqueda-lenguaje-natural`, D7): la misma caja, sin una aparte. Al dejar de
- * escribir, al pulsar Buscar o al terminar de dictar, se pide la interpretación en segundo plano —
- * nunca en cada tecla, para no interrumpir la búsqueda instantánea de texto. Solo `SearchLive` la
- * pasa; el modo demostración no, así que ahí la caja se comporta exactamente igual que antes.
+ * Dictado por voz del navegador (change `busqueda-lenguaje-natural`, D5; compartido con el Inicio en
+ * `inicio-busqueda-ia`, D3). `supported` se conoce solo tras montar, para que el HTML del servidor y el
+ * primero del navegador coincidan. `onTranscript` recibe la frase dictada cuando no está vacía.
  */
-export function SearchBox({
-  value,
-  onChange,
-  onInterpret,
-}: {
-  value: string;
-  onChange: (q: string) => void;
-  onInterpret?: (text: string) => void;
-}) {
+export function useVoiceDictation(onTranscript: (text: string) => void) {
+  const supported = useSyncExternalStore(subscribeNever, () => speechRecognitionCtor() !== null, () => false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callbackRef = useRef(onTranscript);
+  useEffect(() => {
+    callbackRef.current = onTranscript;
+  });
 
-  function scheduleInterpret(text: string) {
-    if (!onInterpret) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!text.trim()) return;
-    debounceRef.current = setTimeout(() => onInterpret(text), INTERPRET_DEBOUNCE_MS);
-  }
+  useEffect(() => () => recognitionRef.current?.stop(), []);
 
-  function handleChange(next: string) {
-    onChange(next);
-    scheduleInterpret(next);
-  }
-
-  function handleSubmit() {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (onInterpret && value.trim()) onInterpret(value);
-  }
-
-  function toggleVoice() {
+  function toggle() {
     if (listening) {
       recognitionRef.current?.stop();
       return;
@@ -193,10 +177,7 @@ export function SearchBox({
     recognition.maxAlternatives = 1;
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
-      if (transcript.trim()) {
-        onChange(transcript);
-        onInterpret?.(transcript);
-      }
+      if (transcript.trim()) callbackRef.current(transcript);
     };
     recognition.onend = () => setListening(false);
     recognition.onerror = () => setListening(false);
@@ -205,28 +186,44 @@ export function SearchBox({
     recognition.start();
   }
 
+  return { supported, listening, toggle };
+}
+
+/**
+ * Buscador «Código o texto», siempre a la vista y fuera del panel de filtros (rediseno-ux-busqueda D1).
+ * Píldora con el botón «Buscar» dentro (maqueta B). La búsqueda ya se aplica mientras se escribe, así
+ * que enviar el formulario no hace nada más: no recarga la página.
+ *
+ * Desde `busqueda-barra-compacta-ia` ya no interpreta con IA (eso es `AiSearchBox`): el micrófono solo
+ * dicta texto en la caja. `compacta` (Búsqueda): «Código o nombre» como etiqueta oculta, sin línea de
+ * ayuda a la vista (la ayuda queda en un ícono y enlazada al campo), para que la tarjeta ocupe poco.
+ */
+export function SearchBox({ value, onChange, compacta = false }: { value: string; onChange: (q: string) => void; compacta?: boolean }) {
+  const voice = useVoiceDictation(onChange);
+  const label = compacta ? "Código o nombre" : "Código o texto";
+
   return (
-    <form
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        handleSubmit();
-      }}
-      className="flex flex-col gap-1"
-    >
-      <label htmlFor="q" className="text-base font-semibold text-tinta">
-        Código o texto
+    <form role="search" onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-1">
+      <label htmlFor="q" className={compacta ? "sr-only" : "text-base font-semibold text-tinta"}>
+        {label}
       </label>
       <SearchPill
         id="q"
         value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        placeholder="p. ej. I-0236, mmz 15, cerámica huánuco"
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={compacta ? "Código o nombre: p. ej. I-0236, mmz 15, mate burilado" : "p. ej. I-0236, mmz 15, cerámica huánuco"}
         aria-describedby="q-hint"
-        onVoiceClick={onInterpret && speechRecognitionCtor() ? toggleVoice : undefined}
-        voiceListening={listening}
+        onVoiceClick={voice.supported ? voice.toggle : undefined}
+        voiceListening={voice.listening}
+        adorno={
+          compacta && (
+            <span title={SEARCH_BOX_HINT} className="hidden shrink-0 text-gris-texto sm:block">
+              <CircleHelp size={20} aria-hidden="true" />
+            </span>
+          )
+        }
       />
-      <p id="q-hint" className="text-base text-gris-texto">
+      <p id="q-hint" className={compacta ? "sr-only" : "text-base text-gris-texto"}>
         {SEARCH_BOX_HINT}
       </p>
     </form>

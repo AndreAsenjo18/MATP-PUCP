@@ -43,6 +43,22 @@ export const DUPLICATE_CANDIDATES: DuplicateCandidateOut[] = [
     status: "PENDING",
     resolution_note: null,
     reviewed_at: null,
+    // La fila del Excel (change revisar-duplicados-comparacion): solo campos de catálogo, sintéticos.
+    import_row: {
+      batch_id: ids.importBatch(1),
+      batch_name: "Sábana de prueba (sintética)",
+      source_row_number: 6,
+      denomination: "Charango (sintético, fila de carga)",
+      collection_name: "Colección LRM (ficticia)",
+      tenure_regime: "Propiedad",
+      author: null,
+      provenance: "Ayacucho",
+      period_text: "Siglo XX",
+      dimensions_text: null,
+      identifiers: [{ type: "COLECCION", original_value: "LRM 12", normalized_value: "LRM-12" }],
+      resolution: null,
+      editable: true,
+    },
   },
   {
     id: ids.duplicate(3),

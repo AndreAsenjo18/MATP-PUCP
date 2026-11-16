@@ -1,16 +1,19 @@
+"use client";
+
 /**
  * Piezas del Inicio como guía de tareas (changes `inicio-guia-de-tareas` y `remodelacion-visual`,
  * maqueta B): el buscador de la cabecera, la tarjeta verde para registrar, las demás tareas en
  * tarjetas blancas y las píldoras del estado del catálogo. Solo presentación; la pantalla hace las
- * consultas.
+ * consultas (también la interpretación con IA del buscador, change `inicio-busqueda-ia`).
  */
 import { ArrowRight, ChartNoAxesColumn, ClipboardCheck, Plus, SlidersHorizontal, Upload, type LucideIcon } from "lucide-react";
-import Form from "next/form";
 import Link from "next/link";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { cardClassName } from "@/components/ui/Card";
 import { IconCircle, type Tone } from "@/components/ui/IconCircle";
+import { useVoiceDictation } from "@/components/domain/SearchFilters";
+import { GeminiBadge } from "@/components/ui/GeminiBadge";
 import { SearchPill } from "@/components/ui/SearchPill";
 import { StatChip, type StatChipTone } from "@/components/ui/StatChip";
 import { cn } from "@/lib/cn";
@@ -24,23 +27,132 @@ const LOOK: Record<Exclude<TaskId, "search" | "register">, { icon: LucideIcon; t
   settings: { icon: SlidersHorizontal, tone: "piedra" },
 };
 
+/** Frases de ejemplo bajo el buscador: una por cada forma de pedir (lugar, régimen y faltantes, código). */
+export const HOME_SEARCH_EXAMPLES = ["retablos de Ayacucho", "comodato sin código I", "I-0236"] as const;
+
+export const HOME_SEARCH_HINT = "La IA convierte su frase en filtros y le lleva a Buscar, donde puede revisarlos o quitarlos.";
+
+/** Lo que devuelve la interpretación: adónde ir y, si reconoció filtros, cuáles (para el aviso). */
+export interface HomeSearchOutcome {
+  href: string;
+  summary: string | null;
+}
+
+type Phase = { kind: "idle" } | { kind: "thinking" } | { kind: "done"; summary: string | null };
+
+function statusText(phase: Phase): string {
+  if (phase.kind === "thinking") return "Gemini está interpretando su búsqueda…";
+  if (phase.kind === "done") return phase.summary ? `✓ Listo: ${phase.summary}. Abriendo Búsqueda…` : "Abriendo Búsqueda…";
+  return HOME_SEARCH_HINT;
+}
+
+function plainSearchHref(text: string): string {
+  const phrase = text.trim();
+  return phrase ? `/busqueda?${new URLSearchParams({ q: phrase })}` : "/busqueda";
+}
+
 /**
- * Buscador de la cabecera del Inicio: un formulario real hacia Buscar, con la dirección de siempre
- * (`/busqueda?q=…`). Navega sin recargar la página (`next/form`).
+ * Buscador de la cabecera del Inicio con IA (change `inicio-busqueda-ia`): la persona escribe o dicta
+ * una frase; al pulsar «Buscar», al terminar de dictar o al elegir un ejemplo, `onSearch` la interpreta
+ * y `onNavigate` lleva a Búsqueda con los filtros. Nunca interpreta mientras se escribe (D2).
+ *
+ * Es un formulario real hacia `/busqueda?q=…`: sin `onSearch` (o sin JavaScript) se comporta como el
+ * buscador anterior. `onThinkingChange` avisa a la cabecera para que la trama muestre la ola.
  */
-export function HomeSearch({ task }: { task: Task }) {
+export function HomeSearch({
+  task,
+  onSearch,
+  onNavigate,
+  onThinkingChange,
+}: {
+  task: Task;
+  onSearch?: (text: string) => Promise<HomeSearchOutcome>;
+  onNavigate?: (href: string) => void;
+  onThinkingChange?: (thinking: boolean) => void;
+}) {
   const id = useId();
+  const labelId = `${id}-titulo`;
   const hintId = `${id}-ayuda`;
+  const [value, setValue] = useState("");
+  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  const thinking = phase.kind === "thinking";
+  const voice = useVoiceDictation((transcript) => {
+    setValue(transcript);
+    void run(transcript);
+  });
+
+  async function run(text: string) {
+    if (thinking) return;
+    if (!onSearch || !text.trim()) {
+      onNavigate?.(plainSearchHref(text));
+      return;
+    }
+    setPhase({ kind: "thinking" });
+    onThinkingChange?.(true);
+    let outcome: HomeSearchOutcome;
+    try {
+      outcome = await onSearch(text);
+    } catch {
+      outcome = { href: plainSearchHref(text), summary: null };
+    }
+    onThinkingChange?.(false);
+    setPhase({ kind: "done", summary: outcome.summary });
+    onNavigate?.(outcome.href);
+  }
+
   return (
-    <Form action={task.href} role="search" className="flex flex-col gap-3">
-      <label htmlFor={id} className="text-lg font-bold">
-        {task.verb}
-      </label>
-      <SearchPill sobre="terracota" id={id} name="q" placeholder="Código o nombre, por ejemplo I-0236" aria-describedby={hintId} />
-      <p id={hintId} className="text-base">
-        {task.description}
+    <form
+      action={task.href}
+      role="search"
+      aria-labelledby={labelId}
+      className="flex flex-col gap-3"
+      onSubmit={(event) => {
+        if (!onSearch) return;
+        event.preventDefault();
+        void run(value);
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label id={labelId} htmlFor={id} className="text-lg font-bold">
+          Busque con sus propias palabras
+        </label>
+        <GeminiBadge />
+      </div>
+      <SearchPill
+        sobre="terracota"
+        ia
+        pensando={thinking}
+        id={id}
+        name="q"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder={`Escriba${voice.supported ? " o dicte" : ""} lo que busca, p. ej. «mates sin foto»`}
+        aria-describedby={hintId}
+        readOnly={thinking}
+        onVoiceClick={onSearch && voice.supported ? voice.toggle : undefined}
+        voiceListening={voice.listening}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-base">Pruebe:</span>
+        {HOME_SEARCH_EXAMPLES.map((example) => (
+          <button
+            key={example}
+            type="button"
+            disabled={thinking}
+            onClick={() => {
+              setValue(example);
+              void run(example);
+            }}
+            className="min-h-11 rounded-full border border-crema/40 bg-crema/10 px-4 text-base text-crema hover:bg-crema/20 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema disabled:opacity-60"
+          >
+            {example}
+          </button>
+        ))}
+      </div>
+      <p id={hintId} role="status" className={cn("text-base", phase.kind !== "idle" && "font-bold")}>
+        {statusText(phase)}
       </p>
-    </Form>
+    </form>
   );
 }
 

@@ -5,7 +5,10 @@
  * del texto.
  *
  * - `grande`: solo el Inicio. Nombre del museo arriba, título grande y lo que se le pase como hijo
- *   (el buscador).
+ *   (el buscador). Su trama es SVG animada (`TramaRombos`, change `inicio-busqueda-ia`): se teje al
+ *   entrar y, con `tramaPensando`, la recorre la ola de Gemini.
+ * - `tramaAnimada` y `debajo` (change `busqueda-barra-compacta-ia`, D4): la cabecera compacta de
+ *   Búsqueda usa la misma trama animada y lleva la búsqueda con IA a todo el ancho bajo el título.
  * - `compacta`: el resto de pantallas. Poca altura (de 96 a 128 px con una línea de ayuda) y las
  *   acciones principales dentro de la banda, como píldoras crema (`headerActionClassName`).
  *
@@ -17,6 +20,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+
+import { TramaRombos } from "./TramaRombos";
 
 export type PageHeaderSize = "grande" | "compacta";
 
@@ -35,6 +40,12 @@ export interface PageHeaderProps {
   /** Contenido extra dentro de la banda, bajo el título (el buscador del Inicio). */
   children?: ReactNode;
   size?: PageHeaderSize;
+  /** La ola de Gemini recorre la trama animada (mientras se interpreta una búsqueda con IA). */
+  tramaPensando?: boolean;
+  /** Compacta: trama SVG animada en vez de la imagen fija (siempre animada en `grande`). */
+  tramaAnimada?: boolean;
+  /** Compacta: contenido a todo el ancho bajo la fila del título (la búsqueda con IA de Búsqueda). */
+  debajo?: ReactNode;
   /** `id` del título, para las secciones que se etiquetan con él. */
   titleId?: string;
   className?: string;
@@ -44,7 +55,7 @@ export interface PageHeaderProps {
 export const headerActionClassName =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-crema px-5 py-2.5 text-center text-base font-bold text-tinta shadow-sm transition-[translate] duration-150 ease-out hover:bg-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0";
 
-export function PageHeader({ title, description, eyebrow, actions, back, meta, children, size = "compacta", titleId, className }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, actions, back, meta, children, size = "compacta", tramaPensando = false, tramaAnimada = false, debajo, titleId, className }: PageHeaderProps) {
   const large = size === "grande";
   return (
     <header
@@ -56,14 +67,15 @@ export function PageHeader({ title, description, eyebrow, actions, back, meta, c
       )}
     >
       {/* La trama ocupa la franja derecha; el contenido deja ese espacio libre (md:pr-*). */}
-      <span
-        aria-hidden="true"
-        data-trama=""
-        className={cn(
-          "trama-rombos pointer-events-none absolute inset-y-0 right-0 -z-10 hidden md:block",
-          large ? "w-[40%]" : "w-[min(34%,20rem)] [--trama-tamano:3.5rem]",
-        )}
-      />
+      {large || tramaAnimada ? (
+        <TramaRombos pensando={tramaPensando} className="hidden w-[40%] md:block" />
+      ) : (
+        <span
+          aria-hidden="true"
+          data-trama=""
+          className="trama-rombos pointer-events-none absolute inset-y-0 right-0 -z-10 hidden md:block w-[min(34%,20rem)] [--trama-tamano:3.5rem]"
+        />
+      )}
       <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : "gap-4 md:flex-row md:items-center md:justify-between md:pr-[min(28%,16rem)]")}>
         <div className="flex min-w-0 flex-col gap-1.5">
           {back && <BandBackLink href={back.href}>{back.label}</BandBackLink>}
@@ -79,6 +91,7 @@ export function PageHeader({ title, description, eyebrow, actions, back, meta, c
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         {children}
       </div>
+      {debajo && !large && <div className="mt-3 md:pr-[36%]">{debajo}</div>}
     </header>
   );
 }

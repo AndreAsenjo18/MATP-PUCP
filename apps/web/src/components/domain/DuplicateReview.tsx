@@ -4,34 +4,35 @@
  * Piezas de la cola de duplicados (change `deteccion-duplicados-y-cola-revision`, tarea 4.1; spec
  * calidad-datos, RF-030, RNF-010):
  *
- * - `DuplicateFilters`: estado, colección, puntaje mínimo y origen.
- * - `DuplicateCandidateCard`: similitud en cifra grande (`SimilarityMeter`), señales como etiquetas
- *   y comparación de las dos fichas con el campo al centro (A | campo | B); cada fila es igual,
- *   distinta o en conflicto, con color, palabra e icono (el color nunca es el único portador).
+ * - `DuplicateFilters`: píldoras de estado, colección, similitud y tipo de par (change
+ *   `revisar-duplicados-comparacion`).
+ * - `DuplicateCandidateCard`: la revisión de un par como una pregunta («¿Es la misma pieza?»), los
+ *   motivos en palabras, la comparación campo por campo (pieza del catálogo o fila del Excel) con
+ *   «Solo diferencias», y tres decisiones que dicen qué pasará. Cada fila es igual, distinta, en
+ *   conflicto o «solo en» un lado, con color, palabra e icono (el color nunca es el único portador).
  * - `QueuePager`: «Anterior / Siguiente» que la pantalla monta encima y debajo de la lista.
  * - `DistinctDialog` y `PostponeDialog`: resolución como distinto (motivo obligatorio) o pospuesto
  *   hasta una fecha de como máximo 180 días (design D5).
- * - `ScanPanel`: detección completa bajo demanda y su avance (design D3).
+ * - `ScanPanel`: detección completa bajo demanda, como un botón discreto junto al número de pares,
+ *   con su avance en la misma línea (design D3; `revisar-duplicados-comparacion`).
  *
  * Son presentacionales: reciben datos y acciones (`Promise<DialogOutcome>`) y no llaman a la API.
- * «Fusionar» abre el asistente de la tarea 4.2 (`MergeWizard`); queda deshabilitado, con el motivo
- * a la vista, si el par está bloqueado (regímenes o códigos I distintos) o si es una fila de
- * importación, que se decide en su lote.
+ * «Es la misma pieza» abre el asistente de fusión de la tarea 4.2 (`MergeWizard`) en un par de dos
+ * piezas; queda deshabilitado, con el motivo a la vista, si el par está bloqueado. En un par con fila
+ * de Excel decide la fila en su lote (la actualiza o la vuelve pieza nueva).
  */
-import { ArrowRight, CalendarClock, Equal, EqualNot, GitMerge, ScanSearch, Split, TriangleAlert, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Equal, EqualNot, ScanSearch, Split, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, cardClassName } from "@/components/ui/Card";
-import { IconCircle } from "@/components/ui/IconCircle";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { PillSelect } from "@/components/ui/PillSelect";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
 import { cn } from "@/lib/cn";
-import { IMPORT_ROW_MERGE_MESSAGE, mergeBlock } from "@/lib/data/merge-plan";
+import { mergeBlock } from "@/lib/data/merge-plan";
 import {
   postponeBounds,
   postponedUntilFromDate,
@@ -39,15 +40,18 @@ import {
   type DuplicateCandidate,
   type DuplicateOrigin,
   type DuplicateStatus,
+  type ImportRowChoice,
   type QualityJob,
 } from "@/lib/data/duplicates";
+import { importHref } from "@/lib/data/import-origin";
 
 import type { DialogOutcome } from "./PieceActionDialogs";
-import { duplicateStatus, qualityJobStatus } from "./status-intents";
+import { duplicateStatus } from "./status-intents";
 import { StatusBadge, TenureBadge } from "./StatusBadges";
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 type DuplicateSignal = DuplicateCandidate["matched_fields"][number];
+type ImportRowSummary = NonNullable<DuplicateCandidate["import_row"]>;
 type CollectionOut = ApiSchemas["CollectionOut"];
 
 // ---------------------------------------------------------------------------------------------
@@ -136,16 +140,26 @@ export function useIdentifierTypeNames(): IdentifierTypeNames {
   return useContext(IdentifierTypeNamesContext);
 }
 
+/**
+ * Tipo de una señal. Los pares que crea la importación guardan el tipo solo en `field`
+ * («denomination», «collection») y sin `signal`: antes se mostraban como «Otro dato»
+ * (change `revisar-duplicados-comparacion`).
+ */
+export function signalKind(signal: Pick<DuplicateSignal, "signal" | "field">): string {
+  const kind = signal.signal || signal.field;
+  return kind === "collection_id" ? "collection" : kind;
+}
+
 /** Texto de cada señal del motor por reglas (design D1); lo desconocido es «Otro dato». */
 export function signalLabel(signal: DuplicateSignal, names: IdentifierTypeNames = {}): string {
   const type = identifierType(signal.field);
-  switch (signal.signal) {
+  switch (signalKind(signal)) {
     case "identifier":
       return type ? `Coincide: ${identifierTypeName(type, names)}` : "Coincide un código";
     case "inventory_code_conflict":
       return "Códigos I vigentes distintos";
     case "denomination":
-      return "Denominación parecida";
+      return signal.similarity >= 0.999 ? "Denominación igual" : "Denominación parecida";
     case "collection":
       return signal.similarity > 0 ? "Misma colección o subcolección" : "Colecciones distintas";
     case "author_provenance":
@@ -250,6 +264,8 @@ function isBlank(value: string): boolean {
 export function comparisonRowState(a: string, b: string, mark?: RowMark): RowState {
   if (mark === "conflict") return "conflict";
   if (isBlank(a) && isBlank(b)) return "empty";
+  // Si solo un lado tiene el dato, nunca es «igual», aunque una señal diga que coinciden.
+  if (isBlank(a) !== isBlank(b)) return "different";
   if (mark === "match" || fold(a) === fold(b)) return "same";
   return "different";
 }
@@ -261,17 +277,18 @@ export function markedRows(signals: readonly DuplicateSignal[]): Map<ComparisonR
     if (marks.get(key) !== "conflict") marks.set(key, "match");
   };
   for (const signal of signals) {
-    if (signal.signal === "inventory_code_conflict") {
+    const kind = signalKind(signal);
+    if (kind === "inventory_code_conflict") {
       marks.set("code_i", "conflict");
       continue;
     }
     if (signal.similarity <= 0) continue;
-    if (signal.signal === "identifier" || identifierType(signal.field)) mark(identifierType(signal.field) === "I" ? "code_i" : "identifiers");
-    else if (signal.signal === "denomination") mark("denomination");
-    else if (signal.signal === "collection") mark("collection");
-    else if (signal.signal === "epoch") mark("period");
-    else if (signal.signal === "dimensions") mark("dimensions");
-    else if (signal.signal === "author_provenance") {
+    if (kind === "identifier" || identifierType(signal.field)) mark(identifierType(signal.field) === "I" ? "code_i" : "identifiers");
+    else if (kind === "denomination") mark("denomination");
+    else if (kind === "collection") mark("collection");
+    else if (kind === "epoch") mark("period");
+    else if (kind === "dimensions") mark("dimensions");
+    else if (kind === "author_provenance") {
       for (const name of signal.field.split("+")) if (name === "author" || name === "provenance") mark(name);
     }
   }
@@ -315,20 +332,22 @@ const STATUS_OPTIONS: { value: DuplicateStatus | ""; label: string }[] = [
 ];
 
 const SCORE_OPTIONS = [
-  { value: "", label: "Cualquiera" },
   { value: "0.6", label: "60 % o más" },
   { value: "0.7", label: "70 % o más" },
   { value: "0.8", label: "80 % o más" },
   { value: "0.9", label: "90 % o más" },
 ];
 
-/**
- * Legibilidad de los filtros de esta vista (change `revisar-pendientes-unificado`, tarea 3.5): el
- * átomo `Field` de components/ui pone etiqueta y ayuda a 14 px y el control a unos 42 px; aquí se
- * suben a 16 px y 44 px sin tocar el átomo, que es de la Base (C28).
- */
-const FILTER_FIELD = "[&_label]:text-base [&_p]:text-base";
+/** «Origen» decía poco: es el tipo de par (change `revisar-duplicados-comparacion`). */
+export const PAIR_TYPE_OPTIONS: { value: DuplicateOrigin; label: string }[] = [
+  { value: "CATALOG", label: "Dos piezas del catálogo" },
+  { value: "IMPORT", label: "Pieza y fila de un Excel" },
+];
 
+/**
+ * Filtros de la cola como píldoras, igual que en Búsqueda (change `revisar-duplicados-comparacion`):
+ * «Estado» siempre tiene un valor (sin ✕); los demás muestran su valor y una ✕ al estar activos.
+ */
 export function DuplicateFilters({
   value,
   collections,
@@ -339,43 +358,33 @@ export function DuplicateFilters({
   onChange: (next: DuplicateFilterValue) => void;
 }) {
   return (
-    // Los filtros en su propia tarjeta, con listas de 52 px (maqueta B).
-    <form role="search" aria-label="Filtros de la cola" className={cardClassName({ className: "grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4" })} onSubmit={(event) => event.preventDefault()}>
-      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Estado" value={value.status} onChange={(event) => onChange({ ...value, status: event.target.value as DuplicateFilterValue["status"] })}>
-        {STATUS_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
-      <Select
-        fieldClassName={FILTER_FIELD}
-        controlSize="lg"
-        label="Colección"
-        hint="Incluye sus subcolecciones."
-        value={value.collectionId}
-        onChange={(event) => onChange({ ...value, collectionId: event.target.value })}
-      >
-        <option value="">Todas</option>
-        {collections.map((collection) => (
-          <option key={collection.id} value={collection.id}>
-            {collection.parent_id ? `— ${collection.name}` : collection.name}
-          </option>
-        ))}
-      </Select>
-      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Similitud mínima" value={value.minScore} onChange={(event) => onChange({ ...value, minScore: event.target.value })}>
-        {SCORE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </Select>
-      <Select fieldClassName={FILTER_FIELD} controlSize="lg" label="Origen" value={value.origin} onChange={(event) => onChange({ ...value, origin: event.target.value as DuplicateFilterValue["origin"] })}>
-        <option value="">Catálogo e importación</option>
-        <option value="CATALOG">Dos piezas del catálogo</option>
-        <option value="IMPORT">Fila de importación</option>
-      </Select>
-    </form>
+    <ul role="search" aria-label="Filtros de la cola" className="flex flex-wrap items-center gap-2">
+      <li className="flex">
+        <PillSelect fija label="Estado" value={value.status} options={STATUS_OPTIONS} onChange={(status) => onChange({ ...value, status: (status ?? "") as DuplicateFilterValue["status"] })} />
+      </li>
+      <li className="flex">
+        <PillSelect
+          label="Colección"
+          accessibleLabel="Colección (incluye sus subcolecciones)"
+          allLabel="Todas las colecciones"
+          value={value.collectionId || null}
+          options={collections.map((collection) => ({ value: collection.id, label: collection.parent_id ? `— ${collection.name}` : collection.name }))}
+          onChange={(collectionId) => onChange({ ...value, collectionId: collectionId ?? "" })}
+        />
+      </li>
+      <li className="flex">
+        <PillSelect label="Similitud" allLabel="Cualquier similitud" value={value.minScore || null} options={SCORE_OPTIONS} onChange={(minScore) => onChange({ ...value, minScore: minScore ?? "" })} />
+      </li>
+      <li className="flex">
+        <PillSelect
+          label="Tipo de par"
+          allLabel="Todos los pares"
+          value={value.origin || null}
+          options={PAIR_TYPE_OPTIONS}
+          onChange={(origin) => onChange({ ...value, origin: (origin ?? "") as DuplicateFilterValue["origin"] })}
+        />
+      </li>
+    </ul>
   );
 }
 
@@ -413,81 +422,148 @@ export function SimilarityMeter({ score }: { score: number }) {
   );
 }
 
-const ROW_STATES: Record<Exclude<RowState, "empty">, { label: string; icon: LucideIcon; row: string; tag: string }> = {
-  same: { label: "igual", icon: Equal, row: "", tag: "text-verde-exito" },
-  different: { label: "distinto", icon: EqualNot, row: "bg-ambar-bg", tag: "text-ambar-texto" },
-  conflict: { label: "conflicto", icon: TriangleAlert, row: "bg-carmin-bg", tag: "text-carmin-texto" },
-};
-
 /** Una pieza sin ficha (aún cargando o sin acceso) se indica en su columna. */
 type PieceSlot = PieceDetail | null | undefined;
 
-function pieceHeader(title: string, piece: PieceSlot, piecesLoading: boolean): ReactNode {
-  if (piece) {
-    return (
-      <Link href={`/piezas/${piece.id}`} className="inline-flex min-h-11 items-center font-semibold text-terracota underline">
-        {title}: {piece.denomination}
-      </Link>
-    );
+/** Un lado de la comparación: una pieza del catálogo o la fila del Excel de un par. */
+export interface ComparisonSide {
+  /** «Pieza del catálogo», «Fila del Excel», «Pieza A»… */
+  title: string;
+  /** Nombre corto para «Solo en …»: «el catálogo», «el Excel», «la pieza A». */
+  short: string;
+  /** Debajo del título: la pieza con enlace a su ficha, o la fila y su lote. */
+  caption: ReactNode;
+  /** Valor de cada fila de la comparación, o `null` si el lado aún no se puede leer. */
+  values: Partial<Record<ComparisonRowKey, { node: ReactNode; text: string }>> | null;
+}
+
+/** El lado de una pieza del catálogo. */
+export function pieceSide(title: string, short: string, piece: PieceSlot, piecesLoading: boolean, names?: IdentifierTypeNames): ComparisonSide {
+  const caption = piece ? (
+    <Link href={`/piezas/${piece.id}`} className="inline-flex min-h-11 items-center gap-1 font-semibold text-terracota underline">
+      {piece.denomination}
+      <ArrowRight size={16} aria-hidden="true" />
+    </Link>
+  ) : (
+    <span className="text-gris-texto">{piecesLoading ? "Cargando ficha…" : "Ficha no disponible"}</span>
+  );
+  return {
+    title,
+    short,
+    caption,
+    values: piece ? Object.fromEntries(COMPARISON_ROWS.map((row) => [row.key, { node: row.value(piece, names), text: row.text(piece, names) }])) : null,
+  };
+}
+
+/** El lado de la fila del Excel de un par (solo sus campos de catálogo; nunca datos personales). */
+export function importRowSide(row: ImportRowSummary | null | undefined, names?: IdentifierTypeNames): ComparisonSide {
+  if (!row) {
+    return { title: "Fila del Excel", short: "el Excel", caption: <span className="text-gris-texto">Sus datos no están disponibles: revísela en su lote.</span>, values: null };
   }
-  return (
-    <span className="font-semibold text-tinta">
-      {title}: {piecesLoading ? "cargando ficha…" : "ficha no disponible"}
-    </span>
-  );
+  const identifiers = row.identifiers ?? [];
+  const codeI = identifiers.find((identifier) => identifier.type === "I");
+  const others = identifiers.filter((identifier) => identifier.type !== "I");
+  const otherText = others.length ? others.map((identifier) => `${identifierTypeName(identifier.type, names)} ${identifier.original_value}`).join(" · ") : "—";
+  const text = (value: string | null | undefined) => ({ node: value ?? "—", text: value ?? "" });
+  return {
+    title: "Fila del Excel",
+    short: "el Excel",
+    caption: (
+      <span className="text-base text-gris-texto">
+        Fila {row.source_row_number} · Lote «{row.batch_name}»
+      </span>
+    ),
+    values: {
+      denomination: text(row.denomination),
+      collection: { node: row.collection_name ?? "Sin colección", text: row.collection_name ?? "" },
+      tenure: { node: row.tenure_regime ? <TenureBadge regime={row.tenure_regime} /> : "—", text: row.tenure_regime ?? "" },
+      code_i: { node: <span className="font-mono font-bold text-terracota">{codeI?.original_value ?? "Sin código I"}</span>, text: codeI?.original_value ?? "" },
+      identifiers: { node: otherText, text: otherText === "—" ? "" : otherText },
+      author: text(row.author),
+      provenance: text(row.provenance),
+      period: text(row.period_text),
+      dimensions: text(row.dimensions_text),
+    },
+  };
 }
 
-function ColumnHeader({ title, piece, piecesLoading }: { title: string; piece: PieceSlot; piecesLoading: boolean }) {
-  return (
-    <div role="columnheader" className="min-w-0 text-center text-lg break-words">
-      {pieceHeader(title, piece, piecesLoading)}
-    </div>
-  );
+const ROW_STATES: Record<Exclude<RowState, "empty">, { label: string; icon: LucideIcon; row: string; tag: string }> = {
+  same: { label: "Igual", icon: Equal, row: "", tag: "text-verde-exito" },
+  different: { label: "Distinto", icon: EqualNot, row: "bg-ambar-bg/60", tag: "text-ambar-texto" },
+  conflict: { label: "En conflicto", icon: TriangleAlert, row: "bg-carmin-bg", tag: "text-carmin-texto" },
+};
+
+/** Una fila es diferencia si no es igual ni está vacía en los dos lados. */
+export function isDifference(state: RowState): boolean {
+  return state === "different" || state === "conflict";
 }
 
-const GRID = "grid grid-cols-2 gap-x-3 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)]";
-
-export function ComparisonTable({ pieceA, pieceB, signals, piecesLoading }: { pieceA: PieceSlot; pieceB: PieceSlot; signals: readonly DuplicateSignal[]; piecesLoading: boolean }) {
+/**
+ * Comparación campo por campo (change `revisar-duplicados-comparacion`): el campo, el valor de cada
+ * lado y si son iguales, distintos, están en conflicto o solo uno lo tiene. Con `onlyDifferences`
+ * solo quedan las filas que no son iguales.
+ */
+export function ComparisonTable({ sideA, sideB, signals, onlyDifferences = false }: { sideA: ComparisonSide; sideB: ComparisonSide; signals: readonly DuplicateSignal[]; onlyDifferences?: boolean }) {
   const marks = markedRows(signals);
-  const names = useIdentifierTypeNames();
+  const rows = COMPARISON_ROWS.map((row) => {
+    const a = sideA.values?.[row.key];
+    const b = sideB.values?.[row.key];
+    const state = comparisonRowState(a?.text ?? "", b?.text ?? "", marks.get(row.key));
+    const onlyIn = state === "different" ? (isBlank(a?.text ?? "") ? sideB.short : isBlank(b?.text ?? "") ? sideA.short : null) : null;
+    return { row, a, b, state, onlyIn };
+  }).filter(({ state }) => !onlyDifferences || isDifference(state));
   return (
-    <div role="table" aria-label="Comparación de las dos piezas, campo por campo" className="mx-auto flex w-full max-w-4xl flex-col text-base text-tinta">
-      <div role="row" className={cn(GRID, "items-end border-b border-borde px-2 pb-2")}>
-        <div className="order-1 sm:order-1">
-          <ColumnHeader title="Pieza A" piece={pieceA} piecesLoading={piecesLoading} />
+    <div role="table" aria-label="Comparación campo por campo" className="flex w-full flex-col text-base text-tinta">
+      <div role="row" className="hidden grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)_11rem] items-end gap-x-4 border-b border-borde px-4 pb-2 sm:grid">
+        <span role="columnheader">
+          <span className="sr-only">Campo</span>
+        </span>
+        <div role="columnheader" className="flex min-w-0 flex-col">
+          <span className="text-lg font-extrabold">{sideA.title}</span>
+          {sideA.caption}
         </div>
-        <div role="columnheader" className="order-2 hidden text-center text-base font-medium text-gris-texto sm:order-2 sm:block">
-          Campo
+        <div role="columnheader" className="flex min-w-0 flex-col">
+          <span className="text-lg font-extrabold">{sideB.title}</span>
+          {sideB.caption}
         </div>
-        <div className="order-3">
-          <ColumnHeader title="Pieza B" piece={pieceB} piecesLoading={piecesLoading} />
-        </div>
+        <span role="columnheader">
+          <span className="sr-only">Resultado</span>
+        </span>
       </div>
-      {COMPARISON_ROWS.map((row) => {
-        const state = comparisonRowState(pieceA ? row.text(pieceA, names) : "", pieceB ? row.text(pieceB, names) : "", marks.get(row.key));
+      {rows.length === 0 && (
+        <p role="row" className="px-4 py-3 text-gris-texto">
+          <span role="cell">No hay diferencias entre las dos.</span>
+        </p>
+      )}
+      {rows.map(({ row, a, b, state, onlyIn }) => {
         const info = state === "empty" ? null : ROW_STATES[state];
-        const Icon = info?.icon;
+        const Icon = onlyIn ? CircleAlert : info?.icon;
         return (
           <div
             key={row.key}
             role="row"
             data-mark={state === "same" ? "match" : state === "empty" ? undefined : state}
-            className={cn(GRID, "items-center gap-y-0.5 border-b border-borde px-2 py-1.5 last:border-b-0", info?.row)}
+            className={cn("grid grid-cols-2 items-center gap-x-4 gap-y-1 border-b border-borde px-4 py-2 last:border-b-0 sm:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)_11rem]", info?.row)}
           >
-            <div role="rowheader" className="order-1 col-span-2 flex items-center justify-center gap-2 text-center text-base font-medium text-gris-texto sm:order-2 sm:col-span-1 sm:flex-col sm:gap-0.5">
+            <div role="rowheader" className="col-span-2 font-semibold text-gris-texto sm:col-span-1">
               {row.label}
+            </div>
+            <div role="cell" className="min-w-0 break-words">
+              <span className="sr-only">{sideA.title}: </span>
+              {sideA.values ? (a?.node ?? "—") : "—"}
+            </div>
+            <div role="cell" className="min-w-0 break-words">
+              <span className="sr-only">{sideB.title}: </span>
+              {sideB.values ? (b?.node ?? "—") : "—"}
+            </div>
+            <div role="cell" className="col-span-2 sm:col-span-1">
               {info && Icon && (
-                <span className={cn("inline-flex items-center gap-1 font-semibold", info.tag)}>
-                  <Icon size={16} aria-hidden="true" />
-                  {info.label}
+                <span className={cn("inline-flex items-center gap-1.5 font-bold", onlyIn ? "text-gris-texto" : info.tag)}>
+                  <Icon size={18} aria-hidden="true" className="shrink-0" />
+                  {onlyIn ? `Solo en ${onlyIn}` : info.label}
                 </span>
               )}
-            </div>
-            <div role="cell" className="order-2 min-w-0 text-center break-words sm:order-1">
-              {pieceA ? row.value(pieceA, names) : "—"}
-            </div>
-            <div role="cell" className="order-3 min-w-0 text-center break-words">
-              {pieceB ? row.value(pieceB, names) : "—"}
+              {!info && <span className="text-gris-texto">Sin dato en ninguno</span>}
             </div>
           </div>
         );
@@ -496,15 +572,16 @@ export function ComparisonTable({ pieceA, pieceB, signals, piecesLoading }: { pi
   );
 }
 
-/** Etiquetas cortas con las señales del motor: «Denominación parecida 100 %». */
+/** Los motivos del par en palabras, sin porcentajes: «Denominación igual», «Misma colección…». */
 export function SignalChips({ signals }: { signals: readonly DuplicateSignal[] }) {
   const names = useIdentifierTypeNames();
-  if (signals.length === 0) return null;
+  const labels = [...new Set(signals.map((signal) => signalLabel(signal, names)))];
+  if (labels.length === 0) return null;
   return (
     <ul className="flex flex-wrap gap-1.5" aria-label="Por qué se propone">
-      {signals.map((signal, index) => (
-        <li key={`${signal.field}-${index}`} className="rounded-full bg-crema px-3 py-1 text-base text-tinta">
-          {signalLabel(signal, names)} <span className="font-semibold">{scorePercent(signal.similarity)}</span>
+      {labels.map((label) => (
+        <li key={label} className="rounded-full border border-borde bg-white px-3 py-1 text-base font-semibold text-tinta">
+          {label}
         </li>
       ))}
     </ul>
@@ -542,12 +619,6 @@ export function SignalList({ signals }: { signals: readonly DuplicateSignal[] })
   );
 }
 
-/**
- * Las etiquetas (`Badge` de components/ui, 14 px) de la tarjeta suben a 16 px solo en esta vista
- * (change `revisar-pendientes-unificado`, tarea 3.5), sin tocar el átomo, que es de la Base (C28).
- */
-const CARD_BADGES = "[&_span.rounded-full]:text-base";
-
 export interface DuplicateCandidateCardProps {
   candidate: DuplicateCandidate;
   pieceA: PieceSlot;
@@ -558,79 +629,233 @@ export interface DuplicateCandidateCardProps {
   onMerge: () => void;
   onDistinct: () => void;
   onPostpone: () => void;
+  /** Permiso `imports.prepare`: decidir desde aquí la fila del Excel de un par. */
+  canDecideRow?: boolean;
+  /** Decide la fila del Excel: corresponde a la pieza del par (`same`) o es nueva (`new`). */
+  onRowDecision?: (choice: ImportRowChoice) => void;
+  /** Mientras se guarda una decisión sobre la fila. */
+  deciding?: boolean;
+  /** Error al decidir la fila, junto a los botones. */
+  decisionError?: string | null;
+  /** «Par N de M» con anterior y siguiente; sin esto no se muestra. */
+  position?: { index: number; total: number; onPrevious?: () => void; onNext?: () => void };
+  onClose?: () => void;
+  /** Para mover el foco al título al abrir el par siguiente. */
+  headingRef?: React.Ref<HTMLHeadingElement>;
 }
 
-export function DuplicateCandidateCard({ candidate, pieceA, pieceB, piecesLoading, canResolve, onMerge, onDistinct, onPostpone }: DuplicateCandidateCardProps) {
-  const isImportRow = candidate.piece_b_id === null;
-  const mergeNote = isImportRow ? IMPORT_ROW_MERGE_MESSAGE : mergeUnavailableReason(candidate, pieceA, pieceB, piecesLoading);
+/** Una decisión grande con lo que pasará al elegirla. */
+function DecisionButton({
+  tone,
+  title,
+  detail,
+  disabled,
+  describedBy,
+  onClick,
+}: {
+  tone: "same" | "distinct" | "later";
+  title: string;
+  detail?: string;
+  disabled?: boolean;
+  describedBy?: string;
+  onClick: () => void;
+}) {
+  if (tone === "later") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-base font-bold text-gris-texto hover:bg-crema-light hover:text-tinta focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:opacity-50"
+      >
+        {title}
+      </button>
+    );
+  }
   return (
-    <Card as="article" className={cn("flex flex-col gap-4", CARD_BADGES)} aria-label={`Par con similitud ${scorePercent(candidate.score)}`}>
-      <div className="flex flex-wrap items-center gap-4">
-        <SimilarityMeter score={candidate.score} />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={duplicateStatus(candidate.status)} />
-            {isImportRow && <Badge intent="info">Fila de importación</Badge>}
-            {mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code" && <Badge intent="danger">Códigos I distintos: no se puede fusionar</Badge>}
-          </div>
-          <SignalChips signals={candidate.matched_fields} />
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-describedby={describedBy}
+      className={cn(
+        "flex min-h-11 flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:cursor-not-allowed disabled:opacity-50",
+        tone === "same" ? "border-verde-exito bg-verde-exito text-white hover:brightness-95" : "border-borde bg-white text-tinta hover:border-gris-texto",
+      )}
+    >
+      <span className="inline-flex items-center gap-2 text-lg font-extrabold">
+        {tone === "same" && <Check size={20} aria-hidden="true" />}
+        {title}
+      </span>
+      {detail && <span className={cn("text-base", tone === "same" ? "text-white" : "text-gris-texto")}>{detail}</span>}
+    </button>
+  );
+}
+
+/** Lo que ya decidió el lote sobre la fila, o por qué no se puede decidir desde aquí. */
+function rowBlockNote(row: ImportRowSummary | null | undefined, canDecideRow: boolean): ReactNode {
+  if (!row) return "No se pudieron leer los datos de la fila: decídala en su lote de importación.";
+  if (row.resolution === "piece") return "Su lote ya decidió que la fila actualiza esta pieza.";
+  if (row.resolution === "new") return "Su lote ya decidió que la fila entra como pieza nueva.";
+  if (!row.editable) return "Su lote ya no admite cambios (se aprobó o se abandonó).";
+  if (!canDecideRow) return "Decidir la fila le corresponde a quien prepara la carga.";
+  return null;
+}
+
+export function DuplicateCandidateCard({
+  candidate,
+  pieceA,
+  pieceB,
+  piecesLoading,
+  canResolve,
+  onMerge,
+  onDistinct,
+  onPostpone,
+  canDecideRow = false,
+  onRowDecision,
+  deciding = false,
+  decisionError = null,
+  position,
+  onClose,
+  headingRef,
+}: DuplicateCandidateCardProps) {
+  const names = useIdentifierTypeNames();
+  const noteId = useId();
+  const [onlyDifferences, setOnlyDifferences] = useState(false);
+  const isImportRow = candidate.piece_b_id === null;
+  const row = candidate.import_row;
+  const sideA = pieceSide(isImportRow ? "Pieza del catálogo" : "Pieza A", isImportRow ? "el catálogo" : "la pieza A", pieceA, piecesLoading, names);
+  const sideB = isImportRow ? importRowSide(row, names) : pieceSide("Pieza B", "la pieza B", pieceB, piecesLoading, names);
+  const mergeNote = isImportRow ? null : mergeUnavailableReason(candidate, pieceA, pieceB, piecesLoading);
+  const rowNote = isImportRow ? rowBlockNote(row, canDecideRow && Boolean(onRowDecision)) : null;
+  const blockNote = isImportRow ? rowNote : mergeNote;
+  const pieceName = pieceA?.denomination ?? "la pieza del catálogo";
+  const words = SIMILARITY_WORDS[similarityLevel(candidate.score)];
+  const blocked = mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code";
+
+  return (
+    // Las etiquetas (`Badge`, 14 px) suben a 16 px solo aquí, sin tocar el átomo de la Base (C28).
+    <section aria-label="Revisión del par" className="flex flex-col [&_span.rounded-full]:text-base">
+      <div className="flex flex-wrap items-center gap-3 border-b border-borde px-4 py-3 sm:px-5">
+        <h3 ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold text-tinta focus-visible:outline-none">
+          ¿Es la misma pieza?
+        </h3>
+        <span className="rounded-full bg-ambar-bg px-3 py-1 text-base font-bold text-ambar-texto">{words}</span>
+        <span className="rounded-full bg-ciruela-bg px-3 py-1 text-base font-bold text-ciruela">{isImportRow ? "Pieza y fila de un Excel" : "Dos piezas del catálogo"}</span>
+        {candidate.status !== "PENDING" && <StatusBadge status={duplicateStatus(candidate.status)} />}
+        <span className="flex-1" />
+        {position && (
+          <nav aria-label="Pares de la cola" className="flex items-center gap-1.5 text-base font-semibold text-gris-texto">
+            <Button variant="secondary" size="sm" aria-label="Par anterior" disabled={!position.onPrevious} onClick={position.onPrevious} className="size-11 p-0">
+              <ChevronLeft size={18} aria-hidden="true" />
+            </Button>
+            <span>
+              Par {position.index} de {position.total}
+            </span>
+            <Button variant="secondary" size="sm" aria-label="Par siguiente" disabled={!position.onNext} onClick={position.onNext} className="size-11 p-0">
+              <ChevronRight size={18} aria-hidden="true" />
+            </Button>
+          </nav>
+        )}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar la revisión"
+            className="grid min-h-11 size-11 place-items-center rounded-full border border-borde hover:bg-crema-light focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+        )}
       </div>
-      {candidate.status === "POSTPONED" && candidate.postponed_until && (
-        <p className="text-base text-gris-texto">Pospuesto hasta el {formatDate(candidate.postponed_until)}; después vuelve a pendiente.</p>
-      )}
-      {candidate.resolution_note && <p className="text-base text-gris-texto">Motivo registrado: {candidate.resolution_note}</p>}
 
-      {isImportRow ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1 rounded-md border border-borde p-3 text-base text-tinta">
-            {pieceHeader("Pieza del catálogo", pieceA, piecesLoading)}
-            {pieceA && <p className="text-base text-gris-texto">{pieceA.collection?.name ?? "Sin colección"} · Código I {pieceA.code_i ?? "sin asignar"}</p>}
-          </div>
-          <div className="rounded-md border border-dashed border-borde p-3 text-base text-tinta">
-            <p className="font-medium">Fila de importación</p>
-            <p className="text-base text-gris-texto">Aún no está en el catálogo: se decide en su lote.</p>
-            <Link href="/importacion" className="inline-flex min-h-11 items-center gap-1 text-base text-terracota underline">
-              Ver en Importación
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-borde bg-crema-light px-4 py-2.5 sm:px-5">
+        <span className="text-base text-gris-texto">Se propone porque:</span>
+        <SignalChips signals={candidate.matched_fields} />
+        {blocked && <Badge intent="danger">Códigos I distintos: no se puede fusionar</Badge>}
+        <span className="flex-1" />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={onlyDifferences}
+          onClick={() => setOnlyDifferences((value) => !value)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full px-1 text-base font-semibold text-tinta focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota"
+        >
+          <span aria-hidden="true" className={cn("relative h-6 w-10 rounded-full transition-colors", onlyDifferences ? "bg-terracota" : "bg-borde")}>
+            <span className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-[left]", onlyDifferences ? "left-[1.125rem]" : "left-0.5")} />
+          </span>
+          Solo diferencias
+        </button>
+      </div>
+
+      {(candidate.status === "POSTPONED" && candidate.postponed_until) || candidate.resolution_note ? (
+        <div className="flex flex-col gap-1 px-4 pt-3 sm:px-5">
+          {candidate.status === "POSTPONED" && candidate.postponed_until && (
+            <p className="text-base text-gris-texto">Pospuesto hasta el {formatDate(candidate.postponed_until)}; después vuelve a pendiente.</p>
+          )}
+          {candidate.resolution_note && <p className="text-base text-gris-texto">Motivo registrado: {candidate.resolution_note}</p>}
         </div>
-      ) : (
-        <ComparisonTable pieceA={pieceA} pieceB={pieceB} signals={candidate.matched_fields} piecesLoading={piecesLoading} />
-      )}
+      ) : null}
 
-      <SignalList signals={candidate.matched_fields} />
+      <div className="py-1">
+        <ComparisonTable sideA={sideA} sideB={sideB} signals={candidate.matched_fields} onlyDifferences={onlyDifferences} />
+      </div>
 
       {canResolve && canBeResolved(candidate) && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-3">
-            {!isImportRow && (
-              <Button
-                variant="primary"
-                icon={GitMerge}
-                disabled={mergeNote !== null}
-                aria-describedby={mergeNote ? `merge-note-${candidate.id}` : undefined}
-                onClick={onMerge}
-              >
-                Fusionar
-              </Button>
+        <div className="flex flex-col gap-2 border-t border-borde px-4 py-4 sm:px-5">
+          <div className="grid gap-3 sm:grid-cols-[1.3fr_1fr_auto] sm:items-stretch">
+            {isImportRow ? (
+              <>
+                <DecisionButton
+                  tone="same"
+                  title="Es la misma pieza"
+                  detail={`La fila actualizará «${pieceName}» al aprobar la carga, en vez de crear una pieza nueva.`}
+                  disabled={rowNote !== null || deciding}
+                  describedBy={rowNote ? noteId : undefined}
+                  onClick={() => onRowDecision?.("same")}
+                />
+                {rowNote === null ? (
+                  <DecisionButton tone="distinct" title="Son piezas distintas" detail="La fila entrará como pieza nueva al aprobar la carga." disabled={deciding} onClick={() => onRowDecision?.("new")} />
+                ) : (
+                  <DecisionButton tone="distinct" title="Son piezas distintas" detail="El par sale de la cola; queda registrado el motivo." onClick={onDistinct} />
+                )}
+              </>
+            ) : (
+              <>
+                <DecisionButton
+                  tone="same"
+                  title="Es la misma pieza"
+                  detail="Se fusionan en una sola ficha: elegirá qué datos conservar. No se borra nada."
+                  disabled={mergeNote !== null}
+                  describedBy={mergeNote ? noteId : undefined}
+                  onClick={onMerge}
+                />
+                <DecisionButton tone="distinct" title="Son piezas distintas" detail="El par sale de la cola; queda registrado el motivo." onClick={onDistinct} />
+              </>
             )}
-            <Button variant="outline" icon={Split} onClick={onDistinct}>
-              Marcar como distinto
-            </Button>
-            <Button variant="secondary" icon={CalendarClock} onClick={onPostpone}>
-              Posponer
-            </Button>
+            <DecisionButton tone="later" title="Decidir después" disabled={deciding} onClick={onPostpone} />
           </div>
-          {mergeNote && (
-            <p id={`merge-note-${candidate.id}`} className="text-base text-gris-texto">
-              {mergeNote}
+          {blockNote && (
+            <p id={noteId} className="text-base text-gris-texto">
+              {blockNote}
+              {isImportRow && row && (
+                <>
+                  {" "}
+                  <Link href={importHref({ batchId: row.batch_id })} className="inline-flex min-h-11 items-center font-semibold text-terracota underline">
+                    Abrir su lote
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+          {decisionError && (
+            <p role="alert" className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
+              {decisionError}
             </p>
           )}
         </div>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -701,9 +926,10 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
     <li>
       <article
         aria-label={`Par: ${words.toLowerCase()}`}
-        className={cn("rounded-tarjeta border bg-white shadow-sm", open ? "border-terracota" : "border-borde")}
+        className={cn("overflow-hidden rounded-tarjeta border bg-white shadow-sm", open ? "border-2 border-terracota shadow-md" : "border-borde")}
       >
-        <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center">
+        {/* Abierto, la revisión reemplaza al resumen: no se repiten las dos piezas (revisar-duplicados-comparacion). */}
+        <div className={cn("flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center", open && "hidden")}>
           {/* Las dos piezas en paneles de color suave, separadas por «vs» (maqueta B). */}
           <div className="grid min-w-0 flex-1 items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3">
             <div className="flex min-w-0 items-center rounded-md bg-ambar-bg p-3">
@@ -715,8 +941,10 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
             <div className="flex min-w-0 items-center rounded-md bg-ciruela-bg p-3">
               {isImportRow ? (
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="text-lg font-semibold text-tinta">Fila de importación</p>
-                  <p className="text-base text-gris-texto">Aún no está en el catálogo.</p>
+                  <p className="text-lg font-semibold break-words text-tinta">{candidate.import_row?.denomination ?? "Fila de importación"}</p>
+                  <p className="text-base text-gris-texto">
+                    {candidate.import_row ? `Fila ${candidate.import_row.source_row_number} · Lote «${candidate.import_row.batch_name}»` : "Aún no está en el catálogo."}
+                  </p>
                 </div>
               ) : (
                 <RowPiece piece={pieceB} piecesLoading={piecesLoading} />
@@ -746,11 +974,7 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
             {open ? "Cerrar" : "Revisar"}
           </Button>
         </div>
-        {open && (
-          <div id={detailId} className="border-t border-borde p-4">
-            {children}
-          </div>
-        )}
+        {open && <div id={detailId}>{children}</div>}
       </article>
     </li>
   );
@@ -1004,6 +1228,26 @@ export function PostponeDialog({
 // Detección completa
 // ---------------------------------------------------------------------------------------------
 
+export const SCAN_HINT =
+  "Compara todas las piezas entre sí. No suele hacer falta: el sistema ya busca duplicados solo cada vez que se crea o edita una pieza. Úselo después de una carga masiva.";
+
+/** Avance de la detección en una línea: «Revisando el catálogo… 3 303 de 10 312 piezas». */
+export function scanLineText(job: QualityJob): string {
+  if (job.status === "RUNNING") {
+    if (job.total_pieces === 0) return `Revisando el catálogo… ${SCAN_STARTING_TEXT}`;
+    return `Revisando el catálogo… ${job.processed_pieces.toLocaleString("es-PE")} de ${job.total_pieces.toLocaleString("es-PE")} piezas`;
+  }
+  if (job.status === "FAILED") return job.error_message || "La revisión se interrumpió. Puede lanzarla de nuevo.";
+  const fresh = job.candidates_created + job.candidates_reopened;
+  return `Revisión completa: ${fresh === 0 ? "ningún par nuevo" : fresh === 1 ? "1 par nuevo" : `${fresh} pares nuevos`}`;
+}
+
+/**
+ * Detección completa (design D3) como un botón discreto junto al número de pares (change
+ * `revisar-duplicados-comparacion`): casi nunca hace falta, porque la detección corre sola al crear
+ * o editar piezas. La explicación va en el título del botón y para lectores de pantalla; mientras
+ * corre, el avance se ve en la misma línea con una barra pequeña.
+ */
 export function ScanPanel({
   job,
   error,
@@ -1017,35 +1261,51 @@ export function ScanPanel({
   canScan: boolean;
   onStart: () => void;
 }) {
+  const hintId = useId();
   const running = job?.status === "RUNNING";
+  const percent = running && job.total_pieces > 0 ? Math.round((job.processed_pieces / job.total_pieces) * 100) : 0;
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Con un ancho mínimo, el botón pasa a la línea de abajo en pantallas estrechas. */}
-        <div className="flex min-w-0 flex-1 basis-64 items-center gap-4">
-          <IconCircle icon={ScanSearch} tone="anil" />
-          <div className="flex min-w-0 flex-col gap-1">
-            <h2 className="text-lg font-bold text-tinta">Buscar en todo el catálogo</h2>
-            <p className="text-base text-gris-texto">Corre sola al crear o editar piezas. Lance una completa tras cambios masivos.</p>
-          </div>
-        </div>
-        {canScan && (
-          <Button variant="outline" icon={ScanSearch} disabled={starting || running} onClick={onStart}>
-            {running ? "Detección en curso…" : "Buscar duplicados"}
-          </Button>
-        )}
-      </div>
+    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
       {job && (
         <p role="status" className="flex flex-wrap items-center gap-2 text-base text-tinta">
-          <StatusBadge status={qualityJobStatus(job.status)} />
-          {jobProgressText(job)}
+          {running ? (
+            <>
+              <span>{scanLineText(job)}</span>
+              <span aria-hidden="true" className="h-2 w-32 overflow-hidden rounded-full bg-anil-bg">
+                <span className="block h-full rounded-full bg-anil" style={{ width: `${percent}%` }} />
+              </span>
+            </>
+          ) : (
+            <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-bold", job.status === "FAILED" ? "bg-carmin-bg text-carmin-texto" : "bg-verde-bg text-verde-exito")}>
+              {job.status !== "FAILED" && <Check size={16} aria-hidden="true" />}
+              {scanLineText(job)}
+            </span>
+          )}
         </p>
       )}
+      {canScan && !running && (
+        <>
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={starting}
+            title={SCAN_HINT}
+            aria-describedby={hintId}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent px-3 text-base font-bold text-gris-texto hover:border-borde hover:bg-white hover:text-tinta focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota disabled:opacity-60"
+          >
+            <ScanSearch size={18} aria-hidden="true" />
+            {starting ? "Iniciando…" : "Revisar todo el catálogo"}
+          </button>
+          <span id={hintId} className="sr-only">
+            {SCAN_HINT}
+          </span>
+        </>
+      )}
       {error && (
-        <p role="alert" className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
+        <p role="alert" className="w-full rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
           {error}
         </p>
       )}
-    </Card>
+    </div>
   );
 }

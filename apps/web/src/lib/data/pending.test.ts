@@ -52,12 +52,9 @@ afterEach(() => {
 });
 
 describe("pestañas visibles por permiso (design D2)", () => {
-  it("con los tres permisos, las tres en el orden fijo", () => {
-    expect(pendingTabs(permissions(...ALL)).map((t) => t.href)).toEqual([
-      "/pendientes/duplicados",
-      "/pendientes/sugerencias",
-      "/pendientes/incompletas",
-    ]);
+  it("con todos los permisos, duplicados e incompletas en el orden fijo (sin la pestaña de sugerencias de IA)", () => {
+    expect(pendingTabs(permissions(...ALL)).map((t) => t.href)).toEqual(["/pendientes/duplicados", "/pendientes/incompletas"]);
+    expect(pendingTabs(permissions("ai.review"))).toEqual([]);
   });
 
   it("con un solo permiso, solo su pestaña", () => {
@@ -73,19 +70,19 @@ describe("pestaña inicial (design D2)", () => {
   const all = pendingTabs(permissions(...ALL));
 
   it("la primera con pendientes", () => {
-    expect(initialTab(all, counts({ duplicates: 9, suggestions: 2, incomplete: 117 }))?.key).toBe("duplicates");
+    expect(initialTab(all, counts({ duplicates: 9, incomplete: 117 }))?.key).toBe("duplicates");
   });
 
   it("si la primera no tiene pendientes, la siguiente que sí", () => {
-    expect(initialTab(all, counts({ duplicates: 0, suggestions: 2, incomplete: 117 }))?.key).toBe("suggestions");
+    expect(initialTab(all, counts({ duplicates: 0, incomplete: 117 }))?.key).toBe("incomplete");
   });
 
   it("un total desconocido no cuenta como pendiente", () => {
-    expect(initialTab(all, counts({ duplicates: null, suggestions: null, incomplete: 3 }))?.key).toBe("incomplete");
+    expect(initialTab(all, counts({ duplicates: null, incomplete: 3 }))?.key).toBe("incomplete");
   });
 
   it("si ninguna tiene pendientes o no se conocen, la primera visible", () => {
-    expect(initialTab(all, counts({ duplicates: 0, suggestions: 0, incomplete: 0 }))?.key).toBe("duplicates");
+    expect(initialTab(all, counts({ duplicates: 0, incomplete: 0 }))?.key).toBe("duplicates");
     expect(initialTab(all, UNKNOWN_COUNTS)?.key).toBe("duplicates");
   });
 
@@ -108,7 +105,8 @@ describe("nombre y dirección de las pestañas", () => {
   });
 
   it("reconoce la pestaña de una dirección y de sus subrutas", () => {
-    expect(tabForPath("/pendientes/sugerencias")?.key).toBe("suggestions");
+    expect(tabForPath("/pendientes/incompletas")?.key).toBe("incomplete");
+    expect(tabForPath("/pendientes/sugerencias")).toBeUndefined();
     expect(tabForPath("/pendientes/duplicados/otra")?.key).toBe("duplicates");
     expect(tabForPath("/pendientes")).toBeUndefined();
     expect(tabForPath("/pendientes/duplicadosx")).toBeUndefined();
@@ -130,80 +128,74 @@ describe("contadores desde las consultas existentes (modo live, design D3)", () 
     const fetchMock = useLive(
       byPath({
         "/api/v1/quality/duplicates": json(200, page(9)),
-        "/api/v1/ai/suggestions": json(200, page(2)),
         "/api/v1/quality/incomplete": json(200, page(117)),
       }),
     );
-    const result = await fetchPendingCounts(["duplicates", "suggestions", "incomplete"], { devUser: DEV_USER });
-    expect(result).toEqual({ duplicates: 9, suggestions: 2, incomplete: 117 });
+    const result = await fetchPendingCounts(["duplicates", "incomplete"], { devUser: DEV_USER });
+    expect(result).toEqual({ duplicates: 9, incomplete: 117 });
 
     const urls = fetchMock.mock.calls.map(([request]) => new URL(request.url));
-    expect(urls.map((u) => u.pathname).sort()).toEqual(["/api/v1/ai/suggestions", "/api/v1/quality/duplicates", "/api/v1/quality/incomplete"]);
+    expect(urls.map((u) => u.pathname).sort()).toEqual(["/api/v1/quality/duplicates", "/api/v1/quality/incomplete"]);
     for (const url of urls) expect(url.searchParams.get("page_size")).toBe("1");
     expect(urls.find((u) => u.pathname === "/api/v1/quality/duplicates")?.searchParams.get("status")).toBe("PENDING");
-    expect(urls.find((u) => u.pathname === "/api/v1/ai/suggestions")?.searchParams.get("status")).toBe("PENDING");
     for (const [request] of fetchMock.mock.calls) expect(request.headers.get("X-MATP-User")).toBe(DEV_USER);
   });
 
   it("un total que falla queda sin número y no afecta a los demás", async () => {
     useLive(
       byPath({
-        "/api/v1/quality/duplicates": json(200, page(9)),
-        "/api/v1/ai/suggestions": json(500, { code: "internal_error" }),
+        "/api/v1/quality/duplicates": json(500, { code: "internal_error" }),
         "/api/v1/quality/incomplete": json(200, page(117)),
       }),
     );
-    expect(await fetchPendingCounts(["duplicates", "suggestions", "incomplete"])).toEqual({ duplicates: 9, suggestions: null, incomplete: 117 });
+    expect(await fetchPendingCounts(["duplicates", "incomplete"])).toEqual({ duplicates: null, incomplete: 117 });
   });
 
   it("sin conexión, todos quedan sin número", async () => {
     useLive(async () => {
       throw new TypeError("Failed to fetch");
     });
-    expect(await fetchPendingCounts(["duplicates", "suggestions", "incomplete"])).toEqual(UNKNOWN_COUNTS);
+    expect(await fetchPendingCounts(["duplicates", "incomplete"])).toEqual(UNKNOWN_COUNTS);
   });
 
   it("una respuesta sin total numérico queda sin número", async () => {
-    useLive(byPath({ "/api/v1/ai/suggestions": json(200, { items: [] }) }));
-    expect((await fetchPendingCounts(["suggestions"])).suggestions).toBeNull();
+    useLive(byPath({ "/api/v1/quality/incomplete": json(200, { items: [] }) }));
+    expect((await fetchPendingCounts(["incomplete"])).incomplete).toBeNull();
   });
 
   it("solo consulta las pestañas pedidas", async () => {
     const fetchMock = useLive(byPath({ "/api/v1/quality/incomplete": json(200, page(4)) }));
-    expect(await fetchPendingCounts(["incomplete"])).toEqual({ duplicates: null, suggestions: null, incomplete: 4 });
+    expect(await fetchPendingCounts(["incomplete"])).toEqual({ duplicates: null, incomplete: 4 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("contadores en modo demostración (design D3)", () => {
-  it("duplicados e incompletas salen de los datos sintéticos; las sugerencias, del número que se pasa", async () => {
+  it("duplicados e incompletas salen de los datos sintéticos, sin red", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const result = await fetchPendingCounts(["duplicates", "suggestions", "incomplete"], { mockPendingSuggestions: 3 });
-    expect(result.suggestions).toBe(3);
+    const result = await fetchPendingCounts(["duplicates", "incomplete"]);
     expect(result.duplicates).toEqual(expect.any(Number));
     expect(result.duplicates).toBeGreaterThan(0);
     expect(result.incomplete).toEqual(expect.any(Number));
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("sin número de sugerencias, la pestaña queda sin número", async () => {
-    expect((await fetchPendingCounts(["suggestions"])).suggestions).toBeNull();
-  });
 });
 
 describe("direcciones antiguas (Req: Redirección de las direcciones antiguas a la bandeja)", () => {
-  it("cada una lleva a su pestaña", () => {
+  it("cada una lleva a su pestaña; las de sugerencias de IA, a la bandeja", () => {
     expect(LEGACY_PENDING_ROUTES["/duplicados"]).toBe("/pendientes/duplicados");
-    expect(LEGACY_PENDING_ROUTES["/ia/sugerencias"]).toBe("/pendientes/sugerencias");
+    expect(LEGACY_PENDING_ROUTES["/ia/sugerencias"]).toBe("/pendientes");
+    expect(LEGACY_PENDING_ROUTES["/pendientes/sugerencias"]).toBe("/pendientes");
   });
 
   it("sin parámetros, la pestaña sola", () => {
     expect(legacyPendingTarget("/pendientes/duplicados", new URLSearchParams())).toBe("/pendientes/duplicados");
   });
 
-  it("conserva el que resalta una sugerencia", () => {
-    expect(legacyPendingTarget("/pendientes/sugerencias", new URLSearchParams("resaltar=abc"))).toBe("/pendientes/sugerencias?resaltar=abc");
+  it("conserva el que resalta un par", () => {
+    expect(legacyPendingTarget("/pendientes/duplicados", new URLSearchParams("resaltar=abc"))).toBe("/pendientes/duplicados?resaltar=abc");
   });
 
   it("conserva todos los parámetros, en su orden y con su codificación", () => {

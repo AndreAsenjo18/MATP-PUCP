@@ -4,17 +4,17 @@
  *
  * Reglas puras de las pestañas (qué ve cada rol y cuál se abre primero, design D2) y los
  * contadores (design D3), que salen solo del `total` de las consultas que ya existen, pidiendo
- * una sola fila: `GET /quality/duplicates`, `GET /ai/suggestions` y `GET /quality/incomplete`.
+ * una sola fila: `GET /quality/duplicates` y `GET /quality/incomplete` (la pestaña de sugerencias
+ * de IA se retiró en `retirar-pestana-sugerencias-ia`).
  * Sin endpoint nuevo: un total que no se puede obtener queda como `null` y la pestaña se muestra
- * sin número. `lib/data/ai.ts` (de P4) no se toca: la consulta de sugerencias se hace aquí.
+ * sin número.
  */
-import { createApiClient } from "@/lib/api/client";
 
 import { fetchDuplicateQueue } from "./duplicates";
-import { apiBaseUrl, getApiMode } from "./mode";
 import { fetchIncompleteReport } from "./quality";
 
-export type PendingTabKey = "duplicates" | "suggestions" | "incomplete";
+/** La pestaña «Sugerencias de IA» se retiró (change `retirar-pestana-sugerencias-ia`). */
+export type PendingTabKey = "duplicates" | "incomplete";
 
 export interface PendingTab {
   key: PendingTabKey;
@@ -24,10 +24,9 @@ export interface PendingTab {
   permission: string;
 }
 
-/** Orden fijo de las pestañas (spec: duplicados, sugerencias, incompletas). */
+/** Orden fijo de las pestañas: duplicados e incompletas. */
 export const PENDING_TABS: readonly PendingTab[] = [
   { key: "duplicates", href: "/pendientes/duplicados", label: "Posibles duplicados", permission: "duplicates.resolve" },
-  { key: "suggestions", href: "/pendientes/sugerencias", label: "Sugerencias de IA", permission: "ai.review" },
   { key: "incomplete", href: "/pendientes/incompletas", label: "Piezas incompletas", permission: "reports.view" },
 ];
 
@@ -36,7 +35,7 @@ export const PENDING_BASE_PATH = "/pendientes";
 /** Pendientes por pestaña; `null` cuando el total no se pudo obtener (o no se pidió). */
 export type PendingCounts = Record<PendingTabKey, number | null>;
 
-export const UNKNOWN_COUNTS: PendingCounts = { duplicates: null, suggestions: null, incomplete: null };
+export const UNKNOWN_COUNTS: PendingCounts = { duplicates: null, incomplete: null };
 
 /** Pestañas que el rol puede ver, en el orden fijo. */
 export function pendingTabs(hasPermission: (permission: string) => boolean): PendingTab[] {
@@ -65,18 +64,6 @@ export function tabForPath(pathname: string | null | undefined): PendingTab | un
 
 export interface PendingCountsOptions {
   devUser?: string;
-  /**
-   * En modo demostración las sugerencias viven en el almacén de React (`useMockStore`), que una
-   * función de datos no puede leer: quien llama pasa cuántas hay pendientes.
-   */
-  mockPendingSuggestions?: number;
-}
-
-async function suggestionsTotal(devUser: string | undefined): Promise<number | null> {
-  const { data, error } = (await createApiClient({ baseUrl: apiBaseUrl(), devUser }).GET("/api/v1/ai/suggestions", {
-    params: { query: { status: "PENDING", page: 1, page_size: 1 } },
-  })) as { data?: { total?: unknown }; error?: unknown };
-  return !error && typeof data?.total === "number" ? data.total : null;
 }
 
 async function duplicatesTotal(devUser: string | undefined): Promise<number | null> {
@@ -103,11 +90,9 @@ async function safely(load: () => Promise<number | null>): Promise<number | null
  * se provocan respuestas 403); lo demás queda `null`.
  */
 export async function fetchPendingCounts(keys: readonly PendingTabKey[], options: PendingCountsOptions = {}): Promise<PendingCounts> {
-  const { devUser, mockPendingSuggestions } = options;
-  const mock = getApiMode() === "mock";
+  const { devUser } = options;
   const loaders: Record<PendingTabKey, () => Promise<number | null>> = {
     duplicates: () => duplicatesTotal(devUser),
-    suggestions: mock ? async () => mockPendingSuggestions ?? null : () => suggestionsTotal(devUser),
     incomplete: () => incompleteTotal(devUser),
   };
   const wanted = PENDING_TABS.map((tab) => tab.key).filter((key) => keys.includes(key));
@@ -122,7 +107,9 @@ export async function fetchPendingCounts(keys: readonly PendingTabKey[], options
 /** Direcciones antiguas que ahora son pestañas de la bandeja (spec: «Redirección de las direcciones antiguas a la bandeja»). */
 export const LEGACY_PENDING_ROUTES = {
   "/duplicados": "/pendientes/duplicados",
-  "/ia/sugerencias": "/pendientes/sugerencias",
+  // La pestaña de sugerencias de IA se retiró: sus direcciones llevan a la bandeja.
+  "/ia/sugerencias": "/pendientes",
+  "/pendientes/sugerencias": "/pendientes",
 } as const;
 
 /**

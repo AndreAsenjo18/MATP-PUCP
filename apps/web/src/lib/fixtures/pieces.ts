@@ -553,6 +553,31 @@ const MISSING_FIELDS: Record<string, string[]> = {
   [P11_ID]: ["acquisition_method"],
 };
 
+/**
+ * Campos obligatorios y recomendados vacíos de una pieza de demostración, con las reglas por omisión
+ * de la API (`DEFAULT_REQUIRED_FIELDS` y `DEFAULT_RECOMMENDED_FIELDS`; change
+ * `completar-piezas-incompletas`).
+ */
+export function missingFieldsOf(piece: PieceDetail): string[] {
+  const empty = (value: unknown) => value == null || (typeof value === "string" && value.trim() === "");
+  const checks: [string, boolean][] = [
+    ["denomination", empty(piece.denomination)],
+    ["tenure_regime", empty(piece.tenure_regime)],
+    ["collection_id", !piece.collection],
+    ["category_id", !piece.category],
+    ["description", empty(piece.description)],
+    ["epoch_original_text", empty(piece.period?.text)],
+    ["materials", (piece.materials ?? []).length === 0],
+    ["dimensions_text", empty(piece.dimensions_text)],
+    ["conservation_state_id", !piece.conservation_status],
+    ["provenance", empty(piece.provenance)],
+  ];
+  return checks.filter(([, missing]) => missing).map(([field]) => field);
+}
+
+/** Campos recomendados por omisión de la API (`DEFAULT_RECOMMENDED_FIELDS`). */
+const RECOMMENDED_FIELDS = new Set(["collection_id", "category_id", "description", "epoch_original_text", "materials", "dimensions_text", "conservation_state_id", "provenance"]);
+
 export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
   const alerts: PieceAlert[] = [];
   const withoutCode = piece.tenure_regime === "Propiedad" && !piece.code_i;
@@ -588,11 +613,14 @@ export function alertsForPiece(piece: PieceDetail): PieceAlert[] {
     fields: missing,
     message: missing.length > 0 ? `Faltan campos: ${missing.join(", ")}.` : "Campos obligatorios completos.",
   });
+  // Misma regla que la API: algún campo recomendado vacío (change completar-piezas-incompletas).
+  const recommended = missingFieldsOf(piece).filter((field) => RECOMMENDED_FIELDS.has(field));
   alerts.push({
     type: "MISSING_RECOMMENDED_FIELDS",
-    applies: false,
+    applies: recommended.length > 0,
     suggested_action: "Completar los campos recomendados marcados en el editor",
-    message: "Campos recomendados completos.",
+    fields: recommended,
+    message: recommended.length > 0 ? `Faltan campos recomendados: ${recommended.join(", ")}.` : "Campos recomendados completos.",
   });
   const unparseable = piece.identifiers.some((i) => i.normalization_status === "UNPARSEABLE");
   alerts.push({

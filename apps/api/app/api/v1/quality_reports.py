@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Respons
 from fastapi import Path as FastAPIPath
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, SessionDep, require_permission, writer
 from app.api.errors import COMMON_ERROR_RESPONSES
@@ -48,6 +49,7 @@ from app.modules.quality.completeness import (
     load_active_rules,
     replace_completeness_rules,
 )
+from app.modules.quality.import_rows import import_row_summaries
 from app.modules.quality.incomplete_report import (
     XLSX_CONTENT_TYPE,
     build_incomplete_query,
@@ -56,7 +58,7 @@ from app.modules.quality.incomplete_report import (
     rows_for_pieces,
 )
 from app.modules.quality.kpis import compute_dashboard_kpis
-from app.modules.quality.models import DuplicateStatus, QualityJob
+from app.modules.quality.models import DuplicateCandidate, DuplicateStatus, QualityJob
 from app.modules.quality.queue import (
     StaleCandidate,
     queue_query,
@@ -170,6 +172,7 @@ def list_incomplete_pieces(
                 title=row.title,
                 collection_name=row.collection_name,
                 alerts=row.alerts,
+                missing_fields=row.missing_fields,
             )
             for row in rows
         ],
@@ -298,7 +301,7 @@ def list_duplicate_candidates(
     )
     rows, total = paginate(session, statement, params)
     return Page[DuplicateCandidateOut](
-        items=[DuplicateCandidateOut.model_validate(row) for row in rows],
+        items=_with_import_rows(session, rows),
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -334,7 +337,22 @@ def resolve_duplicate_candidate(
         session.commit()  # the pair stays SUPERSEDED (spec: Candidato obsoleto)
         raise
     session.commit()
-    return DuplicateCandidateOut.model_validate(candidate)
+    return _with_import_rows(session, [candidate])[0]
+
+
+def _with_import_rows(
+    session: Session, candidates: list[DuplicateCandidate]
+) -> list[DuplicateCandidateOut]:
+    """Each pair with the summary of its spreadsheet row (change revisar-duplicados-comparacion)."""
+    rows = import_row_summaries(session, candidates)
+    return [
+        DuplicateCandidateOut.model_validate(candidate).model_copy(
+            update={
+                "import_row": rows.get(candidate.import_row_id) if candidate.import_row_id else None
+            }
+        )
+        for candidate in candidates
+    ]
 
 
 @router.post(

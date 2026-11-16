@@ -29,6 +29,7 @@ from app.modules.quality.completeness import (
     AlertCode,
     active_alerts_for_pieces,
     alert_condition,
+    missing_fields_for_pieces,
 )
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -73,6 +74,8 @@ class IncompleteRow:
     title: str
     collection_name: str | None
     alerts: list[AlertCode]
+    # Campos vacíos (change completar-piezas-incompletas): qué falta, no solo qué alerta tiene.
+    missing_fields: list[str]
 
 
 def rows_for_pieces(
@@ -88,12 +91,14 @@ def rows_for_pieces(
         else {}
     )
     alerts = active_alerts_for_pieces(session, [piece.id for piece in pieces], rules)
+    missing = missing_fields_for_pieces(session, [piece.id for piece in pieces], rules)
     return [
         IncompleteRow(
             piece_id=piece.id,
             title=piece.denomination,
             collection_name=names.get(piece.collection_id) if piece.collection_id else None,
             alerts=alerts.get(piece.id, []),
+            missing_fields=missing.get(piece.id, []),
         )
         for piece in pieces
     ]

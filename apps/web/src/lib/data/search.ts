@@ -380,6 +380,26 @@ export async function interpretSearch(
   return { status: "ok", value: filters };
 }
 
+/**
+ * Change `inicio-busqueda-ia` (D1): adónde lleva el buscador del Inicio. Con filtros reconocidos por
+ * la IA, a Búsqueda con esos filtros en la dirección (la misma que lee `filtersFromSearchParams`) y
+ * las etiquetas que verá allí; si no hay interpretación o no reconoció ningún filtro, a Búsqueda con
+ * la frase como texto libre, como antes.
+ */
+export function homeSearchTarget(
+  text: string,
+  interpreted: Partial<SearchFilters> | null,
+  names: Record<string, string> = {},
+): { href: string; chips: FilterChip[] } {
+  const phrase = text.trim();
+  const plain = { href: phrase ? `/busqueda?${new URLSearchParams({ [API_KEYS.q]: phrase })}` : "/busqueda", chips: [] };
+  if (!interpreted) return plain;
+  const filters: SearchFilters = { ...EMPTY_FILTERS, ...interpreted };
+  const chips = activeChips(filters, names).filter((chip) => chip.key !== "q");
+  if (chips.length === 0) return plain;
+  return { href: `/busqueda?${filtersToSearchParams(filters)}`, chips };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Exportación de resultados (tarea 4.2)
 // ---------------------------------------------------------------------------------------------

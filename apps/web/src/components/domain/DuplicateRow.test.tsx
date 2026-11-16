@@ -178,21 +178,23 @@ describe("fila compacta (Req: Lista compacta de posibles duplicados)", () => {
     expect(text).not.toMatch(/\d+ %/);
   });
 
-  it("abierta: el detalle con la similitud destacada y las tres acciones, enlazado al botón", () => {
+  it("abierta: la revisión reemplaza al resumen (no se repiten las dos piezas) y trae las tres decisiones", () => {
     const html = row(PAIR, { open: true });
     const controls = html.match(/aria-controls="([^"]+)"/)?.[1];
-    expect(html).toMatch(/<button[^>]*aria-expanded="true"[^>]*>Cerrar<\/button>/);
     expect(controls).toBeTruthy();
     expect(html).toContain(`id="${controls}"`);
-    expect(html).toContain("conic-gradient");
-    for (const action of ["Fusionar", "Marcar como distinto", "Posponer"]) expect(visibleText(html)).toContain(action);
+    // El resumen queda oculto mientras la revisión está abierta (revisar-duplicados-comparacion).
+    expect(html).toMatch(/class="hidden flex flex-col gap-4|class="flex flex-col gap-4 [^"]*hidden/);
+    for (const action of ["¿Es la misma pieza?", "Es la misma pieza", "Son piezas distintas", "Decidir después"]) expect(visibleText(html)).toContain(action);
   });
 
-  it("par con una fila de importación: la pieza y «Fila de importación»; al abrir, «Ver en Importación» y sin fusionar", () => {
+  it("par con una fila de importación: la fila con su número y lote; al abrir, sus datos y el enlace a su lote", () => {
     const closed = visibleText(row(IMPORT_PAIR));
-    expect(closed).toContain("Fila de importación");
+    expect(closed).toContain("Charango (sintético, fila de carga)");
+    expect(closed).toContain("Fila 6 · Lote «Sábana de prueba (sintética)»");
     const open = row(IMPORT_PAIR, { open: true });
-    expect(visibleText(open)).toContain("Ver en Importación");
+    expect(visibleText(open)).toContain("Fila del Excel");
+    expect(visibleText(open)).toContain("Abrir su lote");
     expect(visibleText(open)).not.toContain("Fusionar");
   });
 
@@ -236,16 +238,16 @@ describe("legibilidad de la cola (Req: Legibilidad de la bandeja de pendientes)"
     const overridden = (tag: string) => /^<span [^>]*rounded-full/.test(tag) || /^<(label|p) /.test(tag);
     expect(smallTags(html).filter((tag) => !overridden(tag))).toEqual([]);
     expect(row(PAIR, { open: true })).toContain("[&amp;_span.rounded-full]:text-base");
+    // Los filtros son píldoras de 16 px (revisar-duplicados-comparacion): ni etiquetas ni ayudas pequeñas.
     const filters = render(<DuplicateFilters value={DEFAULT_FILTERS} collections={[]} onChange={noop} />);
-    expect(filters.match(/\[&amp;_label\]:text-base \[&amp;_p\]:text-base/g)).toHaveLength(4);
+    expect(smallTags(filters)).toEqual([]);
     // En la fila cerrada no hay ni siquiera esas: todo es de esta vista.
     expect(smallTags(row(PAIR))).toEqual([]);
   });
 
-  it("botones, «Ver por qué se propone», enlaces de acción y filtros miden al menos 44 px", () => {
+  it("botones, enlaces de acción y filtros miden al menos 44 px", () => {
     for (const button of html.match(/<button\b[^>]*>/g) ?? []) expect(button).toMatch(/\bmin-h-11\b/);
-    expect(html).toMatch(/<summary[^>]*class="[^"]*min-h-11/);
-    const importLink = (html.match(/<a\b[^>]*>/g) ?? []).find((a) => a.includes('href="/importacion"'));
+    const importLink = (html.match(/<a\b[^>]*>/g) ?? []).find((a) => a.includes('href="/importacion?lote='));
     expect(importLink).toMatch(/\bmin-h-11\b/);
     // Los enlaces a la ficha de cada pieza en la comparación (recorrido 6.1: medían 21 px).
     const pieceLinks = (html.match(/<a\b[^>]*>/g) ?? []).filter((a) => a.includes('href="/piezas/'));
@@ -253,9 +255,8 @@ describe("legibilidad de la cola (Req: Legibilidad de la bandeja de pendientes)"
     for (const link of pieceLinks) expect(link).toMatch(/\bmin-h-11\b/);
     const selects = html.match(/<select\b[^>]*>/g) ?? [];
     expect(selects).toHaveLength(4);
-    // 44 px o más: los filtros de la cola miden 52 px (maqueta B).
+    // 44 px o más: cada píldora y su lista miden 44 px.
     for (const select of selects) expect(select).toMatch(/\bmin-h-1[13]\b/);
-    expect(html).toContain("[&amp;_label]:text-base");
   });
 });
 

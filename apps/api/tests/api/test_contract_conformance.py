@@ -42,6 +42,8 @@ PENDIENTES_OPERATION_ID: set[tuple[str, str]] = set()
 # mapeo (`ficha-pieza-crud` 5.2): la versión de la ficha (D2), el motivo y el documento del cambio
 # de régimen (D4) y la confirmación de un valor concatenado con su original (D5).
 CAMPOS_ANADIDOS: set[tuple[str, str]] = {
+    ("DuplicateCandidateOut", "import_row"),
+    ("IncompletePiece", "missing_fields"),
     ("PieceDetail", "version"),
     ("PieceUpdate", "tenure_change_reason"),
     ("PieceUpdate", "supporting_document_ref"),
