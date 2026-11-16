@@ -7,6 +7,7 @@ otra respuesta del proveedor reemplazan solo esa operación. Datos sintéticos.
 
 import json
 import uuid
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -25,7 +26,7 @@ from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.service import set_materials
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 from app.modules.media.models import MediaAsset
-from tests.api.conftest import SeededApi
+from tests.api.conftest import SeededApi, build_seeded_api
 
 DESCRIPTION = (
     "Caja de resonancia de madera de cedro, elaborada en Ayacucho. Mide 1,20 m de alto. "
@@ -39,6 +40,14 @@ SENSITIVE = (
     "Propietaria Sintética",
     "dato de origen sintético",
 )
+
+
+@pytest.fixture(scope="module")
+def seeded_api() -> Iterator[SeededApi]:
+    """Its own seeded database: these tests create pieces, and the session-wide one is counted
+    by other modules (``test_list_excludes_soft_deleted_and_paginates``)."""
+    with build_seeded_api() as seeded:
+        yield seeded
 
 
 def _piece(seeded: SeededApi, **values: Any) -> str:
