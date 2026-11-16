@@ -118,6 +118,299 @@
         "title": "ColumnMappingResult",
         "type": "object"
       },
+      "CompletePieceRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``/v1/complete-piece``: only this piece's own text and photo (D1).",
+        "examples": [
+          {
+            "fields": [
+              "materials",
+              "conservation_status",
+              "epoch"
+            ],
+            "texts": {
+              "denomination": "Charango (sintético)",
+              "description": "Caja de resonancia de madera de cedro. Buen estado."
+            },
+            "vocabularies": {
+              "conservation_status": [
+                {
+                  "code": "BUENO",
+                  "label": "Bueno"
+                }
+              ],
+              "materials": [
+                {
+                  "code": "MADERA",
+                  "label": "Madera"
+                }
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "fields": {
+            "items": {
+              "enum": [
+                "category",
+                "materials",
+                "provenance",
+                "epoch",
+                "dimensions_text",
+                "conservation_status"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompletionImage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "texts": {
+            "$ref": "#/components/schemas/CompletionTexts"
+          },
+          "vocabularies": {
+            "$ref": "#/components/schemas/CompletionVocabularies"
+          }
+        },
+        "required": [
+          "texts",
+          "fields"
+        ],
+        "title": "CompletePieceRequest",
+        "type": "object"
+      },
+      "CompletionEvidence": {
+        "properties": {
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fragmento literal del texto (source=text).",
+            "title": "Quote"
+          },
+          "source": {
+            "enum": [
+              "text",
+              "image"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text_field": {
+            "anyOf": [
+              {
+                "enum": [
+                  "denomination",
+                  "description",
+                  "notes"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Texto de la ficha donde está la cita.",
+            "title": "Text Field"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "CompletionEvidence",
+        "type": "object"
+      },
+      "CompletionImage": {
+        "additionalProperties": false,
+        "properties": {
+          "data_base64": {
+            "maxLength": 8000000,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "media_type": {
+            "enum": [
+              "image/webp",
+              "image/jpeg",
+              "image/png"
+            ],
+            "title": "Media Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_type",
+          "data_base64"
+        ],
+        "title": "CompletionImage",
+        "type": "object"
+      },
+      "CompletionProposal": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/CompletionEvidence"
+          },
+          "field": {
+            "enum": [
+              "category",
+              "materials",
+              "provenance",
+              "epoch",
+              "dimensions_text",
+              "conservation_status"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "label": {
+            "description": "Cómo se muestra el valor (etiqueta del término o el texto).",
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "description": "Código del término (categoría, un material, estado de conservación) o texto (procedencia, época, medidas).",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "label",
+          "confidence",
+          "evidence"
+        ],
+        "title": "CompletionProposal",
+        "type": "object"
+      },
+      "CompletionResult": {
+        "properties": {
+          "not_found": {
+            "description": "Campos pedidos que la ficha no dice.",
+            "items": {
+              "enum": [
+                "category",
+                "materials",
+                "provenance",
+                "epoch",
+                "dimensions_text",
+                "conservation_status"
+              ],
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "prompt_version": {
+            "default": "completar-ficha-v1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/CompletionProposal"
+            },
+            "title": "Proposals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposals"
+        ],
+        "title": "CompletionResult",
+        "type": "object"
+      },
+      "CompletionTexts": {
+        "additionalProperties": false,
+        "description": "Los únicos textos de la ficha que salen hacia el proveedor (RNF-014, D1).",
+        "properties": {
+          "denomination": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Denomination",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "denomination"
+        ],
+        "title": "CompletionTexts",
+        "type": "object"
+      },
+      "CompletionVocabularies": {
+        "additionalProperties": false,
+        "description": "Listas activas del museo: un término fuera de ellas no se propone (RIA-03, RN-010).",
+        "properties": {
+          "category": {
+            "items": {
+              "$ref": "#/components/schemas/VocabularyOption"
+            },
+            "title": "Category",
+            "type": "array"
+          },
+          "conservation_status": {
+            "items": {
+              "$ref": "#/components/schemas/VocabularyOption"
+            },
+            "title": "Conservation Status",
+            "type": "array"
+          },
+          "materials": {
+            "items": {
+              "$ref": "#/components/schemas/VocabularyOption"
+            },
+            "title": "Materials",
+            "type": "array"
+          }
+        },
+        "title": "CompletionVocabularies",
+        "type": "object"
+      },
       "DescriptionResult": {
         "properties": {
           "text": {
@@ -669,6 +962,50 @@
         "title": "SearchValidValues",
         "type": "object"
       },
+      "SuggestionEnvelope_CompletionResult_": {
+        "properties": {
+          "function_code": {
+            "enum": [
+              "RIA_01",
+              "RIA_03",
+              "RIA_04"
+            ],
+            "title": "Function Code",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "requires_human_approval": {
+            "const": true,
+            "default": true,
+            "title": "Requires Human Approval",
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CompletionResult"
+          },
+          "status": {
+            "const": "PENDING_REVIEW",
+            "default": "PENDING_REVIEW",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_code",
+          "provider",
+          "model",
+          "result"
+        ],
+        "title": "SuggestionEnvelope[CompletionResult]",
+        "type": "object"
+      },
       "SuggestionEnvelope_DescriptionResult_": {
         "properties": {
           "function_code": {
@@ -851,6 +1188,29 @@
         ],
         "title": "TermSuggestionResult",
         "type": "object"
+      },
+      "VocabularyOption": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "VocabularyOption",
+        "type": "object"
       }
     }
   },
@@ -879,6 +1239,57 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/complete-piece": {
+      "post": {
+        "operationId": "complete_piece",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletePieceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEnvelope_CompletionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-01/RIA-03: proponer los datos que le faltan a una pieza, con su prueba",
+        "tags": [
+          "IA asistiva"
         ]
       }
     },

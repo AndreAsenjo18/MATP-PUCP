@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 
 from matp_ai.schemas import (
     ColumnMappingResult,
+    CompletePieceRequest,
+    CompletionResult,
     DescriptionResult,
     ExtractionResult,
     PieceContext,
@@ -47,3 +49,9 @@ class AIProvider(ABC):
     def interpret_search(self, text: str, valid_values: SearchValidValues) -> SearchInterpretation:
         """RIA-06 (change busqueda-lenguaje-natural): traduce una frase de búsqueda, escrita o
         dictada, a los filtros que ya entiende el buscador — solo de lectura, nunca escribe nada."""
+
+    @abstractmethod
+    def complete_piece(self, request: CompletePieceRequest) -> CompletionResult:
+        """RIA-01 + RIA-03 (change ia-completar-ficha): proposals for the missing fields of one
+        piece, read only from its own text and photo, each with its evidence. The caller runs
+        ``finish_completion`` again on whatever comes back (D2)."""

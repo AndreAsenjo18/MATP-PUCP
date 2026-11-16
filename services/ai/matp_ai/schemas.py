@@ -230,6 +230,191 @@ class SearchInterpretation(BaseModel):
     epoch_end_year: int | None = None
 
 
+#: Campos que «Completar ficha» puede pedir (change `ia-completar-ficha`, D1). Ninguno es sensible.
+CompletionField = Literal[
+    "category", "materials", "provenance", "epoch", "dimensions_text", "conservation_status"
+]
+#: Los únicos que una foto puede probar (D2): los demás exigen una cita del texto.
+IMAGE_EVIDENCE_FIELDS = frozenset({"category", "materials", "conservation_status"})
+#: Confianza mínima para aceptar una propuesta que solo se apoya en la foto (D2).
+IMAGE_MIN_CONFIDENCE = 0.8
+COMPLETION_PROMPT_VERSION = "completar-ficha-v1"
+
+
+class CompletionTexts(BaseModel):
+    """Los únicos textos de la ficha que salen hacia el proveedor (RNF-014, D1)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    denomination: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(None, max_length=20000)
+    notes: str | None = Field(None, max_length=20000)
+
+
+class VocabularyOption(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=120)
+    label: str = Field(min_length=1, max_length=300)
+
+
+class CompletionVocabularies(BaseModel):
+    """Listas activas del museo: un término fuera de ellas no se propone (RIA-03, RN-010)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: list[VocabularyOption] = Field(default_factory=list)
+    materials: list[VocabularyOption] = Field(default_factory=list)
+    conservation_status: list[VocabularyOption] = Field(default_factory=list)
+
+
+class CompletionImage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    media_type: Literal["image/webp", "image/jpeg", "image/png"]
+    data_base64: str = Field(min_length=1, max_length=8_000_000)
+
+
+class CompletePieceRequest(BaseModel):
+    """Body of ``/v1/complete-piece``: only this piece's own text and photo (D1)."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "texts": {
+                        "denomination": "Charango (sintético)",
+                        "description": "Caja de resonancia de madera de cedro. Buen estado.",
+                        "notes": None,
+                    },
+                    "fields": ["materials", "conservation_status", "epoch"],
+                    "vocabularies": {
+                        "materials": [{"code": "MADERA", "label": "Madera"}],
+                        "conservation_status": [{"code": "BUENO", "label": "Bueno"}],
+                    },
+                    "image": None,
+                }
+            ]
+        },
+    )
+
+    texts: CompletionTexts
+    fields: list[CompletionField] = Field(min_length=1)
+    vocabularies: CompletionVocabularies = Field(default_factory=CompletionVocabularies)
+    image: CompletionImage | None = None
+
+
+class CompletionEvidence(BaseModel):
+    source: Literal["text", "image"]
+    quote: str | None = Field(None, description="Fragmento literal del texto (source=text).")
+    text_field: Literal["denomination", "description", "notes"] | None = Field(
+        None, description="Texto de la ficha donde está la cita."
+    )
+
+
+class CompletionProposal(BaseModel):
+    field: CompletionField
+    value: Any = Field(
+        description="Código del término (categoría, un material, estado de conservación) o "
+        "texto (procedencia, época, medidas)."
+    )
+    label: str = Field(description="Cómo se muestra el valor (etiqueta del término o el texto).")
+    confidence: float = Field(ge=0, le=1)
+    evidence: CompletionEvidence
+
+
+class CompletionResult(BaseModel):
+    proposals: list[CompletionProposal]
+    not_found: list[CompletionField] = Field(
+        default_factory=list, description="Campos pedidos que la ficha no dice."
+    )
+    prompt_version: str = COMPLETION_PROMPT_VERSION
+
+
+def _quote_field(texts: CompletionTexts, quote: str) -> str | None:
+    for name in ("description", "notes", "denomination"):
+        value = getattr(texts, name)
+        if value and quote in value:
+            return name
+    return None
+
+
+def verify_proposal(
+    proposal: CompletionProposal, request: CompletePieceRequest
+) -> CompletionProposal | None:
+    """The same checks for every provider (D2): a requested field, a literal quote or an allowed
+    photo reading, and terms only from the museum's lists. ``None`` drops the proposal."""
+    if proposal.field not in request.fields:
+        return None
+    evidence = proposal.evidence
+    if evidence.source == "text":
+        quote = (evidence.quote or "").strip()
+        where = _quote_field(request.texts, quote) if quote else None
+        if where is None:
+            return None
+        evidence = CompletionEvidence(source="text", quote=quote, text_field=where)  # type: ignore[arg-type]
+    else:
+        if (
+            request.image is None
+            or proposal.field not in IMAGE_EVIDENCE_FIELDS
+            or proposal.confidence < IMAGE_MIN_CONFIDENCE
+        ):
+            return None
+        evidence = CompletionEvidence(source="image")
+    options = getattr(request.vocabularies, proposal.field, None)
+    value: Any = proposal.value
+    label = proposal.label
+    if options is not None:
+        by_code = {o.code: o.label for o in options}
+        by_label = {o.label.casefold(): o.code for o in options}
+
+        def _code(raw: Any) -> str | None:
+            if not isinstance(raw, str):
+                return None
+            if raw in by_code:
+                return raw
+            return by_label.get(raw.strip().casefold())
+
+        # One term per proposal (each material carries its own quote and is accepted alone).
+        code = _code(value[0] if isinstance(value, list) and len(value) == 1 else value)
+        if code is None:
+            return None
+        value, label = code, by_code[code]
+    else:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        value = value.strip()
+        label = value
+    return CompletionProposal(
+        field=proposal.field,
+        value=value,
+        label=label,
+        confidence=proposal.confidence,
+        evidence=evidence,
+    )
+
+
+def finish_completion(
+    proposals: list[CompletionProposal], request: CompletePieceRequest
+) -> CompletionResult:
+    """Verified proposals and the fields left without one. One proposal per field (the most
+    confident), except materials: one per term, since a piece can have several."""
+    best: dict[tuple[str, str], CompletionProposal] = {}
+    for proposal in proposals:
+        checked = verify_proposal(proposal, request)
+        if checked is None:
+            continue
+        key = (checked.field, str(checked.value) if checked.field == "materials" else "")
+        current = best.get(key)
+        if current is None or checked.confidence > current.confidence:
+            best[key] = checked
+    fields = list(dict.fromkeys(request.fields))
+    kept = [p for f in fields for (k, _), p in best.items() if k == f]
+    missing = [f for f in fields if not any(k == f for k, _ in best)]
+    return CompletionResult(proposals=kept, not_found=missing)
+
+
 class SuggestionEnvelope[T](BaseModel):
     function_code: Literal["RIA_01", "RIA_03", "RIA_04"]
     provider: str
