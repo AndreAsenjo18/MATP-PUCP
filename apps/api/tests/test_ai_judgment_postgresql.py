@@ -64,7 +64,8 @@ def _system() -> AuditContext:
 def _world(factory: sessionmaker[Session]) -> dict[str, object]:
     """Two pending pairs, an AI run and its verdicts (one «distinct», one «same»)."""
     with factory() as session, audit_context(session, _system()):
-        tag = new_uuid().hex[:8]
+        # The random tail: the head of a UUID v7 is its timestamp, the same within an instant.
+        tag = new_uuid().hex[-12:]
         pieces = [
             create_piece(
                 session, denomination=f"Pieza sintética {tag} {n}", tenure_regime=TenureRegime.OWNED
