@@ -16,7 +16,10 @@ from matp_ai.schemas import (
     CompletionProposal,
     CompletionResult,
     DescriptionResult,
+    DuplicateJudgment,
     ExtractionResult,
+    JudgeDuplicatesRequest,
+    JudgeDuplicatesResult,
     PieceContext,
     ProposedField,
     SearchInterpretation,
@@ -463,3 +466,44 @@ class MockProvider(AIProvider):
             value = " x ".join(p[2] for p in parts)
             return [_proposal("dimensions_text", value, value, text[start:end], 0.8)]
         return []
+
+    def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
+        """Deterministic rules [SUPUESTO], only to make demos coherent (D1): different code I ->
+        distinct; same denomination and collection -> same; very different denominations ->
+        distinct; anything else -> unsure."""
+        verdicts: list[DuplicateJudgment] = []
+        for pair in request.pairs:
+            a, b = pair.a, pair.b
+            name_a, name_b = _fold(a.denomination or ""), _fold(b.denomination or "")
+            similarity = SequenceMatcher(None, name_a, name_b).ratio() if name_a and name_b else 0
+            same_collection = _fold(a.collection or "") == _fold(b.collection or "")
+            if a.code_i and b.code_i and _fold(a.code_i) != _fold(b.code_i):
+                verdict, confidence, reason = (
+                    "distinct",
+                    0.95,
+                    "Cada registro tiene un código I distinto.",
+                )
+            elif similarity >= 0.9 and same_collection:
+                verdict, confidence, reason = (
+                    "same",
+                    0.9,
+                    "Tienen la misma denominación y la misma colección, y nada los contradice.",
+                )
+            elif similarity < 0.5:
+                verdict, confidence, reason = (
+                    "distinct",
+                    0.88,
+                    "Las denominaciones describen objetos distintos.",
+                )
+            else:
+                verdict, confidence, reason = (
+                    "unsure",
+                    0.55,
+                    "La denominación se parece, pero los datos no alcanzan para decidir.",
+                )
+            verdicts.append(
+                DuplicateJudgment(
+                    pair_id=pair.pair_id, verdict=verdict, confidence=confidence, reason=reason
+                )
+            )
+        return JudgeDuplicatesResult(verdicts=verdicts)

@@ -19,6 +19,7 @@ from matp_ai.config import Settings
 from matp_ai.providers.base import AIProvider, ProviderUnavailable
 from matp_ai.schemas import (
     COMPLETION_PROMPT_VERSION,
+    DUPLICATES_PROMPT_VERSION,
     IMAGE_MIN_CONFIDENCE,
     ColumnMappingCandidate,
     ColumnMappingResult,
@@ -27,6 +28,8 @@ from matp_ai.schemas import (
     CompletionResult,
     DescriptionResult,
     ExtractionResult,
+    JudgeDuplicatesRequest,
+    JudgeDuplicatesResult,
     PieceContext,
     ProposedField,
     SearchInterpretation,
@@ -111,6 +114,26 @@ def _completion_system_prompt(request: CompletePieceRequest) -> str:
         "habitual: por ejemplo, no propongas una época que la ficha no escribe.\n"
         "- No propongas campos que no estén en la lista de campos pedidos."
     )
+
+
+#: Juicio de duplicados (change ia-juicio-duplicados, D1). Versión: ``DUPLICATES_PROMPT_VERSION``.
+_JUDGE_SYSTEM_PROMPT = """Eres catalogador de un museo peruano. Para cada par de registros \
+decides si describen la misma pieza física. Usa SOLO los datos de cada registro: no uses \
+conocimiento externo. Devuelve SOLO un objeto JSON, sin explicación ni markdown, con esta forma \
+exacta:
+
+{"verdicts": [{"pair_id": "<el pair_id recibido>", "verdict": "same|distinct|unsure", \
+"confidence": <0 a 1>, "reason": "<una frase en español>"}]}
+
+Reglas:
+- Un veredicto por cada par recibido, con su mismo "pair_id".
+- "same" solo si los datos coinciden en lo esencial y ninguno los contradice.
+- "distinct" si algún dato los contradice con claridad: códigos I distintos, medidas, épocas o \
+procedencias incompatibles, o denominaciones de objetos distintos.
+- "unsure" si faltan datos o hay dudas razonables. No adivines.
+- "confidence" refleja tu duda real; no pongas 1 si hay algo que no cuadra.
+- "reason" cita en una frase los datos que deciden, sin inventar ninguno.
+"""
 
 
 class LLMProvider(AIProvider):
@@ -269,6 +292,25 @@ class LLMProvider(AIProvider):
                 continue
         # ``not_found`` is recomputed by the service from what survives verification (D2).
         return CompletionResult(proposals=proposals, prompt_version=COMPLETION_PROMPT_VERSION)
+
+    def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
+        pairs = [pair.model_dump(exclude_none=True) for pair in request.pairs]
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": _JUDGE_SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps({"pairs": pairs}, ensure_ascii=False)},
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        data = self._json_object(self._chat_completion(payload))
+        raw = data.get("verdicts", []) if isinstance(data, dict) else []
+        # Kept as received: the service checks every item with ``finish_judgments`` (D4).
+        return JudgeDuplicatesResult.model_construct(
+            verdicts=raw if isinstance(raw, list) else [],
+            prompt_version=DUPLICATES_PROMPT_VERSION,
+        )
 
     def _json_object(self, raw: str) -> Any:
         cleaned = raw.strip()

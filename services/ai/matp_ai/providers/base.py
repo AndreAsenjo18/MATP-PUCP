@@ -8,6 +8,8 @@ from matp_ai.schemas import (
     CompletionResult,
     DescriptionResult,
     ExtractionResult,
+    JudgeDuplicatesRequest,
+    JudgeDuplicatesResult,
     PieceContext,
     SearchInterpretation,
     SearchValidValues,
@@ -55,3 +57,10 @@ class AIProvider(ABC):
         """RIA-01 + RIA-03 (change ia-completar-ficha): proposals for the missing fields of one
         piece, read only from its own text and photo, each with its evidence. The caller runs
         ``finish_completion`` again on whatever comes back (D2)."""
+
+    @abstractmethod
+    def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
+        """RIA-02 (change ia-juicio-duplicados): for each pair, whether both records describe the
+        same physical piece (``same``, ``distinct`` or ``unsure``), with a confidence and a
+        one-sentence reason. Read only from the catalog fields received; nothing is applied
+        (RN-009). The caller runs ``finish_judgments`` on whatever comes back (D4)."""

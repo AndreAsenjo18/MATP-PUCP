@@ -415,8 +415,116 @@ def finish_completion(
     return CompletionResult(proposals=kept, not_found=missing)
 
 
+DuplicateVerdict = Literal["same", "distinct", "unsure"]
+DUPLICATES_PROMPT_VERSION = "juicio-duplicados-v1"
+#: Pairs per request (change ia-juicio-duplicados, D1): the caller sends about 20.
+MAX_PAIRS_PER_REQUEST = 50
+_VERDICTS = ("same", "distinct", "unsure")
+
+
+class PairSide(BaseModel):
+    """One side of a pair: only the catalog fields of the queue comparison (``COMPARISON_ROWS``)
+    and the description. Never personal data (RNF-014): other fields are rejected."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["piece", "import_row"]
+    denomination: str | None = Field(None, max_length=500)
+    collection: str | None = Field(None, max_length=300)
+    tenure_regime: str | None = Field(None, max_length=60)
+    code_i: str | None = Field(None, max_length=120)
+    other_codes: list[str] = Field(default_factory=list, max_length=50)
+    author: str | None = Field(None, max_length=300)
+    provenance: str | None = Field(None, max_length=300)
+    period: str | None = Field(None, max_length=200)
+    dimensions: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=5000)
+
+
+class DuplicatePair(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pair_id: str = Field(min_length=1, max_length=64)
+    a: PairSide
+    b: PairSide
+
+
+class JudgeDuplicatesRequest(BaseModel):
+    """Body of ``/v1/judge-duplicates`` (change ia-juicio-duplicados; RIA-02)."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "pairs": [
+                        {
+                            "pair_id": "par-1",
+                            "a": {
+                                "kind": "piece",
+                                "denomination": "Retablo de San Marcos (sintético)",
+                                "collection": "Colección RA",
+                                "code_i": "I-0102",
+                            },
+                            "b": {
+                                "kind": "import_row",
+                                "denomination": "Retablo San Marcos",
+                                "collection": "Colección RA",
+                            },
+                        }
+                    ]
+                }
+            ]
+        },
+    )
+
+    pairs: list[DuplicatePair] = Field(min_length=1, max_length=MAX_PAIRS_PER_REQUEST)
+
+
+class DuplicateJudgment(BaseModel):
+    pair_id: str
+    verdict: DuplicateVerdict
+    confidence: float = Field(ge=0, le=1)
+    reason: str = Field(max_length=300, description="Motivo en una frase, en español.")
+
+
+class JudgeDuplicatesResult(BaseModel):
+    verdicts: list[DuplicateJudgment]
+    prompt_version: str = DUPLICATES_PROMPT_VERSION
+
+
+def finish_judgments(raw: list[Any], request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
+    """The same checks for every provider (D4): a ``pair_id`` sent in this request, a verdict of
+    the three, the confidence clipped to 0..1 and a short reason. One verdict per pair; a pair
+    without a valid verdict is simply left out (the caller judges it again later)."""
+    sent = [pair.pair_id for pair in request.pairs]
+    kept: dict[str, DuplicateJudgment] = {}
+    for item in raw:
+        data = item.model_dump() if isinstance(item, BaseModel) else item
+        if not isinstance(data, dict):
+            continue
+        pair_id = data.get("pair_id")
+        verdict = data.get("verdict")
+        verdict = verdict.strip().lower() if isinstance(verdict, str) else None
+        if pair_id not in sent or pair_id in kept or verdict not in _VERDICTS:
+            continue
+        try:
+            confidence = min(max(float(data.get("confidence", 0)), 0.0), 1.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        reason = data.get("reason")
+        reason = " ".join(reason.split())[:300] if isinstance(reason, str) else ""
+        kept[pair_id] = DuplicateJudgment(
+            pair_id=pair_id,
+            verdict=verdict,  # type: ignore[arg-type]
+            confidence=confidence,
+            reason=reason or "Sin motivo.",
+        )
+    return JudgeDuplicatesResult(verdicts=[kept[p] for p in sent if p in kept])
+
+
 class SuggestionEnvelope[T](BaseModel):
-    function_code: Literal["RIA_01", "RIA_03", "RIA_04"]
+    function_code: Literal["RIA_01", "RIA_02", "RIA_03", "RIA_04"]
     provider: str
     model: str
     status: Literal["PENDING_REVIEW"] = "PENDING_REVIEW"
