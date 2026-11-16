@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: c6b156bd4db8739f0c7a6581eb04a60bb87f2a642ac3ed0cedba6893eede57bc
+ * openapi-sha256: 7d78a64df22906bc55ffe8af8ee3cb289befe05448058301800488f579c9779f
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1809,6 +1809,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/duplicates/ai-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pedir a la IA que juzgue la cola de duplicados, por lotes y en segundo plano (RIA-02)
+         * @description Primero las reglas: un par con dos códigos I vigentes distintos es «distintas» sin llamar a la IA. El resto se envía por lotes, solo con campos de catálogo (RNF-014). Los veredictos quedan como sugerencia: nada se resuelve hasta que una persona apruebe un grupo (RN-009). Con `resume_run_id`, se juzgan solo los pares de esa corrida aún sin veredicto. 409 `ai_run_in_progress` si ya hay un análisis en curso (change `ia-juicio-duplicados`).
+         */
+        post: operations["startAiJudgment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/duplicates/ai-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Avance de un análisis con IA y sus grupos pendientes (RIA-02) */
+        get: operations["getAiRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pares pendientes de un grupo del análisis con IA, con motivo y confianza (RIA-02) */
+        get: operations["listAiGroup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aprobar un grupo del análisis con IA, sacando los pares que no correspondan
+         * @description «distintas»: cada par queda como distinto con el motivo de la IA en la nota. «misma pieza»: exige la muestra confirmada (422 `sample_not_confirmed`); fusiona solo los pares de dos piezas sin valores en choque, conservando la pieza con código I, y resuelve las filas de Excel hacia su pieza; los que chocan quedan para elegir valores. Nunca se borra nada (RN-005). Cada par resuelto queda auditado con origen IA, la corrida y quien aprobó (RN-009). Los pares sacados vuelven a la revisión a mano.
+         */
+        post: operations["approveAiGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Muestra al azar del grupo «misma pieza» que hay que confirmar antes de aprobarlo
+         * @description Hasta 5 pares (parámetro, RN-010), elegidos con la corrida como semilla: la aprobación del grupo exige confirmar o sacar cada uno que siga pendiente (D6).
+         */
+        get: operations["getAiSample"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/duplicates/ai-runs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** El último análisis con IA de la cola de duplicados, o null (RIA-02) */
+        get: operations["getLatestAiRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/duplicates/scan": {
         parameters: {
             query?: never;
@@ -2290,10 +2401,173 @@ export interface components {
             suggestion_ids?: string[];
         };
         /**
+         * AiDuplicateRunOut
+         * @description An AI judgment of the queue (RIA-02): progress, failed batches and pending pairs by group.
+         *     Nothing is applied until a person approves a group (RN-009).
+         * @example {
+         *       "can_resume": false,
+         *       "failed_batches": 0,
+         *       "finished_at": "2026-09-17T10:30:00Z",
+         *       "groups": {
+         *         "by_rule": 6,
+         *         "distinct": 46,
+         *         "same": 41,
+         *         "unsure": 15
+         *       },
+         *       "id": "01920000-0000-7000-8000-000000000931",
+         *       "min_confidence": 0.85,
+         *       "processed_pairs": 102,
+         *       "started_at": "2026-09-17T10:30:00Z",
+         *       "status": "SUCCEEDED",
+         *       "total_pairs": 102
+         *     }
+         */
+        AiDuplicateRunOut: {
+            /**
+             * Can Resume
+             * @description Quedan pares de la corrida sin veredicto.
+             */
+            can_resume: boolean;
+            /** Error Message */
+            error_message: string | null;
+            /**
+             * Failed Batches
+             * @description Lotes sin respuesta de la IA; se reanudan.
+             */
+            failed_batches: number;
+            /** Finished At */
+            finished_at: string | null;
+            groups: components["schemas"]["AiRunGroupCounts"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Min Confidence
+             * @description Umbral de los grupos (RN-010).
+             */
+            min_confidence: number;
+            /** Processed Pairs */
+            processed_pairs: number;
+            /** Started At */
+            started_at: string | null;
+            status: components["schemas"]["QualityJobStatus"];
+            /** Total Pairs */
+            total_pairs: number;
+        };
+        /**
          * AiFunction
          * @enum {string}
          */
         AiFunction: "RIA_01" | "RIA_02" | "RIA_03" | "RIA_04" | "RIA_05";
+        /** AiGroupApproval */
+        AiGroupApproval: {
+            /**
+             * Confirmed Sample Ids
+             * @description Pares de la muestra al azar que la persona confirmó (obligatorio en «misma pieza», D6).
+             */
+            confirmed_sample_ids?: string[];
+            /**
+             * Excluded Candidate Ids
+             * @description Pares que se sacan del grupo: vuelven a la revisión.
+             */
+            excluded_candidate_ids?: string[];
+        };
+        /** AiGroupApprovalOut */
+        AiGroupApprovalOut: {
+            /**
+             * Excluded
+             * @description Pares sacados del grupo.
+             */
+            excluded: number;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "same" | "distinct";
+            /**
+             * Merged
+             * @description Pares de dos piezas fusionados.
+             */
+            merged: number;
+            /**
+             * Needs Choice
+             * @description Pares «misma pieza» que esperan la elección de valores.
+             */
+            needs_choice: number;
+            /**
+             * Resolved
+             * @description Pares marcados como distintos.
+             */
+            resolved: number;
+            /**
+             * Rows Decided
+             * @description Filas de Excel resueltas hacia su pieza.
+             */
+            rows_decided: number;
+            /** Skipped */
+            skipped?: components["schemas"]["AiSkippedPair"][];
+        };
+        /** AiGroupPairOut */
+        AiGroupPairOut: {
+            candidate: components["schemas"]["DuplicateCandidateOut"];
+            /**
+             * Merge Blocker
+             * @description Por qué no se fusiona al aprobar.
+             */
+            merge_blocker?: string | null;
+            /**
+             * Ready To Merge
+             * @description Solo en «misma pieza» con dos piezas: se fusiona al aprobar sin elegir valores. `false` = hay que elegirlos en la revisión par por par.
+             */
+            ready_to_merge?: boolean | null;
+            verdict: components["schemas"]["AiVerdictOut"];
+        };
+        /**
+         * AiJudgmentStart
+         * @description Body of ``POST /quality/duplicates/ai-runs``: a new run, or one resumed (D7).
+         */
+        AiJudgmentStart: {
+            /**
+             * Resume Run Id
+             * @description Corrida que se reanuda: solo se juzgan sus pares aún sin veredicto.
+             */
+            resume_run_id?: string | null;
+        };
+        /** AiRunGroupCounts */
+        AiRunGroupCounts: {
+            /**
+             * By Rule
+             * @description De las distintas, cuántas decidió una regla.
+             */
+            by_rule: number;
+            /**
+             * Distinct
+             * @description Gemini cree que son distintas (incluye las reglas).
+             */
+            distinct: number;
+            /**
+             * Same
+             * @description Gemini cree que son la misma pieza.
+             */
+            same: number;
+            /**
+             * Unsure
+             * @description Gemini no está seguro, o la persona los sacó.
+             */
+            unsure: number;
+        };
+        /** AiSkippedPair */
+        AiSkippedPair: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Reason */
+            reason: string;
+        };
         /**
          * AiSuggestionApproval
          * @example {
@@ -2434,6 +2708,24 @@ export interface components {
              * @description Motivo obligatorio (RN-009).
              */
             reason: string;
+        };
+        /** AiVerdictOut */
+        AiVerdictOut: {
+            /** Confidence */
+            confidence: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Source
+             * @description `rule`: lo decidió una regla; `ai`: la IA; `review`: una persona lo sacó de su grupo.
+             * @enum {string}
+             */
+            source: "rule" | "ai" | "review";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "same" | "distinct" | "unsure";
         };
         /**
          * AlertCode
@@ -6126,6 +6418,20 @@ export interface components {
              */
             restriction: string;
         };
+        /** Page[AiGroupPairOut] */
+        Page_AiGroupPairOut_: {
+            /** Items */
+            items: components["schemas"]["AiGroupPairOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total de resultados que cumplen los filtros.
+             */
+            total: number;
+        };
         /** Page[AiSuggestionOut] */
         Page_AiSuggestionOut_: {
             /** Items */
@@ -7274,7 +7580,7 @@ export interface components {
          * QualityJobType
          * @enum {string}
          */
-        QualityJobType: "FULL_SCAN";
+        QualityJobType: "FULL_SCAN" | "AI_DUPLICATE_JUDGMENT";
         /** ReadingPreviewItem */
         ReadingPreviewItem: {
             /** Candidate Piece Ids */
@@ -15620,6 +15926,313 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DuplicateCandidateOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startAiJudgment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AiJudgmentStart"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDuplicateRunOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAiRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDuplicateRunOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAiGroup: {
+        parameters: {
+            query?: {
+                /** @description Número de página (desde 1). */
+                page?: number;
+                /** @description Resultados por página (máx. 100). */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description `same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro. */
+                group: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AiGroupPairOut_"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveAiGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro. */
+                group: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiGroupApproval"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiGroupApprovalOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAiSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiGroupPairOut"][];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLatestAiRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDuplicateRunOut"] | null;
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

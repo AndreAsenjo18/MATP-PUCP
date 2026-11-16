@@ -909,6 +909,11 @@ export interface DuplicateCandidateRowProps {
   onToggle: () => void;
   /** El detalle del par (la tarjeta de comparación y sus acciones), solo cuando está abierto. */
   children?: ReactNode;
+  /**
+   * Una franja bajo el resumen, abierta o cerrada: el veredicto de Gemini y su casilla para sacar
+   * el par del grupo (change `ia-juicio-duplicados`). Sin ella, la fila es la de siempre.
+   */
+  aside?: ReactNode;
 }
 
 /**
@@ -916,7 +921,7 @@ export interface DuplicateCandidateRowProps {
  * «Revisar», que despliega el detalle en el mismo lugar. En celular las dos piezas se apilan y el
  * botón ocupa todo el ancho.
  */
-export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading, open, onToggle, children }: DuplicateCandidateRowProps) {
+export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading, open, onToggle, children, aside }: DuplicateCandidateRowProps) {
   const names = useIdentifierTypeNames();
   const detailId = `pair-detail-${candidate.id}`;
   const isImportRow = candidate.piece_b_id === null;
@@ -974,6 +979,7 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
             {open ? "Cerrar" : "Revisar"}
           </Button>
         </div>
+        {aside && <div className="border-t border-borde bg-crema-light px-4 py-3 sm:px-5">{aside}</div>}
         {open && <div id={detailId}>{children}</div>}
       </article>
     </li>
