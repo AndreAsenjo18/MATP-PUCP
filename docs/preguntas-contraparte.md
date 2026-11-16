@@ -482,3 +482,17 @@ confirmados con el museo ni con la jefa de práctica.
 | BL2 | ¿Qué tan atrás se espera (en segundos) la interpretación tras dejar de escribir o de dictar? | **[SUPUESTO]** 900 ms de pausa tras la última tecla, o inmediato al terminar de dictar o al pulsar «Buscar»; nunca en cada tecla, para no interrumpir la búsqueda instantánea de texto que ya existe | busqueda-reportes (RF-038) | B |
 | BL3 | ¿El dictado por voz (reconocimiento de voz del propio navegador, sin servicio propio) es aceptable para el museo, dado que ese reconocimiento no lo controla el sistema? | **[SUPUESTO]** Sí, para esta iteración: ningún dato personal cruza esa capa (nombres de piezas y colecciones, no datos de donantes ni propietarios); se avisa en la interfaz qué navegador lo soporta | ia-asistiva (RNF-008) | B |
 | BL4 | ¿Se espera poder editar en el lugar un filtro mal interpretado, o alcanza con quitarlo y volver a elegirlo a mano? | **[SUPUESTO]** Alcanza con quitarlo (mismo chip removible que ya existe) y corregirlo con el control manual de esa categoría; no se construye edición en línea del chip en esta iteración | busqueda-reportes (RF-032) | B |
+
+## CF. Completar la ficha con IA (change `ia-completar-ficha`, 2026-11-15)
+
+Supuestos de la implementación de «Completar con Gemini» en «Piezas incompletas», no confirmados con el museo ni con la jefa de práctica.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| CF1 | ¿El museo acepta que la IA proponga la categoría, los materiales o el estado de conservación a partir de la foto, sin una cita del texto? | **[SUPUESTO]** Sí, solo para esos tres datos, con confianza alta (0,8 o más) y la etiqueta «De la foto principal». Nunca para procedencia, época ni medidas | ia-asistiva (RIA-01, RIA-03) | A |
+| CF2 | ¿Puede enviarse a un proveedor externo la foto de una pieza en comodato? | **[SUPUESTO]** No: el convenio puede limitar el uso de sus imágenes (RN-008). Tampoco se envía una foto con restricción de uso. Solo el texto | ia-asistiva (RNF-014), RN-008 | A |
+| CF3 | ¿Las observaciones de la ficha pueden contener datos personales (nombres, documentos)? | **[SUPUESTO]** No: son observaciones de catálogo sobre la pieza y se envían, igual que en la extracción RIA-01. Si pueden contenerlos, hay que dejar de enviarlas o limpiarlas antes | ia-asistiva (RNF-014) | A |
+| CF4 | ¿Debe el Catalogador poder aceptar propuestas de Gemini en el panel? Hoy tiene `ai.request` pero no `ai.review` | **[SUPUESTO]** No se cambia la matriz: Gemini aparece en el panel solo para quien puede pedir y aprobar sugerencias (Administrador y Gestor de colecciones). El Catalogador ve el panel de siempre | usuarios-roles, RN-009 | B |
+| CF5 | ¿Más adelante, aprobación en bloque de las propuestas con cita literal y confianza alta? | **[SUPUESTO]** No en esta versión: primero medir el acierto pieza por pieza con los textos reales del museo | ia-asistiva | B |
+| CF6 | ¿La lista de materiales debe tener términos con detalle (por ejemplo «Madera (cedro)»)? | **[SUPUESTO]** No por ahora: se propone el término de la lista («Madera») y el detalle queda a la vista en la cita, porque la ficha solo guarda el término (RN-010) | colecciones-y-vocabularios, RIA-03 | B |
+
