@@ -56,6 +56,7 @@ class IncompletePiece(BaseModel):
                     "title": "Vasija ceremonial (sintética)",
                     "collection_name": "Colección MMZ (ficticia)",
                     "alerts": ["MISSING_INVENTORY_CODE", "MISSING_PHOTO"],
+                    "missing_fields": ["category_id", "materials"],
                 }
             ]
         }
@@ -65,6 +66,11 @@ class IncompletePiece(BaseModel):
     title: str
     collection_name: str | None
     alerts: list[AlertType]
+    missing_fields: list[str] = Field(
+        default_factory=list,
+        description="Campos obligatorios y recomendados vacíos, con el nombre de las reglas de "
+        "completitud (p. ej. category_id, materials).",
+    )
 
 
 class CompletenessRuleOut(BaseModel):
@@ -256,6 +262,38 @@ class DuplicateSignal(BaseModel):
     values: Any = Field(None, description="Valores comparados de ambas piezas.")
 
 
+class DuplicateImportRowIdentifier(BaseModel):
+    """A code of the spreadsheet row, as it came and normalized."""
+
+    type: str
+    original_value: str
+    normalized_value: str | None = None
+
+
+class DuplicateImportRowOut(BaseModel):
+    """The spreadsheet row of a pair, to compare it in the queue.
+
+    Change revisar-duplicados-comparacion. Only catalogue-like fields: never the lender, the
+    recorder, the notes or the source record, which may hold personal data (RNF-014).
+    """
+
+    batch_id: uuid.UUID
+    batch_name: str
+    source_row_number: int
+    denomination: str | None = None
+    collection_name: str | None = None
+    tenure_regime: str | None = None
+    author: str | None = None
+    provenance: str | None = None
+    period_text: str | None = None
+    dimensions_text: str | None = None
+    identifiers: list[DuplicateImportRowIdentifier] = Field(default_factory=list)
+    resolution: Literal["piece", "new"] | None = Field(
+        default=None, description="Lo que ya decidió su lote: una pieza destino o una pieza nueva."
+    )
+    editable: bool = Field(description="El lote aún admite decisiones sobre sus filas.")
+
+
 class DuplicateCandidateOut(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
@@ -312,6 +350,10 @@ class DuplicateCandidateOut(BaseModel):
     )
     reviewed_at: datetime | None
     resolution_note: str | None
+    import_row: DuplicateImportRowOut | None = Field(
+        default=None,
+        description="La fila del Excel de un par con fila de importación, para compararla.",
+    )
 
 
 class DuplicateResolution(BaseModel):

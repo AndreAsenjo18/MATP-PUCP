@@ -87,6 +87,9 @@ export const DUPLICATE_ERROR_MESSAGES: Record<string, string> = {
   surviving_not_in_pair: "Elija cuál de las dos piezas del par se conserva.",
   unknown_merge_fields: "Uno de los campos elegidos ya no se puede fusionar. Recargue la cola e intente nuevamente.",
   invalid_period_range: "La época que resultaría de la fusión es incoherente (el año desde es mayor que el año hasta): elija la época completa de una sola pieza.",
+  inventory_code_in_use: "El código I de la fila ya pertenece a una pieza del catálogo: no puede entrar como pieza nueva. Elija «Es la misma pieza» o rechace la fila en su lote.",
+  invalid_batch_transition: "El lote de esta fila ya no admite cambios (se aprobó, se abandonó o está trabajando). Recargue la cola.",
+  batch_busy: "El lote está trabajando en este momento. Intente de nuevo en unos segundos.",
 };
 
 export type DuplicateFailure =
@@ -439,6 +442,41 @@ export async function resolveDuplicate(candidateId: string, input: DuplicateReso
     });
     if (error) return failureFrom(error);
     return { status: "ok", candidate: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/** Lo que se decide sobre la fila del Excel de un par: corresponde a la pieza del par, o es nueva. */
+export type ImportRowChoice = "same" | "new";
+
+/**
+ * Decide desde la cola la fila del Excel de un par (change `revisar-duplicados-comparacion`): con
+ * `same`, la fila actualizará la pieza del par al aprobar la carga; con `new`, entrará como pieza
+ * nueva. Usa `PATCH /imports/{batch_id}/rows/{row_id}` (permiso `imports.prepare`); el backend cierra
+ * los pares abiertos de la fila. En modo `mock` solo cambia el par en memoria.
+ */
+export async function decideDuplicateImportRow(candidate: DuplicateCandidate, choice: ImportRowChoice, devUser?: string): Promise<DuplicateResolveResult> {
+  const row = candidate.import_row;
+  if (!candidate.import_row_id || !row) return { status: "rejected", code: "row_not_found", message: "No se encontró la fila del Excel de este par." };
+  if (getApiMode() === "mock") {
+    const resolved: DuplicateCandidate = {
+      ...candidate,
+      status: "SUPERSEDED",
+      reviewed_at: new Date().toISOString(),
+      resolution_note: choice === "new" ? "Resuelto en su lote: la fila entrará como pieza nueva." : "Resuelto en su lote: la fila corresponde a la pieza del par.",
+      import_row: { ...row, resolution: choice === "new" ? "new" : "piece" },
+    };
+    mockResolutions.set(candidate.id, resolved);
+    return { status: "ok", candidate: resolved };
+  }
+  try {
+    const { error } = await client(devUser).PATCH("/api/v1/imports/{batch_id}/rows/{row_id}", {
+      params: { path: { batch_id: row.batch_id, row_id: candidate.import_row_id } },
+      body: choice === "new" ? { as_new: true } : { as_new: false, target_piece_id: candidate.piece_a_id },
+    });
+    if (error) return failureFrom(error);
+    return { status: "ok", candidate: { ...candidate, status: "SUPERSEDED", import_row: { ...row, resolution: choice === "new" ? "new" : "piece" } } };
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };
   }

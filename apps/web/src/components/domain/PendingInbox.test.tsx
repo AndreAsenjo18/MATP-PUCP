@@ -19,7 +19,7 @@ import {
 
 // Change revisar-pendientes-unificado, tareas 2.3 a 2.5. HTML estático (ADR-012); datos sintéticos.
 const REQUIREMENT = /\b(RF-0\d{2}|RNF-0\d{2}|RN-0\d{2}|RIA-0\d)\b|\[SUPUESTO\]/;
-const COUNTS: PendingCounts = { duplicates: 9, suggestions: 2, incomplete: 117 };
+const COUNTS: PendingCounts = { duplicates: 9, incomplete: 117 };
 
 /** Etiquetas `<a>` del HTML, en orden. */
 function links(html: string): string[] {
@@ -32,14 +32,14 @@ describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañ
     expect(html).toMatch(/^<nav aria-label="Pendientes"/);
     expect(links(html).map((a) => a.match(/href="([^"]+)"/)?.[1])).toEqual([
       "/pendientes/duplicados",
-      "/pendientes/sugerencias",
       "/pendientes/incompletas",
     ]);
-    expect(visibleText(html)).toBe("Posibles duplicados (9) Sugerencias de IA (2) Piezas incompletas (117)");
+    // La pestaña de sugerencias de IA se retiró (retirar-pestana-sugerencias-ia).
+    expect(visibleText(html)).toBe("Posibles duplicados (9) Piezas incompletas (117)");
   });
 
   it("solo la activa lleva aria-current y una marca que no depende solo del color", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="suggestions" />);
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />);
     const anchors = links(html);
     expect(anchors.filter((a) => a.includes('aria-current="page"'))).toHaveLength(1);
     expect(anchors[1]).toContain('aria-current="page"');
@@ -48,8 +48,8 @@ describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañ
   });
 
   it("sin total conocido, la pestaña va sin número y sin mensaje de error", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={{ ...COUNTS, suggestions: null }} />);
-    expect(visibleText(html)).toBe("Posibles duplicados (9) Sugerencias de IA Piezas incompletas (117)");
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={{ ...COUNTS, incomplete: null }} />);
+    expect(visibleText(html)).toBe("Posibles duplicados (9) Piezas incompletas");
     expect(visibleText(html)).not.toMatch(/error|no se pudo/i);
   });
 
@@ -115,7 +115,7 @@ describe("marco de la bandeja", () => {
 
 describe("contenido de cada pestaña", () => {
   it("con permiso muestra el contenido; sin él, el aviso de su pestaña", () => {
-    for (const key of ["duplicates", "suggestions", "incomplete"] as const) {
+    for (const key of ["duplicates", "incomplete"] as const) {
       expect(visibleText(render(<PendingTabBody tabKey={key} allowed>contenido</PendingTabBody>))).toBe("contenido");
       expect(visibleText(render(<PendingTabBody tabKey={key} allowed={false}>contenido</PendingTabBody>))).toBe(TAB_PERMISSION_NOTICES[key]);
     }

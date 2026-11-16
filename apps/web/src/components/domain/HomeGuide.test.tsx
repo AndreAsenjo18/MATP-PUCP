@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/brand/TextileMotif";
 import { TASKS, visibleTasks } from "@/lib/help/tasks";
 import { render, visibleText } from "@/test/render";
 
-import { CatalogStatusChips, HomeSearch, TaskCards } from "./HomeGuide";
+import { CatalogStatusChips, HOME_SEARCH_EXAMPLES, HOME_SEARCH_HINT, HomeSearch, TaskCards } from "./HomeGuide";
 
 // Spec plataforma — Inicio como guía de tareas y la maqueta B de `remodelacion-visual`.
 // Datos sintéticos (RNF-014).
@@ -141,26 +141,47 @@ describe("fichas del estado del catálogo", () => {
 });
 
 describe("buscador de la cabecera", () => {
+  // Spec plataforma — Búsqueda con IA desde el Inicio (change `inicio-busqueda-ia`).
   it("es un formulario real hacia Buscar con el parámetro de siempre, etiqueta visible y ayuda enlazada", () => {
     const html = render(<HomeSearch task={SEARCH} />);
     const text = visibleText(html);
     expect(html).toMatch(/<form[^>]*action="\/busqueda"/);
     expect(html).toContain('role="search"');
     expect(html).toContain('name="q"');
-    expect(html).toContain('placeholder="Código o nombre, por ejemplo I-0236"');
-    expect(text).toContain("Buscar una pieza");
-    expect(text).toContain("Encuentre una pieza por su código o su nombre.");
+    expect(html).toContain("p. ej. «mates sin foto»");
+    expect(text).toContain("Busque con sus propias palabras");
+    expect(text).toContain(HOME_SEARCH_HINT);
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Buscar<\/button>/);
     const inputId = html.match(/<input[^>]*id="([^"]+)"/)![1];
     expect(html).toContain(`for="${inputId}"`);
     expect(html).toContain(`aria-describedby="${inputId}-ayuda"`);
   });
 
-  it("el campo y el botón miden 44 px y el foco se ve sobre la cabecera", () => {
+  it("dice que la búsqueda la hace Gemini, con la insignia y el borde de IA", () => {
     const html = render(<HomeSearch task={SEARCH} />);
-    expect(html.match(/min-h-11/g)).toHaveLength(2);
+    expect(visibleText(html)).toContain("Powered by Gemini");
+    expect(html).toContain('lang="en"');
+    expect(html).toContain("data-borde-ia");
+    expect(html).toContain("from-gemini-azul");
+  });
+
+  it("ofrece frases de ejemplo como botones y avisa del estado en una región viva", () => {
+    const html = render(<HomeSearch task={SEARCH} />);
+    for (const example of HOME_SEARCH_EXAMPLES) expect(html).toMatch(new RegExp(`<button[^>]*type="button"[^>]*>${example}</button>`));
+    expect(html).toMatch(/<p[^>]*role="status"[^>]*>/);
+  });
+
+  it("el campo, el botón y los ejemplos miden 44 px y el foco se ve sobre la cabecera", () => {
+    const html = render(<HomeSearch task={SEARCH} />);
+    expect(html.match(/min-h-11/g)).toHaveLength(2 + HOME_SEARCH_EXAMPLES.length);
     expect(html).toContain("has-[input:focus-visible]:outline-crema");
-    expect(html).not.toMatch(/text-(xs|sm)\b/);
+    expect(html).not.toMatch(/text-(xs|sm)/);
+  });
+
+  it("sin dictado disponible no muestra el micrófono ni pide dictar", () => {
+    const html = render(<HomeSearch task={SEARCH} onSearch={async () => ({ href: "/busqueda", summary: null })} />);
+    expect(html).not.toContain("Buscar por voz");
+    expect(html).not.toContain("o dicte");
   });
 });
 

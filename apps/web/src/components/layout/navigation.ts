@@ -15,8 +15,9 @@ export interface NavItem {
 
 /**
  * Seis entradas con nombre de tarea (change `remodelacion-visual`, D5). «Revisar pendientes» reúne
- * duplicados, sugerencias y piezas incompletas en la bandeja (`revisar-pendientes-unificado`); las
- * direcciones `/duplicados` y `/ia/sugerencias` siguen llevando allí.
+ * duplicados y piezas incompletas en la bandeja (`revisar-pendientes-unificado`; la pestaña de
+ * sugerencias de IA se retiró en `retirar-pestana-sugerencias-ia`); las direcciones `/duplicados` y
+ * `/ia/sugerencias` siguen llevando allí.
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: House },

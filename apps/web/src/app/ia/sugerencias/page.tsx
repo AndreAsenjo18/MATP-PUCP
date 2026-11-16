@@ -1,10 +1,8 @@
 "use client";
 
 /**
- * Las antiguas sugerencias de IA llevan a su pestaña de la bandeja «Revisar pendientes», con todos
- * los parámetros de la dirección, incluido `?resaltar=` (change `revisar-pendientes-unificado`,
- * tarea 4.2; mismo patrón que `app/deposito/page.tsx`). La cola vive en
- * `components/domain/AiSuggestionsQueue` y la bandeja exige la sesión y el permiso.
+ * La dirección antigua de las sugerencias de IA lleva a la bandeja «Revisar pendientes»: la pestaña
+ * de sugerencias se retiró (change `retirar-pestana-sugerencias-ia`).
  */
 import { redirect, useSearchParams } from "next/navigation";
 import { Suspense } from "react";

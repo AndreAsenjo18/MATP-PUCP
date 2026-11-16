@@ -32,6 +32,14 @@
   --color-ciruela-bg: #efe0ec;
   /* Solo decorativo, nunca texto: el rombo de la marca sobre el menú oscuro y la trama de las cabeceras. */
   --color-terracota-vivo: #e07040;
+  /* Solo decorativo, nunca texto sobre fondo: el degradado de la marca Gemini (change inicio-busqueda-ia, D5). */
+  --color-gemini-azul: #4f8bff;
+  --color-gemini-violeta: #9b72ff;
+  --color-gemini-rosa: #ff7aa2;
+  /* Versiones más oscuras del degradado para la palabra «Gemini» sobre la insignia blanca. */
+  --color-gemini-azul-texto: #3d7bff;
+  --color-gemini-violeta-texto: #8b5cf6;
+  --color-gemini-rosa-texto: #e8508a;
 
   --font-heading: var(--font-manrope), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* Toda la aplicación en Manrope, como la maqueta B (cuerpo, formularios y tablas). */
@@ -187,6 +195,116 @@ select:where(:not([multiple], [size])) {
   background-repeat: repeat;
   background-size: var(--trama-tamano, 4.5rem) var(--trama-tamano, 4.5rem);
   mask-image: linear-gradient(to right, transparent, #000 6rem);
+}
+
+/*
+ * Trama animada de la cabecera grande del Inicio (change inicio-busqueda-ia, D4): los mismos rombos de
+ * `trama-rombos`, dibujados como SVG (`TramaRombos`) para poder animar cada uno. `data-estado` en el
+ * SVG: `tejiendo` (al entrar, cada rombo dibuja su contorno y luego su nudo, en diagonal desde la
+ * esquina superior derecha), `quieta` y `pensando` (mientras Gemini interpreta: una ola con el
+ * degradado de Gemini de derecha a izquierda). `--k` es fila + columna y `--c` la columna.
+ * Sin animación para quien pide menos movimiento: solo se anima dentro de `no-preference`.
+ */
+.trama-svg {
+  mask-image: linear-gradient(to right, transparent, #000 6rem);
+}
+
+.trama-svg .rombo-borde {
+  fill: none;
+  stroke: var(--color-terracota-vivo);
+  stroke-opacity: 0.36;
+  stroke-width: 1.5;
+}
+
+.trama-svg .rombo-nudo {
+  fill: var(--color-terracota-vivo);
+  fill-opacity: 0.46;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trama-svg[data-estado="tejiendo"] .rombo-borde {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: trama-tejer 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: calc(var(--k) * 45ms);
+  }
+
+  .trama-svg[data-estado="tejiendo"] .rombo-nudo {
+    opacity: 0;
+    scale: 0.2;
+    animation: trama-nudo 0.35s ease-out forwards;
+    animation-delay: calc(var(--k) * 45ms + 450ms);
+  }
+
+  .trama-svg[data-estado="pensando"] .rombo-borde {
+    animation: trama-hilo 1.5s ease-in-out infinite;
+    animation-delay: calc(var(--c) * -110ms);
+  }
+
+  .trama-svg[data-estado="pensando"] .rombo-nudo {
+    animation: trama-ola 1.5s ease-in-out infinite;
+    animation-delay: calc(var(--c) * -110ms);
+  }
+
+  .borde-ia-pensando {
+    animation: borde-ia-halo 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes trama-tejer {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes trama-nudo {
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes trama-ola {
+  0%,
+  100% {
+    fill: var(--color-terracota-vivo);
+    fill-opacity: 0.46;
+    scale: 1;
+  }
+  30% {
+    fill: var(--color-gemini-azul);
+    fill-opacity: 1;
+    scale: 1.45;
+  }
+  50% {
+    fill: var(--color-gemini-violeta);
+    fill-opacity: 1;
+    scale: 1.6;
+  }
+  70% {
+    fill: var(--color-gemini-rosa);
+    fill-opacity: 0.95;
+    scale: 1.35;
+  }
+}
+
+@keyframes trama-hilo {
+  0%,
+  100% {
+    stroke-opacity: 0.36;
+  }
+  50% {
+    stroke: #c4b2ff;
+    stroke-opacity: 0.95;
+  }
+}
+
+@keyframes borde-ia-halo {
+  50% {
+    box-shadow: 0 6px 34px rgb(150 120 255 / 0.6);
+  }
 }
 
 /*

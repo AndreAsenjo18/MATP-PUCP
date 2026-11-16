@@ -3354,6 +3354,17 @@
             "title": "Id",
             "type": "string"
           },
+          "import_row": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DuplicateImportRowOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "La fila del Excel de un par con fila de importación, para compararla."
+          },
           "import_row_id": {
             "anyOf": [
               {
@@ -3451,6 +3462,167 @@
           "resolution_note"
         ],
         "title": "DuplicateCandidateOut",
+        "type": "object"
+      },
+      "DuplicateImportRowIdentifier": {
+        "description": "A code of the spreadsheet row, as it came and normalized.",
+        "properties": {
+          "normalized_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Value"
+          },
+          "original_value": {
+            "title": "Original Value",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "original_value"
+        ],
+        "title": "DuplicateImportRowIdentifier",
+        "type": "object"
+      },
+      "DuplicateImportRowOut": {
+        "description": "The spreadsheet row of a pair, to compare it in the queue.\n\nChange revisar-duplicados-comparacion. Only catalogue-like fields: never the lender, the\nrecorder, the notes or the source record, which may hold personal data (RNF-014).",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "batch_name": {
+            "title": "Batch Name",
+            "type": "string"
+          },
+          "collection_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Name"
+          },
+          "denomination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denomination"
+          },
+          "dimensions_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions Text"
+          },
+          "editable": {
+            "description": "El lote aún admite decisiones sobre sus filas.",
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "identifiers": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateImportRowIdentifier"
+            },
+            "title": "Identifiers",
+            "type": "array"
+          },
+          "period_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Text"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "enum": [
+                  "piece",
+                  "new"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lo que ya decidió su lote: una pieza destino o una pieza nueva.",
+            "title": "Resolution"
+          },
+          "source_row_number": {
+            "title": "Source Row Number",
+            "type": "integer"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenure Regime"
+          }
+        },
+        "required": [
+          "batch_id",
+          "batch_name",
+          "source_row_number",
+          "editable"
+        ],
+        "title": "DuplicateImportRowOut",
         "type": "object"
       },
       "DuplicateResolution": {
@@ -5739,6 +5911,10 @@
               "MISSING_PHOTO"
             ],
             "collection_name": "Colección MMZ (ficticia)",
+            "missing_fields": [
+              "category_id",
+              "materials"
+            ],
             "piece_id": "01920000-0000-7000-8000-000000000101",
             "title": "Vasija ceremonial (sintética)"
           }
@@ -5761,6 +5937,14 @@
               }
             ],
             "title": "Collection Name"
+          },
+          "missing_fields": {
+            "description": "Campos obligatorios y recomendados vacíos, con el nombre de las reglas de completitud (p. ej. category_id, materials).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Fields",
+            "type": "array"
           },
           "piece_id": {
             "format": "uuid",

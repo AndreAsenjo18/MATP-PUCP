@@ -6,14 +6,16 @@
  * quitar, qué coincidió por resultado, sugerencias sin resultados, miniatura de la foto
  * principal, exportación con selección de columnas, «Mis exportaciones» y exportación completa.
  */
-import { Download, FileSpreadsheet, MapPin, Plus, RefreshCw, SearchX, X } from "lucide-react";
+import { Download, Eraser, FileSpreadsheet, Plus, RefreshCw, SearchX, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LocationPlaceDialogs, type PlaceAction } from "@/components/domain/LocationPlaceDialogs";
 import { flattenLocationTree } from "@/components/domain/LocationsAdmin";
 import { PieceCard, pieceCardProps } from "@/components/domain/PieceCard";
-import { EMPTY_OPTIONS, FiltersDrawer, SearchBox, SearchFiltersPanel, loadSearchOptions, type SearchOptions } from "@/components/domain/SearchFilters";
+import { AiSearchBox } from "@/components/domain/AiSearchBox";
+import { SearchFilterBar } from "@/components/domain/SearchFilterBar";
+import { EMPTY_OPTIONS, SearchBox, loadSearchOptions, optionNames, type SearchOptions } from "@/components/domain/SearchFilters";
 import { SelectionBar, type SelectionFeedback } from "@/components/domain/SelectionBar";
 import { headerActionClassName, PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +58,6 @@ import {
   fetchSearch,
   filterOfSuggestion,
   hasPendingJobs,
-  interpretSearch,
   jobKindLabel,
   jobStatusLabel,
   matchReasonText,
@@ -79,11 +80,6 @@ const PERM_LOAN_TERMS = "sensitive.loan_terms";
 function describeLocationFailure(failure: LocationFailure): string {
   if (failure.status === "unavailable") return failure.message;
   return LOCATION_ERROR_MESSAGES[failure.code] ?? failure.message;
-}
-
-function optionNames(options: SearchOptions): Record<string, string> {
-  const lists = [options.collections, options.categories, options.materials, options.conservationStates, options.locations];
-  return Object.fromEntries(lists.flatMap((list) => list.map((option) => [option.id, option.label])));
 }
 
 export function ActiveFilterChips({ chips, onRemove }: { chips: FilterChip[]; onRemove: (key: FilterChip["key"]) => void }) {
@@ -529,9 +525,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const [feedback, setFeedback] = useState<SelectionFeedback | null>(null);
   // Sube al verificar o mover, para que los resultados muestren la ubicación nueva (3.2).
   const [reloadKey, setReloadKey] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // Cada «Ver por ubicación» vuelve a montar el panel con «Más filtros» abierto (design D3).
-  const [locationRevealKey, setLocationRevealKey] = useState(0);
+  // Mientras Gemini interpreta, la trama de la banda hace la ola (busqueda-barra-compacta-ia).
+  const [aiThinking, setAiThinking] = useState(false);
   // Agregar, editar o desactivar lugares desde el árbol (`crud-manual-completo` 3.1).
   const canManagePlaces = hasPermission("locations.manage");
   const [placeAction, setPlaceAction] = useState<PlaceAction | null>(null);
@@ -635,32 +630,12 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   const update = (next: Partial<SearchFilters>) => setFilters((current) => ({ ...current, ...next }));
   const remove = (key: FilterChip["key"]) => setFilters((current) => removeFilter(current, key));
 
-  // Change `busqueda-lenguaje-natural` (RIA-06): interpreta la frase de la misma caja de búsqueda
-  // y aplica lo que reconozca como los mismos filtros de siempre — el texto que sobra reemplaza lo
-  // escrito (la persona ve «el texto limpio», idea 1 del PDF). Nunca bloquea: si el proveedor no
-  // responde, la caja ya quedó buscando el texto tal cual desde que se escribió.
-  async function handleInterpret(text: string) {
-    const result = await interpretSearch(
-      text,
-      {
-        collections: options.collections,
-        categories: options.categories,
-        materials: options.materials,
-        conservationStates: options.conservationStates,
-        locations: options.locations,
-      },
-      devUser,
-    );
-    if (result.status !== "ok") return;
-    // Si la persona ya escribió algo distinto mientras se esperaba la respuesta, se descarta: no
-    // se le sobrescribe lo que está escribiendo ahora con una interpretación de un texto anterior.
-    setFilters((current) => (current.q === text ? { ...current, ...result.value } : current));
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Búsqueda"
+        tramaAnimada
+        tramaPensando={aiThinking}
         actions={
           canCreate && (
             <Link href="/piezas/nueva" className={headerActionClassName}>
@@ -669,34 +644,31 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             </Link>
           )
         }
+        debajo={<AiSearchBox options={options} devUser={devUser} onFilters={setFilters} onThinkingChange={setAiThinking} />}
       />
       <div className="flex flex-col gap-6">
-        {/* Tarjeta de filtros de la maqueta B. El buscador queda a la vista en todos los tamaños, fuera de
-            «Filtros», que en tableta se abre con un botón (rediseno-ux-busqueda D1). */}
+        {/* Tarjeta compacta (busqueda-barra-compacta-ia): la caja de código o nombre y la barra de
+            filtros; el resto de filtros va en el panel lateral «Más filtros». */}
         <Card as="aside" aria-label="Filtros de búsqueda" padded={false} className="flex flex-col gap-3 p-4 sm:px-5">
-          <SearchBox value={filters.q} onChange={(q) => update({ q })} onInterpret={handleInterpret} />
-          <FiltersDrawer open={filtersOpen} onToggle={() => setFiltersOpen((open) => !open)} activeCount={chips.length}>
-            <SearchFiltersPanel
-              layout="fila"
-              key={locationRevealKey}
-              withQuery={false}
-              filters={filters}
-              options={options}
-              onChange={update}
-              onClear={() => setFilters(EMPTY_FILTERS)}
-              openMore={locationRevealKey > 0}
-              locationActions={
-                canManagePlaces
-                  ? {
-                      onAdd: (node) => setPlaceAction({ kind: "add", node }),
-                      onEdit: (node) => setPlaceAction({ kind: "edit", node }),
-                      onDeactivate: (node) => setPlaceAction({ kind: "deactivate", node }),
-                    }
-                  : undefined
-              }
-              locationNotice={placeNotice}
-            />
-          </FiltersDrawer>
+          <SearchBox compacta value={filters.q} onChange={(q) => update({ q })} />
+          <SearchFilterBar
+            filters={filters}
+            options={options}
+            total={result?.total ?? null}
+            onChange={update}
+            onRemove={remove}
+            onClear={() => setFilters(EMPTY_FILTERS)}
+            locationActions={
+              canManagePlaces
+                ? {
+                    onAdd: (node) => setPlaceAction({ kind: "add", node }),
+                    onEdit: (node) => setPlaceAction({ kind: "edit", node }),
+                    onDeactivate: (node) => setPlaceAction({ kind: "deactivate", node }),
+                  }
+                : undefined
+            }
+            locationNotice={placeNotice}
+          />
         </Card>
         <LocationPlaceDialogs action={placeAction} nodes={options.locationTree} devUser={devUser} onClose={() => setPlaceAction(null)} onChanged={handlePlaceChanged} />
 
@@ -706,18 +678,12 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
             <p className="text-lg font-bold text-tinta" aria-live="polite">
               {result?.total ?? 0} resultado{result?.total === 1 ? "" : "s"}
             </p>
-            <Button
-              variant="outline"
-              icon={MapPin}
-              onClick={() => {
-                setFiltersOpen(true);
-                setLocationRevealKey((key) => key + 1);
-              }}
-            >
-              Ver por ubicación
-            </Button>
+            {chips.some((chip) => chip.key !== "q") && (
+              <Button variant="neutral" icon={Eraser} onClick={() => setFilters((current) => ({ ...EMPTY_FILTERS, q: current.q }))}>
+                Limpiar filtros
+              </Button>
+            )}
           </div>
-          <ActiveFilterChips chips={chips} onRemove={remove} />
           {canMove && (
             <SelectionBar
               selection={selection}

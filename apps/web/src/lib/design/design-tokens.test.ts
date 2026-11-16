@@ -48,7 +48,9 @@ const REQUIRED_TOKENS = [
 const TASK_TOKENS = ["anil", "anil-bg", "ciruela", "ciruela-bg"];
 
 /** Colores solo decorativos (docs/guia-visual.md): nunca se usan como color de texto. */
-const DECORATIVE_TOKENS = ["terracota-vivo"];
+// El degradado de la marca Gemini (change `inicio-busqueda-ia`, D5): insignia, borde de la búsqueda con IA y ola de la trama.
+const GEMINI_TOKENS = ["gemini-azul", "gemini-violeta", "gemini-rosa", "gemini-azul-texto", "gemini-violeta-texto", "gemini-rosa-texto"];
+const DECORATIVE_TOKENS = ["terracota-vivo", ...GEMINI_TOKENS];
 
 const LAYOUT = readFileSync(path.resolve(__dirname, "../../app/layout.tsx"), "utf-8");
 
@@ -68,7 +70,7 @@ describe("contrastRatio", () => {
 });
 
 describe("tokens del sistema de diseño (globals.css)", () => {
-  it("define los 16 colores institucionales, los 4 de icono por tipo de tarea y el decorativo, y ninguno más", () => {
+  it("define los 16 colores institucionales, los 4 de icono por tipo de tarea y los decorativos (trama y Gemini), y ninguno más", () => {
     expect([...TOKENS.keys()].sort()).toEqual([...REQUIRED_TOKENS, ...TASK_TOKENS, ...DECORATIVE_TOKENS].sort());
   });
 

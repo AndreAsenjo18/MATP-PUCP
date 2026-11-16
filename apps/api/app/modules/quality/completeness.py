@@ -299,6 +299,32 @@ def active_alerts_for_pieces(
     return result
 
 
+def missing_fields_for_pieces(
+    session: Session, piece_ids: Sequence[uuid.UUID], rules: ActiveRules | None = None
+) -> dict[uuid.UUID, list[str]]:
+    """Campos obligatorios y recomendados vacíos de cada pieza.
+
+    Change completar-piezas-incompletas.
+
+    Usa la misma condición de «vacío» que las alertas de campos (`_field_is_empty`), así que una
+    pieza con la alerta de campos recomendados siempre trae aquí cuáles le faltan. Una consulta por
+    lote, como `active_alerts_for_pieces`; primero los obligatorios, luego los recomendados.
+    """
+    rules = rules or load_active_rules(session)
+    fields = list(dict.fromkeys([*rules.required_fields, *rules.recommended_fields]))
+    if not fields:
+        return {}
+    columns = [case((_field_is_empty(field), True), else_=False).label(field) for field in fields]
+    ids = list(dict.fromkeys(piece_ids))
+    result: dict[uuid.UUID, list[str]] = {}
+    for start in range(0, len(ids), ALERTS_BATCH_SIZE):
+        chunk = ids[start : start + ALERTS_BATCH_SIZE]
+        statement = select(Piece.id, *columns).where(Piece.id.in_(chunk))
+        for row in session.execute(statement):
+            result[row[0]] = [field for field, empty in zip(fields, row[1:], strict=True) if empty]
+    return result
+
+
 def list_completeness_rules(session: Session) -> list[CompletenessRule]:
     return list(session.scalars(select(CompletenessRule).order_by(CompletenessRule.field)).all())
 

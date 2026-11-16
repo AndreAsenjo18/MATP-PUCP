@@ -13,6 +13,7 @@ import {
   filtersFromSearchParams,
   filtersToSearchParams,
   hasPendingJobs,
+  homeSearchTarget,
   interpretSearch,
   jobStatusLabel,
   matchReasonText,
@@ -349,5 +350,22 @@ describe("modo live", () => {
   it("en modo mock no llama a la API", async () => {
     const result = await exportResults(EMPTY_FILTERS, ["denomination"], "xlsx");
     expect(result.status).toBe("unavailable");
+  });
+});
+
+describe("destino del buscador del Inicio (inicio-busqueda-ia)", () => {
+  it("con filtros reconocidos lleva a Búsqueda con ellos en la dirección y devuelve sus etiquetas", () => {
+    const target = homeSearchTarget("mates burilados sin foto", { q: "mates burilados", alertCode: "MISSING_PHOTO", collectionId: "c-1" }, { "c-1": "Colección sintética" });
+    const params = new URLSearchParams(target.href.split("?")[1]);
+    expect(target.href.startsWith("/busqueda?")).toBe(true);
+    expect(filtersFromSearchParams(params)).toMatchObject({ q: "mates burilados", alertCode: "MISSING_PHOTO", collectionId: "c-1" });
+    expect(target.chips.map((chip) => chip.value)).toContain("Colección sintética");
+    expect(target.chips.some((chip) => chip.key === "q")).toBe(false);
+  });
+
+  it("sin interpretación o sin ningún filtro reconocido busca la frase como texto libre", () => {
+    expect(homeSearchTarget("  I-0236 ", null)).toEqual({ href: "/busqueda?q=I-0236", chips: [] });
+    expect(homeSearchTarget("algo raro", { q: "algo raro" }).href).toBe("/busqueda?q=algo+raro");
+    expect(homeSearchTarget("", null).href).toBe("/busqueda");
   });
 });

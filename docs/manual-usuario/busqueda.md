@@ -25,41 +25,45 @@ Al escribir un código, el sistema entiende sus distintas formas: `I-00100`, `i 
 
 Cada resultado dice qué coincidió, por ejemplo *«Coincide por código de colección «M.M.Z. 15»»*, *«Coincide en denominación y procedencia»* o *«Coincide en la descripción»*. Si la pieza tiene fotografías, la tarjeta muestra una miniatura de la foto principal.
 
-### Escribir o dictar en lenguaje natural
+### Pedirlo con sus palabras (búsqueda con IA)
 
-En la misma caja «Código o texto», además de un código o una palabra suelta, puede escribir (o dictar, con el ícono del micrófono) una frase completa: por ejemplo, «toros de cerámica de Puno que no tengan foto y estén en el depósito 1».
+En la banda terracota de arriba está **Pídalo con sus palabras**, con la insignia «Powered by Gemini». Es una caja aparte de **Código o nombre**: escriba (o dicte, con el ícono del micrófono) una frase completa, por ejemplo «retablos del depósito 1 en estado regular», y presione **Buscar con IA**.
 
-- Mientras escribe, la búsqueda por texto sigue funcionando igual que siempre, al instante.
-- Al dejar de escribir, al dictar o al presionar **Buscar**, el sistema interpreta la frase y aplica los filtros que reconozca (categoría, material, colección, ubicación, régimen de tenencia, procedencia, autor, año, o una alerta de completitud como «sin foto») como las mismas etiquetas de filtro de siempre. Lo que no se reconoce queda como texto libre en la caja.
-- Cada filtro aplicado se puede quitar con su etiqueta, igual que un filtro elegido a mano.
+- Mientras se interpreta, verá «Gemini está interpretando su búsqueda…» y los rombos de la banda se iluminan en ola.
+- Los filtros que reconozca (categoría, material, colección, ubicación, régimen de tenencia, procedencia, autor, año, o una alerta de completitud como «sin foto») **reemplazan** a los que tenía y aparecen como píldoras en la barra de filtros. Debajo de la caja verá cuáles se aplicaron.
+- Cada filtro aplicado se quita con la ✕ de su píldora, igual que uno elegido a mano.
+- Si no se reconoce ningún filtro o la interpretación no está disponible, la frase se busca como texto en **Código o nombre** y sus filtros se conservan.
 - El micrófono solo aparece si su navegador lo admite (Chrome o Edge, por ejemplo). Usa el reconocimiento de voz del propio navegador: no hace falta configurar nada.
-- Si la interpretación no está disponible en ese momento, la caja sigue funcionando como búsqueda de texto normal: nunca se bloquea.
+
+La caja **Código o nombre** también tiene micrófono, pero ahí lo dictado solo se escribe y se busca como texto, sin IA. Su ayuda está en el ícono **?** de la caja.
+
+### Buscar desde el Inicio
+
+La cabecera del Inicio tiene el mismo buscador con IA, bajo «Busque con sus propias palabras» (con la insignia «Powered by Gemini»).
+
+- Escriba o dicte la frase y presione **Buscar**, o elija una de las frases de ejemplo bajo la caja.
+- Mientras se interpreta, verá «Gemini está interpretando su búsqueda…» y los rombos de la cabecera se iluminan en ola.
+- Luego el sistema le lleva a **Búsqueda** con los filtros reconocidos ya aplicados, como etiquetas que puede quitar.
+- Si no se reconoce ningún filtro o la interpretación no está disponible, le lleva a Búsqueda con la frase como texto libre.
+- Si su sistema tiene activada la opción de reducir el movimiento, los rombos no se animan.
 
 ---
 
 ## 2. Filtros
 
-En el panel de filtros, primero están los que el museo usa más:
-- **Denominación**: la denominación contiene lo que escriba.
-- **Categoría** y **Material**: términos de los vocabularios del museo.
-- **Descripción contiene**: la descripción de la pieza contiene lo que escriba. Las piezas sin descripción no aparecen.
+Bajo **Código o nombre** hay una barra de píldoras con los filtros que el museo usa más: **Categoría**, **Material**, **Colección** (incluye las piezas de sus subcolecciones), **Ubicación** y **Código I** (solo piezas con código I o solo piezas sin él). Haga clic en una píldora para elegir el valor; la píldora se pinta y muestra lo elegido, por ejemplo **Código I: Sin código I**, con una **✕** para quitarlo.
 
-Los demás filtros están en **Más filtros**, plegado para no ocupar la pantalla. Se reconoce por la flecha a la izquierda de su nombre; si tiene filtros puestos, dice cuántos, por ejemplo **Más filtros (2 activos)**:
-- **Colección**: incluye las piezas de sus subcolecciones.
-- **Estado de conservación**.
-- **Ubicación**: incluye lo que contiene el lugar elegido. Se elige en un árbol (sede › espacio › mueble › nivel › contenedor). Escriba en **Buscar lugar** parte del nombre (por ejemplo «estante b») para ver solo los lugares que coinciden, con los lugares que los contienen. Al elegir un lugar se incluye todo lo que contiene: un depósito con sus muebles, niveles y contenedores. El lugar elegido se ve arriba con su ruta completa y se quita con el botón **Quitar la ubicación**.
-- **Régimen de tenencia**: *Propiedad*, *Comodato* o *Préstamo Temporal*.
-- **Código I**: solo piezas con código I o solo piezas sin él.
-- **Época desde / hasta (año)**: rango de años. Si una pieza tiene la época escrita solo como texto (por ejemplo, «colonial tardío»), no se puede comparar con el rango; la pantalla le avisa cuántas piezas quedaron fuera por eso.
-- **Autor** y **Procedencia**: el texto que contienen.
-- **Completitud de la ficha**: solo piezas incompletas (con alguna alerta) o solo piezas completas.
+Los demás filtros están en **Más filtros**, que se abre como un panel a la derecha sin tapar la barra de filtros ni mover los resultados. Si tiene filtros puestos, el botón dice cuántos. El panel tiene tres bloques:
+- **La pieza**: **Denominación** (contiene lo que escriba), **Descripción contiene** (las piezas sin descripción no aparecen), **Estado de conservación** y **Régimen de tenencia** (*Propiedad*, *Comodato* o *Préstamo Temporal*).
+- **Dónde está**: la **Ubicación** se elige en un árbol (sede › espacio › mueble › nivel › contenedor), en un recuadro con su propio desplazamiento. Escriba en **Buscar lugar** parte del nombre (por ejemplo «estante b») para ver solo los lugares que coinciden. Al elegir un lugar se incluye todo lo que contiene. La píldora **Ubicación** de la barra abre el panel directamente aquí.
+- **Origen, época y ficha**: **Autor** y **Procedencia** (el texto que contienen), **Época desde / hasta (año)** y **Completitud de la ficha** (solo piezas incompletas o solo completas). Si una pieza tiene la época escrita solo como texto (por ejemplo, «colonial tardío»), no se puede comparar con el rango; la pantalla le avisa cuántas piezas quedaron fuera por eso.
 
-**Más filtros** se abre solo cuando alguno de esos filtros está activo, por ejemplo al abrir un enlace con una ubicación. El botón **Ver por ubicación**, sobre los resultados, abre los filtros con **Más filtros** desplegado para elegir un lugar del árbol.
+Los filtros se aplican al momento. El botón **Ver N piezas** del panel dice cuántas piezas verá y cierra el panel; **Limpiar todo** quita todos los filtros.
 
 La pantalla muestra solo las piezas que cumplen **todos** los filtros a la vez. No hace falta escribir nada en el buscador: con solo elegir filtros, se listan las piezas en orden alfabético. Los textos esperan a que deje de escribir antes de buscar.
 
 ### Filtros activos
-Cada filtro elegido aparece como una etiqueta sobre los resultados. Haga clic en una etiqueta para quitar ese filtro sin reiniciar la búsqueda.
+Cada filtro elegido, también los de **Más filtros**, aparece como una píldora en la barra con su **✕** para quitarlo sin reiniciar la búsqueda. **Limpiar filtros**, junto al número de resultados, los quita todos.
 
 ### Compartir o volver a una búsqueda
 Los filtros quedan en la dirección de la página. Puede copiar la dirección y enviarla: quien la abra verá la misma búsqueda. Si abre la ficha de una pieza y vuelve atrás, la búsqueda sigue como la dejó.

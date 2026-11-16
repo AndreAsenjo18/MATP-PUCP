@@ -5,7 +5,9 @@
  */
 import type { ApiSchemas } from "@/lib/api/client";
 
-import { alertsForPiece, PIECES } from "./pieces";
+import { alertsForPiece, missingFieldsOf, PIECES } from "./pieces";
+
+export { missingFieldsOf };
 
 type CompletenessKpis = ApiSchemas["CompletenessKpis"];
 type AlertKpi = ApiSchemas["AlertKpi"];
@@ -78,6 +80,7 @@ export function computeIncompletePieces(): IncompletePiece[] {
       title: piece.denomination,
       collection_name: piece.collection?.name ?? null,
       alerts,
+      missing_fields: missingFieldsOf(piece),
     };
   }).filter((p) => p.alerts.length > 0);
 }

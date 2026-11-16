@@ -4,8 +4,9 @@
  * Estructura común de las pantallas autenticadas (change `remodelacion-visual`, D4 y D6;
  * docs/guia-visual.md):
  *
- * - Desde 1024 px, un menú lateral flotante y oscuro que ocupa toda la altura visible, con «Contraer
- *   menú» y, al pie, la cuenta de la persona (`MenuAccount`).
+ * - Desde 1024 px, un menú lateral flotante y oscuro que ocupa toda la altura visible y, al pie, la
+ *   cuenta de la persona (`MenuAccount`). Contraer o expandir el menú es un ícono junto a la marca
+ *   (`SidebarToggle`), no una sección más de la lista (change `menu-contraer-junto-a-la-marca`).
  * - Bajo 1024 px, un botón «Menú» abre el mismo menú como diálogo modal: atrapa el foco, se cierra con
  *   Escape, al tocar fuera o al elegir una sección, y devuelve el foco al botón.
  * - Sin franja superior. El contenido va centrado con un ancho máximo.
@@ -69,6 +70,27 @@ function toggleSidebar() {
 const ON_DARK_CONTROL =
   "rounded-full text-crema hover:bg-white/10 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema";
 
+/**
+ * Contraer o expandir el menú de escritorio: un ícono junto a la marca (a su derecha, o debajo de la
+ * «M» con el menú contraído). El nombre accesible y el `title` dicen qué hace; `aria-expanded`, cómo
+ * está.
+ */
+export function SidebarToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const label = collapsed ? "Expandir menú" : "Contraer menú";
+  return (
+    <button
+      type="button"
+      aria-expanded={!collapsed}
+      aria-label={label}
+      title={label}
+      onClick={onToggle}
+      className={cn(ON_DARK_CONTROL, "flex size-11 shrink-0 items-center justify-center text-crema/80 hover:text-crema")}
+    >
+      {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
+    </button>
+  );
+}
+
 function Brand({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
@@ -93,10 +115,8 @@ interface MenuPanelProps {
   pathname: string;
   collapsed: boolean;
   onNavigate?: () => void;
-  /** Control junto a la marca: cerrar el panel en pantallas estrechas. */
+  /** Control junto a la marca: contraer o expandir en escritorio, cerrar el panel en pantallas estrechas. */
   topControl?: ReactNode;
-  /** Control pegado a la lista de secciones: contraer o expandir el menú en escritorio. */
-  collapseControl?: ReactNode;
   account: ReactNode;
 }
 
@@ -106,17 +126,16 @@ interface MenuPanelProps {
  * que ni así cabe la zona mínima de secciones, se desplaza el panel entero y el cierre de sesión
  * queda al final, nunca oculto.
  */
-function MenuPanel({ items, pathname, collapsed, onNavigate, topControl, collapseControl, account }: MenuPanelProps) {
+function MenuPanel({ items, pathname, collapsed, onNavigate, topControl, account }: MenuPanelProps) {
   return (
     <div className="scroll-menu flex h-full flex-col overflow-y-auto overscroll-contain rounded-panel bg-tinta text-crema shadow-md">
-      <div className={cn("flex shrink-0 items-start justify-between gap-2 pt-4 pb-2", collapsed ? "flex-col items-center px-2" : "px-3")}>
+      <div className={cn("flex shrink-0 justify-between gap-2 pt-4 pb-2", collapsed ? "flex-col items-center px-2" : "items-center px-3")}>
         <Brand collapsed={collapsed} />
         {topControl}
       </div>
       {/* Si no caben, un brillo en el borde (scroll-pista) y la barra fina avisan de que hay más. */}
       <div data-menu-sections className="scroll-menu scroll-pista min-h-28 flex-1 scroll-py-2 overflow-y-auto overscroll-contain py-1">
         <Sidebar items={items} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
-        {collapseControl && <div className={cn("pt-1", collapsed ? "px-2" : "px-3")}>{collapseControl}</div>}
       </div>
       <div data-menu-account className="shrink-0 border-t border-white/15 pt-3 pb-3">
         {account}
@@ -212,19 +231,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
             pathname={pathname}
             collapsed={collapsed}
             account={account(collapsed)}
-            collapseControl={
-              <button
-                type="button"
-                aria-expanded={!collapsed}
-                aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-                title={collapsed ? "Expandir menú" : undefined}
-                onClick={toggleSidebar}
-                className={cn(ON_DARK_CONTROL, "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-base font-semibold", collapsed && "justify-center px-0")}
-              >
-                {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
-                {!collapsed && "Contraer menú"}
-              </button>
-            }
+            topControl={<SidebarToggle collapsed={collapsed} onToggle={toggleSidebar} />}
           />
         </div>
       </div>

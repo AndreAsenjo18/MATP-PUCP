@@ -8,6 +8,11 @@
  * a través de `lib/data/duplicates`. Tras una fusión la cola se recarga y el aviso enlaza a la ficha
  * de la pieza conservada. Movida desde `app/duplicados/page.tsx` sin cambiar su comportamiento
  * (change `revisar-pendientes-unificado`, tarea 1.2); la página y la bandeja de pendientes la montan.
+ *
+ * Change `revisar-duplicados-comparacion`: filtros en píldoras, la detección completa como un botón
+ * discreto junto al número de pares, «Par N de M» para avanzar sin volver a la lista, y al decidir un
+ * par se abre solo el siguiente. Un par con fila de Excel se decide aquí mismo (la fila actualiza la
+ * pieza o entra como nueva) para quien prepara la carga.
  */
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,12 +44,14 @@ import {
   fetchDuplicateQueue,
   fetchIdentifierTypeNames,
   fetchQualityJob,
+  decideDuplicateImportRow,
   isClosedPairFailure,
   resolveDuplicate,
   startDuplicateScan,
   type DuplicateCandidate,
   type DuplicatePage,
   type DuplicateResolutionInput,
+  type ImportRowChoice,
   type QualityJob,
 } from "@/lib/data/duplicates";
 
@@ -79,6 +86,7 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   const { currentUser, hasPermission } = useSession();
   const devUser = currentUser?.email;
   const canResolve = hasPermission("duplicates.resolve");
+  const canDecideRow = hasPermission("imports.prepare");
 
   const [filters, setFilters] = useState<DuplicateFilterValue>(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
@@ -94,8 +102,13 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   const [scan, setScan] = useState<{ job: QualityJob | null; error: string | null; starting: boolean }>({ job: null, error: null, starting: false });
   // Un solo par abierto a la vez (design D4).
   const [openId, setOpenId] = useState<string | null>(null);
-  // Tras resolver, el foco va a la fila que ocupa el mismo lugar o, si no queda ninguna, al aviso.
-  const focusAfterReload = useRef<number | null>(null);
+  // Lugar de la lista que se abre cuando llegue la cola nueva: el del par resuelto, o el primero al
+  // pasar de página con «Par siguiente». Sin pares, el foco va al aviso.
+  const [pendingOpen, setPendingOpen] = useState<number | null>(null);
+  // Sube cada vez que se abre un par por avance: el efecto lleva el foco a su título.
+  const [focusTick, setFocusTick] = useState(0);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [rowDecision, setRowDecision] = useState<{ id: string; busy: boolean; error: string | null } | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
 
@@ -172,20 +185,57 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
   const byId = useMemo(() => (pieces?.key === queue?.key ? pieces?.byId : undefined) ?? {}, [pieces, queue]);
   const piecesLoading = pieces?.key !== queue?.key;
 
+  // Tras resolver (o al pasar de página con «Par siguiente»), abre el par que corresponde y lleva el
+  // foco a su título; sin pares, el foco va al aviso. Se ajusta al renderizar para evitar un efecto.
+  if (pendingOpen !== null && !loading && queue?.status === "ready") {
+    setOpenId(items[Math.min(pendingOpen, items.length - 1)]?.id ?? null);
+    setPendingOpen(null);
+    setFocusTick((tick) => tick + 1);
+  }
   useEffect(() => {
-    const index = focusAfterReload.current;
-    if (index === null || loading || queue?.status !== "ready") return;
-    focusAfterReload.current = null;
-    const toggles = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-review-toggle]");
-    if (toggles && toggles.length > 0) toggles[Math.min(index, toggles.length - 1)]?.focus();
+    if (focusTick === 0) return;
+    if (headingRef.current) headingRef.current.focus();
     else noticeRef.current?.focus();
-  }, [queue, loading]);
+  }, [focusTick]);
 
-  /** Cierra el par resuelto y recuerda su lugar para mover el foco cuando llegue la cola nueva. */
+  /** Recuerda el lugar del par resuelto para abrir el siguiente cuando llegue la cola nueva. */
   function afterResolution(candidate: DuplicateCandidate) {
-    focusAfterReload.current = Math.max(0, items.findIndex((c) => c.id === candidate.id));
-    setOpenId(null);
+    setPendingOpen(Math.max(0, items.findIndex((c) => c.id === candidate.id)));
+    setRowDecision(null);
     setReload((n) => n + 1);
+  }
+
+  /** «Es la misma pieza» / «Son piezas distintas» sobre la fila del Excel de un par. */
+  async function decideRow(candidate: DuplicateCandidate, choice: ImportRowChoice) {
+    setRowDecision({ id: candidate.id, busy: true, error: null });
+    const result = await decideDuplicateImportRow(candidate, choice, devUser);
+    if (result.status !== "ok") {
+      setRowDecision({ id: candidate.id, busy: false, error: result.message });
+      return;
+    }
+    const row = candidate.import_row;
+    const piece = byId[candidate.piece_a_id]?.denomination ?? "la pieza del catálogo";
+    setNotice({
+      tone: "success",
+      text:
+        choice === "same"
+          ? `Decidido: la fila ${row?.source_row_number ?? ""} actualizará «${piece}» al aprobar la carga.`
+          : `Decidido: la fila ${row?.source_row_number ?? ""} entrará como pieza nueva al aprobar la carga.`,
+    });
+    afterResolution(candidate);
+  }
+
+  /** Abre el par de al lado; al final de la página pasa a la siguiente y abre su primer par. */
+  function openSibling(index: number, step: -1 | 1) {
+    const next = items[index + step];
+    if (next) {
+      setOpenId(next.id);
+      return;
+    }
+    if (step === 1 && page < pageCount) {
+      goToPage(page + 1);
+      setPendingOpen(0);
+    }
   }
 
   function openMerge(candidate: DuplicateCandidate) {
@@ -261,8 +311,6 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
           <PageHeader title="Cola de posibles duplicados" description="Compare cada par y decida. No se borra ninguna pieza." />
         )}
 
-        <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
-
         <DuplicateFilters value={filters} collections={collections} onChange={changeFilters} />
 
         {notice && (
@@ -293,12 +341,16 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
         {!loading && queue?.status === "ready" && (
           <>
             <div className="flex flex-col gap-2">
-              <p className="text-lg font-bold text-tinta">{total === 1 ? "1 par" : `${total} pares`}</p>
+              {/* El número de pares y, discreta a la derecha, la revisión de todo el catálogo. */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-lg font-bold text-tinta">{total === 1 ? "1 par" : `${total} pares`}</p>
+                <ScanPanel job={scan.job} error={scan.error} starting={scan.starting} canScan={canResolve} onStart={() => void startScan()} />
+              </div>
               <QueuePager page={page} pageCount={pageCount} label="Páginas de la cola, arriba" onPage={goToPage} />
             </div>
             {items.length > 0 ? (
               <ul ref={listRef} aria-label="Posibles duplicados" className="flex flex-col gap-3">
-                {items.map((candidate) => {
+                {items.map((candidate, index) => {
                   const pieceA = byId[candidate.piece_a_id];
                   const pieceB = candidate.piece_b_id ? byId[candidate.piece_b_id] : null;
                   const open = openId === candidate.id;
@@ -324,6 +376,18 @@ export function DuplicateQueue({ embedded = false, onQueueChanged }: DuplicateQu
                           setToday(new Date());
                           setDialog({ kind: "postpone", candidate });
                         }}
+                        canDecideRow={canDecideRow}
+                        onRowDecision={(choice) => void decideRow(candidate, choice)}
+                        deciding={rowDecision?.id === candidate.id && rowDecision.busy}
+                        decisionError={rowDecision?.id === candidate.id ? rowDecision.error : null}
+                        position={{
+                          index: (page - 1) * DUPLICATE_PAGE_SIZE + index + 1,
+                          total,
+                          onPrevious: index > 0 ? () => openSibling(index, -1) : undefined,
+                          onNext: index < items.length - 1 || page < pageCount ? () => openSibling(index, 1) : undefined,
+                        }}
+                        onClose={() => setOpenId(null)}
+                        headingRef={open ? headingRef : undefined}
                       />
                     </DuplicateCandidateRow>
                   );

@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { ApiSchemas } from "@/lib/api/client";
 import type { DuplicateCandidate, QualityJob } from "@/lib/data/duplicates";
-import { IMPORT_ROW_MERGE_MESSAGE } from "@/lib/data/merge-plan";
 import { DUPLICATE_CANDIDATES, getPieceDetail, ids } from "@/lib/fixtures";
 import { render, visibleText } from "@/test/render";
 
 import {
   COMPARISON_ROWS,
+  ComparisonTable,
   DEFAULT_FILTERS,
   DuplicateCandidateCard,
   DistinctDialog,
@@ -16,6 +16,7 @@ import {
   PostponeDialog,
   QueuePager,
   MERGE_UNAVAILABLE_NOTE,
+  SCAN_HINT,
   SCAN_STARTING_TEXT,
   ScanPanel,
   SimilarityMeter,
@@ -24,6 +25,8 @@ import {
   jobProgressText,
   markedRows,
   mergeUnavailableReason,
+  pieceSide,
+  scanLineText,
   signalLabel,
   signalValueLines,
   similarityLevel,
@@ -33,8 +36,9 @@ import { qualityJobStatus } from "./status-intents";
 type PieceDetail = ApiSchemas["PieceDetail"];
 
 const noop = () => {};
-const disabledButton = /<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Fusionar/;
-const enabledMerge = /<button(?![^>]*\sdisabled="")[^>]*>(?:(?!<\/button>)[\s\S])*Fusionar<\/button>/;
+// «Es la misma pieza» es la decisión que fusiona (change revisar-duplicados-comparacion).
+const disabledButton = /<button[^>]*\sdisabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Es la misma pieza/;
+const enabledMerge = /<button(?![^>]*\sdisabled="")[^>]*>(?:(?!<\/button>)[\s\S])*Es la misma pieza/;
 
 function candidate(overrides: Partial<DuplicateCandidate> = {}): DuplicateCandidate {
   return { ...DUPLICATE_CANDIDATES[0], ...overrides };
@@ -66,6 +70,14 @@ describe("señales explicadas (RF-030)", () => {
     expect(signalLabel({ signal: "collection", field: "collection_id", similarity: 0 })).toBe("Colecciones distintas");
     // Una señal desconocida es «Otro dato», nunca su nombre interno (antes devolvía el `field`).
     expect(signalLabel({ field: "denominación libre", similarity: 0.5 })).toBe("Otro dato");
+  });
+
+  it("los pares de una importación traen el tipo en `field`: ya no salen como «Otro dato»", () => {
+    // revisar-duplicados-comparacion: el clasificador guarda {"field": "denomination"} sin `signal`.
+    expect(signalLabel({ field: "denomination", similarity: 1 })).toBe("Denominación igual");
+    expect(signalLabel({ field: "denomination", similarity: 0.8 })).toBe("Denominación parecida");
+    expect(signalLabel({ field: "collection", similarity: 1 })).toBe("Misma colección o subcolección");
+    expect(Object.fromEntries(markedRows([{ field: "denomination", similarity: 1 }, { field: "collection", similarity: 1 }]))).toEqual({ denomination: "match", collection: "match" });
   });
 
   it("muestra los valores comparados de cada forma de señal", () => {
@@ -114,18 +126,25 @@ describe("DuplicateCandidateCard", () => {
       <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
     );
     const text = visibleText(html);
-    expect(text).toContain("93 %");
-    expect(text).toContain("similitud alta");
-    expect(text).toContain("Pieza A: Toro de Pucará");
-    expect(text).toContain("Pieza B: Toro de Pucará (3 cuernos)");
+    // Una pregunta, el nivel en palabras y el tipo de par; sin el círculo de porcentaje.
+    expect(text).toContain("¿Es la misma pieza?");
+    expect(text).toContain("Muy parecidas");
+    expect(text).toContain("Dos piezas del catálogo");
+    expect(html).not.toContain("conic-gradient");
+    expect(text).toContain("Pieza A");
+    expect(text).toContain("Toro de Pucará (3 cuernos)");
     for (const row of COMPARISON_ROWS) expect(text).toContain(row.label);
-    // Las filas que motivan la sospecha (denominación, colección y otros códigos) son «igual».
+    // Las filas que motivan la sospecha (denominación, colección y otros códigos) son «Igual».
     expect(html.match(/data-mark="match"/g)?.length).toBeGreaterThanOrEqual(3);
-    expect(text).toContain("igual");
-    expect(text).toContain("Coincide: Código de colección 100 %"); // etiqueta de la señal, junto a la similitud
-    expect(text).toContain("Coincide: Código de colección · similitud 100 %"); // detalle plegado
-    expect(text).toContain("Normalizado MMZ-015: A «M.M.Z. 015» · B «mmz 15»");
+    expect(text).toContain("Igual");
+    // Los motivos, en palabras y sin porcentajes ni el detalle plegado de antes.
+    expect(text).toContain("Se propone porque:");
+    expect(text).toContain("Coincide: Código de colección");
+    expect(text).not.toMatch(/\d+ %/);
+    expect(text).not.toContain("Ver por qué se propone");
     expect(html).toContain(`href="/piezas/${ids.piece(1)}"`);
+    expect(html).toMatch(/role="switch"[^>]*aria-checked="false"/);
+    expect(text).toContain("Solo diferencias");
   });
 
   it("habilita Fusionar con las dos fichas y muestra distinto y posponer", () => {
@@ -134,9 +153,12 @@ describe("DuplicateCandidateCard", () => {
     );
     expect(html).toMatch(enabledMerge);
     expect(html).not.toMatch(disabledButton);
-    expect(html).not.toContain("merge-note-");
-    expect(visibleText(html)).toContain("Marcar como distinto");
-    expect(visibleText(html)).toContain("Posponer");
+    const text = visibleText(html);
+    // Cada decisión dice qué pasará al elegirla.
+    expect(text).toContain("Se fusionan en una sola ficha");
+    expect(text).toContain("Son piezas distintas");
+    expect(text).toContain("El par sale de la cola");
+    expect(text).toContain("Decidir después");
   });
 
   it("deshabilita Fusionar con el motivo a la vista: códigos I distintos, regímenes distintos o fichas sin cargar", () => {
@@ -152,7 +174,10 @@ describe("DuplicateCandidateCard", () => {
     for (const [pair, a, b, loading, message] of cases) {
       const html = render(<DuplicateCandidateCard candidate={pair} pieceA={a} pieceB={b} piecesLoading={loading} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />);
       expect(html).toMatch(disabledButton);
-      expect(html).toContain(`aria-describedby="merge-note-${pair.id}"`);
+      const noteId = html.match(/<button[^>]*\sdisabled=""[^>]*aria-describedby="([^"]+)"|<button[^>]*aria-describedby="([^"]+)"[^>]*\sdisabled=""/);
+      const id = noteId?.[1] ?? noteId?.[2];
+      expect(id).toBeTruthy();
+      expect(html).toContain(`id="${id}"`);
       expect(visibleText(html)).toMatch(message);
     }
     expect(mergeUnavailableReason(candidate(), pieceA, pieceB, false)).toBeNull();
@@ -166,8 +191,8 @@ describe("DuplicateCandidateCard", () => {
       render(<DuplicateCandidateCard candidate={candidate({ status: "MERGED" })} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
     );
     for (const text of [withoutPermission, merged]) {
-      expect(text).not.toContain("Marcar como distinto");
-      expect(text).not.toContain("Posponer");
+      expect(text).not.toContain("Son piezas distintas");
+      expect(text).not.toContain("Decidir después");
     }
     expect(merged).toContain("Fusionado");
   });
@@ -193,21 +218,62 @@ describe("DuplicateCandidateCard", () => {
     expect(text).toContain("Motivo registrado: Esperar ficha física");
   });
 
-  it("una fila de importación enlaza al asistente y una ficha que no llega se indica", () => {
+  it("una fila del Excel se compara campo por campo con su lote; sin permiso de carga, se explica quién la decide", () => {
     const importRow = DUPLICATE_CANDIDATES.find((c) => c.import_row_id !== null)!;
     const html = render(<DuplicateCandidateCard candidate={importRow} pieceA={null} pieceB={null} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />);
-    expect(visibleText(html)).toContain("Fila de importación");
-    expect(visibleText(html)).toContain("Pieza del catálogo: ficha no disponible");
-    expect(html).toContain('href="/importacion"');
-    // Una fila de importación no se fusiona desde la cola: no hay botón y se explica dónde decidirla.
-    expect(html).not.toMatch(/Fusionar<\/button>/);
-    expect(visibleText(html)).toContain(IMPORT_ROW_MERGE_MESSAGE);
-    expect(visibleText(html)).toContain("Marcar como distinto");
+    const text = visibleText(html);
+    expect(text).toContain("Pieza y fila de un Excel");
+    expect(text).toContain("Fila del Excel");
+    expect(text).toContain("Fila 6 · Lote «Sábana de prueba (sintética)»");
+    expect(text).toContain("Charango (sintético, fila de carga)");
+    expect(text).toContain("Ficha no disponible");
+    expect(text).toContain("Solo en el Excel"); // la procedencia solo la trae la fila
+    // Sin `imports.prepare` no se decide aquí: la misma pieza queda deshabilitada y se enlaza al lote.
+    expect(html).toMatch(disabledButton);
+    expect(text).toContain("Decidir la fila le corresponde a quien prepara la carga.");
+    expect(html).toContain(`href="/importacion?lote=${ids.importBatch(1)}"`);
+  });
 
+  it("con permiso de carga, la fila se decide aquí: actualiza la pieza o entra como nueva", () => {
+    const importRow = DUPLICATE_CANDIDATES.find((c) => c.import_row_id !== null)!;
+    const html = render(
+      <DuplicateCandidateCard candidate={importRow} pieceA={getPieceDetail(ids.piece(9))} pieceB={null} piecesLoading={false} canResolve canDecideRow onRowDecision={noop} onMerge={noop} onDistinct={noop} onPostpone={noop} />,
+    );
+    const text = visibleText(html);
+    expect(html).toMatch(enabledMerge);
+    expect(text).toMatch(/La fila actualizará «[^»]+» al aprobar la carga/);
+    expect(text).toContain("La fila entrará como pieza nueva al aprobar la carga.");
+    expect(text).not.toContain("le corresponde a quien prepara la carga");
+
+    const decided = visibleText(
+      render(
+        <DuplicateCandidateCard
+          candidate={{ ...importRow, import_row: { ...importRow.import_row!, resolution: "new" } }}
+          pieceA={null}
+          pieceB={null}
+          piecesLoading={false}
+          canResolve
+          canDecideRow
+          onRowDecision={noop}
+          onMerge={noop}
+          onDistinct={noop}
+          onPostpone={noop}
+        />,
+      ),
+    );
+    expect(decided).toContain("Su lote ya decidió que la fila entra como pieza nueva.");
+  });
+
+  it("una ficha que aún no llega se indica en su columna; una fila sin datos remite a su lote", () => {
     const loading = visibleText(
       render(<DuplicateCandidateCard candidate={candidate()} pieceA={undefined} pieceB={undefined} piecesLoading canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
     );
-    expect(loading).toContain("Pieza A: cargando ficha…");
+    expect(loading).toContain("Cargando ficha…");
+    const importRow = DUPLICATE_CANDIDATES.find((c) => c.import_row_id !== null)!;
+    const withoutRow = visibleText(
+      render(<DuplicateCandidateCard candidate={{ ...importRow, import_row: null }} pieceA={null} pieceB={null} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />),
+    );
+    expect(withoutRow).toContain("Sus datos no están disponibles: revísela en su lote.");
   });
 });
 
@@ -224,9 +290,17 @@ describe("filtros y detección completa", () => {
       />,
     );
     const text = visibleText(html);
-    for (const label of ["Estado", "Colección", "Similitud mínima", "Origen", "Pendientes", "Fila de importación", "60 % o más"]) expect(text).toContain(label);
+    // Píldoras (revisar-duplicados-comparacion): «Origen» pasa a «Tipo de par».
+    for (const label of ["Estado", "Colección", "Similitud", "Tipo de par", "Pendientes", "Pieza y fila de un Excel", "Dos piezas del catálogo", "60 % o más"]) expect(text).toContain(label);
+    expect(text).not.toContain("Origen");
     expect(text).toContain("— Subcolección RAB (ficticia)");
     expect(html).toMatch(/<option value="PENDING" selected="">Pendientes<\/option>/);
+    expect(html).toContain('aria-label="Colección (incluye sus subcolecciones)"');
+    // «Estado» siempre tiene valor: sin ✕. Un filtro activo sí la tiene.
+    expect(html).not.toContain("Quitar el filtro Estado");
+    const active = render(<DuplicateFilters value={{ ...DEFAULT_FILTERS, origin: "IMPORT" }} collections={[]} onChange={noop} />);
+    expect(visibleText(active)).toContain("Tipo de par: Pieza y fila de un Excel");
+    expect(active).toContain('aria-label="Quitar el filtro Tipo de par: Pieza y fila de un Excel"');
   });
 
   it("describe el avance, el resultado y el fallo de una detección", () => {
@@ -238,16 +312,23 @@ describe("filtros y detección completa", () => {
     expect(qualityJobStatus("RUNNING").intent).toBe("info");
   });
 
-  it("el botón de detección se bloquea mientras hay una en curso", () => {
-    const running = render(<ScanPanel job={JOB} error={null} starting={false} canScan onStart={noop} />);
-    expect(running).toMatch(/<button[^>]*\sdisabled=""[^>]*>[\s\S]*?Detección en curso…/);
-    expect(visibleText(running)).toContain("En curso");
-    const starting = visibleText(render(<ScanPanel job={{ ...JOB, total_pieces: 0, processed_pieces: 0 }} error={null} starting={false} canScan onStart={noop} />));
-    expect(starting).toContain(`En curso ${SCAN_STARTING_TEXT}`);
-    expect(starting).not.toContain("Revisadas 0 de 0");
-    const idle = visibleText(render(<ScanPanel job={null} error="Sin conexión." starting={false} canScan onStart={noop} />));
-    expect(idle).toContain("Buscar duplicados");
+  it("la revisión de todo el catálogo es un botón discreto con su explicación, y su avance va en una línea", () => {
+    const idleHtml = render(<ScanPanel job={null} error="Sin conexión." starting={false} canScan onStart={noop} />);
+    const idle = visibleText(idleHtml);
+    expect(idle).toContain("Revisar todo el catálogo");
+    expect(idleHtml).toContain(`title="${SCAN_HINT}"`);
+    expect(idle).toContain(SCAN_HINT); // también para lectores de pantalla
     expect(idle).toContain("Sin conexión.");
+    expect(idleHtml).not.toContain("Buscar en todo el catálogo");
+    // Mientras corre no se ofrece lanzar otra: se ve el avance con su barra.
+    const running = render(<ScanPanel job={JOB} error={null} starting={false} canScan onStart={noop} />);
+    expect(visibleText(running)).toContain("Revisando el catálogo… 120 de 298 piezas");
+    expect(running).not.toContain("Revisar todo el catálogo");
+    expect(running).toContain('style="width:40%"');
+    expect(scanLineText({ ...JOB, total_pieces: 0, processed_pieces: 0 })).toBe(`Revisando el catálogo… ${SCAN_STARTING_TEXT}`);
+    expect(scanLineText({ ...JOB, status: "SUCCEEDED" })).toBe("Revisión completa: 4 pares nuevos");
+    expect(scanLineText({ ...JOB, status: "SUCCEEDED", candidates_created: 0, candidates_reopened: 0 })).toBe("Revisión completa: ningún par nuevo");
+    expect(render(<ScanPanel job={null} error={null} starting={false} canScan={false} onStart={noop} />)).not.toContain("Revisar todo el catálogo");
   });
 });
 
@@ -276,6 +357,8 @@ describe("comparación campo por campo", () => {
     expect(comparisonRowState("Puno", "Cusco")).toBe("different");
     expect(comparisonRowState("I-134", "Sin código I".replace("Sin código I", ""))).toBe("different");
     expect(comparisonRowState("I-134", "I-200", "conflict")).toBe("conflict");
+    // Solo un lado con el dato nunca es «igual», aunque una señal diga que coinciden.
+    expect(comparisonRowState("Colección LRM", "", "match")).toBe("different");
     expect(comparisonRowState("", "—".replace("—", ""))).toBe("empty");
     expect(comparisonRowState("Sin registrar", "")).toBe("empty");
   });
@@ -287,12 +370,22 @@ describe("comparación campo por campo", () => {
       <DuplicateCandidateCard candidate={candidate()} pieceA={pieceA} pieceB={pieceB} piecesLoading={false} canResolve onMerge={noop} onDistinct={noop} onPostpone={noop} />,
     );
     expect(html).toContain('role="table"');
-    expect(html).toContain("sm:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1fr)]");
-    expect(html).toContain("text-center");
+    expect(html).toContain("sm:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)_11rem]");
     expect(html).toMatch(/data-mark="different"[^>]*bg-ambar-bg|bg-ambar-bg[^>]*data-mark="different"/);
     const text = visibleText(html);
-    expect(text).toContain("distinto");
+    expect(text).toMatch(/Distinto|Solo en la pieza/);
     expect(html).toContain("text-verde-exito"); // las filas iguales usan el verde
+  });
+
+  it("«Solo diferencias» deja solo las filas que no son iguales", () => {
+    const pieceA = getPieceDetail(ids.piece(1));
+    const pieceB = getPieceDetail(ids.piece(2));
+    const sides = [pieceSide("Pieza A", "la pieza A", pieceA, false), pieceSide("Pieza B", "la pieza B", pieceB, false)] as const;
+    const all = render(<ComparisonTable sideA={sides[0]} sideB={sides[1]} signals={candidate().matched_fields} />);
+    const differences = render(<ComparisonTable sideA={sides[0]} sideB={sides[1]} signals={candidate().matched_fields} onlyDifferences />);
+    expect(all).toContain('data-mark="match"');
+    expect(differences).not.toContain('data-mark="match"');
+    expect((differences.match(/role="row"/g) ?? []).length).toBeLessThan((all.match(/role="row"/g) ?? []).length);
   });
 
   it("un par con códigos I distintos marca esa fila en rojo con la palabra «conflicto»", () => {

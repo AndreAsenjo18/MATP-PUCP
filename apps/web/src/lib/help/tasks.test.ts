@@ -67,10 +67,11 @@ describe("tareas visibles por rol", () => {
     expect(visibleTasks(() => false).map((task) => task.id)).toEqual(["search"]);
   });
 
-  it("«Revisar pendientes» aparece con cualquiera de sus tres permisos", () => {
-    for (const permission of ["duplicates.resolve", "ai.review", "reports.view"]) {
+  it("«Revisar pendientes» aparece con cualquiera de sus dos permisos; revisar IA ya no la abre (sin pestaña de sugerencias)", () => {
+    for (const permission of ["duplicates.resolve", "reports.view"]) {
       expect(visibleTasks((candidate) => candidate === permission).map((task) => task.id)).toContain("review");
     }
+    expect(visibleTasks((candidate) => candidate === "ai.review").map((task) => task.id)).not.toContain("review");
   });
 });
 

@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 34827bf3d26d96516478a487572e7bb6a4ed739126d9e45909ce3826b63697c9
+ * openapi-sha256: 7a7f3adb78493d017b87f368d079c9070e2fae6823d94c018e054d779113621d
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3801,6 +3801,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** @description La fila del Excel de un par con fila de importación, para compararla. */
+            import_row?: components["schemas"]["DuplicateImportRowOut"] | null;
             /** Import Row Id */
             import_row_id: string | null;
             /** Matched Fields */
@@ -3824,6 +3826,62 @@ export interface components {
             /** Score */
             score: number;
             status: components["schemas"]["DuplicateStatus"];
+        };
+        /**
+         * DuplicateImportRowIdentifier
+         * @description A code of the spreadsheet row, as it came and normalized.
+         */
+        DuplicateImportRowIdentifier: {
+            /** Normalized Value */
+            normalized_value?: string | null;
+            /** Original Value */
+            original_value: string;
+            /** Type */
+            type: string;
+        };
+        /**
+         * DuplicateImportRowOut
+         * @description The spreadsheet row of a pair, to compare it in the queue.
+         *
+         *     Change revisar-duplicados-comparacion. Only catalogue-like fields: never the lender, the
+         *     recorder, the notes or the source record, which may hold personal data (RNF-014).
+         */
+        DuplicateImportRowOut: {
+            /** Author */
+            author?: string | null;
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Batch Name */
+            batch_name: string;
+            /** Collection Name */
+            collection_name?: string | null;
+            /** Denomination */
+            denomination?: string | null;
+            /** Dimensions Text */
+            dimensions_text?: string | null;
+            /**
+             * Editable
+             * @description El lote aún admite decisiones sobre sus filas.
+             */
+            editable: boolean;
+            /** Identifiers */
+            identifiers?: components["schemas"]["DuplicateImportRowIdentifier"][];
+            /** Period Text */
+            period_text?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /**
+             * Resolution
+             * @description Lo que ya decidió su lote: una pieza destino o una pieza nueva.
+             */
+            resolution?: ("piece" | "new") | null;
+            /** Source Row Number */
+            source_row_number: number;
+            /** Tenure Regime */
+            tenure_regime?: string | null;
         };
         /**
          * DuplicateResolution
@@ -4887,6 +4945,10 @@ export interface components {
          *         "MISSING_PHOTO"
          *       ],
          *       "collection_name": "Colección MMZ (ficticia)",
+         *       "missing_fields": [
+         *         "category_id",
+         *         "materials"
+         *       ],
          *       "piece_id": "01920000-0000-7000-8000-000000000101",
          *       "title": "Vasija ceremonial (sintética)"
          *     }
@@ -4896,6 +4958,11 @@ export interface components {
             alerts: components["schemas"]["AlertCode"][];
             /** Collection Name */
             collection_name: string | null;
+            /**
+             * Missing Fields
+             * @description Campos obligatorios y recomendados vacíos, con el nombre de las reglas de completitud (p. ej. category_id, materials).
+             */
+            missing_fields?: string[];
             /**
              * Piece Id
              * Format: uuid
