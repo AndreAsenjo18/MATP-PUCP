@@ -496,3 +496,15 @@ Supuestos de la implementación de «Completar con Gemini» en «Piezas incomple
 | CF5 | ¿Más adelante, aprobación en bloque de las propuestas con cita literal y confianza alta? | **[SUPUESTO]** No en esta versión: primero medir el acierto pieza por pieza con los textos reales del museo | ia-asistiva | B |
 | CF6 | ¿La lista de materiales debe tener términos con detalle (por ejemplo «Madera (cedro)»)? | **[SUPUESTO]** No por ahora: se propone el término de la lista («Madera») y el detalle queda a la vista en la cita, porque la ficha solo guarda el término (RN-010) | colecciones-y-vocabularios, RIA-03 | B |
 
+## JD. Ordenar los duplicados con IA (change `ia-juicio-duplicados`, 2026-11-16)
+
+Supuestos de la implementación del juicio de duplicados con Gemini y su aprobación por grupo, no confirmados con el museo ni con la jefa de práctica.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| JD1 | ¿El museo acepta aprobar fusiones en bloque, o «misma pieza» debe terminar siempre en la fusión guiada par por par? | **[SUPUESTO]** En bloque, solo para los pares sin valores en choque, después de confirmar la muestra al azar. Se conserva la pieza con código I, nada se borra y cada fusión se revierte desde la auditoría. Los que chocan van siempre a la fusión guiada | calidad-datos (RF-030), RN-005, RN-009 | A |
+| JD2 | ¿Tamaño de la muestra al azar: 5 pares fijos o un porcentaje del grupo? | **[SUPUESTO]** 5 pares, parametrizable (`duplicates.ai_judgment.sample_size`) | ia-asistiva (RIA-02), RN-010 | B |
+| JD3 | ¿Qué confianza mínima debe tener un veredicto para entrar a «misma pieza» o «distintas»? | **[SUPUESTO]** 0,85, parametrizable (`duplicates.ai_judgment.min_confidence`). Por debajo, el par va a «no está seguro» | ia-asistiva, RN-010 | B |
+| JD4 | En un par con una fila de Excel, ¿aprobar «distintas» debe decidir también la fila en su lote (entrar como pieza nueva)? | **[SUPUESTO]** No: solo marca el par como distinto, porque la fila puede tener otro par que sí sea la misma pieza. La fila la decide quien prepara la carga | importacion-datos, calidad-datos | B |
+| JD5 | ¿Cuántos pares por pedido a Gemini, dado el límite del plan? | **[SUPUESTO]** 20 por pedido, parametrizable (`duplicates.ai_judgment.batch_size`). Un lote sin respuesta se registra y se reanuda después | ia-asistiva (RNF-008) | C |
+

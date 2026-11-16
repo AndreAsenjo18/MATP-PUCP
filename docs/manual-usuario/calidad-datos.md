@@ -95,6 +95,28 @@ Cada vez que alguien registra o edita una pieza, el sistema busca solo los dupli
 
 Solo puede haber una revisión completa a la vez. Si alguien ya lanzó una, se muestra el avance de esa en vez de empezar otra.
 
+### Ordenar la cola con Gemini
+
+Si su rol puede pedir y aprobar sugerencias de IA (hoy, Administrador y Gestor de colecciones), arriba de la cola aparece **Deje que Gemini los ordene**. Gemini lee los datos de catálogo de cada par y propone si son la misma pieza. **Nada se aplica hasta que usted aprueba un grupo.**
+
+1. Pulse **Analizar con Gemini**. Verá el avance en vivo («Gemini está analizando: 40 de 102 pares») y cuántos pares van entrando a cada grupo. Puede seguir trabajando mientras tanto.
+2. Al terminar, la tarjeta muestra tres grupos con su número:
+   - **Gemini cree que son la misma pieza**.
+   - **Gemini cree que son distintas**. Incluye los pares que decide una regla: dos códigos I vigentes distintos nunca son la misma pieza, y esos pares no se le envían a Gemini.
+   - **Gemini no está seguro**.
+3. Pulse un grupo para verlo. La lista muestra cada par con el motivo de Gemini y su confianza, por ejemplo «Misma denominación y colección · Confianza 92 %». **Ver toda la cola** vuelve a la lista de siempre.
+4. **Distintas**: desmarque **Incluir en la aprobación** en los pares en los que no esté de acuerdo y pulse **Aprobar N como distintas**. Cada par queda como piezas distintas, con el motivo de Gemini en la nota.
+5. **Misma pieza**: primero revise la **muestra al azar**. Para cada par de la muestra, pulse **Sí, es la misma pieza** o **No, sacar del grupo**. Recién entonces se habilita **Aprobar N como la misma pieza**.
+   - Se fusionan solo los pares que no tienen valores en choque. Se conserva la pieza con código I y los datos vacíos se llenan con los de la otra.
+   - Si las dos fichas dicen cosas distintas en algún dato, el par dice «Elija los valores» y queda en la cola para fusionarlo par por par, eligiendo qué conservar.
+   - Una fila de Excel se resuelve hacia su pieza en su lote.
+   - Nada se borra y cada fusión se puede revertir desde la auditoría.
+6. **No está seguro**: revíselos uno por uno con **Revisar**, como siempre.
+
+Los pares que saca de un grupo no se aprueban: vuelven a la revisión a mano y aparecen en **No está seguro**. En la auditoría, cada par aprobado así figura como **sugerido por la IA y aprobado por** usted.
+
+Si Gemini no responde en una parte de los pares, la tarjeta lo dice y ofrece **Reanudar el análisis**, que analiza solo los que faltan. Sin Gemini, en la demostración o si no responde, la cola funciona como siempre, par por par.
+
 ### Fusionar dos piezas
 
 Fusionar deja **una sola ficha**. La pieza que se conserva recibe los datos de la otra; la otra queda **fusionada**: se da de baja (no se borra), se puede seguir consultando y enlaza a la que se conservó.
