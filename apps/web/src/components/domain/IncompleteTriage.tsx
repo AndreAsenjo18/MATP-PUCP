@@ -669,7 +669,8 @@ function CompletePanel({
         <PieceTextEvidence
           texts={[
             { label: "Descripción", text: detail?.description },
-            { label: "Observaciones", text: detail?.notes },
+            // Las observaciones no se envían a Gemini por defecto (RNF-014): solo si alguna cita sale de ellas.
+            { label: "Observaciones", text: proposals.some((p) => p.evidence.text_field === "notes") ? detail?.notes : null },
             { label: "Denominación", text: proposals.some((p) => p.evidence.text_field === "denomination") ? (detail?.denomination ?? item.title) : null },
           ]}
           quotes={proposals.filter((p) => stateOf(p) !== "discarded").flatMap((p) => (p.evidence.quote ? [p.evidence.quote] : []))}

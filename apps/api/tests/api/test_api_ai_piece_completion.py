@@ -31,6 +31,7 @@ DESCRIPTION = (
     "Caja de resonancia de madera de cedro, elaborada en Ayacucho. Mide 1,20 m de alto. "
     "Buen estado."
 )
+NOTES = "Observación de catálogo sintética."
 SENSITIVE = (
     "Comodante Sintético Ñandú",
     "CONV-SINTETICO-77",
@@ -272,7 +273,7 @@ def test_only_catalog_fields_reach_the_provider(
         loan_agreement_ref=SENSITIVE[1],
         recorded_by=SENSITIVE[2],
         legal_owner=SENSITIVE[3],
-        notes="Observación de catálogo sintética.",
+        notes=NOTES,
     )
     with seeded_api.system_session() as db:
         db.add(
@@ -289,7 +290,9 @@ def test_only_catalog_fields_reach_the_provider(
     assert response.status_code == 200, response.text
     [request] = received
     assert set(request["texts"]) == {"denomination", "description", "notes"}
-    assert request["texts"]["notes"] == "Observación de catálogo sintética."
+    # RNF-014: las observaciones no salen por defecto (pueden tener datos personales, CF3).
+    assert request["texts"]["notes"] is None
+    assert NOTES not in json.dumps(request, ensure_ascii=False)
     assert request["image"] is None  # comodato: la foto no sale (RN-008)
     sent = json.dumps(request, ensure_ascii=False)
     for value in SENSITIVE:
@@ -297,8 +300,26 @@ def test_only_catalog_fields_reach_the_provider(
     # Y tampoco queda en la sugerencia guardada.
     [suggestion] = _suggestions_for(seeded_api, piece_id)
     stored = json.dumps(suggestion.input_data, ensure_ascii=False)
-    for value in SENSITIVE:
+    for value in (*SENSITIVE, NOTES):
         assert value not in stored
+
+
+def test_observations_are_sent_only_when_the_flag_allows_it(
+    seeded_api: SeededApi, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    received: list[Any] = []
+
+    def spy(self: MockProvider, request: Any) -> CompletionResult:
+        received.append(request.model_dump())
+        return CompletionResult(proposals=[], not_found=list(request.fields))
+
+    monkeypatch.setattr(MockProvider, "complete_piece", spy)
+    assert completion.SEND_NOTES_TO_AI is False  # el valor del repositorio
+    monkeypatch.setattr(completion, "SEND_NOTES_TO_AI", True)
+    piece_id = _piece(seeded_api, notes=NOTES)
+    response = seeded_api.login_as("ADMIN").post(f"/api/v1/ai/pieces/{piece_id}/completion")
+    assert response.status_code == 200, response.text
+    assert received[-1]["texts"]["notes"] == NOTES
 
 
 def _photo(seeded: SeededApi, piece_id: str, *, restricted: bool = False) -> str:

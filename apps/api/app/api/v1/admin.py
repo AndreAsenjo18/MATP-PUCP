@@ -581,8 +581,9 @@ def _completion_out(suggestion: AiSuggestion, *, reused: bool) -> PieceCompletio
         503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."},
     },
     summary="«Completar ficha»: propuestas de IA para lo que le falta a la pieza, con su prueba",
-    description="Lee solo la denominación, la descripción y las observaciones de la pieza y, si "
-    "se puede, su foto principal (no se envía en comodato ni con restricción de uso, RN-008). "
+    description="Lee solo la denominación y la descripción de la pieza y, si se puede, su foto "
+    "principal (no se envía en comodato ni con restricción de uso, RN-008). Las observaciones no "
+    "se envían salvo que se habilite `SEND_NOTES_TO_AI` (RNF-014, pregunta CF3). "
     "Pide solo los campos que le faltan (`missing_fields`) y que la IA puede probar. Cada "
     "propuesta trae su prueba, verificada aquí: una cita literal de la ficha o la foto; sin "
     "prueba no hay propuesta. Queda PENDIENTE (RN-009): lo aceptado se guarda al aprobar la "

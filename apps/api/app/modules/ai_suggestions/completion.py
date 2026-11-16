@@ -3,9 +3,10 @@ RNF-014).
 
 Builds what is sent to the AI service for one piece and checks what comes back:
 
-- **What leaves the catalog** (D1): the piece's denomination, description and observations, the
-  active terms of three lists and, if allowed, its main photo. Nothing else, and never the
-  comodante, the agreement, the legal owner, the registrar or the source records.
+- **What leaves the catalog** (D1): the piece's denomination and description, the active terms
+  of three lists and, if allowed, its main photo. Not its observations unless
+  ``SEND_NOTES_TO_AI`` says so (RNF-014), and never the comodante, the agreement, the legal
+  owner, the registrar or the source records.
 - **What comes back** (D2): verified again here, whatever the provider and without importing
   the AI package (it may be deployed apart, ADR-008): a requested field, a literal quote or an
   allowed photo reading, and an active term of the museum's lists, resolved to its id.
@@ -41,8 +42,19 @@ AI_FIELDS: dict[str, str] = {
     "conservation_state_id": "conservation_status",
 }
 PIECE_FIELDS = {ai: piece for piece, ai in AI_FIELDS.items()}
-#: The only text fields of the piece that reach the provider (RNF-014).
-SENT_TEXT_FIELDS = ("denomination", "description", "notes")
+#: RNF-014 (Ley 29733): the observations may hold personal data (names, documents), so they are
+#: not sent by default. Turn this on only once the museum confirms they do not (question CF3 in
+#: docs/preguntas-contraparte.md, [SUPUESTO] pendiente). The AI service accepts them either way.
+SEND_NOTES_TO_AI = False
+#: The text fields of the piece that may reach the provider; ``notes`` only with the flag above.
+_TEXT_FIELDS = ("denomination", "description")
+
+
+def sent_text_fields() -> tuple[str, ...]:
+    """The text fields of the piece sent to the provider (RNF-014, D1)."""
+    return (*_TEXT_FIELDS, "notes") if SEND_NOTES_TO_AI else _TEXT_FIELDS
+
+
 _VOCABULARIES = {
     "category": VocabularyCode.CATEGORY,
     "materials": VocabularyCode.MATERIAL,
@@ -123,7 +135,7 @@ def build_request(
     asset = main_photo(session, piece)
     image = _image_payload(storage, asset) if asset is not None else None
     body = {
-        "texts": {name: getattr(piece, name) for name in SENT_TEXT_FIELDS},
+        "texts": {name: getattr(piece, name) for name in sent_text_fields()},
         "fields": fields,
         "vocabularies": vocabularies,
         "image": image,
