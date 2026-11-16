@@ -19,6 +19,8 @@ export default function PendientesIncompletasPage() {
         canEdit={hasPermission("pieces.update")}
         canMove={hasPermission("movements.register")}
         canUpload={hasPermission("media.upload")}
+        // Aceptar una propuesta de Gemini es aprobar una salida de la IA (ia-completar-ficha, D6).
+        canUseAi={hasPermission("ai.request") && hasPermission("ai.review")}
       />
     </PendingTabBody>
   );

@@ -11,6 +11,10 @@ from matp_ai.providers.base import AIProvider
 from matp_ai.schemas import (
     ColumnMappingCandidate,
     ColumnMappingResult,
+    CompletePieceRequest,
+    CompletionEvidence,
+    CompletionProposal,
+    CompletionResult,
     DescriptionResult,
     ExtractionResult,
     PieceContext,
@@ -102,6 +106,66 @@ _HEADER_ALIASES: dict[str, str] = {
     "codigo": "identifier",
 }
 _MAPPING_THRESHOLD = 0.72  # [SUPUESTO], igual de espíritu que SUGGEST_THRESHOLD de templates.py
+
+# «Completar ficha» (change ia-completar-ficha). Reglas [SUPUESTO] solo para que la demostración sea
+# coherente: cada propuesta sale de un fragmento literal de la ficha, nunca de otra cosa.
+_DIMENSION_AFTER_RE = re.compile(
+    rf"{_NUMBER}\s*(cm|mm|m)\s+de\s+(alto|altura|ancho|largo|profundidad|di[aá]metro)\b",
+    re.IGNORECASE,
+)
+_PLACE = r"[A-ZÁÉÍÓÚÑ][\w-]+(?:\s+(?:de\s+)?[A-ZÁÉÍÓÚÑ][\w-]+)*"
+_PROVENANCE_RE = re.compile(
+    rf"\b(?:elaborad[oa]s?|hech[oa]s?|fabricad[oa]s?|procedentes?|provenientes?|originari[oa]s?)"
+    rf"\s+(?:en|de)\s+({_PLACE})"
+)
+_YEAR = r"(?:1[5-9]\d{2}|20\d{2})\b"
+_EPOCH_RE = re.compile(
+    r"\b(?:(?i:siglos?)\s+[XVI]+\b(?:\s*(?:-|al?|y)\s*[XVI]+\b)?"
+    + r"|(?i:ca\.|circa|hacia)\s*"
+    + _YEAR
+    + r"|(?i:d[eé]cada\s+de)\s+"
+    + _YEAR
+    + r"|(?i:a[nñ]os)\s+"
+    + _YEAR
+    + r")"
+)
+_TEXT_ORDER = ("description", "notes", "denomination")
+_CATEGORY_ORDER = ("denomination", "description", "notes")
+_STATUS_CODES = {"buen": "BUENO", "regular": "REGULAR", "mal": "MALO"}
+
+
+def _folded_with_index(text: str) -> tuple[str, list[int]]:
+    """``text`` folded (lower case, no accents) and, for each folded char, its original index."""
+    chars: list[str] = []
+    index: list[int] = []
+    for position, char in enumerate(text):
+        for folded in _fold(char):
+            chars.append(folded)
+            index.append(position)
+    return "".join(chars), index
+
+
+def _find_label(text: str, label: str) -> tuple[int, int] | None:
+    """Span, in ``text``, of ``label`` as a whole word, ignoring case and accents."""
+    folded, index = _folded_with_index(text)
+    match = re.search(rf"\b{re.escape(_fold(label))}\b", folded)
+    if not match or match.end() == match.start():
+        return None
+    return index[match.start()], index[match.end() - 1] + 1
+
+
+def _texts(request: CompletePieceRequest, order: tuple[str, ...]) -> list[tuple[str, str]]:
+    return [(n, getattr(request.texts, n)) for n in order if getattr(request.texts, n)]
+
+
+def _proposal(field: str, value: str, label: str, quote: str, confidence: float):  # type: ignore[no-untyped-def]
+    return CompletionProposal(
+        field=field,  # type: ignore[arg-type]
+        value=value,
+        label=label,
+        confidence=confidence,
+        evidence=CompletionEvidence(source="text", quote=quote),
+    )
 
 
 def _best_field_for_header(header: str, target_fields: dict[str, str]) -> tuple[str | None, float]:
@@ -302,3 +366,100 @@ class MockProvider(AIProvider):
 
         result["q"] = remainder.strip() or None
         return SearchInterpretation(**result)
+
+    def complete_piece(self, request: CompletePieceRequest) -> CompletionResult:
+        """Reads only the piece's text; the photo, if any, is ignored (nothing deterministic to
+        say about it). Each proposal quotes the literal fragment it comes from (D2)."""
+        wanted = set(request.fields)
+        proposals: list[CompletionProposal] = []
+
+        if "category" in wanted:
+            proposals.extend(self._category(request))
+        if "materials" in wanted:
+            for option in request.vocabularies.materials:
+                for _name, text in _texts(request, _TEXT_ORDER):
+                    span = _find_label(text, option.label)
+                    if span:
+                        start, end = span
+                        # «madera de cedro»: the detail stays in the quote, the value is the term.
+                        detail = re.match(r"\s+de\s+[^\W\d_]+", text[end:])
+                        quote = text[start : end + (detail.end() if detail else 0)]
+                        proposals.append(
+                            _proposal("materials", option.code, option.label, quote, 0.8)
+                        )
+                        break
+        if "conservation_status" in wanted:
+            for _name, text in _texts(request, _TEXT_ORDER):
+                match = _STATUS_RE.search(text)
+                if match:
+                    code = _STATUS_CODES.get((match.group(1) or "").lower(), "EN_RESTAURACION")
+                    proposals.append(
+                        _proposal("conservation_status", code, code, match.group(0), 0.7)
+                    )
+                    break
+        if "provenance" in wanted:
+            for _name, text in _texts(request, _TEXT_ORDER):
+                match = _PROVENANCE_RE.search(text)
+                if match:
+                    place = match.group(1)
+                    proposals.append(_proposal("provenance", place, place, match.group(0), 0.7))
+                    break
+        if "epoch" in wanted:
+            for _name, text in _texts(request, _TEXT_ORDER):
+                match = _EPOCH_RE.search(text)
+                if match:
+                    epoch = match.group(0)
+                    proposals.append(_proposal("epoch", epoch, epoch, epoch, 0.75))
+                    break
+        if "dimensions_text" in wanted:
+            proposals.extend(self._dimensions(request))
+        # The service runs ``finish_completion`` on this: labels and codes are checked there.
+        return CompletionResult(
+            proposals=proposals,
+            not_found=[f for f in request.fields if all(p.field != f for p in proposals)],
+        )
+
+    def _category(self, request: CompletePieceRequest) -> list[CompletionProposal]:
+        for _name, text in _texts(request, _CATEGORY_ORDER):
+            for option in request.vocabularies.category:
+                span = _find_label(text, option.label)
+                if span:
+                    quote = text[span[0] : span[1]]
+                    return [_proposal("category", option.code, option.label, quote, 0.8)]
+            # The same keyword list as RIA-03: «charango» says «Instrumento musical».
+            codes = {o.code: o.label for o in request.vocabularies.category}
+            for keyword, vocabulary, code, _label in _KEYWORDS:
+                if vocabulary != "CATEGORY" or code not in codes:
+                    continue
+                span = _find_label(text, keyword)
+                if span:
+                    quote = text[span[0] : span[1]]
+                    return [_proposal("category", code, codes[code], quote, 0.6)]
+        return []
+
+    def _dimensions(self, request: CompletePieceRequest) -> list[CompletionProposal]:
+        for _name, text in _texts(request, _TEXT_ORDER):
+            parts: list[tuple[int, int, str]] = []
+            for match in _DIMENSION_RE.finditer(text):
+                name = _DIMENSION_NAMES.get(_fold(match.group(1)), _fold(match.group(1)))
+                parts.append(
+                    (match.start(), match.end(), f"{name} {match.group(2)} {match.group(3)}")
+                )
+            for match in _DIMENSION_AFTER_RE.finditer(text):
+                name = _DIMENSION_NAMES.get(_fold(match.group(3)), _fold(match.group(3)))
+                parts.append(
+                    (match.start(), match.end(), f"{name} {match.group(1)} {match.group(2)}")
+                )
+            if not parts:
+                match = _DIMENSION_BOX_RE.search(text)
+                if match:
+                    parts.append((match.start(), match.end(), match.group(0)))
+            if not parts:
+                continue
+            parts.sort()
+            start, end = parts[0][0], parts[-1][1]
+            if end - start > 160:  # too far apart to be one quote: keep the first one only
+                parts, end = parts[:1], parts[0][1]
+            value = " x ".join(p[2] for p in parts)
+            return [_proposal("dimensions_text", value, value, text[start:end], 0.8)]
+        return []

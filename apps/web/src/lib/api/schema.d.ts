@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7a7f3adb78493d017b87f368d079c9070e2fae6823d94c018e054d779113621d
+ * openapi-sha256: c6b156bd4db8739f0c7a6581eb04a60bb87f2a642ac3ed0cedba6893eede57bc
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -40,6 +40,26 @@ export interface paths {
          *     comodante, préstamo) porque ni siquiera se le ofrecen al modelo (D3).
          */
         post: operations["interpretSearch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/pieces/{piece_id}/completion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * «Completar ficha»: propuestas de IA para lo que le falta a la pieza, con su prueba
+         * @description Lee solo la denominación y la descripción de la pieza y, si se puede, su foto principal (no se envía en comodato ni con restricción de uso, RN-008). Las observaciones no se envían salvo que se habilite `SEND_NOTES_TO_AI` (RNF-014, pregunta CF3). Pide solo los campos que le faltan (`missing_fields`) y que la IA puede probar. Cada propuesta trae su prueba, verificada aquí: una cita literal de la ficha o la foto; sin prueba no hay propuesta. Queda PENDIENTE (RN-009): lo aceptado se guarda al aprobar la sugerencia. Si ya había una propuesta pendiente para la misma versión de la ficha, se devuelve esa (`reused`) sin volver a llamar a la IA (change `ia-completar-ficha`).
+         */
+        post: operations["suggestPieceCompletion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3428,6 +3448,54 @@ export interface components {
             /** Rules */
             rules: components["schemas"]["CompletenessRuleIn"][];
         };
+        /** CompletionEvidenceOut */
+        CompletionEvidenceOut: {
+            /**
+             * Quote
+             * @description Fragmento literal (solo `text`).
+             */
+            quote?: string | null;
+            /**
+             * Source
+             * @description `text`: cita literal de la ficha; `image`: leído de la foto principal.
+             * @enum {string}
+             */
+            source: "text" | "image";
+            /** Text Field */
+            text_field?: ("denomination" | "description" | "notes") | null;
+        };
+        /** CompletionProposalOut */
+        CompletionProposalOut: {
+            /** Confidence */
+            confidence: number;
+            evidence: components["schemas"]["CompletionEvidenceOut"];
+            /**
+             * Field
+             * @description Dato propuesto, con el nombre que se usa al aprobar.
+             * @enum {string}
+             */
+            field: "category" | "materials" | "provenance" | "epoch" | "dimensions_text" | "conservation_status";
+            /**
+             * Label
+             * @description Cómo se muestra (etiqueta del término o el texto).
+             */
+            label: string;
+            /**
+             * Piece Field
+             * @description Campo de la ficha que completa, como en `IncompletePiece.missing_fields`.
+             */
+            piece_field: string;
+            /**
+             * Term Id
+             * @description Término de la lista, si es de una.
+             */
+            term_id?: string | null;
+            /**
+             * Value
+             * @description Código del término o el texto propuesto.
+             */
+            value: string;
+        };
         /** ConcatenationSeparators */
         ConcatenationSeparators: {
             /**
@@ -6599,6 +6667,79 @@ export interface components {
             child_piece_id: string;
         };
         /**
+         * PieceCompletionOut
+         * @description «Completar ficha» (change `ia-completar-ficha`): propuestas PENDIENTES para los campos que
+         *     le faltan a la pieza, cada una con su prueba. Nada se escribe hasta que la persona acepta y
+         *     guarda (RN-009): lo aceptado se aprueba con `POST /ai/suggestions/{id}/approve`.
+         * @example {
+         *       "fields": [
+         *         "materials",
+         *         "epoch"
+         *       ],
+         *       "image_used": false,
+         *       "model": "mock-deterministic-v1",
+         *       "not_found": [
+         *         "epoch_original_text"
+         *       ],
+         *       "prompt_version": "completar-ficha-v1",
+         *       "proposals": [
+         *         {
+         *           "confidence": 0.8,
+         *           "evidence": {
+         *             "quote": "madera de cedro",
+         *             "source": "text",
+         *             "text_field": "description"
+         *           },
+         *           "field": "materials",
+         *           "label": "Madera",
+         *           "piece_field": "materials",
+         *           "term_id": "01900000-0000-7000-8000-000000000002",
+         *           "value": "MADERA"
+         *         }
+         *       ],
+         *       "provider": "mock",
+         *       "reused": false,
+         *       "suggestion_id": "01920000-0000-7000-8000-000000000901"
+         *     }
+         */
+        PieceCompletionOut: {
+            /**
+             * Fields
+             * @description Datos que se pidieron (los que le faltan a la pieza).
+             */
+            fields?: string[];
+            /**
+             * Image Used
+             * @description Si se leyó también la foto principal.
+             * @default false
+             */
+            image_used: boolean;
+            /** Model */
+            model?: string | null;
+            /**
+             * Not Found
+             * @description Campos de la ficha (`missing_fields`) que la IA no encontró en la ficha.
+             */
+            not_found?: string[];
+            /** Prompt Version */
+            prompt_version?: string | null;
+            /** Proposals */
+            proposals?: components["schemas"]["CompletionProposalOut"][];
+            /** Provider */
+            provider?: string | null;
+            /**
+             * Reused
+             * @description La misma propuesta pendiente de antes; no se volvió a llamar a la IA.
+             * @default false
+             */
+            reused: boolean;
+            /**
+             * Suggestion Id
+             * @description Sugerencia pendiente; null si no había nada que pedir.
+             */
+            suggestion_id?: string | null;
+        };
+        /**
          * PieceCreate
          * @example {
          *       "collection_id": "01920000-0000-7000-8000-000000000201",
@@ -8648,6 +8789,73 @@ export interface operations {
             };
             /** @description El rol no tiene el permiso requerido. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El servicio de IA no respondió. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    suggestPieceCompletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                piece_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceCompletionOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description La pieza no existe. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

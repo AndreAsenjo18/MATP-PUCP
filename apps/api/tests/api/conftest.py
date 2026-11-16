@@ -8,6 +8,7 @@ guide in ``docs/api/README.md``. The ``X-MATP-User`` header (``as_user``) still 
 """
 
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -149,8 +150,11 @@ def login_client(app: FastAPI, engine: Engine, who: str, *, base_url: str = BASE
     return client
 
 
-@pytest.fixture(scope="session")
-def seeded_api() -> Iterator[SeededApi]:
+@contextmanager
+def build_seeded_api() -> Iterator[SeededApi]:
+    """A fresh seeded database with its application. ``seeded_api`` shares one across the
+    session; a module whose tests create pieces builds its own so the counts of other modules
+    stay as the seed left them."""
     engine = create_engine(
         "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
     )
@@ -164,6 +168,12 @@ def seeded_api() -> Iterator[SeededApi]:
     with TestClient(app) as client:
         yield SeededApi(engine=engine, app=app, client=client, summary=summary)
     engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def seeded_api() -> Iterator[SeededApi]:
+    with build_seeded_api() as seeded:
+        yield seeded
 
 
 @pytest.fixture

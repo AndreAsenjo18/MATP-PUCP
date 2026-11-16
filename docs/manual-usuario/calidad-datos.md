@@ -194,6 +194,20 @@ El **código I** no se completa en este panel: lo asigna quien marca la pieza f�
 
 Cada sección del panel aparece solo si su rol puede hacer ese cambio (editar fichas, registrar movimientos o subir fotos). Si algo no se guarda, el panel lo dice en rojo y no avanza.
 
+#### Completar con Gemini
+
+Si su rol puede pedir y aprobar sugerencias de IA (hoy, Administrador y Gestor de colecciones), al abrir el panel Gemini lee **solo lo que ya dice esa ficha**: la denominación, la descripción y, si se puede, la foto principal. Las observaciones no se le envían, porque pueden tener datos personales. Con eso propone valores para los datos que faltan.
+
+1. Mientras lee, el panel dice «Gemini está leyendo la ficha…». Puede ir llenando lo demás.
+2. Cada propuesta aparece en su campo como **Sugerido por Gemini**, con su prueba debajo, por ejemplo «De la descripción: «madera de cedro»». La cita también queda resaltada en **Lo que ya dice la ficha**. Si viene de la foto dice **De la foto principal**.
+3. **Aceptar** llena el campo con la propuesta; si quiere, corríjala después. **Descartar** la quita. **Deshacer** y **Volver a ver** revierten lo que hizo.
+4. Si la ficha no dice un dato, Gemini no lo inventa: el panel dice, por ejemplo, «Gemini no encontró la época en la ficha». Complételo a mano si lo sabe.
+5. Pulse **Guardar y siguiente**. Solo se guarda lo que aceptó. Lo aceptado queda en la historia de la ficha como **propuesto por la IA y aprobado por usted**. Lo que no aceptó no se guarda nunca. **Saltar** o cerrar el panel no guarda nada.
+
+Los materiales, la categoría y el estado de conservación se eligen siempre de las listas del museo. Si la ficha dice «madera de cedro», Gemini propone **Madera** y la cita deja a la vista el detalle. La foto no se envía si la pieza está en comodato o la foto tiene una restricción de uso.
+
+Sin Gemini disponible, en la demostración o si no responde, el panel es el de siempre: los campos vacíos para completarlos a mano.
+
 ### Reporte de piezas incompletas (Reportes)
 
 El reporte de siempre sigue en **Reportes**. Allí, la pestaña **Información incompleta** lista las piezas que tienen alguna alerta activa, ordenadas de la que tiene más alertas a la que tiene menos:

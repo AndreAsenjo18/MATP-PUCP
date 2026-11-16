@@ -31,6 +31,7 @@ from app.api.stubs import (
 )
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
+from app.modules.ai_suggestions import completion
 from app.modules.ai_suggestions.apply import apply_approved
 from app.modules.ai_suggestions.client import AiServiceClient
 from app.modules.ai_suggestions.models import AiFunction, AiSuggestion, SuggestionStatus
@@ -52,6 +53,7 @@ from app.modules.ai_suggestions.schemas import (
     ColumnMappingSuggestRequest,
     InterpretedFilters,
     InterpretSearchRequest,
+    PieceCompletionOut,
     SearchOptionIn,
 )
 from app.modules.audit.context import AuditContext, audit_context
@@ -556,6 +558,85 @@ def suggest_cataloging(
     return AiSuggestionOut.model_validate(suggestion)
 
 
+def _completion_out(suggestion: AiSuggestion, *, reused: bool) -> PieceCompletionOut:
+    data = suggestion.output_data or {}
+    return PieceCompletionOut(
+        suggestion_id=suggestion.id,
+        provider=suggestion.provider,
+        model=suggestion.model,
+        prompt_version=data.get("prompt_version"),
+        fields=list((suggestion.input_data or {}).get("fields", [])),
+        proposals=data.get("fields", []),
+        not_found=data.get("not_found", []),
+        image_used=bool((suggestion.input_data or {}).get("image_media_id")),
+        reused=reused,
+    )
+
+
+@router.post(
+    "/ai/pieces/{piece_id}/completion",
+    response_model=PieceCompletionOut,
+    responses={
+        404: {"model": ErrorResponse, "description": "La pieza no existe."},
+        503: {"model": ErrorResponse, "description": "El servicio de IA no respondió."},
+    },
+    summary="«Completar ficha»: propuestas de IA para lo que le falta a la pieza, con su prueba",
+    description="Lee solo la denominación y la descripción de la pieza y, si se puede, su foto "
+    "principal (no se envía en comodato ni con restricción de uso, RN-008). Las observaciones no "
+    "se envían salvo que se habilite `SEND_NOTES_TO_AI` (RNF-014, pregunta CF3). "
+    "Pide solo los campos que le faltan (`missing_fields`) y que la IA puede probar. Cada "
+    "propuesta trae su prueba, verificada aquí: una cita literal de la ficha o la foto; sin "
+    "prueba no hay propuesta. Queda PENDIENTE (RN-009): lo aceptado se guarda al aprobar la "
+    "sugerencia. Si ya había una propuesta pendiente para la misma versión de la ficha, se "
+    "devuelve esa (`reused`) sin volver a llamar a la IA (change `ia-completar-ficha`).",
+    tags=["IA asistiva"],
+    **implemented(),
+)
+def suggest_piece_completion(
+    piece_id: uuid.UUID, user: AiRequester, session: SessionDep, request: Request
+) -> PieceCompletionOut:
+    piece = get_piece(session, piece_id)
+    fields = completion.completable_fields(session, piece)
+    if not fields:
+        return PieceCompletionOut()
+    previous = completion.reusable_suggestion(session, piece, fields)
+    if previous is not None:
+        return _completion_out(previous, reused=True)
+    body, asset = completion.build_request(
+        session, getattr(request.app.state, "storage", None), piece, fields
+    )
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    envelope = client.complete_piece(body)
+    result = envelope.get("result") or {}
+    proposals, not_found = completion.verified_fields(
+        session, body, list(result.get("proposals") or [])
+    )
+    prompt_version = result.get("prompt_version")
+    suggestion_id = new_uuid()
+    suggestion = AiSuggestion(
+        id=suggestion_id,
+        function_code=AiFunction.RIA_01_EXTRACT_STRUCTURED,
+        status=SuggestionStatus.PENDING,
+        provider=envelope["provider"],
+        model=envelope["model"],
+        piece_id=piece.id,
+        input_data=completion.input_data(piece, body, asset, prompt_version),
+        output_data={
+            "fields": proposals,
+            "not_found": [completion.PIECE_FIELDS[f] for f in not_found],
+            "prompt_version": prompt_version,
+        },
+        requested_by_id=user.id,
+    )
+    with audit_context(
+        session,
+        AuditContext(origin=AuditOrigin.AI, user_id=user.id, origin_ref=str(suggestion_id)),
+    ):
+        session.add(suggestion)
+        session.commit()
+    return _completion_out(suggestion, reused=False)
+
+
 @router.post(
     "/ai/suggest-column-mapping",
     response_model=ColumnMappingSuggestionOut,
@@ -676,6 +757,9 @@ def approve_ai_suggestion(
     approved_fields = body.approved_data.get("fields", [])
     if not approved_fields:
         raise ValidationFailed("Debe aprobar al menos un dato propuesto.", code="empty_approval")
+    if completion.is_completion(suggestion):
+        # «Completar ficha»: only what the AI proposed is approved as coming from it (D3).
+        completion.check_approval(suggestion, approved_fields)
     total_fields = len(suggestion.output_data.get("fields", []))
     suggestion.approved_data = body.approved_data
     suggestion.status = (

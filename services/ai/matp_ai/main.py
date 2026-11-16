@@ -13,6 +13,8 @@ from matp_ai.providers import AIProvider, ProviderUnavailable, get_provider
 from matp_ai.schemas import (
     ColumnMappingRequest,
     ColumnMappingResult,
+    CompletePieceRequest,
+    CompletionResult,
     DescriptionResult,
     ErrorResponse,
     ExtractionResult,
@@ -22,6 +24,7 @@ from matp_ai.schemas import (
     SearchInterpretRequest,
     SuggestionEnvelope,
     TermSuggestionResult,
+    finish_completion,
 )
 
 ERRORS: dict[int | str, dict[str, object]] = {
@@ -122,6 +125,24 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
             provider=provider.name,
             model=provider.model,
             result=provider.describe(body),
+        )
+
+    @app.post(
+        "/v1/complete-piece",
+        response_model=SuggestionEnvelope[CompletionResult],
+        responses=ERRORS,
+        tags=["IA asistiva"],
+        summary="RIA-01/RIA-03: proponer los datos que le faltan a una pieza, con su prueba",
+    )
+    def complete_piece(body: CompletePieceRequest) -> SuggestionEnvelope[CompletionResult]:
+        result = provider.complete_piece(body)
+        # Whatever the provider says, only verified proposals leave the service (D2).
+        checked = finish_completion(result.proposals, body)
+        return SuggestionEnvelope[CompletionResult](
+            function_code="RIA_01",
+            provider=provider.name,
+            model=provider.model,
+            result=checked,
         )
 
     @app.post(

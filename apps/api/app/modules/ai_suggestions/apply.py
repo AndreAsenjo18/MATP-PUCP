@@ -12,6 +12,11 @@ applies whatever was approved, not what the AI originally proposed. An optional
 ``approved_data.dimensions_text`` lets the reviewer also replace the free-text "Medidas" field
 with their own wording when approving — the AI never writes to it on its own (decisión del
 equipo, 2026-11-04).
+
+«Completar ficha» (change ia-completar-ficha, D3) adds ``category``, ``materials`` (one term code
+per item), ``provenance``, ``epoch`` and ``dimensions_text``: the person accepted or corrected each
+of them in the panel, and saving is the approval. They only fill what the piece is missing (task
+2.3); the bulk-import grid keeps validating only RIA-01's fields (``validate_field_value``).
 """
 
 from typing import Any
@@ -22,11 +27,18 @@ from sqlalchemy.orm import Session
 from app.core.errors import BusinessRuleViolation, ValidationFailed
 from app.modules.ai_suggestions.models import AiSuggestion, SuggestionStatus
 from app.modules.catalog.conservation import record_assessment
-from app.modules.catalog.models import Piece
-from app.modules.catalog.service import update_piece
+from app.modules.catalog.models import Piece, PieceMaterial
+from app.modules.catalog.service import set_materials, update_piece
 from app.modules.collections.models import Term, Vocabulary, VocabularyCode
 
-APPLICABLE_FIELDS = frozenset({"dimensions", "conservation_status", "review_marks"})
+#: RIA-01 extraction (``suggest-cataloging`` and the bulk-import grid).
+EXTRACTION_FIELDS = frozenset({"dimensions", "conservation_status", "review_marks"})
+#: «Completar ficha» (change ia-completar-ficha): the same names as the AI service's request.
+COMPLETION_FIELDS = frozenset(
+    {"category", "materials", "provenance", "epoch", "dimensions_text", "conservation_status"}
+)
+APPLICABLE_FIELDS = EXTRACTION_FIELDS | COMPLETION_FIELDS
+_TEXT_FIELDS = {"provenance": 300, "epoch": 200, "dimensions_text": 2000}
 
 
 def validate_field_value(field: str, value: Any) -> None:
@@ -34,7 +46,7 @@ def validate_field_value(field: str, value: Any) -> None:
     invalid edit as soon as the person makes it, instead of only when the whole batch is
     applied. Does not check a ``conservation_status`` code against the vocabulary (needs a
     session); ``apply_approved`` still does that when the value is actually applied."""
-    if field not in APPLICABLE_FIELDS:
+    if field not in EXTRACTION_FIELDS:
         raise ValidationFailed(
             f"Tipo de dato de IA no reconocido: {field!r}.", code="unknown_suggestion_field"
         )
@@ -66,6 +78,8 @@ def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> 
     dimensions_text = (suggestion.approved_data or {}).get("dimensions_text")
     new_dimensions: list[dict[str, Any]] = []
     extra_notes: list[str] = []
+    changes: dict[str, Any] = {}
+    material_codes: list[str] = []
     for item in approved_fields:
         field = item.get("field")
         value = item.get("value")
@@ -75,11 +89,17 @@ def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> 
             _apply_conservation_status(session, piece, value, suggestion)
         elif field == "review_marks":
             extra_notes.append(_review_mark_note(value))
+        elif field == "category":
+            changes["category_id"] = _active_term(session, VocabularyCode.CATEGORY, value).id
+        elif field == "materials":
+            material_codes.extend(value if isinstance(value, list) else [value])
+        elif field in _TEXT_FIELDS:
+            column = "epoch_original_text" if field == "epoch" else field
+            changes[column] = _clean_text(field, value)
         elif field not in APPLICABLE_FIELDS | {"exhibitions"}:
             raise ValidationFailed(
                 f"Tipo de dato de IA no reconocido: {field!r}.", code="unknown_suggestion_field"
             )
-    changes: dict[str, Any] = {}
     if new_dimensions:
         # Approving the same dimension again (e.g. a corrected "alto") replaces it instead of
         # piling up duplicates; a dimension not touched by this suggestion is kept as-is.
@@ -103,6 +123,52 @@ def apply_approved(session: Session, suggestion: AiSuggestion, piece: Piece) -> 
             changes["notes"] = (existing + "\n" if existing else "") + "\n".join(new_lines)
     if changes:
         update_piece(session, piece, **changes)
+    if material_codes:
+        # Added to what the piece already has: an accepted material never removes another one.
+        terms = [_active_term(session, VocabularyCode.MATERIAL, code) for code in material_codes]
+        current = session.scalars(
+            select(PieceMaterial.term_id).where(
+                PieceMaterial.piece_id == piece.id, PieceMaterial.deleted_at.is_(None)
+            )
+        ).all()
+        set_materials(session, piece, list(dict.fromkeys([*current, *(t.id for t in terms)])))
+
+
+def _active_term(session: Session, vocabulary: VocabularyCode, code: Any) -> Term:
+    term = (
+        session.scalar(
+            select(Term)
+            .join(Vocabulary, Vocabulary.id == Term.vocabulary_id)
+            .where(
+                Vocabulary.code == vocabulary,
+                Term.code == code,
+                Term.is_active.is_(True),
+                Term.deleted_at.is_(None),
+            )
+        )
+        if isinstance(code, str)
+        else None
+    )
+    if term is None:
+        raise ValidationFailed(
+            f"{code!r} no es un término activo de la lista; elija uno vigente.",
+            code="invalid_suggested_term",
+        )
+    return term
+
+
+def _clean_text(field: str, value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValidationFailed(
+            "El dato aceptado no puede quedar vacío.", code="invalid_suggested_text"
+        )
+    text = value.strip()
+    if len(text) > _TEXT_FIELDS[field]:
+        raise ValidationFailed(
+            f"El dato aceptado supera los {_TEXT_FIELDS[field]} caracteres.",
+            code="invalid_suggested_text",
+        )
+    return text
 
 
 def _clean_dimension(value: Any) -> dict[str, Any]:

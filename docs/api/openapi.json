@@ -2638,6 +2638,116 @@
         "title": "CompletenessRulesUpdate",
         "type": "object"
       },
+      "CompletionEvidenceOut": {
+        "properties": {
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fragmento literal (solo `text`).",
+            "title": "Quote"
+          },
+          "source": {
+            "description": "`text`: cita literal de la ficha; `image`: leído de la foto principal.",
+            "enum": [
+              "text",
+              "image"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text_field": {
+            "anyOf": [
+              {
+                "enum": [
+                  "denomination",
+                  "description",
+                  "notes"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Field"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "CompletionEvidenceOut",
+        "type": "object"
+      },
+      "CompletionProposalOut": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/CompletionEvidenceOut"
+          },
+          "field": {
+            "description": "Dato propuesto, con el nombre que se usa al aprobar.",
+            "enum": [
+              "category",
+              "materials",
+              "provenance",
+              "epoch",
+              "dimensions_text",
+              "conservation_status"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "label": {
+            "description": "Cómo se muestra (etiqueta del término o el texto).",
+            "title": "Label",
+            "type": "string"
+          },
+          "piece_field": {
+            "description": "Campo de la ficha que completa, como en `IncompletePiece.missing_fields`.",
+            "title": "Piece Field",
+            "type": "string"
+          },
+          "term_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Término de la lista, si es de una.",
+            "title": "Term Id"
+          },
+          "value": {
+            "description": "Código del término o el texto propuesto.",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "piece_field",
+          "value",
+          "label",
+          "confidence",
+          "evidence"
+        ],
+        "title": "CompletionProposalOut",
+        "type": "object"
+      },
       "ConcatenationSeparators": {
         "properties": {
           "separators": {
@@ -9592,6 +9702,126 @@
         "title": "PieceChildLink",
         "type": "object"
       },
+      "PieceCompletionOut": {
+        "description": "«Completar ficha» (change `ia-completar-ficha`): propuestas PENDIENTES para los campos que\nle faltan a la pieza, cada una con su prueba. Nada se escribe hasta que la persona acepta y\nguarda (RN-009): lo aceptado se aprueba con `POST /ai/suggestions/{id}/approve`.",
+        "examples": [
+          {
+            "fields": [
+              "materials",
+              "epoch"
+            ],
+            "image_used": false,
+            "model": "mock-deterministic-v1",
+            "not_found": [
+              "epoch_original_text"
+            ],
+            "prompt_version": "completar-ficha-v1",
+            "proposals": [
+              {
+                "confidence": 0.8,
+                "evidence": {
+                  "quote": "madera de cedro",
+                  "source": "text",
+                  "text_field": "description"
+                },
+                "field": "materials",
+                "label": "Madera",
+                "piece_field": "materials",
+                "term_id": "01900000-0000-7000-8000-000000000002",
+                "value": "MADERA"
+              }
+            ],
+            "provider": "mock",
+            "reused": false,
+            "suggestion_id": "01920000-0000-7000-8000-000000000901"
+          }
+        ],
+        "properties": {
+          "fields": {
+            "description": "Datos que se pidieron (los que le faltan a la pieza).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "image_used": {
+            "default": false,
+            "description": "Si se leyó también la foto principal.",
+            "title": "Image Used",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "not_found": {
+            "description": "Campos de la ficha (`missing_fields`) que la IA no encontró en la ficha.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/CompletionProposalOut"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "reused": {
+            "default": false,
+            "description": "La misma propuesta pendiente de antes; no se volvió a llamar a la IA.",
+            "title": "Reused",
+            "type": "boolean"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Sugerencia pendiente; null si no había nada que pedir.",
+            "title": "Suggestion Id"
+          }
+        },
+        "title": "PieceCompletionOut",
+        "type": "object"
+      },
       "PieceCreate": {
         "examples": [
           {
@@ -13948,6 +14178,96 @@
           }
         ],
         "summary": "Traducir una frase de búsqueda (lenguaje natural o voz) a los filtros ya existentes",
+        "tags": [
+          "IA asistiva"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/ai/pieces/{piece_id}/completion": {
+      "post": {
+        "description": "Lee solo la denominación y la descripción de la pieza y, si se puede, su foto principal (no se envía en comodato ni con restricción de uso, RN-008). Las observaciones no se envían salvo que se habilite `SEND_NOTES_TO_AI` (RNF-014, pregunta CF3). Pide solo los campos que le faltan (`missing_fields`) y que la IA puede probar. Cada propuesta trae su prueba, verificada aquí: una cita literal de la ficha o la foto; sin prueba no hay propuesta. Queda PENDIENTE (RN-009): lo aceptado se guarda al aprobar la sugerencia. Si ya había una propuesta pendiente para la misma versión de la ficha, se devuelve esa (`reused`) sin volver a llamar a la IA (change `ia-completar-ficha`).",
+        "operationId": "suggestPieceCompletion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "piece_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Piece Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PieceCompletionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "La pieza no existe."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El servicio de IA no respondió."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "«Completar ficha»: propuestas de IA para lo que le falta a la pieza, con su prueba",
         "tags": [
           "IA asistiva"
         ],

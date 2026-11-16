@@ -4,7 +4,9 @@ Speaks the OpenAI-compatible Chat Completions shape, so any provider that offers
 compatibility layer works through LLM_BASE_URL/LLM_API_KEY/LLM_MODEL without code changes —
 Gemini's free tier (https://generativelanguage.googleapis.com/v1beta/openai/) included.
 
-Only RIA-01 (``extract_structured``) is implemented for real. ``suggest_terms`` and
+Implemented for real: RIA-01 (``extract_structured``), the column mapping of the bulk load, the
+search interpretation (RIA-06) and «Completar ficha» (``complete_piece``, change
+``ia-completar-ficha``), which may send the piece's photo as an image. ``suggest_terms`` and
 ``describe`` (RIA-03/04, change ``ia-sugerencia-terminos``) stay unavailable.
 """
 
@@ -16,8 +18,13 @@ import httpx2 as httpx
 from matp_ai.config import Settings
 from matp_ai.providers.base import AIProvider, ProviderUnavailable
 from matp_ai.schemas import (
+    COMPLETION_PROMPT_VERSION,
+    IMAGE_MIN_CONFIDENCE,
     ColumnMappingCandidate,
     ColumnMappingResult,
+    CompletePieceRequest,
+    CompletionProposal,
+    CompletionResult,
     DescriptionResult,
     ExtractionResult,
     PieceContext,
@@ -54,6 +61,56 @@ parafrasear, sin traducir, sin corregir tildes).
 - Si no hay datos reconocibles de ningún tipo, devuelve {"fields": []}.
 - No inventes datos que no estén en el texto. No agregues campos fuera de los cuatro listados.
 """
+
+
+#: «Completar ficha» (change ia-completar-ficha, D4). Versión: ``COMPLETION_PROMPT_VERSION``.
+_COMPLETION_FIELD_RULES = {
+    "category": "el código EXACTO de una de estas categorías (código: nombre): {options}",
+    "materials": "un elemento por cada material, con el código EXACTO de uno de estos materiales "
+    "(código: nombre): {options}",
+    "conservation_status": "el código EXACTO de uno de estos estados de conservación "
+    "(código: nombre): {options}",
+    "provenance": "el lugar de procedencia tal como lo escribe la ficha",
+    "epoch": 'la época o fecha tal como la escribe la ficha (por ejemplo "siglo XX" o "ca. 1950")',
+    "dimensions_text": 'las medidas en un texto breve, por ejemplo "alto 35 cm x ancho 20 cm"',
+}
+
+
+def _completion_system_prompt(request: CompletePieceRequest) -> str:
+    def _options(field: str) -> str:
+        items = getattr(request.vocabularies, field, [])
+        return json.dumps({o.code: o.label for o in items}, ensure_ascii=False)
+
+    rules = "\n".join(
+        f'- "{field}": ' + _COMPLETION_FIELD_RULES[field].format(options=_options(field))
+        for field in dict.fromkeys(request.fields)
+    )
+    image_rule = (
+        '- Se adjunta una foto de la pieza. Solo para "category", "materials" o '
+        '"conservation_status" puedes usar {"source": "image"} sin cita, y solo si se ve con '
+        f"claridad (confianza {IMAGE_MIN_CONFIDENCE} o más).\n"
+        if request.image is not None
+        else ""
+    )
+    return (
+        "Completas la ficha de una pieza de un museo peruano leyendo SOLO lo que dice su propia "
+        "ficha"
+        + (" y su foto" if request.image is not None else "")
+        + ". No uses conocimiento general ni externo. Devuelve SOLO un objeto JSON, sin "
+        "explicación ni markdown, con esta forma exacta:\n\n"
+        '{"proposals": [{"field": "<campo>", "value": "<valor>", "confidence": <0 a 1>, '
+        '"evidence": {"source": "text", "quote": "<fragmento literal de la ficha>"}}], '
+        '"not_found": ["<campo>"]}\n\n'
+        f'Campos pedidos y qué va en "value":\n{rules}\n\n'
+        "Reglas:\n"
+        '- "quote" MUST ser una subcadena EXACTA y literal de la ficha: sin parafrasear, sin '
+        "traducir y sin corregir tildes ni mayúsculas.\n"
+        + image_rule
+        + "- Sin prueba no hay propuesta. Si la ficha no dice un campo, ponlo en "
+        '"not_found". No deduzcas datos por el estilo, la técnica ni lo que suele ser '
+        "habitual: por ejemplo, no propongas una época que la ficha no escribe.\n"
+        "- No propongas campos que no estén en la lista de campos pedidos."
+    )
 
 
 class LLMProvider(AIProvider):
@@ -173,6 +230,57 @@ class LLMProvider(AIProvider):
         }
         raw = self._chat_completion(payload)
         return self._parse_search_interpretation(raw, valid_values)
+
+    def complete_piece(self, request: CompletePieceRequest) -> CompletionResult:
+        texts = request.texts
+        lines = [f"Denominación: {texts.denomination}"]
+        if texts.description:
+            lines.append(f"Descripción: {texts.description}")
+        if texts.notes:
+            lines.append(f"Observaciones: {texts.notes}")
+        user_text = "Ficha de la pieza:\n" + "\n".join(lines)
+        user_content: Any = user_text
+        if request.image is not None:
+            # OpenAI-compatible multimodal message; Gemini accepts the image as a data URL.
+            user_content = [
+                {"type": "text", "text": user_text},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{request.image.media_type};base64,{request.image.data_base64}"
+                    },
+                },
+            ]
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": _completion_system_prompt(request)},
+                {"role": "user", "content": user_content},
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        data = self._json_object(self._chat_completion(payload))
+        proposals: list[CompletionProposal] = []
+        for item in data.get("proposals", []) if isinstance(data, dict) else []:
+            try:
+                proposals.append(CompletionProposal.model_validate({"label": "", **item}))
+            except Exception:  # noqa: BLE001 — an un-parseable item is skipped, not fatal
+                continue
+        # ``not_found`` is recomputed by the service from what survives verification (D2).
+        return CompletionResult(proposals=proposals, prompt_version=COMPLETION_PROMPT_VERSION)
+
+    def _json_object(self, raw: str) -> Any:
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.strip("`")
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:]
+            cleaned = cleaned.strip()
+        try:
+            return json.loads(cleaned)
+        except ValueError as exc:
+            raise ProviderUnavailable(f"El proveedor de IA no devolvió JSON válido: {exc}") from exc
 
     def _chat_completion(self, payload: dict[str, Any]) -> str:
         if not self.base_url or not self._api_key:
