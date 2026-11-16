@@ -118,3 +118,21 @@ class AiServiceClient:
                 details={"upstream_status": response.status_code},
             )
         return response.json()
+
+    def judge_duplicates(self, body: dict[str, Any]) -> dict[str, Any]:
+        """RIA-02 (change ia-juicio-duplicados). Raises ``ServiceUnavailable`` (503) on any
+        failure or timeout; the run records the batch as failed and goes on (D7)."""
+        try:
+            response = self._client.post("/v1/judge-duplicates", json=body)
+        except httpx.HTTPError as exc:
+            raise ServiceUnavailable(
+                "El servicio de IA no respondió a tiempo. La cola no cambió.",
+                code="ai_unavailable",
+            ) from exc
+        if response.status_code >= 400:
+            raise ServiceUnavailable(
+                "El servicio de IA no está disponible en este momento. La cola no cambió.",
+                code="ai_unavailable",
+                details={"upstream_status": response.status_code},
+            )
+        return response.json()

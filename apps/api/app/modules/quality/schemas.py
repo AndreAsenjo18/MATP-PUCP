@@ -437,3 +437,105 @@ class QualityJobOut(BaseModel):
     )
     duration_ms: int | None
     error_message: str | None
+
+
+# ------------------------------------------------- juicio con IA (change ia-juicio-duplicados)
+class AiJudgmentStart(BaseModel):
+    """Body of ``POST /quality/duplicates/ai-runs``: a new run, or one resumed (D7)."""
+
+    resume_run_id: uuid.UUID | None = Field(
+        None, description="Corrida que se reanuda: solo se juzgan sus pares aún sin veredicto."
+    )
+
+
+class AiRunGroupCounts(BaseModel):
+    same: int = Field(ge=0, description="Gemini cree que son la misma pieza.")
+    distinct: int = Field(ge=0, description="Gemini cree que son distintas (incluye las reglas).")
+    unsure: int = Field(ge=0, description="Gemini no está seguro, o la persona los sacó.")
+    by_rule: int = Field(ge=0, description="De las distintas, cuántas decidió una regla.")
+
+
+class AiDuplicateRunOut(BaseModel):
+    """An AI judgment of the queue (RIA-02): progress, failed batches and pending pairs by group.
+    Nothing is applied until a person approves a group (RN-009)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "01920000-0000-7000-8000-000000000931",
+                    "status": "SUCCEEDED",
+                    "total_pairs": 102,
+                    "processed_pairs": 102,
+                    "failed_batches": 0,
+                    "started_at": EX_DATETIME,
+                    "finished_at": EX_DATETIME,
+                    "error_message": None,
+                    "groups": {"same": 41, "distinct": 46, "unsure": 15, "by_rule": 6},
+                    "min_confidence": 0.85,
+                    "can_resume": False,
+                }
+            ]
+        }
+    )
+
+    id: uuid.UUID
+    status: QualityJobStatus
+    total_pairs: int = Field(ge=0)
+    processed_pairs: int = Field(ge=0)
+    failed_batches: int = Field(ge=0, description="Lotes sin respuesta de la IA; se reanudan.")
+    started_at: datetime | None
+    finished_at: datetime | None
+    error_message: str | None
+    groups: AiRunGroupCounts
+    min_confidence: float = Field(ge=0, le=1, description="Umbral de los grupos (RN-010).")
+    can_resume: bool = Field(description="Quedan pares de la corrida sin veredicto.")
+
+
+class AiVerdictOut(BaseModel):
+    verdict: Literal["same", "distinct", "unsure"]
+    confidence: float = Field(ge=0, le=1)
+    reason: str
+    source: Literal["rule", "ai", "review"] = Field(
+        description="`rule`: lo decidió una regla; `ai`: la IA; `review`: una persona lo sacó "
+        "de su grupo."
+    )
+
+
+class AiGroupPairOut(BaseModel):
+    candidate: DuplicateCandidateOut
+    verdict: AiVerdictOut
+    ready_to_merge: bool | None = Field(
+        None,
+        description="Solo en «misma pieza» con dos piezas: se fusiona al aprobar sin elegir "
+        "valores. `false` = hay que elegirlos en la revisión par por par.",
+    )
+    merge_blocker: str | None = Field(None, description="Por qué no se fusiona al aprobar.")
+
+
+class AiGroupApproval(BaseModel):
+    excluded_candidate_ids: list[uuid.UUID] = Field(
+        default_factory=list, description="Pares que se sacan del grupo: vuelven a la revisión."
+    )
+    confirmed_sample_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Pares de la muestra al azar que la persona confirmó (obligatorio en «misma "
+        "pieza», D6).",
+    )
+
+
+class AiSkippedPair(BaseModel):
+    candidate_id: uuid.UUID
+    reason: str
+
+
+class AiGroupApprovalOut(BaseModel):
+    group: Literal["same", "distinct"]
+    resolved: int = Field(ge=0, description="Pares marcados como distintos.")
+    merged: int = Field(ge=0, description="Pares de dos piezas fusionados.")
+    rows_decided: int = Field(ge=0, description="Filas de Excel resueltas hacia su pieza.")
+    excluded: int = Field(ge=0, description="Pares sacados del grupo.")
+    needs_choice: int = Field(
+        ge=0, description="Pares «misma pieza» que esperan la elección de valores."
+    )
+    skipped: list[AiSkippedPair] = Field(default_factory=list)

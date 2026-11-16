@@ -234,7 +234,12 @@ def recover_interrupted_scans(factory: SessionFactory) -> int:
         ).all()
         stale = [job for job in jobs if is_stale(job.heartbeat_at)]
         for job in stale:
-            _fail(job, "Detección interrumpida por un reinicio del servicio; vuelva a lanzarla.")
+            _fail(
+                job,
+                "Análisis interrumpido por un reinicio del servicio; puede reanudarlo."
+                if job.job_type == QualityJobType.AI_DUPLICATE_JUDGMENT
+                else "Detección interrumpida por un reinicio del servicio; vuelva a lanzarla.",
+            )
         session.commit()
         return len(stale)
     finally:

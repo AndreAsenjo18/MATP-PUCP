@@ -141,6 +141,119 @@
         "title": "AiBatchOut",
         "type": "object"
       },
+      "AiDuplicateRunOut": {
+        "description": "An AI judgment of the queue (RIA-02): progress, failed batches and pending pairs by group.\nNothing is applied until a person approves a group (RN-009).",
+        "examples": [
+          {
+            "can_resume": false,
+            "failed_batches": 0,
+            "finished_at": "2026-09-17T10:30:00Z",
+            "groups": {
+              "by_rule": 6,
+              "distinct": 46,
+              "same": 41,
+              "unsure": 15
+            },
+            "id": "01920000-0000-7000-8000-000000000931",
+            "min_confidence": 0.85,
+            "processed_pairs": 102,
+            "started_at": "2026-09-17T10:30:00Z",
+            "status": "SUCCEEDED",
+            "total_pairs": 102
+          }
+        ],
+        "properties": {
+          "can_resume": {
+            "description": "Quedan pares de la corrida sin veredicto.",
+            "title": "Can Resume",
+            "type": "boolean"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "failed_batches": {
+            "description": "Lotes sin respuesta de la IA; se reanudan.",
+            "minimum": 0.0,
+            "title": "Failed Batches",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "groups": {
+            "$ref": "#/components/schemas/AiRunGroupCounts"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "min_confidence": {
+            "description": "Umbral de los grupos (RN-010).",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Confidence",
+            "type": "number"
+          },
+          "processed_pairs": {
+            "minimum": 0.0,
+            "title": "Processed Pairs",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/QualityJobStatus"
+          },
+          "total_pairs": {
+            "minimum": 0.0,
+            "title": "Total Pairs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "total_pairs",
+          "processed_pairs",
+          "failed_batches",
+          "started_at",
+          "finished_at",
+          "error_message",
+          "groups",
+          "min_confidence",
+          "can_resume"
+        ],
+        "title": "AiDuplicateRunOut",
+        "type": "object"
+      },
       "AiFunction": {
         "enum": [
           "RIA_01",
@@ -151,6 +264,204 @@
         ],
         "title": "AiFunction",
         "type": "string"
+      },
+      "AiGroupApproval": {
+        "properties": {
+          "confirmed_sample_ids": {
+            "description": "Pares de la muestra al azar que la persona confirmó (obligatorio en «misma pieza», D6).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Confirmed Sample Ids",
+            "type": "array"
+          },
+          "excluded_candidate_ids": {
+            "description": "Pares que se sacan del grupo: vuelven a la revisión.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Excluded Candidate Ids",
+            "type": "array"
+          }
+        },
+        "title": "AiGroupApproval",
+        "type": "object"
+      },
+      "AiGroupApprovalOut": {
+        "properties": {
+          "excluded": {
+            "description": "Pares sacados del grupo.",
+            "minimum": 0.0,
+            "title": "Excluded",
+            "type": "integer"
+          },
+          "group": {
+            "enum": [
+              "same",
+              "distinct"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "merged": {
+            "description": "Pares de dos piezas fusionados.",
+            "minimum": 0.0,
+            "title": "Merged",
+            "type": "integer"
+          },
+          "needs_choice": {
+            "description": "Pares «misma pieza» que esperan la elección de valores.",
+            "minimum": 0.0,
+            "title": "Needs Choice",
+            "type": "integer"
+          },
+          "resolved": {
+            "description": "Pares marcados como distintos.",
+            "minimum": 0.0,
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "rows_decided": {
+            "description": "Filas de Excel resueltas hacia su pieza.",
+            "minimum": 0.0,
+            "title": "Rows Decided",
+            "type": "integer"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/AiSkippedPair"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group",
+          "resolved",
+          "merged",
+          "rows_decided",
+          "excluded",
+          "needs_choice"
+        ],
+        "title": "AiGroupApprovalOut",
+        "type": "object"
+      },
+      "AiGroupPairOut": {
+        "properties": {
+          "candidate": {
+            "$ref": "#/components/schemas/DuplicateCandidateOut"
+          },
+          "merge_blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por qué no se fusiona al aprobar.",
+            "title": "Merge Blocker"
+          },
+          "ready_to_merge": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo en «misma pieza» con dos piezas: se fusiona al aprobar sin elegir valores. `false` = hay que elegirlos en la revisión par por par.",
+            "title": "Ready To Merge"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/AiVerdictOut"
+          }
+        },
+        "required": [
+          "candidate",
+          "verdict"
+        ],
+        "title": "AiGroupPairOut",
+        "type": "object"
+      },
+      "AiJudgmentStart": {
+        "description": "Body of ``POST /quality/duplicates/ai-runs``: a new run, or one resumed (D7).",
+        "properties": {
+          "resume_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Corrida que se reanuda: solo se juzgan sus pares aún sin veredicto.",
+            "title": "Resume Run Id"
+          }
+        },
+        "title": "AiJudgmentStart",
+        "type": "object"
+      },
+      "AiRunGroupCounts": {
+        "properties": {
+          "by_rule": {
+            "description": "De las distintas, cuántas decidió una regla.",
+            "minimum": 0.0,
+            "title": "By Rule",
+            "type": "integer"
+          },
+          "distinct": {
+            "description": "Gemini cree que son distintas (incluye las reglas).",
+            "minimum": 0.0,
+            "title": "Distinct",
+            "type": "integer"
+          },
+          "same": {
+            "description": "Gemini cree que son la misma pieza.",
+            "minimum": 0.0,
+            "title": "Same",
+            "type": "integer"
+          },
+          "unsure": {
+            "description": "Gemini no está seguro, o la persona los sacó.",
+            "minimum": 0.0,
+            "title": "Unsure",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "same",
+          "distinct",
+          "unsure",
+          "by_rule"
+        ],
+        "title": "AiRunGroupCounts",
+        "type": "object"
+      },
+      "AiSkippedPair": {
+        "properties": {
+          "candidate_id": {
+            "format": "uuid",
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "reason"
+        ],
+        "title": "AiSkippedPair",
+        "type": "object"
       },
       "AiSuggestionApproval": {
         "examples": [
@@ -449,6 +760,47 @@
           "reason"
         ],
         "title": "AiSuggestionRejection",
+        "type": "object"
+      },
+      "AiVerdictOut": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "description": "`rule`: lo decidió una regla; `ai`: la IA; `review`: una persona lo sacó de su grupo.",
+            "enum": [
+              "rule",
+              "ai",
+              "review"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "same",
+              "distinct",
+              "unsure"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "confidence",
+          "reason",
+          "source"
+        ],
+        "title": "AiVerdictOut",
         "type": "object"
       },
       "AlertCode": {
@@ -8510,6 +8862,42 @@
         "title": "OmittedPhoto",
         "type": "object"
       },
+      "Page_AiGroupPairOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AiGroupPairOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Total de resultados que cumplen los filtros.",
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[AiGroupPairOut]",
+        "type": "object"
+      },
       "Page_AiSuggestionOut_": {
         "properties": {
           "items": {
@@ -11302,7 +11690,8 @@
       },
       "QualityJobType": {
         "enum": [
-          "FULL_SCAN"
+          "FULL_SCAN",
+          "AI_DUPLICATE_JUDGMENT"
         ],
         "title": "QualityJobType",
         "type": "string"
@@ -24781,6 +25170,489 @@
           }
         ],
         "summary": "Cola de posibles duplicados por revisar, con filtros (RF-030)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs": {
+      "post": {
+        "description": "Primero las reglas: un par con dos códigos I vigentes distintos es «distintas» sin llamar a la IA. El resto se envía por lotes, solo con campos de catálogo (RNF-014). Los veredictos quedan como sugerencia: nada se resuelve hasta que una persona apruebe un grupo (RN-009). Con `resume_run_id`, se juzgan solo los pares de esa corrida aún sin veredicto. 409 `ai_run_in_progress` si ya hay un análisis en curso (change `ia-juicio-duplicados`).",
+        "operationId": "startAiJudgment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AiJudgmentStart"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDuplicateRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Pedir a la IA que juzgue la cola de duplicados, por lotes y en segundo plano (RIA-02)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs/latest": {
+      "get": {
+        "operationId": "getLatestAiRun",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AiDuplicateRunOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getlatestairun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "El último análisis con IA de la cola de duplicados, o null (RIA-02)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs/{run_id}": {
+      "get": {
+        "operationId": "getAiRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiDuplicateRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Avance de un análisis con IA y sus grupos pendientes (RIA-02)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}": {
+      "get": {
+        "operationId": "listAiGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro.",
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "description": "`same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro.",
+              "pattern": "^(same|distinct|unsure)$",
+              "title": "Group",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Número de página (desde 1).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Número de página (desde 1).",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Resultados por página (máx. 100).",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Resultados por página (máx. 100).",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AiGroupPairOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Pares pendientes de un grupo del análisis con IA, con motivo y confianza (RIA-02)",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}/approve": {
+      "post": {
+        "description": "«distintas»: cada par queda como distinto con el motivo de la IA en la nota. «misma pieza»: exige la muestra confirmada (422 `sample_not_confirmed`); fusiona solo los pares de dos piezas sin valores en choque, conservando la pieza con código I, y resuelve las filas de Excel hacia su pieza; los que chocan quedan para elegir valores. Nunca se borra nada (RN-005). Cada par resuelto queda auditado con origen IA, la corrida y quien aprobó (RN-009). Los pares sacados vuelven a la revisión a mano.",
+        "operationId": "approveAiGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro.",
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "description": "`same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro.",
+              "pattern": "^(same|distinct|unsure)$",
+              "title": "Group",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiGroupApproval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiGroupApprovalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Aprobar un grupo del análisis con IA, sacando los pares que no correspondan",
+        "tags": [
+          "Calidad"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/quality/duplicates/ai-runs/{run_id}/sample": {
+      "get": {
+        "description": "Hasta 5 pares (parámetro, RN-010), elegidos con la corrida como semilla: la aprobación del grupo exige confirmar o sacar cada uno que siga pendiente (D6).",
+        "operationId": "getAiSample",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AiGroupPairOut"
+                  },
+                  "title": "Response Getaisample",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Muestra al azar del grupo «misma pieza» que hay que confirmar antes de aprobarlo",
         "tags": [
           "Calidad"
         ],
