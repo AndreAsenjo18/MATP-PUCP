@@ -14,11 +14,26 @@
  *   completa aquí: lo asigna quien marca la pieza (RN-002); el panel lo explica y enlaza a la ficha.
  *
  * Reportes conserva su propio reporte (`IncompleteReportPanel`).
+ *
+ * Con Gemini (change `ia-completar-ficha`; RIA-01, RIA-03, RN-009): al abrir el panel, quien puede
+ * pedir y aprobar sugerencias de IA ve propuestas para lo que falta, leídas solo de esa ficha y con
+ * su prueba. Nada se guarda sin aceptarlo y pulsar «Guardar y siguiente». Sin IA, el panel de
+ * siempre.
  */
 import { ArrowRight, Camera, ChevronDown, Download, FileSpreadsheet, Hash, MapPin, ScrollText, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import {
+  completionDecision,
+  GeminiNotFound,
+  GeminiProposalCard,
+  GeminiStatus,
+  PieceTextEvidence,
+  proposalKey,
+  withoutAccepted,
+  type ProposalState,
+} from "@/components/domain/GeminiCompletion";
 import { LocationTreeSelect } from "@/components/domain/LocationTreeSelect";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -27,6 +42,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
 import { cn } from "@/lib/cn";
+import { requestPieceCompletion, saveCompletionDecision, type CompletionProposal, type PieceCompletion } from "@/lib/data/ai";
 import { fetchDuplicateCollections } from "@/lib/data/duplicates";
 import { getApiMode } from "@/lib/data/mode";
 import { batchMovePieces, describeLocationFailure, fetchLocationsTree, newIdempotencyKey, type LocationNode } from "@/lib/data/locations";
@@ -64,6 +80,13 @@ export const FIELD_LABELS: Record<string, string> = {
 /** Campos que el panel completa; los demás (denominación, régimen) se editan en la ficha. */
 export const PANEL_FIELDS = ["collection_id", "category_id", "conservation_state_id", "materials", "provenance", "epoch_original_text", "dimensions_text", "description"] as const;
 type PanelField = (typeof PANEL_FIELDS)[number];
+/** Los que Gemini puede proponer con una prueba de la ficha (ia-completar-ficha, D1). */
+export const GEMINI_FIELDS: readonly string[] = ["category_id", "conservation_state_id", "materials", "provenance", "epoch_original_text", "dimensions_text"];
+
+/** Si al abrir el panel se le piden propuestas a Gemini: con permiso, con la API y con algo que pedir. */
+export function asksGemini(item: Pick<IncompletePiece, "missing_fields">, canUseAi: boolean): boolean {
+  return canUseAi && getApiMode() !== "mock" && (item.missing_fields ?? []).some((field) => GEMINI_FIELDS.includes(field));
+}
 
 /** Lo que le falta a una pieza, en etiquetas cortas: primero lo físico, luego los campos. */
 export function missingLabels(item: Pick<IncompletePiece, "alerts" | "missing_fields">): { alerts: string[]; fields: string | null } {
@@ -86,6 +109,7 @@ export function IncompleteTriage({
   canEdit,
   canMove,
   canUpload,
+  canUseAi = false,
 }: {
   devUser?: string;
   canDownload: boolean;
@@ -95,6 +119,8 @@ export function IncompleteTriage({
   canMove: boolean;
   /** `media.upload`: subir fotos desde el panel. */
   canUpload: boolean;
+  /** `ai.request` y `ai.review`: ver y aceptar propuestas de Gemini (design D6). */
+  canUseAi?: boolean;
 }) {
   const [collections, setCollections] = useState<CollectionOut[]>([]);
   const [alertFilter, setAlertFilter] = useState<AlertType[]>([]);
@@ -324,6 +350,7 @@ export function IncompleteTriage({
           canEdit={canEdit}
           canMove={canMove}
           canUpload={canUpload}
+          canUseAi={canUseAi && canEdit}
           onClose={() => setOpenId(null)}
           onSkip={() => setOpenId(items[openIndex + 1]?.piece_id ?? null)}
           onSaved={(text) => {
@@ -381,6 +408,7 @@ function CompletePanel({
   canEdit,
   canMove,
   canUpload,
+  canUseAi,
   onClose,
   onSkip,
   onSaved,
@@ -391,6 +419,7 @@ function CompletePanel({
   canEdit: boolean;
   canMove: boolean;
   canUpload: boolean;
+  canUseAi: boolean;
   onClose: () => void;
   onSkip: () => void;
   onSaved: (notice: string) => void;
@@ -406,6 +435,14 @@ function CompletePanel({
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  // Gemini (D5): se pide al abrir el panel; si no responde, el panel sigue igual que siempre.
+  const askGemini = asksGemini(item, canUseAi);
+  const [ai, setAi] = useState<{ status: "off" } | { status: "loading" } | { status: "ready"; completion: PieceCompletion } | { status: "unavailable" }>(() =>
+    askGemini ? { status: "loading" } : { status: "off" },
+  );
+  const [proposalStates, setProposalStates] = useState<Record<string, ProposalState>>({});
+  // Lo que ya se guardó en un intento anterior no se repite al reintentar (D4).
+  const saved = useRef({ piece: false, ai: false, location: false, photos: false });
 
   const needsLocation = item.alerts.includes("MISSING_LOCATION");
   const needsPhoto = item.alerts.includes("MISSING_PHOTO");
@@ -413,6 +450,18 @@ function CompletePanel({
   const badCode = item.alerts.includes("UNNORMALIZABLE_IDENTIFIER");
   const fields = PANEL_FIELDS.filter((field) => (item.missing_fields ?? []).includes(field));
   const elsewhere = (item.missing_fields ?? []).filter((field) => !(PANEL_FIELDS as readonly string[]).includes(field));
+
+  useEffect(() => {
+    if (!askGemini) return;
+    let active = true;
+    requestPieceCompletion(item.piece_id, devUser).then((r) => {
+      if (!active) return;
+      setAi(r.status === "ok" ? { status: "ready", completion: r.value } : { status: "unavailable" });
+    });
+    return () => {
+      active = false;
+    };
+  }, [item.piece_id, askGemini, devUser]);
 
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -439,18 +488,56 @@ function CompletePanel({
   const filled = fields.filter((field) => (field === "materials" ? (form.materials ?? []).length > 0 : Boolean(form[field]?.trim()))).length + (locationId ? 1 : 0) + (files.length ? 1 : 0);
   const pending = fields.length + (needsLocation && canMove ? 1 : 0) + (needsPhoto && canUpload ? 1 : 0);
 
+  const completion = ai.status === "ready" ? ai.completion : null;
+  const proposals = completion?.proposals ?? [];
+  const proposalsFor = (field: string) => proposals.filter((proposal) => proposal.piece_field === field);
+  const stateOf = (proposal: CompletionProposal) => proposalStates[proposalKey(proposal)] ?? "pending";
+  const setState = (proposal: CompletionProposal, state: ProposalState) => setProposalStates((current) => ({ ...current, [proposalKey(proposal)]: state }));
+
+  // Aceptar llena el campo con la propuesta; deshacer lo vacía y la deja sin decidir (D3).
+  function accept(proposal: CompletionProposal) {
+    if (proposal.piece_field === "materials" && proposal.term_id) {
+      const id = proposal.term_id;
+      setForm((current) => ({ ...current, materials: [...new Set([...(current.materials ?? []), id])] }));
+    } else {
+      set(proposal.piece_field as Exclude<PanelField, "materials">, proposal.term_id ?? proposal.value);
+    }
+    setState(proposal, "accepted");
+  }
+  function undo(proposal: CompletionProposal) {
+    if (stateOf(proposal) === "accepted") {
+      if (proposal.piece_field === "materials") setForm((current) => ({ ...current, materials: (current.materials ?? []).filter((id) => id !== proposal.term_id) }));
+      else set(proposal.piece_field as Exclude<PanelField, "materials">, "");
+    }
+    setState(proposal, "pending");
+  }
+
   async function save() {
     setBusy(true);
     setErrors([]);
     const problems: string[] = [];
     const done: string[] = [];
-    const changes = canEdit ? updateFromForm(form) : {};
+    // Lo aceptado de Gemini se guarda al aprobar la sugerencia (origen IA); el resto, con el PUT.
+    const choice = completion?.suggestion_id ? completionDecision(proposals, proposalStates, form) : null;
+    const manual = choice ? withoutAccepted(form, choice.handled, choice.materialIds) : form;
+    const changes = canEdit && !saved.current.piece ? updateFromForm(manual) : {};
     if (Object.keys(changes).length > 0) {
       const r = await updatePiece(item.piece_id, changes, detail?.version);
-      if (r.status === "ok") done.push(...fields.filter((f) => (f === "materials" ? (form.materials ?? []).length : form[f]?.trim())).map((f) => FIELD_LABELS[f]));
-      else problems.push(r.message);
+      if (r.status === "ok") {
+        saved.current.piece = true;
+        setDetail(r.piece);
+        done.push(...fields.filter((f) => (f === "materials" ? (manual.materials ?? []).length : manual[f]?.trim())).map((f) => FIELD_LABELS[f]));
+      } else problems.push(r.message);
     }
-    if (locationId && canMove) {
+    if (choice && completion?.suggestion_id && !saved.current.ai) {
+      const r = await saveCompletionDecision(completion.suggestion_id, choice.decision, devUser);
+      if (r.status === "ok") {
+        saved.current.ai = true;
+        const labels = [...new Set(choice.decision.accepted.map((a) => FIELD_LABELS[proposals.find((p) => p.field === a.field)?.piece_field ?? ""] ?? a.field))];
+        if (labels.length) done.push(`${labels.join(", ")} (sugerido por Gemini)`);
+      } else problems.push(r.message);
+    }
+    if (locationId && canMove && !saved.current.location) {
       const r = await batchMovePieces(
         {
           movement_type: "MOVE",
@@ -463,17 +550,22 @@ function CompletePanel({
       );
       if (r.status !== "ok") problems.push(describeLocationFailure(r));
       else if ((r.value.failures ?? []).length > 0) problems.push(r.value.failures?.[0]?.message ?? "No se pudo registrar la ubicación.");
-      else done.push("ubicación");
+      else {
+        saved.current.location = true;
+        done.push("ubicación");
+      }
     }
-    if (files.length && canUpload) {
+    if (files.length && canUpload && !saved.current.photos) {
       const r = await uploadPiecePhotos(
         item.piece_id,
         files.map((file) => ({ file, relativePath: file.name, contentType: file.type || "image/jpeg" })),
         () => {},
         { devUser },
       );
-      if (r.status === "ok") done.push(files.length === 1 ? "1 foto" : `${files.length} fotos`);
-      else problems.push(r.message);
+      if (r.status === "ok") {
+        saved.current.photos = true;
+        done.push(files.length === 1 ? "1 foto" : `${files.length} fotos`);
+      } else problems.push(r.message);
     }
     setBusy(false);
     if (problems.length > 0) {
@@ -489,6 +581,51 @@ function CompletePanel({
         {option.label}
       </option>
     ));
+
+  /** El control de un campo, como siempre; las propuestas de Gemini van encima. */
+  function renderField(field: PanelField) {
+    const label = FIELD_LABELS[field];
+    const title = label.charAt(0).toUpperCase() + label.slice(1);
+    if (field === "collection_id" || field === "category_id" || field === "conservation_state_id") {
+      const list = field === "collection_id" ? catalogs?.collections : field === "category_id" ? catalogs?.categories : catalogs?.conservationStates;
+      return (
+        <Select key={field} label={title} controlSize="md" value={form[field] ?? ""} onChange={(event) => set(field, event.target.value)}>
+          <option value="">Elija {field === "conservation_state_id" ? "un estado" : field === "collection_id" ? "una colección" : "una categoría"}</option>
+          {options(list)}
+        </Select>
+      );
+    }
+    if (field === "materials") {
+      return (
+        <fieldset key={field} className="flex flex-col gap-2">
+          <legend className="mb-2 text-base font-semibold text-tinta">{title}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(catalogs?.materials ?? []).map((option) => {
+              const on = (form.materials ?? []).includes(option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setForm((current) => ({ ...current, materials: on ? (current.materials ?? []).filter((id) => id !== option.id) : [...(current.materials ?? []), option.id] }))}
+                  className={cn(
+                    "min-h-11 rounded-full border px-3.5 text-base font-semibold focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+                    on ? "border-verde-exito bg-verde-bg text-verde-exito" : "border-borde bg-white text-tinta hover:border-gris-texto",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      );
+    }
+    if (field === "description") {
+      return <Textarea key={field} label={title} rows={3} value={form.description ?? ""} onChange={(event) => set(field, event.target.value)} />;
+    }
+    return <Input key={field} label={title} controlSize="md" value={form[field] ?? ""} onChange={(event) => set(field, event.target.value)} />;
+  }
 
   return (
     <dialog
@@ -528,6 +665,16 @@ function CompletePanel({
       </div>
 
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+        {ai.status !== "off" && <GeminiStatus state={ai} />}
+        <PieceTextEvidence
+          texts={[
+            { label: "Descripción", text: detail?.description },
+            { label: "Observaciones", text: detail?.notes },
+            { label: "Denominación", text: proposals.some((p) => p.evidence.text_field === "denomination") ? (detail?.denomination ?? item.title) : null },
+          ]}
+          quotes={proposals.filter((p) => stateOf(p) !== "discarded").flatMap((p) => (p.evidence.quote ? [p.evidence.quote] : []))}
+        />
+
         {needsLocation && canMove && (
           <Section title="Ubicación">
             {tree ? (
@@ -542,47 +689,25 @@ function CompletePanel({
 
         {canEdit &&
           fields.map((field) => {
-            const label = FIELD_LABELS[field];
-            const title = label.charAt(0).toUpperCase() + label.slice(1);
-            if (field === "collection_id" || field === "category_id" || field === "conservation_state_id") {
-              const list = field === "collection_id" ? catalogs?.collections : field === "category_id" ? catalogs?.categories : catalogs?.conservationStates;
-              return (
-                <Select key={field} label={title} controlSize="md" value={form[field] ?? ""} onChange={(event) => set(field, event.target.value)}>
-                  <option value="">Elija {field === "conservation_state_id" ? "un estado" : field === "collection_id" ? "una colección" : "una categoría"}</option>
-                  {options(list)}
-                </Select>
-              );
-            }
-            if (field === "materials") {
-              return (
-                <fieldset key={field} className="flex flex-col gap-2">
-                  <legend className="mb-2 text-base font-semibold text-tinta">{title}</legend>
-                  <div className="flex flex-wrap gap-2">
-                    {(catalogs?.materials ?? []).map((option) => {
-                      const on = (form.materials ?? []).includes(option.id);
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setForm((current) => ({ ...current, materials: on ? (current.materials ?? []).filter((id) => id !== option.id) : [...(current.materials ?? []), option.id] }))}
-                          className={cn(
-                            "min-h-11 rounded-full border px-3.5 text-base font-semibold focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
-                            on ? "border-verde-exito bg-verde-bg text-verde-exito" : "border-borde bg-white text-tinta hover:border-gris-texto",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              );
-            }
-            if (field === "description") {
-              return <Textarea key={field} label={title} rows={3} value={form.description ?? ""} onChange={(event) => set(field, event.target.value)} />;
-            }
-            return <Input key={field} label={title} controlSize="md" value={form[field] ?? ""} onChange={(event) => set(field, event.target.value)} />;
+            const fieldProposals = proposalsFor(field);
+            const notFound = (completion?.not_found ?? []).includes(field) && fieldProposals.length === 0;
+            if (fieldProposals.length === 0 && !notFound) return renderField(field);
+            return (
+              <div key={field} className="flex flex-col gap-2">
+                {fieldProposals.map((proposal) => (
+                  <GeminiProposalCard
+                    key={proposalKey(proposal)}
+                    proposal={proposal}
+                    state={stateOf(proposal)}
+                    onAccept={() => accept(proposal)}
+                    onDiscard={() => setState(proposal, "discarded")}
+                    onUndo={() => undo(proposal)}
+                  />
+                ))}
+                {renderField(field)}
+                {notFound && <GeminiNotFound field={field} />}
+              </div>
+            );
           })}
 
         {needsPhoto && canUpload && (

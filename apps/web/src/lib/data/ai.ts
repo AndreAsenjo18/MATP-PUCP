@@ -46,6 +46,9 @@ export const AI_ERROR_MESSAGES: Record<string, string> = {
   invalid_dimension_value: "La medida propuesta tiene un formato no válido.",
   invalid_dimensions_text: "El texto de Medidas no puede quedar vacío.",
   unknown_suggestion_field: "Hay un dato propuesto con un tipo que esta pantalla no reconoce.",
+  field_not_proposed: "Solo se guardan como sugeridos por Gemini los datos que Gemini propuso.",
+  invalid_suggested_term: "Ese término ya no está activo en la lista: elija uno vigente.",
+  invalid_suggested_text: "El dato aceptado no puede quedar vacío ni ser tan largo.",
 };
 
 function client(devUser: string | undefined) {
@@ -235,6 +238,54 @@ export async function setRowAiFields(
         params: { path: { batch_id: batchId, row_id: rowId } },
         body: { fields },
       }) as Promise<{ data?: ImportRow; error?: unknown }>,
+    AI_ERROR_MESSAGES,
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// «Completar ficha» con IA (change `ia-completar-ficha`; RIA-01, RIA-03, RN-009)
+// ---------------------------------------------------------------------------------------------
+
+export type PieceCompletion = ApiSchemas["PieceCompletionOut"];
+export type CompletionProposal = ApiSchemas["CompletionProposalOut"];
+
+/** Motivo con que se registra una propuesta de la que no se aceptó nada (D3). */
+export const NO_ACCEPTED_REASON = "Ninguna propuesta aceptada al completar la ficha";
+
+/**
+ * Pide a la IA propuestas para lo que le falta a la pieza, leídas solo de su ficha y su foto, cada
+ * una con su prueba. No escribe nada (RN-009). En modo demostración, o si la IA no responde, degrada
+ * a `unavailable` y el panel sigue igual que siempre (D5, D8).
+ */
+export async function requestPieceCompletion(pieceId: string, devUser?: string): Promise<ImportResult<PieceCompletion>> {
+  return call(
+    () =>
+      client(devUser).POST("/api/v1/ai/pieces/{piece_id}/completion", {
+        params: { path: { piece_id: pieceId } },
+      }) as Promise<{ data?: PieceCompletion; error?: unknown }>,
+    AI_ERROR_MESSAGES,
+  );
+}
+
+/** Lo que la persona decidió en el panel: lo aceptado (o corregido) y lo descartado. */
+export interface CompletionDecision {
+  accepted: { field: CompletionProposal["field"]; value: string }[];
+  discarded: CompletionProposal["field"][];
+}
+
+/**
+ * Deja constancia de lo decidido al pulsar «Guardar y siguiente» (D3): con algo aceptado, aprueba la
+ * sugerencia y eso guarda lo aceptado con auditoría de origen IA; sin nada aceptado, la rechaza con
+ * su motivo. Nunca se llama al cerrar ni al saltar la pieza.
+ */
+export async function saveCompletionDecision(suggestionId: string, decision: CompletionDecision, devUser?: string): Promise<ImportResult<AiSuggestion>> {
+  if (decision.accepted.length === 0) return rejectAiSuggestion(suggestionId, NO_ACCEPTED_REASON, devUser);
+  return call(
+    () =>
+      client(devUser).POST("/api/v1/ai/suggestions/{suggestion_id}/approve", {
+        params: { path: { suggestion_id: suggestionId } },
+        body: { approved_data: { fields: decision.accepted, discarded: decision.discarded }, acknowledge_current_values: false },
+      }) as Promise<{ data?: AiSuggestion; error?: unknown }>,
     AI_ERROR_MESSAGES,
   );
 }
