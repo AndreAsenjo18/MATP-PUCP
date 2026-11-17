@@ -43,6 +43,25 @@ export interface EditorDraft {
    * hojas «Errores…» de la consultoría (change `formatos-reales-importacion`, D8).
    */
   observations?: boolean;
+  /**
+   * Quién puso el destino de cada columna, por cabecera (change `importacion-mapeo-asistido`, D2):
+   * la plantilla, el nombre de la cabecera, la IA o la persona. Sin entrada = sin destino.
+   */
+  origins?: Record<string, ColumnOrigin>;
+  /** Confianza y motivo de la IA para las columnas que propuso (D2, D5). */
+  aiNotes?: Record<string, AiColumnNote>;
+}
+
+export type ColumnOrigin = "template" | "auto" | "ai" | "user";
+
+export interface AiColumnNote {
+  confidence: number;
+  reason: string | null;
+}
+
+/** Origen de las columnas que ya tienen destino. */
+function originsOf(columns: readonly ColumnMapping[], origin: ColumnOrigin): Record<string, ColumnOrigin> {
+  return Object.fromEntries(columns.filter((column) => column.target_field).map((column) => [column.source_column, origin]));
 }
 
 type BatchKindInfo = Pick<ImportBatch, "sheet_name"> & Partial<Pick<ImportBatch, "kind">>;
@@ -97,44 +116,63 @@ function payloadColumn(source: string): ColumnMapping {
 export function draftFromTemplate(template: MappingTemplate, batch: Pick<ImportBatch, "headers">): EditorDraft {
   const bySource = new Map(template.columns.map((column) => [column.source_column, column]));
   const templateDefaults = { ...(template.defaults ?? {}) };
+  const columns = (batch.headers ?? []).map((header) => canonicalColumn(bySource.get(header) ?? payloadColumn(header)));
   return {
     base: template,
-    columns: (batch.headers ?? []).map((header) => canonicalColumn(bySource.get(header) ?? payloadColumn(header))),
+    columns,
     tenureDefault: templateDefaults.tenure_regime ?? "",
     templateDefaults,
     sheetName: null,
     headerRow: null,
+    origins: originsOf(columns, "template"),
   };
 }
 
 /** «Empezar desde cero»: el mapeo sugerido por las cabeceras (`suggestMapping`). */
 export function draftFromScratch(batch: Pick<ImportBatch, "headers">): EditorDraft {
+  const columns = suggestMapping(batch.headers ?? []).map((column) => canonicalColumn({ ...column, transforms: [], value_map: null }));
   return {
     base: null,
-    columns: suggestMapping(batch.headers ?? []).map((column) => canonicalColumn({ ...column, transforms: [], value_map: null })),
+    columns,
     tenureDefault: "",
     templateDefaults: {},
     sheetName: null,
     headerRow: null,
+    origins: originsOf(columns, "auto"),
   };
 }
 
 /**
- * Carga masiva con IA (change carga-masiva-con-ia, D2): completa con lo que propone la IA solo
- * las columnas que la heurística local (`suggestMapping`) dejó sin destino — nunca reemplaza un
- * destino que ya tenía, de la heurística o de quien edita. Pura, sin red, para poder probarla sin
- * navegador (ADR-012); la llamada a la IA vive en el componente.
+ * Carga masiva con IA (change carga-masiva-con-ia, D2): completa con lo que propone la IA las
+ * columnas sin destino y, desde `importacion-mapeo-asistido` (D2), también confirma o precisa un
+ * código genérico que puso la heurística por el nombre (`suggestMapping`); nunca reemplaza otro
+ * destino ya puesto, de la heurística, de una plantilla o de la persona. Guarda el origen y la confianza de cada columna que toca. Pura, sin red,
+ * para poder probarla sin navegador (ADR-012); la llamada a la IA vive en el componente.
  */
-export function applyAiColumnMapping(draft: EditorDraft, candidates: readonly { column: string; field?: string | null }[]): EditorDraft {
-  const proposed = new Map(candidates.filter((item) => item.field).map((item) => [item.column, item.field as string]));
+export function applyAiColumnMapping(
+  draft: EditorDraft,
+  candidates: readonly { column: string; field?: string | null; confidence?: number; reason?: string | null }[],
+): EditorDraft {
+  const proposed = new Map(candidates.filter((item) => item.field).map((item) => [item.column, item]));
   if (proposed.size === 0) return draft;
-  return {
-    ...draft,
-    columns: draft.columns.map((column) => {
-      const field = !column.target_field ? proposed.get(column.source_column) : undefined;
-      return field ? canonicalColumn({ ...column, target_field: field }) : column;
-    }),
-  };
+  const origins = { ...(draft.origins ?? {}) };
+  const aiNotes = { ...(draft.aiNotes ?? {}) };
+  const columns = draft.columns.map((column) => {
+    const item = proposed.get(column.source_column);
+    if (!item?.field) return column;
+    const current = canonicalColumn(column).target_field;
+    const next = canonicalColumn({ ...column, target_field: item.field, identifier_type_code: null, split_compound: item.field === "identifier" });
+    // Sobre lo que puso la heurística por el nombre, la IA solo confirma el mismo destino o precisa
+    // un código genérico («Códigos» → «Código I»); nunca toca una plantilla ni lo que eligió la
+    // persona (importacion-mapeo-asistido, D2).
+    const byName = origins[column.source_column] === "auto";
+    const refines = byName && current === "identifier" && (next.target_field ?? "").startsWith("identifier:");
+    if (current && !(byName && (next.target_field === current || refines))) return column;
+    origins[column.source_column] = "ai";
+    aiNotes[column.source_column] = { confidence: item.confidence ?? 1, reason: item.reason ?? null };
+    return next.target_field === current ? column : next;
+  });
+  return { ...draft, columns, origins, aiNotes };
 }
 
 /** Columnas que importan para comparar: una columna de origen sin transformaciones es como no listarla. */
@@ -185,7 +223,9 @@ export function targetValue(column: ColumnMapping): string {
 
 /** Un destino que no es de términos no lleva correspondencias: se quitan con su transformación. */
 export function setColumnTarget(draft: EditorDraft, index: number, value: string): EditorDraft {
-  return updateColumn(draft, index, (column) => {
+  const source = draft.columns[index]?.source_column;
+  const marked = source === undefined ? draft : { ...draft, origins: { ...(draft.origins ?? {}), [source]: "user" as const } };
+  return updateColumn(marked, index, (column) => {
     const retargeted = canonicalColumn({ ...column, target_field: value || null, identifier_type_code: null, split_compound: value === "identifier" });
     return value.startsWith("terms:") ? retargeted : withValueMap(retargeted, {});
   });

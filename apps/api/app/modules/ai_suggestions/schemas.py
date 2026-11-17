@@ -119,6 +119,13 @@ class ColumnMappingCandidateOut(BaseModel):
     column: str
     field: str | None = Field(None, description="Campo de destino propuesto, o null.")
     confidence: float = Field(ge=0, le=1)
+    reason: str | None = Field(
+        None,
+        max_length=200,
+        description="Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja "
+        "(p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara "
+        "(change importacion-mapeo-asistido).",
+    )
 
 
 class ColumnMappingSuggestionOut(BaseModel):

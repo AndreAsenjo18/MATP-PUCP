@@ -125,6 +125,12 @@ class ImportBatchOut(BaseModel):
     sheet_names: list[str] = Field(default_factory=list, description="Hojas del libro.")
     header_row: int | None = None
     headers: list[str] = Field(default_factory=list, description="Cabeceras leídas del archivo.")
+    sample_rows: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Las primeras filas tal como vienen en el archivo (cabecera -> valor), para "
+        "comprobar el mapeo de columnas con datos reales antes de validar "
+        "(`importacion-mapeo-asistido`).",
+    )
     mapping: dict[str, Any] | None = Field(None, description="Mapeo de columnas confirmado.")
     processing: bool = Field(False, description="Hay una etapa ejecutándose en segundo plano.")
     progress: dict[str, Any] | None = Field(

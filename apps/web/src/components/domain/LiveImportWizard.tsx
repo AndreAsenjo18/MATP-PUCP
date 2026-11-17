@@ -34,6 +34,7 @@ import {
 } from "@/components/domain/ImportWizard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
@@ -159,6 +160,10 @@ export function LiveImportWizard() {
   const [rollbackReason, setRollbackReason] = useState<string | null>(null);
   // Paso «Mapeo» (4.1A, 4.1B): elegir punto de partida o editar el mapeo.
   const [mappingMode, setMappingMode] = useState<"pick" | "edit">("pick");
+  // «Así quedarían las piezas» (importacion-mapeo-asistido): la vista de entrada al ajustar columnas;
+  // `advancedMapping` muestra el editor por columna de siempre.
+  const [advancedMapping, setAdvancedMapping] = useState(false);
+  const [aiMapping, setAiMapping] = useState<AiMappingState>("off");
   const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
   const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -442,8 +447,10 @@ export function LiveImportWizard() {
    * pedido, para descartar una respuesta tardía si mientras tanto se abrió otro.
    */
   function requestAiColumnMapping(headers: string[], base: MappingTemplate | null) {
-    void suggestColumnMapping(headers, devUser).then((result) => {
-      if (result.status !== "ok") return;
+    setAiMapping("loading");
+    void suggestColumnMapping(headers, devUser, (batch?.sample_rows ?? []) as Record<string, unknown>[]).then((result) => {
+      if (result.status !== "ok") return setAiMapping("unavailable");
+      setAiMapping("ready");
       setEditorDraft((current) => (current && current.base === base ? applyAiColumnMapping(current, result.value.mappings) : current));
     });
   }
@@ -454,6 +461,7 @@ export function LiveImportWizard() {
     setEditorDraft(draftFromTemplate(template, batch));
     setDryRun(null);
     setError(null);
+    setAdvancedMapping(false);
     setMappingMode("edit");
     requestAiColumnMapping(batch.headers ?? [], template);
   }
@@ -464,6 +472,7 @@ export function LiveImportWizard() {
     setEditorDraft(draftFromScratch(batch));
     setDryRun(null);
     setError(null);
+    setAdvancedMapping(false);
     setMappingMode("edit");
     requestAiColumnMapping(batch.headers ?? [], null);
   }
@@ -670,8 +679,28 @@ export function LiveImportWizard() {
           <p className="text-base text-gris-texto">{busy ? "Aplicando el formato y validando el lote…" : "Buscando el formato del archivo…"}</p>
         </Card>
       )}
-      {batch && !processing && adjusting && editorDraft && (
+      {batch && !processing && adjusting && editorDraft && !advancedMapping && (
+        <ImportMappingReview
+          draft={editorDraft}
+          sampleRows={(batch.sample_rows ?? []) as Record<string, unknown>[]}
+          vocabularies={Object.fromEntries(vocabularies.map((vocabulary) => [vocabulary.code, vocabulary.name]))}
+          ai={aiMapping}
+          busy={busy}
+          onChange={handleEditorChange}
+          onApply={handleApplyTemplate}
+          onAdvanced={() => setAdvancedMapping(true)}
+          onBack={() => {
+            setMappingMode("pick");
+            setDryRun(null);
+            closeEditor();
+          }}
+        />
+      )}
+      {batch && !processing && adjusting && editorDraft && advancedMapping && (
         <>
+          <Button variant="secondary" className="self-start" onClick={() => setAdvancedMapping(false)}>
+            Ver cómo quedarían las piezas
+          </Button>
           <MappingEditor
             batch={batch}
             draft={editorDraft}

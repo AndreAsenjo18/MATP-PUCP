@@ -2747,6 +2747,19 @@
             ],
             "description": "Campo de destino propuesto, o null.",
             "title": "Field"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja (p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara (change importacion-mapeo-asistido).",
+            "title": "Reason"
           }
         },
         "required": [
@@ -5412,6 +5425,15 @@
             ],
             "description": "Etapa en curso y avance: `{stage, done, total}` (RF-021).",
             "title": "Progress"
+          },
+          "sample_rows": {
+            "description": "Las primeras filas tal como vienen en el archivo (cabecera -> valor), para comprobar el mapeo de columnas con datos reales antes de validar (`importacion-mapeo-asistido`).",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sample Rows",
+            "type": "array"
           },
           "sheet_name": {
             "anyOf": [

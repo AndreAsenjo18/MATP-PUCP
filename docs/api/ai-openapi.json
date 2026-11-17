@@ -25,6 +25,19 @@
             ],
             "description": "Clave de ``target_fields`` propuesta, o null si no hay una clara.",
             "title": "Field"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja (p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara (change importacion-mapeo-asistido).",
+            "title": "Reason"
           }
         },
         "required": [

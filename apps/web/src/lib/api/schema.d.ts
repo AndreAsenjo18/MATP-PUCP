@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7d78a64df22906bc55ffe8af8ee3cb289befe05448058301800488f579c9779f
+ * openapi-sha256: 0eec01faeaeaccd4a99407b7519fb9f2f7e63eb76e0fbc80b0057f5048ef7081
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3596,6 +3596,11 @@ export interface components {
              * @description Campo de destino propuesto, o null.
              */
             field?: string | null;
+            /**
+             * Reason
+             * @description Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja (p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara (change importacion-mapeo-asistido).
+             */
+            reason?: string | null;
         };
         /**
          * ColumnMappingSuggestionOut
@@ -4855,6 +4860,13 @@ export interface components {
             progress?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Sample Rows
+             * @description Las primeras filas tal como vienen en el archivo (cabecera -> valor), para comprobar el mapeo de columnas con datos reales antes de validar (`importacion-mapeo-asistido`).
+             */
+            sample_rows?: {
+                [key: string]: unknown;
+            }[];
             /** Sheet Name */
             sheet_name?: string | null;
             /**

@@ -241,7 +241,27 @@ def batch_out(
             .where(ImportRow.batch_id == batch.id, ImportRow.decision != RowDecision.PENDING)
         )
         out.counts = {**(out.counts or {}), "DECIDED": int(decided or 0)}
+    if batch.kind in ROW_KINDS:
+        out.sample_rows = _sample_rows(session, batch.id)
     return out
+
+
+#: Rows shown to check the column mapping against real values (importacion-mapeo-asistido).
+SAMPLE_ROWS = 3
+
+
+def _sample_rows(session: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]:
+    """The first rows as read from the file, without the reader's own keys (``__merged``)."""
+    rows = session.scalars(
+        select(ImportRow.raw_data)
+        .where(ImportRow.batch_id == batch_id)
+        .order_by(ImportRow.source_row_number)
+        .limit(SAMPLE_ROWS)
+    )
+    return [
+        {key: value for key, value in (raw or {}).items() if not key.startswith("__")}
+        for raw in rows
+    ]
 
 
 def _preview_url(storage: ObjectStorage, image: ImportImage) -> str | None:

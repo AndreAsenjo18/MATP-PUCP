@@ -192,11 +192,13 @@ export type ColumnMappingSuggestion = ApiSchemas["ColumnMappingSuggestionOut"];
 export async function suggestColumnMapping(
   headers: string[],
   devUser?: string,
+  /** Primeras filas del archivo para desambiguar (importacion-mapeo-asistido, D4); la API quita las columnas sensibles. */
+  sampleRows: Record<string, unknown>[] = [],
 ): Promise<ImportResult<ColumnMappingSuggestion>> {
   return call(
     () =>
       client(devUser).POST("/api/v1/ai/suggest-column-mapping", {
-        body: { headers, sample_rows: [] },
+        body: { headers, sample_rows: sampleRows },
       }) as Promise<{ data?: ColumnMappingSuggestion; error?: unknown }>,
     AI_ERROR_MESSAGES,
   );
