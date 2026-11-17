@@ -6458,6 +6458,17 @@
             "title": "Matches",
             "type": "array"
           },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PiecePreviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Así quedaría la ficha de la pieza nueva (`importacion-vista-previa-ficha`)."
+          },
           "raw_data": {
             "additionalProperties": true,
             "title": "Raw Data",
@@ -11167,6 +11178,213 @@
         "title": "PieceLocation",
         "type": "object"
       },
+      "PiecePreviewOut": {
+        "description": "«Así quedaría la ficha»: the row as the sheet of the new piece would show it, with names\ninstead of codes (change importacion-vista-previa-ficha).",
+        "properties": {
+          "acquisition_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquisition Method"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "codes": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewCode"
+            },
+            "title": "Codes",
+            "type": "array"
+          },
+          "collection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection"
+          },
+          "conservation_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conservation Status"
+          },
+          "denomination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denomination"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "dimensions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "dimensions_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions Text"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "epoch_original_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Original Text"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ruta de la ubicación encontrada.",
+            "title": "Location"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación del archivo que no coincide con ninguna del museo.",
+            "title": "Location Text"
+          },
+          "materials": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Materials",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "object_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Type"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenure Regime"
+          }
+        },
+        "title": "PiecePreviewOut",
+        "type": "object"
+      },
       "PieceSearchResponse": {
         "description": "Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`).",
         "examples": [
@@ -11752,6 +11970,30 @@
           "issues"
         ],
         "title": "PieceValidationResult",
+        "type": "object"
+      },
+      "PreviewCode": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "PreviewCode",
         "type": "object"
       },
       "QualityJobOut": {

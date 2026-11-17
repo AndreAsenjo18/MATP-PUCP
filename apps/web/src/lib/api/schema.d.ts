@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: b59ac6470530518ae21658ef0d5037d411af04c95390e456f28c77549b47d24e
+ * openapi-sha256: 7000b608897345a037b8f1fa6325581f775a2089a91e6684fd21f4cac9e20ba0
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -5441,6 +5441,8 @@ export interface components {
             matches: {
                 [key: string]: unknown;
             }[];
+            /** @description Así quedaría la ficha de la pieza nueva (`importacion-vista-previa-ficha`). */
+            preview?: components["schemas"]["PiecePreviewOut"] | null;
             /** Raw Data */
             raw_data: {
                 [key: string]: unknown;
@@ -7499,6 +7501,59 @@ export interface components {
             path: components["schemas"]["LocationRef"][];
         };
         /**
+         * PiecePreviewOut
+         * @description «Así quedaría la ficha»: the row as the sheet of the new piece would show it, with names
+         *     instead of codes (change importacion-vista-previa-ficha).
+         */
+        PiecePreviewOut: {
+            /** Acquisition Method */
+            acquisition_method?: string | null;
+            /** Author */
+            author?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Codes */
+            codes?: components["schemas"]["PreviewCode"][];
+            /** Collection */
+            collection?: string | null;
+            /** Conservation Status */
+            conservation_status?: string | null;
+            /** Denomination */
+            denomination?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Dimensions */
+            dimensions?: {
+                [key: string]: unknown;
+            }[];
+            /** Dimensions Text */
+            dimensions_text?: string | null;
+            /** Entry Date */
+            entry_date?: string | null;
+            /** Epoch Original Text */
+            epoch_original_text?: string | null;
+            /**
+             * Location
+             * @description Ruta de la ubicación encontrada.
+             */
+            location?: string | null;
+            /**
+             * Location Text
+             * @description Ubicación del archivo que no coincide con ninguna del museo.
+             */
+            location_text?: string | null;
+            /** Materials */
+            materials?: string[];
+            /** Notes */
+            notes?: string | null;
+            /** Object Type */
+            object_type?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /** Tenure Regime */
+            tenure_regime?: string | null;
+        };
+        /**
          * PieceSearchResponse
          * @description Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`).
          * @example {
@@ -7725,6 +7780,13 @@ export interface components {
             is_valid: boolean;
             /** Issues */
             issues: components["schemas"]["FieldIssue"][];
+        };
+        /** PreviewCode */
+        PreviewCode: {
+            /** Type */
+            type?: string | null;
+            /** Value */
+            value: string;
         };
         /**
          * QualityJobOut

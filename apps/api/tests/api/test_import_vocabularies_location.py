@@ -154,3 +154,20 @@ def test_a_site_is_not_a_valid_location(pipeline: Pipeline) -> None:
 
     assert response.status_code == 422
     assert response.json()["code"] == "space_required"
+
+
+def test_each_row_shows_how_the_sheet_would_look(pipeline: Pipeline) -> None:
+    """«Así quedaría la ficha» (change importacion-vista-previa-ficha): names, not codes."""
+    _batch_id, rows = _validated(
+        pipeline,
+        [["Cántaro sintético", "Madera", "Bien mueble", "Regular", "Tallado", "Deposito N° 1"]],
+    )
+    [row] = rows
+    preview = row["preview"]
+    assert preview["denomination"] == "Cántaro sintético"
+    assert preview["materials"] == ["Madera"]
+    assert preview["object_type"] == "Bien mueble"
+    assert preview["conservation_status"] == "Regular"
+    assert preview["tenure_regime"] == "Propiedad"
+    assert preview["location"] == "Sede central (sintética) › Depósito 1"
+    assert preview["location_text"] is None

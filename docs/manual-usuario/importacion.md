@@ -193,6 +193,10 @@ Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque 
 
 Un error que afecta a una o dos filas se sigue viendo en la tarjeta de cada fila.
 
+### Ver cómo quedaría la ficha
+
+Cada fila de la lista tiene un botón: **Ver ficha** (o **Decidir**, **Ver** o **Ver cambios**, según la fila). Abre un panel con **Así quedaría la ficha**: los mismos grupos que la ficha de la pieza (Identificación, Descripción, Procedencia y época, Medidas y materiales, Conservación, Ubicación, Observaciones), con los nombres de los materiales, del tipo de bien y la ruta de la ubicación. Lo que la fila no trae dice «Sin registrar»; una ubicación del archivo que no existe en el museo aparece en ámbar.
+
 ### Materiales, tipo de bien, estado y ubicación
 
 Al aprobar, cada pieza nueva recibe lo que su fila trae en las columnas de **materiales**, **tipo de bien**, **categoría** y **estado de conservación** (este último queda como una evaluación de conservación), y queda en la **ubicación** que indica el archivo.

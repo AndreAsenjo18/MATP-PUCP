@@ -151,11 +151,9 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
                 <td className="px-4 py-2 font-mono text-sm font-bold text-terracota">{rowCode(row) ?? "—"}</td>
                 <td className="px-4 py-2">{pending && opinion ? <OpinionChip opinion={opinion} /> : rowState(row)}</td>
                 <td className="px-4 py-2 text-right">
-                  {(pending || row.has_validation_errors || row.classification === "UPDATE") && (
-                    <Button size="sm" variant="outline" onClick={() => onOpen(row)}>
-                      {pending ? "Decidir" : row.classification === "UPDATE" && !row.has_validation_errors ? "Ver cambios" : "Ver"}
-                    </Button>
-                  )}
+                  <Button size="sm" variant={pending || row.has_validation_errors ? "outline" : "secondary"} onClick={() => onOpen(row)}>
+                    {pending ? "Decidir" : row.has_validation_errors ? "Ver" : row.classification === "UPDATE" ? "Ver cambios" : "Ver ficha"}
+                  </Button>
                 </td>
               </tr>
             );
@@ -259,7 +257,17 @@ export function RowDecisionPanel({
       </div>
 
       {!resolvable ? (
-        <div className="flex-1 overflow-y-auto px-2 py-2">{fallback}</div>
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+          {row.preview && (
+            <details open className="rounded-2xl border border-borde bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-base font-extrabold text-tinta">Así quedaría la ficha</summary>
+              <div className="px-4 pb-4">
+                <PiecePreview preview={row.preview} />
+              </div>
+            </details>
+          )}
+          {fallback}
+        </div>
       ) : (
         <>
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
@@ -271,6 +279,14 @@ export function RowDecisionPanel({
                 </p>
               ))}
             </section>
+            {row.preview && (
+              <details className="rounded-2xl border border-borde">
+                <summary className="cursor-pointer px-4 py-3 text-base font-extrabold text-tinta">Así quedaría la ficha si es una pieza nueva</summary>
+                <div className="px-4 pb-4">
+                  <PiecePreview preview={row.preview} />
+                </div>
+              </details>
+            )}
 
             {opinion && (
               <section aria-label="Lo que opina Gemini" className="flex flex-col gap-1 rounded-2xl border border-gemini-violeta/30 bg-gemini-violeta/5 p-4 text-sm">
@@ -392,5 +408,81 @@ function Choice({
         <span className="text-gris-texto">{reason}</span>
       </span>
     </label>
+  );
+}
+
+type PiecePreviewData = NonNullable<ImportRow["preview"]>;
+
+const NOT_RECORDED = "Sin registrar";
+
+function previewText(value: string | null | undefined): string {
+  return value && value.trim() ? value : NOT_RECORDED;
+}
+
+/**
+ * «Así quedaría la ficha» (change `importacion-vista-previa-ficha`): la fila como la mostraría la
+ * ficha de la pieza nueva, con los mismos grupos y los nombres de los términos y de la ubicación.
+ */
+export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
+  const codes = (preview.codes ?? []).map((code) => (code.type ? `${code.type} ${code.value}` : code.value)).join(" · ");
+  const measures = (preview.dimensions ?? [])
+    .map((item) => {
+      const entry = item as { dimension?: string; value?: number; unit?: string };
+      return entry.dimension ? `${entry.dimension.charAt(0).toUpperCase()}${entry.dimension.slice(1)} ${String(entry.value ?? "").replace(".", ",")} ${entry.unit ?? ""}`.trim() : null;
+    })
+    .filter(Boolean)
+    .join(" · ");
+  const location = preview.location ?? (preview.location_text ? `«${preview.location_text}»: no existe en el museo` : null);
+  const groups: { title: string; items: [string, string | null | undefined][] }[] = [
+    {
+      title: "Identificación",
+      items: [
+        ["Denominación", preview.denomination],
+        ["Colección", preview.collection],
+        ["Códigos", codes],
+        ["Régimen de tenencia", preview.tenure_regime],
+        ["Tipo de bien", preview.object_type],
+        ["Categoría", preview.category],
+      ],
+    },
+    { title: "Descripción", items: [["Descripción", preview.description]] },
+    {
+      title: "Procedencia y época",
+      items: [
+        ["Procedencia", preview.provenance],
+        ["Época (texto original)", preview.epoch_original_text],
+        ["Autor", preview.author],
+        ["Forma de adquisición", preview.acquisition_method],
+        ["Fecha de ingreso", preview.entry_date],
+      ],
+    },
+    {
+      title: "Medidas y materiales",
+      items: [
+        ["Materiales", (preview.materials ?? []).join(", ")],
+        ["Medidas (texto original)", preview.dimensions_text],
+        ["Medidas detalladas", measures],
+      ],
+    },
+    { title: "Conservación", items: [["Estado de conservación", preview.conservation_status]] },
+    { title: "Ubicación", items: [["Ubicación", location]] },
+    { title: "Observaciones", items: [["Observaciones", preview.notes]] },
+  ];
+  return (
+    <div className="flex flex-col divide-y divide-borde">
+      {groups.map((group) => (
+        <section key={group.title} aria-label={group.title} className="py-3 first:pt-0">
+          <h3 className="mb-2 text-sm font-extrabold text-terracota">{group.title}</h3>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+            {group.items.map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-sm text-gris-texto">{label}</dt>
+                <dd className={cn("text-base break-words", label === "Ubicación" && !preview.location && preview.location_text ? "font-semibold text-ambar-texto" : value && value.trim() ? "font-semibold text-tinta" : "text-gris-texto")}>{previewText(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+    </div>
   );
 }
