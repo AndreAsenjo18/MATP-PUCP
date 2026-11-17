@@ -480,6 +480,38 @@ class ImportImageOut(BaseModel):
         )
 
 
+class PreviewCode(BaseModel):
+    type: str | None = None
+    value: str
+
+
+class PiecePreviewOut(BaseModel):
+    """«Así quedaría la ficha»: the row as the sheet of the new piece would show it, with names
+    instead of codes (change importacion-vista-previa-ficha)."""
+
+    denomination: str | None = None
+    description: str | None = None
+    author: str | None = None
+    provenance: str | None = None
+    epoch_original_text: str | None = None
+    dimensions_text: str | None = None
+    entry_date: str | None = None
+    notes: str | None = None
+    tenure_regime: str | None = None
+    collection: str | None = None
+    codes: list[PreviewCode] = Field(default_factory=list)
+    materials: list[str] = Field(default_factory=list)
+    object_type: str | None = None
+    category: str | None = None
+    conservation_status: str | None = None
+    acquisition_method: str | None = None
+    dimensions: list[dict[str, Any]] = Field(default_factory=list)
+    location: str | None = Field(None, description="Ruta de la ubicación encontrada.")
+    location_text: str | None = Field(
+        None, description="Ubicación del archivo que no coincide con ninguna del museo."
+    )
+
+
 class ImportRowOut(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -547,6 +579,10 @@ class ImportRowOut(BaseModel):
     images: list[ImportImageOut] = Field(
         default_factory=list, description="Imágenes ancladas en la fila (RF-029)."
     )
+    preview: PiecePreviewOut | None = Field(
+        None,
+        description="Así quedaría la ficha de la pieza nueva (`importacion-vista-previa-ficha`).",
+    )
 
     @classmethod
     def from_row(
@@ -556,8 +592,10 @@ class ImportRowOut(BaseModel):
         action: str | None = None,
         images: list[ImportImageOut] | None = None,
         matches: list[dict[str, Any]] | None = None,
+        preview: dict[str, Any] | None = None,
     ) -> "ImportRowOut":
         return cls(
+            preview=PiecePreviewOut(**preview) if preview else None,
             id=row.id,
             batch_id=row.batch_id,
             source_row_number=row.source_row_number,

@@ -119,6 +119,7 @@ from app.modules.imports.photo_upload import (
     request_upload_urls,
 )
 from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
+from app.modules.imports.preview import build_previews
 from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
@@ -299,9 +300,10 @@ def _row_out(
     row: ImportRow,
     images: list[ImportImageOut] | None = None,
     matches: list[dict[str, Any]] | None = None,
+    preview: dict[str, Any] | None = None,
 ) -> ImportRowOut:
     return ImportRowOut.from_row(
-        row, action=row_action(row)[0].value, images=images, matches=matches
+        row, action=row_action(row)[0].value, images=images, matches=matches, preview=preview
     )
 
 
@@ -815,13 +817,17 @@ def get_import_batch_diffs(
     rows, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
     candidates = enrich_matches(session, rows)
+    previews = build_previews(session, list(rows))
     images: dict[uuid.UUID | None, list[ImportImageOut]] = {}
     for image in batch_images(session, batch.id):
         images.setdefault(image.import_row_id, []).append(
             ImportImageOut.from_image(image, _preview_url(storage, image))
         )
     return ImportDiffsPage(
-        items=[_row_out(row, images.get(row.id), candidates.get(row.id)) for row in rows],
+        items=[
+            _row_out(row, images.get(row.id), candidates.get(row.id), previews.get(row.id))
+            for row in rows
+        ],
         total=total,
         page=params.page,
         page_size=params.page_size,

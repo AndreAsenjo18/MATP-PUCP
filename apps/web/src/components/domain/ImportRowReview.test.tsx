@@ -4,7 +4,7 @@ import type { GeminiOpinion } from "@/lib/data/import-row-review";
 import type { ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { RowDecisionPanel, RowList, RowReviewNotice } from "./ImportRowReview";
+import { PiecePreview, RowDecisionPanel, RowList, RowReviewNotice } from "./ImportRowReview";
 
 // Change importacion-revision-filas-compacta. Datos sintéticos (RNF-014).
 
@@ -86,5 +86,42 @@ describe("RowDecisionPanel", () => {
     const text = visibleText(render(<RowDecisionPanel row={row({ classification: "UPDATE" })} position={null} opinion={null} busy={false} canDecide fallback={<p>Tarjeta de la fila</p>} onDecide={noop} onClose={noop} />));
     expect(text).toContain("Tarjeta de la fila");
     expect(text).not.toContain("Aceptar y siguiente");
+  });
+});
+
+describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () => {
+  const preview = {
+    denomination: "Ave sintética",
+    collection: "Colección sintética",
+    codes: [{ type: "COLECCION", value: "ACG 045" }],
+    tenure_regime: "Propiedad",
+    object_type: "Escultura",
+    materials: ["Madera", "Cuero"],
+    conservation_status: "Regular",
+    dimensions: [{ dimension: "alto", value: 20, unit: "cm" }],
+    location: null,
+    location_text: "Deposito N° 1",
+  };
+
+  it("cada fila tiene «Ver ficha», también las que no piden decidir", () => {
+    const text = visibleText(render(<RowList rows={[row({ id: "n", classification: "NEW", matches: [] })]} opinions={new Map()} onOpen={noop} />));
+    expect(text).toContain("Ver ficha");
+  });
+
+  it("muestra los grupos de la ficha con nombres, y lo que falta como «Sin registrar»", () => {
+    const text = visibleText(render(<PiecePreview preview={preview} />));
+    expect(text).toContain("Identificación");
+    expect(text).toContain("ACG 045".replace("ACG", "COLECCION ACG"));
+    expect(text).toContain("Madera, Cuero");
+    expect(text).toContain("Alto 20 cm");
+    expect(text).toContain("Regular");
+    expect(text).toContain("Procedencia Sin registrar");
+    expect(text).toContain("«Deposito N° 1»: no existe en el museo");
+  });
+
+  it("en el panel de una fila nueva aparece abierta", () => {
+    const html = render(<RowDecisionPanel row={row({ classification: "NEW", matches: [], preview })} position={null} opinion={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
+    expect(html).toMatch(/<details open=""/);
+    expect(visibleText(html)).toContain("Así quedaría la ficha");
   });
 });
