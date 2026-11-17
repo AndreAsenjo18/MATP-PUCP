@@ -334,8 +334,8 @@ export function UsersLive() {
             </option>
           ))}
         </Select>
-        <label className="flex min-h-9 items-center gap-2 pb-1 text-sm text-gris-texto">
-          <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-gris-texto">
+          <input type="checkbox" className="size-5 accent-terracota" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} />
           Incluir desactivados
         </label>
       </AdminToolbar>

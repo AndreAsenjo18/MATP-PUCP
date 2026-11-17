@@ -54,7 +54,7 @@ export function SearchPill({ sobre = "claro", onVoiceClick, voiceListening = fal
             aria-label={voiceListening ? "Detener el dictado" : "Buscar por voz"}
             title={voiceListening ? "Detener el dictado" : "Buscar por voz"}
             className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-full focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
+              "flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota",
               voiceListening ? "bg-carmin-bg text-carmin-texto animate-pulse" : "text-gris-texto hover:text-terracota",
             )}
           >

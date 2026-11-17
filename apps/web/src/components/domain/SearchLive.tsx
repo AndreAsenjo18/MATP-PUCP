@@ -218,13 +218,16 @@ export function SearchResults({
               // La casilla va al lado de la fila, que es un enlace a la ficha.
               return (
                 <div key={hit.piece.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selection.has(hit.piece.id)}
-                    onChange={() => onSelectionChange(toggleSelected(selection, hit))}
-                    aria-label={`Seleccionar ${hit.piece.denomination}`}
-                    className="size-7 shrink-0 accent-terracota lg:size-6"
-                  />
+                  {/* El área que se pulsa es de 44 px aunque la casilla se vea más chica. */}
+                  <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={selection.has(hit.piece.id)}
+                      onChange={() => onSelectionChange(toggleSelected(selection, hit))}
+                      aria-label={`Seleccionar ${hit.piece.denomination}`}
+                      className="size-7 accent-terracota lg:size-6"
+                    />
+                  </label>
                   <div className="min-w-0 flex-1">{card}</div>
                 </div>
               );
@@ -233,7 +236,7 @@ export function SearchResults({
         </>
       )}
       {page.total > page.limit && onPage && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="secondary" disabled={page.page <= 1} onClick={() => onPage(page.page - 1)}>
             Anterior
           </Button>

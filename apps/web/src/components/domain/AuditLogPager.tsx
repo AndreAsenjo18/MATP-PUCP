@@ -38,7 +38,7 @@ export function AuditLogPager({ page, pageSize, total, noun, onPageChange, disab
   return (
     <nav aria-label="Paginación" className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-gris-texto">{pageRangeSentence(page, pageSize, total, noun)}</p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" icon={ChevronLeft} disabled={disabled || page <= 1} onClick={() => onPageChange(page - 1)}>
           Anterior
         </Button>

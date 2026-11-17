@@ -1061,7 +1061,7 @@ export function LiveImportWizard() {
               </>
             );
           })()}
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               Anterior
             </Button>

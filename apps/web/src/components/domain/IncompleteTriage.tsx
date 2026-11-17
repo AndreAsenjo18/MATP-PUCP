@@ -326,7 +326,7 @@ export function IncompleteTriage({
             </ul>
           )}
           {pageCount > 1 && (
-            <nav aria-label="Páginas de piezas incompletas" className="flex items-center justify-between gap-3 text-base text-gris-texto">
+            <nav aria-label="Páginas de piezas incompletas" className="flex flex-wrap items-center justify-between gap-3 text-base text-gris-texto">
               <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className={buttonClassName({ variant: "neutral", size: "sm" })}>
                 Anterior
               </button>

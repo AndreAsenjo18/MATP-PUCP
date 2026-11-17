@@ -182,7 +182,7 @@ export function ReportPreview({
       {report.message && <p className="rounded-md bg-crema-light px-3 py-2 text-base text-tinta">{report.message}</p>}
       {report.rows.length > 0 && <ReportTable report={report} initialCollapsed={initialCollapsed} visible={visible} />}
       {report.total_rows > report.page_size && onPage && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="secondary" disabled={report.page <= 1} onClick={() => onPage(report.page - 1)}>
             Anterior
           </Button>

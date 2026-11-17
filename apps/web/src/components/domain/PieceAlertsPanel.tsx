@@ -56,15 +56,15 @@ export function PieceAlertsPanel({
                 <button
                   type="button"
                   onClick={() => onNavigateToTab(tab)}
-                  className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-terracota underline"
+                  className="inline-flex min-h-11 max-w-full items-center gap-1 text-left text-base font-medium text-terracota underline"
                 >
                   {alert.suggested_action}
                   <ArrowRight size={16} aria-hidden="true" />
                 </button>
               ) : tab ? (
-                <span className="shrink-0 text-sm text-gris-texto">{alert.suggested_action}</span>
+                <span className="max-w-full text-base text-gris-texto">{alert.suggested_action}</span>
               ) : (
-                <Link href={`/piezas/${pieceId}/editar`} className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-terracota underline">
+                <Link href={`/piezas/${pieceId}/editar`} className="inline-flex min-h-11 max-w-full items-center gap-1 text-left text-base font-medium text-terracota underline">
                   {alert.suggested_action}
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>

@@ -12,6 +12,7 @@ import {
   DEFAULT_FILTERS,
   IdentifierTypeNamesProvider,
   DistinctDialog,
+  PIECE_UNAVAILABLE,
   PostponeDialog,
   QueuePager,
   ScanPanel,
@@ -200,9 +201,19 @@ describe("fila compacta (Req: Lista compacta de posibles duplicados)", () => {
 
   it("ficha no disponible: lo dice en su lugar y conserva el nivel y «Revisar»", () => {
     const text = visibleText(row(PAIR, { pieceA: null }));
-    expect(text).toContain("ficha no disponible");
+    expect(text).toContain(PIECE_UNAVAILABLE);
     expect(text).toContain(SIMILARITY_WORDS.high);
     expect(text).toContain("Revisar");
+  });
+
+  it("códigos I distintos: la etiqueta lo dice en vez de «Muy parecidas» y el motivo es lo que hizo proponer el par", () => {
+    const conflict: Signal = { signal: "inventory_code_conflict", field: "identifier:I", similarity: 0 };
+    const denomination: Signal = { signal: "denomination", field: "denomination", similarity: 1, contribution: 0.5 };
+    const text = visibleText(row({ ...PAIR, blocking_conflict: true, matched_fields: [conflict, denomination] }));
+    expect(text).toContain("Códigos I distintos");
+    expect(text).not.toContain(SIMILARITY_WORDS.high);
+    expect(text).toContain("Denominación igual");
+    expect(text).not.toContain("Códigos I vigentes distintos");
   });
 
   it("par ya resuelto: muestra su estado en la fila", () => {

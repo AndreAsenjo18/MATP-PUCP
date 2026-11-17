@@ -216,7 +216,7 @@ describe("PieceSheet", () => {
     const groups = [...html.matchAll(/<h2[^>]*>([^<]+)<\/h2>/g)].map((match) => match[1]);
     expect(groups).toEqual(["Identificación", "Descripción", "Procedencia y época", "Medidas y materiales", "Conservación", ...(loanPiece.notes ? ["Observaciones"] : [])]);
     const labels = [...html.matchAll(/<dt[^>]*>([^<]+)<\/dt>/g)].map((match) => match[1]);
-    for (const label of ["Colección", "Categoría", "Tipo de bien", "Materiales", "Estado de conservación", "Forma de adquisición", "Disponibilidad", "Procedencia", "Época (texto original)", "Medidas", "Fecha de ingreso", "Registrado por", "Propietario legal", "Comodante", "Convenio de comodato", "Descripción"]) {
+    for (const label of ["Colección", "Categoría", "Tipo de bien", "Materiales", "Estado de conservación", "Forma de adquisición", "Disponibilidad", "Procedencia", "Época (texto original)", loanPiece.dimensions?.length ? "Medidas (texto original)" : "Medidas", "Fecha de ingreso", "Registrado por", "Propietario legal", "Comodante", "Convenio de comodato", "Descripción"]) {
       expect(labels).toContain(label);
     }
     expect(html).toContain("border-t border-borde");

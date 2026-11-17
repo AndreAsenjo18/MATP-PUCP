@@ -445,7 +445,7 @@ export function pieceSide(title: string, short: string, piece: PieceSlot, pieces
       <ArrowRight size={16} aria-hidden="true" />
     </Link>
   ) : (
-    <span className="text-gris-texto">{piecesLoading ? "Cargando ficha…" : "Ficha no disponible"}</span>
+    <span className="text-gris-texto">{piecesLoading ? "Cargando ficha…" : `${PIECE_UNAVAILABLE}.`}</span>
   );
   return {
     title,
@@ -730,7 +730,7 @@ export function DuplicateCandidateCard({
   const rowNote = isImportRow ? rowBlockNote(row, canDecideRow && Boolean(onRowDecision)) : null;
   const blockNote = isImportRow ? rowNote : mergeNote;
   const pieceName = pieceA?.denomination ?? "la pieza del catálogo";
-  const words = SIMILARITY_WORDS[similarityLevel(candidate.score)];
+  const chip = pairChip(candidate);
   const blocked = mergeBlock(candidate, pieceA, pieceB)?.code === "merge_blocked_inventory_code";
 
   return (
@@ -740,7 +740,7 @@ export function DuplicateCandidateCard({
         <h3 ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold text-tinta focus-visible:outline-none">
           ¿Es la misma pieza?
         </h3>
-        <span className="rounded-full bg-ambar-bg px-3 py-1 text-base font-bold text-ambar-texto">{words}</span>
+        <span className={cn("rounded-full px-3 py-1 text-base font-bold", chip.className)}>{chip.words}</span>
         <span className="rounded-full bg-ciruela-bg px-3 py-1 text-base font-bold text-ciruela">{isImportRow ? "Pieza y fila de un Excel" : "Dos piezas del catálogo"}</span>
         {candidate.status !== "PENDING" && <StatusBadge status={duplicateStatus(candidate.status)} />}
         <span className="flex-1" />
@@ -870,6 +870,24 @@ export const SIMILARITY_WORDS: Record<SimilarityLevel, string> = {
   low: "Poco parecidas",
 };
 
+/** El par trae dos códigos I vigentes distintos: no se puede fusionar (RN-002). */
+export function hasInventoryCodeConflict(candidate: Pick<DuplicateCandidate, "blocking_conflict" | "matched_fields">): boolean {
+  return candidate.blocking_conflict || candidate.matched_fields.some((signal) => signal.signal === "inventory_code_conflict");
+}
+
+/**
+ * La etiqueta del par: su nivel de parecido en palabras o, si sus códigos I difieren, eso. Antes
+ * decía «Muy parecidas» junto a «Códigos I vigentes distintos», que se leía como una contradicción.
+ */
+export function pairChip(candidate: Pick<DuplicateCandidate, "blocking_conflict" | "matched_fields" | "score">): { words: string; className: string } {
+  if (hasInventoryCodeConflict(candidate)) return { words: "Códigos I distintos", className: "bg-carmin-bg text-carmin-texto" };
+  const level = similarityLevel(candidate.score);
+  return { words: SIMILARITY_WORDS[level], className: level === "low" ? "bg-borde text-gris-texto" : "bg-ambar-bg text-ambar-texto" };
+}
+
+/** Texto de una ficha que no llegó: dada de baja desde que se detectó el par, o sin respuesta. */
+export const PIECE_UNAVAILABLE = "Ficha no disponible: ya no está en el catálogo o no se pudo leer";
+
 /**
  * Motivo principal por el que se propone el par: un conflicto de códigos I manda (bloquea la
  * fusión); si no, la señal que más aporta al puntaje y, sin aportes, la de mayor similitud.
@@ -886,7 +904,7 @@ export function mainSignal(signals: readonly DuplicateSignal[]): DuplicateSignal
 
 function RowPiece({ piece, piecesLoading }: { piece: PieceSlot; piecesLoading: boolean }) {
   if (!piece) {
-    return <p className="text-base font-semibold text-tinta">{piecesLoading ? "Cargando ficha…" : "ficha no disponible"}</p>;
+    return <p className="text-base font-semibold text-gris-texto">{piecesLoading ? "Cargando ficha…" : `${PIECE_UNAVAILABLE}.`}</p>;
   }
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -925,8 +943,11 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
   const names = useIdentifierTypeNames();
   const detailId = `pair-detail-${candidate.id}`;
   const isImportRow = candidate.piece_b_id === null;
-  const reason = mainSignal(candidate.matched_fields);
-  const words = SIMILARITY_WORDS[similarityLevel(candidate.score)];
+  const chip = pairChip(candidate);
+  const words = chip.words;
+  // Con códigos I distintos la etiqueta ya lo dice: el motivo es lo que hizo proponer el par.
+  const conflict = hasInventoryCodeConflict(candidate);
+  const reason = mainSignal(conflict ? candidate.matched_fields.filter((signal) => signal.signal !== "inventory_code_conflict") : candidate.matched_fields);
   return (
     <li>
       <article
@@ -957,14 +978,7 @@ export function DuplicateCandidateRow({ candidate, pieceA, pieceB, piecesLoading
             </div>
           </div>
           <div className="flex min-w-0 flex-col items-start gap-1.5 lg:w-56">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-3 py-1 text-base font-semibold",
-                similarityLevel(candidate.score) === "low" ? "bg-borde text-gris-texto" : "bg-ambar-bg text-ambar-texto",
-              )}
-            >
-              {words}
-            </span>
+            <span className={cn("inline-flex items-center rounded-full px-3 py-1 text-base font-semibold", chip.className)}>{words}</span>
             {reason && <p className="text-base text-gris-texto">{signalLabel(reason, names)}</p>}
             {candidate.status !== "PENDING" && <p className="text-base text-tinta">Estado: {duplicateStatus(candidate.status).label}</p>}
           </div>
