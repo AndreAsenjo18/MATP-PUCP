@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ImportBatch, ImportImage, ImportLog, ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, RollbackPanel, TenureBanner } from "./ImportWizard";
+import { ApprovalPanel, BatchHeader, FormatBar, ImageReviewPanel, ImportLogPanel, ImportRowCard, ImportSteps, ProgressPanel, revalidateHint, RollbackPanel, TenureBanner } from "./ImportWizard";
 
 const noop = () => {};
 const acceptButton = /<button[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar<\/button>/;
@@ -364,6 +364,25 @@ describe("formato aplicado", () => {
 
   it("sin plantilla indica que las columnas se ajustaron a mano", () => {
     expect(visibleText(render(<FormatBar formatName={null} busy={false} onChange={noop} />))).toContain("columnas ajustadas a mano");
+  });
+
+  it("mientras se cargan los formatos no dice «a mano» (al volver a abrir un lote)", () => {
+    const text = visibleText(render(<FormatBar formatName={undefined} busy={false} onChange={noop} />));
+    expect(text).toContain("Formato aplicado: …");
+    expect(text).not.toContain("a mano");
+  });
+
+  it("ofrece «Validar de nuevo» con el mismo formato y explica cuándo usarlo", () => {
+    const text = visibleText(render(<FormatBar formatName="BD estandarizada 2025" busy={false} onChange={noop} onRevalidate={noop} revalidateHint={revalidateHint(118, 0)} />));
+    expect(text).toContain("Validar de nuevo");
+    expect(text).toContain("crear una colección");
+    expect(visibleText(render(<FormatBar formatName="BD estandarizada 2025" busy={false} onChange={noop} />))).not.toContain("Validar de nuevo");
+  });
+
+  it("el aviso solo aparece con filas con error y dice qué decisiones se pierden", () => {
+    expect(revalidateHint(0, 3)).toBeNull();
+    expect(revalidateHint(5, 0)).not.toContain("se pierde");
+    expect(revalidateHint(5, 2)).toContain("las 2 decisiones que ya tomó se pierden");
   });
 });
 

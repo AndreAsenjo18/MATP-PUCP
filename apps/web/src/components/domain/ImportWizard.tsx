@@ -548,18 +548,50 @@ export function TenureBanner({
   );
 }
 
-/** Formato con que se leyó el archivo y acceso a cambiarlo sin volver a subirlo. */
-export function FormatBar({ formatName, busy, onChange }: { formatName: string | null; busy: boolean; onChange: () => void }) {
+/**
+ * Formato con que se leyó el archivo, acceso a cambiarlo sin volver a subirlo y «Validar de
+ * nuevo» con el mismo formato (por ejemplo, después de crear en Administración la colección que
+ * faltaba). `formatName`: el nombre del formato guardado, `null` si las columnas se ajustaron a
+ * mano y `undefined` mientras se cargan los formatos.
+ */
+export function FormatBar({
+  formatName,
+  busy,
+  onChange,
+  onRevalidate,
+  revalidateHint,
+}: {
+  formatName: string | null | undefined;
+  busy: boolean;
+  onChange: () => void;
+  onRevalidate?: () => void;
+  revalidateHint?: string | null;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gris-texto">
-      <span>
-        Formato aplicado: <strong className="font-medium text-tinta">{formatName ?? "columnas ajustadas a mano"}</strong>
-      </span>
-      <Button variant="secondary" disabled={busy} onClick={onChange}>
-        Cambiar formato
-      </Button>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gris-texto">
+        <span>
+          Formato aplicado: <strong className="font-medium text-tinta">{formatName === undefined ? "…" : (formatName ?? "columnas ajustadas a mano")}</strong>
+        </span>
+        {onRevalidate && (
+          <Button variant="secondary" disabled={busy} onClick={onRevalidate}>
+            Validar de nuevo
+          </Button>
+        )}
+        <Button variant="secondary" disabled={busy} onClick={onChange}>
+          Cambiar formato
+        </Button>
+      </div>
+      {onRevalidate && revalidateHint && <p className="text-sm text-gris-texto">{revalidateHint}</p>}
     </div>
   );
+}
+
+/** Cuándo sirve «Validar de nuevo» y qué se pierde, para mostrar bajo el botón si hay errores. */
+export function revalidateHint(errorRows: number, decided: number): string | null {
+  if (errorRows <= 0) return null;
+  const lost = decisionsLostNotice(decided);
+  return `¿Corrigió algo fuera de este lote, como crear una colección o un término que faltaba? Pulse «Validar de nuevo»: se lee el archivo con el mismo formato.${lost ? ` ${lost}` : ""}`;
 }
 
 export function ApprovalPanel({
