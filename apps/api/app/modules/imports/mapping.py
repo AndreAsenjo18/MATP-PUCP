@@ -44,6 +44,7 @@ from app.modules.identification.models import (
 )
 from app.modules.identification.normalization import (
     TYPE_COLLECTION,
+    TYPE_INVENTORY,
     TYPE_OTHER,
     NormalizationParams,
     is_absence_marker,
@@ -1143,7 +1144,31 @@ def apply_mapping(
             )
     _complete_collection_numbers(mapped, ctx)
     _notes_from_code_columns(mapped)
+    _check_inventory_codes(mapped)
     return mapped
+
+
+def _check_inventory_codes(mapped: MappedRow) -> None:
+    """A piece has one current code I (RN-002): a row with two different ones is an error of
+    that row, found while validating. Before, it passed validation and its application failed,
+    undoing the whole batch. The same code written twice (``I-03602`` and ``I-3602``) is fine:
+    it is one code, and the second spelling is kept as historical when the row is applied."""
+    codes: dict[str, str] = {}
+    for identifier in mapped.identifiers:
+        if identifier.type_code != TYPE_INVENTORY or identifier.is_absent:
+            continue
+        key = identifier.normalized_value or identifier.original_value
+        codes.setdefault(key, identifier.original_value)
+    if len(codes) > 1:
+        written = " y ".join(f"«{value}»" for value in codes.values())
+        mapped.errors.append(
+            RowError(
+                "several_inventory_codes",
+                f"La fila trae códigos I distintos ({written}) y una pieza tiene uno solo. "
+                "Corrija la fila en el archivo o déjela fuera.",
+                "identifiers",
+            )
+        )
 
 
 #: Words a value of a code column must exceed to be read as a note, not a code [SUPUESTO].
