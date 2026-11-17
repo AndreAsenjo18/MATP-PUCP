@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7d78a64df22906bc55ffe8af8ee3cb289befe05448058301800488f579c9779f
+ * openapi-sha256: 115a3570c09dbfda4742f6048f78ad027e3fab3161c05bad4ab91cbe77cf2544
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -765,6 +765,30 @@ export interface paths {
         get: operations["getImport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/ai-judgment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lo que opina Gemini de las filas del lote que parecen piezas que ya están
+         * @description El análisis más reciente sobre los pares de las filas de este lote y el último veredicto de cada par: misma pieza, distintas o no está seguro, con su confianza y motivo (change `importacion-revision-filas-compacta`).
+         */
+        get: operations["getImportAiJudgment"];
+        put?: never;
+        /**
+         * Pedir a Gemini que revise las filas del lote que parecen piezas que ya están
+         * @description Juzga en segundo plano solo los pares pendientes de las filas de este lote, con el mismo análisis de la cola de duplicados: primero las reglas (dos códigos I vigentes distintos = distintas), luego la IA por lotes y solo con campos de catálogo (RNF-014). Cada veredicto es una sugerencia: la fila se decide cuando la persona la acepta (RN-009). 409 `ai_run_in_progress` si ya hay un análisis en curso (change `importacion-revision-filas-compacta`).
+         */
+        post: operations["startImportAiJudgment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3596,6 +3620,11 @@ export interface components {
              * @description Campo de destino propuesto, o null.
              */
             field?: string | null;
+            /**
+             * Reason
+             * @description Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja (p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara (change importacion-mapeo-asistido).
+             */
+            reason?: string | null;
         };
         /**
          * ColumnMappingSuggestionOut
@@ -4733,6 +4762,43 @@ export interface components {
             view_type_term_id?: string | null;
         };
         /**
+         * ImportAiJudgmentOut
+         * @description «Pedir a Gemini que revise estas filas» (change importacion-revision-filas-compacta, D2):
+         *     the run over the batch's pairs, if any, and the latest verdict of each pair. Nothing is
+         *     decided until the person accepts the row (RN-009).
+         */
+        ImportAiJudgmentOut: {
+            /**
+             * Min Confidence
+             * @description Por debajo de esta confianza, el veredicto no preselecciona nada.
+             */
+            min_confidence: number;
+            run?: components["schemas"]["ImportAiRunOut"] | null;
+            /** Verdicts */
+            verdicts?: components["schemas"]["ImportRowVerdictOut"][];
+        };
+        /** ImportAiRunOut */
+        ImportAiRunOut: {
+            /** Error Message */
+            error_message?: string | null;
+            /** Failed Batches */
+            failed_batches: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Processed Pairs */
+            processed_pairs: number;
+            /**
+             * Status
+             * @description `RUNNING`, `SUCCEEDED` o `FAILED`.
+             */
+            status: string;
+            /** Total Pairs */
+            total_pairs: number;
+        };
+        /**
          * ImportBatchCounters
          * @description Counters of ``ImportBatchSummary.summary`` (contract ``endpoints-api-v1.yaml``).
          */
@@ -4855,6 +4921,13 @@ export interface components {
             progress?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Sample Rows
+             * @description Las primeras filas tal como vienen en el archivo (cabecera -> valor), para comprobar el mapeo de columnas con datos reales antes de validar (`importacion-mapeo-asistido`).
+             */
+            sample_rows?: {
+                [key: string]: unknown;
+            }[];
             /** Sheet Name */
             sheet_name?: string | null;
             /**
@@ -5296,6 +5369,38 @@ export interface components {
             validation_errors: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * ImportRowVerdictOut
+         * @description What Gemini (or a rule) thinks of one candidate of a row: a suggestion, never a
+         *     decision (RN-009).
+         */
+        ImportRowVerdictOut: {
+            /** Confidence */
+            confidence: number;
+            /**
+             * Piece Id
+             * Format: uuid
+             * @description La pieza del catálogo con la que se comparó la fila.
+             */
+            piece_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Row Id
+             * Format: uuid
+             */
+            row_id: string;
+            /**
+             * Source
+             * @description `rule`, `ai` o `review`.
+             */
+            source: string;
+            /**
+             * Verdict
+             * @description `same`, `distinct` o `unsure`.
+             */
+            verdict: string;
         };
         /**
          * IncompletePiece
@@ -11755,6 +11860,140 @@ export interface operations {
             };
         };
     };
+    getImportAiJudgment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportAiJudgmentOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startImportAiJudgment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportAiJudgmentOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     confirmImportBatch: {
         parameters: {
             query?: never;
@@ -11826,6 +12065,8 @@ export interface operations {
                 page?: number;
                 /** @description Resultados por página (máx. 100). */
                 page_size?: number;
+                /** @description Solo las filas que piden decidir a qué pieza corresponden: conflictos y posibles duplicados (change `importacion-revision-filas-compacta`). */
+                to_decide?: boolean;
             };
             header?: never;
             path: {

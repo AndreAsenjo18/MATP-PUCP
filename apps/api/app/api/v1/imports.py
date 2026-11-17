@@ -73,6 +73,7 @@ from app.modules.imports.catalog_photos import (
 )
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
 from app.modules.imports.decisions import (
+    RESOLVABLE,
     approval_summary,
     approve,
     decide_row,
@@ -123,6 +124,8 @@ from app.modules.imports.schemas import (
     CorrespondencesOut,
     FolderRuleRequest,
     ImageAssociateRequest,
+    ImportAiJudgmentOut,
+    ImportAiRunOut,
     ImportBatchOut,
     ImportBatchSummary,
     ImportDiffsPage,
@@ -132,6 +135,7 @@ from app.modules.imports.schemas import (
     ImportPhotoOut,
     ImportPhotoSummary,
     ImportRowOut,
+    ImportRowVerdictOut,
     MappingRequest,
     MappingTemplateCreate,
     MappingTemplateOut,
@@ -169,6 +173,8 @@ from app.modules.imports.service import (
 from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
+from app.modules.quality import ai_judgment
+from app.modules.quality.models import QualityJobStatus
 
 router = APIRouter(responses=COMMON_ERROR_RESPONSES, tags=["Importación"])
 logger = logging.getLogger("matp.imports")
@@ -241,7 +247,27 @@ def batch_out(
             .where(ImportRow.batch_id == batch.id, ImportRow.decision != RowDecision.PENDING)
         )
         out.counts = {**(out.counts or {}), "DECIDED": int(decided or 0)}
+    if batch.kind in ROW_KINDS:
+        out.sample_rows = _sample_rows(session, batch.id)
     return out
+
+
+#: Rows shown to check the column mapping against real values (importacion-mapeo-asistido).
+SAMPLE_ROWS = 3
+
+
+def _sample_rows(session: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]:
+    """The first rows as read from the file, without the reader's own keys (``__merged``)."""
+    rows = session.scalars(
+        select(ImportRow.raw_data)
+        .where(ImportRow.batch_id == batch_id)
+        .order_by(ImportRow.source_row_number)
+        .limit(SAMPLE_ROWS)
+    )
+    return [
+        {key: value for key, value in (raw or {}).items() if not key.startswith("__")}
+        for raw in rows
+    ]
 
 
 def _preview_url(storage: ObjectStorage, image: ImportImage) -> str | None:
@@ -512,6 +538,116 @@ def validate_import(
     )
 
 
+def _ai_judgment_out(session: Session, batch_id: uuid.UUID) -> ImportAiJudgmentOut:
+    pairs = ai_judgment.batch_verdicts(session, batch_id)
+    run_ids = {verdict.run_id for _candidate, verdict in pairs}
+    latest = ai_judgment.latest_run(session)
+    # A run in progress is the one just asked for; otherwise the newest that judged this batch.
+    if latest is not None and latest.status == QualityJobStatus.RUNNING:
+        run = latest
+    elif run_ids:
+        run = max(
+            (ai_judgment.get_run(session, run_id) for run_id in run_ids),
+            key=lambda item: item.created_at,
+        )
+    else:
+        run = None
+    return ImportAiJudgmentOut(
+        run=ImportAiRunOut(
+            id=run.id,
+            status=run.status.value,
+            total_pairs=run.total_pairs,
+            processed_pairs=run.processed_pairs,
+            failed_batches=run.failed_batches,
+            error_message=run.error_message,
+        )
+        if run is not None
+        else None,
+        min_confidence=ai_judgment.load_config(session).min_confidence,
+        verdicts=[
+            ImportRowVerdictOut(
+                row_id=candidate.import_row_id,  # type: ignore[arg-type]
+                piece_id=candidate.piece_a_id,
+                verdict=verdict.verdict.value,
+                confidence=float(verdict.confidence),
+                reason=verdict.reason,
+                source=verdict.source.value,
+            )
+            for candidate, verdict in pairs
+        ],
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/ai-judgment",
+    response_model=ImportAiJudgmentOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Pedir a Gemini que revise las filas del lote que parecen piezas que ya están",
+    description="Juzga en segundo plano solo los pares pendientes de las filas de este lote, con "
+    "el mismo análisis de la cola de duplicados: primero las reglas (dos códigos I vigentes "
+    "distintos = distintas), luego la IA por lotes y solo con campos de catálogo (RNF-014). Cada "
+    "veredicto es una sugerencia: la fila se decide cuando la persona la acepta (RN-009). 409 "
+    "`ai_run_in_progress` si ya hay un análisis en curso (change "
+    "`importacion-revision-filas-compacta`).",
+    **implemented(),
+)
+def start_import_ai_judgment(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("ai.request"))],
+) -> ImportAiJudgmentOut:
+    batch = get_spreadsheet_batch(session, batch_id)
+    if batch.status not in PREVIEW_STATUSES:
+        raise ConflictError(
+            f"El lote está en estado «{STATUS_LABELS[batch.status]}»: valídelo antes de pedir "
+            "la revisión de Gemini.",
+            code="batch_not_validated",
+            details={"current_status": batch.status.value},
+        )
+    writer(session, user)
+    run = ai_judgment.start_judgment(session, user.id)
+    session.commit()
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    jobs.run_in_background(
+        background_tasks,
+        ai_judgment.run_judgment,
+        request.app.state.session_factory,
+        client,
+        run.id,
+        batch.id,
+    )
+    out = _ai_judgment_out(session, batch.id)
+    out.run = ImportAiRunOut(
+        id=run.id,
+        status=run.status.value,
+        total_pairs=run.total_pairs,
+        processed_pairs=run.processed_pairs,
+        failed_batches=run.failed_batches,
+        error_message=run.error_message,
+    )
+    return out
+
+
+@router.get(
+    "/imports/{batch_id}/ai-judgment",
+    response_model=ImportAiJudgmentOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Lo que opina Gemini de las filas del lote que parecen piezas que ya están",
+    description="El análisis más reciente sobre los pares de las filas de este lote y el último "
+    "veredicto de cada par: misma pieza, distintas o no está seguro, con su confianza y motivo "
+    "(change `importacion-revision-filas-compacta`).",
+    **implemented(),
+)
+def get_import_ai_judgment(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> ImportAiJudgmentOut:
+    get_spreadsheet_batch(session, batch_id)
+    return _ai_judgment_out(session, batch_id)
+
+
 @router.get(
     "/imports/{batch_id}/diffs",
     response_model=ImportDiffsPage,
@@ -530,6 +666,13 @@ def get_import_batch_diffs(
     params: Annotated[PageParams, Depends(page_params)],
     classification: RowClassification | None = None,
     only_errors: bool = False,
+    to_decide: Annotated[
+        bool,
+        Query(
+            description="Solo las filas que piden decidir a qué pieza corresponden: conflictos "
+            "y posibles duplicados (change `importacion-revision-filas-compacta`)."
+        ),
+    ] = False,
 ) -> ImportDiffsPage:
     batch = get_spreadsheet_batch(session, batch_id)
     if batch.status not in PREVIEW_STATUSES:
@@ -548,6 +691,8 @@ def get_import_batch_diffs(
         statement = statement.where(ImportRow.classification == classification)
     if only_errors:
         statement = statement.where(ImportRow.has_validation_errors.is_(True))
+    if to_decide:
+        statement = statement.where(ImportRow.classification.in_(RESOLVABLE))
     rows, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
     candidates = enrich_matches(session, rows)

@@ -53,17 +53,25 @@ def test_an_import_pair_brings_the_row_to_compare_without_personal_data(
 
 def test_deciding_the_row_in_its_batch_closes_its_pairs(pipeline: Pipeline, tmp_path: Path) -> None:
     batch_id = _validated_demo_batch(pipeline, tmp_path)
-    pair = next(
+    # The first pair whose row can go to its piece. A row whose code I differs from the piece's is
+    # refused (RN-002, ``inventory_code_mismatch``), and the synthetic codes are random, so which
+    # pairs those are changes from run to run.
+    candidates = [
         pair
         for pair in _import_pairs(pipeline, status="PENDING")
         if pair["import_row"]["batch_id"] == batch_id
-    )
-
-    response = pipeline.client.patch(
-        f"/api/v1/imports/{batch_id}/rows/{pair['import_row_id']}",
-        json={"target_piece_id": pair["piece_a_id"]},
-    )
-    assert response.status_code == 200, response.text
+    ]
+    pair = None
+    for candidate in candidates:
+        response = pipeline.client.patch(
+            f"/api/v1/imports/{batch_id}/rows/{candidate['import_row_id']}",
+            json={"target_piece_id": candidate["piece_a_id"]},
+        )
+        if response.status_code == 200:
+            pair = candidate
+            break
+        assert response.json()["code"] == "inventory_code_mismatch", response.text
+    assert pair is not None, "ningún par del lote de demostración se pudo resolver hacia su pieza"
 
     pending = {item["id"] for item in _import_pairs(pipeline, status="PENDING")}
     assert pair["id"] not in pending

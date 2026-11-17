@@ -190,7 +190,8 @@ class LLMProvider(AIProvider):
             "Mapeas encabezados de un Excel de un museo peruano a campos de un catálogo. "
             "Devuelve SOLO un objeto JSON, sin explicación ni markdown, con esta forma exacta:\n\n"
             '{"mappings": [{"column": "<encabezado EXACTO recibido>", '
-            '"field": "<una clave de la lista, o null>", "confidence": <0 a 1>}]}\n\n'
+            '"field": "<una clave de la lista, o null>", "confidence": <0 a 1>, '
+            '"reason": "<por qué dudas, o null>"}]}\n\n'
             f"Campos válidos (clave: etiqueta):\n{vocabulary}\n\n"
             "Reglas:\n"
             '- Debe haber exactamente un elemento de "mappings" por cada encabezado recibido, en '
@@ -199,7 +200,10 @@ class LLMProvider(AIProvider):
             "corresponde. No inventes claves nuevas.\n"
             "- Dos columnas no deben proponer el mismo campo: si dos encabezados parecen el mismo "
             "campo, elige el más claro y deja null en el otro.\n"
-            "- Usa la muestra de filas solo para desambiguar; no la repitas en la respuesta."
+            "- Usa la muestra de filas solo para desambiguar; no la repitas en la respuesta.\n"
+            '- Si "confidence" es menor que 0.8, "reason" explica la duda en una frase corta en '
+            'español para una persona del museo (por ejemplo: "Fecha" puede ser la época de la '
+            'pieza o la fecha de registro). Si estás seguro, "reason" es null.'
         )
         sample_text = json.dumps(sample_rows[:5], ensure_ascii=False)
         user_prompt = (
@@ -436,9 +440,14 @@ class LLMProvider(AIProvider):
             confidence = min(max(confidence, 0.0), 1.0)
             if field is not None:
                 used_fields.add(field)
+            reason = item.get("reason") if item else None
+            reason = reason.strip()[:200] if isinstance(reason, str) and reason.strip() else None
             candidates.append(
                 ColumnMappingCandidate(
-                    column=header, field=field, confidence=confidence if field else 0.0
+                    column=header,
+                    field=field,
+                    confidence=confidence if field else 0.0,
+                    reason=reason if field else None,
                 )
             )
         return candidates

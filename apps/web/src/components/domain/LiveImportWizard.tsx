@@ -34,6 +34,10 @@ import {
 } from "@/components/domain/ImportWizard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
+import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
+import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
+import { getApiMode } from "@/lib/data/mode";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
@@ -72,7 +76,10 @@ import {
   downloadImportLog,
   excludeRows,
   fetchImportBatch,
+  fetchImportAiJudgment,
   fetchImportDiffs,
+  requestImportAiJudgment,
+  type ImportAiJudgment,
   fetchImportLog,
   isProcessing,
   progressStep,
@@ -139,7 +146,12 @@ export function LiveImportWizard() {
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [filters, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean }>({ classification: null, onlyErrors: false });
+  // `null` = la persona no eligió filtro: se usa el de entrada («Por decidir» si hay filas que lo piden).
+  const [chosenFilter, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean; toDecide?: boolean } | null>(null);
+  // Revisión compacta con Gemini (importacion-revision-filas-compacta): opiniones por fila y el panel abierto.
+  const [aiJudgment, setAiJudgment] = useState<ImportAiJudgment | null>(null);
+  const [geminiState, setGeminiState] = useState<GeminiReviewState>("idle");
+  const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
   // grandes (p. ej. 200 filas); el backend acepta de 1 a 100 (apps/api/app/api/pagination.py).
@@ -159,6 +171,10 @@ export function LiveImportWizard() {
   const [rollbackReason, setRollbackReason] = useState<string | null>(null);
   // Paso «Mapeo» (4.1A, 4.1B): elegir punto de partida o editar el mapeo.
   const [mappingMode, setMappingMode] = useState<"pick" | "edit">("pick");
+  // «Así quedarían las piezas» (importacion-mapeo-asistido): la vista de entrada al ajustar columnas;
+  // `advancedMapping` muestra el editor por columna de siempre.
+  const [advancedMapping, setAdvancedMapping] = useState(false);
+  const [aiMapping, setAiMapping] = useState<AiMappingState>("off");
   const [suggestions, setSuggestions] = useState<TemplateSuggestion[] | null>(null);
   const [templates, setTemplates] = useState<MappingTemplate[] | null>(null);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -310,10 +326,14 @@ export function LiveImportWizard() {
 
   // Un archivo que no se pudo leer no llega a tener filas: solo se muestra su motivo.
   const showRows = batch != null && !processing && step >= 3 && batch.status !== "FAILED_INGESTION";
+  // La revisión se abre en «Por decidir» cuando hay filas que lo piden (importacion-revision-filas-compacta, D1).
+  const toDecideCount = (batch?.counts?.CONFLICT ?? 0) + (batch?.counts?.POSSIBLE_DUPLICATE ?? 0);
+  const filters = chosenFilter ?? (toDecideCount > 0 ? { classification: null, onlyErrors: false, toDecide: true } : { classification: null, onlyErrors: false });
+  const filtersKey = JSON.stringify(filters);
   useEffect(() => {
     let active = true;
     if (!batchId || !showRows) return;
-    fetchImportDiffs(batchId, { ...filters, page, pageSize }, devUser).then((result) => {
+    fetchImportDiffs(batchId, { ...(JSON.parse(filtersKey) as typeof filters), page, pageSize }, devUser).then((result) => {
       if (!active) return;
       if (result.status === "ok") setDiffs(result.value);
       else setError(result.message);
@@ -321,7 +341,29 @@ export function LiveImportWizard() {
     return () => {
       active = false;
     };
-  }, [batchId, showRows, filters, page, pageSize, devUser, reload]);
+  }, [batchId, showRows, filtersKey, page, pageSize, devUser, reload]);
+
+  // Lo que opina Gemini de las filas del lote; mientras el análisis corre, se consulta cada 2 s.
+  const geminiRunning = geminiState === "running";
+  useEffect(() => {
+    if (!batchId || !showRows || getApiMode() === "mock") return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () =>
+      fetchImportAiJudgment(batchId, devUser).then((result) => {
+        if (!active || result.status !== "ok") return;
+        setAiJudgment(result.value);
+        const running = result.value.run?.status === "RUNNING";
+        const judged = (result.value.verdicts ?? []).length > 0;
+        setGeminiState((current) => (running ? "running" : judged || current === "running" || current === "asking" ? "ready" : current));
+        if (running) timer = setTimeout(load, 2000);
+      });
+    void load();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [batchId, showRows, devUser, reload, geminiRunning]);
 
   useEffect(() => {
     let active = true;
@@ -442,8 +484,10 @@ export function LiveImportWizard() {
    * pedido, para descartar una respuesta tardía si mientras tanto se abrió otro.
    */
   function requestAiColumnMapping(headers: string[], base: MappingTemplate | null) {
-    void suggestColumnMapping(headers, devUser).then((result) => {
-      if (result.status !== "ok") return;
+    setAiMapping("loading");
+    void suggestColumnMapping(headers, devUser, (batch?.sample_rows ?? []) as Record<string, unknown>[]).then((result) => {
+      if (result.status !== "ok") return setAiMapping("unavailable");
+      setAiMapping("ready");
       setEditorDraft((current) => (current && current.base === base ? applyAiColumnMapping(current, result.value.mappings) : current));
     });
   }
@@ -454,6 +498,7 @@ export function LiveImportWizard() {
     setEditorDraft(draftFromTemplate(template, batch));
     setDryRun(null);
     setError(null);
+    setAdvancedMapping(false);
     setMappingMode("edit");
     requestAiColumnMapping(batch.headers ?? [], template);
   }
@@ -464,6 +509,7 @@ export function LiveImportWizard() {
     setEditorDraft(draftFromScratch(batch));
     setDryRun(null);
     setError(null);
+    setAdvancedMapping(false);
     setMappingMode("edit");
     requestAiColumnMapping(batch.headers ?? [], null);
   }
@@ -539,14 +585,38 @@ export function LiveImportWizard() {
     await loadBatch();
   }
 
-  async function handleDecision(rowId: string, input: RowDecisionInput) {
-    if (!batch) return;
+  async function handleDecision(rowId: string, input: RowDecisionInput): Promise<boolean> {
+    if (!batch) return false;
     setBusy(true);
     const result = await decideImportRow(batch.id, rowId, input, devUser);
     setBusy(false);
-    if (result.status !== "ok") return setError(result.message);
+    if (result.status !== "ok") {
+      setError(result.message);
+      return false;
+    }
     setError(null);
     setReload((n) => n + 1);
+    return true;
+  }
+
+  /** «Aceptar y siguiente» del panel: guarda y abre la siguiente fila por decidir de la página. */
+  async function handlePanelDecision(row: ImportRow, input: RowDecisionInput, next: boolean) {
+    const ok = await handleDecision(row.id, input);
+    if (!ok) return;
+    const following = next && diffs ? nextToDecide(diffs.items, row.id, new Set([row.id])) : null;
+    setOpenRowId(following?.id ?? null);
+  }
+
+  async function handleAskGemini() {
+    if (!batch) return;
+    setGeminiState("asking");
+    const result = await requestImportAiJudgment(batch.id, devUser);
+    if (result.status !== "ok") {
+      setGeminiState("unavailable");
+      return setError(result.message);
+    }
+    setAiJudgment(result.value);
+    setGeminiState(result.value.run?.status === "RUNNING" ? "running" : "ready");
   }
 
   // Resumen exclusivo y errores repetidos de la revisión (change `importacion-revision-simplificada`).
@@ -670,8 +740,28 @@ export function LiveImportWizard() {
           <p className="text-base text-gris-texto">{busy ? "Aplicando el formato y validando el lote…" : "Buscando el formato del archivo…"}</p>
         </Card>
       )}
-      {batch && !processing && adjusting && editorDraft && (
+      {batch && !processing && adjusting && editorDraft && !advancedMapping && (
+        <ImportMappingReview
+          draft={editorDraft}
+          sampleRows={(batch.sample_rows ?? []) as Record<string, unknown>[]}
+          vocabularies={Object.fromEntries(vocabularies.map((vocabulary) => [vocabulary.code, vocabulary.name]))}
+          ai={aiMapping}
+          busy={busy}
+          onChange={handleEditorChange}
+          onApply={handleApplyTemplate}
+          onAdvanced={() => setAdvancedMapping(true)}
+          onBack={() => {
+            setMappingMode("pick");
+            setDryRun(null);
+            closeEditor();
+          }}
+        />
+      )}
+      {batch && !processing && adjusting && editorDraft && advancedMapping && (
         <>
+          <Button variant="secondary" className="self-start" onClick={() => setAdvancedMapping(false)}>
+            Ver cómo quedarían las piezas
+          </Button>
           <MappingEditor
             batch={batch}
             draft={editorDraft}
@@ -787,6 +877,16 @@ export function LiveImportWizard() {
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Revise las filas</h2>
           {skippedHeaderRowsNotice(batch) && <p className="text-sm text-gris-texto">{skippedHeaderRowsNotice(batch)}</p>}
+          {summary && (
+            <RowReviewNotice
+              importedAlone={summary.news + summary.updates}
+              toDecideCount={pending.conflicts}
+              gemini={geminiState}
+              progress={aiJudgment?.run && aiJudgment.run.status === "RUNNING" ? { done: aiJudgment.run.processed_pairs, total: aiJudgment.run.total_pairs } : null}
+              canAsk={hasPermission("ai.request") && getApiMode() !== "mock"}
+              onAsk={() => void handleAskGemini()}
+            />
+          )}
           <details className="text-sm text-gris-texto">
             <summary className="cursor-pointer">Cómo se clasifican las filas</summary>
             <ol className="mt-2 list-decimal pl-5">
@@ -818,15 +918,23 @@ export function LiveImportWizard() {
               ))}
             </Select>
           </div>
-          <div className="flex flex-col gap-3">
-            {diffs.items.map((row) => {
-              // Las filas de un error repetido se ven en su bloque, salvo que se pidan «Con errores».
-              if (!filters.onlyErrors && isCompactRow(row, groups)) return null;
-              return (
+          {(() => {
+            // Las filas de un error repetido se ven en su bloque, salvo que se pidan «Con errores».
+            const visible = diffs.items.filter((row) => filters.onlyErrors || !isCompactRow(row, groups));
+            const verdicts = aiJudgment?.verdicts ?? [];
+            const opinions = new Map(
+              diffs.items.flatMap((row) => {
+                const opinion = geminiOpinion(row, verdicts, aiJudgment?.min_confidence ?? 0.85);
+                return opinion ? [[row.id, opinion] as const] : [];
+              }),
+            );
+            const openRow = diffs.items.find((row) => row.id === openRowId) ?? null;
+            const queue = diffs.items.filter((row) => toDecide(row));
+            const renderCard = (row: ImportRow) => (
                 <ImportRowCard
                   key={`${row.id}-${row.decision}-${JSON.stringify(row.resolution)}`}
                   row={row}
-                  compact={isCompactRow(row, groups)}
+                  compact={false}
                   canDecide={hasPermission("imports.prepare")}
                   busy={busy}
                   onDecide={(input) => handleDecision(row.id, input)}
@@ -851,12 +959,30 @@ export function LiveImportWizard() {
                     ) : undefined
                   }
                 />
-              );
-            })}
-            {!filters.onlyErrors && diffs.items.length > 0 && diffs.items.every((row) => isCompactRow(row, groups)) && (
-              <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
-            )}
-          </div>
+            );
+            return (
+              <>
+                <RowList rows={visible} opinions={opinions} onOpen={(row) => setOpenRowId(row.id)} />
+                {!filters.onlyErrors && diffs.items.length > 0 && visible.length === 0 && (
+                  <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
+                )}
+                {openRow && (
+                  <RowDecisionPanel
+                    key={openRow.id}
+                    row={openRow}
+                    position={toDecide(openRow) ? { index: queue.findIndex((row) => row.id === openRow.id) + 1, total: queue.length } : null}
+                    opinion={opinions.get(openRow.id) ?? null}
+                    busy={busy}
+                    canDecide={hasPermission("imports.prepare")}
+                    devUser={devUser}
+                    fallback={renderCard(openRow)}
+                    onDecide={(input, next) => void handlePanelDecision(openRow, input, next)}
+                    onClose={() => setOpenRowId(null)}
+                  />
+                )}
+              </>
+            );
+          })()}
           <div className="flex items-center justify-center gap-3">
             <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               Anterior

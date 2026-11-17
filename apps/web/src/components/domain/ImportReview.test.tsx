@@ -57,18 +57,19 @@ describe("resumen de la revisión", () => {
     const text = visibleText(html);
     expect(text).toContain("30 filas");
     expect(text).toContain("Con errores (30)");
-    expect(text).toContain("Conflictos (0)");
+    // Conflictos y posibles duplicados van juntos en «Por decidir» (importacion-revision-filas-compacta).
+    expect(text).toContain("Por decidir (0)");
     expect(text).toContain("Falta decidir: 30 filas con error sin decidir.");
     // Cada cifra filtra la lista: son botones; las que están en 0 no se pueden pulsar.
     expect(html).toContain('aria-pressed="true"');
-    expect(html.match(/<button[^>]*disabled=""/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(html.match(/<button[^>]*disabled=""/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
   it("marca como activa la cifra filtrada", () => {
     const html = render(
-      <ReviewSummaryPanel summary={{ total: 10, errors: 0, conflicts: 2, duplicates: 0, updates: 3, news: 5 }} filter={{ classification: "CONFLICT", onlyErrors: false }} onFilter={noop} sentence="x" />,
+      <ReviewSummaryPanel summary={{ total: 10, errors: 0, conflicts: 2, duplicates: 1, updates: 3, news: 4 }} filter={{ classification: null, onlyErrors: false, toDecide: true }} onFilter={noop} sentence="x" />,
     );
-    expect(html).toMatch(/aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*Conflictos \(2\)/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*Por decidir \(3\)/);
   });
 
   it("con el lote vacío lo dice y no ofrece filtros", () => {

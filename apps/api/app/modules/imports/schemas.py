@@ -125,6 +125,12 @@ class ImportBatchOut(BaseModel):
     sheet_names: list[str] = Field(default_factory=list, description="Hojas del libro.")
     header_row: int | None = None
     headers: list[str] = Field(default_factory=list, description="Cabeceras leídas del archivo.")
+    sample_rows: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Las primeras filas tal como vienen en el archivo (cabecera -> valor), para "
+        "comprobar el mapeo de columnas con datos reales antes de validar "
+        "(`importacion-mapeo-asistido`).",
+    )
     mapping: dict[str, Any] | None = Field(None, description="Mapeo de columnas confirmado.")
     processing: bool = Field(False, description="Hay una etapa ejecutándose en segundo plano.")
     progress: dict[str, Any] | None = Field(
@@ -168,6 +174,39 @@ class ImportBatchOut(BaseModel):
             approval_summary=ApprovalSummaryOut(**approval) if approval else None,
             created_at=batch.created_at,
         )
+
+
+class ImportAiRunOut(BaseModel):
+    id: uuid.UUID
+    status: str = Field(description="`RUNNING`, `SUCCEEDED` o `FAILED`.")
+    total_pairs: int = Field(ge=0)
+    processed_pairs: int = Field(ge=0)
+    failed_batches: int = Field(ge=0)
+    error_message: str | None = None
+
+
+class ImportRowVerdictOut(BaseModel):
+    """What Gemini (or a rule) thinks of one candidate of a row: a suggestion, never a
+    decision (RN-009)."""
+
+    row_id: uuid.UUID
+    piece_id: uuid.UUID = Field(description="La pieza del catálogo con la que se comparó la fila.")
+    verdict: str = Field(description="`same`, `distinct` o `unsure`.")
+    confidence: float = Field(ge=0, le=1)
+    reason: str
+    source: str = Field(description="`rule`, `ai` o `review`.")
+
+
+class ImportAiJudgmentOut(BaseModel):
+    """«Pedir a Gemini que revise estas filas» (change importacion-revision-filas-compacta, D2):
+    the run over the batch's pairs, if any, and the latest verdict of each pair. Nothing is
+    decided until the person accepts the row (RN-009)."""
+
+    run: ImportAiRunOut | None = None
+    min_confidence: float = Field(
+        description="Por debajo de esta confianza, el veredicto no preselecciona nada."
+    )
+    verdicts: list[ImportRowVerdictOut] = Field(default_factory=list)
 
 
 class PhotoBatchCreate(BaseModel):

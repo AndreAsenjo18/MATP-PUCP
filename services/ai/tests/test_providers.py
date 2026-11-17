@@ -412,3 +412,36 @@ def test_llm_does_not_retry_a_definitive_error(monkeypatch: pytest.MonkeyPatch) 
         provider.extract_structured(TEXT)
     assert calls == [404]
     assert waits == []
+
+
+# --- Motivo de la duda (change importacion-mapeo-asistido) -------------------------------------
+def test_mock_column_mapping_says_why_a_doubtful_column_is_doubtful() -> None:
+    result = MockProvider().suggest_column_mapping(
+        headers=["DENOMINACIÓN", "Procedencia lugar"], sample_rows=[], target_fields=_TARGET_FIELDS
+    )
+    by_column = {m.column: m for m in result.mappings}
+    assert by_column["DENOMINACIÓN"].reason is None
+    doubtful = by_column["Procedencia lugar"]
+    assert doubtful.field == "provenance"
+    assert doubtful.confidence < 0.8
+    assert doubtful.reason == "«Procedencia lugar» solo se parece a «Procedencia»: confírmelo."
+
+
+def test_llm_column_mapping_keeps_the_reason_only_with_a_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = (
+        '{"mappings": ['
+        '{"column": "Fecha", "field": "epoch_original_text", "confidence": 0.6, '
+        '"reason": "  Puede ser la época o la fecha de registro.  "}, '
+        '{"column": "FOTO", "field": null, "confidence": 0, "reason": "No es un campo."}'
+        "]}"
+    )
+    targets = {**_TARGET_FIELDS, "epoch_original_text": "Época"}
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.suggest_column_mapping(
+        headers=["Fecha", "FOTO"], sample_rows=[], target_fields=targets
+    )
+    by_column = {m.column: m for m in result.mappings}
+    assert by_column["Fecha"].reason == "Puede ser la época o la fecha de registro."
+    assert by_column["FOTO"].reason is None

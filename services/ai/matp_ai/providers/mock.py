@@ -171,6 +171,10 @@ def _proposal(field: str, value: str, label: str, quote: str, confidence: float)
     )
 
 
+#: Below this confidence a proposed column is doubtful and says why (importacion-mapeo-asistido).
+MAPPING_SURE_CONFIDENCE = 0.8
+
+
 def _best_field_for_header(header: str, target_fields: dict[str, str]) -> tuple[str | None, float]:
     folded = _fold(header.strip())
     alias = _HEADER_ALIASES.get(folded)
@@ -323,8 +327,15 @@ class MockProvider(AIProvider):
                 field, confidence = None, 0.0
             if field is not None:
                 used_fields.add(field)
+            reason = (
+                f"«{header}» solo se parece a «{target_fields[field]}»: confírmelo."
+                if field is not None and confidence < MAPPING_SURE_CONFIDENCE
+                else None
+            )
             mappings.append(
-                ColumnMappingCandidate(column=header, field=field, confidence=confidence)
+                ColumnMappingCandidate(
+                    column=header, field=field, confidence=confidence, reason=reason
+                )
             )
         message = None if used_fields else "No se reconoció un campo claro para ninguna columna."
         return ColumnMappingResult(mappings=mappings, message=message)
