@@ -7,6 +7,10 @@ El sistema SHALL ofrecer el ajuste de columnas con el nombre «Ajustar columnas�
 - **WHEN** la persona abre «Ajustar columnas» para un archivo sin plantilla
 - **THEN** ve, por cada dato del catálogo, la columna propuesta y los valores de las primeras filas, y puede validar sin abrir el editor por columna
 
+#### Scenario: Editor abierto de entrada
+- **WHEN** la persona abre «Ajustar columnas» para un archivo sin plantilla y pulsa «Ver todas las columnas»
+- **THEN** ve una fila por columna con un selector de destino y las opciones avanzadas plegadas, y puede validar sin abrirlas
+
 #### Scenario: Columna dudosa
 - **GIVEN** la IA propone la columna «Fecha» para la época con poca confianza y el motivo «"Fecha" puede ser la época o la fecha de registro»
 - **WHEN** se muestra la vista
