@@ -151,9 +151,11 @@ Para cambiar el nombre o la descripción de un formato, o para eliminarlo, use *
 
 ## 4. Revisar las filas
 
-Al llegar a la revisión lo primero que ve es un **resumen**: cuántas filas hay y cuántas están en cada situación (**Con errores**, **Conflictos**, **Posibles duplicados**, **Actualizaciones**, **Nuevas**). Cada fila se cuenta **una sola vez** (si tiene un error, se cuenta como error), así que las cifras suman el total. Debajo, una frase dice qué falta decidir antes de aprobar. Al pulsar una cifra, la lista muestra solo ese grupo. La línea **Formato aplicado** y el botón **Cambiar formato** también están en el resumen.
+Al llegar a la revisión lo primero que ve es un **resumen**: cuántas filas hay y cuántas están en cada situación (**Por decidir**, que reúne conflictos y posibles duplicados; **Con errores**; **Actualizaciones**; **Nuevas**). Cada fila se cuenta **una sola vez** (si tiene un error, se cuenta como error), así que las cifras suman el total. Debajo, una frase dice qué falta decidir antes de aprobar. Al pulsar una cifra, la lista muestra solo ese grupo. La línea **Formato aplicado** y el botón **Cambiar formato** también están en el resumen.
 
-Cada fila aparece en una tarjeta con su denominación, su **clasificación**, su **decisión** y lo que hará la carga con ella («Creará una pieza nueva», «Actualizará una pieza existente» o «No se aplicará»).
+Si el lote tiene filas que parecen piezas que ya están, la revisión se abre en **Por decidir**. Un aviso dice cuántas filas **no necesitan nada**: las nuevas y las actualizaciones sin errores **se importan solas al aprobar**, sin aceptarlas una por una.
+
+Cada fila ocupa **una línea**: número de fila, denominación, código y qué pasará con ella. Solo las que piden algo tienen un botón: **Decidir** (elegir a qué pieza corresponde), **Ver** (una fila con errores) o **Ver cambios** (una actualización). El botón abre un panel a la derecha con el detalle y las acciones de la fila.
 
 | Clasificación | Qué significa |
 |---|---|
@@ -200,10 +202,11 @@ En una actualización, el recuadro **Cambios sobre la pieza del catálogo** list
 
 ### Resolver un conflicto o un posible duplicado
 
-1. En **¿A qué pieza corresponde esta fila?**, elija la pieza. Cada opción muestra su denominación, su colección, su código I (o «Sin código I») y por qué coincide («Mismo código…» o «Se parece 82 %»), para distinguir piezas con el mismo nombre. Si ninguna es, elija **Ninguna: es una pieza nueva**.
+1. Pulse **Decidir** en la fila. El panel **¿A qué pieza corresponde?** muestra arriba lo que trae el archivo y, debajo, las piezas candidatas como tarjetas: denominación, colección, código I (o «Sin código I») y por qué coincide («Mismo código…» o «Se parece 82 %»).
+2. Elija la pieza, **Ninguna: es una pieza nueva** o, si es otra, búsquela en **¿Es otra pieza? Búsquela por código o nombre**.
+3. Pulse **Aceptar y siguiente** (o Enter): la fila queda decidida y el panel pasa a la siguiente por decidir. **Dejar fuera** la deja sin importar.
 
-   Esa elección se guarda sola en cuanto la hace, sin necesitar **Aceptar**: ya resuelve el conflicto o el posible duplicado aunque todavía no decida la fila.
-2. Pulse **Aceptar** para, además, dejar la fila lista para aplicarse al aprobar el lote (y ver sus cambios, si actualiza una pieza existente) o a crear una nueva.
+**Con Gemini.** El botón **Pedir a Gemini que revise estas N** del aviso le pide a Gemini que compare cada fila por decidir con sus candidatas, solo con los datos de catálogo (nunca comodantes, registradores ni observaciones). Mientras trabaja se ve su avance. Después, cada fila muestra lo que opina («Gemini: misma pieza», «pieza distinta» o «no está seguro») y, en el panel, su motivo. Cuando está seguro, la opción que sugiere viene **marcada** con «Sugerida por Gemini»: revísela y confirme con **Aceptar y siguiente**. Nada se guarda sin que usted acepte. Si Gemini no está seguro, no marca nada.
 
 No se puede elegir una pieza que tenga **otro código I** que el de la fila: el código I nunca cambia en una carga. Tampoco se puede crear como nueva una fila cuyo código I ya es de otra pieza.
 

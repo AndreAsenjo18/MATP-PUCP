@@ -17,17 +17,18 @@ import { validationHint, type RowClassification } from "@/lib/data/imports";
 export interface ReviewFilter {
   classification: RowClassification | null;
   onlyErrors: boolean;
+  /** Conflictos y posibles duplicados: las filas que piden elegir pieza (importacion-revision-filas-compacta). */
+  toDecide?: boolean;
 }
 
 const FIGURES: { label: string; value: ReviewFilter; count: (summary: ReviewSummary) => number }[] = [
+  { label: "Por decidir", value: { classification: null, onlyErrors: false, toDecide: true }, count: (s) => s.conflicts + s.duplicates },
   { label: "Con errores", value: { classification: null, onlyErrors: true }, count: (s) => s.errors },
-  { label: "Conflictos", value: { classification: "CONFLICT", onlyErrors: false }, count: (s) => s.conflicts },
-  { label: "Posibles duplicados", value: { classification: "POSSIBLE_DUPLICATE", onlyErrors: false }, count: (s) => s.duplicates },
   { label: "Actualizaciones", value: { classification: "UPDATE", onlyErrors: false }, count: (s) => s.updates },
   { label: "Nuevas", value: { classification: "NEW", onlyErrors: false }, count: (s) => s.news },
 ];
 
-const same = (a: ReviewFilter, b: ReviewFilter) => a.classification === b.classification && a.onlyErrors === b.onlyErrors;
+const same = (a: ReviewFilter, b: ReviewFilter) => a.classification === b.classification && a.onlyErrors === b.onlyErrors && Boolean(a.toDecide) === Boolean(b.toDecide);
 
 /** Resumen al comienzo de la revisión: cada fila en una sola situación, las cifras suman el total. */
 export function ReviewSummaryPanel({

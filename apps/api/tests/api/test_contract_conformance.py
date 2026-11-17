@@ -61,6 +61,9 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/ai/pieces/{}/completion"),
     # Juicio de duplicados con IA y aprobación por grupo (change ia-juicio-duplicados; RIA-02).
     ("post", "/quality/duplicates/ai-runs"),
+    # Revisión de filas con Gemini (change importacion-revision-filas-compacta; RIA-02).
+    ("post", "/imports/{}/ai-judgment"),
+    ("get", "/imports/{}/ai-judgment"),
     ("get", "/quality/duplicates/ai-runs/latest"),
     ("get", "/quality/duplicates/ai-runs/{}"),
     ("get", "/quality/duplicates/ai-runs/{}/groups/{}"),

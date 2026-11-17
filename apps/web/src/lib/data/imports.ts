@@ -595,6 +595,8 @@ export async function startImportValidation(batchId: string, devUser?: string): 
 export interface ImportDiffFilters {
   classification?: RowClassification | null;
   onlyErrors?: boolean;
+  /** Solo conflictos y posibles duplicados: las filas que piden elegir pieza. */
+  toDecide?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -608,6 +610,7 @@ export async function fetchImportDiffs(batchId: string, filters: ImportDiffFilte
         query: {
           classification: filters.classification ?? undefined,
           only_errors: filters.onlyErrors ?? false,
+          to_decide: filters.toDecide ?? false,
           page: filters.page ?? 1,
           page_size: filters.pageSize ?? IMPORT_PAGE_SIZE,
         },
@@ -627,6 +630,25 @@ export async function fetchImportDiffs(batchId: string, filters: ImportDiffFilte
       unassignedImages: page.unassigned_images ?? [],
     },
   };
+}
+
+export type ImportAiJudgment = ApiSchemas["ImportAiJudgmentOut"];
+export type ImportRowVerdict = ApiSchemas["ImportRowVerdictOut"];
+
+/**
+ * «Pedir a Gemini que revise estas filas» (change `importacion-revision-filas-compacta`, D2): juzga
+ * en segundo plano los pares de las filas del lote que parecen piezas que ya están.
+ */
+export async function requestImportAiJudgment(batchId: string, devUser?: string): Promise<ImportResult<ImportAiJudgment>> {
+  return call(
+    () => client(devUser).POST("/api/v1/imports/{batch_id}/ai-judgment", { params: { path: { batch_id: batchId } } }),
+    { ...IMPORT_ERROR_MESSAGES, ai_run_in_progress: "Gemini ya está revisando otras filas: espere a que termine.", ai_unavailable: "Gemini no está disponible en este momento. Puede decidir las filas igual." },
+  );
+}
+
+/** Lo que opina Gemini de cada par del lote y el análisis más reciente (D2). */
+export async function fetchImportAiJudgment(batchId: string, devUser?: string): Promise<ImportResult<ImportAiJudgment>> {
+  return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/ai-judgment", { params: { path: { batch_id: batchId } } }));
 }
 
 /** El error es «falta el régimen de tenencia» (`tenure_required`). */
