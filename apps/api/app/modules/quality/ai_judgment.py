@@ -369,8 +369,15 @@ def _pieces_alive(session: Session, candidate: DuplicateCandidate) -> bool:
     return len(set(alive)) == len(set(ids))
 
 
-def run_judgment(factory: SessionFactory, client: AiServiceClient, run_id: uuid.UUID) -> None:
-    """Background body of a run: rules first, then the AI by batches (D2, D7)."""
+def run_judgment(
+    factory: SessionFactory,
+    client: AiServiceClient,
+    run_id: uuid.UUID,
+    import_batch_id: uuid.UUID | None = None,
+) -> None:
+    """Background body of a run: rules first, then the AI by batches (D2, D7). With
+    ``import_batch_id``, only the pairs of that batch's rows (change
+    importacion-revision-filas-compacta, D2): same rules, batches and privacy filter."""
     session = factory()
     started = time.monotonic()
     try:
@@ -386,12 +393,19 @@ def run_judgment(factory: SessionFactory, client: AiServiceClient, run_id: uuid.
         )
         with audit_context(session, context):
             judged = _judged_ids(session, run_id)
+            statement = select(DuplicateCandidate).where(
+                DuplicateCandidate.status == DuplicateStatus.PENDING
+            )
+            if import_batch_id is not None:
+                statement = statement.where(
+                    DuplicateCandidate.import_row_id.in_(
+                        select(ImportRow.id).where(ImportRow.batch_id == import_batch_id)
+                    )
+                )
             pending = [
                 c
                 for c in session.scalars(
-                    select(DuplicateCandidate)
-                    .where(DuplicateCandidate.status == DuplicateStatus.PENDING)
-                    .order_by(DuplicateCandidate.created_at, DuplicateCandidate.id)
+                    statement.order_by(DuplicateCandidate.created_at, DuplicateCandidate.id)
                 )
                 if c.id not in judged
             ]
@@ -472,6 +486,31 @@ def run_judgment(factory: SessionFactory, client: AiServiceClient, run_id: uuid.
             session.commit()
     finally:
         session.close()
+
+
+def batch_verdicts(
+    session: Session, import_batch_id: uuid.UUID
+) -> list[tuple[DuplicateCandidate, DuplicateAiVerdict]]:
+    """The latest verdict of each pair of a batch's rows, from any run (change
+    importacion-revision-filas-compacta, D2): what Gemini thinks of each row's candidates."""
+    candidates = session.scalars(
+        select(DuplicateCandidate).where(
+            DuplicateCandidate.import_row_id.in_(
+                select(ImportRow.id).where(ImportRow.batch_id == import_batch_id)
+            )
+        )
+    ).all()
+    by_id = {candidate.id: candidate for candidate in candidates}
+    if not by_id:
+        return []
+    latest: dict[uuid.UUID, DuplicateAiVerdict] = {}
+    for verdict in session.scalars(
+        select(DuplicateAiVerdict)
+        .where(DuplicateAiVerdict.candidate_id.in_(by_id))
+        .order_by(DuplicateAiVerdict.created_at)
+    ):
+        latest[verdict.candidate_id] = verdict
+    return [(by_id[candidate_id], verdict) for candidate_id, verdict in latest.items()]
 
 
 # ------------------------------------------------------------------------ groups (D4, D6)
