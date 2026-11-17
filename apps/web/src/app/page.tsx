@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { signIn } from "@/lib/auth/api";
+import { currentSessionStatus, signIn } from "@/lib/auth/api";
 import { safeReturnTo } from "@/lib/auth/guard";
 import { useSession } from "@/lib/auth/session";
 import { getApiMode } from "@/lib/data/mode";
@@ -30,15 +30,27 @@ function LiveLogin() {
   const params = useSearchParams();
   const returnTo = safeReturnTo(params.get("returnTo"));
   const expired = params.get("expired") === "1";
-  const { session, login } = useSession();
+  const { session, login, logout } = useSession();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // With a profile stored in this browser, go on only if the real session (the cookie) is still
+  // there; otherwise forget the profile and show the form, instead of bouncing between this
+  // screen and /inicio with a signed-in menu.
   useEffect(() => {
-    if (session) router.replace(session.live?.mustChangePassword ? "/cambiar-clave" : (returnTo ?? "/inicio"));
-  }, [session, router, returnTo]);
+    if (!session) return;
+    let active = true;
+    currentSessionStatus().then((status) => {
+      if (!active) return;
+      if (status === "signed_in") router.replace(session.live?.mustChangePassword ? "/cambiar-clave" : (returnTo ?? "/inicio"));
+      else if (status === "signed_out") logout();
+    });
+    return () => {
+      active = false;
+    };
+  }, [session, router, returnTo, logout]);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-4 py-8">
