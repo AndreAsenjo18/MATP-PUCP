@@ -168,7 +168,10 @@ def _llm_provider(
 
     import httpx2
 
+    from matp_ai.providers import llm
+
     monkeypatch.setattr(httpx2.Client, "post", fake_post)
+    monkeypatch.setattr(llm, "_sleep", lambda _seconds: None)
     return provider
 
 
@@ -354,3 +357,58 @@ def test_llm_interpret_search_invalid_json_unavailable(monkeypatch: pytest.Monke
     provider = _llm_provider(monkeypatch, "esto no es JSON")
     with pytest.raises(ProviderUnavailable):
         provider.interpret_search("cualquier cosa", _VALID_VALUES)
+
+
+# --- Reintentos ante la sobrecarga del proveedor (fix ia-reintentos-gemini) ------------------
+def _sequenced_provider(
+    monkeypatch: pytest.MonkeyPatch, statuses: list[int], content: str = '{"fields": []}'
+) -> tuple[LLMProvider, list[int], list[float]]:
+    from matp_ai.providers import llm
+
+    settings = load_settings(
+        ai_provider="llm",
+        llm_base_url="https://example-llm.test/v1",
+        llm_api_key="clave-ficticia",
+        llm_model="modelo-x",
+    )
+    calls: list[int] = []
+    waits: list[float] = []
+    pending = list(statuses)
+
+    def fake_post(
+        self: Any, url: str, *, headers: dict[str, str], json: dict[str, Any]
+    ) -> _FakeResponse:
+        status = pending.pop(0)
+        calls.append(status)
+        if status != 200:
+            return _FakeResponse(status, {"error": {"code": status, "message": "high demand"}})
+        return _FakeResponse(200, {"choices": [{"message": {"content": content}}]})
+
+    import httpx2
+
+    monkeypatch.setattr(httpx2.Client, "post", fake_post)
+    monkeypatch.setattr(llm, "_sleep", waits.append)
+    return LLMProvider(settings), calls, waits
+
+
+def test_llm_retries_a_temporary_overload_and_answers(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, calls, waits = _sequenced_provider(monkeypatch, [503, 429, 200])
+    result = provider.extract_structured(TEXT)
+    assert calls == [503, 429, 200]
+    assert waits == [1.5, 4.0]
+    assert result.fields == []
+
+
+def test_llm_gives_up_after_three_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, calls, _waits = _sequenced_provider(monkeypatch, [503, 503, 503])
+    with pytest.raises(ProviderUnavailable, match="503"):
+        provider.extract_structured(TEXT)
+    assert calls == [503, 503, 503]
+
+
+def test_llm_does_not_retry_a_definitive_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, calls, waits = _sequenced_provider(monkeypatch, [404])
+    with pytest.raises(ProviderUnavailable, match="404"):
+        provider.extract_structured(TEXT)
+    assert calls == [404]
+    assert waits == []

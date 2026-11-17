@@ -11,6 +11,7 @@ search interpretation (RIA-06) and «Completar ficha» (``complete_piece``, chan
 """
 
 import json
+import time
 from typing import Any
 
 import httpx2 as httpx
@@ -134,6 +135,19 @@ procedencias incompatibles, o denominaciones de objetos distintos.
 - "confidence" refleja tu duda real; no pongas 1 si hay algo que no cuadra.
 - "reason" cita en una frase los datos que deciden, sin inventar ninguno.
 """
+
+
+#: The provider is overloaded or limiting requests: worth asking again (Gemini answers 503
+#: «high demand» for minutes at a time). Anything else is definitive.
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+#: Waits before the 2nd and 3rd attempts, in seconds.
+RETRY_WAITS = (1.5, 4.0)
+#: No new attempt once this much time went by: the screen must not hang.
+RETRY_BUDGET_SECONDS = 25.0
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 class LLMProvider(AIProvider):
@@ -325,20 +339,35 @@ class LLMProvider(AIProvider):
             raise ProviderUnavailable(f"El proveedor de IA no devolvió JSON válido: {exc}") from exc
 
     def _chat_completion(self, payload: dict[str, Any]) -> str:
+        """One answer of the model. A temporary failure of the provider (overload, rate limit, no
+        answer) is retried with growing waits, within ``RETRY_BUDGET_SECONDS``; a definitive one
+        (bad key, unknown model, bad request) is not (fix ia-reintentos-gemini)."""
         if not self.base_url or not self._api_key:
             raise ProviderUnavailable("LLM_BASE_URL/LLM_API_KEY no están configurados.")
-        try:
-            response = httpx.Client(timeout=20.0).post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                json=payload,
-            )
-        except httpx.HTTPError as exc:
-            raise ProviderUnavailable(f"No se pudo contactar al proveedor de IA: {exc}") from exc
-        if response.status_code >= 400:
-            raise ProviderUnavailable(
-                f"El proveedor de IA respondió {response.status_code}: {response.text[:300]}"
-            )
+        started = time.monotonic()
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                response = httpx.Client(timeout=20.0).post(
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json=payload,
+                )
+            except httpx.HTTPError as exc:
+                failure = ProviderUnavailable(f"No se pudo contactar al proveedor de IA: {exc}")
+                retryable = True
+            else:
+                if response.status_code < 400:
+                    break
+                failure = ProviderUnavailable(
+                    f"El proveedor de IA respondió {response.status_code}: {response.text[:300]}"
+                )
+                retryable = response.status_code in RETRYABLE_STATUS
+            waited = time.monotonic() - started
+            if not retryable or attempt >= len(RETRY_WAITS) + 1 or waited >= RETRY_BUDGET_SECONDS:
+                raise failure
+            _sleep(RETRY_WAITS[attempt - 1])
         try:
             body = response.json()
             return str(body["choices"][0]["message"]["content"])
