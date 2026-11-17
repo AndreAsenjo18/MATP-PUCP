@@ -298,6 +298,16 @@ Los Excel de la consultoría 2024/25 traen hojas «Errores identificados» y «E
    - Si los códigos de la fila son de dos piezas, elija a cuál corresponde. Una observación nunca se marca como pieza nueva.
 6. Apruebe la carga. Las notas que ya tenía cada pieza no se borran; la observación se agrega al final. La bitácora lista cada fila no encontrada con sus códigos.
 
+## Descartar un lote
+
+Si subió el archivo equivocado o quiere empezar de nuevo, pulse **Descartar este lote** (junto a **Importar otro archivo**) y confirme. El botón aparece mientras el lote no se aprobó y no está procesando.
+
+- El lote **no se importa** y queda como **Abandonado**. **No se borra nada**: el lote, sus filas y el archivo quedan en la bitácora.
+- Sus filas dejan de aparecer en **Revisar pendientes → Posibles duplicados**.
+- Un lote descartado no se puede retomar: si lo necesita, vuelva a subir el archivo.
+
+**Importar otro archivo** sin descartar deja el lote como estaba.
+
 ## Revertir un lote aplicado
 
 Solo el **Administrador** puede revertir un lote aplicado. En el asistente, abra el lote aplicado, pulse **Revertir lote** al final de la pantalla y escriba el motivo. Al revertirlo:

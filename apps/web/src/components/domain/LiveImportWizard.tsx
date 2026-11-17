@@ -34,6 +34,7 @@ import {
 } from "@/components/domain/ImportWizard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
+import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
 import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
 import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
@@ -76,6 +77,8 @@ import {
   downloadImportLog,
   excludeRows,
   fetchImportBatch,
+  abandonImportBatch,
+  canAbandon,
   fetchImportAiJudgment,
   fetchImportDiffs,
   requestImportAiJudgment,
@@ -585,6 +588,30 @@ export function LiveImportWizard() {
     await loadBatch();
   }
 
+  /** Vuelve a la subida de un archivo nuevo; el lote actual queda como está. */
+  function startOver() {
+    setBatch(null);
+    setDiffs(null);
+    setLog(null);
+    setAllImages([]);
+    setError(null);
+    setRollbackConflicts(null);
+    setRollbackReason(null);
+    resetTemplates();
+    autoApplied.current = null;
+    router.replace(importHref({ origin }));
+  }
+
+  /** «Descartar este lote» (change `importacion-descartar-lote`): lo deja como abandonado y vuelve a la subida. */
+  async function handleAbandon() {
+    if (!batch) return;
+    setBusy(true);
+    const result = await abandonImportBatch(batch.id, null, devUser);
+    setBusy(false);
+    if (result.status !== "ok") return setError(result.message);
+    startOver();
+  }
+
   async function handleDecision(rowId: string, input: RowDecisionInput): Promise<boolean> {
     if (!batch) return false;
     setBusy(true);
@@ -1020,24 +1047,22 @@ export function LiveImportWizard() {
         />
       )}
       {batchId && (
-        <Button
-          variant="secondary"
-          className="self-start"
-          onClick={() => {
-            setBatch(null);
-            setDiffs(null);
-            setLog(null);
-            setAllImages([]);
-            setError(null);
-            setRollbackConflicts(null);
-            setRollbackReason(null);
-            resetTemplates();
-            autoApplied.current = null;
-            router.replace(importHref({ origin }));
-          }}
-        >
-          Importar otro archivo
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="secondary" onClick={startOver}>
+            Importar otro archivo
+          </Button>
+          {batch && canAbandon(batch) && hasPermission("imports.prepare") && (
+            <ConfirmButton
+              label="Descartar este lote"
+              variant="danger-outline"
+              confirmTitle="¿Descartar este lote?"
+              confirmDescription="El lote no se importará. No se borra nada: queda en la bitácora como descartado y sus filas dejan de aparecer en la revisión de duplicados."
+              confirmLabel="Descartar el lote"
+              disabled={busy}
+              onConfirm={() => void handleAbandon()}
+            />
+          )}
+        </div>
       )}
     </div>
   );

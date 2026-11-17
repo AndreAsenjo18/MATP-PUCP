@@ -176,6 +176,14 @@ class ImportBatchOut(BaseModel):
         )
 
 
+class BatchAbandon(BaseModel):
+    """Body of ``POST /imports/{batch_id}/abandon`` (change importacion-descartar-lote)."""
+
+    reason: str | None = Field(
+        None, max_length=500, description="Por qué se descarta; queda en el lote y su bitácora."
+    )
+
+
 class ImportAiRunOut(BaseModel):
     id: uuid.UUID
     status: str = Field(description="`RUNNING`, `SUCCEEDED` o `FAILED`.")

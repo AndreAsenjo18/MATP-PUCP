@@ -1526,6 +1526,26 @@
         "title": "BackupStatus",
         "type": "object"
       },
+      "BatchAbandon": {
+        "description": "Body of ``POST /imports/{batch_id}/abandon`` (change importacion-descartar-lote).",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Por qué se descarta; queda en el lote y su bitácora.",
+            "title": "Reason"
+          }
+        },
+        "title": "BatchAbandon",
+        "type": "object"
+      },
       "BatchEnrichRequest": {
         "description": "Body of ``POST /ai/batch-enrich``: drafts for pieces without description (RIA-04).",
         "examples": [
@@ -18874,6 +18894,113 @@
           }
         ],
         "summary": "Estado de un lote, con la etapa en curso y su avance",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/abandon": {
+      "post": {
+        "description": "Pasa el lote a «abandonado» sin borrar nada (RN-005): sus filas, decisiones y archivo quedan para la bitácora, y sus fotos se purgan como las de cualquier lote cerrado. Los pares de duplicados pendientes de sus filas salen de la cola. Solo desde subido, mapeado o en previsualización (change `importacion-descartar-lote`).",
+        "operationId": "abandonImportBatch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/BatchAbandon"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`invalid_batch_transition`: el lote ya se aprobó, aplicó o cerró; `batch_processing`: una etapa está en curso."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Descartar un lote que no se va a aprobar",
         "tags": [
           "Importación"
         ],

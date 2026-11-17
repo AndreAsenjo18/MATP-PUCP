@@ -632,6 +632,24 @@ export async function fetchImportDiffs(batchId: string, filters: ImportDiffFilte
   };
 }
 
+/** Estados desde los que un lote se puede descartar (change `importacion-descartar-lote`). */
+const ABANDONABLE = new Set(["UPLOADED", "MAPPED", "IN_PREVIEW"]);
+
+/** El lote todavía no se aprobó ni se cerró, y no está procesando: se puede descartar. */
+export function canAbandon(batch: Pick<ImportBatch, "status" | "processing">): boolean {
+  return ABANDONABLE.has(batch.status) && !batch.processing;
+}
+
+/** «Descartar este lote»: pasa a abandonado sin borrar nada y cierra sus pares de duplicados pendientes. */
+export async function abandonImportBatch(batchId: string, reason: string | null = null, devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).POST("/api/v1/imports/{batch_id}/abandon", {
+      params: { path: { batch_id: batchId } },
+      body: { reason },
+    }),
+  );
+}
+
 export type ImportAiJudgment = ApiSchemas["ImportAiJudgmentOut"];
 export type ImportRowVerdict = ApiSchemas["ImportRowVerdictOut"];
 

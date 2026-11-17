@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 115a3570c09dbfda4742f6048f78ad027e3fab3161c05bad4ab91cbe77cf2544
+ * openapi-sha256: 1fbf4b1455aea90ffd82d0e245e20367826f4af0a966d2dae631082b04dd6ae4
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -765,6 +765,26 @@ export interface paths {
         get: operations["getImport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar un lote que no se va a aprobar
+         * @description Pasa el lote a «abandonado» sin borrar nada (RN-005): sus filas, decisiones y archivo quedan para la bitácora, y sus fotos se purgan como las de cualquier lote cerrado. Los pares de duplicados pendientes de sus filas salen de la cola. Solo desde subido, mapeado o en previsualización (change `importacion-descartar-lote`).
+         */
+        post: operations["abandonImportBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3082,6 +3102,17 @@ export interface components {
              * @enum {string}
              */
             status: "disabled" | "ok" | "stale";
+        };
+        /**
+         * BatchAbandon
+         * @description Body of ``POST /imports/{batch_id}/abandon`` (change importacion-descartar-lote).
+         */
+        BatchAbandon: {
+            /**
+             * Reason
+             * @description Por qué se descarta; queda en el lote y su bitácora.
+             */
+            reason?: string | null;
         };
         /**
          * BatchEnrichRequest
@@ -11842,6 +11873,77 @@ export interface operations {
             };
             /** @description El lote no existe o fue eliminado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    abandonImportBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BatchAbandon"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `invalid_batch_transition`: el lote ya se aprobó, aplicó o cerró; `batch_processing`: una etapa está en curso. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

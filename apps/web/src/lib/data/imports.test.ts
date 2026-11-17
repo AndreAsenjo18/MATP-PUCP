@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  canAbandon,
   acceptBlocker,
   associateImportImage,
   candidatePieces,
@@ -410,5 +411,20 @@ describe("plainDescription (HU-06)", () => {
     expect(plainDescription(null)).toBe("");
     expect(plainDescription(undefined)).toBe("");
     expect(plainDescription("[SUPUESTO]")).toBe("");
+  });
+});
+
+describe("canAbandon (change importacion-descartar-lote)", () => {
+  it("se descarta un lote subido, mapeado o en revisión que no está procesando", () => {
+    expect(canAbandon({ status: "UPLOADED", processing: false })).toBe(true);
+    expect(canAbandon({ status: "MAPPED", processing: false })).toBe(true);
+    expect(canAbandon({ status: "IN_PREVIEW", processing: false })).toBe(true);
+  });
+
+  it("no mientras procesa ni una vez aprobado, aplicado o cerrado", () => {
+    expect(canAbandon({ status: "IN_PREVIEW", processing: true })).toBe(false);
+    for (const status of ["APPROVED", "APPLIED", "ABANDONED", "REVERTED", "FAILED_INGESTION"] as const) {
+      expect(canAbandon({ status, processing: false })).toBe(false);
+    }
   });
 });
