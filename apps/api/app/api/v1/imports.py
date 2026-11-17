@@ -62,6 +62,7 @@ from app.modules.audit.context import (
 from app.modules.audit.models import AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.imports import templates
+from app.modules.imports.abandon import abandon_batch
 from app.modules.imports.apply import apply_stage
 from app.modules.imports.candidates import enrich_matches
 from app.modules.imports.catalog_photo_matching import FolderRule
@@ -119,6 +120,7 @@ from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
 from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
+    BatchAbandon,
     ClassificationRule,
     CorrespondenceLineOut,
     CorrespondencesOut,
@@ -536,6 +538,39 @@ def validate_import(
         rows_with_errors=counts.get("ERRORS", 0),
         unparseable_codes=counts.get("UNPARSEABLE_CODES", 0),
     )
+
+
+@router.post(
+    "/imports/{batch_id}/abandon",
+    response_model=ImportBatchOut,
+    responses={
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "`invalid_batch_transition`: el lote ya se aprobó, aplicó o cerró; "
+            "`batch_processing`: una etapa está en curso.",
+        },
+    },
+    summary="Descartar un lote que no se va a aprobar",
+    description="Pasa el lote a «abandonado» sin borrar nada (RN-005): sus filas, decisiones y "
+    "archivo quedan para la bitácora, y sus fotos se purgan como las de cualquier lote cerrado. "
+    "Los pares de duplicados pendientes de sus filas salen de la cola. Solo desde subido, "
+    "mapeado o en previsualización (change `importacion-descartar-lote`).",
+    **implemented(),
+)
+def abandon_import_batch(
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    user: Preparer,
+    body: BatchAbandon | None = None,
+) -> ImportBatchOut:
+    get_batch(session, batch_id)
+    writer(session, user, body.reason if body else None)
+    batch, _closed = abandon_batch(
+        session, batch_id, user_id=user.id, reason=body.reason if body else None
+    )
+    session.commit()
+    return batch_out(session, batch)
 
 
 def _ai_judgment_out(session: Session, batch_id: uuid.UUID) -> ImportAiJudgmentOut:
