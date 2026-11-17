@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFound, ValidationFailed
@@ -19,6 +19,7 @@ from app.modules.audit.models import AuditOrigin
 from app.modules.catalog.models import Piece
 from app.modules.catalog.queries import _descendants
 from app.modules.collections.models import Collection
+from app.modules.imports.models import ImportBatch, ImportBatchStatus, ImportRow
 from app.modules.quality.duplicates import load_profiles
 from app.modules.quality.merge import merge_pieces
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
@@ -57,6 +58,43 @@ def reopen_expired_postponements(session: Session, *, now: datetime | None = Non
     return len(due)
 
 
+#: A batch in one of these states no longer accepts row decisions: its pairs can wait for nothing.
+_CLOSED_BATCH = (ImportBatchStatus.APPLIED, ImportBatchStatus.ABANDONED)
+
+
+def _open_but_stale() -> Any:
+    """An open pair that no decision can settle any more (revision 2026-11-17).
+
+    - One of its pieces was removed or merged since it was detected. It used to stay in the queue
+      showing «ficha no disponible», and only trying to resolve it said that it was stale
+      (``StaleCandidate``). Left out on read, not closed: if the piece is restored, the pair comes
+      back as it was (RN-005).
+    - Its import row belongs to a batch already applied or discarded. Applying and discarding now
+      close those pairs; this leaves out the ones of batches closed before that.
+    """
+    # The ORM leaves removed pieces out of every query (audit/tracking.py): ``live`` lacks them.
+    live = select(Piece.id).where(Piece.merged_into_id.is_(None))
+    closed_rows = (
+        select(ImportRow.id)
+        .join(ImportBatch, ImportBatch.id == ImportRow.batch_id)
+        .where(ImportBatch.status.in_(_CLOSED_BATCH))
+    )
+    return and_(
+        DuplicateCandidate.status.in_((DuplicateStatus.PENDING, DuplicateStatus.POSTPONED)),
+        or_(
+            DuplicateCandidate.piece_a_id.not_in(live),
+            and_(
+                DuplicateCandidate.piece_b_id.is_not(None),
+                DuplicateCandidate.piece_b_id.not_in(live),
+            ),
+            and_(
+                DuplicateCandidate.import_row_id.is_not(None),
+                DuplicateCandidate.import_row_id.in_(closed_rows),
+            ),
+        ),
+    )
+
+
 def queue_query(
     session: Session,
     *,
@@ -70,7 +108,7 @@ def queue_query(
     ``collection_id`` matches a pair when either piece belongs to that collection or to one of
     its subcollections; ``origin`` separates catalogue pairs from import rows.
     """
-    statement = select(DuplicateCandidate)
+    statement = select(DuplicateCandidate).where(~_open_but_stale())
     if status is not None:
         statement = statement.where(DuplicateCandidate.status == status)
     if min_score is not None:
