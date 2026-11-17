@@ -45,7 +45,13 @@ from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
 from app.modules.catalog.service import change_tenure, create_piece, update_piece
 from app.modules.collections.models import Term, Vocabulary
-from app.modules.identification.service import add_identifier
+from app.modules.identification.normalization import normalize
+from app.modules.identification.params import session_params
+from app.modules.identification.service import (
+    add_identifier,
+    current_identifiers,
+    get_identifier_type,
+)
 from app.modules.imports.decisions import RowAction, field_actions, row_action
 from app.modules.imports.mapping import (
     ACQUISITION_VOCABULARY,
@@ -67,6 +73,8 @@ from app.modules.imports.photo_upload import upload_key
 from app.modules.imports.state import batch_kind, transition
 from app.modules.imports.worker import Progress, StageWork
 from app.modules.media.service import StoredCopy, register_from_import, unspecified_view_type_id
+from app.modules.quality.import_rows import OPEN_STATUSES
+from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +95,45 @@ def _source_label(batch: ImportBatch) -> str:
     return f"Importación: {batch.file_name}"[:200]
 
 
+#: Note of a code that repeats, written another way, a current code of the piece.
+REPEATED_CODE_NOTE = (
+    "El mismo código, escrito de otra forma en otra columna del archivo; se conserva tal como "
+    "vino, como histórico."
+)
+
+
+def _repeats_current_code(session: Session, piece: Piece, type_code: str, original: str) -> bool:
+    """The piece already holds this code (normalized) as its current one of a type that admits
+    only one: ``I-03602`` and ``I-3602`` in two columns of the same row."""
+    identifier_type = get_identifier_type(session, type_code)
+    if not identifier_type.is_unique_when_current:
+        return False
+    current = current_identifiers(session, piece, type_code)
+    if not current:
+        return False
+    normalized = normalize(
+        identifier_type.normalization_rule, original, params=session_params(session)
+    ).normalized
+    return normalized is not None and any(i.normalized_value == normalized for i in current)
+
+
 def _add_identifiers(
     session: Session, piece: Piece, identifiers: list[tuple[str, str]], source: str
 ) -> None:
     for type_code, original in dict.fromkeys(identifiers):
+        if _repeats_current_code(session, piece, type_code, original):
+            # Before, the second spelling tried to be a second current code I and its error
+            # undid the whole batch. Every code is kept (RN-002, RN-005), this one as historical.
+            add_identifier(
+                session,
+                piece,
+                type_code,
+                original,
+                source=source,
+                is_current=False,
+                notes=REPEATED_CODE_NOTE,
+            )
+            continue
         add_identifier(session, piece, type_code, original, source=source)
 
 
@@ -425,6 +468,37 @@ def _register_photos(
         session.flush()
 
 
+#: Note of an open duplicate pair of a row, once its batch is applied.
+PAIR_NOTE_CREATED = "Su lote se aplicó: la fila entró al catálogo como pieza nueva."
+PAIR_NOTE_UPDATED = "Su lote se aplicó: la fila actualizó una pieza del catálogo."
+PAIR_NOTE_SKIPPED = "Su lote se aplicó sin esta fila: no entró al catálogo."
+
+
+def _close_row_pairs(
+    session: Session, outcomes: dict[uuid.UUID, str], *, reviewer_id: uuid.UUID
+) -> None:
+    """The open pairs of the batch's rows leave the duplicate queue, saying what became of each
+    row. A row nobody decided on one by one used to keep its pairs pending forever: its batch no
+    longer accepts decisions, so the queue could not resolve them. Approving the batch is the
+    human decision on those rows (D6), the same as ``close_row_candidates`` for a decided row."""
+    if not outcomes:
+        return
+    now = utcnow()
+    row_ids = list(outcomes)
+    for start in range(0, len(row_ids), 500):
+        for candidate in session.scalars(
+            select(DuplicateCandidate).where(
+                DuplicateCandidate.import_row_id.in_(row_ids[start : start + 500]),
+                DuplicateCandidate.status.in_(OPEN_STATUSES),
+            )
+        ):
+            candidate.status = DuplicateStatus.SUPERSEDED
+            candidate.reviewed_by_id = reviewer_id
+            candidate.reviewed_at = now
+            candidate.resolution_note = outcomes[candidate.import_row_id]  # type: ignore[index]
+            candidate.postponed_until = None
+
+
 def apply_batch(
     session: Session,
     batch: ImportBatch,
@@ -465,6 +539,7 @@ def apply_batch(
     change_set_id = batch.change_set_id or new_uuid()
     counts = dict.fromkeys(APPLIED_COUNTS, 0)
     created: list[dict[str, Any]] = []
+    outcomes: dict[uuid.UUID, str] = {}
     observations = is_observations(batch)
     ai_suggestions_by_row = _pending_ai_suggestions_by_row(session, batch.id)
     total = len(rows)
@@ -473,6 +548,7 @@ def apply_batch(
             action, _reason = row_action(row)
             if action == RowAction.SKIP:
                 counts["APPLIED_SKIPPED"] += 1
+                outcomes[row.id] = PAIR_NOTE_SKIPPED
                 continue
             mapped = MappedRow.from_json(row.mapped_data or {})
             try:
@@ -509,6 +585,9 @@ def apply_batch(
                 # acá para que la bitácora no diga "Pendiente" de una fila que sí se aplicó.
                 if row.decision == RowDecision.PENDING:
                     row.decision = RowDecision.ACCEPTED
+                outcomes[row.id] = (
+                    PAIR_NOTE_CREATED if action == RowAction.CREATE else PAIR_NOTE_UPDATED
+                )
                 session.add(
                     PieceSourceRecord(
                         id=new_uuid(),
@@ -539,6 +618,7 @@ def apply_batch(
     for start in range(0, len(created), 500):
         session.execute(update(ImportRow), created[start : start + 500])
     batch.counts = {**(batch.counts or {}), **counts}
+    _close_row_pairs(session, outcomes, reviewer_id=batch.approved_by_id)  # type: ignore[arg-type]
     session.flush()
     transition(session, batch.id, S.APPLIED)
     if displays and storage is not None:

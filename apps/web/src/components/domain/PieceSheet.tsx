@@ -19,6 +19,13 @@ import { AlertBadge, LockBadge, StatusBadge, TenureBadge } from "./StatusBadges"
 type PieceDetail = ApiSchemas["PieceDetail"];
 type MediaAsset = ApiSchemas["MediaAssetOut"];
 
+const DECIMAL = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 2 });
+
+/** «Alto 25 cm · Ancho 20 cm · Espesor 2.3 cm», con el formato de números del resto de la aplicación (es-PE). */
+export function dimensionsLine(dimensions: readonly { dimension: string; value: number; unit: string }[]): string {
+  return dimensions.map((d) => `${d.dimension.charAt(0).toUpperCase()}${d.dimension.slice(1)} ${DECIMAL.format(d.value)} ${d.unit}`).join(" · ");
+}
+
 export function PieceSheetHeader({
   piece,
   alerts,
@@ -123,10 +130,9 @@ export function PieceGeneralData({ piece }: { piece: PieceDetail }) {
       </PieceFieldGroup>
       <PieceFieldGroup title="Medidas y materiales">
         <PieceField label="Materiales" value={piece.materials.length ? piece.materials.map((m) => m.label).join(", ") : "Sin registrar"} />
-        <PieceField label="Medidas" value={piece.dimensions_text ?? "Sin registrar"} />
-        {piece.dimensions && piece.dimensions.length > 0 && (
-          <PieceField label="Medidas detalladas" value={piece.dimensions.map((d) => `${d.dimension}: ${d.value} ${d.unit}`).join(", ")} />
-        )}
+        {/* Con medidas detalladas, el texto libre se rotula como la época: es el original de la fuente. */}
+        <PieceField label={piece.dimensions?.length ? "Medidas (texto original)" : "Medidas"} value={piece.dimensions_text ?? "Sin registrar"} />
+        {piece.dimensions && piece.dimensions.length > 0 && <PieceField label="Medidas detalladas" value={dimensionsLine(piece.dimensions)} />}
       </PieceFieldGroup>
       <PieceFieldGroup title="Conservación">
         <PieceField label="Estado de conservación" value={<ConservationValue status={piece.conservation_status} />} />

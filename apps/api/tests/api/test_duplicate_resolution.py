@@ -279,3 +279,32 @@ def test_a_deleted_piece_that_was_not_merged_is_still_404(
         session.commit()
         piece_id = piece.id
     assert viewer.get(f"/api/v1/pieces/{piece_id}").status_code == 404
+
+
+def test_a_pair_whose_piece_was_removed_leaves_the_queue_until_it_is_restored(
+    client: TestClient, factory: sessionmaker[Session]
+) -> None:
+    """It used to stay pending showing «ficha no disponible» (revision 2026-11-17); it is left out
+    on read, not closed, so restoring the piece brings it back (RN-005)."""
+    with factory() as session, audit_context(session, SYSTEM_CONTEXT):
+        candidate = _catalog_pairs(session)[0]
+        piece = session.get(Piece, candidate.piece_a_id)
+        soft_delete(session, piece, "Baja sintética para la prueba")
+        session.commit()
+        candidate_id, piece_id = candidate.id, piece.id
+
+    def pending_ids() -> set[str]:
+        response = client.get(
+            "/api/v1/quality/duplicates", params={"status": "PENDING", "page_size": 100}
+        )
+        assert response.status_code == 200, response.text
+        return {item["id"] for item in response.json()["items"]}
+
+    assert str(candidate_id) not in pending_ids()
+    with factory() as session, audit_context(session, SYSTEM_CONTEXT):  # as a restoration would
+        piece = session.scalars(
+            select(Piece).where(Piece.id == piece_id).execution_options(include_deleted=True)
+        ).one()
+        piece.deleted_at = piece.deleted_by_id = piece.deletion_reason = None
+        session.commit()
+    assert str(candidate_id) in pending_ids()
