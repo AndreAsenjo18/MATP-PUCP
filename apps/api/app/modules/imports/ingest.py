@@ -13,11 +13,15 @@ headers and raw rows. The caller stores the original file untouched and persists
   first ``HEADER_SCAN_ROWS``, with at least two text cells and no numbers.
 - Completely empty rows between data rows are skipped and counted; trailing empty rows are not.
 - Formats other than ``.xlsx``/``.csv`` are rejected [SUPUESTO A1].
+- Empty cells that only carry a style are dropped before reading (``without_empty_cells``): a
+  sheet formatted across whole rows stores ~16 000 of them per row, and reading them took
+  seconds for a few dozen pieces. The stored original file is not changed.
 """
 
 import csv
 import io
 import posixpath
+import re
 import unicodedata
 import zipfile
 from collections.abc import Iterable, Iterator
@@ -37,6 +41,10 @@ from app.modules.identification.normalization import canonical
 
 SUPPORTED_EXTENSIONS = (".xlsx", ".csv")
 HEADER_SCAN_ROWS = 30
+#: Worksheet XML below this size is read as is: compacting it would cost more than it saves.
+COMPACT_MIN_BYTES = 1_000_000
+#: A cell with no value, only a position and a style: ``<c r="XFD12" s="3"/>``.
+_EMPTY_CELL = re.compile(rb'<c r="[A-Z]{1,3}[0-9]+"(?: s="[0-9]+")?/>')
 MERGED_KEY = "__merged"
 CSV_ENCODINGS = ("utf-8-sig", "cp1252", "latin-1")
 CSV_DELIMITERS = ";,\t|"
@@ -138,9 +146,44 @@ def _open_workbook(content: bytes):
         ) from exc
 
 
+def without_empty_cells(content: bytes) -> bytes:
+    """The same ``.xlsx`` without its empty styled cells, or ``content`` untouched when no
+    worksheet is large enough to matter or the package cannot be read (``_open_workbook`` then
+    reports it). Values, merged ranges and every other part of the package are kept as they
+    are, so the rows read are the same."""
+    try:
+        source = zipfile.ZipFile(io.BytesIO(content))
+    except zipfile.BadZipFile:
+        return content
+    with source:
+        sheets = {
+            item.filename
+            for item in source.infolist()
+            if item.filename.startswith("xl/worksheets/")
+            and item.filename.endswith(".xml")
+            and item.file_size >= COMPACT_MIN_BYTES
+        }
+        if not sheets:
+            return content
+        buffer = io.BytesIO()
+        try:
+            with zipfile.ZipFile(buffer, "w") as target:
+                for item in source.infolist():
+                    data = source.read(item.filename)
+                    if item.filename in sheets:
+                        data = _EMPTY_CELL.sub(b"", data)
+                    target.writestr(
+                        item.filename, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=1
+                    )
+        except (zipfile.BadZipFile, OSError, EOFError):
+            return content
+    return buffer.getvalue()
+
+
 def _ingest_xlsx(
     content: bytes, *, sheet_name: str | None, header_row: int | None, max_rows: int | None
 ) -> IngestResult:
+    content = without_empty_cells(content)
     workbook = _open_workbook(content)
     try:
         sheet_names = list(workbook.sheetnames)

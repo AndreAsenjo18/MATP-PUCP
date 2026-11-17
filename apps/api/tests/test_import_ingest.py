@@ -4,13 +4,23 @@ Change importacion-pipeline-reconciliacion, task 2.2. Fixtures are synthetic (RN
 """
 
 import io
+import re
+import zipfile
 from datetime import date
 from pathlib import Path
 
 import pytest
 from openpyxl import Workbook
 
-from app.modules.imports.ingest import MERGED_KEY, IngestionFailed, file_format, ingest, list_sheets
+from app.modules.imports.ingest import (
+    COMPACT_MIN_BYTES,
+    MERGED_KEY,
+    IngestionFailed,
+    file_format,
+    ingest,
+    list_sheets,
+    without_empty_cells,
+)
 from app.seed.fixtures import (
     CSV_LATIN1_ROWS,
     MULTI_SHEET_HEADERS,
@@ -233,3 +243,60 @@ def test_fixture_generators_match_committed_files(tmp_path: Path) -> None:
         new = ingest(generated.read_bytes(), generated.name, **options)
         old = ingest(committed.read_bytes(), committed.name, **options)
         assert [r.raw_data for r in new.rows] == [r.raw_data for r in old.rows]
+
+
+# --- Filas formateadas hasta la última columna -------------------------------------------------
+def _formatted_to_the_last_column(content: bytes, empty_cells_per_row: int) -> bytes:
+    """``content`` with each row of the first sheet padded by empty styled cells after its
+    values, as a sheet does when whole rows were formatted in the spreadsheet program."""
+    source = zipfile.ZipFile(io.BytesIO(content))
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == "xl/worksheets/sheet1.xml":
+
+                def pad(match: re.Match[bytes]) -> bytes:
+                    row = match.group(1).decode()
+                    cells = "".join(
+                        f'<c r="{_column(10 + i)}{row}" s="0"/>' for i in range(empty_cells_per_row)
+                    )
+                    return match.group(0).replace(b"</row>", cells.encode() + b"</row>")
+
+                data = re.sub(rb'<row r="(\d+)".*?</row>', pad, data, flags=re.S)
+            target.writestr(item, data)
+    return buffer.getvalue()
+
+
+def _column(index: int) -> str:
+    letters = ""
+    while index:
+        index, rest = divmod(index - 1, 26)
+        letters = chr(65 + rest) + letters
+    return letters
+
+
+def test_rows_formatted_to_the_last_column_read_the_same_and_quickly() -> None:
+    rows = [
+        ["Código", "Denominación"],
+        *([f"MMZ {n}", f"Pieza sintética {n}"] for n in range(1, 10)),
+    ]
+    plain = _xlsx(("Inventario", rows))
+    formatted = _formatted_to_the_last_column(plain, empty_cells_per_row=16_000)
+    sheet = zipfile.ZipFile(io.BytesIO(formatted)).getinfo("xl/worksheets/sheet1.xml")
+    assert sheet.file_size >= COMPACT_MIN_BYTES
+
+    compact = without_empty_cells(formatted)
+    compact_sheet = zipfile.ZipFile(io.BytesIO(compact)).getinfo("xl/worksheets/sheet1.xml")
+    assert compact_sheet.file_size < 10_000
+
+    expected = ingest(plain, "plano.xlsx")
+    result = ingest(formatted, "formateado.xlsx")
+    assert result.headers == expected.headers == ["Código", "Denominación"]
+    assert [r.raw_data for r in result.rows] == [r.raw_data for r in expected.rows]
+
+
+def test_small_or_unreadable_files_are_not_rewritten() -> None:
+    small = _xlsx(("Hoja", [["A", "B"], [1, 2]]))
+    assert without_empty_cells(small) is small
+    assert without_empty_cells(b"no es un zip") == b"no es un zip"
