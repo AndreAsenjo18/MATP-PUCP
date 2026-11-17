@@ -497,3 +497,6 @@ def test_collection_field_and_default(
     assert apply_mapping({"DENOMINACIÓN": "Toro"}, spec, ctx).collection_id == mmz.id
     unknown = apply_mapping({"DENOMINACIÓN": "Toro", "COLECCIÓN": "XYZ"}, spec, ctx)
     assert [error.code for error in unknown.errors] == ["unknown_collection"]
+    # The value is looked up as an acronym and as a name; the message says both and what to do.
+    assert "sigla o el nombre «XYZ»" in unknown.errors[0].message
+    assert "Administración › Colecciones" in unknown.errors[0].message

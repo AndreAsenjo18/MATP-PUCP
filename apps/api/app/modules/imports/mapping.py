@@ -1041,7 +1041,9 @@ def _defaults_errors(plan: _Plan, ctx: MappingContext) -> list[MappingError]:
     if collection_default is not None and ctx.collection_id(collection_default) is None:
         errors.append(
             MappingError(
-                "invalid_default", f"No existe una colección con la sigla «{collection_default}»."
+                "invalid_default",
+                f"No hay ninguna colección con la sigla o el nombre «{collection_default}». "
+                "Créela en Administración › Colecciones o elija una que exista.",
             )
         )
     return errors
@@ -1132,7 +1134,10 @@ def apply_mapping(
             mapped.errors.append(
                 RowError(
                     "unknown_collection",
-                    f"No existe una colección con la sigla «{collection}».",
+                    # The value may be an acronym or a name (both are looked up): say both, and
+                    # what to do, since the usual cause is a collection not created yet.
+                    f"No hay ninguna colección con la sigla o el nombre «{collection}». Créela "
+                    "en Administración › Colecciones y vuelva a validar el lote.",
                     "collection",
                 )
             )

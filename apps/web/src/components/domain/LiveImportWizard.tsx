@@ -28,6 +28,7 @@ import {
   ImportRowCard,
   ImportSteps,
   ProgressPanel,
+  revalidateHint,
   RollbackPanel,
   TenureAction,
   TenureBanner,
@@ -274,17 +275,21 @@ export function LiveImportWizard() {
     };
   }, [headersKey, devUser]);
 
-  // Formatos guardados, para elegirlos antes de subir el archivo.
+  // Formatos guardados: para elegirlos antes de subir el archivo y, al volver a abrir un lote ya
+  // leído, para nombrar su formato y poder aplicarlo otra vez (antes solo se cargaban con el lote
+  // recién subido: al volver se veía «columnas ajustadas a mano» y «Cambiar formato» se quedaba
+  // en «Buscando formatos…»). El lote recién subido los carga con las sugerencias, arriba.
+  const needsTemplates = !batchId || (batch !== null && batch.status !== "UPLOADED");
   useEffect(() => {
     let active = true;
-    if (batchId) return;
+    if (!needsTemplates || templates !== null) return;
     fetchTemplates(devUser).then((result) => {
       if (active) setTemplates(result.status === "ok" ? result.value : []);
     });
     return () => {
       active = false;
     };
-  }, [batchId, devUser]);
+  }, [needsTemplates, templates, devUser]);
 
   // Con el archivo leído, aplica el formato elegido (o el que mejor coincide) y valida el lote.
   useEffect(() => {
@@ -450,8 +455,10 @@ export function LiveImportWizard() {
     setPage(1);
     closeEditor();
     setMappingMode("pick");
-    setReload((n) => n + 1);
+    // The batch first, so the screen knows it is validating: raising `reload` before it asked for
+    // the rows of a batch still at work (409 «lote trabajando»).
     await loadBatch();
+    setReload((n) => n + 1);
   }
 
   /** Aplica una plantilla (con el régimen por defecto, si hay) y valida el lote. */
@@ -468,6 +475,19 @@ export function LiveImportWizard() {
     if (missing.length > 0) return setFormatIssue({ kind: "missing", template, missing });
     setError(null);
     await applySourceAndValidate({ kind: "template", templateId: template.id, tenureDefault: null }, setError);
+  }
+
+  /**
+   * «Validar de nuevo»: el mismo formato del lote, con su régimen por defecto, y otra validación.
+   * Sirve tras corregir algo fuera del lote (crear la colección o el término que faltaba).
+   */
+  async function handleRevalidate() {
+    const tenureDefault = typeof batch?.mapping?.defaults === "object" && batch.mapping.defaults !== null ? ((batch.mapping.defaults as Record<string, unknown>).tenure_regime as string | undefined) : undefined;
+    const source: BatchMappingSource | null =
+      appliedSource ?? (batch?.template_id ? { kind: "template", templateId: batch.template_id, tenureDefault: tenureDefault ?? null } : null);
+    if (!source) return setChangingFormat(true);
+    setError(null);
+    await applySourceAndValidate(source, setError);
   }
 
   /** Mismo mapeo con un régimen por defecto, para las filas que no lo traen; luego a validar. */
@@ -586,8 +606,10 @@ export function LiveImportWizard() {
     setPage(1);
     closeEditor();
     setMappingMode("pick");
-    setReload((n) => n + 1);
+    // The batch first, so the screen knows it is validating: raising `reload` before it asked for
+    // the rows of a batch still at work (409 «lote trabajando»).
     await loadBatch();
+    setReload((n) => n + 1);
   }
 
   /** Vuelve a la subida de un archivo nuevo; el lote actual queda como está. */
@@ -753,7 +775,12 @@ export function LiveImportWizard() {
   const formatPanel: FormatIssue | null = formatIssue ?? (changingFormat ? { kind: "change", current: templates?.find((template) => template.id === batch?.template_id) ?? null } : null);
   const applyingFormat = batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
   const reviewing = showRows && step === 3 && !adjusting && !changingFormat;
-  const formatName = batch?.template_id ? (templates?.find((template) => template.id === batch.template_id)?.name ?? null) : null;
+  // `undefined` mientras se cargan los formatos: nunca «a mano» para un lote leído con uno guardado.
+  const formatName = batch?.template_id
+    ? templates === null
+      ? undefined
+      : (templates.find((template) => template.id === batch.template_id)?.name ?? "un formato guardado")
+    : null;
   const canReapply = appliedSource !== null || Boolean(batch?.template_id);
 
   return (
@@ -877,6 +904,8 @@ export function LiveImportWizard() {
                 setError(null);
                 setChangingFormat(true);
               }}
+              onRevalidate={canReapply ? () => void handleRevalidate() : undefined}
+              revalidateHint={revalidateHint(errorCount, counts.DECIDED ?? 0)}
             />
           }
         />
