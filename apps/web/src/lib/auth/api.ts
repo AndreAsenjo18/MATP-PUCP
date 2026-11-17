@@ -47,6 +47,21 @@ export async function signIn(username: string, password: string): Promise<AuthRe
   }
 }
 
+/**
+ * Whether the browser still holds a real session, asked with `GET /auth/me`. A plain `fetch` on
+ * purpose: the API client treats a 401 as «session lost» and reloads the page, but on the sign-in
+ * screen a 401 is the expected answer. `unknown` when the server cannot be reached.
+ */
+export async function currentSessionStatus(): Promise<"signed_in" | "signed_out" | "unknown"> {
+  try {
+    const response = await fetch(`${apiBaseUrl()}/api/v1/auth/me`, { credentials: "include", headers: { Accept: "application/json" } });
+    if (response.ok) return "signed_in";
+    return response.status === 401 || response.status === 403 ? "signed_out" : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 export async function signOut(): Promise<void> {
   try {
     await createApiClient({ baseUrl: apiBaseUrl() }).POST("/api/v1/auth/logout");

@@ -69,6 +69,17 @@ function parse(raw: string | null): Session | null {
   return null;
 }
 
+/**
+ * The stored profile only counts in the mode that wrote it. In `live` mode a profile without
+ * `live` comes from the demonstration (the role selector): there is no real session behind it,
+ * so it must not draw a signed-in menu nor send the sign-in screen to `/inicio`, where the
+ * cookie check sends the person back to sign in.
+ */
+export function sessionForMode(session: Session | null, mode: "mock" | "live"): Session | null {
+  if (session && mode === "live" && !session.live) return null;
+  return session;
+}
+
 function subscribe(onStoreChange: () => void): () => void {
   listeners.add(onStoreChange);
   window.addEventListener("storage", onStoreChange);
@@ -87,7 +98,7 @@ function getSnapshot(): Session | null {
   }
   if (raw !== cachedRaw) {
     cachedRaw = raw;
-    cachedSession = parse(raw);
+    cachedSession = sessionForMode(parse(raw), getApiMode());
   }
   return cachedSession;
 }
