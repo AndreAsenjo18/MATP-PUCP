@@ -138,6 +138,13 @@ class ColumnMappingCandidate(BaseModel):
         None, description="Clave de ``target_fields`` propuesta, o null si no hay una clara."
     )
     confidence: float = Field(ge=0, le=1)
+    reason: str | None = Field(
+        None,
+        max_length=200,
+        description="Por qué la propuesta es dudosa, en una frase, cuando la confianza es baja "
+        "(p. ej. «Fecha puede ser la época o la fecha de registro»); null si es clara "
+        "(change importacion-mapeo-asistido).",
+    )
 
 
 class ColumnMappingResult(BaseModel):

@@ -103,6 +103,12 @@ PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection"
 # los Excel del museo (material, técnica); no cubre cada ``terms:<vocabulario>`` posible.
 AI_MAPPING_EXTRA_TARGETS: dict[str, str] = {
     IDENTIFIER_TARGET: "Identificadores",
+    # A column of one code type (importacion-mapeo-asistido, D1): «N° Inventario» is the code I,
+    # not "codes of any type".
+    f"{IDENTIFIER_TARGET}:I": "Código I (inventario general)",
+    f"{IDENTIFIER_TARGET}:COLECCION": "Código de colección",
+    f"{IDENTIFIER_TARGET}:INC_RN": "Código INC / Ministerio de Cultura",
+    f"{IDENTIFIER_TARGET}:PUCP": "Código PUCP",
     f"{TERMS_TARGET}:MATERIAL": "Material",
     f"{TERMS_TARGET}:TECHNIQUE": "Técnica",
 }
