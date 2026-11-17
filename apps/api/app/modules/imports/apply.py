@@ -41,9 +41,10 @@ from app.core.storage import ObjectStorage
 from app.modules.ai_suggestions.apply import apply_approved
 from app.modules.ai_suggestions.models import AiSuggestion, SuggestionStatus
 from app.modules.audit.context import refined_context
+from app.modules.catalog.conservation import record_assessment
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece, PieceSourceRecord
-from app.modules.catalog.service import change_tenure, create_piece, update_piece
+from app.modules.catalog.service import change_tenure, create_piece, set_materials, update_piece
 from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.normalization import normalize
 from app.modules.identification.params import session_params
@@ -72,6 +73,8 @@ from app.modules.imports.observations import NOTES_FIELD, is_observations, with_
 from app.modules.imports.photo_upload import upload_key
 from app.modules.imports.state import batch_kind, transition
 from app.modules.imports.worker import Progress, StageWork
+from app.modules.locations.models import Location, LocationLevel
+from app.modules.locations.service import move_piece
 from app.modules.media.service import StoredCopy, register_from_import, unspecified_view_type_id
 from app.modules.quality.import_rows import OPEN_STATUSES
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
@@ -147,17 +150,65 @@ def _new_identifiers(mapped: MappedRow) -> list[tuple[str, str]]:
 
 def _acquisition_term_id(session: Session, code: str | None) -> uuid.UUID | None:
     """Id of the ``ACQUISITION_METHOD`` term with ``code`` (matched when the row was mapped)."""
+    return _term_id(session, ACQUISITION_VOCABULARY, code)
+
+
+def _term_id(session: Session, vocabulary: str, code: str | None) -> uuid.UUID | None:
+    """Id of the term ``code`` of ``vocabulary`` (matched when the row was mapped)."""
     if not code:
         return None
     return session.scalar(
         select(Term.id)
         .join(Vocabulary, Term.vocabulary_id == Vocabulary.id)
         .where(
-            Vocabulary.code == ACQUISITION_VOCABULARY,
+            Vocabulary.code == vocabulary,
             Term.code == code,
             Term.deleted_at.is_(None),
         )
     )
+
+
+def _first_term_id(session: Session, mapped: MappedRow, vocabulary: str) -> uuid.UUID | None:
+    codes = mapped.terms.get(vocabulary) or []
+    return _term_id(session, vocabulary, codes[0]) if codes else None
+
+
+def _apply_vocabularies_and_location(
+    session: Session, batch: ImportBatch, piece: Piece, mapped: MappedRow
+) -> None:
+    """Materials, the conservation state (as an assessment) and the location of a new piece, from
+    what the row matched when it was validated (change importacion-aplicar-vocabularios)."""
+    material_ids = [
+        term_id
+        for code in mapped.terms.get("MATERIAL") or []
+        if (term_id := _term_id(session, "MATERIAL", code)) is not None
+    ]
+    if material_ids:
+        set_materials(session, piece, list(dict.fromkeys(material_ids)))
+    if (state_id := _first_term_id(session, mapped, "CONSERVATION_STATUS")) is not None:
+        record_assessment(
+            session,
+            piece,
+            status_term_id=state_id,
+            assessed_by_label=_source_label(batch),
+            notes="Estado de conservación tomado del archivo importado.",
+        )
+    if mapped.location_id is not None:
+        destination = session.get(Location, mapped.location_id)
+        if (
+            destination is not None
+            and destination.deleted_at is None
+            and destination.is_active
+            and destination.level is not LocationLevel.SITE
+        ):
+            move_piece(
+                session,
+                piece,
+                destination,
+                f"Ubicación indicada en el archivo «{batch.file_name}».",
+                performed_by_label=_source_label(batch),
+                origin_ref=str(batch.id),
+            )
 
 
 def _field_value(name: str, value: Any) -> Any:
@@ -179,6 +230,10 @@ def _create(session: Session, batch: ImportBatch, mapped: MappedRow) -> Piece:
         fields["collection_id"] = mapped.collection_id
     if (term_id := _acquisition_term_id(session, mapped.acquisition_method)) is not None:
         fields["acquisition_method_term_id"] = term_id
+    if (term_id := _first_term_id(session, mapped, "OBJECT_TYPE")) is not None:
+        fields["object_type_term_id"] = term_id
+    if (term_id := _first_term_id(session, mapped, "CATEGORY")) is not None:
+        fields["category_id"] = term_id
     piece = create_piece(
         session,
         denomination=mapped.fields.get("denomination"),
@@ -186,6 +241,7 @@ def _create(session: Session, batch: ImportBatch, mapped: MappedRow) -> Piece:
         **fields,
     )
     _add_identifiers(session, piece, _new_identifiers(mapped), _source_label(batch))
+    _apply_vocabularies_and_location(session, batch, piece, mapped)
     return piece
 
 

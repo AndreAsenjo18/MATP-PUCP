@@ -84,6 +84,7 @@ from app.modules.imports.decisions import (
 )
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
+from app.modules.imports.location_map import map_location, unresolved_locations
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
@@ -140,6 +141,7 @@ from app.modules.imports.schemas import (
     ImportPhotoSummary,
     ImportRowOut,
     ImportRowVerdictOut,
+    LocationCorrespondence,
     MappingRequest,
     MappingTemplateCreate,
     MappingTemplateOut,
@@ -165,6 +167,8 @@ from app.modules.imports.schemas import (
     TemplateDryRunRequest,
     TemplateSuggestion,
     TemplateSuggestRequest,
+    UnresolvedLocationOut,
+    UnresolvedLocationsOut,
     ValidationSummary,
 )
 from app.modules.imports.service import (
@@ -607,6 +611,48 @@ def correct_import_cell(
     batch = correct_cell(
         session, batch_id, row_id, column=body.column, value=body.value, user_id=user.id
     )
+    session.commit()
+    return batch_out(session, batch)
+
+
+@router.get(
+    "/imports/{batch_id}/locations",
+    response_model=UnresolvedLocationsOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Ubicaciones del archivo que no existen en el museo",
+    description="Cada ubicación escrita en el archivo que no coincide con una sola ubicación "
+    "activa, con cuántas filas la escriben así (change `importacion-aplicar-vocabularios`).",
+    **implemented(),
+)
+def get_unresolved_locations(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> UnresolvedLocationsOut:
+    get_spreadsheet_batch(session, batch_id)
+    return UnresolvedLocationsOut(
+        items=[
+            UnresolvedLocationOut(text=text, rows=rows)
+            for text, rows in unresolved_locations(session, batch_id)
+        ]
+    )
+
+
+@router.put(
+    "/imports/{batch_id}/locations",
+    response_model=ImportBatchOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Indicar a qué ubicación corresponde una ubicación del archivo",
+    description="Guarda en el mapeo del lote la correspondencia «texto del archivo → ubicación» "
+    "(la ubicación puede haberse creado en ese momento). El lote vuelve a «mapeado» para "
+    "validarse de nuevo con `POST /imports/{batch_id}/validate`, y todas las filas que escriben "
+    "ese texto quedan con esa ubicación (change `importacion-aplicar-vocabularios`).",
+    **implemented(),
+)
+def put_location_correspondence(
+    batch_id: uuid.UUID, body: LocationCorrespondence, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    get_spreadsheet_batch(session, batch_id)
+    writer(session, user, f"Ubicación del archivo «{body.text}» en la revisión del lote")
+    batch = map_location(session, batch_id, text=body.text, location_id=body.location_id)
     session.commit()
     return batch_out(session, batch)
 

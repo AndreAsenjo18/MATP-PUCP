@@ -326,6 +326,7 @@ export const TARGET_OPTIONS: TargetOption[] = [
   { value: "loan_agreement_ref", label: "Referencia del contrato de comodato" },
   { value: "temporary_inventory_number", label: "Número de inventario temporal" },
   { value: "photo_filename", label: "Archivo de la foto (nombre del archivo en la carpeta de fotos)" },
+  { value: "location", label: "Ubicación (nombre de una ubicación del museo)" },
   { value: "identifier", label: "Códigos (se reconoce el tipo de cada uno)" },
   { value: "identifier:I", label: "Código I (inventario general)" },
   { value: "identifier:COLECCION", label: "Código de colección" },
@@ -704,6 +705,23 @@ export async function correctImportCell(batchId: string, rowId: string, column: 
     client(devUser).PATCH("/api/v1/imports/{batch_id}/rows/{row_id}/cells", {
       params: { path: { batch_id: batchId, row_id: rowId } },
       body: { column, value: value.trim() || null },
+    }),
+  );
+}
+
+export type UnresolvedLocations = ApiSchemas["UnresolvedLocationsOut"];
+
+/** Ubicaciones del archivo que no existen en el museo, con cuántas filas las usan (change `importacion-aplicar-vocabularios`). */
+export async function fetchUnresolvedLocations(batchId: string, devUser?: string): Promise<ImportResult<UnresolvedLocations>> {
+  return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/locations", { params: { path: { batch_id: batchId } } }));
+}
+
+/** «Esta ubicación del archivo es esta del museo»: queda en el mapeo del lote; el lote vuelve a «mapeado». */
+export async function mapImportLocation(batchId: string, text: string, locationId: string, devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).PUT("/api/v1/imports/{batch_id}/locations", {
+      params: { path: { batch_id: batchId } },
+      body: { text, location_id: locationId },
     }),
   );
 }

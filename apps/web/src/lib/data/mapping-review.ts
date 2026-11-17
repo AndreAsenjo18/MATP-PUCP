@@ -33,6 +33,7 @@ export const REVIEW_FIELDS: readonly ReviewField[] = [
   { target: "epoch_original_text", label: "Época" },
   { target: "dimensions_text", label: "Medidas" },
   { target: "author", label: "Autor" },
+  { target: "location", label: "Ubicación" },
   { target: "tenure_regime", label: "Régimen de tenencia" },
   { target: "notes", label: "Observaciones" },
 ];

@@ -6915,6 +6915,28 @@
         "title": "LoanStubOut",
         "type": "object"
       },
+      "LocationCorrespondence": {
+        "description": "Body of ``PUT /imports/{batch_id}/locations``: el texto del archivo y la ubicación.",
+        "properties": {
+          "location_id": {
+            "format": "uuid",
+            "title": "Location Id",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "location_id"
+        ],
+        "title": "LocationCorrespondence",
+        "type": "object"
+      },
       "LocationCreate": {
         "properties": {
           "code": {
@@ -14113,6 +14135,41 @@
         "title": "TrashRestoreResult",
         "type": "object"
       },
+      "UnresolvedLocationOut": {
+        "properties": {
+          "rows": {
+            "description": "Filas que la escriben así.",
+            "minimum": 1.0,
+            "title": "Rows",
+            "type": "integer"
+          },
+          "text": {
+            "description": "La ubicación como está escrita en el archivo.",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "rows"
+        ],
+        "title": "UnresolvedLocationOut",
+        "type": "object"
+      },
+      "UnresolvedLocationsOut": {
+        "description": "Ubicaciones del archivo que no coinciden con una sola ubicación del museo (change\nimportacion-aplicar-vocabularios, D4).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedLocationOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "UnresolvedLocationsOut",
+        "type": "object"
+      },
       "UploadUrlRequest": {
         "examples": [
           {
@@ -19564,6 +19621,194 @@
           }
         ],
         "summary": "Asociar una imagen extraída del Excel a una pieza (RF-029)",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/locations": {
+      "get": {
+        "description": "Cada ubicación escrita en el archivo que no coincide con una sola ubicación activa, con cuántas filas la escriben así (change `importacion-aplicar-vocabularios`).",
+        "operationId": "getUnresolvedLocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnresolvedLocationsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Ubicaciones del archivo que no existen en el museo",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "put": {
+        "description": "Guarda en el mapeo del lote la correspondencia «texto del archivo → ubicación» (la ubicación puede haberse creado en ese momento). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate`, y todas las filas que escriben ese texto quedan con esa ubicación (change `importacion-aplicar-vocabularios`).",
+        "operationId": "putLocationCorrespondence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationCorrespondence"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Indicar a qué ubicación corresponde una ubicación del archivo",
         "tags": [
           "Importación"
         ],
