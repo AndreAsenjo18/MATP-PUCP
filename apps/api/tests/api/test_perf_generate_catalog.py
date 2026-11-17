@@ -21,6 +21,7 @@ except ImportError:
 
 from app.modules.audit.context import AuditContext, audit_context
 from app.modules.audit.models import AuditOrigin
+from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.modules.identification.normalization import (
@@ -51,7 +52,13 @@ def catalog(pipeline: Pipeline) -> dict[str, list[uuid.UUID] | uuid.UUID]:
     context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label="tests")
     with pipeline.session() as session, audit_context(session, context):
         before = set(session.scalars(select(Piece.id)))
-        owner = session.scalar(select(Piece).order_by(Piece.id).limit(1))
+        # Only a piece the PUCP owns can hold a code I (RN-003): a comodato one would be rejected.
+        owner = session.scalar(
+            select(Piece)
+            .where(Piece.tenure_regime == TenureRegime.OWNED)
+            .order_by(Piece.id)
+            .limit(1)
+        )
         assert owner is not None
         owner_id = owner.id
         session.add(

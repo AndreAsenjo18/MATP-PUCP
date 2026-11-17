@@ -432,6 +432,67 @@
         "title": "DescriptionResult",
         "type": "object"
       },
+      "DuplicateJudgment": {
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "pair_id": {
+            "title": "Pair Id",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Motivo en una frase, en español.",
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "same",
+              "distinct",
+              "unsure"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pair_id",
+          "verdict",
+          "confidence",
+          "reason"
+        ],
+        "title": "DuplicateJudgment",
+        "type": "object"
+      },
+      "DuplicatePair": {
+        "additionalProperties": false,
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/PairSide"
+          },
+          "b": {
+            "$ref": "#/components/schemas/PairSide"
+          },
+          "pair_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pair Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pair_id",
+          "a",
+          "b"
+        ],
+        "title": "DuplicatePair",
+        "type": "object"
+      },
       "ErrorResponse": {
         "properties": {
           "code": {
@@ -542,6 +603,202 @@
           "provider"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "JudgeDuplicatesRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``/v1/judge-duplicates`` (change ia-juicio-duplicados; RIA-02).",
+        "examples": [
+          {
+            "pairs": [
+              {
+                "a": {
+                  "code_i": "I-0102",
+                  "collection": "Colección RA",
+                  "denomination": "Retablo de San Marcos (sintético)",
+                  "kind": "piece"
+                },
+                "b": {
+                  "collection": "Colección RA",
+                  "denomination": "Retablo San Marcos",
+                  "kind": "import_row"
+                },
+                "pair_id": "par-1"
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicatePair"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Pairs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pairs"
+        ],
+        "title": "JudgeDuplicatesRequest",
+        "type": "object"
+      },
+      "JudgeDuplicatesResult": {
+        "properties": {
+          "prompt_version": {
+            "default": "juicio-duplicados-v1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateJudgment"
+            },
+            "title": "Verdicts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "verdicts"
+        ],
+        "title": "JudgeDuplicatesResult",
+        "type": "object"
+      },
+      "PairSide": {
+        "additionalProperties": false,
+        "description": "One side of a pair: only the catalog fields of the queue comparison (``COMPARISON_ROWS``)\nand the description. Never personal data (RNF-014): other fields are rejected.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "code_i": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code I"
+          },
+          "collection": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection"
+          },
+          "denomination": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denomination"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "dimensions": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions"
+          },
+          "kind": {
+            "enum": [
+              "piece",
+              "import_row"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "other_codes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Other Codes",
+            "type": "array"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "tenure_regime": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenure Regime"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PairSide",
         "type": "object"
       },
       "PieceContext": {
@@ -967,6 +1224,7 @@
           "function_code": {
             "enum": [
               "RIA_01",
+              "RIA_02",
               "RIA_03",
               "RIA_04"
             ],
@@ -1011,6 +1269,7 @@
           "function_code": {
             "enum": [
               "RIA_01",
+              "RIA_02",
               "RIA_03",
               "RIA_04"
             ],
@@ -1055,6 +1314,7 @@
           "function_code": {
             "enum": [
               "RIA_01",
+              "RIA_02",
               "RIA_03",
               "RIA_04"
             ],
@@ -1094,11 +1354,57 @@
         "title": "SuggestionEnvelope[ExtractionResult]",
         "type": "object"
       },
+      "SuggestionEnvelope_JudgeDuplicatesResult_": {
+        "properties": {
+          "function_code": {
+            "enum": [
+              "RIA_01",
+              "RIA_02",
+              "RIA_03",
+              "RIA_04"
+            ],
+            "title": "Function Code",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "requires_human_approval": {
+            "const": true,
+            "default": true,
+            "title": "Requires Human Approval",
+            "type": "boolean"
+          },
+          "result": {
+            "$ref": "#/components/schemas/JudgeDuplicatesResult"
+          },
+          "status": {
+            "const": "PENDING_REVIEW",
+            "default": "PENDING_REVIEW",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_code",
+          "provider",
+          "model",
+          "result"
+        ],
+        "title": "SuggestionEnvelope[JudgeDuplicatesResult]",
+        "type": "object"
+      },
       "SuggestionEnvelope_TermSuggestionResult_": {
         "properties": {
           "function_code": {
             "enum": [
               "RIA_01",
+              "RIA_02",
               "RIA_03",
               "RIA_04"
             ],
@@ -1441,6 +1747,57 @@
           }
         },
         "summary": "RIA-06: traducir una frase de búsqueda a los filtros que ya existen",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/judge-duplicates": {
+      "post": {
+        "operationId": "judge_duplicates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JudgeDuplicatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEnvelope_JudgeDuplicatesResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-02: juzgar si cada par de registros describe la misma pieza",
         "tags": [
           "IA asistiva"
         ]

@@ -35,6 +35,7 @@ from app.core.errors import NotFound
 from app.core.jobs import run_in_background
 from app.core.models_base import new_uuid, utcnow
 from app.core.xlsx import write_table
+from app.modules.ai_suggestions.client import AiServiceClient
 from app.modules.audit.context import AuditContext, set_audit_context
 from app.modules.audit.models import AuditAction, AuditLog, AuditOrigin
 from app.modules.catalog.models import Piece
@@ -44,6 +45,7 @@ from app.modules.exports.worker import EXPORT_SYNC_MAX_ROWS, run_export_job
 from app.modules.locations.service import last_seen
 from app.modules.media.derivatives import derivative_keys
 from app.modules.media.models import MediaAsset
+from app.modules.quality import ai_judgment
 from app.modules.quality.completeness import (
     list_completeness_rules,
     load_active_rules,
@@ -58,7 +60,12 @@ from app.modules.quality.incomplete_report import (
     rows_for_pieces,
 )
 from app.modules.quality.kpis import compute_dashboard_kpis
-from app.modules.quality.models import DuplicateCandidate, DuplicateStatus, QualityJob
+from app.modules.quality.models import (
+    DuplicateCandidate,
+    DuplicateStatus,
+    QualityJob,
+    QualityJobStatus,
+)
 from app.modules.quality.queue import (
     StaleCandidate,
     queue_query,
@@ -67,6 +74,13 @@ from app.modules.quality.queue import (
 )
 from app.modules.quality.scan import run_full_scan, start_scan
 from app.modules.quality.schemas import (
+    AiDuplicateRunOut,
+    AiGroupApproval,
+    AiGroupApprovalOut,
+    AiGroupPairOut,
+    AiJudgmentStart,
+    AiRunGroupCounts,
+    AiVerdictOut,
     AlertKpi,
     AlertType,
     CollectionKpis,
@@ -391,6 +405,211 @@ def get_quality_job(job_id: uuid.UUID, session: SessionDep, user: Reader) -> Qua
     if job is None:
         raise NotFound("No existe esa deteccin de duplicados.")
     return QualityJobOut.model_validate(job)
+
+
+# ------------------------------------------------- juicio con IA (change ia-juicio-duplicados)
+AiGroup = Annotated[
+    str,
+    FastAPIPath(
+        pattern="^(same|distinct|unsure)$",
+        description="`same`: misma pieza; `distinct`: distintas; `unsure`: no está seguro.",
+    ),
+]
+
+
+def _run_out(session: Session, run: QualityJob) -> AiDuplicateRunOut:
+    config = ai_judgment.load_config(session)
+    groups = ai_judgment.group_members(session, run.id, config)
+    by_rule = sum(
+        1
+        for member in groups["distinct"]
+        if member.verdict.source == ai_judgment.DuplicateAiVerdictSource.RULE
+    )
+    return AiDuplicateRunOut(
+        id=run.id,
+        status=run.status,
+        total_pairs=run.total_pairs,
+        processed_pairs=run.processed_pairs,
+        failed_batches=run.failed_batches,
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+        error_message=run.error_message,
+        groups=AiRunGroupCounts(
+            same=len(groups["same"]),
+            distinct=len(groups["distinct"]),
+            unsure=len(groups["unsure"]),
+            by_rule=by_rule,
+        ),
+        min_confidence=config.min_confidence,
+        can_resume=run.status != QualityJobStatus.RUNNING and run.processed_pairs < run.total_pairs,
+    )
+
+
+def _pairs_out(
+    session: Session, members: list[ai_judgment.GroupMember], group: str
+) -> list[AiGroupPairOut]:
+    candidates = _with_import_rows(session, [member.candidate for member in members])
+    items: list[AiGroupPairOut] = []
+    for member, candidate in zip(members, candidates, strict=True):
+        plan = (
+            ai_judgment.merge_plan(session, member.candidate)
+            if group == "same" and member.candidate.piece_b_id is not None
+            else None
+        )
+        items.append(
+            AiGroupPairOut(
+                candidate=candidate,
+                verdict=AiVerdictOut(
+                    verdict=member.verdict.verdict.value,
+                    confidence=float(member.verdict.confidence),
+                    reason=member.verdict.reason,
+                    source=member.verdict.source.value,
+                ),
+                ready_to_merge=plan.ready if plan else None,
+                merge_blocker=plan.blocker if plan else None,
+            )
+        )
+    return items
+
+
+@router.post(
+    "/quality/duplicates/ai-runs",
+    response_model=AiDuplicateRunOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Pedir a la IA que juzgue la cola de duplicados, por lotes y en segundo plano (RIA-02)",
+    description="Primero las reglas: un par con dos códigos I vigentes distintos es «distintas» "
+    "sin llamar a la IA. El resto se envía por lotes, solo con campos de catálogo (RNF-014). Los "
+    "veredictos quedan como sugerencia: nada se resuelve hasta que una persona apruebe un grupo "
+    "(RN-009). Con `resume_run_id`, se juzgan solo los pares de esa corrida aún sin veredicto. "
+    "409 `ai_run_in_progress` si ya hay un análisis en curso (change `ia-juicio-duplicados`).",
+    tags=["Calidad"],
+    **implemented(),
+)
+def start_ai_judgment(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("ai.request"))],
+    body: AiJudgmentStart | None = None,
+) -> AiDuplicateRunOut:
+    writer(session, user)
+    run = ai_judgment.start_judgment(session, user.id, body.resume_run_id if body else None)
+    session.commit()
+    client = AiServiceClient(request.app, request.app.state.settings.ai_mount_path)
+    run_in_background(
+        background_tasks,
+        ai_judgment.run_judgment,
+        request.app.state.session_factory,
+        client,
+        run.id,
+    )
+    return _run_out(session, run)
+
+
+@router.get(
+    "/quality/duplicates/ai-runs/latest",
+    response_model=AiDuplicateRunOut | None,
+    summary="El último análisis con IA de la cola de duplicados, o null (RIA-02)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_latest_ai_run(session: SessionDep, user: Reader) -> AiDuplicateRunOut | None:
+    run = ai_judgment.latest_run(session)
+    return _run_out(session, run) if run is not None else None
+
+
+@router.get(
+    "/quality/duplicates/ai-runs/{run_id}",
+    response_model=AiDuplicateRunOut,
+    summary="Avance de un análisis con IA y sus grupos pendientes (RIA-02)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_ai_run(run_id: uuid.UUID, session: SessionDep, user: Reader) -> AiDuplicateRunOut:
+    return _run_out(session, ai_judgment.get_run(session, run_id))
+
+
+@router.get(
+    "/quality/duplicates/ai-runs/{run_id}/groups/{group}",
+    response_model=Page[AiGroupPairOut],
+    summary="Pares pendientes de un grupo del análisis con IA, con motivo y confianza (RIA-02)",
+    tags=["Calidad"],
+    **implemented(),
+)
+def list_ai_group(
+    run_id: uuid.UUID,
+    group: AiGroup,
+    session: SessionDep,
+    user: Reader,
+    params: Annotated[PageParams, Depends(page_params)],
+) -> Page[AiGroupPairOut]:
+    run = ai_judgment.get_run(session, run_id)
+    members = ai_judgment.group_members(session, run.id, ai_judgment.load_config(session))[group]
+    start = (params.page - 1) * params.page_size
+    window = members[start : start + params.page_size]
+    return Page[AiGroupPairOut](
+        items=_pairs_out(session, window, group),
+        total=len(members),
+        page=params.page,
+        page_size=params.page_size,
+    )
+
+
+@router.get(
+    "/quality/duplicates/ai-runs/{run_id}/sample",
+    response_model=list[AiGroupPairOut],
+    summary="Muestra al azar del grupo «misma pieza» que hay que confirmar antes de aprobarlo",
+    description="Hasta 5 pares (parámetro, RN-010), elegidos con la corrida como semilla: la "
+    "aprobación del grupo exige confirmar o sacar cada uno que siga pendiente (D6).",
+    tags=["Calidad"],
+    **implemented(),
+)
+def get_ai_sample(run_id: uuid.UUID, session: SessionDep, user: Reader) -> list[AiGroupPairOut]:
+    run = ai_judgment.get_run(session, run_id)
+    config = ai_judgment.load_config(session)
+    sample = set(ai_judgment.sample_ids(session, run.id, config))
+    members = [
+        m
+        for m in ai_judgment.group_members(session, run.id, config)["same"]
+        if m.candidate.id in sample
+    ]
+    return _pairs_out(session, members, "same")
+
+
+@router.post(
+    "/quality/duplicates/ai-runs/{run_id}/groups/{group}/approve",
+    response_model=AiGroupApprovalOut,
+    summary="Aprobar un grupo del análisis con IA, sacando los pares que no correspondan",
+    description="«distintas»: cada par queda como distinto con el motivo de la IA en la nota. "
+    "«misma pieza»: exige la muestra confirmada (422 `sample_not_confirmed`); fusiona solo los "
+    "pares de dos piezas sin valores en choque, conservando la pieza con código I, y resuelve las "
+    "filas de Excel hacia su pieza; los que chocan quedan para elegir valores. Nunca se borra "
+    "nada (RN-005). Cada par resuelto queda auditado con origen IA, la corrida y quien aprobó "
+    "(RN-009). Los pares sacados vuelven a la revisión a mano.",
+    tags=["Calidad"],
+    **implemented(),
+)
+def approve_ai_group(
+    run_id: uuid.UUID,
+    group: AiGroup,
+    body: AiGroupApproval,
+    session: SessionDep,
+    user: Annotated[CurrentUser, Depends(require_permission("duplicates.resolve"))],
+    reviewer: Annotated[CurrentUser, Depends(require_permission("ai.review"))],
+) -> AiGroupApprovalOut:
+    del reviewer  # only checks the permission: approving AI output is a review (RN-009)
+    run = ai_judgment.get_run(session, run_id)
+    result = ai_judgment.approve_group(
+        session,
+        run,
+        group,
+        user_id=user.id,
+        excluded_ids=body.excluded_candidate_ids,
+        confirmed_sample_ids=body.confirmed_sample_ids,
+        can_decide_rows="imports.prepare" in user.permissions,
+    )
+    session.commit()
+    return AiGroupApprovalOut.model_validate(result, from_attributes=True)
 
 
 # ------------------------------------------------------------------------- search

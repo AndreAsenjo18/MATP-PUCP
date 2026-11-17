@@ -90,6 +90,12 @@ export const DUPLICATE_ERROR_MESSAGES: Record<string, string> = {
   inventory_code_in_use: "El código I de la fila ya pertenece a una pieza del catálogo: no puede entrar como pieza nueva. Elija «Es la misma pieza» o rechace la fila en su lote.",
   invalid_batch_transition: "El lote de esta fila ya no admite cambios (se aprobó, se abandonó o está trabajando). Recargue la cola.",
   batch_busy: "El lote está trabajando en este momento. Intente de nuevo en unos segundos.",
+  // Juicio con IA (change ia-juicio-duplicados).
+  ai_run_in_progress: "Gemini ya está analizando la cola: se muestra su avance.",
+  sample_not_confirmed: "Confirme o saque del grupo cada par de la muestra antes de aprobar.",
+  group_not_approvable: "Los pares en los que Gemini no está seguro se revisan uno por uno.",
+  ai_run_not_found: "Ese análisis con Gemini ya no existe. Vuelva a analizar la cola.",
+  ai_unavailable: "Gemini no está disponible en este momento. La cola sigue par por par.",
 };
 
 export type DuplicateFailure =
@@ -514,4 +520,108 @@ export async function fetchQualityJob(jobId: string, devUser?: string): Promise<
   } catch {
     return { status: "unavailable", message: CONNECTION_MESSAGE };
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Juicio con IA y aprobación por grupo (change `ia-juicio-duplicados`; RIA-02, RN-009)
+// ---------------------------------------------------------------------------------------------
+
+export type AiDuplicateRun = ApiSchemas["AiDuplicateRunOut"];
+export type AiGroupPair = ApiSchemas["AiGroupPairOut"];
+export type AiGroupApprovalResult = ApiSchemas["AiGroupApprovalOut"];
+export type AiGroupName = "same" | "distinct" | "unsure";
+
+export const AI_RUN_IN_PROGRESS_CODE = "ai_run_in_progress";
+export const SAMPLE_NOT_CONFIRMED_CODE = "sample_not_confirmed";
+
+/** En la demostración no hay IA (design D8): la cola es la de siempre. */
+const AI_DEMO_MESSAGE = "Disponible con la API (modo live).";
+
+export type AiRunResult = { status: "ok"; run: AiDuplicateRun } | DuplicateFailure;
+
+async function aiCall<T>(request: () => Promise<{ data?: T; error?: unknown }>): Promise<{ status: "ok"; value: T } | DuplicateFailure> {
+  if (getApiMode() === "mock") return { status: "unavailable", message: AI_DEMO_MESSAGE };
+  try {
+    const { data, error } = await request();
+    if (error !== undefined || data === undefined) return failureFrom(error);
+    return { status: "ok", value: data };
+  } catch {
+    return { status: "unavailable", message: CONNECTION_MESSAGE };
+  }
+}
+
+/** `POST /quality/duplicates/ai-runs`: analizar la cola, o reanudar una corrida (design D7). */
+export async function startAiJudgment(resumeRunId?: string, devUser?: string): Promise<AiRunResult> {
+  const result = await aiCall(
+    () =>
+      client(devUser).POST("/api/v1/quality/duplicates/ai-runs", {
+        body: resumeRunId ? { resume_run_id: resumeRunId } : null,
+      }) as Promise<{ data?: AiDuplicateRun; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", run: result.value } : result;
+}
+
+/** El último análisis con IA, o `null` si nunca se hizo uno. */
+export async function fetchLatestAiRun(devUser?: string): Promise<{ status: "ok"; run: AiDuplicateRun | null } | DuplicateFailure> {
+  const result = await aiCall(
+    () => client(devUser).GET("/api/v1/quality/duplicates/ai-runs/latest", {}) as Promise<{ data?: AiDuplicateRun | null; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", run: result.value ?? null } : result;
+}
+
+/** Avance de un análisis con IA y sus grupos. */
+export async function fetchAiRun(runId: string, devUser?: string): Promise<AiRunResult> {
+  const result = await aiCall(
+    () =>
+      client(devUser).GET("/api/v1/quality/duplicates/ai-runs/{run_id}", {
+        params: { path: { run_id: runId } },
+      }) as Promise<{ data?: AiDuplicateRun; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", run: result.value } : result;
+}
+
+/** Pares pendientes de un grupo, con el motivo y la confianza de Gemini. */
+export async function fetchAiGroup(
+  runId: string,
+  group: AiGroupName,
+  page: number,
+  pageSize: number,
+  devUser?: string,
+): Promise<{ status: "ok"; items: AiGroupPair[]; total: number } | DuplicateFailure> {
+  const result = await aiCall(
+    () =>
+      client(devUser).GET("/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}", {
+        params: { path: { run_id: runId, group }, query: { page, page_size: pageSize } },
+      }) as Promise<{ data?: { items: AiGroupPair[]; total: number }; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", items: result.value.items, total: result.value.total } : result;
+}
+
+/** La muestra al azar del grupo «misma pieza» (design D6). */
+export async function fetchAiSample(runId: string, devUser?: string): Promise<{ status: "ok"; items: AiGroupPair[] } | DuplicateFailure> {
+  const result = await aiCall(
+    () =>
+      client(devUser).GET("/api/v1/quality/duplicates/ai-runs/{run_id}/sample", {
+        params: { path: { run_id: runId } },
+      }) as Promise<{ data?: AiGroupPair[]; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", items: result.value } : result;
+}
+
+/** Aprueba un grupo sacando los pares indicados (RN-009); «misma pieza» exige la muestra. */
+export async function approveAiGroup(
+  runId: string,
+  group: Exclude<AiGroupName, "unsure">,
+  excluded: string[],
+  confirmedSample: string[],
+  devUser?: string,
+): Promise<{ status: "ok"; result: AiGroupApprovalResult } | DuplicateFailure> {
+  const result = await aiCall(
+    () =>
+      client(devUser).POST("/api/v1/quality/duplicates/ai-runs/{run_id}/groups/{group}/approve", {
+        params: { path: { run_id: runId, group } },
+        body: { excluded_candidate_ids: excluded, confirmed_sample_ids: confirmedSample },
+      }) as Promise<{ data?: AiGroupApprovalResult; error?: unknown }>,
+  );
+  return result.status === "ok" ? { status: "ok", result: result.value } : result;
 }

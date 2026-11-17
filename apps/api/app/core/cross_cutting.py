@@ -34,6 +34,9 @@ APPEND_ONLY_TABLES: frozenset[str] = frozenset(
         "sensitive_access_log",
         # Valorizaciones históricas (reportes-inventario D6): una nueva nunca reemplaza otra.
         "piece_valuation",
+        # Veredictos de la IA sobre pares de duplicados (ia-juicio-duplicados D3): uno nuevo
+        # reemplaza al anterior sin reescribirlo; sacar un par de su grupo es otro veredicto.
+        "duplicate_ai_verdict",
     }
 )
 

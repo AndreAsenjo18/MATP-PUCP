@@ -405,6 +405,22 @@ entity DUPLICATE_CANDIDATE {
   ..
   <i>+ timestamps</i>
 }
+entity DUPLICATE_AI_VERDICT {
+  * id : uuid <<PK>>
+  --
+  * run_id : uuid <<FK>>
+  * candidate_id : uuid <<FK>>
+  * verdict : varchar(40)
+  * confidence : numeric(4, 3)
+  * reason : text
+  * source : varchar(40)
+    provider : varchar(60)
+    model : varchar(120)
+    prompt_version : varchar(60)
+    created_by_id : uuid <<FK>>
+  ..
+  <i>+ timestamps</i>
+}
 entity QUALITY_SETTING {
   * id : uuid <<PK>>
   --
@@ -430,6 +446,9 @@ entity QUALITY_JOB {
   * candidates_reopened : integer
     duration_ms : integer
     error_message : text
+  * total_pairs : integer
+  * processed_pairs : integer
+  * failed_batches : integer
   ..
   <i>+ timestamps</i>
 }
@@ -715,6 +734,9 @@ IMPORT_ROW |o--o{ IMPORT_PHOTO : "propuesta para"
 MEDIA_ASSET |o--o{ IMPORT_PHOTO : "aplicada como"
 PIECE |o--o{ IMPORT_PHOTO : "piece_id"
 IMPORT_PHOTO |o--o{ IMPORT_PHOTO : "same_as_photo_id"
+QUALITY_JOB ||--o{ DUPLICATE_AI_VERDICT : "veredictos de la corrida"
+DUPLICATE_CANDIDATE ||--o{ DUPLICATE_AI_VERDICT : "veredicto de IA"
+APP_USER |o--o{ DUPLICATE_AI_VERDICT : "saca del grupo"
 
 note as N1
   <b>Convenciones</b>

@@ -21,7 +21,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import expression
 
-from app.core.models_base import Base, JsonType, TimestampMixin, UUIDPrimaryKeyMixin, str_enum
+from app.core.models_base import (
+    Base,
+    JsonType,
+    TimestampMixin,
+    UUIDPrimaryKeyMixin,
+    str_enum,
+    utcnow,
+)
 
 
 class DuplicateStatus(enum.StrEnum):
@@ -35,6 +42,8 @@ class DuplicateStatus(enum.StrEnum):
 
 class QualityJobType(enum.StrEnum):
     FULL_SCAN = "FULL_SCAN"
+    # Change ia-juicio-duplicados (D3): the AI judges the pending pairs in batches.
+    AI_DUPLICATE_JUDGMENT = "AI_DUPLICATE_JUDGMENT"
 
 
 class QualityJobStatus(enum.StrEnum):
@@ -129,6 +138,11 @@ class QualityJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     candidates_reopened: Mapped[int] = mapped_column(Integer, default=0)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # AI judgment of the queue (change ia-juicio-duplicados, D3 and D7): pairs to judge, pairs
+    # already judged and batches the provider could not answer (they are judged again on resume).
+    total_pairs: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    processed_pairs: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    failed_batches: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
 
 class QualityJobItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -149,6 +163,54 @@ class QualityJobItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str | None] = mapped_column(Text)
     processed_at: Mapped[datetime | None] = mapped_column()
+
+
+class DuplicateAiVerdictValue(enum.StrEnum):
+    SAME = "same"
+    DISTINCT = "distinct"
+    UNSURE = "unsure"
+
+
+class DuplicateAiVerdictSource(enum.StrEnum):
+    RULE = "rule"  # decided by a rule, the AI was not asked (D2)
+    AI = "ai"
+    REVIEW = "review"  # a person took the pair out of its group: back to manual review (D3)
+
+
+class DuplicateAiVerdict(UUIDPrimaryKeyMixin, Base):
+    """One verdict for one pair in one AI run (change ia-juicio-duplicados, D3; RIA-02).
+
+    Append-only (RN-005): a verdict is never rewritten; a newer one for the same pair and run
+    supersedes it. Nothing here is applied to the catalog: a pair is only resolved when a person
+    approves its group (RN-009).
+    """
+
+    __tablename__ = "duplicate_ai_verdict"
+    __audited__: ClassVar[bool] = False
+    __append_only__: ClassVar[bool] = True
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("quality_job.id"), index=True)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("duplicate_candidate.id"), index=True
+    )
+    verdict: Mapped[DuplicateAiVerdictValue] = mapped_column(
+        str_enum(DuplicateAiVerdictValue, "duplicate_ai_verdict_value")
+    )
+    confidence: Mapped[Decimal] = mapped_column(Numeric(4, 3))
+    reason: Mapped[str] = mapped_column(Text)
+    source: Mapped[DuplicateAiVerdictSource] = mapped_column(
+        str_enum(DuplicateAiVerdictSource, "duplicate_ai_verdict_source")
+    )
+    provider: Mapped[str | None] = mapped_column(String(60))
+    model: Mapped[str | None] = mapped_column(String(120))
+    prompt_version: Mapped[str | None] = mapped_column(String(60))
+    # Who took the pair out of its group (source REVIEW); empty for rule and AI verdicts.
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    __table_args__ = (
+        CheckConstraint("confidence >= 0 AND confidence <= 1", name="confidence_range"),
+    )
 
 
 class CompletenessFieldKind(enum.StrEnum):

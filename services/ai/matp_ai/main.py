@@ -19,12 +19,15 @@ from matp_ai.schemas import (
     ErrorResponse,
     ExtractionResult,
     ExtractRequest,
+    JudgeDuplicatesRequest,
+    JudgeDuplicatesResult,
     PieceContext,
     SearchInterpretation,
     SearchInterpretRequest,
     SuggestionEnvelope,
     TermSuggestionResult,
     finish_completion,
+    finish_judgments,
 )
 
 ERRORS: dict[int | str, dict[str, object]] = {
@@ -140,6 +143,24 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
         checked = finish_completion(result.proposals, body)
         return SuggestionEnvelope[CompletionResult](
             function_code="RIA_01",
+            provider=provider.name,
+            model=provider.model,
+            result=checked,
+        )
+
+    @app.post(
+        "/v1/judge-duplicates",
+        response_model=SuggestionEnvelope[JudgeDuplicatesResult],
+        responses=ERRORS,
+        tags=["IA asistiva"],
+        summary="RIA-02: juzgar si cada par de registros describe la misma pieza",
+    )
+    def judge_duplicates(body: JudgeDuplicatesRequest) -> SuggestionEnvelope[JudgeDuplicatesResult]:
+        result = provider.judge_duplicates(body)
+        # Whatever the provider says, only checked verdicts leave the service (D4).
+        checked = finish_judgments(list(result.verdicts), body)
+        return SuggestionEnvelope[JudgeDuplicatesResult](
+            function_code="RIA_02",
             provider=provider.name,
             model=provider.model,
             result=checked,

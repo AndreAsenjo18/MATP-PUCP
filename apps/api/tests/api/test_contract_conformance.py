@@ -59,6 +59,13 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/ai/interpret-search"),
     # «Completar ficha» con IA (change ia-completar-ficha, D7; RIA-01, RIA-03, RN-009).
     ("post", "/ai/pieces/{}/completion"),
+    # Juicio de duplicados con IA y aprobación por grupo (change ia-juicio-duplicados; RIA-02).
+    ("post", "/quality/duplicates/ai-runs"),
+    ("get", "/quality/duplicates/ai-runs/latest"),
+    ("get", "/quality/duplicates/ai-runs/{}"),
+    ("get", "/quality/duplicates/ai-runs/{}/groups/{}"),
+    ("get", "/quality/duplicates/ai-runs/{}/sample"),
+    ("post", "/quality/duplicates/ai-runs/{}/groups/{}/approve"),
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),
