@@ -1908,6 +1908,36 @@
         "title": "CatalogingSuggestionRequest",
         "type": "object"
       },
+      "CellCorrection": {
+        "description": "Body of ``PATCH /imports/{batch_id}/rows/{row_id}/cells`` (importacion-corregir-celda).",
+        "properties": {
+          "column": {
+            "description": "Columna del archivo.",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valor corregido; vacío deja la celda sin dato.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "column"
+        ],
+        "title": "CellCorrection",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "examples": [
           {
@@ -21103,6 +21133,116 @@
         "tags": [
           "Importación",
           "IA asistiva"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/rows/{row_id}/cells": {
+      "patch": {
+        "description": "Escribe el valor corregido en la columna de la fila guardada (por ejemplo, un código I con una errata) sin volver a subir el archivo, que no se modifica. La fila conserva el valor original de cada celda corregida y el cambio queda auditado. El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-corregir-celda`).",
+        "operationId": "correctImportCell",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "row_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Row Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CellCorrection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_not_editable`: el lote ya se aprobó o cerró; `batch_processing`: una etapa está en curso."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Corregir un valor del archivo en una fila del lote",
+        "tags": [
+          "Importación"
         ],
         "x-status": "implemented"
       }

@@ -24,6 +24,8 @@ import { cn } from "@/lib/cn";
 import {
   acceptBlocker,
   actionLabel,
+  cellCorrections,
+  errorColumn,
   type ApprovalSummary,
   batchStateText,
   candidatePieces,
@@ -159,6 +161,8 @@ export function ImportRowCard({
   photos,
   aiSuggestions,
   compact = false,
+  onCorrect,
+  correctionNotice = null,
 }: {
   row: ImportRow;
   canDecide: boolean;
@@ -174,8 +178,15 @@ export function ImportRowCard({
    * línea y el detalle y las acciones aparecen al abrirla (change `importacion-revision-simplificada`, D3).
    */
   compact?: boolean;
+  /**
+   * Corregir un valor del archivo y validar de nuevo (change `importacion-corregir-celda`); solo en
+   * modo `live`. `correctionNotice` avisa lo que se pierde al validar de nuevo.
+   */
+  onCorrect?: (column: string, value: string) => void;
+  correctionNotice?: string | null;
 }) {
   const candidates = candidatePieces(row);
+  const corrections = cellCorrections(row);
   const resolvable = needsResolution(row);
   const resolution = (row.resolution ?? {}) as { target_piece_id?: string; as_new?: boolean };
   const [target, setTarget] = useState<string>(resolution.as_new ? "new" : (resolution.target_piece_id ?? ""));
@@ -226,6 +237,9 @@ export function ImportRowCard({
             </li>
           ))}
         </ul>
+      )}
+      {row.has_validation_errors && canDecide && onCorrect && (
+        <CellCorrectionForm columns={dataEntries.map(([key]) => key)} values={Object.fromEntries(dataEntries)} initialColumn={errorColumn(row)} busy={busy} notice={correctionNotice} onCorrect={onCorrect} />
       )}
       {warnings.length > 0 && (
         <ul className="flex flex-col gap-1.5 rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto" aria-label="Advertencias de la fila">
@@ -307,6 +321,7 @@ export function ImportRowCard({
             <div key={key} className="min-w-0">
               <dt className="font-medium text-gris-texto">{key}</dt>
               <dd className="break-words">{display(value)}</dd>
+              {corrections[key] && <dd className="text-xs text-gris-texto">Corregido en la revisión; en el archivo decía «{display(corrections[key].original)}».</dd>}
             </div>
           ))}
         </dl>
@@ -371,6 +386,62 @@ export function ImportRowCard({
       </summary>
       {card}
     </details>
+  );
+}
+
+/**
+ * «Corregir el valor» (change `importacion-corregir-celda`): una celda del archivo con una errata se
+ * corrige aquí, sin volver a subirlo; el lote se valida de nuevo. Parte de la celda del error.
+ */
+export function CellCorrectionForm({
+  columns,
+  values,
+  initialColumn,
+  busy,
+  notice,
+  onCorrect,
+}: {
+  columns: readonly string[];
+  values: Record<string, unknown>;
+  initialColumn: string | null;
+  busy: boolean;
+  notice?: string | null;
+  onCorrect: (column: string, value: string) => void;
+}) {
+  const start = initialColumn ?? columns[0] ?? "";
+  const [column, setColumn] = useState(start);
+  const [value, setValue] = useState(display(values[start]) === "—" ? "" : display(values[start]));
+  const original = display(values[column]);
+  const changed = value.trim() !== (original === "—" ? "" : original);
+  return (
+    <section aria-label="Corregir el valor" className="flex flex-col gap-3 rounded-md border border-borde bg-crema-light p-3 text-sm">
+      <p className="font-semibold text-tinta">¿Es una errata? Corrija el valor aquí, sin volver a subir el archivo.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select
+          label="Columna"
+          controlSize="md"
+          value={column}
+          disabled={busy}
+          onChange={(event) => {
+            setColumn(event.target.value);
+            const next = display(values[event.target.value]);
+            setValue(next === "—" ? "" : next);
+          }}
+        >
+          {columns.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </Select>
+        <Input label="Valor corregido" controlSize="md" value={value} disabled={busy} onChange={(event) => setValue(event.target.value)} />
+      </div>
+      <p className="text-gris-texto">En el archivo: «{original}». El archivo original no cambia; la corrección queda registrada.</p>
+      {notice && <p className="font-medium text-ambar-texto">{notice}</p>}
+      <Button className="self-start" variant="outline" icon={Check} disabled={busy || !changed} onClick={() => onCorrect(column, value)}>
+        {busy ? "Validando…" : "Guardar y validar de nuevo"}
+      </Button>
+    </section>
   );
 }
 

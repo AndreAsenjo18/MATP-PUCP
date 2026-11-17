@@ -669,6 +669,45 @@ export async function fetchImportAiJudgment(batchId: string, devUser?: string): 
   return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/ai-judgment", { params: { path: { batch_id: batchId } } }));
 }
 
+/** Celdas corregidas en la revisión, con su valor original (change `importacion-corregir-celda`). */
+export function cellCorrections(row: Pick<ImportRow, "raw_data">): Record<string, { original: unknown; value: unknown }> {
+  const stored = isRecord(row.raw_data) ? row.raw_data.__corrections : null;
+  if (!isRecord(stored)) return {};
+  return Object.fromEntries(
+    Object.entries(stored)
+      .filter(([, item]) => isRecord(item))
+      .map(([column, item]) => [column, { original: (item as Record<string, unknown>).original ?? null, value: (item as Record<string, unknown>).value ?? null }]),
+  );
+}
+
+/**
+ * La columna del archivo que causa el primer error de la fila: la que tiene el valor citado en el
+ * mensaje («El código I «I.-1814» no tiene un formato reconocido»), o `null` si no se sabe.
+ */
+export function errorColumn(row: Pick<ImportRow, "raw_data" | "validation_errors">): string | null {
+  const columns = Object.entries(isRecord(row.raw_data) ? row.raw_data : {}).filter(([key]) => !key.startsWith("__"));
+  for (const error of row.validation_errors ?? []) {
+    const message = isRecord(error) && typeof error.message === "string" ? error.message : "";
+    for (const quoted of message.matchAll(/«([^»]+)»/g)) {
+      const text = quoted[1].trim();
+      const exact = columns.find(([, value]) => value != null && String(value).trim() === text);
+      const partial = exact ?? columns.find(([, value]) => value != null && String(value).includes(text));
+      if (partial) return partial[0];
+    }
+  }
+  return null;
+}
+
+/** `PATCH /imports/{batch_id}/rows/{row_id}/cells`: corrige un valor del archivo; el lote vuelve a «mapeado». */
+export async function correctImportCell(batchId: string, rowId: string, column: string, value: string, devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).PATCH("/api/v1/imports/{batch_id}/rows/{row_id}/cells", {
+      params: { path: { batch_id: batchId, row_id: rowId } },
+      body: { column, value: value.trim() || null },
+    }),
+  );
+}
+
 /** El error es «falta el régimen de tenencia» (`tenure_required`). */
 export function hasTenureError(row: Pick<ImportRow, "validation_errors">): boolean {
   return row.validation_errors.some((error) => isRecord(error) && error.code === "tenure_required");

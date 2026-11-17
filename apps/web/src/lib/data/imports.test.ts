@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  cellCorrections,
+  errorColumn,
   canAbandon,
   acceptBlocker,
   associateImportImage,
@@ -426,5 +428,23 @@ describe("canAbandon (change importacion-descartar-lote)", () => {
     for (const status of ["APPROVED", "APPLIED", "ABANDONED", "REVERTED", "FAILED_INGESTION"] as const) {
       expect(canAbandon({ status, processing: false })).toBe(false);
     }
+  });
+});
+
+describe("corregir un valor (change importacion-corregir-celda)", () => {
+  const row = {
+    raw_data: { Denominación: "Cuchara", "N° Inventario MATP (I)": "I.-1814", __merged: ["X"] },
+    validation_errors: [{ code: "invalid_inventory_code", message: "El código I «I.-1814» no tiene un formato reconocido." }],
+  };
+
+  it("encuentra la columna del valor citado en el error", () => {
+    expect(errorColumn(row)).toBe("N° Inventario MATP (I)");
+    expect(errorColumn({ ...row, validation_errors: [{ code: "x", message: "Falta la denominación." }] })).toBeNull();
+  });
+
+  it("lee las celdas corregidas con su valor original", () => {
+    expect(cellCorrections(row)).toEqual({});
+    const corrected = { raw_data: { ...row.raw_data, __corrections: { "N° Inventario MATP (I)": { original: "I.-1814", value: "I-1814", by: "u", at: "t" } } } };
+    expect(cellCorrections(corrected)).toEqual({ "N° Inventario MATP (I)": { original: "I.-1814", value: "I-1814" } });
   });
 });

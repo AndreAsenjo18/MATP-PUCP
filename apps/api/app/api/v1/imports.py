@@ -73,6 +73,7 @@ from app.modules.imports.catalog_photos import (
     upload_correspondences,
 )
 from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
+from app.modules.imports.corrections import correct_cell
 from app.modules.imports.decisions import (
     RESOLVABLE,
     approval_summary,
@@ -121,6 +122,7 @@ from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
     BatchAbandon,
+    CellCorrection,
     ClassificationRule,
     CorrespondenceLineOut,
     CorrespondencesOut,
@@ -568,6 +570,42 @@ def abandon_import_batch(
     writer(session, user, body.reason if body else None)
     batch, _closed = abandon_batch(
         session, batch_id, user_id=user.id, reason=body.reason if body else None
+    )
+    session.commit()
+    return batch_out(session, batch)
+
+
+@router.patch(
+    "/imports/{batch_id}/rows/{row_id}/cells",
+    response_model=ImportBatchOut,
+    responses={
+        **NOT_FOUND,
+        **KIND_CONFLICT,
+        409: {
+            "model": ErrorResponse,
+            "description": "`batch_not_editable`: el lote ya se aprobó o cerró; "
+            "`batch_processing`: una etapa está en curso.",
+        },
+    },
+    summary="Corregir un valor del archivo en una fila del lote",
+    description="Escribe el valor corregido en la columna de la fila guardada (por ejemplo, un "
+    "código I con una errata) sin volver a subir el archivo, que no se modifica. La fila conserva "
+    "el valor original de cada celda corregida y el cambio queda auditado. El lote vuelve a "
+    "«mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change "
+    "`importacion-corregir-celda`).",
+    **implemented(),
+)
+def correct_import_cell(
+    batch_id: uuid.UUID,
+    row_id: uuid.UUID,
+    body: CellCorrection,
+    session: SessionDep,
+    user: Preparer,
+) -> ImportBatchOut:
+    get_spreadsheet_batch(session, batch_id)
+    writer(session, user, f"Corrección de «{body.column}» en la revisión del lote")
+    batch = correct_cell(
+        session, batch_id, row_id, column=body.column, value=body.value, user_id=user.id
     )
     session.commit()
     return batch_out(session, batch)
