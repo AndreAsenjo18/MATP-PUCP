@@ -98,3 +98,22 @@ describe("signOut", () => {
     await expect(signOut()).resolves.toBeUndefined();
   });
 });
+
+describe("currentSessionStatus", () => {
+  it("asks /auth/me with the cookie and tells signed in, signed out or unknown", async () => {
+    const seen = mockFetch(() => jsonResponse(200, PROFILE));
+    const { currentSessionStatus } = await import("./api");
+    expect(await currentSessionStatus()).toBe("signed_in");
+    const call = seen[0] as unknown as Request | string;
+    expect(String(typeof call === "string" ? call : call.url ?? call)).toContain("/api/v1/auth/me");
+
+    mockFetch(() => jsonResponse(401, { code: "authentication_required", message: "Inicie sesión." }));
+    expect(await currentSessionStatus()).toBe("signed_out");
+
+    mockFetch(() => jsonResponse(500, { code: "error", message: "Falla." }));
+    expect(await currentSessionStatus()).toBe("unknown");
+
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("sin red"))));
+    expect(await currentSessionStatus()).toBe("unknown");
+  });
+});
