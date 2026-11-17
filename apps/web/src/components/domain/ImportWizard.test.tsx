@@ -366,3 +366,31 @@ describe("formato aplicado", () => {
     expect(visibleText(render(<FormatBar formatName={null} busy={false} onChange={noop} />))).toContain("columnas ajustadas a mano");
   });
 });
+
+describe("Corregir el valor (change importacion-corregir-celda)", () => {
+  const withError = row({
+    classification: "NEW",
+    has_validation_errors: true,
+    raw_data: { Denominación: "Cuchara", "Código I": "I.-1814" },
+    validation_errors: [{ code: "invalid_inventory_code", message: "El código I «I.-1814» no tiene un formato reconocido." }],
+  });
+
+  it("ofrece corregir la celda del error, con el valor del archivo", () => {
+    const html = render(<ImportRowCard row={withError} canDecide busy={false} onDecide={() => {}} onCorrect={() => {}} correctionNotice="Al validar de nuevo se recalculan las filas." />);
+    const text = visibleText(html);
+    expect(text).toContain("¿Es una errata? Corrija el valor aquí, sin volver a subir el archivo.");
+    expect(html).toMatch(/<option value="Código I" selected="">/);
+    expect(text).toContain("En el archivo: «I.-1814»");
+    expect(text).toContain("Al validar de nuevo se recalculan las filas.");
+    expect(text).toContain("Guardar y validar de nuevo");
+  });
+
+  it("sin la acción (modo maqueta) no lo ofrece", () => {
+    expect(visibleText(render(<ImportRowCard row={withError} canDecide busy={false} onDecide={() => {}} />))).not.toContain("¿Es una errata?");
+  });
+
+  it("muestra lo que decía el archivo en una celda corregida", () => {
+    const corrected = row({ raw_data: { "Código I": "I-1814", __corrections: { "Código I": { original: "I.-1814", value: "I-1814" } } } });
+    expect(visibleText(render(<ImportRowCard row={corrected} canDecide busy={false} onDecide={() => {}} />))).toContain("Corregido en la revisión; en el archivo decía «I.-1814».");
+  });
+});

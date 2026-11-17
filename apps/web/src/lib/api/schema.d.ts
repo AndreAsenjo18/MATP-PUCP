@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 1fbf4b1455aea90ffd82d0e245e20367826f4af0a966d2dae631082b04dd6ae4
+ * openapi-sha256: 5f1c2cb756ac8fa6add466581f78079bd637e16bf3eda15b263505a5de4b48e7
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1155,6 +1155,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/rows/{row_id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Corregir un valor del archivo en una fila del lote
+         * @description Escribe el valor corregido en la columna de la fila guardada (por ejemplo, un código I con una errata) sin volver a subir el archivo, que no se modifica. La fila conserva el valor original de cada celda corregida y el cambio queda auditado. El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-corregir-celda`).
+         */
+        patch: operations["correctImportCell"];
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/validate": {
@@ -3298,6 +3318,22 @@ export interface components {
              * @description Texto explícito si no se toma de la ficha.
              */
             text?: string | null;
+        };
+        /**
+         * CellCorrection
+         * @description Body of ``PATCH /imports/{batch_id}/rows/{row_id}/cells`` (importacion-corregir-celda).
+         */
+        CellCorrection: {
+            /**
+             * Column
+             * @description Columna del archivo.
+             */
+            column: string;
+            /**
+             * Value
+             * @description Valor corregido; vacío deja la celda sin dato.
+             */
+            value?: string | null;
         };
         /**
          * ChangePasswordRequest
@@ -13325,6 +13361,78 @@ export interface operations {
             };
             /** @description El servicio de IA no respondió. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    correctImportCell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CellCorrection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_not_editable`: el lote ya se aprobó o cerró; `batch_processing`: una etapa está en curso. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

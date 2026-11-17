@@ -51,7 +51,6 @@ from app.modules.identification.normalization import (
 )
 from app.modules.identification.params import session_params
 from app.modules.imports.classify import RowError, RowInput
-from app.modules.imports.ingest import MERGED_KEY
 from app.modules.imports.matching import RowIdentifier
 from app.modules.imports.transforms import (
     TransformedValue,
@@ -139,7 +138,7 @@ def free_text_values(
     try:
         spec = read_mapping(stored_mapping)
     except MappingConversionError:
-        return dict(raw_data)
+        return {key: value for key, value in raw_data.items() if not key.startswith("__")}
 
     def _is_free_text(target: ColumnTarget) -> bool:
         if target.kind == "source_payload":
@@ -149,7 +148,12 @@ def free_text_values(
     structured_sources = {
         column.source for column in spec.columns if not _is_free_text(column.target)
     }
-    return {key: value for key, value in raw_data.items() if key not in structured_sources}
+    # Keys of the reader and the review (``__merged``, ``__corrections``) are not file data.
+    return {
+        key: value
+        for key, value in raw_data.items()
+        if key not in structured_sources and not key.startswith("__")
+    }
 
 
 def _collection_name_key(name: str) -> str:
@@ -1109,7 +1113,7 @@ def apply_mapping(
     mapped.source_payload = {
         key: value
         for key, value in raw_row.items()
-        if key not in mapped_sources and key != MERGED_KEY and value not in (None, "")
+        if key not in mapped_sources and not key.startswith("__") and value not in (None, "")
     }
 
     denomination_default = _denomination_default(plan)

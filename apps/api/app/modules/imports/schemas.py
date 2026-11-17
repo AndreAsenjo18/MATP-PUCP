@@ -176,6 +176,15 @@ class ImportBatchOut(BaseModel):
         )
 
 
+class CellCorrection(BaseModel):
+    """Body of ``PATCH /imports/{batch_id}/rows/{row_id}/cells`` (importacion-corregir-celda)."""
+
+    column: str = Field(min_length=1, max_length=300, description="Columna del archivo.")
+    value: str | None = Field(
+        None, max_length=4000, description="Valor corregido; vacío deja la celda sin dato."
+    )
+
+
 class BatchAbandon(BaseModel):
     """Body of ``POST /imports/{batch_id}/abandon`` (change importacion-descartar-lote)."""
 

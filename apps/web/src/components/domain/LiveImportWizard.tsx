@@ -24,6 +24,7 @@ import {
   FormatBar,
   ImageReviewPanel,
   ImportLogPanel,
+  decisionsLostNotice,
   ImportRowCard,
   ImportSteps,
   ProgressPanel,
@@ -79,6 +80,7 @@ import {
   fetchImportBatch,
   abandonImportBatch,
   canAbandon,
+  correctImportCell,
   fetchImportAiJudgment,
   fetchImportDiffs,
   requestImportAiJudgment,
@@ -612,6 +614,24 @@ export function LiveImportWizard() {
     startOver();
   }
 
+  /** «Guardar y validar de nuevo» (change `importacion-corregir-celda`): corrige la celda y valida el lote. */
+  async function handleCorrect(row: ImportRow, column: string, value: string) {
+    if (!batch) return;
+    setBusy(true);
+    const corrected = await correctImportCell(batch.id, row.id, column, value, devUser);
+    if (corrected.status !== "ok") {
+      setBusy(false);
+      return setError(corrected.message);
+    }
+    const started = await startImportValidation(batch.id, devUser);
+    setBusy(false);
+    if (started.status !== "ok") return setError(started.message);
+    setError(null);
+    setOpenRowId(null);
+    setReload((n) => n + 1);
+    await loadBatch();
+  }
+
   async function handleDecision(rowId: string, input: RowDecisionInput): Promise<boolean> {
     if (!batch) return false;
     setBusy(true);
@@ -965,6 +985,8 @@ export function LiveImportWizard() {
                   canDecide={hasPermission("imports.prepare")}
                   busy={busy}
                   onDecide={(input) => handleDecision(row.id, input)}
+                onCorrect={(column, value) => void handleCorrect(row, column, value)}
+                correctionNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
                   photos={
                     <RowPhotoStrip
                       photos={rowPhotos[row.id] ?? []}

@@ -66,6 +66,8 @@ ANADIDOS: set[tuple[str, str]] = {
     # Descartar un lote (change importacion-descartar-lote).
     ("post", "/imports/{}/abandon"),
     ("get", "/imports/{}/ai-judgment"),
+    # Corregir un valor del archivo en la revisión (change importacion-corregir-celda).
+    ("patch", "/imports/{}/rows/{}/cells"),
     ("get", "/quality/duplicates/ai-runs/latest"),
     ("get", "/quality/duplicates/ai-runs/{}"),
     ("get", "/quality/duplicates/ai-runs/{}/groups/{}"),

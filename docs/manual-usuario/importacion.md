@@ -168,6 +168,7 @@ Cada fila ocupa **una línea**: número de fila, denominación, código y qué p
 - En **Cómo se clasifican las filas** se explican las reglas y el umbral de parecido que se usaron.
 - Los datos del Excel de cada fila están plegados en **Ver datos del archivo**.
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
+- Si el error es una **errata** en una celda (por ejemplo, un código I escrito «I.-1814»), corríjala ahí mismo: en **¿Es una errata?** ya viene elegida la columna del valor que cita el error; escriba el valor corregido y pulse **Guardar y validar de nuevo**. El lote se valida otra vez con las mismas reglas. El archivo original no cambia: en **Ver datos del archivo**, la celda corregida dice lo que traía el archivo. Validar de nuevo descarta las decisiones que ya tomó en otras filas; el aviso lo dice antes de guardar.
 - Las filas se muestran por páginas; **Filas por página** (10, 25, 50 o 100) elige cuántas, para no desplazarse por un lote de cientos de filas de una sola vez.
 
 ### Sugerencias de IA para una columna de texto libre
