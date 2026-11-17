@@ -38,6 +38,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
+import { UnresolvedLocationsPanel, type UnresolvedLocation } from "@/components/domain/ImportLocationFix";
+import { createLocation, describeLocationFailure, fetchLocationsTree, type LocationLevelLabel, type LocationNode } from "@/lib/data/locations";
 import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
 import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
 import { getApiMode } from "@/lib/data/mode";
@@ -83,6 +85,8 @@ import {
   canAbandon,
   correctImportCell,
   fetchImportAiJudgment,
+  fetchUnresolvedLocations,
+  mapImportLocation,
   fetchImportDiffs,
   requestImportAiJudgment,
   type ImportAiJudgment,
@@ -158,6 +162,9 @@ export function LiveImportWizard() {
   const [aiJudgment, setAiJudgment] = useState<ImportAiJudgment | null>(null);
   const [geminiState, setGeminiState] = useState<GeminiReviewState>("idle");
   const [openRowId, setOpenRowId] = useState<string | null>(null);
+  // Ubicaciones del archivo que no existen (importacion-aplicar-vocabularios, D4).
+  const [unresolvedLocations, setUnresolvedLocations] = useState<UnresolvedLocation[]>([]);
+  const [locationTree, setLocationTree] = useState<LocationNode[] | null>(null);
   const [page, setPage] = useState(1);
   // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
   // grandes (p. ej. 200 filas); el backend acepta de 1 a 100 (apps/api/app/api/pagination.py).
@@ -352,6 +359,23 @@ export function LiveImportWizard() {
       active = false;
     };
   }, [batchId, showRows, filtersKey, page, pageSize, devUser, reload]);
+
+  // Ubicaciones del archivo que no existen y el árbol para elegir o crear una.
+  useEffect(() => {
+    if (!batchId || !showRows || getApiMode() === "mock") return;
+    let active = true;
+    void fetchUnresolvedLocations(batchId, devUser).then((result) => {
+      if (!active || result.status !== "ok") return;
+      setUnresolvedLocations(result.value.items ?? []);
+      if ((result.value.items ?? []).length > 0)
+        void fetchLocationsTree(devUser).then((tree) => {
+          if (active && tree.status === "ok") setLocationTree(tree.value);
+        });
+    });
+    return () => {
+      active = false;
+    };
+  }, [batchId, showRows, devUser, reload]);
 
   // Lo que opina Gemini de las filas del lote; mientras el análisis corre, se consulta cada 2 s.
   const geminiRunning = geminiState === "running";
@@ -634,6 +658,39 @@ export function LiveImportWizard() {
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     startOver();
+  }
+
+  /** «Usar esta ubicación y validar de nuevo»: guarda la correspondencia en el mapeo y valida el lote. */
+  async function handleAssignLocation(text: string, locationId: string) {
+    if (!batch) return;
+    setBusy(true);
+    const mapped = await mapImportLocation(batch.id, text, locationId, devUser);
+    if (mapped.status !== "ok") {
+      setBusy(false);
+      return setError(mapped.message);
+    }
+    const started = await startImportValidation(batch.id, devUser);
+    setBusy(false);
+    if (started.status !== "ok") return setError(started.message);
+    setError(null);
+    setReload((n) => n + 1);
+    await loadBatch();
+  }
+
+  /** Crea un lugar desde la revisión y recarga el árbol; devuelve su id. */
+  async function handleCreateLocation(input: { parentId: string | null; level: LocationLevelLabel; name: string; code: string }): Promise<string | null> {
+    setBusy(true);
+    const created = await createLocation({ level: input.level, code: input.code, name: input.name, parent_id: input.parentId }, devUser);
+    if (created.status !== "ok") {
+      setBusy(false);
+      setError(describeLocationFailure(created));
+      return null;
+    }
+    const tree = await fetchLocationsTree(devUser);
+    setBusy(false);
+    if (tree.status === "ok") setLocationTree(tree.value);
+    setError(null);
+    return created.value.id;
   }
 
   /** «Guardar y validar de nuevo» (change `importacion-corregir-celda`): corrige la celda y valida el lote. */
@@ -945,6 +1002,16 @@ export function LiveImportWizard() {
             </RepeatedErrorBlock>
           );
         })}
+      {reviewing && (
+        <UnresolvedLocationsPanel
+          items={unresolvedLocations}
+          tree={locationTree}
+          busy={busy}
+          decidedNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
+          onAssign={(text, locationId) => void handleAssignLocation(text, locationId)}
+          onCreate={handleCreateLocation}
+        />
+      )}
       {reviewing && !tenureGroup && tenureRows > 0 ? (
         <TenureBanner count={tenureRows} complete decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} />
       ) : null}

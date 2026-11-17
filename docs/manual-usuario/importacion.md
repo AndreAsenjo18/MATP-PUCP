@@ -193,6 +193,19 @@ Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque 
 
 Un error que afecta a una o dos filas se sigue viendo en la tarjeta de cada fila.
 
+### Materiales, tipo de bien, estado y ubicación
+
+Al aprobar, cada pieza nueva recibe lo que su fila trae en las columnas de **materiales**, **tipo de bien**, **categoría** y **estado de conservación** (este último queda como una evaluación de conservación), y queda en la **ubicación** que indica el archivo.
+
+- Una celda con varios valores («Madera, metal y pintura») se separa sola.
+- Si un valor **no está en la lista** del museo, la fila lo avisa en ámbar («"Cuerno" no está en la lista de materiales»). La fila se puede aprobar igual: ese valor no llega a la ficha, pero no se pierde, queda en el registro de origen. Para que entre, agréguelo en **Administración › Vocabularios** y pulse **Validar de nuevo**.
+- La **técnica**, que la ficha no tiene como campo, queda en el registro de origen.
+
+**Ubicaciones que no existen.** La ubicación se busca por su nombre sin importar mayúsculas, tildes ni «N°» (en el archivo «Deposito N° 1» es «Depósito 1»). Si una ubicación del archivo no coincide con ninguna del museo, aparece el bloque **Ubicaciones del archivo que no existen en el museo**, con cuántas filas la usan. Para cada una:
+
+1. En **Corresponde a**, elija una ubicación existente; o pulse **Crear una ubicación**: elija **Dentro de** qué lugar (o **Ninguna: una sede nueva**), el tipo y el nombre, y pulse **Crear**. Lo creado queda elegido, así que puede seguir creando dentro (la sede, luego su depósito, luego un mueble…).
+2. Pulse **Usar esta ubicación y validar de nuevo**. Todas las filas con ese texto quedan con esa ubicación. Una sede no guarda piezas: elija al menos un espacio dentro de ella.
+
 ### Revisar los cambios de una actualización
 
 En una actualización, el recuadro **Cambios sobre la pieza del catálogo** lista cada dato con lo que hay **ahora en el catálogo** y lo que trae **el archivo** («Ayacucho» frente a «Huamanga»).

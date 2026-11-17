@@ -176,6 +176,25 @@ class ImportBatchOut(BaseModel):
         )
 
 
+class UnresolvedLocationOut(BaseModel):
+    text: str = Field(description="La ubicación como está escrita en el archivo.")
+    rows: int = Field(ge=1, description="Filas que la escriben así.")
+
+
+class UnresolvedLocationsOut(BaseModel):
+    """Ubicaciones del archivo que no coinciden con una sola ubicación del museo (change
+    importacion-aplicar-vocabularios, D4)."""
+
+    items: list[UnresolvedLocationOut] = Field(default_factory=list)
+
+
+class LocationCorrespondence(BaseModel):
+    """Body of ``PUT /imports/{batch_id}/locations``: el texto del archivo y la ubicación."""
+
+    text: str = Field(min_length=1, max_length=300)
+    location_id: uuid.UUID
+
+
 class CellCorrection(BaseModel):
     """Body of ``PATCH /imports/{batch_id}/rows/{row_id}/cells`` (importacion-corregir-celda)."""
 

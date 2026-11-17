@@ -508,3 +508,13 @@ Supuestos de la implementación del juicio de duplicados con Gemini y su aprobac
 | JD4 | En un par con una fila de Excel, ¿aprobar «distintas» debe decidir también la fila en su lote (entrar como pieza nueva)? | **[SUPUESTO]** No: solo marca el par como distinto, porque la fila puede tener otro par que sí sea la misma pieza. La fila la decide quien prepara la carga | importacion-datos, calidad-datos | B |
 | JD5 | ¿Cuántos pares por pedido a Gemini, dado el límite del plan? | **[SUPUESTO]** 20 por pedido, parametrizable (`duplicates.ai_judgment.batch_size`). Un lote sin respuesta se registra y se reanuda después | ia-asistiva (RNF-008) | C |
 
+
+## CV. Vocabularios y ubicación en la importación (change `importacion-aplicar-vocabularios`, 2026-11-17)
+
+Supuestos al llevar a la ficha los materiales, el tipo de bien, el estado de conservación y la ubicación que traen los Excel del museo, no confirmados con el museo.
+
+| ID | Pregunta | Supuesto actual | Impacto | Prioridad |
+|---|---|---|---|---|
+| CV1 | Los archivos escriben el estado de conservación de 42 maneras. ¿«En perfecto estado» es «Bueno», o hace falta un término «Muy bueno»? ¿«Restaurado» o «Restaurada buena» son «Bueno», o un estado aparte? | **[SUPUESTO]** «En perfecto estado», «Buen estado» y «Buena» → Bueno; «Deteriorado», «Dañado» y «Apolillado» → Malo; las variantes de «Regular» → Regular. «Restaurado» y los valores mixtos («Bueno deteriorado») quedan con aviso, para que la persona decida | catalogo-piezas (estado de conservación), RN-010 | A |
+| CV2 | ¿Qué listas de materiales, tipos de bien y técnicas usa el museo? Los archivos traen 307 materiales, 111 tipos de bien y 127 técnicas distintos, con variantes de la misma palabra | **[SUPUESTO]** Una propuesta unificada (225 términos que aparecen 5 veces o más), preparada a partir de los archivos para que el museo la corrija antes de cargarla. Hasta entonces, un valor que no está en la lista queda en el registro de origen con un aviso | colecciones-vocabularios (RF-011), RN-010 | A |
+| CV3 | La ubicación de los archivos es texto libre («Deposito N° 1»). ¿Corresponde a los espacios que registrará el museo en Ubicaciones? | **[SUPUESTO]** Se busca por nombre, sin distinguir mayúsculas, tildes ni «N°». Si no coincide, quien prepara la carga elige una ubicación o la crea en la misma revisión | ubicacion-movimientos (RF-012) | B |

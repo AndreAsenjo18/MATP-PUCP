@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5f1c2cb756ac8fa6add466581f78079bd637e16bf3eda15b263505a5de4b48e7
+ * openapi-sha256: b59ac6470530518ae21658ef0d5037d411af04c95390e456f28c77549b47d24e
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -869,6 +869,30 @@ export interface paths {
          * @description Registra la imagen como foto de la pieza de su fila (o de `piece_id`) con referencia al lote, tras verificar tipo y huella. Solo después de aplicar el lote (409 antes): nunca se asocian automáticamente.
          */
         post: operations["associateImportImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ubicaciones del archivo que no existen en el museo
+         * @description Cada ubicación escrita en el archivo que no coincide con una sola ubicación activa, con cuántas filas la escriben así (change `importacion-aplicar-vocabularios`).
+         */
+        get: operations["getUnresolvedLocations"];
+        /**
+         * Indicar a qué ubicación corresponde una ubicación del archivo
+         * @description Guarda en el mapeo del lote la correspondencia «texto del archivo → ubicación» (la ubicación puede haberse creado en ese momento). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate`, y todas las filas que escriben ese texto quedan con esa ubicación (change `importacion-aplicar-vocabularios`).
+         */
+        put: operations["putLocationCorrespondence"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5620,6 +5644,19 @@ export interface components {
              */
             status: string;
         };
+        /**
+         * LocationCorrespondence
+         * @description Body of ``PUT /imports/{batch_id}/locations``: el texto del archivo y la ubicación.
+         */
+        LocationCorrespondence: {
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Text */
+            text: string;
+        };
         /** LocationCreate */
         LocationCreate: {
             /** Code */
@@ -8944,6 +8981,28 @@ export interface components {
             restored: boolean;
             /** Type Label */
             type_label: string;
+        };
+        /** UnresolvedLocationOut */
+        UnresolvedLocationOut: {
+            /**
+             * Rows
+             * @description Filas que la escriben así.
+             */
+            rows: number;
+            /**
+             * Text
+             * @description La ubicación como está escrita en el archivo.
+             */
+            text: string;
+        };
+        /**
+         * UnresolvedLocationsOut
+         * @description Ubicaciones del archivo que no coinciden con una sola ubicación del museo (change
+         *     importacion-aplicar-vocabularios, D4).
+         */
+        UnresolvedLocationsOut: {
+            /** Items */
+            items?: components["schemas"]["UnresolvedLocationOut"][];
         };
         /**
          * UploadUrlRequest
@@ -12293,6 +12352,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportImageOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getUnresolvedLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnresolvedLocationsOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putLocationCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCorrespondence"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
                 };
             };
             /** @description Falta identificar al usuario (RF-042). */

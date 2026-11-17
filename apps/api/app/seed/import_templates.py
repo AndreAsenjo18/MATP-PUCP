@@ -49,6 +49,41 @@ def measures(*magnitudes: str) -> dict[str, Any]:
 CODE_TRANSFORMS = ["trim", "absence_markers", "split_concatenated"]
 TEXT = ["trim"]
 
+#: How the museum files write the conservation state, as the terms of its list (importacion-
+#: aplicar-vocabularios, D2). [SUPUESTO CV1] «En perfecto estado» is «Bueno»; «Restaurado» and
+#: the mixed values («Bueno deteriorado») are left to the person: they are not «En restauración».
+CONSERVATION_VALUES: dict[str, str] = {
+    **dict.fromkeys(
+        ["Bueno", "Buena", "Buen estado", "En perfecto estado", "En perfecto"], "BUENO"
+    ),
+    **dict.fromkeys(
+        ["Regular", "Regular estado", "En regular estado", "Estado regular"], "REGULAR"
+    ),
+    **dict.fromkeys(
+        [
+            "Malo",
+            "Mala",
+            "Mal estado",
+            "Deteriorado",
+            "Deteriorada",
+            "Dañado",
+            "Dañada",
+            "Dañado (apolillado)",
+            "Apolillado",
+        ],
+        "MALO",
+    ),
+}
+
+
+def conservation_column(source: str) -> "TemplateColumn":
+    return TemplateColumn(
+        source,
+        terms("CONSERVATION_STATUS"),
+        [*TEXT, "value_map"],
+        value_map=CONSERVATION_VALUES,
+    )
+
 
 @dataclass(frozen=True)
 class TemplateColumn:
@@ -60,6 +95,9 @@ class TemplateColumn:
     # Several columns into one target, joined with ``join`` (design D3).
     sources: tuple[str, ...] = ()
     join: str | None = None
+    # Values of the file and the term each one is (``terms`` columns; importacion-aplicar-
+    # vocabularios, D2). Compared ignoring case, accents and repeated spaces.
+    value_map: dict[str, str] | None = None
 
     @property
     def headers(self) -> list[str]:
@@ -73,6 +111,8 @@ class TemplateColumn:
             entry["join"] = self.join
         if self.transforms:
             entry["transforms"] = list(self.transforms)
+        if self.value_map:
+            entry["value_map"] = dict(self.value_map)
         if self.aliases:
             entry["aliases"] = list(self.aliases)
         if not self.required:
@@ -153,7 +193,7 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Técnica de decoración"),
         column("Descripción del bien", target("description"), TEXT, "Descripción"),
         column("Descripción de decoración"),
-        column("Estado de conservación (bueno, regular, malo)", terms("CONSERVATION_STATUS"), TEXT),
+        conservation_column("Estado de conservación (bueno, regular, malo)"),
         column("Estado de integridad (completo, incompleto, fragmentado)"),
         column("Detalle de conservación (deterioros)"),
         column("Tratamiento de conservación"),
@@ -168,7 +208,7 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Dirección de propietario", SENSITIVE),
         column("Nombre de localización (inmueble)", SENSITIVE),
         column("Dirección de localización (inmueble)", SENSITIVE),
-        column("Ubicación en inmueble"),
+        column("Ubicación en inmueble", target("location"), TEXT),
         column("Observaciones", target("notes"), TEXT),
     ),
 )
@@ -217,7 +257,7 @@ FICHA_RN = PredefinedTemplate(
             sources=("Dimensiones", "Dimensiones (2)", "Dimensiones (3)", "Dimensiones (4)"),
             join="; ",
         ),
-        column("Estado de conservación (bueno, regular, malo)", terms("CONSERVATION_STATUS"), TEXT),
+        conservation_column("Estado de conservación (bueno, regular, malo)"),
         column("Estado de integridad (completo, incompleto, fragmentado)"),
         column("Detalle de conservación (deterioros)"),
         column("Colección", target("collection"), TEXT),
@@ -243,7 +283,7 @@ FICHA_RN = PredefinedTemplate(
             "departamento)",
             SENSITIVE,
         ),
-        column("Ubicación en el inmueble"),
+        column("Ubicación en el inmueble", target("location"), TEXT),
         column("Situación (Habida-No habida)"),
         column("Referencia"),
         column("Propietario (persona natural o jurídica)", OWNER),

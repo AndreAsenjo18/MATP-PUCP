@@ -323,6 +323,7 @@ def test_period_and_dimension_proposals_stay_in_memory(
         "identifiers",
         "source_payload",
         "defaulted",  # additive: fields filled from a default (only new pieces take them)
+        "terms",  # additive: terms applied to a new piece (importacion-aplicar-vocabularios)
     }
     assert stored["defaulted"] == ["tenure_regime"]
 
