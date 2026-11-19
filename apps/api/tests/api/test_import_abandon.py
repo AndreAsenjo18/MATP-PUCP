@@ -6,9 +6,12 @@ duplicate pairs of its rows leave the queue. Synthetic demo batch (RNF-014).
 
 from pathlib import Path
 
+import pytest
+
 from app.seed.demo_batch import SHEET_NAME, write_demo_batch
 from tests.api.conftest import Pipeline
 from tests.api.test_demo_batch import DEMO_MAPPING
+from tests.api.test_duplicate_import_rows import validate_with_similarity
 from tests.api.test_import_pipeline_api import get_batch, put_mapping, upload, validate
 
 BASE = "/api/v1/imports"
@@ -34,9 +37,13 @@ def _open_import_pairs(pipeline: Pipeline, batch_id: str) -> list[dict]:
 
 
 def test_abandoning_keeps_the_batch_and_closes_its_pairs(
-    pipeline: Pipeline, tmp_path: Path
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    batch_id = _validated_demo_batch(pipeline, tmp_path)
+    # A batch validated before change duplicados-solo-por-codigo, whose rows have pairs.
+    write_demo_batch(tmp_path)
+    batch_id = upload(pipeline.client, SHEET_NAME, (tmp_path / SHEET_NAME).read_bytes())["batch_id"]
+    assert put_mapping(pipeline.client, batch_id, DEMO_MAPPING).status_code == 200
+    validate_with_similarity(pipeline, batch_id, monkeypatch)
     assert _open_import_pairs(pipeline, batch_id), "el lote de demostración trae pares"
 
     response = pipeline.client.post(

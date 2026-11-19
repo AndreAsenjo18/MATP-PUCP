@@ -23,7 +23,11 @@ Solo ve las pestañas que su rol permite: por ejemplo, un rol de consulta solo v
 
 ## Posibles duplicados
 
-Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de inventario y en una sábana de Excel, con la denominación escrita de otra forma («Retablo ayacuchano» y «Retablo Ayacuchano (3 pisos)») o con el código en otro formato («M.M.Z. 015» y «mmz 15»). El sistema busca esos casos y los propone como **pares** para que una persona decida qué hacer con cada uno.
+Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de inventario y en una sábana de Excel, con el código escrito en otro formato («M.M.Z. 015» y «mmz 15»). El sistema busca esos casos y los propone como **pares** para que una persona decida qué hacer con cada uno.
+
+**Solo se propone un par cuando las dos piezas tienen un código igual**: cualquiera de sus códigos (I, de colección, INC, PUCP, del propietario u otro histórico), comparado sin importar el formato. Dos piezas que solo se parecen (misma denominación, colección, autor o procedencia) **no** se proponen: pueden ser objetos distintos, con otro origen, otras medidas o una particularidad física. El resto de los datos se sigue mostrando en cada par para ayudar a decidir.
+
+Los pares que se habían propuesto antes solo por parecido salen de la cola la próxima vez que se pulse **Detectar duplicados**: quedan como **Reemplazados**, con el motivo «las piezas no comparten ningún código», y se pueden seguir consultando.
 
 - Solo pueden revisar y resolver pares la **Gestora de colecciones** y el **Administrador**.
 - El sistema solo propone pares: **nunca une ni borra piezas por su cuenta**. Cada decisión queda registrada con su usuario, la fecha y el motivo.
@@ -32,7 +36,7 @@ Una misma pieza puede estar registrada dos veces: por ejemplo, en el libro de in
 ### Abrir la cola de duplicados
 
 1. En **Revisar pendientes**, abra la pestaña **Posibles duplicados**.
-2. La cola muestra primero los pares pendientes, del más parecido al menos parecido, de diez en diez. Cada par ocupa **una fila**.
+2. La cola muestra primero los pares pendientes, de los que más datos comparten a los que menos, de diez en diez. Cada par ocupa **una fila**.
 3. Para ver más pares, use **Siguiente** y **Anterior**: los controles están **arriba y abajo** de la lista, con «Página 1 de 2». Al cambiar de página desde abajo, la pantalla vuelve al principio.
 
 ### Filtrar la cola
@@ -41,7 +45,7 @@ Arriba de la cola hay una fila de **píldoras**. Pulse una para elegir; la cola 
 
 - **Estado**: siempre tiene un valor, en negrita. **Pendientes** (lo que falta decidir, opción inicial), **Pospuestos**, **Distintos**, **Fusionados**, **Reemplazados** o **Todos**.
 - **Colección**: solo los pares de esa colección. Incluye sus subcolecciones (por ejemplo, la colección RA incluye RAB).
-- **Similitud**: solo los pares parecidos al menos en ese porcentaje (60 %, 70 %, 80 % o 90 %).
+- **Similitud**: solo los pares que, además del código, se parecen al menos en ese porcentaje (60 %, 70 %, 80 % o 90 %).
 - **Tipo de par**: **Dos piezas del catálogo** (las dos ya están registradas) o **Pieza y fila de un Excel** (una fila de una carga que todavía no entra al catálogo y se parece a una pieza que ya existe).
 
 Un filtro elegido se pinta y muestra su valor, por ejemplo **Tipo de par: Pieza y fila de un Excel**, con una **✕** para quitarlo.

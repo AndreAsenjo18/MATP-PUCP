@@ -1077,7 +1077,9 @@ export function LiveImportWizard() {
               toDecideCount={pending.conflicts}
               gemini={geminiState}
               progress={aiJudgment?.run && aiJudgment.run.status === "RUNNING" ? { done: aiJudgment.run.processed_pairs, total: aiJudgment.run.total_pairs } : null}
-              canAsk={hasPermission("ai.request") && getApiMode() !== "mock"}
+              // Gemini only judges rows proposed by similarity; since duplicados-solo-por-codigo
+              // validation proposes none, so the button only shows for older batches.
+              canAsk={hasPermission("ai.request") && getApiMode() !== "mock" && summary.duplicates > 0}
               onAsk={() => void handleAskGemini()}
             />
           )}

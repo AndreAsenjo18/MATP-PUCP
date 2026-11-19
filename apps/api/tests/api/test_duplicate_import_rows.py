@@ -9,9 +9,12 @@ its pairs leave the queue. Runs the synthetic demo batch on the module-scoped ``
 import uuid
 from pathlib import Path
 
+import pytest
 from sqlalchemy import update
 
+from app.modules.imports import service as import_service
 from app.modules.imports.apply import PAIR_NOTE_CREATED, PAIR_NOTE_SKIPPED, PAIR_NOTE_UPDATED
+from app.modules.imports.classify import ProvisionalSimilarityScorer, classify_batch
 from app.modules.imports.models import ImportBatch, ImportBatchStatus
 from app.seed.demo_batch import SHEET_NAME, write_demo_batch
 from tests.api.conftest import Pipeline
@@ -21,12 +24,27 @@ from tests.api.test_import_pipeline_api import get_batch, put_mapping, upload, v
 PERSONAL_KEYS = {"lender_name", "recorded_by", "notes", "source_payload", "raw_data"}
 
 
-def _validated_demo_batch(pipeline: Pipeline, tmp_path: Path) -> str:
+def _validated_demo_batch(
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> str:
+    """The demo batch validated as before change duplicados-solo-por-codigo (rows get pairs)."""
     write_demo_batch(tmp_path)
     batch_id = upload(pipeline.client, SHEET_NAME, (tmp_path / SHEET_NAME).read_bytes())["batch_id"]
     assert put_mapping(pipeline.client, batch_id, DEMO_MAPPING).status_code == 200
-    assert validate(pipeline.client, batch_id).status_code == 202
+    validate_with_similarity(pipeline, batch_id, monkeypatch)
     return batch_id
+
+
+def validate_with_similarity(
+    pipeline: Pipeline, batch_id: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Validate as before change duplicados-solo-por-codigo, so rows get similarity pairs."""
+
+    def classify(session, rows, scorer=None):  # type: ignore[no-untyped-def]
+        return classify_batch(session, rows, ProvisionalSimilarityScorer(session))
+
+    monkeypatch.setattr(import_service, "classify_batch", classify)
+    assert validate(pipeline.client, batch_id).status_code == 202
 
 
 def _import_pairs(pipeline: Pipeline, **params: object) -> list[dict]:
@@ -38,9 +56,9 @@ def _import_pairs(pipeline: Pipeline, **params: object) -> list[dict]:
 
 
 def test_an_import_pair_brings_the_row_to_compare_without_personal_data(
-    pipeline: Pipeline, tmp_path: Path
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    batch_id = _validated_demo_batch(pipeline, tmp_path)
+    batch_id = _validated_demo_batch(pipeline, tmp_path, monkeypatch)
 
     pairs = [pair for pair in _import_pairs(pipeline) if pair["import_row"]["batch_id"] == batch_id]
 
@@ -56,8 +74,10 @@ def test_an_import_pair_brings_the_row_to_compare_without_personal_data(
     assert all(pair["import_row"] is None for pair in catalog)
 
 
-def test_deciding_the_row_in_its_batch_closes_its_pairs(pipeline: Pipeline, tmp_path: Path) -> None:
-    batch_id = _validated_demo_batch(pipeline, tmp_path)
+def test_deciding_the_row_in_its_batch_closes_its_pairs(
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    batch_id = _validated_demo_batch(pipeline, tmp_path, monkeypatch)
     # The first pair whose row can go to its piece. A row whose code I differs from the piece's is
     # refused (RN-002, ``inventory_code_mismatch``), and the synthetic codes are random, so which
     # pairs those are changes from run to run.
@@ -88,11 +108,11 @@ def test_deciding_the_row_in_its_batch_closes_its_pairs(pipeline: Pipeline, tmp_
 
 
 def test_applying_the_batch_closes_the_pairs_nobody_decided(
-    pipeline: Pipeline, tmp_path: Path
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A row nobody decided on one by one kept its pairs pending forever: once the batch is applied
     it no longer accepts decisions, so the queue could not resolve them (revision 2026-11-17)."""
-    batch_id = _validated_demo_batch(pipeline, tmp_path)
+    batch_id = _validated_demo_batch(pipeline, tmp_path, monkeypatch)
     open_pairs = {
         pair["id"]
         for pair in _import_pairs(pipeline, status="PENDING")
@@ -121,11 +141,11 @@ def test_applying_the_batch_closes_the_pairs_nobody_decided(
 
 
 def test_pairs_of_a_batch_closed_before_the_fix_leave_the_queue(
-    pipeline: Pipeline, tmp_path: Path
+    pipeline: Pipeline, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Batches applied before applying closed their pairs left them pending forever: the queue
     leaves out, on read, the open pairs of a row whose batch no longer accepts decisions."""
-    batch_id = _validated_demo_batch(pipeline, tmp_path)
+    batch_id = _validated_demo_batch(pipeline, tmp_path, monkeypatch)
     open_pairs = {
         pair["id"]
         for pair in _import_pairs(pipeline, status="PENDING")

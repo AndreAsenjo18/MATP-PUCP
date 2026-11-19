@@ -161,11 +161,11 @@ Cada fila ocupa **una línea**: número de fila, denominación, código y qué p
 |---|---|
 | **Nueva** | Ningún código coincide con el catálogo: se creará una pieza. |
 | **Actualización** | Sus códigos coinciden con una sola pieza: se actualizará esa pieza. |
-| **Posible duplicado** | No coincide ningún código, pero se parece mucho a una pieza que ya existe. |
+| **Posible duplicado** | Ya no se usa: una fila que solo se parece a una pieza, sin ningún código igual, se importa como **Nueva**, porque dos piezas parecidas pueden ser objetos distintos. Solo aparece en lotes validados antes de este cambio. |
 | **Conflicto** | Sus códigos apuntan a piezas distintas, intenta cambiar el código I de una pieza o comparte el código I con otra fila del mismo archivo. |
 
 - Con las cifras del resumen se ve solo ese grupo. Las que están en 0 no se pueden pulsar.
-- En **Cómo se clasifican las filas** se explican las reglas y el umbral de parecido que se usaron.
+- En **Cómo se clasifican las filas** se explican las reglas que se usaron. Una fila solo se reconoce como una pieza existente por sus códigos.
 - Los datos del Excel de cada fila están plegados en **Ver datos del archivo**.
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
 - Si el error es una **errata** en una celda (por ejemplo, un código I escrito «I.-1814»), corríjala ahí mismo: en **¿Es una errata?** ya viene elegida la columna del valor que cita el error; escriba el valor corregido y pulse **Guardar y validar de nuevo**. El lote se valida otra vez con las mismas reglas. El archivo original no cambia: en **Ver datos del archivo**, la celda corregida dice lo que traía el archivo. Validar de nuevo descarta las decisiones que ya tomó en otras filas; el aviso lo dice antes de guardar.

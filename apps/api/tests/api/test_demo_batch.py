@@ -1,8 +1,9 @@
 """Synthetic demo batch (importacion-masiva-fotografias 7.1; demo of the import process).
 
 The spreadsheet must keep producing the classification the demo script tells (new rows, two
-updates of seeded pieces, possible duplicates, a conflict between two rows that share a code I
-and one loan for use with a code I), and the committed folder must keep the 80 photos of the
+updates of seeded pieces, a conflict between two rows that share a code I
+and one loan for use with a code I; rows that only look like a seeded piece are new since change
+duplicados-solo-por-codigo), and the committed folder must keep the 80 photos of the
 three matching paths. The photo matching itself is tested by its change; here only the files.
 Runs on the module-scoped seeded database of ``pipeline`` (RNF-014: synthetic data only).
 """
@@ -70,9 +71,9 @@ def test_the_spreadsheet_produces_the_classification_of_the_demo(pipeline: Pipel
     }
 
     assert {key: counts[key] for key in ("NEW", "UPDATE", "POSSIBLE_DUPLICATE", "CONFLICT")} == {
-        "NEW": 21,
+        "NEW": 26,
         "UPDATE": 2,
-        "POSSIBLE_DUPLICATE": 5,
+        "POSSIBLE_DUPLICATE": 0,
         "CONFLICT": 2,
     }
     assert counts["ERRORS"] == 1 and rows[15]["has_validation_errors"]

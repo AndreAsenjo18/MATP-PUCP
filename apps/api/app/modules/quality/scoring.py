@@ -8,8 +8,10 @@ Rules (design D1, weights [SUPUESTO] and configurable through ``quality_setting`
 
 - the score is the sum of ``weight × similarity`` of every applicable signal, capped at 1;
 - a signal applies only when both pieces have the compared data; missing data adds nothing;
-- a pair that shares a normalized identifier always enters the queue, even below the threshold
-  (spec scenario «Mismo código histórico en dos piezas»); other pairs need ``min_score``;
+- only a pair that shares a normalized identifier (any type, current or historical) enters the
+  queue (change ``duplicados-solo-por-codigo``): two similar pieces can be different objects
+  (other provenance, other measures, a physical particularity). The other signals only explain
+  and order the pair; ``min_score`` is kept so stored settings stay valid, but no longer used;
 - two different current inventory codes (I) mark the pair as ``blocking_conflict``.
 """
 
@@ -157,8 +159,8 @@ class PairScore:
     fingerprint: str = ""
 
     def enters_queue(self, config: ScoringConfig) -> bool:
-        """A shared identifier always enters; any other pair needs ``min_score`` (design D1)."""
-        return self.shared_identifier or self.score >= config.min_score
+        """Only a shared identifier makes a duplicate (change duplicados-solo-por-codigo)."""
+        return self.shared_identifier
 
     def matched_fields(self) -> list[dict[str, Any]]:
         return [signal.to_json() for signal in self.signals]
