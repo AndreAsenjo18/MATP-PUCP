@@ -11,7 +11,7 @@ El sistema MUST clasificar cada fila del lote como nuevo, actualización o confl
 - **WHEN** una fila coincide con una única pieza por código I y no contradice sus otros identificadores
 - **THEN** se clasifica como "actualización"
 
-#### Scenario: Fila parecida sin código en común
+#### Scenario: Posible duplicado
 - **WHEN** una fila no coincide por código pero es muy similar en denominación y colección a una pieza existente
 - **THEN** se clasifica como "nuevo" y las reglas visibles explican que el parecido no se usa
 

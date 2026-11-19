@@ -87,8 +87,8 @@ def test_validation_and_application_heartbeat_without_blocking(
         seeded = session.scalar(select(Piece.denomination).order_by(Piece.id).limit(1))
         assert user is not None and seeded is not None
         user_id = user.id
-    # Rows 2 and 3 are new; row 4 repeats a seeded denomination without codes, so validation
-    # writes a review link (and flushes) in the middle of the stage.
+    # Rows 2 and 3 are new; row 4 repeats a seeded denomination without codes: since change
+    # duplicados-solo-por-codigo a similar row without a shared code is new too.
     content = (
         f"DENOMINACIÓN;CÓDIGOS\nPieza pg uno;I-987001\nPieza pg dos;I-987002\n{seeded};S/N\n"
     ).encode()
@@ -117,7 +117,7 @@ def test_validation_and_application_heartbeat_without_blocking(
         batch = session.get(ImportBatch, batch_id)
         assert batch is not None
         assert batch.status == S.IN_PREVIEW, batch.status_reason
-        assert (batch.counts or {})["POSSIBLE_DUPLICATE"] == 1
+        assert (batch.counts or {})["POSSIBLE_DUPLICATE"] == 0
         approve(session, batch_id, approval_summary(session, batch_id).token, user_id)
         session.commit()
     _run(factory, batch_id, worker.Stage.APPLY, apply_stage(), user_id)
@@ -127,4 +127,4 @@ def test_validation_and_application_heartbeat_without_blocking(
         assert batch is not None
         assert batch.status == S.APPLIED, batch.status_reason
         assert batch.change_set_id is not None and batch.processing_started_at is None
-        assert (batch.counts or {})["APPLIED_CREATED"] == 2
+        assert (batch.counts or {})["APPLIED_CREATED"] == 3
