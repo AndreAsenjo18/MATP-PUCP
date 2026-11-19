@@ -1,6 +1,6 @@
 # Importación de sábanas Excel y CSV
 
-> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`; la sugerencia de IA al ajustar columnas y las sugerencias de IA por fila las agrega `carga-masiva-con-ia`.
+> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`; la sugerencia de IA al ajustar columnas la agrega `carga-masiva-con-ia` (las sugerencias de IA por fila se retiraron en `retirar-ia-revision-filas`).
 
 El asistente de importación carga en el catálogo las piezas de una hoja de cálculo (por ejemplo, una sábana de la consultoría o un inventario de depósito) **sin duplicar ni pisar** lo que ya existe.
 
@@ -171,17 +171,6 @@ Cada fila ocupa **una línea**: número de fila, denominación, código y qué p
 - Si el error es una **errata** en una celda (por ejemplo, un código I escrito «I.-1814»), corríjala ahí mismo: en **¿Es una errata?** ya viene elegida la columna del valor que cita el error; escriba el valor corregido y pulse **Guardar y validar de nuevo**. El lote se valida otra vez con las mismas reglas. El archivo original no cambia: en **Ver datos del archivo**, la celda corregida dice lo que traía el archivo. Validar de nuevo descarta las decisiones que ya tomó en otras filas; el aviso lo dice antes de guardar.
 - Las filas se muestran por páginas; **Filas por página** (10, 25, 50 o 100) elige cuántas, para no desplazarse por un lote de cientos de filas de una sola vez.
 
-### Sugerencias de IA para una columna de texto libre
-
-Si una columna del archivo quedó como **Dato de origen** o mapeada a **Observaciones**/**Descripción** (ninguna IA toca una columna ya mapeada a un dato estructurado), su tarjeta trae **Pedir sugerencias de IA**. Con muchas filas, en vez de entrar una por una, **Pedir sugerencias de IA para estas filas** (arriba de la lista, junto a **Filas por página**) las pide todas de una vez para la página que está viendo. Al pulsarlo:
-
-1. Aparece una tabla con cada dato que la IA propone extraer de ese texto: el valor **vigente** de la pieza (en una actualización), el **propuesto** por la IA y una casilla para incluirlo.
-2. Edite el valor propuesto si la IA leyó algo mal; cuando el valor propuesto coincide con el vigente, no se marca como conflicto.
-3. Marque qué campos incluir y pulse **Guardar valores de IA**. Nada se aplica al catálogo todavía: queda guardado en el lote hasta que se apruebe (RN-009).
-4. **Ver el texto analizado** despliega, dentro de la misma tarjeta, el texto de origen completo de esa fila.
-
-Si la columna de texto libre de una fila está vacía, no se ofrece pedir sugerencias para ella.
-
 ### Un mismo error en muchas filas
 
 Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque amarillo** («30 filas: Falta el régimen de tenencia») con lo que puede hacer, en lugar de repetir el error en cada tarjeta:
@@ -192,6 +181,25 @@ Cuando **tres o más filas** comparten el mismo error, aparece **un solo bloque 
 - **Ver las N filas.** Las filas del grupo están plegadas; al abrirlas, cada una ocupa una línea y, al pulsarla, muestra sus datos y sus tres botones.
 
 Un error que afecta a una o dos filas se sigue viendo en la tarjeta de cada fila.
+
+### Ver cómo quedaría la ficha
+
+Cada fila de la lista tiene un botón: **Ver ficha** (o **Decidir**, **Ver** o **Ver cambios**, según la fila). Abre un panel con **Así quedaría la ficha**: los mismos grupos que la ficha de la pieza (Identificación, Descripción, Procedencia y época, Medidas y materiales, Conservación, Ubicación, Observaciones), con los nombres de los materiales, del tipo de bien y la ruta de la ubicación. Lo que la fila no trae dice «Sin registrar»; una ubicación del archivo que no existe en el museo aparece en ámbar.
+
+### Materiales, tipo de bien, estado y ubicación
+
+Al aprobar, cada pieza nueva recibe lo que su fila trae en las columnas de **materiales**, **tipo de bien**, **categoría** y **estado de conservación** (este último queda como una evaluación de conservación), y queda en la **ubicación** que indica el archivo.
+
+- Una celda con varios valores («Madera, metal y pintura») se separa sola.
+- Si un valor **no está en la lista** del museo, la fila lo avisa en ámbar («"Cuerno" no está en la lista de materiales»). La fila se puede aprobar igual: ese valor no llega a la ficha, pero no se pierde, queda en el registro de origen. En **Así quedaría la ficha** ese campo muestra el texto del archivo en ámbar («"Escultura": no está en la lista»), no «Sin registrar».
+
+**Valores que no están en las listas.** Arriba de las filas aparece el bloque **Valores del archivo que no están en las listas**, agrupado por lista (Tipos de bien, Materiales, Formas de adquisición…) y con cuántas filas usa cada valor. Si usted administra las listas (Administrador o Gestor de colecciones), pulse **Agregar a la lista y validar de nuevo** junto al valor: queda en la lista y el lote se valida otra vez, sin salir de la importación. Si la lista ya lo tenía desactivado, el botón dice **Reactivar y validar de nuevo** y reactiva ese término en vez de crear otro. Si el valor es una errata, corríjala en la fila en vez de agregarla. Validar de nuevo descarta las decisiones ya tomadas; la pantalla lo avisa. Si no administra las listas, verá los valores y deberá pedir que los agreguen.
+- La **técnica**, que la ficha no tiene como campo, queda en el registro de origen.
+
+**Ubicaciones que no existen.** La ubicación se busca por su nombre sin importar mayúsculas, tildes ni «N°» (en el archivo «Deposito N° 1» es «Depósito 1»). Si una ubicación del archivo no coincide con ninguna del museo, aparece el bloque **Ubicaciones del archivo que no existen en el museo**, con cuántas filas la usan. Para cada una:
+
+1. En **Corresponde a**, elija una ubicación existente; o pulse **Crear una ubicación**: elija **Dentro de** qué lugar (o **Ninguna: una sede nueva**), el tipo y el nombre, y pulse **Crear**. Lo creado queda elegido, así que puede seguir creando dentro (la sede, luego su depósito, luego un mueble…).
+2. Pulse **Usar esta ubicación y validar de nuevo**. Todas las filas con ese texto quedan con esa ubicación. Una sede no guarda piezas: elija al menos un espacio dentro de ella.
 
 ### Revisar los cambios de una actualización
 
@@ -338,5 +346,4 @@ Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no 
 | «El lote se está procesando» | Espere a que termine la etapa en curso. |
 | «Las imágenes se asocian después de aplicar el lote» | Apruebe el lote primero. |
 | El lote quedó **fallido al aplicar** | Lea la fila y el motivo en la cabecera del lote, corrija esa fila y vuelva a aprobar. |
-| «No se reconocieron datos estructurados en el texto» | El texto de esa fila no tenía nada que la IA pudiera extraer (por ejemplo, un texto muy corto o sin medidas, procedencia, etc.). No es un error: la fila sigue su curso igual, sin esos campos. |
 | «El servicio de IA no está disponible en este momento» al pedir sugerencias | El catálogo no cambió; reintente más tarde o siga sin la sugerencia de IA. |

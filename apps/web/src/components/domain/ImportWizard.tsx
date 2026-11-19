@@ -159,7 +159,6 @@ export function ImportRowCard({
   busy,
   onDecide,
   photos,
-  aiSuggestions,
   compact = false,
   onCorrect,
   correctionNotice = null,
@@ -170,9 +169,6 @@ export function ImportRowCard({
   onDecide: (input: RowDecisionInput) => void;
   /** Miniaturas de las fotos de la fila (importacion-masiva-fotografias, tarea 6.3). */
   photos?: ReactNode;
-  /** Sugerencias de IA del texto libre sin mapear de la fila (change carga-masiva-con-ia); solo
-   * en modo `live`, igual que `photos`. */
-  aiSuggestions?: ReactNode;
   /**
    * Fila cuyo único problema es un error que el bloque de errores repetidos ya explica: ocupa una
    * línea y el detalle y las acciones aparecen al abrirla (change `importacion-revision-simplificada`, D3).
@@ -326,8 +322,6 @@ export function ImportRowCard({
           ))}
         </dl>
       </details>
-
-      {aiSuggestions}
 
       {row.images && row.images.length > 0 && (
         <p className="flex items-center gap-1 text-sm text-gris-texto">
@@ -594,6 +588,13 @@ export function revalidateHint(errorRows: number, decided: number): string | nul
   return `¿Corrigió algo fuera de este lote, como crear una colección o un término que faltaba? Pulse «Validar de nuevo»: se lee el archivo con el mismo formato.${lost ? ` ${lost}` : ""}`;
 }
 
+/** Fotos que el servidor todavía verifica o empareja: no se aprueba hasta que terminen (fix importacion-esperar-fotos). */
+export function photosProcessingText(count: number): string {
+  return count === 1
+    ? "Todavía se procesa 1 foto del lote. Espere a que termine para aprobar: si no, quedaría fuera de su pieza."
+    : `Todavía se procesan ${count.toLocaleString("es-PE")} fotos del lote. Espere a que terminen para aprobar: si no, quedarían fuera de sus piezas.`;
+}
+
 export function ApprovalPanel({
   summary,
   canApprove,
@@ -619,6 +620,11 @@ export function ApprovalPanel({
           {summary.photo_quota_warning}
         </p>
       )}
+      {(summary?.photos_processing ?? 0) > 0 && (
+        <p role="status" aria-live="polite" className="rounded-md bg-ambar-bg p-3 text-sm font-medium text-ambar-texto">
+          {photosProcessingText(summary?.photos_processing ?? 0)}
+        </p>
+      )}
       {!canApprove ? (
         <PermissionNotice>Su rol puede preparar la carga, pero no aprobarla. La aprueba un Gestor de colecciones o un Administrador.</PermissionNotice>
       ) : (
@@ -627,7 +633,7 @@ export function ApprovalPanel({
           variant="primary"
           icon={Check}
           className="self-start"
-          disabled={!summary || busy || summary.create + summary.update === 0}
+          disabled={!summary || busy || summary.create + summary.update === 0 || (summary.photos_processing ?? 0) > 0}
           confirmTitle="Aprobar la carga masiva"
           confirmDescription={summary ? `${summarySentence(summary)} El cambio queda auditado con su usuario y el lote.` : ""}
           onConfirm={onConfirm}

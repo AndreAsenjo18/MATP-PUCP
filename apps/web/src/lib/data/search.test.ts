@@ -18,6 +18,7 @@ import {
   jobStatusLabel,
   matchReasonText,
   removeFilter,
+  secondaryFiltersCount,
   secondaryFiltersActive,
   startFullExport,
   suggestionText,
@@ -107,6 +108,15 @@ describe("filtros de la pantalla", () => {
     expect(activeChips(filters).map((chip) => `${chip.label}: ${chip.value}`)).toEqual(["Completitud: sin foto"]);
     expect(filtersFromSearchParams(filtersToSearchParams(filters))).toEqual(filters);
     expect(removeFilter(filters, "alertCode").alertCode).toBeNull();
+  });
+
+  it("el lote de fotos (change importacion-fotos-progreso) llega por la dirección y es solo un chip", () => {
+    const filters = filtersFromSearchParams(new URLSearchParams({ import_batch_id: "lote-1" }));
+    expect(filters.importBatchId).toBe("lote-1");
+    expect(apiFilters(filters)).toEqual({ import_batch_id: "lote-1" });
+    expect(activeChips(filters).map((chip) => `${chip.label}: ${chip.value}`)).toEqual(["Fotos importadas: las del lote de fotos"]);
+    expect(secondaryFiltersCount(filters)).toBe(0); // no control in «Más filtros»
+    expect(removeFilter(filters, "importBatchId").importBatchId).toBeNull();
   });
 
   it("los filtros viajan en la dirección con los nombres de la API y vuelven iguales", () => {

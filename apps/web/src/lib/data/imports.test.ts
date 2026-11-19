@@ -79,7 +79,7 @@ function row(overrides: Partial<ImportRow> = {}): ImportRow {
   };
 }
 
-const SUMMARY: ApprovalSummary = { create: 70, update: 1, skip: 15, summary_token: "abc" };
+const SUMMARY: ApprovalSummary = { create: 70, update: 1, skip: 15, photos_processing: 0, summary_token: "abc" };
 
 describe("pasos del asistente según el estado del lote (RF-021)", () => {
   it("lleva cada estado a su paso", () => {
@@ -248,7 +248,7 @@ describe("modo live", () => {
   });
 
   it("aprueba con el summary_token y devuelve el resumen actual si cambió", async () => {
-    const current = { create: 69, update: 1, skip: 16, summary_token: "nuevo" };
+    const current = { create: 69, update: 1, skip: 16, photos_processing: 0, summary_token: "nuevo" };
     const fetchMock = useLive(async () => json(409, { code: "summary_changed", message: "x", details: { summary: current } }));
 
     const result = await confirmImportBatch(BATCH, SUMMARY, "Revisado", DEV_USER);

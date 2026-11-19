@@ -66,6 +66,12 @@ class ApprovalSummaryOut(BaseModel):
         description="Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la "
         "aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).",
     )
+    photos_processing: int = Field(
+        0,
+        ge=0,
+        description="Fotos que el servidor todavía verifica o empareja: mientras haya, no se "
+        "puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).",
+    )
     photos: PhotoApprovalOut | None = Field(
         None, description="Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
     )
@@ -174,6 +180,49 @@ class ImportBatchOut(BaseModel):
             approval_summary=ApprovalSummaryOut(**approval) if approval else None,
             created_at=batch.created_at,
         )
+
+
+class UnresolvedLocationOut(BaseModel):
+    text: str = Field(description="La ubicación como está escrita en el archivo.")
+    rows: int = Field(ge=1, description="Filas que la escriben así.")
+
+
+class UnresolvedLocationsOut(BaseModel):
+    """Ubicaciones del archivo que no coinciden con una sola ubicación del museo (change
+    importacion-aplicar-vocabularios, D4)."""
+
+    items: list[UnresolvedLocationOut] = Field(default_factory=list)
+
+
+class LocationCorrespondence(BaseModel):
+    """Body of ``PUT /imports/{batch_id}/locations``: el texto del archivo y la ubicación."""
+
+    text: str = Field(min_length=1, max_length=300)
+    location_id: uuid.UUID
+
+
+class UnresolvedTermOut(BaseModel):
+    vocabulary: str = Field(description="Código de la lista (MATERIAL, OBJECT_TYPE…).")
+    vocabulary_name: str = Field(description="Nombre de la lista.")
+    text: str = Field(description="El valor como está escrito en el archivo.")
+    rows: int = Field(ge=1, description="Filas que lo escriben así.")
+    inactive_term: str | None = Field(
+        None, description="Término desactivado de la lista con ese nombre: se reactiva."
+    )
+
+
+class UnresolvedTermsOut(BaseModel):
+    """Valores del archivo que no están en las listas de la ficha (change
+    importacion-agregar-terminos, D2)."""
+
+    items: list[UnresolvedTermOut] = Field(default_factory=list)
+
+
+class TermAddition(BaseModel):
+    """Body of ``POST /imports/{batch_id}/terms``: la lista y el valor del archivo."""
+
+    vocabulary: str = Field(min_length=1, max_length=60)
+    text: str = Field(min_length=1, max_length=300)
 
 
 class CellCorrection(BaseModel):
@@ -461,6 +510,43 @@ class ImportImageOut(BaseModel):
         )
 
 
+class PreviewCode(BaseModel):
+    type: str | None = None
+    value: str
+
+
+class PiecePreviewOut(BaseModel):
+    """«Así quedaría la ficha»: the row as the sheet of the new piece would show it, with names
+    instead of codes (change importacion-vista-previa-ficha)."""
+
+    denomination: str | None = None
+    description: str | None = None
+    author: str | None = None
+    provenance: str | None = None
+    epoch_original_text: str | None = None
+    dimensions_text: str | None = None
+    entry_date: str | None = None
+    notes: str | None = None
+    tenure_regime: str | None = None
+    collection: str | None = None
+    codes: list[PreviewCode] = Field(default_factory=list)
+    materials: list[str] = Field(default_factory=list)
+    object_type: str | None = None
+    category: str | None = None
+    conservation_status: str | None = None
+    acquisition_method: str | None = None
+    dimensions: list[dict[str, Any]] = Field(default_factory=list)
+    location: str | None = Field(None, description="Ruta de la ubicación encontrada.")
+    location_text: str | None = Field(
+        None, description="Ubicación del archivo que no coincide con ninguna del museo."
+    )
+    unmatched_terms: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Valores del archivo que no están en la lista, por código de vocabulario "
+        "(MATERIAL, OBJECT_TYPE, CATEGORY, CONSERVATION_STATUS, ACQUISITION_METHOD).",
+    )
+
+
 class ImportRowOut(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -528,6 +614,10 @@ class ImportRowOut(BaseModel):
     images: list[ImportImageOut] = Field(
         default_factory=list, description="Imágenes ancladas en la fila (RF-029)."
     )
+    preview: PiecePreviewOut | None = Field(
+        None,
+        description="Así quedaría la ficha de la pieza nueva (`importacion-vista-previa-ficha`).",
+    )
 
     @classmethod
     def from_row(
@@ -537,8 +627,10 @@ class ImportRowOut(BaseModel):
         action: str | None = None,
         images: list[ImportImageOut] | None = None,
         matches: list[dict[str, Any]] | None = None,
+        preview: dict[str, Any] | None = None,
     ) -> "ImportRowOut":
         return cls(
+            preview=PiecePreviewOut(**preview) if preview else None,
             id=row.id,
             batch_id=row.batch_id,
             source_row_number=row.source_row_number,
@@ -1108,6 +1200,12 @@ class ImportPhotoSummary(BaseModel):
     )
     duplicates: int = Field(
         description="Fotos que ya están en la pieza destino y esperan confirmación."
+    )
+    processing: int = Field(
+        0,
+        ge=0,
+        description="Fotos que el servidor todavía verifica o empareja: el avance del paso "
+        "«Revisar y aprobar» (change importacion-fotos-progreso).",
     )
 
 

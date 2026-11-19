@@ -172,6 +172,13 @@ def piece_filters(
     alert_code: Annotated[
         AlertCode | None, Query(description="Solo piezas con esa alerta de completitud.")
     ] = None,
+    import_batch_id: Annotated[
+        uuid.UUID | None,
+        Query(
+            description="Solo las piezas que recibieron fotos de ese lote de importación "
+            "(importacion-fotos-progreso)."
+        ),
+    ] = None,
     sort: PieceSort = "denomination",
 ) -> PieceFilter:
     regime = (
@@ -198,6 +205,7 @@ def piece_filters(
         epoch_end_year=epoch_end_year,
         has_alerts=has_alerts,
         alert_code=alert_code.value if alert_code else None,
+        import_batch_id=import_batch_id,
     )
 
 

@@ -27,6 +27,7 @@ export type BatchPhoto = ApiSchemas["ImportPhotoOut"];
 export type PhotoApproval = ApiSchemas["PhotoApprovalOut"];
 export type PhotoOperation = ApiSchemas["PhotoDecisionRequest"]["op"];
 export type ReadingMode = NonNullable<ReadingRule["mode"]>;
+export type PhotoSummary = ApiSchemas["ImportPhotoSummary"];
 
 export interface PieceOption {
   id: string;
@@ -160,6 +161,86 @@ export function approvalSentence(photos: PhotoApproval): string {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Avance de las fotos en «Revisar y aprobar» (change importacion-fotos-progreso)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * En qué va el lote: `processing` (el servidor verifica y empareja fotos), `ready` (todas listas para
+ * revisar), `applying` (aprobado, aplicándose), `applied`, `failed` (falló al aplicar).
+ */
+export type PhotoPhase = "processing" | "ready" | "applying" | "applied" | "failed";
+
+export interface PhotoProgress {
+  phase: PhotoPhase;
+  /** Lo que se ve como título del aviso. */
+  title: string;
+  /** Qué puede hacer la persona mientras tanto (o que ya puede salir). */
+  hint: string;
+  /** Avance de 0 a 1, o `null` si no se conoce (barra indeterminada). */
+  fraction: number | null;
+}
+
+/** El aviso sigue consultando al servidor en estas fases. */
+export function isPhotoWorkRunning(phase: PhotoPhase): boolean {
+  return phase === "processing" || phase === "applying";
+}
+
+function counter(progress: ImportBatch["progress"]): { done: number; total: number } | null {
+  if (!progress || typeof progress !== "object") return null;
+  const record = progress as Record<string, unknown>;
+  const total = typeof record.total === "number" ? record.total : 0;
+  const done = typeof record.done === "number" ? record.done : 0;
+  return total > 0 ? { done: Math.min(done, total), total } : null;
+}
+
+/** El avance del paso 3, a partir del lote y del resumen de sus fotos. */
+export function photoProgress(
+  batch: Pick<ImportBatch, "status" | "processing" | "progress" | "counts" | "status_reason"> | null,
+  summary: Pick<PhotoSummary, "total" | "by_status" | "processing"> | null,
+): PhotoProgress {
+  const format = (n: number) => n.toLocaleString("es-PE");
+  if (batch?.status === "APPLIED") {
+    const photos = batch.counts?.APPLIED_PHOTOS ?? 0;
+    const pieces = batch.counts?.APPLIED_PIECES ?? 0;
+    return {
+      phase: "applied",
+      title: `Listo: ${plural(photos, "foto quedó", "fotos quedaron")} en ${plural(pieces, "pieza", "piezas")}.`,
+      hint: "Ya puede salir de esta pantalla. Compruebe las fotos en la búsqueda.",
+      fraction: 1,
+    };
+  }
+  if (batch?.status === "FAILED_APPLY") {
+    return { phase: "failed", title: "No se pudieron aplicar las fotos.", hint: batch.status_reason ?? "Revise el lote y vuelva a aprobarlo.", fraction: null };
+  }
+  if (batch?.status === "APPROVED" || batch?.processing) {
+    const count = counter(batch.progress);
+    return {
+      phase: "applying",
+      title: count ? `Aplicando las fotos a sus piezas: ${format(count.done)} de ${plural(count.total, "pieza", "piezas")}` : "Aplicando las fotos a sus piezas…",
+      hint: "Puede salir de esta pantalla: sigue en el servidor. Al volver verá cuándo terminó.",
+      fraction: count ? count.done / count.total : null,
+    };
+  }
+  const pending = summary?.processing ?? 0;
+  if (summary && pending > 0) {
+    const considered = Math.max(0, summary.total - (summary.by_status.PENDING_UPLOAD ?? 0));
+    const done = Math.max(0, considered - pending);
+    return {
+      phase: "processing",
+      title: `Preparando las fotos: ${format(done)} de ${format(considered)} listas`,
+      hint: "El servidor las verifica y busca su pieza. Puede ir revisando las que ya están; «Aprobar» se habilita cuando terminen.",
+      fraction: considered > 0 ? done / considered : null,
+    };
+  }
+  return { phase: "ready", title: "Todas las fotos están listas para revisar.", hint: "", fraction: 1 };
+}
+
+/** La búsqueda con las piezas que recibieron fotos del lote, para comprobarlas. */
+export function photoBatchSearchHref(batchId: string): string {
+  return `/busqueda?${new URLSearchParams({ import_batch_id: batchId })}`;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Maqueta en memoria (modo mock)
 // ---------------------------------------------------------------------------------------------
 
@@ -281,6 +362,15 @@ export async function createPhotoBatch(name: string, devUser?: string): Promise<
     return { status: "ok", value: { id: MOCK_BATCH, kind: "PHOTOS", file_name: name, source_name: name, status: "IN_PREVIEW" } as ImportBatch };
   }
   return call(() => client(devUser).POST("/api/v1/imports/photo-batches", { body: { name: name.trim() } }), PHOTO_BATCH_MESSAGES);
+}
+
+export async function fetchPhotoSummary(batchId: string, devUser?: string): Promise<ImportResult<PhotoSummary>> {
+  if (isMock()) {
+    const by_status: Record<string, number> = {};
+    for (const photo of mock.photos) by_status[photo.status] = (by_status[photo.status] ?? 0) + 1;
+    return { status: "ok", value: { batch_id: batchId, total: mock.photos.length, by_status, by_match_status: {}, duplicates: 0, processing: 0 } };
+  }
+  return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/photos/summary", { params: { path: { batch_id: batchId } } }), PHOTO_BATCH_MESSAGES);
 }
 
 export async function fetchPhotoFolders(batchId: string, devUser?: string): Promise<ImportResult<PhotoFolders>> {

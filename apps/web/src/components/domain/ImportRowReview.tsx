@@ -113,7 +113,23 @@ function rowTitleOf(row: ImportRow): string {
   return typeof denomination === "string" && denomination.trim() ? denomination.trim() : "Sin denominación";
 }
 
-export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]; opinions: ReadonlyMap<string, GeminiOpinion>; onOpen: (row: ImportRow) => void }) {
+export interface RowPhotoThumb {
+  url: string | null;
+  count: number;
+}
+
+export function RowList({
+  rows,
+  opinions,
+  onOpen,
+  photos,
+}: {
+  rows: readonly ImportRow[];
+  opinions: ReadonlyMap<string, GeminiOpinion>;
+  onOpen: (row: ImportRow) => void;
+  /** Miniatura y número de fotos de cada fila, si el lote trae fotos (fix importacion-esperar-fotos). */
+  photos?: ReadonlyMap<string, RowPhotoThumb>;
+}) {
   if (rows.length === 0) return <p className="text-base text-gris-texto">No hay filas en esta vista.</p>;
   return (
     <div className="overflow-x-auto rounded-2xl border border-borde">
@@ -130,6 +146,11 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
             <th scope="col" className="w-36 px-4 py-2.5 font-semibold">
               Código
             </th>
+            {photos && (
+              <th scope="col" className="w-24 px-4 py-2.5 font-semibold">
+                Fotos
+              </th>
+            )}
             <th scope="col" className="px-4 py-2.5 font-semibold">
               Qué pasa
             </th>
@@ -149,13 +170,16 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
                   {rowTitleOf(row)}
                 </th>
                 <td className="px-4 py-2 font-mono text-sm font-bold text-terracota">{rowCode(row) ?? "—"}</td>
+                {photos && (
+                  <td className="px-4 py-2">
+                    <RowPhotoCell thumb={photos.get(row.id)} />
+                  </td>
+                )}
                 <td className="px-4 py-2">{pending && opinion ? <OpinionChip opinion={opinion} /> : rowState(row)}</td>
                 <td className="px-4 py-2 text-right">
-                  {(pending || row.has_validation_errors || row.classification === "UPDATE") && (
-                    <Button size="sm" variant="outline" onClick={() => onOpen(row)}>
-                      {pending ? "Decidir" : row.classification === "UPDATE" && !row.has_validation_errors ? "Ver cambios" : "Ver"}
-                    </Button>
-                  )}
+                  <Button size="sm" variant={pending || row.has_validation_errors ? "outline" : "secondary"} onClick={() => onOpen(row)}>
+                    {pending ? "Decidir" : row.has_validation_errors ? "Ver" : row.classification === "UPDATE" ? "Ver cambios" : "Ver ficha"}
+                  </Button>
                 </td>
               </tr>
             );
@@ -163,6 +187,24 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RowPhotoCell({ thumb }: { thumb?: RowPhotoThumb }) {
+  if (!thumb || thumb.count === 0) return <span className="text-sm text-gris-texto">Sin foto</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      {thumb.url ? (
+        // Miniatura firmada del almacenamiento: no pasa por el optimizador de imágenes.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumb.url} alt="" className="size-10 rounded-md border border-borde object-cover" />
+      ) : (
+        <span aria-hidden="true" className="grid size-10 place-items-center rounded-md bg-crema text-xs text-gris-texto">
+          …
+        </span>
+      )}
+      <span className="text-sm text-gris-texto">{thumb.count === 1 ? "1 foto" : `${thumb.count} fotos`}</span>
+    </span>
   );
 }
 
@@ -259,7 +301,17 @@ export function RowDecisionPanel({
       </div>
 
       {!resolvable ? (
-        <div className="flex-1 overflow-y-auto px-2 py-2">{fallback}</div>
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+          {row.preview && (
+            <details open className="rounded-2xl border border-borde bg-white">
+              <summary className="cursor-pointer px-4 py-3 text-base font-extrabold text-tinta">Así quedaría la ficha</summary>
+              <div className="px-4 pb-4">
+                <PiecePreview preview={row.preview} />
+              </div>
+            </details>
+          )}
+          {fallback}
+        </div>
       ) : (
         <>
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
@@ -271,6 +323,14 @@ export function RowDecisionPanel({
                 </p>
               ))}
             </section>
+            {row.preview && (
+              <details className="rounded-2xl border border-borde">
+                <summary className="cursor-pointer px-4 py-3 text-base font-extrabold text-tinta">Así quedaría la ficha si es una pieza nueva</summary>
+                <div className="px-4 pb-4">
+                  <PiecePreview preview={row.preview} />
+                </div>
+              </details>
+            )}
 
             {opinion && (
               <section aria-label="Lo que opina Gemini" className="flex flex-col gap-1 rounded-2xl border border-gemini-violeta/30 bg-gemini-violeta/5 p-4 text-sm">
@@ -392,5 +452,101 @@ function Choice({
         <span className="text-gris-texto">{reason}</span>
       </span>
     </label>
+  );
+}
+
+type PiecePreviewData = NonNullable<ImportRow["preview"]>;
+
+const NOT_RECORDED = "Sin registrar";
+
+function previewText(value: string | null | undefined): string {
+  return value && value.trim() ? value : NOT_RECORDED;
+}
+
+/**
+ * «Así quedaría la ficha» (change `importacion-vista-previa-ficha`): la fila como la mostraría la
+ * ficha de la pieza nueva, con los mismos grupos y los nombres de los términos y de la ubicación.
+ */
+export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
+  const codes = (preview.codes ?? []).map((code) => (code.type ? `${code.type} ${code.value}` : code.value)).join(" · ");
+  const measures = (preview.dimensions ?? [])
+    .map((item) => {
+      const entry = item as { dimension?: string; value?: number; unit?: string };
+      return entry.dimension ? `${entry.dimension.charAt(0).toUpperCase()}${entry.dimension.slice(1)} ${String(entry.value ?? "").replace(".", ",")} ${entry.unit ?? ""}`.trim() : null;
+    })
+    .filter(Boolean)
+    .join(" · ");
+  const location = preview.location ?? (preview.location_text ? `«${preview.location_text}»: no existe en el museo` : null);
+  const unmatched = preview.unmatched_terms ?? {};
+  // A value of the file that is not in the list is shown with its text (not «Sin registrar»), in
+  // amber: the person sees it came in the file and has to be added to the list.
+  const withUnmatched = (value: string | null | undefined, vocabulary: string): string | null | undefined => {
+    const texts = unmatched[vocabulary] ?? [];
+    if (texts.length === 0) return value;
+    const note = `${texts.map((text) => `«${text}»`).join(", ")}: no está en la lista`;
+    return value && value.trim() ? `${value} · ${note}` : note;
+  };
+  const warned = new Set<string>();
+  if (!preview.location && preview.location_text) warned.add("Ubicación");
+  for (const [label, vocabulary] of [
+    ["Tipo de bien", "OBJECT_TYPE"],
+    ["Categoría", "CATEGORY"],
+    ["Forma de adquisición", "ACQUISITION_METHOD"],
+    ["Materiales", "MATERIAL"],
+    ["Estado de conservación", "CONSERVATION_STATUS"],
+  ] as const) {
+    if ((unmatched[vocabulary] ?? []).length > 0) warned.add(label);
+  }
+  const groups: { title: string; items: [string, string | null | undefined][] }[] = [
+    {
+      title: "Identificación",
+      items: [
+        ["Denominación", preview.denomination],
+        ["Colección", preview.collection],
+        ["Códigos", codes],
+        ["Régimen de tenencia", preview.tenure_regime],
+        ["Tipo de bien", withUnmatched(preview.object_type, "OBJECT_TYPE")],
+        ["Categoría", withUnmatched(preview.category, "CATEGORY")],
+      ],
+    },
+    { title: "Descripción", items: [["Descripción", preview.description]] },
+    {
+      title: "Procedencia y época",
+      items: [
+        ["Procedencia", preview.provenance],
+        ["Época (texto original)", preview.epoch_original_text],
+        ["Autor", preview.author],
+        ["Forma de adquisición", withUnmatched(preview.acquisition_method, "ACQUISITION_METHOD")],
+        ["Fecha de ingreso", preview.entry_date],
+      ],
+    },
+    {
+      title: "Medidas y materiales",
+      items: [
+        ["Materiales", withUnmatched((preview.materials ?? []).join(", "), "MATERIAL")],
+        ["Medidas (texto original)", preview.dimensions_text],
+        ["Medidas detalladas", measures],
+      ],
+    },
+    { title: "Conservación", items: [["Estado de conservación", withUnmatched(preview.conservation_status, "CONSERVATION_STATUS")]] },
+    { title: "Ubicación", items: [["Ubicación", location]] },
+    { title: "Observaciones", items: [["Observaciones", preview.notes]] },
+  ];
+  return (
+    <div className="flex flex-col divide-y divide-borde">
+      {groups.map((group) => (
+        <section key={group.title} aria-label={group.title} className="py-3 first:pt-0">
+          <h3 className="mb-2 text-sm font-extrabold text-terracota">{group.title}</h3>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+            {group.items.map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-sm text-gris-texto">{label}</dt>
+                <dd className={cn("text-base break-words", warned.has(label) ? "font-semibold text-ambar-texto" : value && value.trim() ? "font-semibold text-tinta" : "text-gris-texto")}>{previewText(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+    </div>
   );
 }

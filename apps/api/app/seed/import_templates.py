@@ -49,6 +49,41 @@ def measures(*magnitudes: str) -> dict[str, Any]:
 CODE_TRANSFORMS = ["trim", "absence_markers", "split_concatenated"]
 TEXT = ["trim"]
 
+#: How the museum files write the conservation state, as the terms of its list (importacion-
+#: aplicar-vocabularios, D2). [SUPUESTO CV1] «En perfecto estado» is «Bueno»; «Restaurado» and
+#: the mixed values («Bueno deteriorado») are left to the person: they are not «En restauración».
+CONSERVATION_VALUES: dict[str, str] = {
+    **dict.fromkeys(
+        ["Bueno", "Buena", "Buen estado", "En perfecto estado", "En perfecto"], "BUENO"
+    ),
+    **dict.fromkeys(
+        ["Regular", "Regular estado", "En regular estado", "Estado regular"], "REGULAR"
+    ),
+    **dict.fromkeys(
+        [
+            "Malo",
+            "Mala",
+            "Mal estado",
+            "Deteriorado",
+            "Deteriorada",
+            "Dañado",
+            "Dañada",
+            "Dañado (apolillado)",
+            "Apolillado",
+        ],
+        "MALO",
+    ),
+}
+
+
+def conservation_column(source: str) -> "TemplateColumn":
+    return TemplateColumn(
+        source,
+        terms("CONSERVATION_STATUS"),
+        [*TEXT, "value_map"],
+        value_map=CONSERVATION_VALUES,
+    )
+
 
 @dataclass(frozen=True)
 class TemplateColumn:
@@ -60,6 +95,9 @@ class TemplateColumn:
     # Several columns into one target, joined with ``join`` (design D3).
     sources: tuple[str, ...] = ()
     join: str | None = None
+    # Values of the file and the term each one is (``terms`` columns; importacion-aplicar-
+    # vocabularios, D2). Compared ignoring case, accents and repeated spaces.
+    value_map: dict[str, str] | None = None
 
     @property
     def headers(self) -> list[str]:
@@ -73,6 +111,8 @@ class TemplateColumn:
             entry["join"] = self.join
         if self.transforms:
             entry["transforms"] = list(self.transforms)
+        if self.value_map:
+            entry["value_map"] = dict(self.value_map)
         if self.aliases:
             entry["aliases"] = list(self.aliases)
         if not self.required:
@@ -153,7 +193,7 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Técnica de decoración"),
         column("Descripción del bien", target("description"), TEXT, "Descripción"),
         column("Descripción de decoración"),
-        column("Estado de conservación (bueno, regular, malo)", terms("CONSERVATION_STATUS"), TEXT),
+        conservation_column("Estado de conservación (bueno, regular, malo)"),
         column("Estado de integridad (completo, incompleto, fragmentado)"),
         column("Detalle de conservación (deterioros)"),
         column("Tratamiento de conservación"),
@@ -168,7 +208,7 @@ BD_ESTANDARIZADA = PredefinedTemplate(
         column("Dirección de propietario", SENSITIVE),
         column("Nombre de localización (inmueble)", SENSITIVE),
         column("Dirección de localización (inmueble)", SENSITIVE),
-        column("Ubicación en inmueble"),
+        column("Ubicación en inmueble", target("location"), TEXT),
         column("Observaciones", target("notes"), TEXT),
     ),
 )
@@ -217,7 +257,7 @@ FICHA_RN = PredefinedTemplate(
             sources=("Dimensiones", "Dimensiones (2)", "Dimensiones (3)", "Dimensiones (4)"),
             join="; ",
         ),
-        column("Estado de conservación (bueno, regular, malo)", terms("CONSERVATION_STATUS"), TEXT),
+        conservation_column("Estado de conservación (bueno, regular, malo)"),
         column("Estado de integridad (completo, incompleto, fragmentado)"),
         column("Detalle de conservación (deterioros)"),
         column("Colección", target("collection"), TEXT),
@@ -243,7 +283,7 @@ FICHA_RN = PredefinedTemplate(
             "departamento)",
             SENSITIVE,
         ),
-        column("Ubicación en el inmueble"),
+        column("Ubicación en el inmueble", target("location"), TEXT),
         column("Situación (Habida-No habida)"),
         column("Referencia"),
         column("Propietario (persona natural o jurídica)", OWNER),
@@ -326,3 +366,36 @@ def sync_predefined_templates(session: Session) -> tuple[list[str], list[str]]:
             retired.append(name)
     session.flush()
     return created, retired
+
+
+def refresh_predefined_templates(session: Session) -> list[str]:
+    """Bring the stored mapping of each real template up to the one in this module.
+
+    ``sync_predefined_templates`` only creates the templates that are missing, so a database seeded
+    before a template changed (for instance, «Ubicación en inmueble» mapped to the location in
+    importacion-aplicar-vocabularios) kept validating with the old mapping: the location and the
+    conservation values were never read. The previous mapping stays in the audit log (RN-005).
+    Idempotent. Needs an audit context. Returns the names updated."""
+    from app.modules.imports.mapping import MappingSpecV1
+    from app.modules.imports.models import ImportMappingTemplate
+    from app.modules.imports.templates import header_signature
+
+    updated = []
+    for predefined in PREDEFINED_TEMPLATES:
+        template = session.scalar(
+            select(ImportMappingTemplate).where(
+                ImportMappingTemplate.name == predefined.name,
+                ImportMappingTemplate.deleted_at.is_(None),
+            )
+        )
+        if template is None:
+            continue
+        mapping = MappingSpecV1.model_validate(predefined.mapping()).as_json()
+        signature = header_signature(predefined.headers)
+        if template.mapping == mapping and template.header_signature == signature:
+            continue
+        template.mapping = mapping
+        template.header_signature = signature
+        updated.append(predefined.name)
+    session.flush()
+    return updated

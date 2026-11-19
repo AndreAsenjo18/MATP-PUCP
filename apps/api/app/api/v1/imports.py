@@ -40,7 +40,7 @@ from app.api.stubs import (
 )
 from app.core import jobs
 from app.core.config import Settings
-from app.core.errors import ConflictError, NotFound, ValidationFailed
+from app.core.errors import ConflictError, NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.core.storage import ObjectStorage
 from app.modules.ai_suggestions.apply import validate_field_value
@@ -80,10 +80,12 @@ from app.modules.imports.decisions import (
     approve,
     decide_row,
     editable_batch,
+    photos_processing,
     row_action,
 )
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
+from app.modules.imports.location_map import map_location, unresolved_locations
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
     IDENTIFIER_TARGET,
@@ -118,6 +120,7 @@ from app.modules.imports.photo_upload import (
     request_upload_urls,
 )
 from app.modules.imports.photo_verification import QUEUE as PHOTO_QUEUE
+from app.modules.imports.preview import build_previews
 from app.modules.imports.rollback import rollback_batch
 from app.modules.imports.schemas import (
     ApprovalRequest,
@@ -140,6 +143,7 @@ from app.modules.imports.schemas import (
     ImportPhotoSummary,
     ImportRowOut,
     ImportRowVerdictOut,
+    LocationCorrespondence,
     MappingRequest,
     MappingTemplateCreate,
     MappingTemplateOut,
@@ -165,6 +169,11 @@ from app.modules.imports.schemas import (
     TemplateDryRunRequest,
     TemplateSuggestion,
     TemplateSuggestRequest,
+    TermAddition,
+    UnresolvedLocationOut,
+    UnresolvedLocationsOut,
+    UnresolvedTermOut,
+    UnresolvedTermsOut,
     ValidationSummary,
 )
 from app.modules.imports.service import (
@@ -175,6 +184,7 @@ from app.modules.imports.service import (
     validate_stage,
 )
 from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
+from app.modules.imports.term_fix import add_term, unresolved_terms
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 from app.modules.quality import ai_judgment
@@ -235,6 +245,8 @@ def batch_out(
         if batch.status in APPROVABLE_STATUSES
         else None
     )
+    if approval is not None:  # outside the token: it changes while the photos are processed
+        approval["photos_processing"] = photos_processing(session, batch.id)
     if approval is not None and settings is not None:  # outside the token: it does not change
         approval["photo_quota_warning"] = photo_quota_warning(
             session,
@@ -295,9 +307,10 @@ def _row_out(
     row: ImportRow,
     images: list[ImportImageOut] | None = None,
     matches: list[dict[str, Any]] | None = None,
+    preview: dict[str, Any] | None = None,
 ) -> ImportRowOut:
     return ImportRowOut.from_row(
-        row, action=row_action(row)[0].value, images=images, matches=matches
+        row, action=row_action(row)[0].value, images=images, matches=matches, preview=preview
     )
 
 
@@ -611,6 +624,103 @@ def correct_import_cell(
     return batch_out(session, batch)
 
 
+@router.get(
+    "/imports/{batch_id}/locations",
+    response_model=UnresolvedLocationsOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Ubicaciones del archivo que no existen en el museo",
+    description="Cada ubicación escrita en el archivo que no coincide con una sola ubicación "
+    "activa, con cuántas filas la escriben así (change `importacion-aplicar-vocabularios`).",
+    **implemented(),
+)
+def get_unresolved_locations(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> UnresolvedLocationsOut:
+    get_spreadsheet_batch(session, batch_id)
+    return UnresolvedLocationsOut(
+        items=[
+            UnresolvedLocationOut(text=text, rows=rows)
+            for text, rows in unresolved_locations(session, batch_id)
+        ]
+    )
+
+
+@router.put(
+    "/imports/{batch_id}/locations",
+    response_model=ImportBatchOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Indicar a qué ubicación corresponde una ubicación del archivo",
+    description="Guarda en el mapeo del lote la correspondencia «texto del archivo → ubicación» "
+    "(la ubicación puede haberse creado en ese momento). El lote vuelve a «mapeado» para "
+    "validarse de nuevo con `POST /imports/{batch_id}/validate`, y todas las filas que escriben "
+    "ese texto quedan con esa ubicación (change `importacion-aplicar-vocabularios`).",
+    **implemented(),
+)
+def put_location_correspondence(
+    batch_id: uuid.UUID, body: LocationCorrespondence, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    get_spreadsheet_batch(session, batch_id)
+    writer(session, user, f"Ubicación del archivo «{body.text}» en la revisión del lote")
+    batch = map_location(session, batch_id, text=body.text, location_id=body.location_id)
+    session.commit()
+    return batch_out(session, batch)
+
+
+@router.get(
+    "/imports/{batch_id}/terms",
+    response_model=UnresolvedTermsOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Valores del archivo que no están en las listas",
+    description="Cada valor de una lista de la ficha (materiales, tipo de bien, categoría, estado "
+    "de conservación, forma de adquisición) que no está en ella, con cuántas filas lo escriben así "
+    "y si la lista lo tiene desactivado (change `importacion-agregar-terminos`).",
+    **implemented(),
+)
+def get_unresolved_terms(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> UnresolvedTermsOut:
+    get_spreadsheet_batch(session, batch_id)
+    return UnresolvedTermsOut(
+        items=[
+            UnresolvedTermOut(
+                vocabulary=item.vocabulary,
+                vocabulary_name=item.vocabulary_name,
+                text=item.text,
+                rows=item.rows,
+                inactive_term=item.inactive_term,
+            )
+            for item in unresolved_terms(session, batch_id)
+        ]
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/terms",
+    response_model=ImportBatchOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Agregar a la lista un valor del archivo",
+    description="Agrega el valor a la lista (o reactiva el término desactivado con ese nombre) "
+    "desde la revisión del lote. Exige además `vocabularies.manage` (RN-010). El lote vuelve a "
+    "«mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change "
+    "`importacion-agregar-terminos`).",
+    **implemented(),
+)
+def post_term_addition(
+    batch_id: uuid.UUID, body: TermAddition, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    if not user.can("vocabularies.manage"):
+        raise PermissionDenied(
+            "Agregar un valor a una lista es administrar vocabularios: pídalo a quien administra "
+            "las listas (vocabularies.manage).",
+            details={"permission": "vocabularies.manage"},
+        )
+    get_spreadsheet_batch(session, batch_id)
+    writer(session, user, f"«{body.text}» agregado a la lista desde la revisión del lote")
+    batch = add_term(session, batch_id, vocabulary=body.vocabulary, text=body.text)
+    session.commit()
+    return batch_out(session, batch)
+
+
 def _ai_judgment_out(session: Session, batch_id: uuid.UUID) -> ImportAiJudgmentOut:
     pairs = ai_judgment.batch_verdicts(session, batch_id)
     run_ids = {verdict.run_id for _candidate, verdict in pairs}
@@ -769,13 +879,17 @@ def get_import_batch_diffs(
     rows, total = paginate(session, statement, params)
     storage: ObjectStorage = request.app.state.storage
     candidates = enrich_matches(session, rows)
+    previews = build_previews(session, list(rows))
     images: dict[uuid.UUID | None, list[ImportImageOut]] = {}
     for image in batch_images(session, batch.id):
         images.setdefault(image.import_row_id, []).append(
             ImportImageOut.from_image(image, _preview_url(storage, image))
         )
     return ImportDiffsPage(
-        items=[_row_out(row, images.get(row.id), candidates.get(row.id)) for row in rows],
+        items=[
+            _row_out(row, images.get(row.id), candidates.get(row.id), previews.get(row.id))
+            for row in rows
+        ],
         total=total,
         page=params.page,
         page_size=params.page_size,
@@ -1186,7 +1300,11 @@ def summarize_import_photos(
     batch_id: uuid.UUID, session: SessionDep, user: Preparer
 ) -> ImportPhotoSummary:
     get_batch(session, batch_id)
-    return ImportPhotoSummary(batch_id=batch_id, **photo_summary(session, batch_id))
+    return ImportPhotoSummary(
+        batch_id=batch_id,
+        processing=photos_processing(session, batch_id),
+        **photo_summary(session, batch_id),
+    )
 
 
 @router.patch(

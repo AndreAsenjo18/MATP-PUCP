@@ -41,6 +41,11 @@ export interface SearchFilters {
   hasAlerts: boolean | null;
   /** Una alerta de completitud puntual (p. ej. «sin foto»), más específica que `hasAlerts`. */
   alertCode: AlertCode | null;
+  /**
+   * Las piezas que recibieron fotos de un lote de importación (change `importacion-fotos-progreso`):
+   * llega con el enlace «Ver las piezas en Búsqueda» y solo se ve como chip, sin control propio.
+   */
+  importBatchId: string | null;
 }
 
 export const EMPTY_FILTERS: SearchFilters = {
@@ -60,6 +65,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   epochEndYear: null,
   hasAlerts: null,
   alertCode: null,
+  importBatchId: null,
 };
 
 /** Nombre del filtro en la API (`PieceFilter`) para cada filtro de la pantalla. */
@@ -80,6 +86,7 @@ const API_KEYS: Record<keyof SearchFilters, string> = {
   epochEndYear: "epoch_end_year",
   hasAlerts: "has_alerts",
   alertCode: "alert_code",
+  importBatchId: "import_batch_id",
 };
 
 export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
@@ -99,6 +106,7 @@ export const FILTER_LABELS: Record<keyof SearchFilters, string> = {
   epochEndYear: "Época hasta",
   hasAlerts: "Completitud",
   alertCode: "Completitud",
+  importBatchId: "Fotos importadas",
 };
 
 /** Lo que diría una persona al buscar cada alerta de completitud, para el chip y la IA del buscador. */
@@ -129,7 +137,8 @@ export function secondaryFiltersActive(filters: SearchFilters): boolean {
 
 /** Cuántos filtros de «Más filtros» están activos (change `reportes-vista-simplificada`, D3). */
 export function secondaryFiltersCount(filters: SearchFilters): number {
-  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).filter((key) => !MAIN_FILTER_KEYS.includes(key) && isActive(filters[key])).length;
+  // The batch filter has no control in «Más filtros»: it is only a chip.
+  return (Object.keys(EMPTY_FILTERS) as (keyof SearchFilters)[]).filter((key) => !MAIN_FILTER_KEYS.includes(key) && key !== "importBatchId" && isActive(filters[key])).length;
 }
 
 /** Filtros activos en el formato de la API: query de `GET /search` y `filters` de la exportación. */
@@ -185,6 +194,7 @@ export function filtersFromSearchParams(params: { get(name: string): string | nu
   filters.epochStartYear = yearParam(params.get(API_KEYS.epochStartYear));
   filters.epochEndYear = yearParam(params.get(API_KEYS.epochEndYear));
   filters.alertCode = (params.get(API_KEYS.alertCode)?.trim() as AlertCode | undefined) || null;
+  filters.importBatchId = params.get(API_KEYS.importBatchId)?.trim() || null;
   return filters;
 }
 
@@ -215,6 +225,7 @@ export function activeChips(filters: SearchFilters, names: Record<string, string
   if (filters.epochStartYear !== null) add("epochStartYear", String(filters.epochStartYear));
   if (filters.epochEndYear !== null) add("epochEndYear", String(filters.epochEndYear));
   if (filters.hasAlerts !== null) add("hasAlerts", filters.hasAlerts ? "Solo piezas incompletas" : "Solo piezas completas");
+  if (filters.importBatchId) add("importBatchId", "las del lote de fotos");
   if (filters.alertCode) add("alertCode", ALERT_SEARCH_LABELS[filters.alertCode] ?? filters.alertCode);
   return chips;
 }

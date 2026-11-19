@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 5f1c2cb756ac8fa6add466581f78079bd637e16bf3eda15b263505a5de4b48e7
+ * openapi-sha256: 39f52a1d4c917108119eb26ce9a683ba52b747164f39f9c39550d6fafbc2284c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -875,6 +875,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/imports/{batch_id}/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ubicaciones del archivo que no existen en el museo
+         * @description Cada ubicación escrita en el archivo que no coincide con una sola ubicación activa, con cuántas filas la escriben así (change `importacion-aplicar-vocabularios`).
+         */
+        get: operations["getUnresolvedLocations"];
+        /**
+         * Indicar a qué ubicación corresponde una ubicación del archivo
+         * @description Guarda en el mapeo del lote la correspondencia «texto del archivo → ubicación» (la ubicación puede haberse creado en ese momento). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate`, y todas las filas que escriben ese texto quedan con esa ubicación (change `importacion-aplicar-vocabularios`).
+         */
+        put: operations["putLocationCorrespondence"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports/{batch_id}/log": {
         parameters: {
             query?: never;
@@ -1175,6 +1199,30 @@ export interface paths {
          * @description Escribe el valor corregido en la columna de la fila guardada (por ejemplo, un código I con una errata) sin volver a subir el archivo, que no se modifica. La fila conserva el valor original de cada celda corregida y el cambio queda auditado. El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-corregir-celda`).
          */
         patch: operations["correctImportCell"];
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Valores del archivo que no están en las listas
+         * @description Cada valor de una lista de la ficha (materiales, tipo de bien, categoría, estado de conservación, forma de adquisición) que no está en ella, con cuántas filas lo escriben así y si la lista lo tiene desactivado (change `importacion-agregar-terminos`).
+         */
+        get: operations["getUnresolvedTerms"];
+        put?: never;
+        /**
+         * Agregar a la lista un valor del archivo
+         * @description Agrega el valor a la lista (o reactiva el término desactivado con ese nombre) desde la revisión del lote. Exige además `vocabularies.manage` (RN-010). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-agregar-terminos`).
+         */
+        post: operations["postTermAddition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/validate": {
@@ -2864,6 +2912,12 @@ export interface components {
             photo_quota_warning?: string | null;
             /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
             photos?: components["schemas"]["PhotoApprovalOut"] | null;
+            /**
+             * Photos Processing
+             * @description Fotos que el servidor todavía verifica o empareja: mientras haya, no se puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).
+             * @default 0
+             */
+            photos_processing: number;
             /**
              * Skip
              * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).
@@ -5328,6 +5382,12 @@ export interface components {
              * @description Fotos que ya están en la pieza destino y esperan confirmación.
              */
             duplicates: number;
+            /**
+             * Processing
+             * @description Fotos que el servidor todavía verifica o empareja: el avance del paso «Revisar y aprobar» (change importacion-fotos-progreso).
+             * @default 0
+             */
+            processing: number;
             /** Total */
             total: number;
         };
@@ -5417,6 +5477,8 @@ export interface components {
             matches: {
                 [key: string]: unknown;
             }[];
+            /** @description Así quedaría la ficha de la pieza nueva (`importacion-vista-previa-ficha`). */
+            preview?: components["schemas"]["PiecePreviewOut"] | null;
             /** Raw Data */
             raw_data: {
                 [key: string]: unknown;
@@ -5619,6 +5681,19 @@ export interface components {
              * @description Estado configurable; sus valores se acuerdan en K1.
              */
             status: string;
+        };
+        /**
+         * LocationCorrespondence
+         * @description Body of ``PUT /imports/{batch_id}/locations``: el texto del archivo y la ubicación.
+         */
+        LocationCorrespondence: {
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Text */
+            text: string;
         };
         /** LocationCreate */
         LocationCreate: {
@@ -7462,6 +7537,66 @@ export interface components {
             path: components["schemas"]["LocationRef"][];
         };
         /**
+         * PiecePreviewOut
+         * @description «Así quedaría la ficha»: the row as the sheet of the new piece would show it, with names
+         *     instead of codes (change importacion-vista-previa-ficha).
+         */
+        PiecePreviewOut: {
+            /** Acquisition Method */
+            acquisition_method?: string | null;
+            /** Author */
+            author?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Codes */
+            codes?: components["schemas"]["PreviewCode"][];
+            /** Collection */
+            collection?: string | null;
+            /** Conservation Status */
+            conservation_status?: string | null;
+            /** Denomination */
+            denomination?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Dimensions */
+            dimensions?: {
+                [key: string]: unknown;
+            }[];
+            /** Dimensions Text */
+            dimensions_text?: string | null;
+            /** Entry Date */
+            entry_date?: string | null;
+            /** Epoch Original Text */
+            epoch_original_text?: string | null;
+            /**
+             * Location
+             * @description Ruta de la ubicación encontrada.
+             */
+            location?: string | null;
+            /**
+             * Location Text
+             * @description Ubicación del archivo que no coincide con ninguna del museo.
+             */
+            location_text?: string | null;
+            /** Materials */
+            materials?: string[];
+            /** Notes */
+            notes?: string | null;
+            /** Object Type */
+            object_type?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /** Tenure Regime */
+            tenure_regime?: string | null;
+            /**
+             * Unmatched Terms
+             * @description Valores del archivo que no están en la lista, por código de vocabulario (MATERIAL, OBJECT_TYPE, CATEGORY, CONSERVATION_STATUS, ACQUISITION_METHOD).
+             */
+            unmatched_terms?: {
+                [key: string]: string[];
+            };
+        };
+        /**
          * PieceSearchResponse
          * @description Listado paginado de piezas, con los nombres de campo del contrato (`GET /pieces`).
          * @example {
@@ -7688,6 +7823,13 @@ export interface components {
             is_valid: boolean;
             /** Issues */
             issues: components["schemas"]["FieldIssue"][];
+        };
+        /** PreviewCode */
+        PreviewCode: {
+            /** Type */
+            type?: string | null;
+            /** Value */
+            value: string;
         };
         /**
          * QualityJobOut
@@ -8773,6 +8915,16 @@ export interface components {
             headers: string[];
         };
         /**
+         * TermAddition
+         * @description Body of ``POST /imports/{batch_id}/terms``: la lista y el valor del archivo.
+         */
+        TermAddition: {
+            /** Text */
+            text: string;
+            /** Vocabulary */
+            vocabulary: string;
+        };
+        /**
          * TermCreate
          * @example {
          *       "code": "FRAGMENTADO",
@@ -8944,6 +9096,65 @@ export interface components {
             restored: boolean;
             /** Type Label */
             type_label: string;
+        };
+        /** UnresolvedLocationOut */
+        UnresolvedLocationOut: {
+            /**
+             * Rows
+             * @description Filas que la escriben así.
+             */
+            rows: number;
+            /**
+             * Text
+             * @description La ubicación como está escrita en el archivo.
+             */
+            text: string;
+        };
+        /**
+         * UnresolvedLocationsOut
+         * @description Ubicaciones del archivo que no coinciden con una sola ubicación del museo (change
+         *     importacion-aplicar-vocabularios, D4).
+         */
+        UnresolvedLocationsOut: {
+            /** Items */
+            items?: components["schemas"]["UnresolvedLocationOut"][];
+        };
+        /** UnresolvedTermOut */
+        UnresolvedTermOut: {
+            /**
+             * Inactive Term
+             * @description Término desactivado de la lista con ese nombre: se reactiva.
+             */
+            inactive_term?: string | null;
+            /**
+             * Rows
+             * @description Filas que lo escriben así.
+             */
+            rows: number;
+            /**
+             * Text
+             * @description El valor como está escrito en el archivo.
+             */
+            text: string;
+            /**
+             * Vocabulary
+             * @description Código de la lista (MATERIAL, OBJECT_TYPE…).
+             */
+            vocabulary: string;
+            /**
+             * Vocabulary Name
+             * @description Nombre de la lista.
+             */
+            vocabulary_name: string;
+        };
+        /**
+         * UnresolvedTermsOut
+         * @description Valores del archivo que no están en las listas de la ficha (change
+         *     importacion-agregar-terminos, D2).
+         */
+        UnresolvedTermsOut: {
+            /** Items */
+            items?: components["schemas"]["UnresolvedTermOut"][];
         };
         /**
          * UploadUrlRequest
@@ -12342,6 +12553,144 @@ export interface operations {
             };
         };
     };
+    getUnresolvedLocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnresolvedLocationsOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putLocationCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCorrespondence"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getImportLog: {
         parameters: {
             query?: {
@@ -13423,6 +13772,144 @@ export interface operations {
                 };
             };
             /** @description `batch_not_editable`: el lote ya se aprobó o cerró; `batch_processing`: una etapa está en curso. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getUnresolvedTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnresolvedTermsOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postTermAddition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermAddition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14627,6 +15114,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */
@@ -16898,6 +17387,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 include_loans_for_use?: boolean;
                 /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
@@ -17327,6 +17818,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */

@@ -59,6 +59,7 @@ from app.modules.imports.transforms import (
     parse_transforms,
     run_transforms,
 )
+from app.modules.locations.models import Location, LocationLevel
 
 SPEC_VERSION = 0  # provisional; ``plantillas-mapeo-y-normalizacion`` defines version 1
 IDENTIFIER_TARGET = "identifier"
@@ -87,15 +88,33 @@ FIELD_TARGETS: dict[str, str] = {
     "loan_agreement_ref": "Referencia del contrato de comodato",
     "temporary_inventory_number": "Número de inventario temporal",
     "photo_filename": "Archivo de la foto",
+    "location": "Ubicación (nombre)",
 }
 # The photo file column (importacion-masiva-fotografias, task 3.4; design D3): not a field of the
 # record, it only tells the photo matching which files of the batch belong to the row.
 PHOTO_FILE_FIELD = "photo_filename"
+# Where the piece is (change importacion-aplicar-vocabularios, D3): the name of a location of the
+# museum, resolved when the batch is validated; the piece is moved there when it is created.
+LOCATION_FIELD = "location"
 DEFAULT_TARGETS = frozenset({"tenure_regime", "collection"})
 # In v1 ``denomination`` may come from a default too (design D2); v0 keeps DEFAULT_TARGETS.
 DEFAULT_TARGETS_V1 = DEFAULT_TARGETS | {"denomination"}
 # Fields compared with the catalog in the preview diff (``collection`` is compared by id).
-PIECE_FIELDS = tuple(name for name in FIELD_TARGETS if name not in {"collection", PHOTO_FILE_FIELD})
+PIECE_FIELDS = tuple(
+    name for name in FIELD_TARGETS if name not in {"collection", PHOTO_FILE_FIELD, LOCATION_FIELD}
+)
+# ``terms`` columns whose matched terms fill the piece when it is created (change
+# importacion-aplicar-vocabularios, D1). Any other vocabulary (``TECHNIQUE``) has no field in the
+# record: its text is kept in the source record so it is not lost.
+PIECE_VOCABULARIES = frozenset({"MATERIAL", "OBJECT_TYPE", "CONSERVATION_STATUS", "CATEGORY"})
+VOCABULARY_LABELS: dict[str, str] = {
+    "MATERIAL": "materiales",
+    "OBJECT_TYPE": "tipos de bien",
+    "CONSERVATION_STATUS": "estados de conservación",
+    "CATEGORY": "categorías",
+    "ACQUISITION_METHOD": "formas de adquisición",
+    "TECHNIQUE": "técnicas",
+}
 
 # Carga masiva con IA (change carga-masiva-con-ia, D2): vocabulario de destino ofrecido a la IA
 # para sugerir el mapeo de una columna cuando ninguna plantilla guardada reconoce el archivo.
@@ -161,6 +180,15 @@ def _collection_name_key(name: str) -> str:
     """A collection name as the files write it: without accents, case nor «Colección»."""
     words = [word for word in _fold(name).split() if word not in ("coleccion", "colecciones")]
     return " ".join(words)
+
+
+def _location_key(text: str | None) -> str:
+    """Name of a location to compare: no accents, case, «N°»/«Nº»/«No.» nor punctuation."""
+    if not text:
+        return ""
+    folded = _fold(text)
+    folded = re.sub(r"\bn\s*[°ºo]\.?\s*", " ", folded)
+    return " ".join(re.sub(r"[^\w\s]", " ", folded).split())
 
 
 def _fold(text: str) -> str:
@@ -590,6 +618,7 @@ class MappingContext:
         self._names: dict[str, list[uuid.UUID]] | None = None
         self._acronyms: dict[uuid.UUID, str | None] = {}
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
+        self._locations: dict[str, list[uuid.UUID]] | None = None
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
     @property
@@ -628,6 +657,23 @@ class MappingContext:
                 )
         found = self._names.get(_collection_name_key(name), [])
         return found[0] if len(found) == 1 else None
+
+    def locations_named(self, name: str) -> list[uuid.UUID]:
+        """Active locations (below the site) whose name or code is ``name``, ignoring case,
+        accents, «N°» and punctuation: «Deposito N° 1» is «Depósito 1»."""
+        if self._locations is None:
+            self._locations = {}
+            for location_id, location_name, code in self._session.execute(
+                select(Location.id, Location.name, Location.code).where(
+                    Location.deleted_at.is_(None),
+                    Location.is_active.is_(True),
+                    Location.level != LocationLevel.SITE,
+                )
+            ):
+                for key in {_location_key(location_name), _location_key(code)}:
+                    if key:
+                        self._locations.setdefault(key, []).append(location_id)
+        return list(dict.fromkeys(self._locations.get(_location_key(name), [])))
 
     def vocabulary_terms(self, code: str) -> "dict[str, VocabularyTerm] | None":
         """Terms of a vocabulary by code (active and inactive); None if it does not exist."""
@@ -703,6 +749,17 @@ class MappedRow:
     dimensions: list[dict[str, Any]] | None = None
     # Source data columns with personal data (design D6), stored with the source record.
     sensitive_keys: list[str] = field(default_factory=list)
+    # Matched term codes by vocabulary, applied to a new piece (importacion-aplicar-vocabularios).
+    terms: dict[str, list[str]] = field(default_factory=dict)
+    # Location of the museum named by the row, resolved by name (importacion-aplicar-vocabularios).
+    location_id: uuid.UUID | None = None
+    # The location text when it matched no single location, to point it to one in the review.
+    location_text: str | None = None
+    # File values of the record's vocabularies that are not in the list, by vocabulary: the sheet
+    # preview shows them instead of «Sin registrar» (the text stays in the source record).
+    unmatched_terms: dict[str, list[str]] = field(default_factory=dict)
+    # Mapped columns whose text must also stay in the source record (preview only).
+    kept_sources: set[str] = field(default_factory=set, compare=False, repr=False)
 
     @property
     def proposals(self) -> dict[str, dict[str, Any]]:
@@ -739,6 +796,16 @@ class MappedRow:
             data["dimensions"] = self.dimensions
         if self.sensitive_keys:
             data["sensitive_keys"] = list(self.sensitive_keys)
+        if self.terms:
+            data["terms"] = {vocabulary: list(codes) for vocabulary, codes in self.terms.items()}
+        if self.location_id:
+            data["location_id"] = str(self.location_id)
+        if self.location_text:
+            data["location_text"] = self.location_text
+        if self.unmatched_terms:
+            data["unmatched_terms"] = {
+                vocabulary: list(texts) for vocabulary, texts in self.unmatched_terms.items()
+            }
         return data
 
     @classmethod
@@ -769,6 +836,12 @@ class MappedRow:
             ],
             dimensions=data.get("dimensions"),
             sensitive_keys=list(data.get("sensitive_keys") or []),
+            terms={key: list(value) for key, value in (data.get("terms") or {}).items()},
+            location_id=uuid.UUID(data["location_id"]) if data.get("location_id") else None,
+            location_text=data.get("location_text"),
+            unmatched_terms={
+                key: list(value) for key, value in (data.get("unmatched_terms") or {}).items()
+            },
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -1116,8 +1189,11 @@ def apply_mapping(
     mapped.source_payload = {
         key: value
         for key, value in raw_row.items()
-        if key not in mapped_sources and not key.startswith("__") and value not in (None, "")
+        if (key not in mapped_sources or key in mapped.kept_sources)
+        and not key.startswith("__")
+        and value not in (None, "")
     }
+    _resolve_location(mapped, ctx)
 
     denomination_default = _denomination_default(plan)
     if mapped.fields.get("denomination") is None and denomination_default:
@@ -1346,11 +1422,62 @@ def _map_value(
     elif isinstance(target, TermsTarget):
         matches = _match_terms(target.vocabulary, value, ctx)
         mapped.term_matches[column.source] = matches
+        _store_terms(mapped, column.source, target.vocabulary, matches)
         if target.vocabulary == ACQUISITION_VOCABULARY:
             if matches.matched:
                 mapped.acquisition_method = mapped.acquisition_method or matches.matched[0][1]
             texts = [_text(part) for part in _parts(value)]
             mapped.acquisition_text = mapped.acquisition_text or next(filter(None, texts), None)
+
+
+def _store_terms(mapped: MappedRow, source: str, vocabulary: str, matches: TermMatches) -> None:
+    """Keep the matched terms of a vocabulary of the record; a value that is not in the list is a
+    warning of the row and its text stays in the source record, like the text of a vocabulary
+    the record has no field for (importacion-aplicar-vocabularios, D1, D2)."""
+    if vocabulary in PIECE_VOCABULARIES:
+        codes = mapped.terms.setdefault(vocabulary, [])
+        codes += [code for _text, code in matches.matched if code not in codes]
+    if vocabulary not in PIECE_VOCABULARIES and vocabulary != ACQUISITION_VOCABULARY:
+        mapped.kept_sources.add(source)
+        return
+    if matches.unmatched:
+        mapped.kept_sources.add(source)
+        texts = mapped.unmatched_terms.setdefault(vocabulary, [])
+        texts += [text for text in matches.unmatched if text not in texts]
+    label = VOCABULARY_LABELS.get(vocabulary, vocabulary.lower())
+    for text in matches.unmatched:
+        mapped.warnings.append(
+            RowError(
+                "term_not_in_vocabulary",
+                f"«{text}» no está en la lista de {label}: se conserva en el registro de origen. "
+                "Agréguelo en Administración › Vocabularios y valide de nuevo.",
+                f"{TERMS_TARGET}:{vocabulary}",
+            )
+        )
+
+
+def _resolve_location(mapped: MappedRow, ctx: MappingContext) -> None:
+    """The location the row names, by name; none or several is a warning and the text stays in
+    the source record (importacion-aplicar-vocabularios, D3)."""
+    text = mapped.fields.pop(LOCATION_FIELD, None)
+    if not text:
+        return
+    found = ctx.locations_named(text)
+    if len(found) == 1:
+        mapped.location_id = found[0]
+        return
+    mapped.location_text = text
+    mapped.source_payload.setdefault("Ubicación", text)
+    mapped.warnings.append(
+        RowError(
+            "location_not_found" if not found else "location_ambiguous",
+            f"La ubicación «{text}» no coincide con ninguna ubicación del museo: la pieza queda "
+            "sin ubicación. Créela en Ubicaciones y valide de nuevo."
+            if not found
+            else f"Hay {len(found)} ubicaciones llamadas «{text}»: asigne la ubicación después.",
+            LOCATION_FIELD,
+        )
+    )
 
 
 def _sensitive_columns(mapped: MappedRow, columns: Sequence[ColumnSpecV1]) -> None:
@@ -1485,12 +1612,24 @@ def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatche
         text = _text(part)
         if text is None:
             continue
-        code = by_key.get(_fold(text))
-        if code is None:
-            matches.unmatched.append(text)
-        else:
-            matches.matched.append((text, code))
+        # A whole cell that is not a term may list several («Madera, metal y pintura»): each
+        # part is compared on its own (importacion-aplicar-vocabularios, D1).
+        pieces = [text] if _fold(text) in by_key else _term_list(text)
+        for piece in pieces:
+            code = by_key.get(_fold(piece))
+            if code is None:
+                matches.unmatched.append(piece)
+            else:
+                matches.matched.append((piece, code))
     return matches
+
+
+#: Separators of a list of terms written in one cell of the museum files [SUPUESTO].
+_TERM_LIST_RE = re.compile(r"\s*(?:[,;/\n]|\s+y\s+|\s+e\s+)\s*")
+
+
+def _term_list(text: str) -> list[str]:
+    return [part.strip().rstrip(".") for part in _TERM_LIST_RE.split(text) if part.strip()]
 
 
 def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> list[RowIdentifier]:
