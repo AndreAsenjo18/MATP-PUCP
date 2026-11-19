@@ -25,7 +25,6 @@ from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.modules.imports.classify import (
     ClassifiedRow,
-    ProvisionalSimilarityScorer,
     classify_batch,
     record_duplicate_candidates,
 )
@@ -496,12 +495,10 @@ def validate_stage() -> StageWork:
         acquisition_codes = _acquisition_codes(session)
 
         mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
-        # An observations batch only finds pieces: no similarity (formatos-reales-importacion, D8).
+        # Only codes find a piece: no similarity (change duplicados-solo-por-codigo).
         observations = is_observations(batch)
         classified = classify_batch(
-            session,
-            [mapped[number].row_input(number) for _id, number, _raw in rows],
-            None if observations else ProvisionalSimilarityScorer(session),
+            session, [mapped[number].row_input(number) for _id, number, _raw in rows]
         )
         lines: dict[int, str | None] = {}
         if observations:

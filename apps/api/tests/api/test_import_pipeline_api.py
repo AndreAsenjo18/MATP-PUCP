@@ -405,7 +405,9 @@ def test_preview_shows_the_classification_rules(
     rules = page["classification_rules"]
     assert [rule["order"] for rule in rules] == [1, 2, 3, 4, 5]
     duplicate = next(rule for rule in rules if rule["result"] == "POSSIBLE_DUPLICATE")
-    assert duplicate["threshold"] == 0.75
+    # Change duplicados-solo-por-codigo: only codes find a piece, similarity is not used.
+    assert duplicate["threshold"] is None
+    assert duplicate["description"].startswith("No se usa")
 
 
 def test_validating_again_gives_the_same_rows(

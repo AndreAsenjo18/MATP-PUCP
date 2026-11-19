@@ -9,10 +9,12 @@ Rules, applied in order and exposed to users as ``classification_rules``:
    piece (RN-002), or another row of the batch with the same code I → ``CONFLICT``.
 3. A single candidate piece → ``UPDATE`` with that piece as target.
 4. No candidate and a similarity score at or above the threshold → ``POSSIBLE_DUPLICATE``.
+   Disabled since change ``duplicados-solo-por-codigo``: the pipeline passes no scorer, because
+   only a shared code makes a duplicate and a shared code already gives rule 2 or 3.
 5. Otherwise → ``NEW``.
 
-Similarity sits behind ``SimilarityScorer`` so ``deteccion-duplicados-y-cola-revision`` can
-replace the provisional scorer (denomination tokens and collection) without touching this module.
+Similarity still sits behind ``SimilarityScorer`` (``ProvisionalSimilarityScorer``), unused by the
+pipeline.
 """
 
 import re
@@ -129,7 +131,8 @@ def classification_rules(scorer: SimilarityScorer | None) -> list[dict[str, Any]
         f"Ningún código coincide, pero se parece a una pieza existente (similitud de "
         f"{scorer.threshold:.2f} o más según {scorer.description})."
         if scorer
-        else "Desactivada: no hay un evaluador de similitud configurado."
+        else "No se usa: una fila solo se considera la misma pieza por sus códigos (reglas 2 y "
+        "3). Dos piezas parecidas pueden ser objetos distintos, así que el parecido no la marca."
     )
     return [
         {

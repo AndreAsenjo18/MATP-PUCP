@@ -18,7 +18,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.db import make_session_factory
 from app.core.models_base import new_uuid, utcnow
 from app.main import create_app
-from app.models import AppUser, Base, DuplicateCandidate
+from app.models import AppUser, Base, DuplicateCandidate, Piece, PieceIdentifier
 from app.modules.audit.context import audit_context
 from app.modules.quality.models import (
     DuplicateStatus,
@@ -26,7 +26,7 @@ from app.modules.quality.models import (
     QualityJobStatus,
     QualityJobType,
 )
-from app.modules.quality.scan import recover_interrupted_scans
+from app.modules.quality.scan import RETIRED_NOTE, recover_interrupted_scans
 from app.seed.synthetic import SeedOptions, run_seed
 from tests.api.conftest import MANAGER, api_settings, login_client
 from tests.conftest import SYSTEM_CONTEXT
@@ -127,6 +127,48 @@ def test_a_second_scan_does_not_duplicate_candidates(
     assert job["candidates_created"] == 0
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(DuplicateCandidate)) == before
+
+
+def test_a_scan_closes_open_pairs_that_do_not_share_a_code(
+    client: TestClient, factory: sessionmaker[Session]
+) -> None:
+    """Change duplicados-solo-por-codigo: a pending pair proposed by similarity leaves the queue
+    (closed, not deleted) and every pair still open shares a code."""
+    with factory() as session, audit_context(session, SYSTEM_CONTEXT):
+        pieces = session.scalars(
+            select(Piece).where(~Piece.id.in_(select(PieceIdentifier.piece_id))).limit(2)
+        ).all()
+        assert len(pieces) == 2, "el seed trae piezas sin códigos"
+        first, second = sorted((pieces[0].id, pieces[1].id), key=str)
+        old = DuplicateCandidate(
+            id=new_uuid(),
+            piece_a_id=first,
+            piece_b_id=second,
+            status=DuplicateStatus.PENDING,
+            detected_by="rules",
+            score=Decimal("0.7"),
+            matched_fields=[{"signal": "denomination"}],
+        )
+        session.add(old)
+        session.commit()
+        old_id = old.id
+
+    job_id = client.post(SCAN).json()["id"]
+    assert client.get(f"/api/v1/quality/jobs/{job_id}").json()["status"] == "SUCCEEDED"
+    with factory() as session:
+        closed = session.get(DuplicateCandidate, old_id)
+        manager = session.scalar(select(AppUser).where(AppUser.email == MANAGER))
+        assert closed.status == DuplicateStatus.SUPERSEDED
+        assert closed.reviewed_by_id == manager.id
+        assert closed.resolution_note == RETIRED_NOTE
+        still_open = session.scalars(
+            select(DuplicateCandidate).where(
+                DuplicateCandidate.piece_b_id.is_not(None),
+                DuplicateCandidate.status == DuplicateStatus.PENDING,
+            )
+        ).all()
+        assert still_open
+        assert all(c.matched_fields[0]["signal"] == "identifier" for c in still_open)
 
 
 def test_distinct_pairs_return_only_when_their_fingerprint_changes(

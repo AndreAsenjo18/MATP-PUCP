@@ -41,14 +41,11 @@ def test_gemini_judges_only_this_batch_and_decides_nothing(
     assert started.json()["run"]["id"]
 
     body = pipeline.client.get(f"{BASE}/{judged}/ai-judgment").json()
-    assert body["run"]["status"] == "SUCCEEDED"
     assert 0 < body["min_confidence"] <= 1
     rows = _rows(pipeline, judged)
-    assert body["verdicts"], "el lote de demostración trae filas parecidas a piezas del catálogo"
-    for verdict in body["verdicts"]:
-        assert verdict["row_id"] in rows
-        assert verdict["verdict"] in {"same", "distinct", "unsure"}
-        assert verdict["reason"]
+    # Change duplicados-solo-por-codigo: validation no longer proposes rows by similarity, so a
+    # new batch has no pairs to judge (conflicts are decided by their codes).
+    assert body["verdicts"] == []
     # RN-009: a verdict never decides a row.
     assert {row_id: row["decision"] for row_id, row in rows.items()} == before
     # Only this batch: the other one has no verdicts yet.

@@ -264,8 +264,9 @@ def test_a_near_equal_denomination_in_the_same_collection_is_not_enough() -> Non
     assert not result.enters_queue(CONFIG)
 
 
-def test_several_agreeing_signals_enter_the_queue_without_a_shared_identifier() -> None:
-    """Spec: «Detección incremental al editar» — same collection, author, provenance and epoch."""
+def test_several_agreeing_signals_do_not_make_a_duplicate_without_a_shared_code() -> None:
+    """Change duplicados-solo-por-codigo: same collection, author, provenance and epoch, and a
+    near-equal denomination still score high, but similar pieces can be different objects."""
     shared = {
         "collection_lineage": (ROOT,),
         "author": "Taller Urbano",
@@ -278,7 +279,7 @@ def test_several_agreeing_signals_enter_the_queue_without_a_shared_identifier() 
     result = score_pair(a, b)
     assert not result.shared_identifier
     assert result.score >= CONFIG.min_score
-    assert result.enters_queue(CONFIG)
+    assert not result.enters_queue(CONFIG)
 
 
 def test_without_a_shared_identifier_the_score_tops_out_at_075() -> None:

@@ -20,7 +20,6 @@ from app.modules.identification.service import add_identifier
 from app.modules.quality import incremental
 from app.modules.quality.incremental import QUEUE, process_pending_items
 from app.modules.quality.models import (
-    DuplicateStatus,
     QualityJobItem,
     QualityJobItemReason,
     QualityJobItemStatus,
@@ -102,18 +101,17 @@ def test_creating_a_piece_queues_it_once(
     assert sum(item.piece_id == other.id for item in _pending(session)) == 1
 
 
-def test_incremental_detection_when_editing_the_denomination(
+def test_a_near_equal_denomination_alone_does_not_make_a_duplicate(
     session: Session,
     act_as: ActAs,
     make_piece: Callable[..., Piece],
     drained: Callable[[], int],
 ) -> None:
-    """Spec: «Detección incremental al editar» — no full scan is needed."""
+    """Change duplicados-solo-por-codigo: same collection, author, provenance and epoch and a
+    near-equal denomination, but no shared code — the edit is detected, no pair is proposed."""
     a = make_piece("Retablo ayacuchano de tres pisos")
     b = make_piece("Caja de imaginero")
     assert drained() == 2
-    session.expire_all()
-    assert _pair(session, a, b) is None
 
     with act_as("CATALOGUER"):
         update_piece(session, b, denomination="Retablo ayacuchano de 3 pisos")
@@ -123,15 +121,7 @@ def test_incremental_detection_when_editing_the_denomination(
     ]
     assert drained() == 1
     session.expire_all()
-    candidate = _pair(session, a, b)
-    assert candidate is not None
-    assert candidate.status == DuplicateStatus.PENDING
-    assert {s["signal"] for s in candidate.matched_fields} >= {
-        "denomination",
-        "collection",
-        "author_provenance",
-        "epoch",
-    }
+    assert _pair(session, a, b) is None
     assert session.scalar(select(func.count()).select_from(QualityJob)) == 0  # no full scan
     assert _pending(session) == []
 

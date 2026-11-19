@@ -72,7 +72,7 @@ from app.modules.imports.catalog_photos import (
     save_reading,
     upload_correspondences,
 )
-from app.modules.imports.classify import ProvisionalSimilarityScorer, classification_rules
+from app.modules.imports.classify import classification_rules
 from app.modules.imports.corrections import correct_cell
 from app.modules.imports.decisions import (
     RESOLVABLE,
@@ -780,8 +780,7 @@ def get_import_batch_diffs(
         page=params.page,
         page_size=params.page_size,
         classification_rules=[
-            ClassificationRule.model_validate(rule)
-            for rule in classification_rules(ProvisionalSimilarityScorer(session))
+            ClassificationRule.model_validate(rule) for rule in classification_rules(None)
         ],
         unassigned_images=images.get(None, []),
     )

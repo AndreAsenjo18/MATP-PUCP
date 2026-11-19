@@ -1,18 +1,11 @@
 """Candidate generation by blocks and the ``SimilarityScorer`` interface (spec calidad-datos).
 
 Change deteccion-duplicados-y-cola-revision, design D1 and D3. Comparing every piece with every
-other one (≈2·10⁸ pairs for 20 000 pieces) is not viable, so a pair is only scored when it falls
-into at least one block:
-
-1. ``identifier``: the same normalized value of the same identifier type, current or historical;
-2. ``denomination``: denomination trigram similarity ≥ ``denomination_block_min`` within the same
-   root collection (pieces without collection form their own group);
-3. ``author_provenance``: same normalized author and provenance, and denomination trigram
-   similarity ≥ ``author_provenance_block_min``.
-
-The trigram similarity is computed in Python with the ``pg_trgm`` definition
-(``scoring.trigram_similarity``) through an inverted index per group, so the same code runs on
-PostgreSQL and on the SQLite test suite. Only active pieces that were not merged take part.
+other one (≈2·10⁸ pairs for 20 000 pieces) is not viable, so a pair is only scored when both
+pieces share the normalized value of the same identifier type, current or historical (block
+``identifier``). Since change ``duplicados-solo-por-codigo`` that is also the only way a pair
+becomes a duplicate: similar denomination, author or provenance no longer propose a pair, because
+very similar pieces can be different objects. Only active pieces that were not merged take part.
 
 This module only detects: storing candidates, reopening DISTINCT pairs whose fingerprint changed
 and the background jobs belong to tasks 2.3 and 2.4.
@@ -38,15 +31,10 @@ from app.modules.quality.scoring import (
     PairScore,
     PieceProfile,
     ScoringConfig,
-    known_author,
-    normalize_text,
     score_pair,
-    trigrams,
 )
 
 BLOCK_IDENTIFIER = "identifier"
-BLOCK_DENOMINATION = "denomination"
-BLOCK_AUTHOR_PROVENANCE = "author_provenance"
 #: How many subjects are processed between two progress reports.
 PROGRESS_EVERY = 100
 
@@ -157,78 +145,26 @@ def load_profiles(
     ]
 
 
-def _jaccard(left: frozenset[str], right: frozenset[str]) -> float:
-    union = len(left | right)
-    return len(left & right) / union if union else 0.0
-
-
-def _root(profile: PieceProfile) -> uuid.UUID | None:
-    return profile.collection_lineage[-1] if profile.collection_lineage else None
-
-
-def _author_provenance_key(profile: PieceProfile) -> tuple[str, str] | None:
-    author, provenance = known_author(profile.author), normalize_text(profile.provenance)
-    return (author, provenance) if author and provenance else None
-
-
 class CatalogIndex:
     """In-memory blocking index over the catalogue profiles."""
 
     def __init__(self, profiles: Iterable[PieceProfile], config: ScoringConfig) -> None:
         self.config = config
         self.profiles: dict[uuid.UUID, PieceProfile] = {}
-        self._grams: dict[uuid.UUID, frozenset[str]] = {}
         self._by_identifier: dict[tuple[str, str], set[uuid.UUID]] = defaultdict(set)
-        self._postings: dict[uuid.UUID | None, dict[str, set[uuid.UUID]]] = defaultdict(
-            lambda: defaultdict(set)
-        )
-        self._by_author_provenance: dict[tuple[str, str], set[uuid.UUID]] = defaultdict(set)
         for profile in profiles:
             if profile.piece_id is None:
                 continue
-            piece_id = profile.piece_id
-            self.profiles[piece_id] = profile
-            self._grams[piece_id] = trigrams(profile.denomination)
+            self.profiles[profile.piece_id] = profile
             for key in profile.shared_identifier_keys():
-                self._by_identifier[key].add(piece_id)
-            for gram in self._grams[piece_id]:
-                self._postings[_root(profile)][gram].add(piece_id)
-            if (key := _author_provenance_key(profile)) is not None:
-                self._by_author_provenance[key].add(piece_id)
-
-    def _similar_denominations(
-        self, grams: frozenset[str], pool: Mapping[str, set[uuid.UUID]], minimum: float
-    ) -> set[uuid.UUID]:
-        shared: dict[uuid.UUID, int] = defaultdict(int)
-        for gram in grams:
-            for piece_id in pool.get(gram, ()):
-                shared[piece_id] += 1
-        return {
-            piece_id
-            for piece_id, count in shared.items()
-            if count / (len(grams) + len(self._grams[piece_id]) - count) >= minimum
-        }
+                self._by_identifier[key].add(profile.piece_id)
 
     def neighbours(self, subject: PieceProfile) -> dict[uuid.UUID, set[str]]:
-        """Catalogue pieces that share at least one block with ``subject``, and which blocks."""
+        """Catalogue pieces that share a normalized identifier with ``subject``."""
         found: dict[uuid.UUID, set[str]] = defaultdict(set)
         for key in subject.shared_identifier_keys():
             for piece_id in self._by_identifier.get(key, ()):
                 found[piece_id].add(BLOCK_IDENTIFIER)
-        grams = self._grams.get(subject.piece_id) if subject.piece_id else None
-        grams = grams if grams is not None else trigrams(subject.denomination)
-        if grams:
-            pool = self._postings.get(_root(subject), {})
-            minimum = self.config.denomination_block_min
-            for piece_id in self._similar_denominations(grams, pool, minimum):
-                found[piece_id].add(BLOCK_DENOMINATION)
-            if (key := _author_provenance_key(subject)) is not None:
-                # Same author and provenance can cross collections: the group is small, so its
-                # members are compared directly instead of through the collection postings.
-                minimum = self.config.author_provenance_block_min
-                for piece_id in self._by_author_provenance.get(key, ()):
-                    if _jaccard(grams, self._grams[piece_id]) >= minimum:
-                        found[piece_id].add(BLOCK_AUTHOR_PROVENANCE)
         if subject.piece_id is not None:
             found.pop(subject.piece_id, None)
         return found

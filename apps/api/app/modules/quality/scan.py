@@ -7,7 +7,12 @@ after an interruption (ADR-010) and the incremental detection (task 2.4) reuses 
 - a new pair enters the queue as ``PENDING`` with its signals and fingerprint;
 - a ``PENDING`` or ``POSTPONED`` pair refreshes its score and signals;
 - a ``DISTINCT`` pair returns to ``PENDING`` only when its fingerprint changed (design D2);
-- ``MERGED`` and ``SUPERSEDED`` pairs are never touched.
+- ``MERGED`` and ``SUPERSEDED`` pairs are never touched;
+- on a full scan, a ``PENDING`` or ``POSTPONED`` catalogue pair that the detection no longer
+  finds (it was proposed by similarity, or the pieces stopped sharing a code) leaves the queue as
+  ``SUPERSEDED`` with the person who launched the scan as reviewer and ``RETIRED_NOTE``
+  (``retire_undetected``, change ``duplicados-solo-por-codigo``). Nothing is deleted and the
+  change stays in the audit log (RN-005).
 """
 
 import logging
@@ -40,6 +45,11 @@ logger = logging.getLogger(__name__)
 #: Actor shown in the audit log for candidates written by the detection.
 DETECTION_ACTOR = "Detección de duplicados"
 DETECTED_BY = "rules"
+#: Why a full scan closed an open pair (change duplicados-solo-por-codigo).
+RETIRED_NOTE = (
+    "Sale de la cola: las piezas no comparten ningún código. Desde ahora solo se proponen como "
+    "duplicado las piezas con un código igual."
+)
 _UNTOUCHED = {DuplicateStatus.MERGED, DuplicateStatus.SUPERSEDED}
 
 
@@ -128,6 +138,38 @@ def sync_candidates(session: Session, pairs: Iterable[CandidatePair]) -> SyncSta
     return stats
 
 
+def retire_undetected(
+    session: Session, pairs: Iterable[CandidatePair], reviewer_id: uuid.UUID
+) -> int:
+    """Close the open catalogue pairs that a full scan did not find again (requires audit context).
+
+    A closed pair needs a reviewer (``review_requires_reviewer``): the person who launched the
+    scan. ``RETIRED_NOTE`` tells why in the queue history.
+    """
+    detected = {(pair.piece_a_id, pair.piece_b_id) for pair in pairs}
+    open_pairs = session.scalars(
+        select(DuplicateCandidate).where(
+            DuplicateCandidate.piece_b_id.is_not(None),
+            DuplicateCandidate.status.in_([DuplicateStatus.PENDING, DuplicateStatus.POSTPONED]),
+        )
+    )
+    now = utcnow()
+    retired = 0
+    for candidate in open_pairs:
+        if candidate.piece_b_id is None:
+            continue
+        if _key(candidate.piece_a_id, candidate.piece_b_id) in detected:
+            continue
+        candidate.status = DuplicateStatus.SUPERSEDED
+        candidate.reviewed_by_id = reviewer_id
+        candidate.reviewed_at = now
+        candidate.resolution_note = RETIRED_NOTE
+        candidate.postponed_until = None
+        retired += 1
+    session.flush()
+    return retired
+
+
 def job_summary(job: QualityJob) -> dict[str, object]:
     return QualityJobOut.model_validate(job).model_dump(mode="json")
 
@@ -204,6 +246,8 @@ def run_full_scan(factory: SessionFactory, job_id: uuid.UUID) -> None:
 
             detection = find_candidates(session, on_progress=progress)
             stats = sync_candidates(session, detection.candidates)
+            if job.requested_by_id is not None:
+                retire_undetected(session, detection.candidates, job.requested_by_id)
             job.status = QualityJobStatus.SUCCEEDED
             job.total_pieces = detection.pieces
             job.processed_pieces = detection.pieces
