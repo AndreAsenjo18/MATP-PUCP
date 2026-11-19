@@ -108,6 +108,13 @@ lote»). El sistema informa las líneas sin foto o sin pieza y aplica las demás
 
 ## 3. Revisar y aprobar
 
+**Avance en tiempo real.** Mientras el servidor verifica las fotos y busca su pieza, arriba aparece un aviso con una
+barra: «Preparando las fotos: 40 de 120 listas». Puede ir revisando las que ya están; **Aprobar** se habilita cuando
+terminan todas. Después de aprobar, el aviso dice «Aplicando las fotos a sus piezas» y que ya **puede salir de la
+pantalla**, porque el proceso sigue en el servidor. Al terminar dice cuántas fotos quedaron y en cuántas piezas, y ofrece
+**Ver las piezas en Búsqueda**: abre la búsqueda con solo las piezas que recibieron fotos del lote (chip **Fotos
+importadas**), para comprobarlas. Si falla, el aviso dice por qué.
+
 Arriba están los **contadores** por estado (propuesta, con advertencia, ambigua, sin asignar, descartada, repetida,
 asignada a mano); pulse uno para filtrar. También puede filtrar por **carpeta**.
 
@@ -130,7 +137,8 @@ AF4: basta la de mayor resolución]. Dos vistas distintas de la misma pieza no s
 
 Antes de aprobar, el sistema avisa cuántas fotos se aplicarán y a cuántas piezas, y lo que **quedará fuera**: fotos sin
 pieza, repetidas sin confirmar, carpetas con la colección sin confirmar, propuestas con un código que no existe o fuera
-del rango. Pulse **Aprobar y aplicar**. Cada foto queda en la galería de su pieza, **a continuación de las que ya tenía**.
+del rango. Pulse **Aprobar y aplicar**. Cada foto queda en la galería de su pieza, **a continuación de las que ya tenía**. Siga el
+avance en el aviso de arriba (ver **Avance en tiempo real**).
 
 En la galería de la ficha, cada foto importada muestra su **procedencia**: la ruta original, el lote y, si la hubo, la
 versión de menor resolución que reemplazó. Nadie puede editarla.

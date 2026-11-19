@@ -9,7 +9,8 @@ import type { BatchPhoto, PhotoFolder } from "@/lib/data/photoBatches";
 import { render, visibleText } from "@/test/render";
 import { PHOTO_WIZARD_STEPS, PhotoUploadStart, UPLOAD_HELP } from "./PhotoCatalogWizard";
 import { draftFor, PhotoReadingView } from "./PhotoReadingStep";
-import { photoKeyDown, PhotoReviewView, stateCounts, visiblePhotos } from "./PhotoReviewStep";
+import { photoProgress } from "@/lib/data/photoBatches";
+import { photoKeyDown, PhotoProgressPanel, PhotoReviewView, stateCounts, visiblePhotos } from "./PhotoReviewStep";
 
 function folder(overrides: Partial<PhotoFolder> = {}): PhotoFolder {
   return {
@@ -192,6 +193,24 @@ describe("paso 3 «Revisar y aprobar»", () => {
     expect(text).toContain("Seleccionar todas las de la carpeta (1)");
     expect(text).toContain("Manta sintética I-0236 · Colección ABC sintética");
     expect(text).toContain("2400 × 1800 px");
+  });
+
+  it("mientras el servidor prepara las fotos muestra el avance y no deja aprobar (importacion-fotos-progreso)", () => {
+    const progress = photoProgress(base.batch as never, { total: 120, by_status: { VERIFIED: 40, UPLOADED: 80 }, processing: 80 });
+    const html = render(<PhotoReviewView {...base} progress={progress} batchId="lote-1" />);
+    const text = visibleText(html);
+    expect(text).toContain("Preparando las fotos: 40 de 120 listas");
+    expect(text).toContain("«Aprobar» se habilita cuando terminen");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Aprobar y aplicar/);
+  });
+
+  it("al terminar dice cuántas fotos quedaron y lleva a la búsqueda filtrada por el lote", () => {
+    const progress = photoProgress({ status: "APPLIED", processing: false, progress: null, counts: { APPLIED_PHOTOS: 3, APPLIED_PIECES: 2 }, status_reason: null }, null);
+    const html = render(<PhotoProgressPanel progress={progress} batchId="lote-1" />);
+    expect(visibleText(html)).toContain("Listo: 3 fotos quedaron en 2 piezas.");
+    expect(visibleText(html)).toContain("Ya puede salir de esta pantalla");
+    expect(html).toContain('href="/busqueda?import_batch_id=lote-1"');
+    expect(visibleText(html)).toContain("Ver las piezas en Búsqueda");
   });
 
   it("sin permiso de aprobar no ofrece el botón", () => {

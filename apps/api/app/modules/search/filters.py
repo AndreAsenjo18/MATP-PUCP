@@ -102,6 +102,10 @@ class PieceFilter(BaseModel):
     lender_name: str | None = None
     loan_agreement_ref: str | None = None
 
+    # Pieces that received photos of an import batch (change importacion-fotos-progreso): the
+    # link «Ver las piezas en Búsqueda» after applying a batch of photos.
+    import_batch_id: uuid.UUID | None = None
+
     # Alerts (from change alertas-y-reporte-incompletas)
     has_alerts: bool | None = None
     alert_code: str | None = None
@@ -262,6 +266,18 @@ class PieceFilter(BaseModel):
         if self.location_id is not None:
             descendant_loc_ids = _descendants(session, Location, self.location_id)
             conditions.append(Piece.current_location_id.in_(descendant_loc_ids))
+
+        if self.import_batch_id is not None:
+            from app.modules.imports.models import ImportPhoto, ImportPhotoStatus
+
+            conditions.append(
+                Piece.id.in_(
+                    select(ImportPhoto.piece_id).where(
+                        ImportPhoto.batch_id == self.import_batch_id,
+                        ImportPhoto.status == ImportPhotoStatus.APPLIED,
+                    )
+                )
+            )
 
         if self.has_inventory_code is True:
             conditions.append(
@@ -515,6 +531,21 @@ class PieceFilter(BaseModel):
                     key="location_id",
                     label="Ubicación",
                     value_display=f"{loc_name or self.location_id} (con descendientes)",
+                )
+            )
+
+        if self.import_batch_id is not None:
+            batch_name = None
+            if session:
+                from app.modules.imports.models import ImportBatch
+
+                batch = session.get(ImportBatch, self.import_batch_id)
+                batch_name = batch.file_name if batch else None
+            active.append(
+                ActiveFilter(
+                    key="import_batch_id",
+                    label="Fotos importadas",
+                    value_display=f"Lote «{batch_name}»" if batch_name else "Lote de fotos",
                 )
             )
 

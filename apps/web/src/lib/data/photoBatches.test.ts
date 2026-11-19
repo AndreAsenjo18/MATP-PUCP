@@ -5,6 +5,9 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  isPhotoWorkRunning,
+  photoBatchSearchHref,
+  photoProgress,
   approvalSentence,
   approvalWarnings,
   createPhotoBatch,
@@ -173,5 +176,35 @@ describe("modo live", () => {
 
     expect(result.status === "ok" && result.value.map((item) => item.id)).toEqual(["f1", "f2"]);
     expect(new URL((fetchMock.mock.calls[0]![0] as Request).url).searchParams.get("folder")).toBe("ALTAS");
+  });
+});
+
+describe("avance de las fotos en «Revisar y aprobar» (change importacion-fotos-progreso)", () => {
+  const preview = { status: "IN_PREVIEW" as const, processing: false, progress: null, counts: null, status_reason: null };
+
+  it("mientras el servidor verifica y empareja, cuenta las listas sin las que aún se suben", () => {
+    const progress = photoProgress(preview, { total: 10, by_status: { PENDING_UPLOAD: 2, UPLOADED: 3, VERIFIED: 5 }, processing: 3 });
+    expect(progress).toMatchObject({ phase: "processing", title: "Preparando las fotos: 5 de 8 listas", fraction: 5 / 8 });
+    expect(isPhotoWorkRunning(progress.phase)).toBe(true);
+  });
+
+  it("sin fotos pendientes no hay aviso ni consulta", () => {
+    const progress = photoProgress(preview, { total: 4, by_status: { VERIFIED: 4 }, processing: 0 });
+    expect(progress.phase).toBe("ready");
+    expect(isPhotoWorkRunning(progress.phase)).toBe(false);
+  });
+
+  it("aprobado: avance por piezas si el servidor lo informa, si no barra indeterminada; dice que puede salir", () => {
+    const counted = photoProgress({ ...preview, status: "APPROVED", processing: true, progress: { stage: "APPLY", done: 30, total: 120 } }, null);
+    expect(counted).toMatchObject({ phase: "applying", title: "Aplicando las fotos a sus piezas: 30 de 120 piezas", fraction: 0.25 });
+    expect(counted.hint).toContain("Puede salir de esta pantalla");
+    expect(photoProgress({ ...preview, status: "APPROVED", processing: true }, null)).toMatchObject({ title: "Aplicando las fotos a sus piezas…", fraction: null });
+  });
+
+  it("aplicado o fallido", () => {
+    expect(photoProgress({ ...preview, status: "APPLIED", counts: { APPLIED_PHOTOS: 1, APPLIED_PIECES: 1 } }, null).title).toBe("Listo: 1 foto quedó en 1 pieza.");
+    const failed = photoProgress({ ...preview, status: "FAILED_APPLY", status_reason: "Falta la foto «a.jpg»." }, null);
+    expect(failed).toMatchObject({ phase: "failed", hint: "Falta la foto «a.jpg»." });
+    expect(photoBatchSearchHref("lote 1")).toBe("/busqueda?import_batch_id=lote+1");
   });
 });
