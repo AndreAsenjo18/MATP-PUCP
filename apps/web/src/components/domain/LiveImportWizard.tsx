@@ -48,7 +48,6 @@ import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/Impo
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
-import { ImportRowAiSuggestions } from "@/components/domain/ImportRowAiSuggestions";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
 import { UploadPanel } from "@/components/domain/ImportUpload";
@@ -173,9 +172,6 @@ export function LiveImportWizard() {
   // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
   // grandes (p. ej. 200 filas); el backend acepta de 1 a 100 (apps/api/app/api/pagination.py).
   const [pageSize, setPageSize] = useState(IMPORT_PAGE_SIZE);
-  // Se incrementa con "Pedir sugerencias de IA para estas filas": cada ImportRowAiSuggestions
-  // visible pide la suya al notar el cambio, en paralelo en vez de una por una (tarea 3.2b).
-  const [aiBulkSignal, setAiBulkSignal] = useState(0);
   const [diffs, setDiffs] = useState<ImportDiffs | null>(null);
   const [allImages, setAllImages] = useState<ReviewImage[]>([]);
   const [log, setLog] = useState<ImportLog | null>(null);
@@ -1094,11 +1090,6 @@ export function LiveImportWizard() {
             </ol>
           </details>
           <div className="flex flex-wrap items-end justify-end gap-3">
-            {batchId && (
-              <Button variant="secondary" onClick={() => setAiBulkSignal((n) => n + 1)}>
-                Pedir sugerencias de IA para estas filas
-              </Button>
-            )}
             <Select
               label="Filas por página"
               fieldClassName="w-auto flex-row items-center gap-2"
@@ -1152,11 +1143,6 @@ export function LiveImportWizard() {
                           : undefined
                       }
                     />
-                  }
-                  aiSuggestions={
-                    batchId ? (
-                      <ImportRowAiSuggestions row={row} batchId={batchId} devUser={devUser} bulkRequestSignal={aiBulkSignal} />
-                    ) : undefined
                   }
                 />
             );
