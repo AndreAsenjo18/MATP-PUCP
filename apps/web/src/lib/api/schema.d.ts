@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 15f3ef5b8460482d9ea52dda0d4b9cac954d343c1b17b6574106b921f8ba4ea4
+ * openapi-sha256: e830ff47a63c78b13d15ce16e67c0351a51a4c0e5085a7c303186963bcb329ae
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1199,6 +1199,30 @@ export interface paths {
          * @description Escribe el valor corregido en la columna de la fila guardada (por ejemplo, un código I con una errata) sin volver a subir el archivo, que no se modifica. La fila conserva el valor original de cada celda corregida y el cambio queda auditado. El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-corregir-celda`).
          */
         patch: operations["correctImportCell"];
+        trace?: never;
+    };
+    "/api/v1/imports/{batch_id}/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Valores del archivo que no están en las listas
+         * @description Cada valor de una lista de la ficha (materiales, tipo de bien, categoría, estado de conservación, forma de adquisición) que no está en ella, con cuántas filas lo escriben así y si la lista lo tiene desactivado (change `importacion-agregar-terminos`).
+         */
+        get: operations["getUnresolvedTerms"];
+        put?: never;
+        /**
+         * Agregar a la lista un valor del archivo
+         * @description Agrega el valor a la lista (o reactiva el término desactivado con ese nombre) desde la revisión del lote. Exige además `vocabularies.manage` (RN-010). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-agregar-terminos`).
+         */
+        post: operations["postTermAddition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/imports/{batch_id}/validate": {
@@ -7558,6 +7582,13 @@ export interface components {
             provenance?: string | null;
             /** Tenure Regime */
             tenure_regime?: string | null;
+            /**
+             * Unmatched Terms
+             * @description Valores del archivo que no están en la lista, por código de vocabulario (MATERIAL, OBJECT_TYPE, CATEGORY, CONSERVATION_STATUS, ACQUISITION_METHOD).
+             */
+            unmatched_terms?: {
+                [key: string]: string[];
+            };
         };
         /**
          * PieceSearchResponse
@@ -8878,6 +8909,16 @@ export interface components {
             headers: string[];
         };
         /**
+         * TermAddition
+         * @description Body of ``POST /imports/{batch_id}/terms``: la lista y el valor del archivo.
+         */
+        TermAddition: {
+            /** Text */
+            text: string;
+            /** Vocabulary */
+            vocabulary: string;
+        };
+        /**
          * TermCreate
          * @example {
          *       "code": "FRAGMENTADO",
@@ -9071,6 +9112,43 @@ export interface components {
         UnresolvedLocationsOut: {
             /** Items */
             items?: components["schemas"]["UnresolvedLocationOut"][];
+        };
+        /** UnresolvedTermOut */
+        UnresolvedTermOut: {
+            /**
+             * Inactive Term
+             * @description Término desactivado de la lista con ese nombre: se reactiva.
+             */
+            inactive_term?: string | null;
+            /**
+             * Rows
+             * @description Filas que lo escriben así.
+             */
+            rows: number;
+            /**
+             * Text
+             * @description El valor como está escrito en el archivo.
+             */
+            text: string;
+            /**
+             * Vocabulary
+             * @description Código de la lista (MATERIAL, OBJECT_TYPE…).
+             */
+            vocabulary: string;
+            /**
+             * Vocabulary Name
+             * @description Nombre de la lista.
+             */
+            vocabulary_name: string;
+        };
+        /**
+         * UnresolvedTermsOut
+         * @description Valores del archivo que no están en las listas de la ficha (change
+         *     importacion-agregar-terminos, D2).
+         */
+        UnresolvedTermsOut: {
+            /** Items */
+            items?: components["schemas"]["UnresolvedTermOut"][];
         };
         /**
          * UploadUrlRequest
@@ -13688,6 +13766,144 @@ export interface operations {
                 };
             };
             /** @description `batch_not_editable`: el lote ya se aprobó o cerró; `batch_processing`: una etapa está en curso. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getUnresolvedTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnresolvedTermsOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postTermAddition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermAddition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El lote no existe o fue eliminado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description `batch_kind_mismatch`: la operación no corresponde al tipo de lote. */
             409: {
                 headers: {
                     [name: string]: unknown;

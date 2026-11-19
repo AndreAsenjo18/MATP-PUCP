@@ -39,6 +39,7 @@ import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
 import { UnresolvedLocationsPanel, type UnresolvedLocation } from "@/components/domain/ImportLocationFix";
+import { UnresolvedTermsPanel, type UnresolvedTerm } from "@/components/domain/ImportTermFix";
 import { createLocation, describeLocationFailure, fetchLocationsTree, type LocationLevelLabel, type LocationNode } from "@/lib/data/locations";
 import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
 import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
@@ -85,7 +86,9 @@ import {
   canAbandon,
   correctImportCell,
   fetchImportAiJudgment,
+  addImportTerm,
   fetchUnresolvedLocations,
+  fetchUnresolvedTerms,
   mapImportLocation,
   fetchImportDiffs,
   requestImportAiJudgment,
@@ -164,6 +167,7 @@ export function LiveImportWizard() {
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   // Ubicaciones del archivo que no existen (importacion-aplicar-vocabularios, D4).
   const [unresolvedLocations, setUnresolvedLocations] = useState<UnresolvedLocation[]>([]);
+  const [unresolvedTerms, setUnresolvedTerms] = useState<UnresolvedTerm[]>([]);
   const [locationTree, setLocationTree] = useState<LocationNode[] | null>(null);
   const [page, setPage] = useState(1);
   // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
@@ -384,6 +388,18 @@ export function LiveImportWizard() {
         void fetchLocationsTree(devUser).then((tree) => {
           if (active && tree.status === "ok") setLocationTree(tree.value);
         });
+    });
+    return () => {
+      active = false;
+    };
+  }, [batchId, showRows, devUser, reload]);
+
+  // Valores del archivo que no están en las listas (change importacion-agregar-terminos).
+  useEffect(() => {
+    if (!batchId || !showRows || getApiMode() === "mock") return;
+    let active = true;
+    void fetchUnresolvedTerms(batchId, devUser).then((result) => {
+      if (active && result.status === "ok") setUnresolvedTerms(result.value.items ?? []);
     });
     return () => {
       active = false;
@@ -681,6 +697,23 @@ export function LiveImportWizard() {
     if (mapped.status !== "ok") {
       setBusy(false);
       return setError(mapped.message);
+    }
+    const started = await startImportValidation(batch.id, devUser);
+    setBusy(false);
+    if (started.status !== "ok") return setError(started.message);
+    setError(null);
+    setReload((n) => n + 1);
+    await loadBatch();
+  }
+
+  /** «Agregar a la lista y validar de nuevo»: agrega el valor a su lista y valida el lote. */
+  async function handleAddTerm(item: UnresolvedTerm) {
+    if (!batch) return;
+    setBusy(true);
+    const added = await addImportTerm(batch.id, item.vocabulary, item.text, devUser);
+    if (added.status !== "ok") {
+      setBusy(false);
+      return setError(added.message);
     }
     const started = await startImportValidation(batch.id, devUser);
     setBusy(false);
@@ -1023,6 +1056,15 @@ export function LiveImportWizard() {
           decidedNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
           onAssign={(text, locationId) => void handleAssignLocation(text, locationId)}
           onCreate={handleCreateLocation}
+        />
+      )}
+      {reviewing && (
+        <UnresolvedTermsPanel
+          items={unresolvedTerms}
+          canManage={hasPermission("vocabularies.manage")}
+          busy={busy}
+          decidedNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
+          onAdd={(item) => void handleAddTerm(item)}
         />
       )}
       {reviewing && !tenureGroup && tenureRows > 0 ? (

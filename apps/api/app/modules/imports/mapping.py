@@ -755,6 +755,9 @@ class MappedRow:
     location_id: uuid.UUID | None = None
     # The location text when it matched no single location, to point it to one in the review.
     location_text: str | None = None
+    # File values of the record's vocabularies that are not in the list, by vocabulary: the sheet
+    # preview shows them instead of «Sin registrar» (the text stays in the source record).
+    unmatched_terms: dict[str, list[str]] = field(default_factory=dict)
     # Mapped columns whose text must also stay in the source record (preview only).
     kept_sources: set[str] = field(default_factory=set, compare=False, repr=False)
 
@@ -799,6 +802,10 @@ class MappedRow:
             data["location_id"] = str(self.location_id)
         if self.location_text:
             data["location_text"] = self.location_text
+        if self.unmatched_terms:
+            data["unmatched_terms"] = {
+                vocabulary: list(texts) for vocabulary, texts in self.unmatched_terms.items()
+            }
         return data
 
     @classmethod
@@ -832,6 +839,9 @@ class MappedRow:
             terms={key: list(value) for key, value in (data.get("terms") or {}).items()},
             location_id=uuid.UUID(data["location_id"]) if data.get("location_id") else None,
             location_text=data.get("location_text"),
+            unmatched_terms={
+                key: list(value) for key, value in (data.get("unmatched_terms") or {}).items()
+            },
         )
 
     def row_input(self, row_number: int) -> RowInput:
@@ -1432,6 +1442,8 @@ def _store_terms(mapped: MappedRow, source: str, vocabulary: str, matches: TermM
         return
     if matches.unmatched:
         mapped.kept_sources.add(source)
+        texts = mapped.unmatched_terms.setdefault(vocabulary, [])
+        texts += [text for text in matches.unmatched if text not in texts]
     label = VOCABULARY_LABELS.get(vocabulary, vocabulary.lower())
     for text in matches.unmatched:
         mapped.warnings.append(

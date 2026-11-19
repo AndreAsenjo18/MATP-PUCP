@@ -69,6 +69,8 @@ ANADIDOS: set[tuple[str, str]] = {
     # Ubicaciones del archivo que no existen (change importacion-aplicar-vocabularios).
     ("get", "/imports/{}/locations"),
     ("put", "/imports/{}/locations"),
+    ("get", "/imports/{}/terms"),
+    ("post", "/imports/{}/terms"),
     # Corregir un valor del archivo en la revisión (change importacion-corregir-celda).
     ("patch", "/imports/{}/rows/{}/cells"),
     ("get", "/quality/duplicates/ai-runs/latest"),
