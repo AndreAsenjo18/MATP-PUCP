@@ -29,6 +29,7 @@ from matp_ai.schemas import (
     finish_completion,
     finish_judgments,
 )
+from matp_ai.search_text import clean_interpretation
 
 ERRORS: dict[int | str, dict[str, object]] = {
     422: {"model": ErrorResponse, "description": "Entrada no válida."},
@@ -184,6 +185,7 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
         summary="RIA-06: traducir una frase de búsqueda a los filtros que ya existen",
     )
     def interpret_search(body: SearchInterpretRequest) -> SearchInterpretation:
-        return provider.interpret_search(body.text, body.valid_values)
+        # «pieza», «muéstrame las…» no son texto que buscar (busqueda-ia-sin-palabras-genericas).
+        return clean_interpretation(provider.interpret_search(body.text, body.valid_values))
 
     return app
