@@ -182,7 +182,7 @@ describe("fila de la previsualización (RF-026)", () => {
 
 describe("aprobación y régimen", () => {
   it("muestra el resumen que se aprueba o el aviso de permiso", () => {
-    const summary = { create: 2, update: 1, skip: 4, summary_token: "t" };
+    const summary = { create: 2, update: 1, skip: 4, photos_processing: 0, summary_token: "t" };
     expect(visibleText(render(<ApprovalPanel summary={summary} canApprove busy={false} onConfirm={noop} />))).toContain(
       "Se crearán 2 piezas nuevas, se actualizarán 1 pieza y 4 filas no se aplicarán.",
     );
@@ -191,11 +191,11 @@ describe("aprobación y régimen", () => {
 
   it("avisa de la cuota de fotos sin bloquear la aprobación (importacion-masiva-fotografias 5.5)", () => {
     const warning = "Al aplicar este lote, las fotos ocuparían hasta unos 12.0 GB y superarían la cuota de 10.0 GB (MEDIA_QUOTA_BYTES).";
-    const html = render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, summary_token: "t", photo_quota_warning: warning }} canApprove busy={false} onConfirm={noop} />);
+    const html = render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, photos_processing: 0, summary_token: "t", photo_quota_warning: warning }} canApprove busy={false} onConfirm={noop} />);
 
     expect(visibleText(html)).toContain(warning);
     expect(visibleText(html)).toContain("Aprobar y aplicar");
-    expect(visibleText(render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />))).not.toContain(
+    expect(visibleText(render(<ApprovalPanel summary={{ create: 2, update: 0, skip: 0, photos_processing: 0, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />))).not.toContain(
       "MEDIA_QUOTA_BYTES",
     );
   });
@@ -411,5 +411,19 @@ describe("Corregir el valor (change importacion-corregir-celda)", () => {
   it("muestra lo que decía el archivo en una celda corregida", () => {
     const corrected = row({ raw_data: { "Código I": "I-1814", __corrections: { "Código I": { original: "I.-1814", value: "I-1814" } } } });
     expect(visibleText(render(<ImportRowCard row={corrected} canDecide busy={false} onDecide={() => {}} />))).toContain("Corregido en la revisión; en el archivo decía «I.-1814».");
+  });
+});
+
+describe("Aprobar con fotos en proceso (fix importacion-esperar-fotos)", () => {
+  it("no deja aprobar mientras el servidor procesa fotos, y lo dice", () => {
+    const html = render(<ApprovalPanel summary={{ create: 71, update: 0, skip: 0, photos_processing: 51, summary_token: "t" }} canApprove busy={false} onConfirm={() => {}} />);
+    expect(visibleText(html)).toContain("Todavía se procesan 51 fotos del lote. Espere a que terminen para aprobar");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Aprobar y aplicar/);
+  });
+
+  it("con las fotos listas se puede aprobar", () => {
+    const html = render(<ApprovalPanel summary={{ create: 71, update: 0, skip: 0, photos_processing: 0, summary_token: "t" }} canApprove busy={false} onConfirm={() => {}} />);
+    expect(visibleText(html)).not.toContain("Todavía se procesan");
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Aprobar y aplicar/);
   });
 });

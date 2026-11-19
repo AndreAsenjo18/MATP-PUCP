@@ -119,9 +119,36 @@ describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () =
     expect(text).toContain("«Deposito N° 1»: no existe en el museo");
   });
 
+  it("un valor del archivo que no está en la lista se muestra con su texto, no como «Sin registrar»", () => {
+    const text = visibleText(
+      render(
+        <PiecePreview
+          preview={{ ...preview, object_type: null, materials: ["Madera"], acquisition_method: null, unmatched_terms: { OBJECT_TYPE: ["Escultura"], MATERIAL: ["Piedra sintética"], ACQUISITION_METHOD: ["Donación sintética"] } }}
+        />,
+      ),
+    );
+    expect(text).toContain("Tipo de bien «Escultura»: no está en la lista");
+    expect(text).toContain("Madera · «Piedra sintética»: no está en la lista");
+    expect(text).toContain("Forma de adquisición «Donación sintética»: no está en la lista");
+  });
+
   it("en el panel de una fila nueva aparece abierta", () => {
     const html = render(<RowDecisionPanel row={row({ classification: "NEW", matches: [], preview })} position={null} opinion={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
     expect(html).toMatch(/<details open=""/);
     expect(visibleText(html)).toContain("Así quedaría la ficha");
+  });
+});
+
+describe("Fotos en la lista de filas (fix importacion-esperar-fotos)", () => {
+  it("muestra la miniatura y cuántas fotos tiene cada fila", () => {
+    const rows = [row({ id: "a", classification: "NEW", matches: [] }), row({ id: "b", classification: "NEW", matches: [], source_row_number: 3 })];
+    const html = render(<RowList rows={rows} opinions={new Map()} onOpen={noop} photos={new Map([["a", { url: "https://example.test/a.webp", count: 2 }]])} />);
+    expect(html).toContain('src="https://example.test/a.webp"');
+    expect(visibleText(html)).toContain("2 fotos");
+    expect(visibleText(html)).toContain("Sin foto");
+  });
+
+  it("sin fotos en el lote no agrega la columna", () => {
+    expect(visibleText(render(<RowList rows={[row()]} opinions={new Map()} onOpen={noop} />))).not.toContain("Fotos");
   });
 });

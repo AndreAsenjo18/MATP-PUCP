@@ -5,8 +5,9 @@ Options:
   --random-seed N       random seed (default SEED_RANDOM_SEED or 20260917)
   --no-media-upload     do not upload placeholder photos to object storage
   --fixtures DIR        only write the synthetic Excel and CSV fixtures into DIR and exit
-  --templates           only create the templates of the museum's real formats and retire the
-                        illustrative ones, on a database already seeded
+  --templates           only create the templates of the museum's real formats (or update the
+                        mapping of the ones already stored) and retire the illustrative ones, on a
+                        database already seeded
 """
 
 import argparse
@@ -24,13 +25,15 @@ from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 def _sync_templates(factory) -> int:  # type: ignore[no-untyped-def]
     from app.modules.audit.context import AuditContext, audit_context
     from app.modules.audit.models import AuditOrigin
-    from app.seed.import_templates import sync_predefined_templates
+    from app.seed.import_templates import refresh_predefined_templates, sync_predefined_templates
 
     context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label="seed: plantillas")
     with factory() as session, audit_context(session, context):
         created, retired = sync_predefined_templates(session)
+        updated = refresh_predefined_templates(session)
         session.commit()
     print(f"Plantillas creadas: {', '.join(created) or 'ninguna'}.")
+    print(f"Plantillas actualizadas: {', '.join(updated) or 'ninguna'}.")
     print(f"Plantillas ilustrativas retiradas: {', '.join(retired) or 'ninguna'}.")
     return 0
 

@@ -171,3 +171,21 @@ def test_each_row_shows_how_the_sheet_would_look(pipeline: Pipeline) -> None:
     assert preview["tenure_regime"] == "Propiedad"
     assert preview["location"] == "Sede central (sintética) › Depósito 1"
     assert preview["location_text"] is None
+    assert preview["unmatched_terms"] == {}
+
+
+def test_a_value_not_in_the_list_is_shown_in_the_sheet_not_as_missing(pipeline: Pipeline) -> None:
+    """A value of the file that is not in the list is in the preview with its text, so the sheet
+    does not say «Sin registrar» for data the file has (fix importacion-campos-faltantes)."""
+    _batch_id, rows = _validated(
+        pipeline,
+        [["Músicos sintéticos", "Madera, Piedra sintética", "Escultura sintética", "", "", ""]],
+    )
+    [row] = rows
+    preview = row["preview"]
+    assert preview["materials"] == ["Madera"]
+    assert preview["object_type"] is None
+    assert preview["unmatched_terms"] == {
+        "MATERIAL": ["Piedra sintética"],
+        "OBJECT_TYPE": ["Escultura sintética"],
+    }

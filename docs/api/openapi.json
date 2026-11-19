@@ -944,6 +944,13 @@
             ],
             "description": "Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
           },
+          "photos_processing": {
+            "default": 0,
+            "description": "Fotos que el servidor todavía verifica o empareja: mientras haya, no se puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).",
+            "minimum": 0.0,
+            "title": "Photos Processing",
+            "type": "integer"
+          },
           "skip": {
             "description": "Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).",
             "title": "Skip",
@@ -11380,6 +11387,17 @@
               }
             ],
             "title": "Tenure Regime"
+          },
+          "unmatched_terms": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Valores del archivo que no están en la lista, por código de vocabulario (MATERIAL, OBJECT_TYPE, CATEGORY, CONSERVATION_STATUS, ACQUISITION_METHOD).",
+            "title": "Unmatched Terms",
+            "type": "object"
           }
         },
         "title": "PiecePreviewOut",
@@ -13969,6 +13987,29 @@
         "title": "TemplateSuggestionOut",
         "type": "object"
       },
+      "TermAddition": {
+        "description": "Body of ``POST /imports/{batch_id}/terms``: la lista y el valor del archivo.",
+        "properties": {
+          "text": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "vocabulary": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Vocabulary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vocabulary",
+          "text"
+        ],
+        "title": "TermAddition",
+        "type": "object"
+      },
       "TermCreate": {
         "examples": [
           {
@@ -14410,6 +14451,65 @@
           }
         },
         "title": "UnresolvedLocationsOut",
+        "type": "object"
+      },
+      "UnresolvedTermOut": {
+        "properties": {
+          "inactive_term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Término desactivado de la lista con ese nombre: se reactiva.",
+            "title": "Inactive Term"
+          },
+          "rows": {
+            "description": "Filas que lo escriben así.",
+            "minimum": 1.0,
+            "title": "Rows",
+            "type": "integer"
+          },
+          "text": {
+            "description": "El valor como está escrito en el archivo.",
+            "title": "Text",
+            "type": "string"
+          },
+          "vocabulary": {
+            "description": "Código de la lista (MATERIAL, OBJECT_TYPE…).",
+            "title": "Vocabulary",
+            "type": "string"
+          },
+          "vocabulary_name": {
+            "description": "Nombre de la lista.",
+            "title": "Vocabulary Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vocabulary",
+          "vocabulary_name",
+          "text",
+          "rows"
+        ],
+        "title": "UnresolvedTermOut",
+        "type": "object"
+      },
+      "UnresolvedTermsOut": {
+        "description": "Valores del archivo que no están en las listas de la ficha (change\nimportacion-agregar-terminos, D2).",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedTermOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "UnresolvedTermsOut",
         "type": "object"
       },
       "UploadUrlRequest": {
@@ -21728,6 +21828,194 @@
           }
         ],
         "summary": "Corregir un valor del archivo en una fila del lote",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/{batch_id}/terms": {
+      "get": {
+        "description": "Cada valor de una lista de la ficha (materiales, tipo de bien, categoría, estado de conservación, forma de adquisición) que no está en ella, con cuántas filas lo escriben así y si la lista lo tiene desactivado (change `importacion-agregar-terminos`).",
+        "operationId": "getUnresolvedTerms",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnresolvedTermsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Valores del archivo que no están en las listas",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      },
+      "post": {
+        "description": "Agrega el valor a la lista (o reactiva el término desactivado con ese nombre) desde la revisión del lote. Exige además `vocabularies.manage` (RN-010). El lote vuelve a «mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change `importacion-agregar-terminos`).",
+        "operationId": "postTermAddition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermAddition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El lote no existe o fue eliminado."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "`batch_kind_mismatch`: la operación no corresponde al tipo de lote."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Datos no válidos."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Agregar a la lista un valor del archivo",
         "tags": [
           "Importación"
         ],

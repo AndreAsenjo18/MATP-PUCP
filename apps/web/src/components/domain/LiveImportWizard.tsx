@@ -39,6 +39,7 @@ import { MappingEditor } from "@/components/domain/ImportMappingEditor";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { ImportMappingReview, type AiMappingState } from "@/components/domain/ImportMappingReview";
 import { UnresolvedLocationsPanel, type UnresolvedLocation } from "@/components/domain/ImportLocationFix";
+import { UnresolvedTermsPanel, type UnresolvedTerm } from "@/components/domain/ImportTermFix";
 import { createLocation, describeLocationFailure, fetchLocationsTree, type LocationLevelLabel, type LocationNode } from "@/lib/data/locations";
 import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
 import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
@@ -47,7 +48,6 @@ import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/Impo
 import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
-import { ImportRowAiSuggestions } from "@/components/domain/ImportRowAiSuggestions";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
 import { UploadPanel } from "@/components/domain/ImportUpload";
@@ -85,7 +85,9 @@ import {
   canAbandon,
   correctImportCell,
   fetchImportAiJudgment,
+  addImportTerm,
   fetchUnresolvedLocations,
+  fetchUnresolvedTerms,
   mapImportLocation,
   fetchImportDiffs,
   requestImportAiJudgment,
@@ -164,14 +166,12 @@ export function LiveImportWizard() {
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   // Ubicaciones del archivo que no existen (importacion-aplicar-vocabularios, D4).
   const [unresolvedLocations, setUnresolvedLocations] = useState<UnresolvedLocation[]>([]);
+  const [unresolvedTerms, setUnresolvedTerms] = useState<UnresolvedTerm[]>([]);
   const [locationTree, setLocationTree] = useState<LocationNode[] | null>(null);
   const [page, setPage] = useState(1);
   // Tamaño de página editable por el usuario (tarea 3.2): evita el scroll infinito con lotes
   // grandes (p. ej. 200 filas); el backend acepta de 1 a 100 (apps/api/app/api/pagination.py).
   const [pageSize, setPageSize] = useState(IMPORT_PAGE_SIZE);
-  // Se incrementa con "Pedir sugerencias de IA para estas filas": cada ImportRowAiSuggestions
-  // visible pide la suya al notar el cambio, en paralelo en vez de una por una (tarea 3.2b).
-  const [aiBulkSignal, setAiBulkSignal] = useState(0);
   const [diffs, setDiffs] = useState<ImportDiffs | null>(null);
   const [allImages, setAllImages] = useState<ReviewImage[]>([]);
   const [log, setLog] = useState<ImportLog | null>(null);
@@ -360,6 +360,19 @@ export function LiveImportWizard() {
     };
   }, [batchId, showRows, filtersKey, page, pageSize, devUser, reload]);
 
+  // Mientras el servidor verifica y empareja fotos, el resumen se vuelve a leer cada 3 s: así el
+  // aviso de aprobación y las miniaturas se actualizan solos (fix importacion-esperar-fotos).
+  const photosProcessingNow = batch?.approval_summary?.photos_processing ?? 0;
+  useEffect(() => {
+    if (!batchId || photosProcessingNow === 0) return;
+    const timer = setTimeout(() => {
+      void loadBatch();
+      setReload((n) => n + 1);
+    }, 3000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchId, photosProcessingNow, batch]);
+
   // Ubicaciones del archivo que no existen y el árbol para elegir o crear una.
   useEffect(() => {
     if (!batchId || !showRows || getApiMode() === "mock") return;
@@ -371,6 +384,18 @@ export function LiveImportWizard() {
         void fetchLocationsTree(devUser).then((tree) => {
           if (active && tree.status === "ok") setLocationTree(tree.value);
         });
+    });
+    return () => {
+      active = false;
+    };
+  }, [batchId, showRows, devUser, reload]);
+
+  // Valores del archivo que no están en las listas (change importacion-agregar-terminos).
+  useEffect(() => {
+    if (!batchId || !showRows || getApiMode() === "mock") return;
+    let active = true;
+    void fetchUnresolvedTerms(batchId, devUser).then((result) => {
+      if (active && result.status === "ok") setUnresolvedTerms(result.value.items ?? []);
     });
     return () => {
       active = false;
@@ -668,6 +693,23 @@ export function LiveImportWizard() {
     if (mapped.status !== "ok") {
       setBusy(false);
       return setError(mapped.message);
+    }
+    const started = await startImportValidation(batch.id, devUser);
+    setBusy(false);
+    if (started.status !== "ok") return setError(started.message);
+    setError(null);
+    setReload((n) => n + 1);
+    await loadBatch();
+  }
+
+  /** «Agregar a la lista y validar de nuevo»: agrega el valor a su lista y valida el lote. */
+  async function handleAddTerm(item: UnresolvedTerm) {
+    if (!batch) return;
+    setBusy(true);
+    const added = await addImportTerm(batch.id, item.vocabulary, item.text, devUser);
+    if (added.status !== "ok") {
+      setBusy(false);
+      return setError(added.message);
     }
     const started = await startImportValidation(batch.id, devUser);
     setBusy(false);
@@ -1012,6 +1054,15 @@ export function LiveImportWizard() {
           onCreate={handleCreateLocation}
         />
       )}
+      {reviewing && (
+        <UnresolvedTermsPanel
+          items={unresolvedTerms}
+          canManage={hasPermission("vocabularies.manage")}
+          busy={busy}
+          decidedNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
+          onAdd={(item) => void handleAddTerm(item)}
+        />
+      )}
       {reviewing && !tenureGroup && tenureRows > 0 ? (
         <TenureBanner count={tenureRows} complete decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} />
       ) : null}
@@ -1039,11 +1090,6 @@ export function LiveImportWizard() {
             </ol>
           </details>
           <div className="flex flex-wrap items-end justify-end gap-3">
-            {batchId && (
-              <Button variant="secondary" onClick={() => setAiBulkSignal((n) => n + 1)}>
-                Pedir sugerencias de IA para estas filas
-              </Button>
-            )}
             <Select
               label="Filas por página"
               fieldClassName="w-auto flex-row items-center gap-2"
@@ -1098,16 +1144,20 @@ export function LiveImportWizard() {
                       }
                     />
                   }
-                  aiSuggestions={
-                    batchId ? (
-                      <ImportRowAiSuggestions row={row} batchId={batchId} devUser={devUser} bulkRequestSignal={aiBulkSignal} />
-                    ) : undefined
-                  }
                 />
             );
             return (
               <>
-                <RowList rows={visible} opinions={opinions} onOpen={(row) => setOpenRowId(row.id)} />
+                <RowList
+                  rows={visible}
+                  opinions={opinions}
+                  onOpen={(row) => setOpenRowId(row.id)}
+                  photos={
+                    Object.keys(rowPhotos).length > 0
+                      ? new Map(visible.map((row) => [row.id, { url: rowPhotos[row.id]?.[0]?.thumbnail_url ?? null, count: rowPhotos[row.id]?.length ?? 0 }]))
+                      : undefined
+                  }
+                />
                 {!filters.onlyErrors && diffs.items.length > 0 && visible.length === 0 && (
                   <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
                 )}

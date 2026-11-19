@@ -7,7 +7,6 @@ import { draftFromScratch } from "@/lib/data/mapping-editor";
 import { render, visibleText } from "@/test/render";
 
 import { ImportConflictModal } from "./ImportConflictModal";
-import { ImportRowAiSuggestions } from "./ImportRowAiSuggestions";
 import { MappingEditor } from "./ImportMappingEditor";
 import { ImportPhotosView } from "./ImportPhotosPanel";
 import { DryRunPanel, FormatProblemPanel } from "./ImportTemplatePanels";
@@ -92,9 +91,8 @@ function texts(): Record<string, string> {
     filaCompacta: visibleText(render(<ImportRowCard row={row({ validation_errors: [{ code: "tenure_required", message: "Falta el régimen de tenencia." }] })} compact canDecide busy={false} onDecide={noop} />)),
     fila: visibleText(render(<ImportRowCard row={row()} canDecide busy={false} onDecide={noop} />)),
     filaAntigua: visibleText(render(<ImportRowCard row={row({ classification: "NEW", matches: [] })} canDecide busy={false} onDecide={noop} />)),
-    sugerenciasIA: visibleText(render(<ImportRowAiSuggestions row={row()} batchId="batch-1" />)),
     aprobacion:
-      visibleText(render(<ApprovalPanel summary={{ create: 2, update: 1, skip: 3, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />)) +
+      visibleText(render(<ApprovalPanel summary={{ create: 2, update: 1, skip: 3, photos_processing: 0, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />)) +
       visibleText(render(<ApprovalPanel summary={null} canApprove={false} busy={false} onConfirm={noop} />)),
     bitacora: visibleText(render(<ImportLogPanel log={LOG} downloading={false} onDownload={noop} />)),
     reversion:

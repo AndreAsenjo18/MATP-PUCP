@@ -726,6 +726,23 @@ export async function mapImportLocation(batchId: string, text: string, locationI
   );
 }
 
+export type UnresolvedTerms = ApiSchemas["UnresolvedTermsOut"];
+
+/** Valores del archivo que no están en las listas de la ficha, con cuántas filas los usan (change `importacion-agregar-terminos`). */
+export async function fetchUnresolvedTerms(batchId: string, devUser?: string): Promise<ImportResult<UnresolvedTerms>> {
+  return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/terms", { params: { path: { batch_id: batchId } } }));
+}
+
+/** Agrega el valor a su lista (o reactiva el término desactivado); el lote vuelve a «mapeado». */
+export async function addImportTerm(batchId: string, vocabulary: string, text: string, devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).POST("/api/v1/imports/{batch_id}/terms", {
+      params: { path: { batch_id: batchId } },
+      body: { vocabulary, text },
+    }),
+  );
+}
+
 /** El error es «falta el régimen de tenencia» (`tenure_required`). */
 export function hasTenureError(row: Pick<ImportRow, "validation_errors">): boolean {
   return row.validation_errors.some((error) => isRecord(error) && error.code === "tenure_required");
