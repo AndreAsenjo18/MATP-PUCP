@@ -724,6 +724,9 @@ def _apply_photo_batch(
     view_type = unspecified_view_type_id(session)
     change_set_id = batch.change_set_id or new_uuid()
     applied = 0
+    # About 20 beats per batch, so the review shows the progress of a batch of any size
+    # (importacion-fotos-progreso); the heartbeat writes from its own connection.
+    beat_every = max(1, total // 20)
     with refined_context(session, change_set_id=change_set_id):
         for done, (piece_id, photos) in enumerate(by_piece.items(), start=1):
             piece = session.get(Piece, piece_id)
@@ -742,7 +745,7 @@ def _apply_photo_batch(
                 ) from exc
             applied += len(photos)
             if progress is not None:
-                progress.advance(done, total=total)
+                progress.advance(done, total=total, force=done % beat_every == 0)
     batch.change_set_id = change_set_id
     batch.counts = {
         **(batch.counts or {}),

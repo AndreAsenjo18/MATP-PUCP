@@ -10,11 +10,16 @@
  * La barra de acciones asigna a una pieza buscada con `/search`, quita, descarta, restaura o
  * confirma una repetida. El panel lateral muestra la pieza propuesta de la foto enfocada con su
  * galería actual, para comparar. Arriba los contadores y, antes de aprobar, lo que quedará fuera.
+ *
+ * Avance en tiempo real (change `importacion-fotos-progreso`): mientras el servidor prepara las fotos
+ * o las aplica, un aviso con barra dice en qué va y si ya se puede salir; se consulta cada 2 s. Al
+ * terminar ofrece «Ver las piezas en Búsqueda», filtrada por las piezas que recibieron las fotos.
  */
 import { Check, CheckSquare, ImageOff, Search, Trash2, Undo2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { StatusBadge } from "@/components/domain/StatusBadges";
-import { Button, DISABLED_STYLES } from "@/components/ui/Button";
+import { Button, DISABLED_STYLES, buttonClassName } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { confirmImportBatch, fetchImportBatch, type ImportBatch } from "@/lib/data/imports";
@@ -29,15 +34,58 @@ import {
   decidePhotos,
   fetchBatchPhotos,
   fetchPhotoFolders,
+  fetchPhotoSummary,
+  isPhotoWorkRunning,
   mockPiece,
+  photoBatchSearchHref,
+  photoProgress,
   searchPieces,
   toggleSelection,
   trayState,
   type BatchPhoto,
   type PhotoOperation,
+  type PhotoProgress,
+  type PhotoSummary,
   type PieceOption,
   type TrayState,
 } from "@/lib/data/photoBatches";
+
+/** Cada cuánto se consulta el avance mientras el servidor trabaja. */
+export const PHOTO_PROGRESS_POLL_MS = 2000;
+
+/** «Preparando las fotos: 40 de 120 listas», con su barra y, al terminar, el enlace a la búsqueda. */
+export function PhotoProgressPanel({ progress, batchId }: { progress: PhotoProgress; batchId: string }) {
+  if (progress.phase === "ready") return null;
+  const tone =
+    progress.phase === "failed" ? "border-carmin-texto bg-carmin-bg" : progress.phase === "applied" ? "border-verde-exito bg-crema-light" : "border-ambar-alerta bg-ambar-bg/40";
+  return (
+    <Card as="section" aria-label="Avance de las fotos" aria-live="polite" className={cn("flex flex-col gap-3 border-2", tone)}>
+      <h2 className="text-lg font-semibold text-tinta">{progress.title}</h2>
+      {progress.phase !== "failed" && (
+        <div
+          className="h-2 overflow-hidden rounded-full bg-crema"
+          role="progressbar"
+          aria-label="Avance"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress.fraction === null ? undefined : Math.round(progress.fraction * 100)}
+        >
+          <div
+            className={cn("h-full rounded-full bg-terracota transition-[width] duration-300 motion-reduce:transition-none", progress.fraction === null && "w-1/3 animate-pulse motion-reduce:animate-none")}
+            style={progress.fraction === null ? undefined : { width: `${Math.max(4, Math.round(progress.fraction * 100))}%` }}
+          />
+        </div>
+      )}
+      {progress.hint && <p className={cn("text-base", progress.phase === "failed" ? "text-carmin-texto" : "text-gris-texto")}>{progress.hint}</p>}
+      {progress.phase === "applied" && (
+        <Link href={photoBatchSearchHref(batchId)} className={cn(buttonClassName({ variant: "primary" }), "self-start")}>
+          <Search size={18} aria-hidden="true" />
+          Ver las piezas en Búsqueda
+        </Link>
+      )}
+    </Card>
+  );
+}
 
 const STATE_INTENTS: Record<TrayState, "success" | "warning" | "danger" | "default" | "info"> = {
   proposed: "success",
@@ -89,6 +137,9 @@ export interface PhotoReviewViewProps {
   query: string;
   results: PieceOption[];
   batch: Pick<ImportBatch, "status" | "approval_summary"> | null;
+  /** Avance del lote y su id, para el enlace a la búsqueda (change importacion-fotos-progreso). */
+  progress?: PhotoProgress | null;
+  batchId?: string;
   canApprove: boolean;
   busy: boolean;
   message: string | null;
@@ -115,6 +166,8 @@ export function PhotoReviewView({
   query,
   results,
   batch,
+  progress = null,
+  batchId,
   canApprove,
   busy,
   message,
@@ -132,8 +185,10 @@ export function PhotoReviewView({
   const counts = stateCounts(photos);
   const approval = batch?.approval_summary?.photos ?? null;
   const warnings = approval ? approvalWarnings(approval) : [];
+  const preparing = progress?.phase === "processing";
   return (
     <div className="flex flex-col gap-4">
+      {progress && batchId && <PhotoProgressPanel progress={progress} batchId={batchId} />}
       <Card as="section" aria-label="Resumen de las fotos" className="flex flex-wrap gap-3">
         {(Object.keys(TRAY_STATE_LABELS) as TrayState[]).map((state) => (
           <button
@@ -321,6 +376,8 @@ export function PhotoReviewView({
         <h2 className="text-lg font-semibold text-tinta">Aprobar</h2>
         {batch?.status === "APPLIED" ? (
           <StatusBadge status={{ label: "Fotos aplicadas a sus piezas", intent: "success" }} />
+        ) : batch?.status === "APPROVED" ? (
+          <StatusBadge status={{ label: "Aprobado: aplicando las fotos", intent: "info" }} />
         ) : approval ? (
           <>
             <p className="text-base text-tinta">{approvalSentence(approval)}</p>
@@ -338,7 +395,7 @@ export function PhotoReviewView({
               </ul>
             )}
             {canApprove ? (
-              <Button icon={Check} className="self-start" disabled={busy || approval.to_apply === 0} onClick={onApprove}>
+              <Button icon={Check} className="self-start" disabled={busy || preparing || approval.to_apply === 0} onClick={onApprove}>
                 Aprobar y aplicar {approval.to_apply} fotos
               </Button>
             ) : (
@@ -358,6 +415,7 @@ export function PhotoReviewStep({ batchId, devUser, canApprove }: { batchId: str
   const [photos, setPhotos] = useState<BatchPhoto[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const [summary, setSummary] = useState<PhotoSummary | null>(null);
   const [filter, setFilter] = useState<ReviewFilter>({ folder: "", state: "" });
   const [selected, setSelected] = useState<string[]>([]);
   const [anchor, setAnchor] = useState<string | null>(null);
@@ -372,12 +430,37 @@ export function PhotoReviewStep({ batchId, devUser, canApprove }: { batchId: str
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [list, tree, current] = await Promise.all([fetchBatchPhotos(batchId, {}, devUser), fetchPhotoFolders(batchId, devUser), fetchImportBatch(batchId, devUser)]);
+    const [list, tree, current, counts] = await Promise.all([
+      fetchBatchPhotos(batchId, {}, devUser),
+      fetchPhotoFolders(batchId, devUser),
+      fetchImportBatch(batchId, devUser),
+      fetchPhotoSummary(batchId, devUser),
+    ]);
     if (list.status === "ok") setPhotos(list.value);
     else setError(list.message);
     if (tree.status === "ok") setFolders(tree.value.folders.map((folder) => folder.path));
     if (current.status === "ok") setBatch(current.value);
+    if (counts.status === "ok") setSummary(counts.value);
   }, [batchId, devUser]);
+
+  // Avance en tiempo real: mientras el servidor trabaja se consultan el lote y el resumen (livianos);
+  // la cuadrícula se vuelve a leer solo cuando cambia cuántas fotos faltan o el estado del lote.
+  const progress = photoProgress(batch, summary);
+  const running = isPhotoWorkRunning(progress.phase);
+  const seen = useRef("");
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => {
+      void Promise.all([fetchImportBatch(batchId, devUser), fetchPhotoSummary(batchId, devUser)]).then(([current, counts]) => {
+        const key = `${current.status === "ok" ? current.value.status : ""}:${counts.status === "ok" ? counts.value.processing : ""}`;
+        if (current.status === "ok") setBatch(current.value);
+        if (counts.status === "ok") setSummary(counts.value);
+        if (seen.current && key !== seen.current) void load();
+        seen.current = key;
+      });
+    }, PHOTO_PROGRESS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [running, batchId, devUser, load]);
 
   useEffect(() => {
     // Carga al mostrarse; la función actualiza el estado cuando responde la API.
@@ -433,6 +516,8 @@ export function PhotoReviewStep({ batchId, devUser, canApprove }: { batchId: str
       query={query}
       results={results}
       batch={batch}
+      progress={progress}
+      batchId={batchId}
       canApprove={canApprove}
       busy={busy}
       message={message}
@@ -456,8 +541,7 @@ export function PhotoReviewStep({ batchId, devUser, canApprove }: { batchId: str
         setBusy(false);
         if (result.status !== "ok") return setError(result.message);
         setBatch(result.value);
-        setMessage("Lote aprobado: las fotos se aplican a sus piezas en segundo plano.");
-        setTimeout(() => void load(), 1500);
+        setMessage(null);
       }}
     />
   );

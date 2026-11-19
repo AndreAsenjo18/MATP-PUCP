@@ -6312,6 +6312,13 @@
             "title": "Duplicates",
             "type": "integer"
           },
+          "processing": {
+            "default": 0,
+            "description": "Fotos que el servidor todavía verifica o empareja: el avance del paso «Revisar y aprobar» (change importacion-fotos-progreso).",
+            "minimum": 0.0,
+            "title": "Processing",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -23917,6 +23924,25 @@
             }
           },
           {
+            "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+            "in": "query",
+            "name": "import_batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+              "title": "Import Batch Id"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -28216,6 +28242,25 @@
             }
           },
           {
+            "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+            "in": "query",
+            "name": "import_batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+              "title": "Import Batch Id"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,
@@ -28871,6 +28916,25 @@
               ],
               "description": "Solo piezas con esa alerta de completitud.",
               "title": "Alert Code"
+            }
+          },
+          {
+            "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+            "in": "query",
+            "name": "import_batch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso).",
+              "title": "Import Batch Id"
             }
           },
           {

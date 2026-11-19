@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: e830ff47a63c78b13d15ce16e67c0351a51a4c0e5085a7c303186963bcb329ae
+ * openapi-sha256: 39f52a1d4c917108119eb26ce9a683ba52b747164f39f9c39550d6fafbc2284c
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -5382,6 +5382,12 @@ export interface components {
              * @description Fotos que ya están en la pieza destino y esperan confirmación.
              */
             duplicates: number;
+            /**
+             * Processing
+             * @description Fotos que el servidor todavía verifica o empareja: el avance del paso «Revisar y aprobar» (change importacion-fotos-progreso).
+             * @default 0
+             */
+            processing: number;
             /** Total */
             total: number;
         };
@@ -15108,6 +15114,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */
@@ -17379,6 +17387,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 include_loans_for_use?: boolean;
                 /** @description Incluye sub-ubicaciones. */
                 location_id?: string | null;
@@ -17808,6 +17818,8 @@ export interface operations {
                 has_alerts?: boolean | null;
                 /** @description false = piezas sin I. */
                 has_inventory_code?: boolean | null;
+                /** @description Solo las piezas que recibieron fotos de ese lote de importación (importacion-fotos-progreso). */
+                import_batch_id?: string | null;
                 /** @description Resultados por página (máx. 100). */
                 limit?: number;
                 /** @description Incluye sub-ubicaciones. */

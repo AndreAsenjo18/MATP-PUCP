@@ -1201,6 +1201,12 @@ class ImportPhotoSummary(BaseModel):
     duplicates: int = Field(
         description="Fotos que ya están en la pieza destino y esperan confirmación."
     )
+    processing: int = Field(
+        0,
+        ge=0,
+        description="Fotos que el servidor todavía verifica o empareja: el avance del paso "
+        "«Revisar y aprobar» (change importacion-fotos-progreso).",
+    )
 
 
 class PhotoDecisionRequest(BaseModel):

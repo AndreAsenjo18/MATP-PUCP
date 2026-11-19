@@ -1301,7 +1301,11 @@ def summarize_import_photos(
     batch_id: uuid.UUID, session: SessionDep, user: Preparer
 ) -> ImportPhotoSummary:
     get_batch(session, batch_id)
-    return ImportPhotoSummary(batch_id=batch_id, **photo_summary(session, batch_id))
+    return ImportPhotoSummary(
+        batch_id=batch_id,
+        processing=photos_processing(session, batch_id),
+        **photo_summary(session, batch_id),
+    )
 
 
 @router.patch(
