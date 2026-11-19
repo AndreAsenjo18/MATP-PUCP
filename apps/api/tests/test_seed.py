@@ -39,6 +39,7 @@ from app.seed.fixtures import HEADERS, write_synthetic_workbook
 from app.seed.import_templates import (
     ILLUSTRATIVE_NAMES,
     PREDEFINED_TEMPLATES,
+    refresh_predefined_templates,
     sync_predefined_templates,
 )
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
@@ -411,6 +412,40 @@ def test_syncing_the_templates_retires_the_illustrative_ones_and_is_idempotent(
         .execution_options(**{INCLUDE_DELETED: True})
     )
     assert retired is not None and retired.deleted_at is not None
+
+
+def test_refreshing_the_templates_updates_a_mapping_stored_before_a_change(
+    session: Session, act_as: Any
+) -> None:
+    """A database seeded before a template changed kept the old mapping («Ubicación en inmueble»
+    as source data only): ``--templates`` brings it up to date, once (fix importacion-campos-
+    faltantes)."""
+    with act_as("ADMIN"):
+        sync_predefined_templates(session)
+        stored = session.scalar(
+            select(ImportMappingTemplate).where(
+                ImportMappingTemplate.name == "BD estandarizada 2025"
+            )
+        )
+        assert stored is not None
+        old = dict(stored.mapping)
+        old["columns"] = [
+            {"source": column["source"], "target": {"kind": "source_payload"}, "optional": True}
+            if column["source"] == "Ubicación en inmueble"
+            else column
+            for column in old["columns"]
+        ]
+        stored.mapping = old
+        session.commit()
+        first = refresh_predefined_templates(session)
+        session.commit()
+        second = refresh_predefined_templates(session)
+        session.commit()
+
+    assert first == ["BD estandarizada 2025"]
+    assert second == []
+    location = next(c for c in stored.mapping["columns"] if c["source"] == "Ubicación en inmueble")
+    assert location["target"] == {"kind": "field", "name": "location"}
 
 
 def test_the_predefined_templates_do_not_look_alike_so_detection_is_unambiguous() -> None:

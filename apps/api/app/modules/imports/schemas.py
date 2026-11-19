@@ -201,6 +201,30 @@ class LocationCorrespondence(BaseModel):
     location_id: uuid.UUID
 
 
+class UnresolvedTermOut(BaseModel):
+    vocabulary: str = Field(description="Código de la lista (MATERIAL, OBJECT_TYPE…).")
+    vocabulary_name: str = Field(description="Nombre de la lista.")
+    text: str = Field(description="El valor como está escrito en el archivo.")
+    rows: int = Field(ge=1, description="Filas que lo escriben así.")
+    inactive_term: str | None = Field(
+        None, description="Término desactivado de la lista con ese nombre: se reactiva."
+    )
+
+
+class UnresolvedTermsOut(BaseModel):
+    """Valores del archivo que no están en las listas de la ficha (change
+    importacion-agregar-terminos, D2)."""
+
+    items: list[UnresolvedTermOut] = Field(default_factory=list)
+
+
+class TermAddition(BaseModel):
+    """Body of ``POST /imports/{batch_id}/terms``: la lista y el valor del archivo."""
+
+    vocabulary: str = Field(min_length=1, max_length=60)
+    text: str = Field(min_length=1, max_length=300)
+
+
 class CellCorrection(BaseModel):
     """Body of ``PATCH /imports/{batch_id}/rows/{row_id}/cells`` (importacion-corregir-celda)."""
 
@@ -515,6 +539,11 @@ class PiecePreviewOut(BaseModel):
     location: str | None = Field(None, description="Ruta de la ubicación encontrada.")
     location_text: str | None = Field(
         None, description="Ubicación del archivo que no coincide con ninguna del museo."
+    )
+    unmatched_terms: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Valores del archivo que no están en la lista, por código de vocabulario "
+        "(MATERIAL, OBJECT_TYPE, CATEGORY, CONSERVATION_STATUS, ACQUISITION_METHOD).",
     )
 
 

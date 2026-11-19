@@ -119,6 +119,19 @@ describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () =
     expect(text).toContain("«Deposito N° 1»: no existe en el museo");
   });
 
+  it("un valor del archivo que no está en la lista se muestra con su texto, no como «Sin registrar»", () => {
+    const text = visibleText(
+      render(
+        <PiecePreview
+          preview={{ ...preview, object_type: null, materials: ["Madera"], acquisition_method: null, unmatched_terms: { OBJECT_TYPE: ["Escultura"], MATERIAL: ["Piedra sintética"], ACQUISITION_METHOD: ["Donación sintética"] } }}
+        />,
+      ),
+    );
+    expect(text).toContain("Tipo de bien «Escultura»: no está en la lista");
+    expect(text).toContain("Madera · «Piedra sintética»: no está en la lista");
+    expect(text).toContain("Forma de adquisición «Donación sintética»: no está en la lista");
+  });
+
   it("en el panel de una fila nueva aparece abierta", () => {
     const html = render(<RowDecisionPanel row={row({ classification: "NEW", matches: [], preview })} position={null} opinion={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
     expect(html).toMatch(/<details open=""/);

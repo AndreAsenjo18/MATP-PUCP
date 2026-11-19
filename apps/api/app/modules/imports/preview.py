@@ -126,6 +126,11 @@ def _preview(
         "dimensions": data.get("dimensions") or [],
         "location": paths.get(location_id) if location_id else None,
         "location_text": data.get("location_text"),
+        "unmatched_terms": {
+            vocabulary: list(texts)
+            for vocabulary, texts in (data.get("unmatched_terms") or {}).items()
+            if texts
+        },
     }
 
 

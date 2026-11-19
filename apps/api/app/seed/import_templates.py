@@ -366,3 +366,36 @@ def sync_predefined_templates(session: Session) -> tuple[list[str], list[str]]:
             retired.append(name)
     session.flush()
     return created, retired
+
+
+def refresh_predefined_templates(session: Session) -> list[str]:
+    """Bring the stored mapping of each real template up to the one in this module.
+
+    ``sync_predefined_templates`` only creates the templates that are missing, so a database seeded
+    before a template changed (for instance, «Ubicación en inmueble» mapped to the location in
+    importacion-aplicar-vocabularios) kept validating with the old mapping: the location and the
+    conservation values were never read. The previous mapping stays in the audit log (RN-005).
+    Idempotent. Needs an audit context. Returns the names updated."""
+    from app.modules.imports.mapping import MappingSpecV1
+    from app.modules.imports.models import ImportMappingTemplate
+    from app.modules.imports.templates import header_signature
+
+    updated = []
+    for predefined in PREDEFINED_TEMPLATES:
+        template = session.scalar(
+            select(ImportMappingTemplate).where(
+                ImportMappingTemplate.name == predefined.name,
+                ImportMappingTemplate.deleted_at.is_(None),
+            )
+        )
+        if template is None:
+            continue
+        mapping = MappingSpecV1.model_validate(predefined.mapping()).as_json()
+        signature = header_signature(predefined.headers)
+        if template.mapping == mapping and template.header_signature == signature:
+            continue
+        template.mapping = mapping
+        template.header_signature = signature
+        updated.append(predefined.name)
+    session.flush()
+    return updated

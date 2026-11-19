@@ -477,6 +477,26 @@ export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
     .filter(Boolean)
     .join(" · ");
   const location = preview.location ?? (preview.location_text ? `«${preview.location_text}»: no existe en el museo` : null);
+  const unmatched = preview.unmatched_terms ?? {};
+  // A value of the file that is not in the list is shown with its text (not «Sin registrar»), in
+  // amber: the person sees it came in the file and has to be added to the list.
+  const withUnmatched = (value: string | null | undefined, vocabulary: string): string | null | undefined => {
+    const texts = unmatched[vocabulary] ?? [];
+    if (texts.length === 0) return value;
+    const note = `${texts.map((text) => `«${text}»`).join(", ")}: no está en la lista`;
+    return value && value.trim() ? `${value} · ${note}` : note;
+  };
+  const warned = new Set<string>();
+  if (!preview.location && preview.location_text) warned.add("Ubicación");
+  for (const [label, vocabulary] of [
+    ["Tipo de bien", "OBJECT_TYPE"],
+    ["Categoría", "CATEGORY"],
+    ["Forma de adquisición", "ACQUISITION_METHOD"],
+    ["Materiales", "MATERIAL"],
+    ["Estado de conservación", "CONSERVATION_STATUS"],
+  ] as const) {
+    if ((unmatched[vocabulary] ?? []).length > 0) warned.add(label);
+  }
   const groups: { title: string; items: [string, string | null | undefined][] }[] = [
     {
       title: "Identificación",
@@ -485,8 +505,8 @@ export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
         ["Colección", preview.collection],
         ["Códigos", codes],
         ["Régimen de tenencia", preview.tenure_regime],
-        ["Tipo de bien", preview.object_type],
-        ["Categoría", preview.category],
+        ["Tipo de bien", withUnmatched(preview.object_type, "OBJECT_TYPE")],
+        ["Categoría", withUnmatched(preview.category, "CATEGORY")],
       ],
     },
     { title: "Descripción", items: [["Descripción", preview.description]] },
@@ -496,19 +516,19 @@ export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
         ["Procedencia", preview.provenance],
         ["Época (texto original)", preview.epoch_original_text],
         ["Autor", preview.author],
-        ["Forma de adquisición", preview.acquisition_method],
+        ["Forma de adquisición", withUnmatched(preview.acquisition_method, "ACQUISITION_METHOD")],
         ["Fecha de ingreso", preview.entry_date],
       ],
     },
     {
       title: "Medidas y materiales",
       items: [
-        ["Materiales", (preview.materials ?? []).join(", ")],
+        ["Materiales", withUnmatched((preview.materials ?? []).join(", "), "MATERIAL")],
         ["Medidas (texto original)", preview.dimensions_text],
         ["Medidas detalladas", measures],
       ],
     },
-    { title: "Conservación", items: [["Estado de conservación", preview.conservation_status]] },
+    { title: "Conservación", items: [["Estado de conservación", withUnmatched(preview.conservation_status, "CONSERVATION_STATUS")]] },
     { title: "Ubicación", items: [["Ubicación", location]] },
     { title: "Observaciones", items: [["Observaciones", preview.notes]] },
   ];
@@ -521,7 +541,7 @@ export function PiecePreview({ preview }: { preview: PiecePreviewData }) {
             {group.items.map(([label, value]) => (
               <div key={label} className="min-w-0">
                 <dt className="text-sm text-gris-texto">{label}</dt>
-                <dd className={cn("text-base break-words", label === "Ubicación" && !preview.location && preview.location_text ? "font-semibold text-ambar-texto" : value && value.trim() ? "font-semibold text-tinta" : "text-gris-texto")}>{previewText(value)}</dd>
+                <dd className={cn("text-base break-words", warned.has(label) ? "font-semibold text-ambar-texto" : value && value.trim() ? "font-semibold text-tinta" : "text-gris-texto")}>{previewText(value)}</dd>
               </div>
             ))}
           </dl>

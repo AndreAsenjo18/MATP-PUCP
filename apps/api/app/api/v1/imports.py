@@ -40,7 +40,7 @@ from app.api.stubs import (
 )
 from app.core import jobs
 from app.core.config import Settings
-from app.core.errors import ConflictError, NotFound, ValidationFailed
+from app.core.errors import ConflictError, NotFound, PermissionDenied, ValidationFailed
 from app.core.models_base import new_uuid
 from app.core.storage import ObjectStorage
 from app.modules.ai_suggestions.apply import validate_field_value
@@ -169,8 +169,11 @@ from app.modules.imports.schemas import (
     TemplateDryRunRequest,
     TemplateSuggestion,
     TemplateSuggestRequest,
+    TermAddition,
     UnresolvedLocationOut,
     UnresolvedLocationsOut,
+    UnresolvedTermOut,
+    UnresolvedTermsOut,
     ValidationSummary,
 )
 from app.modules.imports.service import (
@@ -181,6 +184,7 @@ from app.modules.imports.service import (
     validate_stage,
 )
 from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
+from app.modules.imports.term_fix import add_term, unresolved_terms
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
 from app.modules.quality import ai_judgment
@@ -658,6 +662,61 @@ def put_location_correspondence(
     get_spreadsheet_batch(session, batch_id)
     writer(session, user, f"Ubicación del archivo «{body.text}» en la revisión del lote")
     batch = map_location(session, batch_id, text=body.text, location_id=body.location_id)
+    session.commit()
+    return batch_out(session, batch)
+
+
+@router.get(
+    "/imports/{batch_id}/terms",
+    response_model=UnresolvedTermsOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Valores del archivo que no están en las listas",
+    description="Cada valor de una lista de la ficha (materiales, tipo de bien, categoría, estado "
+    "de conservación, forma de adquisición) que no está en ella, con cuántas filas lo escriben así "
+    "y si la lista lo tiene desactivado (change `importacion-agregar-terminos`).",
+    **implemented(),
+)
+def get_unresolved_terms(
+    batch_id: uuid.UUID, session: SessionDep, user: Preparer
+) -> UnresolvedTermsOut:
+    get_spreadsheet_batch(session, batch_id)
+    return UnresolvedTermsOut(
+        items=[
+            UnresolvedTermOut(
+                vocabulary=item.vocabulary,
+                vocabulary_name=item.vocabulary_name,
+                text=item.text,
+                rows=item.rows,
+                inactive_term=item.inactive_term,
+            )
+            for item in unresolved_terms(session, batch_id)
+        ]
+    )
+
+
+@router.post(
+    "/imports/{batch_id}/terms",
+    response_model=ImportBatchOut,
+    responses={**NOT_FOUND, **KIND_CONFLICT},
+    summary="Agregar a la lista un valor del archivo",
+    description="Agrega el valor a la lista (o reactiva el término desactivado con ese nombre) "
+    "desde la revisión del lote. Exige además `vocabularies.manage` (RN-010). El lote vuelve a "
+    "«mapeado» para validarse de nuevo con `POST /imports/{batch_id}/validate` (change "
+    "`importacion-agregar-terminos`).",
+    **implemented(),
+)
+def post_term_addition(
+    batch_id: uuid.UUID, body: TermAddition, session: SessionDep, user: Preparer
+) -> ImportBatchOut:
+    if not user.can("vocabularies.manage"):
+        raise PermissionDenied(
+            "Agregar un valor a una lista es administrar vocabularios: pídalo a quien administra "
+            "las listas (vocabularies.manage).",
+            details={"permission": "vocabularies.manage"},
+        )
+    get_spreadsheet_batch(session, batch_id)
+    writer(session, user, f"«{body.text}» agregado a la lista desde la revisión del lote")
+    batch = add_term(session, batch_id, vocabulary=body.vocabulary, text=body.text)
     session.commit()
     return batch_out(session, batch)
 
