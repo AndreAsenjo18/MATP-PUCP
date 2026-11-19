@@ -113,7 +113,23 @@ function rowTitleOf(row: ImportRow): string {
   return typeof denomination === "string" && denomination.trim() ? denomination.trim() : "Sin denominación";
 }
 
-export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]; opinions: ReadonlyMap<string, GeminiOpinion>; onOpen: (row: ImportRow) => void }) {
+export interface RowPhotoThumb {
+  url: string | null;
+  count: number;
+}
+
+export function RowList({
+  rows,
+  opinions,
+  onOpen,
+  photos,
+}: {
+  rows: readonly ImportRow[];
+  opinions: ReadonlyMap<string, GeminiOpinion>;
+  onOpen: (row: ImportRow) => void;
+  /** Miniatura y número de fotos de cada fila, si el lote trae fotos (fix importacion-esperar-fotos). */
+  photos?: ReadonlyMap<string, RowPhotoThumb>;
+}) {
   if (rows.length === 0) return <p className="text-base text-gris-texto">No hay filas en esta vista.</p>;
   return (
     <div className="overflow-x-auto rounded-2xl border border-borde">
@@ -130,6 +146,11 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
             <th scope="col" className="w-36 px-4 py-2.5 font-semibold">
               Código
             </th>
+            {photos && (
+              <th scope="col" className="w-24 px-4 py-2.5 font-semibold">
+                Fotos
+              </th>
+            )}
             <th scope="col" className="px-4 py-2.5 font-semibold">
               Qué pasa
             </th>
@@ -149,6 +170,11 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
                   {rowTitleOf(row)}
                 </th>
                 <td className="px-4 py-2 font-mono text-sm font-bold text-terracota">{rowCode(row) ?? "—"}</td>
+                {photos && (
+                  <td className="px-4 py-2">
+                    <RowPhotoCell thumb={photos.get(row.id)} />
+                  </td>
+                )}
                 <td className="px-4 py-2">{pending && opinion ? <OpinionChip opinion={opinion} /> : rowState(row)}</td>
                 <td className="px-4 py-2 text-right">
                   <Button size="sm" variant={pending || row.has_validation_errors ? "outline" : "secondary"} onClick={() => onOpen(row)}>
@@ -161,6 +187,24 @@ export function RowList({ rows, opinions, onOpen }: { rows: readonly ImportRow[]
         </tbody>
       </table>
     </div>
+  );
+}
+
+function RowPhotoCell({ thumb }: { thumb?: RowPhotoThumb }) {
+  if (!thumb || thumb.count === 0) return <span className="text-sm text-gris-texto">Sin foto</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      {thumb.url ? (
+        // Miniatura firmada del almacenamiento: no pasa por el optimizador de imágenes.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumb.url} alt="" className="size-10 rounded-md border border-borde object-cover" />
+      ) : (
+        <span aria-hidden="true" className="grid size-10 place-items-center rounded-md bg-crema text-xs text-gris-texto">
+          …
+        </span>
+      )}
+      <span className="text-sm text-gris-texto">{thumb.count === 1 ? "1 foto" : `${thumb.count} fotos`}</span>
+    </span>
   );
 }
 

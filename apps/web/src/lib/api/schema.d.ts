@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 7000b608897345a037b8f1fa6325581f775a2089a91e6684fd21f4cac9e20ba0
+ * openapi-sha256: 15f3ef5b8460482d9ea52dda0d4b9cac954d343c1b17b6574106b921f8ba4ea4
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -2888,6 +2888,12 @@ export interface components {
             photo_quota_warning?: string | null;
             /** @description Lote de solo fotografías: lo que se aplicará y lo que quedará fuera. */
             photos?: components["schemas"]["PhotoApprovalOut"] | null;
+            /**
+             * Photos Processing
+             * @description Fotos que el servidor todavía verifica o empareja: mientras haya, no se puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).
+             * @default 0
+             */
+            photos_processing: number;
             /**
              * Skip
              * @description Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).

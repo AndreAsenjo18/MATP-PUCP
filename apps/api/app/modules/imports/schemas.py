@@ -66,6 +66,12 @@ class ApprovalSummaryOut(BaseModel):
         description="Aviso si las fotos del lote superarían `MEDIA_QUOTA_BYTES`; no bloquea la "
         "aprobación ni forma parte de la huella (importacion-masiva-fotografias D6).",
     )
+    photos_processing: int = Field(
+        0,
+        ge=0,
+        description="Fotos que el servidor todavía verifica o empareja: mientras haya, no se "
+        "puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).",
+    )
     photos: PhotoApprovalOut | None = Field(
         None, description="Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
     )

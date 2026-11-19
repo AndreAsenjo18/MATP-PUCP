@@ -155,7 +155,7 @@ describe("paso 3 «Revisar y aprobar»", () => {
     focusedGallery: [],
     query: "",
     results: [],
-    batch: { status: "IN_PREVIEW" as const, approval_summary: { create: 0, update: 0, skip: 0, summary_token: "t", photos: approval } },
+    batch: { status: "IN_PREVIEW" as const, approval_summary: { create: 0, update: 0, skip: 0, photos_processing: 0, summary_token: "t", photos: approval } },
     canApprove: true,
     busy: false,
     message: null,

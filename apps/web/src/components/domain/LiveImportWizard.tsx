@@ -360,6 +360,19 @@ export function LiveImportWizard() {
     };
   }, [batchId, showRows, filtersKey, page, pageSize, devUser, reload]);
 
+  // Mientras el servidor verifica y empareja fotos, el resumen se vuelve a leer cada 3 s: así el
+  // aviso de aprobación y las miniaturas se actualizan solos (fix importacion-esperar-fotos).
+  const photosProcessingNow = batch?.approval_summary?.photos_processing ?? 0;
+  useEffect(() => {
+    if (!batchId || photosProcessingNow === 0) return;
+    const timer = setTimeout(() => {
+      void loadBatch();
+      setReload((n) => n + 1);
+    }, 3000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchId, photosProcessingNow, batch]);
+
   // Ubicaciones del archivo que no existen y el árbol para elegir o crear una.
   useEffect(() => {
     if (!batchId || !showRows || getApiMode() === "mock") return;
@@ -1107,7 +1120,16 @@ export function LiveImportWizard() {
             );
             return (
               <>
-                <RowList rows={visible} opinions={opinions} onOpen={(row) => setOpenRowId(row.id)} />
+                <RowList
+                  rows={visible}
+                  opinions={opinions}
+                  onOpen={(row) => setOpenRowId(row.id)}
+                  photos={
+                    Object.keys(rowPhotos).length > 0
+                      ? new Map(visible.map((row) => [row.id, { url: rowPhotos[row.id]?.[0]?.thumbnail_url ?? null, count: rowPhotos[row.id]?.length ?? 0 }]))
+                      : undefined
+                  }
+                />
                 {!filters.onlyErrors && diffs.items.length > 0 && visible.length === 0 && (
                   <p className="text-base text-gris-texto">Las filas de esta página tienen un error repetido: están en el bloque de arriba, bajo «Ver las filas».</p>
                 )}

@@ -168,7 +168,7 @@ describe("fila compacta", () => {
 });
 
 describe("barra de aprobación", () => {
-  const summary = { create: 12, update: 18, skip: 2, summary_token: "t" };
+  const summary = { create: 12, update: 18, skip: 2, photos_processing: 0, summary_token: "t" };
 
   it("va pegada al pie y dice qué se aplicará y qué falta", () => {
     const html = render(<ApprovalPanel summary={summary} canApprove busy={false} onConfirm={noop} pendingText="No hay nada pendiente: puede aprobar la carga." />);
@@ -181,7 +181,7 @@ describe("barra de aprobación", () => {
   });
 
   it("sin nada que aplicar desactiva el botón y dice por qué", () => {
-    const html = render(<ApprovalPanel summary={{ create: 0, update: 0, skip: 30, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />);
+    const html = render(<ApprovalPanel summary={{ create: 0, update: 0, skip: 30, photos_processing: 0, summary_token: "t" }} canApprove busy={false} onConfirm={noop} />);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Aprobar y aplicar/);
     expect(visibleText(html)).toContain("No hay filas para aplicar");
   });
