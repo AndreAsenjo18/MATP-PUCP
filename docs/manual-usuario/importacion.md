@@ -1,6 +1,6 @@
 # Importación de sábanas Excel y CSV
 
-> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`; la sugerencia de IA al ajustar columnas y las sugerencias de IA por fila las agrega `carga-masiva-con-ia`.
+> Sección escrita por el change `importacion-pipeline-reconciliacion` y actualizada por `rediseno-ux-importacion` (subida con formato elegido, barra retraíble, revisión de filas). El paso 3 (plantillas, editor de columnas y vista previa) lo escribe `plantillas-mapeo-y-normalizacion`; la reversión de un lote aplicado usa el motor de `auditoria-y-soft-delete-transversal`; la sugerencia de IA al ajustar columnas la agrega `carga-masiva-con-ia` (las sugerencias de IA por fila se retiraron en `retirar-ia-revision-filas`).
 
 El asistente de importación carga en el catálogo las piezas de una hoja de cálculo (por ejemplo, una sábana de la consultoría o un inventario de depósito) **sin duplicar ni pisar** lo que ya existe.
 
@@ -170,17 +170,6 @@ Cada fila ocupa **una línea**: número de fila, denominación, código y qué p
 - Una fila con **errores de validación** muestra el motivo en rojo con una sugerencia de qué hacer (por ejemplo, «Una pieza en comodato no puede tener código I»). Esa fila no se puede **aceptar**, pero sí **dejar fuera** o **rechazar**: corrija el archivo y vuelva a subirlo, o decida una de esas dos.
 - Si el error es una **errata** en una celda (por ejemplo, un código I escrito «I.-1814»), corríjala ahí mismo: en **¿Es una errata?** ya viene elegida la columna del valor que cita el error; escriba el valor corregido y pulse **Guardar y validar de nuevo**. El lote se valida otra vez con las mismas reglas. El archivo original no cambia: en **Ver datos del archivo**, la celda corregida dice lo que traía el archivo. Validar de nuevo descarta las decisiones que ya tomó en otras filas; el aviso lo dice antes de guardar.
 - Las filas se muestran por páginas; **Filas por página** (10, 25, 50 o 100) elige cuántas, para no desplazarse por un lote de cientos de filas de una sola vez.
-
-### Sugerencias de IA para una columna de texto libre
-
-Si una columna del archivo quedó como **Dato de origen** o mapeada a **Observaciones**/**Descripción** (ninguna IA toca una columna ya mapeada a un dato estructurado), su tarjeta trae **Pedir sugerencias de IA**. Con muchas filas, en vez de entrar una por una, **Pedir sugerencias de IA para estas filas** (arriba de la lista, junto a **Filas por página**) las pide todas de una vez para la página que está viendo. Al pulsarlo:
-
-1. Aparece una tabla con cada dato que la IA propone extraer de ese texto: el valor **vigente** de la pieza (en una actualización), el **propuesto** por la IA y una casilla para incluirlo.
-2. Edite el valor propuesto si la IA leyó algo mal; cuando el valor propuesto coincide con el vigente, no se marca como conflicto.
-3. Marque qué campos incluir y pulse **Guardar valores de IA**. Nada se aplica al catálogo todavía: queda guardado en el lote hasta que se apruebe (RN-009).
-4. **Ver el texto analizado** despliega, dentro de la misma tarjeta, el texto de origen completo de esa fila.
-
-Si la columna de texto libre de una fila está vacía, no se ofrece pedir sugerencias para ella.
 
 ### Un mismo error en muchas filas
 
@@ -357,5 +346,4 @@ Si alguien editó a mano una pieza después de aplicar el lote, el sistema **no 
 | «El lote se está procesando» | Espere a que termine la etapa en curso. |
 | «Las imágenes se asocian después de aplicar el lote» | Apruebe el lote primero. |
 | El lote quedó **fallido al aplicar** | Lea la fila y el motivo en la cabecera del lote, corrija esa fila y vuelva a aprobar. |
-| «No se reconocieron datos estructurados en el texto» | El texto de esa fila no tenía nada que la IA pudiera extraer (por ejemplo, un texto muy corto o sin medidas, procedencia, etc.). No es un error: la fila sigue su curso igual, sin esos campos. |
 | «El servicio de IA no está disponible en este momento» al pedir sugerencias | El catálogo no cambió; reintente más tarde o siga sin la sugerencia de IA. |
