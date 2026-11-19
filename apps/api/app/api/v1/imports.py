@@ -80,6 +80,7 @@ from app.modules.imports.decisions import (
     approve,
     decide_row,
     editable_batch,
+    photos_processing,
     row_action,
 )
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
@@ -240,6 +241,8 @@ def batch_out(
         if batch.status in APPROVABLE_STATUSES
         else None
     )
+    if approval is not None:  # outside the token: it changes while the photos are processed
+        approval["photos_processing"] = photos_processing(session, batch.id)
     if approval is not None and settings is not None:  # outside the token: it does not change
         approval["photo_quota_warning"] = photo_quota_warning(
             session,

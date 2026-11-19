@@ -944,6 +944,13 @@
             ],
             "description": "Lote de solo fotografías: lo que se aplicará y lo que quedará fuera."
           },
+          "photos_processing": {
+            "default": 0,
+            "description": "Fotos que el servidor todavía verifica o empareja: mientras haya, no se puede aprobar ni forma parte de la huella (fix importacion-esperar-fotos).",
+            "minimum": 0.0,
+            "title": "Photos Processing",
+            "type": "integer"
+          },
           "skip": {
             "description": "Filas que no se aplicarán (rechazadas, excluidas, con errores o sin resolver).",
             "title": "Skip",

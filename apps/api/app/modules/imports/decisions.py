@@ -24,7 +24,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFound, ValidationFailed
@@ -142,6 +142,29 @@ ACTION_COLUMNS = (
     ImportRow.classification,
     ImportRow.target_piece_id,
 )
+
+
+def photos_processing(session: Session, batch_id: uuid.UUID) -> int:
+    """Photos of the batch the server is still working on: received and not verified yet, or
+    verified and not matched yet (fix importacion-esperar-fotos). They finish on their own;
+    approving before would leave them out of the pieces without a word."""
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(ImportPhoto)
+            .where(
+                ImportPhoto.batch_id == batch_id,
+                or_(
+                    ImportPhoto.status == ImportPhotoStatus.UPLOADED,
+                    and_(
+                        ImportPhoto.status == ImportPhotoStatus.VERIFIED,
+                        ImportPhoto.match_status.is_(None),
+                    ),
+                ),
+            )
+        )
+        or 0
+    )
 
 
 def approval_summary(session: Session, batch_id: uuid.UUID) -> ApprovalSummary:
@@ -394,6 +417,13 @@ def approve(
     if batch.status == S.FAILED_APPLY:
         batch = transition(session, batch.id, S.IN_PREVIEW, reason=batch.status_reason)
     ensure_transition(batch, S.APPROVED)
+    if pending := photos_processing(session, batch.id):
+        raise ConflictError(
+            f"Todavía se procesan {pending} fotos del lote: espere a que terminen para aprobar, "
+            "o quedarían fuera de las piezas.",
+            code="photos_processing",
+            details={"photos_processing": pending},
+        )
     summary = check_summary(session, batch.id, summary_token)
     batch.approved_by_id = user_id
     batch.approved_at = utcnow()
