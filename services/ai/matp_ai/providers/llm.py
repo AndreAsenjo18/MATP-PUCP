@@ -258,7 +258,8 @@ class LLMProvider(AIProvider):
             "menciona algo que no está en ninguna lista, no lo devuelvas en ese campo.\n"
             '- Quita muletillas ("eh", "o sea") y corrige errores de dictado antes de decidir, '
             "pero no inventes datos que no estén en la frase.\n"
-            '- Deja en "q" solo lo que no corresponda a ningún filtro de la lista.'
+            '- Deja en "q" solo lo que no corresponda a ningún filtro de la lista. Palabras '
+            'genéricas ("pieza", "objeto", "obra") y de pedido ("muéstrame") no van en "q".'
         )
         payload = {
             "model": self.model,
