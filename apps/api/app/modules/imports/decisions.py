@@ -256,17 +256,49 @@ def _resolve_to_piece(
     return field_diff(piece, mapped, spec, _piece_identifiers(session, piece.id))
 
 
-def _check_as_new(row: ImportRow) -> None:
-    """A row whose code I already belongs to a piece cannot become a new piece (RN-002)."""
+def _check_as_new(session: Session, row: ImportRow) -> None:
+    """A row with a code that a piece already has cannot become a new piece: two pieces never
+    share a code (RN-002; change codigo-unico-y-ajustes-pantallas, D2). Nor can it while another
+    row of the batch with the same code is already going to be a new piece."""
     for match in row.matches or []:
         if match.get("kind") != "piece":
             continue
-        if any(item.get("identifier_type") == INVENTORY_CODE_TYPE for item in match["identifiers"]):
+        types = {item.get("identifier_type") for item in match["identifiers"]}
+        if INVENTORY_CODE_TYPE in types:
             raise ValidationFailed(
                 "El código I de la fila ya pertenece a una pieza del catálogo; elija esa pieza "
                 "como destino o rechace la fila.",
                 code="inventory_code_in_use",
                 details={"piece_id": match.get("piece_id")},
+            )
+        raise ValidationFailed(
+            "Un código de la fila ya lo tiene una pieza del catálogo, y dos piezas no pueden "
+            "compartir un código: elija esa pieza como destino o rechace la fila.",
+            code="code_in_use",
+            details={"piece_id": match.get("piece_id")},
+        )
+    others = {
+        match["row_number"]
+        for match in row.matches or []
+        if match.get("kind") == "batch_row" and match.get("row_number") is not None
+    }
+    if not others:
+        return
+    for other in session.scalars(
+        select(ImportRow).where(
+            ImportRow.batch_id == row.batch_id,
+            ImportRow.source_row_number.in_(others),
+            ImportRow.id != row.id,
+        )
+    ):
+        if other.decision in (RowDecision.REJECTED, RowDecision.EXCLUDED):
+            continue
+        if (other.resolution or {}).get("as_new"):
+            raise ValidationFailed(
+                f"La fila {other.source_row_number} del lote trae el mismo código y ya entrará "
+                "como pieza nueva: deje fuera una de las dos, o elija la misma pieza para ambas.",
+                code="code_in_use_in_batch",
+                details={"row_number": other.source_row_number},
             )
 
 
@@ -323,7 +355,7 @@ def decide_row(
                     "rechace la fila.",
                     code="observation_creates_no_piece",
                 )
-            _check_as_new(row)
+            _check_as_new(session, row)
             resolution.pop("target_piece_id", None)
             resolution["as_new"] = True
             row.target_piece_id = None

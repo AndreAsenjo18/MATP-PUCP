@@ -88,7 +88,7 @@ describe("fila de la previsualización (RF-026)", () => {
     expect(text).toContain("¿A qué pieza corresponde esta fila?");
     expect(text).toContain("Mismo código: I-0236 (vigente)");
     expect(text).toContain("Ninguna: es una pieza nueva");
-    expect(text).toContain("El mismo código I aparece en la fila 9");
+    expect(text).toContain("Un código de esta fila aparece también en la fila 9");
   });
 
   it("una fila con errores muestra el motivo y no se puede aceptar", () => {

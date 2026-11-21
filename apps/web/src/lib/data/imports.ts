@@ -464,7 +464,7 @@ export function candidatePieces(row: Pick<ImportRow, "matches">): CandidatePiece
   return candidates.map((candidate) => ((seen.get(candidate.label) ?? 0) > 1 ? { ...candidate, label: `${candidate.label} (n.º ${candidate.pieceId.slice(-6)})` } : candidate));
 }
 
-/** Otras filas del lote con el mismo código I (conflicto dentro del lote). */
+/** Otras filas del lote con un mismo código, de cualquier tipo (conflicto dentro del lote). */
 export function conflictingRows(row: Pick<ImportRow, "matches">): number[] {
   return (row.matches ?? []).filter((m) => isRecord(m) && m.kind === "batch_row" && typeof m.row_number === "number").map((m) => (m as { row_number: number }).row_number);
 }
