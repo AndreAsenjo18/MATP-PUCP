@@ -92,7 +92,8 @@ Si escribe, por ejemplo, `MBB 901 / RA 902`, el sistema no lo separa por su cuen
 | Qué ve | Qué hacer |
 |---|---|
 | «Escriba el código que quiere registrar» | El campo **Código** está vacío. Escríbalo. |
-| «El código … ya está asignado a otra pieza activa» | Ese código ya lo tiene otra pieza. Revise el código en la pieza física. |
+| «El código … ya lo tiene la pieza «…»: dos piezas no pueden compartir un código» | Ese código, de cualquier tipo, ya lo tiene la pieza que se nombra, aunque esté escrito de otra forma. No se guardó nada. Abra esa pieza: si es la misma, corrija la que está repetida en vez de registrarla otra vez. |
+| «El código … ya está asignado a otra pieza activa» | Ese código I ya lo tiene otra pieza. Revise el código en la pieza física. |
 | «El código … pertenece a una pieza eliminada» | El código sigue reservado para esa pieza. Solo un Administrador puede reasignarlo. |
 | «Una pieza en comodato no puede recibir Código de inventario general (I)» | Una pieza en comodato nunca lleva código I. Use otro tipo de código o revise el régimen de tenencia. |
 | «No se pudo preparar el registro de códigos» | Falló la conexión y el formulario no aparece. Recargue la página. |

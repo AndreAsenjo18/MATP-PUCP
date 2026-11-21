@@ -16,7 +16,18 @@ Si no ve estos botones, su rol no tiene ese permiso.
 
 ## Ver las fotos
 
-Debajo de la foto grande están las miniaturas. Pulse una para verla; la que tiene una estrella es la **principal**. Junto a la foto se ve su tipo de vista y, si la tiene, su restricción de uso.
+La **foto principal** se ve apenas abre la ficha, en **Datos generales**, al lado de los datos (arriba en un celular). Si la pieza no tiene fotos, ahí mismo dice «La pieza aún no tiene fotos» y **Ir a Fotografías** lleva a la sección para subirlas. **Ver las N fotos** abre la sección **Fotografías**.
+
+En **Fotografías**, debajo de la foto grande están las miniaturas. Pulse una para verla; la que tiene una estrella es la **principal**. Junto a la foto se ve su tipo de vista y, si la tiene, su restricción de uso.
+
+### Ampliar una foto (zoom)
+
+Pulse la foto, o el botón **Ampliar**, para verla a toda la pantalla. Sirve para leer una firma, una marca o ver un deterioro.
+
+- **Acercar** y **Alejar** cambian el tamaño; al lado se ve cuánto («Foto entera», «225 %»). Llega hasta seis veces.
+- También acerca la rueda del ratón, y el doble clic acerca o vuelve a la foto entera. Con el teclado: **+**, **−** y **0**.
+- Acercada, arrastre la foto para recorrerla, o use las barras de desplazamiento.
+- **Ajustar a la pantalla** vuelve a la foto entera. **✕** o la tecla **Esc** cierran la vista.
 
 Al abrir la ficha solo se cargan las miniaturas. La foto grande se descarga cuando la elige, para que la ficha abra rápido con una conexión lenta.
 

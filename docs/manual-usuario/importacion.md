@@ -162,7 +162,7 @@ Cada fila ocupa **una línea**: número de fila, denominación, código y qué p
 | **Nueva** | Ningún código coincide con el catálogo: se creará una pieza. |
 | **Actualización** | Sus códigos coinciden con una sola pieza: se actualizará esa pieza. |
 | **Posible duplicado** | Ya no se usa: una fila que solo se parece a una pieza, sin ningún código igual, se importa como **Nueva**, porque dos piezas parecidas pueden ser objetos distintos. Solo aparece en lotes validados antes de este cambio. |
-| **Conflicto** | Sus códigos apuntan a piezas distintas, intenta cambiar el código I de una pieza o comparte el código I con otra fila del mismo archivo. |
+| **Conflicto** | Sus códigos apuntan a piezas distintas, intenta cambiar el código I de una pieza o comparte un código (I, PUCP o cualquier otro) con otra fila del mismo archivo. Solo una de esas filas puede entrar como pieza nueva: dos piezas nunca comparten un código. |
 
 - Con las cifras del resumen se ve solo ese grupo. Las que están en 0 no se pueden pulsar.
 - En **Cómo se clasifican las filas** se explican las reglas que se usaron. Una fila solo se reconoce como una pieza existente por sus códigos.
@@ -226,6 +226,11 @@ No se puede elegir una pieza que tenga **otro código I** que el de la fila: el 
 - **Rechazar**: la fila no se importa y pide el **motivo**, que queda en la bitácora.
 
 Una fila con errores no se puede aceptar, pero sí dejar fuera o rechazar.
+
+Si una fila no puede entrar como pieza nueva, el sistema le dice por qué:
+
+- **«Un código de la fila ya lo tiene una pieza del catálogo…»** (o **«El código I de la fila ya pertenece a una pieza…»**): elija esa pieza como destino o rechace la fila.
+- **«La fila N del lote trae el mismo código y ya entrará como pieza nueva…»**: deje fuera una de las dos filas, o elija para ambas la misma pieza.
 
 Las filas nuevas y las actualizaciones que no toque se aplican al aprobar. Los conflictos y posibles duplicados que no resuelva **no se aplican**.
 
@@ -312,7 +317,6 @@ Los Excel de la consultoría 2024/25 traen hojas «Errores identificados» y «E
 Si subió el archivo equivocado o quiere empezar de nuevo, pulse **Descartar este lote** (junto a **Importar otro archivo**) y confirme. El botón aparece mientras el lote no se aprobó y no está procesando.
 
 - El lote **no se importa** y queda como **Abandonado**. **No se borra nada**: el lote, sus filas y el archivo quedan en la bitácora.
-- Sus filas dejan de aparecer en **Revisar pendientes → Posibles duplicados**.
 - Un lote descartado no se puede retomar: si lo necesita, vuelva a subir el archivo.
 
 **Importar otro archivo** sin descartar deja el lote como estaba.
