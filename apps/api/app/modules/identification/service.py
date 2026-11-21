@@ -207,6 +207,45 @@ def _normalize_value(
     return result
 
 
+def piece_holding_code(
+    session: Session, type_code: str, normalized_value: str, *, exclude_piece_id: uuid.UUID | None
+) -> Piece | None:
+    """Another active piece that has this code, current or historical (change
+    codigo-unico-y-ajustes-pantallas, D1): two pieces sharing a code are a duplicate."""
+    return session.scalar(
+        select(Piece)
+        .join(PieceIdentifier, PieceIdentifier.piece_id == Piece.id)
+        .where(
+            PieceIdentifier.identifier_type_code == type_code,
+            PieceIdentifier.normalized_value == normalized_value,
+            PieceIdentifier.deleted_at.is_(None),
+            Piece.id != exclude_piece_id if exclude_piece_id else True,
+        )
+        .limit(1)
+    )
+
+
+def ensure_code_is_free(session: Session, piece: Piece, type_code: str, raw_value: str) -> None:
+    """A code another piece already has is not registered: the system never holds a duplicate.
+
+    Called where a person adds a code (the record sheet); the import checks its rows while
+    validating. A value that does not normalize (an absence marker, text) is not compared."""
+    identifier_type = get_identifier_type(session, type_code)
+    result = _normalize_value(identifier_type, raw_value, session_params(session))
+    if not result.normalized:
+        return
+    owner = piece_holding_code(session, type_code, result.normalized, exclude_piece_id=piece.id)
+    if owner is None:
+        return
+    raise BusinessRuleViolation(
+        f"El código {result.normalized} ({identifier_type.label}) ya lo tiene la pieza "
+        f"«{owner.denomination}»: dos piezas no pueden compartir un código. Si es la misma "
+        "pieza, corrija la que está repetida en vez de registrarla otra vez.",
+        code="code_in_use",
+        details={"piece_id": str(owner.id), "normalized_value": result.normalized},
+    )
+
+
 def add_identifier(
     session: Session,
     piece: Piece,
