@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/brand/TextileMotif";
 import { TASKS, visibleTasks } from "@/lib/help/tasks";
 import { render, visibleText } from "@/test/render";
 
-import { CatalogStatusChips, HOME_SEARCH_EXAMPLES, HOME_SEARCH_HINT, HomeSearch, TaskCards } from "./HomeGuide";
+import { CatalogStatusChips, HOME_SEARCH_HINT, HomeSearch, TaskCards } from "./HomeGuide";
 
 // Spec plataforma — Inicio como guía de tareas y la maqueta B de `remodelacion-visual`.
 // Datos sintéticos (RNF-014).
@@ -165,15 +165,17 @@ describe("buscador de la cabecera", () => {
     expect(html).toContain("from-gemini-azul");
   });
 
-  it("ofrece frases de ejemplo como botones y avisa del estado en una región viva", () => {
+  it("no sugiere frases de ejemplo (pedían cosas que el catálogo no tiene) y avisa del estado en una región viva", () => {
     const html = render(<HomeSearch task={SEARCH} />);
-    for (const example of HOME_SEARCH_EXAMPLES) expect(html).toMatch(new RegExp(`<button[^>]*type="button"[^>]*>${example}</button>`));
+    expect(visibleText(html)).not.toContain("Pruebe:");
+    for (const example of ["retablos de Ayacucho", "comodato sin código I", "I-0236"]) expect(visibleText(html)).not.toContain(example);
+    expect(html.match(/<button\b/g)).toHaveLength(1); // solo «Buscar»
     expect(html).toMatch(/<p[^>]*role="status"[^>]*>/);
   });
 
-  it("el campo, el botón y los ejemplos miden 44 px y el foco se ve sobre la cabecera", () => {
+  it("el campo y el botón miden 44 px y el foco se ve sobre la cabecera", () => {
     const html = render(<HomeSearch task={SEARCH} />);
-    expect(html.match(/min-h-11/g)).toHaveLength(2 + HOME_SEARCH_EXAMPLES.length);
+    expect(html.match(/min-h-11/g)).toHaveLength(2);
     expect(html).toContain("has-[input:focus-visible]:outline-crema");
     expect(html).not.toMatch(/text-(xs|sm)/);
   });
