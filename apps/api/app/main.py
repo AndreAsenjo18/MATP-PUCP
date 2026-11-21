@@ -6,6 +6,7 @@ Run with: uvicorn app.main:create_app --factory
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,7 @@ from app.modules.quality.incremental import register_incremental_jobs
 from app.modules.quality.scan import register_scan_jobs
 from app.modules.users.auth import LoginThrottle
 from app.modules.users.passwords import install_password_log_redaction
+from app.seed.import_templates import refresh_templates_on_startup
 
 logger = logging.getLogger("matp.api")
 
@@ -73,6 +75,21 @@ def operation_id(route: APIRoute) -> str:
     return head + "".join(word.capitalize() for word in rest)
 
 
+def _refresh_templates(factory: Any) -> None:
+    """The real import templates follow the code (``refresh_templates_on_startup``)."""
+    try:
+        updated, kept = refresh_templates_on_startup(factory)
+    except Exception:  # noqa: BLE001 - the database may start later; imports still work
+        logger.warning("No se pudieron actualizar las plantillas de importación")
+        return
+    if updated:
+        logger.info("Plantillas de importación actualizadas: %s", ", ".join(updated))
+    if kept:
+        logger.warning(
+            "Plantillas editadas en Administración, no actualizadas: %s", ", ".join(kept)
+        )
+
+
 def create_app(
     settings: Settings | None = None,
     health_checks: dict[str, HealthCheck] | None = None,
@@ -106,6 +123,7 @@ def create_app(
             logger.warning("Trabajos interrumpidos recuperados: %s", recovered)
         # Queues fed by ordinary writes are drained in this process; tests drain them explicitly.
         if settings.app_env != "test":
+            _refresh_templates(app.state.session_factory)
             start_workers(app.state.session_factory)
         yield
         stop_workers()

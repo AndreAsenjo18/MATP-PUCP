@@ -79,3 +79,38 @@ def test_applying_keeps_the_second_spelling_as_historical(
     assert [r.original_value for r in current] == ["I-03602"]
     assert [r.original_value for r in historical] == ["I-3602"]
     assert historical[0].notes == REPEATED_CODE_NOTE
+
+
+def test_other_codes_that_repeat_the_codes_of_the_row_are_not_proposed_again(
+    ctx: MappingContext,
+) -> None:
+    """«Otros códigos» of the standardized files lists again the codes of the other columns
+    (revision with the museum files, 2026-11-21). Synthetic values."""
+    columns: list[dict[str, Any]] = [
+        {"source": "DENOMINACIÓN", "target": {"kind": "field", "name": "denomination"}},
+        {"source": "N° INVENTARIO", "target": {"kind": "identifiers", "default_type": "I"}},
+        {"source": "CÓDIGO", "target": {"kind": "identifiers", "default_type": "COLECCION"}},
+        {"source": "PUCP", "target": {"kind": "identifier", "type": "PUCP"}},
+        {
+            "source": "OTROS",
+            "target": {"kind": "identifiers", "default_type": "OTRO"},
+            "transforms": ["trim", "absence_markers", "split_concatenated"],
+        },
+    ]
+    spec = MappingSpecV1.model_validate({"version": 1, "columns": columns, "defaults": {}})
+    row = {
+        "DENOMINACIÓN": "Iglesia (sintética)",
+        "N° INVENTARIO": "I-00001",
+        "CÓDIGO": "MMZ 01",
+        "PUCP": "8774",
+        "OTROS": "MMZ 01 / 8774 / I-0001 / 5521",
+    }
+
+    mapped = apply_mapping(row, spec, ctx)
+
+    codes = [(i.type_code, i.original_value) for i in mapped.identifiers]
+    assert codes.count(("COLECCION", "MMZ 01")) == 1
+    assert ("PUCP", "8774") in codes and ("OTRO", "8774") not in codes
+    # Another spelling of the code I stays (historical when applied), and a code of its own too.
+    assert ("I", "I-0001") in codes and ("OTRO", "5521") in codes
+    assert not mapped.errors
