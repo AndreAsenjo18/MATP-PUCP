@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { SessionProvider } from "@/lib/auth/session";
 import { PENDING_TABS, UNKNOWN_COUNTS, pendingTabs, type PendingCounts } from "@/lib/data/pending";
 import { render, visibleText } from "@/test/render";
 
-import { DuplicateQueue } from "./DuplicateQueue";
 import {
   NO_PENDING_TABS_NOTICE,
   PENDING_HINT,
@@ -17,9 +15,10 @@ import {
   TAB_PERMISSION_NOTICES,
 } from "./PendingInbox";
 
-// Change revisar-pendientes-unificado, tareas 2.3 a 2.5. HTML estático (ADR-012); datos sintéticos.
+// Change revisar-pendientes-unificado, tareas 2.3 a 2.5, y codigo-unico-y-ajustes-pantallas (se retira
+// la pestaña de posibles duplicados). HTML estático (ADR-012); datos sintéticos.
 const REQUIREMENT = /\b(RF-0\d{2}|RNF-0\d{2}|RN-0\d{2}|RIA-0\d)\b|\[SUPUESTO\]/;
-const COUNTS: PendingCounts = { duplicates: 9, incomplete: 117 };
+const COUNTS: PendingCounts = { incomplete: 117 };
 
 /** Etiquetas `<a>` del HTML, en orden. */
 function links(html: string): string[] {
@@ -27,42 +26,35 @@ function links(html: string): string[] {
 }
 
 describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañas)", () => {
-  it("son enlaces a su dirección, en el orden fijo, con su número", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="duplicates" />);
+  it("solo «Piezas incompletas», como enlace a su dirección y con su número", () => {
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />);
     expect(html).toMatch(/^<nav aria-label="Pendientes"/);
-    expect(links(html).map((a) => a.match(/href="([^"]+)"/)?.[1])).toEqual([
-      "/pendientes/duplicados",
-      "/pendientes/incompletas",
-    ]);
-    // La pestaña de sugerencias de IA se retiró (retirar-pestana-sugerencias-ia).
-    expect(visibleText(html)).toBe("Posibles duplicados (9) Piezas incompletas (117)");
+    expect(links(html).map((a) => a.match(/href="([^"]+)"/)?.[1])).toEqual(["/pendientes/incompletas"]);
+    // Las pestañas de sugerencias de IA y de posibles duplicados se retiraron.
+    expect(visibleText(html)).toBe("Piezas incompletas (117)");
+    expect(visibleText(html)).not.toMatch(/duplicados/i);
   });
 
-  it("solo la activa lleva aria-current y una marca que no depende solo del color", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />);
-    const anchors = links(html);
-    expect(anchors.filter((a) => a.includes('aria-current="page"'))).toHaveLength(1);
-    expect(anchors[1]).toContain('aria-current="page"');
-    expect(anchors[1]).toMatch(/font-semibold/);
-    expect(anchors[0]).not.toMatch(/font-semibold/);
+  it("la activa lleva aria-current y una marca que no depende solo del color", () => {
+    const [anchor] = links(render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />));
+    expect(anchor).toContain('aria-current="page"');
+    expect(anchor).toMatch(/font-semibold/);
   });
 
   it("sin total conocido, la pestaña va sin número y sin mensaje de error", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={{ ...COUNTS, incomplete: null }} />);
-    expect(visibleText(html)).toBe("Posibles duplicados (9) Piezas incompletas");
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={UNKNOWN_COUNTS} />);
+    expect(visibleText(html)).toBe("Piezas incompletas");
     expect(visibleText(html)).not.toMatch(/error|no se pudo/i);
   });
 
-  it("muestra solo las pestañas que recibe (las del rol)", () => {
-    const tabs = pendingTabs((code) => code === "reports.view");
-    expect(visibleText(render(<PendingTabsNav tabs={tabs} counts={UNKNOWN_COUNTS} />))).toBe("Piezas incompletas");
+  it("sin pestañas del rol, nada", () => {
     expect(render(<PendingTabsNav tabs={[]} counts={UNKNOWN_COUNTS} />)).toBe("");
   });
 });
 
 describe("legibilidad de las pestañas (Req: Legibilidad de la bandeja de pendientes)", () => {
-  it("16 px, 44 px de alto, foco visible; en pantallas estrechas se desplazan dentro de su cuadro, sin desbordar la página", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="duplicates" />);
+  it("16 px, 44 px de alto, foco visible; en pantallas estrechas se desplazan dentro de su cuadro", () => {
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />);
     for (const anchor of links(html)) {
       expect(anchor).toMatch(/\bmin-h-11\b/);
       expect(anchor).toMatch(/\btext-base\b/);
@@ -86,9 +78,9 @@ describe("marco de la bandeja", () => {
     expect(visibleText(html)).toContain("contenido");
   });
 
-  it("rol sin ninguno de los permisos: aviso, ninguna pestaña y nada del contenido", () => {
+  it("rol sin el permiso: aviso, ninguna pestaña y nada del contenido", () => {
     const html = render(
-      <PendingInboxFrame tabs={[]} counts={UNKNOWN_COUNTS}>
+      <PendingInboxFrame tabs={pendingTabs(() => false)} counts={UNKNOWN_COUNTS}>
         <p>contenido</p>
       </PendingInboxFrame>,
     );
@@ -96,56 +88,23 @@ describe("marco de la bandeja", () => {
     expect(html).not.toContain('aria-label="Pendientes"');
     expect(visibleText(html)).not.toContain("contenido");
   });
-
-  it("pestaña sin permiso abierta por su dirección: aviso y, arriba, las pestañas que sí puede abrir", () => {
-    const tabs = pendingTabs((code) => code === "reports.view");
-    const html = render(
-      <PendingInboxFrame tabs={tabs} counts={UNKNOWN_COUNTS} activeKey="duplicates">
-        <PendingTabBody tabKey="duplicates" allowed={false}>
-          <p>cola de duplicados</p>
-        </PendingTabBody>
-      </PendingInboxFrame>,
-    );
-    expect(visibleText(html)).toContain(TAB_PERMISSION_NOTICES.duplicates);
-    expect(visibleText(html)).toContain("Piezas incompletas");
-    expect(visibleText(html)).not.toContain("cola de duplicados");
-    expect(html).not.toContain('aria-current="page"');
-  });
 });
 
-describe("contenido de cada pestaña", () => {
-  it("con permiso muestra el contenido; sin él, el aviso de su pestaña", () => {
-    for (const key of ["duplicates", "incomplete"] as const) {
-      expect(visibleText(render(<PendingTabBody tabKey={key} allowed>contenido</PendingTabBody>))).toBe("contenido");
-      expect(visibleText(render(<PendingTabBody tabKey={key} allowed={false}>contenido</PendingTabBody>))).toBe(TAB_PERMISSION_NOTICES[key]);
-    }
+describe("contenido de la pestaña", () => {
+  it("con permiso muestra el contenido; sin él, su aviso", () => {
+    expect(visibleText(render(<PendingTabBody tabKey="incomplete" allowed>contenido</PendingTabBody>))).toBe("contenido");
+    expect(visibleText(render(<PendingTabBody tabKey="incomplete" allowed={false}>contenido</PendingTabBody>))).toBe(TAB_PERMISSION_NOTICES.incomplete);
   });
 
-  it("mientras se eligen la pestaña, un aviso de carga accesible", () => {
+  it("mientras se elige la pestaña, un aviso de carga accesible", () => {
     const html = render(<PendingLoading />);
     expect(html).toContain('role="status"');
     expect(visibleText(html)).toBe(PENDING_LOADING_TEXT);
   });
-
-  it("la cola de duplicados dentro de la bandeja no repite el título; fuera de ella, sí", () => {
-    const embedded = render(
-      <SessionProvider>
-        <DuplicateQueue embedded />
-      </SessionProvider>,
-    );
-    expect(embedded).not.toContain("<h1");
-    expect(visibleText(embedded)).toContain("Compare cada par y decida.");
-    const standalone = render(
-      <SessionProvider>
-        <DuplicateQueue />
-      </SessionProvider>,
-    );
-    expect(standalone.match(/<h1\b[^>]*>([^<]+)</)?.[1]).toBe("Cola de posibles duplicados");
-  });
 });
 
 describe("textos de la bandeja sin identificadores internos", () => {
-  it("título, ayuda, avisos, carga y enlace provisional", () => {
+  it("título, ayuda, avisos y carga", () => {
     const texts = [
       PENDING_TITLE,
       PENDING_HINT,

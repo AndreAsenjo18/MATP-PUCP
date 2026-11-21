@@ -23,8 +23,7 @@ export const TASKS: readonly Task[] = [
   { id: "search", verb: "Buscar una pieza", description: "Encuentre una pieza por su código o su nombre.", href: "/busqueda", permissions: [] },
   { id: "register", verb: "Registrar una pieza nueva", description: "Anote una pieza nueva con sus datos y sus fotos.", href: "/piezas/nueva", permissions: ["pieces.create"] },
   { id: "load", verb: "Cargar datos o fotos", description: "Traiga piezas desde un Excel o fotos desde una carpeta.", href: "/importacion", permissions: ["imports.prepare"] },
-  // Mientras no exista `/pendientes` (change `revisar-pendientes-unificado`) lleva a la cola de duplicados.
-  { id: "review", verb: "Revisar pendientes", description: "Decida sobre posibles duplicados y piezas incompletas.", href: "/duplicados", permissions: ["duplicates.resolve", "reports.view"] },
+  { id: "review", verb: "Revisar pendientes", description: "Complete las piezas a las que les faltan datos.", href: "/pendientes", permissions: ["reports.view"] },
   { id: "report", verb: "Sacar un reporte", description: "Inventarios y listas para imprimir o descargar.", href: "/reportes", permissions: ["reports.view"] },
   { id: "settings", verb: "Configuración", description: "Personas, permisos y listas del museo.", href: "/administracion", permissions: ["users.manage"] },
 ];

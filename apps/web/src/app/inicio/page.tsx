@@ -19,8 +19,8 @@ import { loadSearchOptions, optionNames, type SearchOptions } from "@/components
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RequireSession } from "@/components/layout/RequireSession";
 import { useSession } from "@/lib/auth/session";
-import { fetchDuplicateQueue } from "@/lib/data/duplicates";
 import { getApiMode } from "@/lib/data/mode";
+import { incompleteTotal } from "@/lib/data/pending";
 import { fetchDashboardKpis, type AlertType, type CompletenessKpis } from "@/lib/data/quality";
 import { homeSearchTarget, interpretSearch } from "@/lib/data/search";
 import { visibleTasks, type CatalogStatus } from "@/lib/help/tasks";
@@ -36,7 +36,7 @@ function InicioContent() {
   const [status, setStatus] = useState<CatalogStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
-  const canReviewDuplicates = hasPermission("duplicates.resolve");
+  const canSeeIncomplete = hasPermission("reports.view");
   const router = useRouter();
   const [thinking, setThinking] = useState(false);
   // Las listas que la IA necesita para reconocer colecciones, materiales, etc. Se piden en segundo
@@ -61,17 +61,18 @@ function InicioContent() {
     };
   }, [devUser]);
 
-  // Número de pendientes: los posibles duplicados (la pestaña de sugerencias de IA se retiró).
+  // Número de pendientes: las piezas incompletas (los posibles duplicados ya no existen, change
+  // `codigo-unico-y-ajustes-pantallas`).
   useEffect(() => {
     let active = true;
-    if (!canReviewDuplicates) return;
-    fetchDuplicateQueue({ status: "PENDING", pageSize: 1 }, devUser).then((duplicates) => {
-      if (active) setPending(duplicates.status === "ok" ? duplicates.page.total : 0);
+    if (!canSeeIncomplete) return;
+    incompleteTotal(devUser).then((total) => {
+      if (active) setPending(total ?? 0);
     });
     return () => {
       active = false;
     };
-  }, [canReviewDuplicates, devUser]);
+  }, [canSeeIncomplete, devUser]);
 
   const tasks = visibleTasks(hasPermission);
   const searchTask = tasks.find((task) => task.id === "search");
