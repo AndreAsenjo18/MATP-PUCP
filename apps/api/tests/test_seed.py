@@ -24,6 +24,7 @@ from app.models import (
     Piece,
     PieceIdentifier,
 )
+from app.modules.audit.context import audit_context
 from app.modules.audit.models import AuditOrigin
 from app.modules.audit.tracking import INCLUDE_DELETED
 from app.modules.catalog.enums import TenureRegime
@@ -40,9 +41,11 @@ from app.seed.import_templates import (
     ILLUSTRATIVE_NAMES,
     PREDEFINED_TEMPLATES,
     refresh_predefined_templates,
+    refresh_templates_on_startup,
     sync_predefined_templates,
 )
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
+from tests.conftest import SYSTEM_CONTEXT
 
 ALL = {INCLUDE_DELETED: True}
 
@@ -446,6 +449,69 @@ def test_refreshing_the_templates_updates_a_mapping_stored_before_a_change(
     assert second == []
     location = next(c for c in stored.mapping["columns"] if c["source"] == "Ubicación en inmueble")
     assert location["target"] == {"kind": "field", "name": "location"}
+
+
+def _with_the_old_location(stored: ImportMappingTemplate) -> None:
+    """The mapping as installations seeded before importacion-aplicar-vocabularios have it."""
+    old = dict(stored.mapping)
+    old["columns"] = [
+        {"source": column["source"], "target": {"kind": "source_payload"}, "optional": True}
+        if column["source"] == "Ubicación en inmueble"
+        else column
+        for column in old["columns"]
+    ]
+    stored.mapping = old
+
+
+def _standard(session: Session) -> ImportMappingTemplate:
+    stored = session.scalar(
+        select(ImportMappingTemplate).where(ImportMappingTemplate.name == "BD estandarizada 2025")
+    )
+    assert stored is not None
+    return stored
+
+
+def test_the_api_start_updates_a_template_the_system_left_behind(
+    session: Session, engine: Engine
+) -> None:
+    """Revision with the museum files (2026-11-21): an installation seeded before a template
+    changed read «Ubicación en inmueble» as source data only until someone ran ``--templates``.
+    The API now does it when it starts."""
+    with audit_context(session, SYSTEM_CONTEXT):
+        sync_predefined_templates(session)
+        _with_the_old_location(_standard(session))
+        session.commit()
+
+    updated, kept = refresh_templates_on_startup(make_session_factory(engine))
+    again = refresh_templates_on_startup(make_session_factory(engine))
+
+    assert (updated, kept) == (["BD estandarizada 2025"], [])
+    assert again == ([], [])
+    session.expire_all()
+    location = next(
+        c for c in _standard(session).mapping["columns"] if c["source"] == "Ubicación en inmueble"
+    )
+    assert location["target"] == {"kind": "field", "name": "location"}
+
+
+def test_the_api_start_keeps_a_template_a_person_edited(
+    session: Session, engine: Engine, act_as: Any
+) -> None:
+    """A change made in Administración is not undone by a restart: the template is left as the
+    person saved it, and the API says so in its log."""
+    with audit_context(session, SYSTEM_CONTEXT):
+        sync_predefined_templates(session)
+        session.commit()
+    with act_as("ADMIN"):
+        _with_the_old_location(_standard(session))
+        session.commit()
+        edited = _standard(session).mapping
+
+    updated, kept = refresh_templates_on_startup(make_session_factory(engine))
+
+    assert (updated, kept) == ([], ["BD estandarizada 2025"])
+    session.expire_all()
+    assert _standard(session).mapping == edited
 
 
 def test_the_predefined_templates_do_not_look_alike_so_detection_is_unambiguous() -> None:

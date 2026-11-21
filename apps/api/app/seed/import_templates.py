@@ -368,14 +368,18 @@ def sync_predefined_templates(session: Session) -> tuple[list[str], list[str]]:
     return created, retired
 
 
-def refresh_predefined_templates(session: Session) -> list[str]:
+def refresh_predefined_templates(
+    session: Session, *, keep_edited: bool = False, kept: list[str] | None = None
+) -> list[str]:
     """Bring the stored mapping of each real template up to the one in this module.
 
     ``sync_predefined_templates`` only creates the templates that are missing, so a database seeded
     before a template changed (for instance, «Ubicación en inmueble» mapped to the location in
     importacion-aplicar-vocabularios) kept validating with the old mapping: the location and the
     conservation values were never read. The previous mapping stays in the audit log (RN-005).
-    Idempotent. Needs an audit context. Returns the names updated."""
+    With ``keep_edited`` a template a person changed in Administración after its last update by
+    the system is left as it is, and its name goes to ``kept``. Idempotent. Needs an audit
+    context. Returns the names updated."""
     from app.modules.imports.mapping import MappingSpecV1
     from app.modules.imports.models import ImportMappingTemplate
     from app.modules.imports.templates import header_signature
@@ -394,8 +398,60 @@ def refresh_predefined_templates(session: Session) -> list[str]:
         signature = header_signature(predefined.headers)
         if template.mapping == mapping and template.header_signature == signature:
             continue
+        if keep_edited and _edited_by_a_person(session, template.id):
+            if kept is not None:
+                kept.append(predefined.name)
+            continue
         template.mapping = mapping
         template.header_signature = signature
         updated.append(predefined.name)
     session.flush()
     return updated
+
+
+def _edited_by_a_person(session: Session, template_id: Any) -> bool:
+    """A person changed the mapping of the template after the system last wrote it."""
+    from sqlalchemy import func
+
+    from app.modules.audit.models import AuditLog, AuditOrigin
+
+    entries = select(AuditLog).where(
+        AuditLog.entity_type == "import_mapping_template",
+        AuditLog.entity_id == template_id,
+    )
+    last_by_system = session.scalar(
+        select(func.max(AuditLog.occurred_at)).where(
+            AuditLog.entity_type == "import_mapping_template",
+            AuditLog.entity_id == template_id,
+            AuditLog.origin == AuditOrigin.SYSTEM,
+        )
+    )
+    by_a_person = entries.where(
+        AuditLog.origin != AuditOrigin.SYSTEM,
+        AuditLog.field.in_(("mapping", "header_signature")),
+    )
+    if last_by_system is not None:
+        by_a_person = by_a_person.where(AuditLog.occurred_at > last_by_system)
+    return session.scalar(by_a_person.limit(1)) is not None
+
+
+#: Who updates the templates when the API starts, in the audit log.
+STARTUP_ACTOR = "Plantillas de los formatos del museo"
+
+
+def refresh_templates_on_startup(factory: Any) -> tuple[list[str], list[str]]:
+    """Update the real templates when the API starts (revision with the museum files, 2026-11-21).
+
+    Before, only ``python -m app.seed --templates`` did it, so an installation seeded before a
+    template changed kept reading the files with the old mapping: in the revision, «Ubicación en
+    inmueble» and the conservation values were not read. A template a person edited in
+    Administración is left as it is. Returns ``(updated, kept)``."""
+    from app.modules.audit.context import AuditContext, audit_context
+    from app.modules.audit.models import AuditOrigin
+
+    context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label=STARTUP_ACTOR)
+    kept: list[str] = []
+    with factory() as session, audit_context(session, context):
+        updated = refresh_predefined_templates(session, keep_edited=True, kept=kept)
+        session.commit()
+    return updated, kept
