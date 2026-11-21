@@ -183,11 +183,13 @@ def _collection_name_key(name: str) -> str:
 
 
 def _location_key(text: str | None) -> str:
-    """Name of a location to compare: no accents, case, «N°»/«Nº»/«No.» nor punctuation."""
+    """Name of a location to compare: no accents, case, «N°»/«Nº»/«No.», punctuation nor the
+    zeros before a number («Caja 01» is «caja 1»)."""
     if not text:
         return ""
     folded = _fold(text)
     folded = re.sub(r"\bn\s*[°ºo]\.?\s*", " ", folded)
+    folded = re.sub(r"\b0+(\d)", r"\1", folded)
     return " ".join(re.sub(r"[^\w\s]", " ", folded).split())
 
 
@@ -619,6 +621,8 @@ class MappingContext:
         self._acronyms: dict[uuid.UUID, str | None] = {}
         self._vocabularies: dict[str, dict[str, VocabularyTerm] | None] = {}
         self._locations: dict[str, list[uuid.UUID]] | None = None
+        self._sites: dict[str, list[uuid.UUID]] = {}
+        self._parents: dict[uuid.UUID, uuid.UUID | None] = {}
         self._plans: dict[int, tuple[MappingSpec | MappingSpecV1, _Plan]] = {}
 
     @property
@@ -658,22 +662,65 @@ class MappingContext:
         found = self._names.get(_collection_name_key(name), [])
         return found[0] if len(found) == 1 else None
 
+    def collections_named(self, name: str) -> int:
+        """How many collections have this name (without accents nor the word «Colección»)."""
+        if self._names is None:
+            self._collection_by_name(name)
+        assert self._names is not None
+        return len(self._names.get(_collection_name_key(name), []))
+
     def locations_named(self, name: str) -> list[uuid.UUID]:
         """Active locations (below the site) whose name or code is ``name``, ignoring case,
-        accents, «N°» and punctuation: «Deposito N° 1» is «Depósito 1»."""
+        accents, «N°» and punctuation: «Deposito N° 1» is «Depósito 1».
+
+        A name that is no location may be a path, as the museum files write it: «Depósito N° 1,
+        caja 6.» or «2do piso», «Cuarto almacén», «Caja 8» one per line. Each part must then be
+        inside the one before it, at any depth; the first part may also be the site."""
         if self._locations is None:
-            self._locations = {}
-            for location_id, location_name, code in self._session.execute(
-                select(Location.id, Location.name, Location.code).where(
-                    Location.deleted_at.is_(None),
-                    Location.is_active.is_(True),
-                    Location.level != LocationLevel.SITE,
-                )
-            ):
-                for key in {_location_key(location_name), _location_key(code)}:
-                    if key:
-                        self._locations.setdefault(key, []).append(location_id)
-        return list(dict.fromkeys(self._locations.get(_location_key(name), [])))
+            self._load_locations()
+        assert self._locations is not None
+        found = list(dict.fromkeys(self._locations.get(_location_key(name), [])))
+        return found or self._locations_by_path(name)
+
+    def _load_locations(self) -> None:
+        self._locations, self._sites, self._parents = {}, {}, {}
+        for location_id, location_name, code, level, parent_id in self._session.execute(
+            select(
+                Location.id, Location.name, Location.code, Location.level, Location.parent_id
+            ).where(Location.deleted_at.is_(None), Location.is_active.is_(True))
+        ):
+            self._parents[location_id] = parent_id
+            names = self._sites if level == LocationLevel.SITE else self._locations
+            for key in {_location_key(location_name), _location_key(code)}:
+                if key:
+                    names.setdefault(key, []).append(location_id)
+
+    def _locations_by_path(self, text: str) -> list[uuid.UUID]:
+        assert self._locations is not None
+        parts = [_location_key(part) for part in _LOCATION_PATH_RE.split(text)]
+        parts = [part for part in parts if part]
+        if len(parts) < 2:
+            return []
+        current = set(self._locations.get(parts[0], [])) | set(self._sites.get(parts[0], []))
+        for part in parts[1:]:
+            current = {
+                location_id
+                for location_id in self._locations.get(part, [])
+                if self._inside(location_id, current)
+            }
+            if not current:
+                return []
+        return sorted(current)
+
+    def _inside(self, location_id: uuid.UUID, ancestors: set[uuid.UUID]) -> bool:
+        parent = self._parents.get(location_id)
+        seen: set[uuid.UUID] = set()
+        while parent is not None and parent not in seen:
+            if parent in ancestors:
+                return True
+            seen.add(parent)
+            parent = self._parents.get(parent)
+        return False
 
     def vocabulary_terms(self, code: str) -> "dict[str, VocabularyTerm] | None":
         """Terms of a vocabulary by code (active and inactive); None if it does not exist."""
@@ -1163,7 +1210,7 @@ def apply_mapping(
     }
     for column in columns:
         if isinstance(column.target, MeasuresTarget):
-            _map_measures(mapped, column, raw_row)
+            _map_measures(mapped, column, raw_row, ctx)
             continue
         raw = raw_row.get(column.source) if not column.sources else _joined(column, raw_row)
         value, is_absent = raw, False
@@ -1207,7 +1254,19 @@ def apply_mapping(
         mapped.defaulted.append("collection")
     if collection is not None:
         mapped.collection_id = ctx.collection_id(collection)
-        if mapped.collection_id is None:
+        if mapped.collection_id is None and (same := ctx.collections_named(collection)) > 1:
+            # Before, it said there was none: two collections with the same name were not told
+            # apart, and the person looked for a collection that did exist.
+            mapped.errors.append(
+                RowError(
+                    "ambiguous_collection",
+                    f"Hay {same} colecciones con el nombre «{collection}». Deje una sola en "
+                    "Administración › Colecciones, o escriba su sigla en el archivo, y vuelva a "
+                    "validar el lote.",
+                    "collection",
+                )
+            )
+        elif mapped.collection_id is None:
             mapped.errors.append(
                 RowError(
                     "unknown_collection",
@@ -1220,8 +1279,37 @@ def apply_mapping(
             )
     _complete_collection_numbers(mapped, ctx)
     _notes_from_code_columns(mapped)
+    _drop_repeated_codes(mapped)
     _check_inventory_codes(mapped)
     return mapped
+
+
+def _drop_repeated_codes(mapped: MappedRow) -> None:
+    """«Otros códigos» of the standardized files repeats the codes of the other columns of the
+    row («MMZ 01 / 8774 / I-0001»): each piece got «MMZ 01» twice and a generic «OTRO 8774»
+    next to its «PUCP 8774». A code already in the row with the same type and spelling is not
+    proposed again, and a generic code whose value is a code of a specific type of the row is that
+    code. Another spelling of the same code (``I-0001`` beside ``I-00001``) is kept: applying the
+    row stores it as historical. The cell stays in the batch rows as it came (RN-005)."""
+    specific = {
+        identifier.normalized_value
+        for identifier in mapped.identifiers
+        if identifier.type_code != TYPE_OTHER and identifier.normalized_value
+    }
+    seen: set[tuple[str, str]] = set()
+    kept: list[RowIdentifier] = []
+    for identifier in mapped.identifiers:
+        if identifier.is_absent:
+            kept.append(identifier)
+            continue
+        key = (identifier.type_code, identifier.original_value.strip())
+        if key in seen:
+            continue
+        if identifier.type_code == TYPE_OTHER and identifier.normalized_value in specific:
+            continue
+        seen.add(key)
+        kept.append(identifier)
+    mapped.identifiers = kept
 
 
 def _check_inventory_codes(mapped: MappedRow) -> None:
@@ -1507,18 +1595,45 @@ def _joined(column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> str | None:
 
 #: Unit of each magnitude of a ``measures`` column (design D3) [SUPUESTO].
 MEASURE_UNITS = {"peso": "g"}
-_DECIMAL_RE = re.compile(r"^\d+(?:[.,]\d+)?$")
+# A number, with the unit of its column written after it or not («12 cm», «75,4cm», «120 gr»)
+# and a stray final dot («2.4.», «26cm.»). A length in metres («1.44 m») is turned into cm.
+_MEASURE_RE = re.compile(r"^(\d+(?:[.,]\d+)?)\s*(?:(cms?|grs?|g|m|mts?)\b)?\s*\.?$", re.IGNORECASE)
+_UNIT_SPELLINGS = {"cm": "cm", "cms": "cm", "g": "g", "gr": "g", "grs": "g"}
+_TO_CM = {"m": 100, "mt": 100, "mts": 100}
+#: «No aplica» and the like in a measure column: no value, as an empty cell (besides the absence
+#: markers of the codes, ``-`` among them).
+MEASURE_ABSENT = frozenset(
+    {"NOAPLICA", "NOCORRESPONDE", "NOREGISTRA", "NOPRESENTA", "SINDATO", "SINDATOS", "N.D.", "N/D"}
+)
 
 
-def _measure_number(value: Any) -> float | None:
+def _measure_number(value: Any, unit: str = "cm") -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
         return float(value) if value >= 0 else None
     text = _text(value)
-    if text is None or not _DECIMAL_RE.match(text):
+    match = _MEASURE_RE.match(text) if text is not None else None
+    if match is None:
         return None
-    return float(text.replace(",", "."))
+    number = float(match.group(1).replace(",", "."))
+    written = (match.group(2) or "").lower()
+    if written in _TO_CM and unit == "cm":
+        return round(number * _TO_CM[written], 2)
+    if written and _UNIT_SPELLINGS.get(written) != unit:
+        return None  # «120 cm» in the weight column: someone has to look at it
+    return number
+
+
+def _measure_absent(value: Any, params: NormalizationParams) -> bool:
+    text = _text(value)
+    if text is None:
+        return True
+    if isinstance(value, int | float):
+        return False
+    key = NormalizationParams.marker_key(text)
+    # «0» is an absence marker of the codes, but here it is a number.
+    return key in MEASURE_ABSENT or (key != "0" and is_absence_marker(text, params=params))
 
 
 def _shown(number: float) -> str:
@@ -1526,19 +1641,22 @@ def _shown(number: float) -> str:
     return f"{number:g}".replace(".", ",")
 
 
-def _map_measures(mapped: MappedRow, column: ColumnSpecV1, raw_row: Mapping[str, Any]) -> None:
+def _map_measures(
+    mapped: MappedRow, column: ColumnSpecV1, raw_row: Mapping[str, Any], ctx: MappingContext
+) -> None:
     """Separate measure columns → structured dimensions and their text (design D3). A value that
-    is not a number is kept in the text with a warning; the row is not rejected."""
+    is not a number is kept in the text with a warning; the row is not rejected. «No aplica» or
+    «-» is no value: before, it was a warning and «Diámetro No aplica» in the text."""
     assert isinstance(column.target, MeasuresTarget)
     texts: list[str] = []
     dimensions: list[dict[str, Any]] = []
     for magnitude, name in zip(column.target.magnitudes, column.inputs, strict=False):
         raw = raw_row.get(name)
-        if _text(raw) is None:
+        if _measure_absent(raw, ctx.params):
             continue
         label = magnitude.capitalize()
         unit = MEASURE_UNITS.get(magnitude, "cm")
-        number = _measure_number(raw)
+        number = _measure_number(raw, unit)
         if number is None:
             texts.append(f"{label} {_text(raw)}")
             mapped.warnings.append(
@@ -1561,6 +1679,15 @@ def _map_measures(mapped: MappedRow, column: ColumnSpecV1, raw_row: Mapping[str,
 _YEAR_RE = re.compile(r"^\d{4}$")
 _DAY_FIRST_RE = re.compile(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$")
 _ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$")
+#: Month written in Spanish, whole or abbreviated, as the museum files do: «1-feb.-2015»,
+#: «11-set.-2006», «3 de marzo de 1998». Compared without accents nor case.
+_MONTHS = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "set": 9, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
+}  # fmt: skip
+_MONTH_NAME_RE = re.compile(
+    r"^(\d{1,2})(?:\s+de\s+|[\s/.-]+)([a-z]{3})[a-z]*\.?(?:\s+de\s+|[\s/.-]+)(\d{4})$"
+)
 
 
 def _map_entry_date(mapped: MappedRow, column: ColumnSpecV1, value: Any) -> None:
@@ -1582,6 +1709,8 @@ def _map_entry_date(mapped: MappedRow, column: ColumnSpecV1, value: Any) -> None
             parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
         elif match := _ISO_RE.match(text):
             parsed = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        elif (match := _MONTH_NAME_RE.match(_fold(text))) and match.group(2) in _MONTHS:
+            parsed = date(int(match.group(3)), _MONTHS[match.group(2)], int(match.group(1)))
     except ValueError:
         parsed = None
     if parsed is not None:
@@ -1614,7 +1743,11 @@ def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatche
             continue
         # A whole cell that is not a term may list several («Madera, metal y pintura»): each
         # part is compared on its own (importacion-aplicar-vocabularios, D1).
-        pieces = [text] if _fold(text) in by_key else _term_list(text)
+        pieces = (
+            [text]
+            if _fold(text) in by_key
+            else _term_list(text, by_key, conjunctions=vocabulary in MULTI_VALUED_VOCABULARIES)
+        )
         for piece in pieces:
             code = by_key.get(_fold(piece))
             if code is None:
@@ -1624,12 +1757,34 @@ def _match_terms(vocabulary: str, value: Any, ctx: MappingContext) -> TermMatche
     return matches
 
 
+#: Parts of a location written as a path: «Depósito N° 1, caja 6.», one per line.
+_LOCATION_PATH_RE = re.compile(r"\s*[,;\n]+\s*")
 #: Separators of a list of terms written in one cell of the museum files [SUPUESTO].
-_TERM_LIST_RE = re.compile(r"\s*(?:[,;/\n]|\s+y\s+|\s+e\s+)\s*")
+_TERM_LIST_RE = re.compile(r"\s*[,;/\n]\s*")
+_CONJUNCTION_RE = re.compile(r"\s+[ye]\s+")
+#: Vocabularies a piece takes several terms of: only in their cells is «y» a list
+#: («Madera y metal»). In the others it is part of a name: «Escultura y talla», «Textilería e
+#: indumentaria» and «Recipientes y utensilios» are one type of object each.
+MULTI_VALUED_VOCABULARIES = frozenset({"MATERIAL", "TECHNIQUE"})
 
 
-def _term_list(text: str) -> list[str]:
-    return [part.strip().rstrip(".") for part in _TERM_LIST_RE.split(text) if part.strip()]
+def _term_list(text: str, by_key: Mapping[str, str], *, conjunctions: bool) -> list[str]:
+    """The values of a cell: one per line, comma, semicolon or slash. A value that is a term of
+    the list is kept whole, even with «y» in its name; any other is split at «y» and «e» only
+    when ``conjunctions``. Before, a cell with «Escultura» and «Escultura y talla» on two lines gave
+    «talla» as a value."""
+    values: list[str] = []
+    for part in _TERM_LIST_RE.split(text):
+        part = part.strip().rstrip(".").strip()
+        if not part:
+            continue
+        if not conjunctions or _fold(part) in by_key:
+            values.append(part)
+            continue
+        values += [
+            piece.strip().rstrip(".") for piece in _CONJUNCTION_RE.split(part) if piece.strip()
+        ]
+    return values
 
 
 def _identifiers(value: str | None, column: ColumnSpec, ctx: MappingContext) -> list[RowIdentifier]:
