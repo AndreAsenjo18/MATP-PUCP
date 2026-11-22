@@ -137,21 +137,57 @@ def _piece_of(row: dict[str, Any], identifier_type: str) -> str:
 
 
 # --- 4.1 Decisiones por fila y por campo --------------------------------------------------------
+def _same_piece_twice(pipeline: Pipeline) -> Batch:
+    """Two rows with the code I of the same catalogue piece: they conflict with each other (two
+    pieces never share a code) and either can be resolved to that piece."""
+    with pipeline.session() as session:
+        catalog = _catalog(session)
+        session.expunge_all()
+    tag = _tag()
+    lines = [
+        "DENOMINACIÓN;CÓDIGOS;RÉGIMEN;PROCEDENCIA;AUTOR;OBS. CONSULTORÍA",
+        f"{catalog.target.denomination};{catalog.target_code};Propiedad;Procedencia {tag};;",
+        f"Otra ficha de la misma pieza {tag};{catalog.target_code};Propiedad;;;",
+    ]
+    content = ("\n".join(lines) + "\n").encode("utf-8")
+    batch_id = upload(pipeline.client, f"misma-pieza-{tag}.csv", content)["batch_id"]
+    assert put_mapping(pipeline.client, batch_id, SHEET_MAPPING).status_code == 200
+    assert validate(pipeline.client, batch_id).status_code == 202
+    return Batch(batch_id, tag, catalog, _rows(pipeline, batch_id))
+
+
 def test_resolving_a_conflict_choosing_the_target_piece(pipeline: Pipeline) -> None:
+    batch = _same_piece_twice(pipeline)
+    assert batch.rows[2]["classification"] == "CONFLICT"
+    piece = _piece_of(batch.rows[2], TYPE_INVENTORY)
+
+    response = decide(pipeline, batch, 2, decision="ACCEPTED", target_piece_id=piece)
+
+    assert response.status_code == 200, response.text
+    row = response.json()
+    assert row["classification"] == "CONFLICT"  # the computed classification is kept
+    assert row["action"] == "UPDATE" and row["target_piece_id"] == piece
+    assert {change["field"] for change in row["diff"]} >= {"provenance"}
+    assert row["resolution"]["target_piece_id"] == piece
+    log = pipeline.client.get(f"{BASE}/{batch.id}/log").json()
+    entry = next(entry for entry in log["entries"] if entry["source_row_number"] == 2)
+    assert entry["resolution"]["target_piece_id"] == piece
+
+
+def test_a_row_with_codes_of_two_pieces_cannot_go_to_either(pipeline: Pipeline) -> None:
+    """Change codigo-unico-y-ajustes-pantallas: choosing piece A would add to it the code of
+    piece B, and the two would share it. Before, it went through and made a duplicate."""
     batch = prepared(pipeline)
     piece_a = _piece_of(batch.rows[4], TYPE_INVENTORY)
 
     response = decide(pipeline, batch, 4, decision="ACCEPTED", target_piece_id=piece_a)
 
-    assert response.status_code == 200, response.text
-    row = response.json()
-    assert row["classification"] == "CONFLICT"  # the computed classification is kept
-    assert row["action"] == "UPDATE" and row["target_piece_id"] == piece_a
-    assert {change["field"] for change in row["diff"]} >= {"denomination"}
-    assert row["resolution"]["target_piece_id"] == piece_a
-    log = pipeline.client.get(f"{BASE}/{batch.id}/log").json()
-    entry = next(entry for entry in log["entries"] if entry["source_row_number"] == 4)
-    assert entry["resolution"]["target_piece_id"] == piece_a
+    assert response.status_code == 422, response.text
+    error = response.json()
+    assert error["code"] == "code_in_use"
+    assert error["details"]["piece_id"] != piece_a
+    assert "dos piezas no pueden compartir un código" in error["message"]
+    assert _rows(pipeline, batch.id)[4]["resolution"] in (None, {})
 
 
 def test_resolving_without_a_decision_only_saves_the_target_piece(pipeline: Pipeline) -> None:
@@ -159,10 +195,10 @@ def test_resolving_without_a_decision_only_saves_the_target_piece(pipeline: Pipe
     carga-masiva-con-ia): la resolución queda guardada y la fila se aplica igual al aprobar el
     lote, aunque su decisión siga en «Pendiente» (mismo espíritu que una fila nueva sin decisión
     explícita, decisions.py)."""
-    batch = prepared(pipeline)
-    piece_a = _piece_of(batch.rows[4], TYPE_INVENTORY)
+    batch = _same_piece_twice(pipeline)
+    piece_a = _piece_of(batch.rows[2], TYPE_INVENTORY)
 
-    response = decide(pipeline, batch, 4, target_piece_id=piece_a)
+    response = decide(pipeline, batch, 2, target_piece_id=piece_a)
 
     assert response.status_code == 200, response.text
     row = response.json()
@@ -172,22 +208,17 @@ def test_resolving_without_a_decision_only_saves_the_target_piece(pipeline: Pipe
 
     shown = summary(pipeline, batch.id)
     assert shown["update"] >= 1
-    rejected = decide(pipeline, batch, 3, decision="REJECTED", reason="Fuera de alcance")
-    assert rejected.status_code == 200
-    excluded = decide(pipeline, batch, 5, decision="EXCLUDED")
+    # The other row of the same piece is left out: only one may go to it.
+    excluded = decide(pipeline, batch, 3, decision="EXCLUDED")
     assert excluded.status_code == 200
-    excluded2 = decide(pipeline, batch, 6, decision="EXCLUDED")
-    assert excluded2.status_code == 200
-    comodato_rejected = decide(pipeline, batch, 7, decision="REJECTED", reason="Comodato con I")
-    assert comodato_rejected.status_code == 200
     shown = summary(pipeline, batch.id)
     confirmed = confirm(pipeline, batch.id, shown["summary_token"])
     assert confirmed.status_code == 200, confirmed.text
 
-    assert _rows(pipeline, batch.id)[4]["decision"] == "ACCEPTED"  # applied → marked as such
+    assert _rows(pipeline, batch.id)[2]["decision"] == "ACCEPTED"  # applied → marked as such
     with pipeline.session() as session:
         target = session.get(Piece, uuid.UUID(piece_a))
-        assert target is not None and target.denomination == f"Contradictoria {batch.tag}"
+        assert target is not None and target.provenance == f"Procedencia {batch.tag}"
 
 
 def test_accepting_a_conflict_without_a_target_is_422(pipeline: Pipeline) -> None:

@@ -51,6 +51,7 @@ from app.modules.identification.params import session_params
 from app.modules.identification.service import (
     add_identifier,
     current_identifiers,
+    ensure_code_is_free,
     get_identifier_type,
 )
 from app.modules.imports.decisions import RowAction, field_actions, row_action
@@ -124,6 +125,9 @@ def _add_identifiers(
     session: Session, piece: Piece, identifiers: list[tuple[str, str]], source: str
 ) -> None:
     for type_code, original in dict.fromkeys(identifiers):
+        # The last check before a duplicate exists: validation and the row decisions already stop
+        # a code of another piece, but the catalogue may have changed since (refuses the batch).
+        ensure_code_is_free(session, piece, type_code, original)
         if _repeats_current_code(session, piece, type_code, original):
             # Before, the second spelling tried to be a second current code I and its error
             # undid the whole batch. Every code is kept (RN-002, RN-005), this one as historical.

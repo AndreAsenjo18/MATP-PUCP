@@ -31,6 +31,7 @@ from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
+from app.modules.identification.service import piece_holding_code
 from app.modules.imports.catalog_photos import mark_duplicates, photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
 from app.modules.imports.models import (
@@ -251,9 +252,29 @@ def _resolve_to_piece(
         )
     if is_observations(batch):  # formatos-reales-importacion, D8
         return observation_diff(piece, observation_line(batch, mapped))
+    _check_codes_of_other_pieces(session, mapped, piece)
     assert batch.mapping is not None
     spec = MappingSpec.from_json(batch.mapping)
     return field_diff(piece, mapped, spec, _piece_identifiers(session, piece.id))
+
+
+def _check_codes_of_other_pieces(session: Session, mapped: MappedRow, piece: Piece) -> None:
+    """A row in conflict brings codes of two pieces: choosing one as its target would add to it
+    the code of the other, and the two would share it (a duplicate). Before, it went through."""
+    for identifier in mapped.identifiers:
+        if not identifier.is_matchable or not identifier.normalized_value:
+            continue
+        owner = piece_holding_code(
+            session, identifier.type_code, identifier.normalized_value, exclude_piece_id=piece.id
+        )
+        if owner is not None:
+            raise ValidationFailed(
+                f"El código {identifier.original_value} de la fila ya lo tiene la pieza "
+                f"«{owner.denomination}», no la elegida: dos piezas no pueden compartir un "
+                "código. Corrija la celda o rechace la fila.",
+                code="code_in_use",
+                details={"piece_id": str(owner.id), "value": identifier.original_value},
+            )
 
 
 def _check_as_new(session: Session, row: ImportRow) -> None:
