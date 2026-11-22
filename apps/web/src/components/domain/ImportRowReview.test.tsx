@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { GeminiOpinion } from "@/lib/data/import-row-review";
 import type { ImportRow } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
@@ -32,58 +31,42 @@ function row(overrides: Partial<ImportRow> = {}): ImportRow {
   };
 }
 
-const SAME: GeminiOpinion = { verdict: "same", pieceId: "p-1", reason: "Mismo código y misma denominación.", confidence: 0.95, pick: "p-1" };
-
 describe("RowReviewNotice", () => {
-  it("dice que las filas sin problemas se importan solas y ofrece pedir la revisión de Gemini", () => {
-    const text = visibleText(render(<RowReviewNotice importedAlone={58} toDecideCount={9} gemini="idle" canAsk onAsk={noop} />));
+  it("dice que las filas sin problemas se importan solas, sin ofrecer Gemini (se retiró con la cola de duplicados)", () => {
+    const text = visibleText(render(<RowReviewNotice importedAlone={58} toDecideCount={9} />));
     expect(text).toContain("58 filas no necesitan nada: se importan solas al aprobar.");
-    expect(text).toContain("Pedir a Gemini que revise estas 9");
+    expect(text).toContain("Decida las que tienen el código de una pieza que ya está.");
+    expect(text).not.toContain("Gemini");
   });
 
-  it("sin permiso o sin nada que decidir no ofrece Gemini", () => {
-    expect(visibleText(render(<RowReviewNotice importedAlone={5} toDecideCount={9} gemini="idle" canAsk={false} onAsk={noop} />))).not.toContain("Pedir a Gemini");
-    expect(visibleText(render(<RowReviewNotice importedAlone={5} toDecideCount={0} gemini="idle" canAsk onAsk={noop} />))).not.toContain("Pedir a Gemini");
-  });
-
-  it("muestra el avance mientras Gemini revisa", () => {
-    expect(visibleText(render(<RowReviewNotice importedAlone={5} toDecideCount={9} gemini="running" progress={{ done: 3, total: 9 }} canAsk onAsk={noop} />))).toContain("Gemini está revisando: 3 de 9");
+  it("sin nada que decidir no pide decidir", () => {
+    expect(visibleText(render(<RowReviewNotice importedAlone={5} toDecideCount={0} />))).not.toContain("Decida");
   });
 });
 
 describe("RowList", () => {
-  it("una línea por fila con su código y lo que opina Gemini", () => {
-    const text = visibleText(render(<RowList rows={[row(), row({ id: "row-2", source_row_number: 3, classification: "NEW", matches: [] })]} opinions={new Map([["row-1", SAME]])} onOpen={noop} />));
+  it("una línea por fila con su código y qué pasa", () => {
+    const text = visibleText(render(<RowList rows={[row(), row({ id: "row-2", source_row_number: 3, classification: "NEW", matches: [] })]} onOpen={noop} />));
     expect(text).toContain("Arpa sintética");
     expect(text).toContain("MMZ 2");
-    expect(text).toContain("Gemini: misma pieza");
     expect(text).toContain("Decidir");
     expect(text).toContain("Se importa como nueva");
+    expect(text).not.toContain("Gemini");
   });
 });
 
 describe("RowDecisionPanel", () => {
-  it("muestra la opinión de Gemini, preselecciona su sugerencia y pide confirmar", () => {
-    const html = render(<RowDecisionPanel row={row()} position={{ index: 1, total: 9 }} opinion={SAME} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
+  it("no preselecciona nada y no deja aceptar hasta que la persona elige", () => {
+    const html = render(<RowDecisionPanel row={row()} position={{ index: 1, total: 9 }} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
     const text = visibleText(html);
     expect(text).toContain("¿A qué pieza corresponde? · 1 de 9");
-    expect(text).toContain("Es la misma pieza que «Arpa»");
-    expect(text).toContain("Mismo código y misma denominación.");
-    expect(text).toContain("Sugerida por Gemini");
-    expect(text).toContain("Revise y confirme: nada se guarda sin «Aceptar».");
-    expect(html).toMatch(/<input type="radio"[^>]*checked=""/);
-    expect(text).toContain("Aceptar y siguiente");
-  });
-
-  it("sin Gemini no preselecciona nada y no deja aceptar todavía", () => {
-    const html = render(<RowDecisionPanel row={row()} position={null} opinion={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
-    expect(visibleText(html)).not.toContain("Sugerida por Gemini");
+    expect(text).not.toContain("Gemini");
     expect(html).not.toMatch(/<input type="radio"[^>]*checked=""/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Aceptar y siguiente/);
   });
 
   it("una fila sin pieza que elegir muestra su tarjeta de siempre", () => {
-    const text = visibleText(render(<RowDecisionPanel row={row({ classification: "UPDATE" })} position={null} opinion={null} busy={false} canDecide fallback={<p>Tarjeta de la fila</p>} onDecide={noop} onClose={noop} />));
+    const text = visibleText(render(<RowDecisionPanel row={row({ classification: "UPDATE" })} position={null} busy={false} canDecide fallback={<p>Tarjeta de la fila</p>} onDecide={noop} onClose={noop} />));
     expect(text).toContain("Tarjeta de la fila");
     expect(text).not.toContain("Aceptar y siguiente");
   });
@@ -104,7 +87,7 @@ describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () =
   };
 
   it("cada fila tiene «Ver ficha», también las que no piden decidir", () => {
-    const text = visibleText(render(<RowList rows={[row({ id: "n", classification: "NEW", matches: [] })]} opinions={new Map()} onOpen={noop} />));
+    const text = visibleText(render(<RowList rows={[row({ id: "n", classification: "NEW", matches: [] })]} onOpen={noop} />));
     expect(text).toContain("Ver ficha");
   });
 
@@ -133,7 +116,7 @@ describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () =
   });
 
   it("en el panel de una fila nueva aparece abierta", () => {
-    const html = render(<RowDecisionPanel row={row({ classification: "NEW", matches: [], preview })} position={null} opinion={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
+    const html = render(<RowDecisionPanel row={row({ classification: "NEW", matches: [], preview })} position={null} busy={false} canDecide fallback={null} onDecide={noop} onClose={noop} />);
     expect(html).toMatch(/<details open=""/);
     expect(visibleText(html)).toContain("Así quedaría la ficha");
   });
@@ -142,13 +125,13 @@ describe("Así quedaría la ficha (change importacion-vista-previa-ficha)", () =
 describe("Fotos en la lista de filas (fix importacion-esperar-fotos)", () => {
   it("muestra la miniatura y cuántas fotos tiene cada fila", () => {
     const rows = [row({ id: "a", classification: "NEW", matches: [] }), row({ id: "b", classification: "NEW", matches: [], source_row_number: 3 })];
-    const html = render(<RowList rows={rows} opinions={new Map()} onOpen={noop} photos={new Map([["a", { url: "https://example.test/a.webp", count: 2 }]])} />);
+    const html = render(<RowList rows={rows} onOpen={noop} photos={new Map([["a", { url: "https://example.test/a.webp", count: 2 }]])} />);
     expect(html).toContain('src="https://example.test/a.webp"');
     expect(visibleText(html)).toContain("2 fotos");
     expect(visibleText(html)).toContain("Sin foto");
   });
 
   it("sin fotos en el lote no agrega la columna", () => {
-    expect(visibleText(render(<RowList rows={[row()]} opinions={new Map()} onOpen={noop} />))).not.toContain("Fotos");
+    expect(visibleText(render(<RowList rows={[row()]} onOpen={noop} />))).not.toContain("Fotos");
   });
 });

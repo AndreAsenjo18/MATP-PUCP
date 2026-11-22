@@ -29,7 +29,7 @@ import {
 import { PermissionNotice } from "@/components/layout/PermissionNotice";
 import { useSession } from "@/lib/auth/session";
 import { fetchIdentifierTypes, type IdentifierType } from "@/lib/data/admin";
-import { fetchPieceSheet, type PieceSheetResult } from "@/lib/data/duplicates";
+import { fetchPieceSheet, type PieceSheetResult } from "@/lib/data/piece-sheet";
 import {
   correctInventoryCode,
   deletePiece,

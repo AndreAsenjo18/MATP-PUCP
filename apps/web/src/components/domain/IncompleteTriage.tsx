@@ -43,7 +43,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import type { ApiSchemas } from "@/lib/api/client";
 import { cn } from "@/lib/cn";
 import { requestPieceCompletion, saveCompletionDecision, type CompletionProposal, type PieceCompletion } from "@/lib/data/ai";
-import { fetchDuplicateCollections } from "@/lib/data/duplicates";
+import { fetchCollectionOptions } from "@/lib/data/piece-sheet";
 import { getApiMode } from "@/lib/data/mode";
 import { batchMovePieces, describeLocationFailure, fetchLocationsTree, newIdempotencyKey, type LocationNode } from "@/lib/data/locations";
 import { uploadPiecePhotos } from "@/lib/data/media";
@@ -137,7 +137,7 @@ export function IncompleteTriage({
   const canComplete = canEdit || canMove || canUpload;
 
   useEffect(() => {
-    fetchDuplicateCollections(devUser).then(setCollections);
+    fetchCollectionOptions(devUser).then(setCollections);
   }, [devUser]);
 
   useEffect(() => {

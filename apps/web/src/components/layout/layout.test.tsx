@@ -27,10 +27,10 @@ describe("visibleNavItems", () => {
     expect(NAV_ITEMS.find((item) => item.label === "Revisar pendientes")?.href).toBe("/pendientes");
   });
 
-  it("«Revisar pendientes» se ve con cualquiera de sus permisos", () => {
-    for (const permission of ["duplicates.resolve", "ai.review", "reports.view"]) {
-      const labels = visibleNavItems((p) => p === permission).map((item) => item.label);
-      expect(labels).toContain("Revisar pendientes");
+  it("«Revisar pendientes» se ve con el permiso de reportes (la bandeja solo tiene las piezas incompletas)", () => {
+    expect(visibleNavItems((p) => p === "reports.view").map((item) => item.label)).toContain("Revisar pendientes");
+    for (const permission of ["duplicates.resolve", "ai.review"]) {
+      expect(visibleNavItems((p) => p === permission).map((item) => item.label)).not.toContain("Revisar pendientes");
     }
     expect(visibleNavItems(() => false).map((item) => item.label)).not.toContain("Revisar pendientes");
   });

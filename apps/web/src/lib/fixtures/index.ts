@@ -8,7 +8,6 @@ import type { ApiSchemas } from "@/lib/api/client";
 import { AI_SUGGESTIONS } from "./ai-suggestions";
 import { AUDIT_LOG, auditForPiece } from "./audit";
 import { COLLECTIONS } from "./collections";
-import { DUPLICATE_CANDIDATES } from "./duplicates";
 import { IDENTIFIER_TYPES, ROLES, TERMS, USERS, VOCABULARIES, termsByVocabulary } from "./reference-data";
 import { IMPORT_BATCHES, IMPORT_ROWS, IMPORT_TEMPLATES, rowsForBatch } from "./imports";
 import { computeByCollectionReport, computeByLocationReport, computeCompletenessKpis, computeIncompleteReport, computeIncompletePieces, computeInventoryReport } from "./kpis-reports";
@@ -16,7 +15,7 @@ import { LOCATIONS, locationPath } from "./locations";
 import { alertsForPiece, MEDIA_BY_PIECE, MOVEMENTS_BY_PIECE, PIECES, SOURCE_RECORDS_BY_PIECE } from "./pieces";
 
 export * from "./ids";
-export { COLLECTIONS, DUPLICATE_CANDIDATES, IDENTIFIER_TYPES, LOCATIONS, locationPath, ROLES, TERMS, USERS, VOCABULARIES };
+export { COLLECTIONS, IDENTIFIER_TYPES, LOCATIONS, locationPath, ROLES, TERMS, USERS, VOCABULARIES };
 export { AI_SUGGESTIONS, AUDIT_LOG, IMPORT_BATCHES, IMPORT_ROWS, IMPORT_TEMPLATES, PIECES };
 export { alertsForPiece, auditForPiece, rowsForBatch, termsByVocabulary };
 export {

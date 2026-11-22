@@ -14,9 +14,20 @@ import Link from "next/link";
 
 import { buttonClassName } from "@/components/ui/Button";
 import type { ApiSchemas } from "@/lib/api/client";
-import { mergeReasonText } from "@/lib/data/merge-plan";
 
-import { formatDate } from "./DuplicateReview";
+/** Fecha corta en español; el texto tal cual si no es una fecha. */
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("es-PE");
+}
+
+/** Motivo de la fusión sin el prefijo técnico que añade la baja lógica («Fusionada en <id>: …»). */
+export function mergeReasonText(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  return reason.replace(/^Fusionada en [0-9a-f-]{36}:\s*/i, "").trim() || null;
+}
+
 
 type PieceDetail = ApiSchemas["PieceDetail"];
 type MergedInto = ApiSchemas["MergedInto"];

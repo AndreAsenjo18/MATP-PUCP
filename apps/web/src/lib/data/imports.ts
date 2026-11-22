@@ -651,24 +651,6 @@ export async function abandonImportBatch(batchId: string, reason: string | null 
   );
 }
 
-export type ImportAiJudgment = ApiSchemas["ImportAiJudgmentOut"];
-export type ImportRowVerdict = ApiSchemas["ImportRowVerdictOut"];
-
-/**
- * «Pedir a Gemini que revise estas filas» (change `importacion-revision-filas-compacta`, D2): juzga
- * en segundo plano los pares de las filas del lote que parecen piezas que ya están.
- */
-export async function requestImportAiJudgment(batchId: string, devUser?: string): Promise<ImportResult<ImportAiJudgment>> {
-  return call(
-    () => client(devUser).POST("/api/v1/imports/{batch_id}/ai-judgment", { params: { path: { batch_id: batchId } } }),
-    { ...IMPORT_ERROR_MESSAGES, ai_run_in_progress: "Gemini ya está revisando otras filas: espere a que termine.", ai_unavailable: "Gemini no está disponible en este momento. Puede decidir las filas igual." },
-  );
-}
-
-/** Lo que opina Gemini de cada par del lote y el análisis más reciente (D2). */
-export async function fetchImportAiJudgment(batchId: string, devUser?: string): Promise<ImportResult<ImportAiJudgment>> {
-  return call(() => client(devUser).GET("/api/v1/imports/{batch_id}/ai-judgment", { params: { path: { batch_id: batchId } } }));
-}
 
 /** Celdas corregidas en la revisión, con su valor original (change `importacion-corregir-celda`). */
 export function cellCorrections(row: Pick<ImportRow, "raw_data">): Record<string, { original: unknown; value: unknown }> {
