@@ -17,7 +17,6 @@ type AlertType = ApiSchemas["PieceAlert"]["type"];
 type RowClassification = ApiSchemas["RowClassification"];
 type RowDecision = ApiSchemas["RowDecision"];
 type SuggestionStatus = ApiSchemas["SuggestionStatus"];
-type DuplicateStatus = ApiSchemas["DuplicateStatus"];
 type AuditAction = ApiSchemas["AuditAction"];
 
 function lookup<K extends string>(table: Record<K, StatusStyle>, value: string | null | undefined, fallbackLabel: string): StatusStyle {
@@ -126,31 +125,6 @@ const SUGGESTION: Record<SuggestionStatus, StatusStyle> = {
 /** Sugerencias de IA: siempre `warning` hasta la revisión humana (RN-009). */
 export function suggestionStatus(status: SuggestionStatus | string | null | undefined): StatusStyle {
   return lookup(SUGGESTION, status, "Estado");
-}
-
-const DUPLICATE: Record<DuplicateStatus, StatusStyle> = {
-  PENDING: { label: "Pendiente", intent: "warning" },
-  MERGED: { label: "Fusionado", intent: "success" },
-  DISTINCT: { label: "Distinto", intent: "default" },
-  POSTPONED: { label: "Pospuesto", intent: "default" },
-  SUPERSEDED: { label: "Reemplazado", intent: "default" },
-};
-
-export function duplicateStatus(status: DuplicateStatus | string | null | undefined): StatusStyle {
-  return lookup(DUPLICATE, status, "Estado");
-}
-
-type QualityJobStatus = ApiSchemas["QualityJobStatus"];
-
-const QUALITY_JOB: Record<QualityJobStatus, StatusStyle> = {
-  RUNNING: { label: "En curso", intent: "info" },
-  SUCCEEDED: { label: "Terminada", intent: "success" },
-  FAILED: { label: "Falló", intent: "danger" },
-};
-
-/** Detección completa de duplicados (design D3 de `deteccion-duplicados-y-cola-revision`). */
-export function qualityJobStatus(status: QualityJobStatus | string | null | undefined): StatusStyle {
-  return lookup(QUALITY_JOB, status, "Estado");
 }
 
 const AUDIT: Record<AuditAction, StatusStyle> = {

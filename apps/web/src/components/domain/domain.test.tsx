@@ -14,7 +14,6 @@ import { PieceCurrentLocation, PieceGeneralData, PieceIdentifiersTable, PieceMed
 import {
   alertStatus,
   auditActionStatus,
-  duplicateStatus,
   identifierCurrencyStatus,
   importClassificationStatus,
   importDecisionStatus,
@@ -49,7 +48,6 @@ describe("status-intents", () => {
   it("decisiones, sugerencias IA, duplicados, auditoría e identificadores tienen texto e intent", () => {
     expect(importDecisionStatus("REJECTED")).toEqual({ label: "Rechazada", intent: "danger" });
     expect(suggestionStatus("PENDING")).toEqual({ label: "Pendiente de revisión", intent: "warning" });
-    expect(duplicateStatus("MERGED").intent).toBe("success");
     expect(auditActionStatus("CORRECTION").intent).toBe("danger");
     expect(identifierCurrencyStatus(true)).toEqual({ label: "Vigente", intent: "success" });
     expect(identifierCurrencyStatus(false).intent).toBe("default");
