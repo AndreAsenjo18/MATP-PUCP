@@ -25,8 +25,6 @@ from app.core.storage import ObjectStorage
 from app.modules.exports.worker import register_export_jobs
 from app.modules.imports.photo_verification import register_photo_jobs
 from app.modules.imports.worker import register_import_jobs
-from app.modules.quality.incremental import register_incremental_jobs
-from app.modules.quality.scan import register_scan_jobs
 from app.modules.users.auth import LoginThrottle
 from app.modules.users.passwords import install_password_log_redaction
 from app.seed.import_templates import refresh_templates_on_startup
@@ -98,8 +96,6 @@ def create_app(
     settings = settings or get_settings()
     # No password may reach a log file, whoever writes the record (RNF-013, ADR-009 D2).
     install_password_log_redaction("matp.api", "uvicorn.access", "uvicorn.error")
-    register_scan_jobs()
-    register_incremental_jobs()
     register_import_jobs()
     register_export_jobs()
     owns_engine = engine is None

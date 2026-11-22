@@ -3,14 +3,9 @@
 Change importacion-pipeline-reconciliacion, task 3.3. Synthetic data only (RNF-014).
 """
 
-from datetime import UTC, datetime
-
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.models_base import new_uuid
-from app.models import AppUser
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.catalog.service import create_piece
@@ -23,11 +18,9 @@ from app.modules.imports.classify import (
     RowInput,
     classification_rules,
     classify_batch,
-    record_duplicate_candidates,
 )
 from app.modules.imports.matching import RowIdentifier
-from app.modules.imports.models import ImportBatch, ImportRow, RowClassification
-from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
+from app.modules.imports.models import RowClassification
 from tests.conftest import ActAs
 
 NEW, UPDATE, DUPLICATE, CONFLICT = (
@@ -252,39 +245,6 @@ def test_without_scorer_there_are_no_possible_duplicates(
     result = classify_one(session, row(2, denomination="Toro de Pucará", collection=mmz))
 
     assert result.classification == NEW
-
-
-def test_duplicate_candidates_are_recorded_idempotently(
-    session: Session,
-    act_as: ActAs,
-    users: dict[str, AppUser],
-    catalog: dict[str, Piece],
-    mmz: Collection,
-) -> None:
-    scorer = ProvisionalSimilarityScorer(session)
-    [result] = classify_batch(
-        session, [row(2, denomination="Toro de Pucará", collection=mmz)], scorer=scorer
-    )
-    with act_as("CATALOGUER"):
-        batch = ImportBatch(id=new_uuid(), source_name="Prueba", file_name="sabana.xlsx")
-        session.add(batch)
-        import_row = ImportRow(id=new_uuid(), batch_id=batch.id, source_row_number=2, raw_data={})
-        session.add(import_row)
-        session.flush()
-        record_duplicate_candidates(session, import_row.id, result.similar)
-        reviewed = record_duplicate_candidates(session, import_row.id, result.similar)[0]
-        reviewed.status = DuplicateStatus.DISTINCT
-        reviewed.reviewed_by_id = users["COLLECTIONS_MANAGER"].id
-        reviewed.reviewed_at = datetime.now(UTC)
-        session.flush()
-        record_duplicate_candidates(session, import_row.id, result.similar)
-        session.commit()
-
-    stored = session.scalars(
-        select(DuplicateCandidate).where(DuplicateCandidate.import_row_id == import_row.id)
-    ).all()
-    assert sorted(c.status for c in stored) == [DuplicateStatus.DISTINCT, DuplicateStatus.PENDING]
-    assert all(c.piece_a_id == catalog["toro"].id and c.detected_by == "import" for c in stored)
 
 
 # --- Scenario: Reglas de clasificación visibles ---------------------------------------------------

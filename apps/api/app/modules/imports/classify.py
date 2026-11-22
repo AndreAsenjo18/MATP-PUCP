@@ -24,20 +24,17 @@ import uuid
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from decimal import Decimal
 from typing import Any, Protocol
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.models_base import new_uuid
 from app.modules.catalog.enums import TenureRegime
 from app.modules.catalog.models import Piece
 from app.modules.identification.models import INVENTORY_CODE_TYPE, NormalizationStatus
 from app.modules.identification.normalization import TYPE_COLLECTION
 from app.modules.imports.matching import RowIdentifier, RowMatches, find_matches
 from app.modules.imports.models import RowClassification
-from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
 
 DUPLICATE_SOURCE = "import"
 
@@ -357,33 +354,3 @@ class ProvisionalSimilarityScorer:
                 found.append(SimilarPiece(piece_id, score, fields))
         found.sort(key=lambda similar: (-similar.score, str(similar.piece_id)))
         return found[: self.limit]
-
-
-def record_duplicate_candidates(
-    session: Session, import_row_id: uuid.UUID, similar: Sequence[SimilarPiece]
-) -> list[DuplicateCandidate]:
-    """Link a possible duplicate row to the review queue (RF-030).
-
-    Idempotent: pending candidates of the row from a previous validation are replaced; reviewed
-    ones are kept.
-    """
-    session.execute(
-        delete(DuplicateCandidate).where(
-            DuplicateCandidate.import_row_id == import_row_id,
-            DuplicateCandidate.status == DuplicateStatus.PENDING,
-        )
-    )
-    created = [
-        DuplicateCandidate(
-            id=new_uuid(),
-            piece_a_id=candidate.piece_id,
-            import_row_id=import_row_id,
-            score=Decimal(str(round(candidate.score, 4))),
-            matched_fields=candidate.matched_fields,
-            detected_by=DUPLICATE_SOURCE,
-        )
-        for candidate in similar
-    ]
-    session.add_all(created)
-    session.flush()
-    return created

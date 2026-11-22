@@ -218,7 +218,6 @@ PHYSICAL_DELETE_EXCEPTIONS: dict[str, frozenset[str]] = {
         {"import_row", "duplicate_candidate", "import_image"}
     ),
     "app/modules/imports/images.py": frozenset({"import_image"}),
-    "app/modules/imports/classify.py": frozenset({"duplicate_candidate"}),
     "app/modules/quality/snapshot.py": frozenset({"completeness_snapshot"}),
 }
 

@@ -47,7 +47,6 @@ from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.observations import is_observations, observation_diff, observation_line
 from app.modules.imports.service import ensure_idle, field_diff
 from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
-from app.modules.quality.import_rows import close_row_candidates
 
 FieldAction = Literal["accept", "exclude"]
 RESOLVABLE = frozenset({RowClassification.CONFLICT, RowClassification.POSSIBLE_DUPLICATE})
@@ -387,10 +386,7 @@ def decide_row(
             row.target_piece_id = target_piece_id
             resolution.pop("as_new", None)
             resolution["target_piece_id"] = str(target_piece_id)
-        # Once the batch says what the row is, its pairs leave the duplicate queue (change
-        # revisar-duplicados-comparacion): before, they stayed pending there forever.
         row.resolution = resolution
-        close_row_candidates(session, row, reviewer_id=user_id)
         # Its photos may be repeated on the new target, or no longer (task 4.3 of
         # importacion-masiva-fotografias).
         session.flush()

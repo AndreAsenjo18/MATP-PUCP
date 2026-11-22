@@ -168,9 +168,21 @@ def test_dirty_codes_are_kept_as_originals(seeded: tuple[Session, Any]) -> None:
     assert any(not i.is_current for i in identifiers)  # history (INC 4 -> 6 digits, correction)
 
 
-def test_duplicates_photos_and_history(seeded: tuple[Session, Any]) -> None:
+def test_no_shared_codes_photos_and_history(seeded: tuple[Session, Any]) -> None:
+    """Change retirar-cola-duplicados (D4): the seed no longer makes two pieces share a code,
+    which the system refuses; its look-alike records have no code in common."""
     session, summary = seeded
-    assert _count(session, select(func.count()).select_from(DuplicateCandidate)) >= 10
+    shared = session.execute(
+        select(PieceIdentifier.identifier_type_code, PieceIdentifier.normalized_value)
+        .where(
+            PieceIdentifier.normalized_value.is_not(None),
+            PieceIdentifier.deleted_at.is_(None),
+        )
+        .group_by(PieceIdentifier.identifier_type_code, PieceIdentifier.normalized_value)
+        .having(func.count(func.distinct(PieceIdentifier.piece_id)) > 1)
+    ).all()
+    assert shared == []
+    assert _count(session, select(func.count()).select_from(DuplicateCandidate)) == 0
     per_piece = session.execute(
         select(MediaAsset.piece_id, func.count()).group_by(MediaAsset.piece_id)
     ).all()
@@ -198,13 +210,11 @@ def test_seed_json_uses_contract_field_names(seeded: tuple[Session, Any]) -> Non
     """Task 2.4: same volumes as before and no pre-contract field names in seed JSON."""
     session, summary = seeded
     assert summary.pieces == 300
-    assert _count(session, select(func.count()).select_from(DuplicateCandidate)) == 10
     assert 0.4 <= summary.pieces_without_inventory_code / summary.pieces <= 0.6
     documents: list[Any] = []
-    documents += session.scalars(select(DuplicateCandidate.matched_fields)).all()
     documents += session.scalars(select(ImportMappingTemplate.mapping)).all()
     documents += session.scalars(select(AiSuggestion.input_data)).all()
-    assert len(documents) > 10
+    assert len(documents) > 5  # mappings and AI inputs (the queue pairs went away)
     found = {text for text in _json_keys_and_strings(documents) if text in OLD_FIELD_NAMES}
     assert found == set()
 

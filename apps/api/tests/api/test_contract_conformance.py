@@ -42,7 +42,6 @@ PENDIENTES_OPERATION_ID: set[tuple[str, str]] = set()
 # mapeo (`ficha-pieza-crud` 5.2): la versión de la ficha (D2), el motivo y el documento del cambio
 # de régimen (D4) y la confirmación de un valor concatenado con su original (D5).
 CAMPOS_ANADIDOS: set[tuple[str, str]] = {
-    ("DuplicateCandidateOut", "import_row"),
     ("IncompletePiece", "missing_fields"),
     ("PieceDetail", "version"),
     ("PieceUpdate", "tenure_change_reason"),
@@ -60,12 +59,9 @@ ANADIDOS: set[tuple[str, str]] = {
     # «Completar ficha» con IA (change ia-completar-ficha, D7; RIA-01, RIA-03, RN-009).
     ("post", "/ai/pieces/{}/completion"),
     # Juicio de duplicados con IA y aprobación por grupo (change ia-juicio-duplicados; RIA-02).
-    ("post", "/quality/duplicates/ai-runs"),
     # Revisión de filas con Gemini (change importacion-revision-filas-compacta; RIA-02).
-    ("post", "/imports/{}/ai-judgment"),
     # Descartar un lote (change importacion-descartar-lote).
     ("post", "/imports/{}/abandon"),
-    ("get", "/imports/{}/ai-judgment"),
     # Ubicaciones del archivo que no existen (change importacion-aplicar-vocabularios).
     ("get", "/imports/{}/locations"),
     ("put", "/imports/{}/locations"),
@@ -73,11 +69,6 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/imports/{}/terms"),
     # Corregir un valor del archivo en la revisión (change importacion-corregir-celda).
     ("patch", "/imports/{}/rows/{}/cells"),
-    ("get", "/quality/duplicates/ai-runs/latest"),
-    ("get", "/quality/duplicates/ai-runs/{}"),
-    ("get", "/quality/duplicates/ai-runs/{}/groups/{}"),
-    ("get", "/quality/duplicates/ai-runs/{}/sample"),
-    ("post", "/quality/duplicates/ai-runs/{}/groups/{}/approve"),
     ("get", "/ai/suggestions"),
     ("get", "/ai/suggestions/{}"),
     ("post", "/ai/suggestions/{}/approve"),
@@ -162,11 +153,7 @@ ANADIDOS: set[tuple[str, str]] = {
     ("get", "/pieces/{}/source-records"),
     ("get", "/quality/completeness-rules"),
     ("put", "/quality/completeness-rules"),
-    ("get", "/quality/duplicates"),
-    ("post", "/quality/duplicates/{}/resolve"),
-    ("post", "/quality/duplicates/scan"),
     ("get", "/quality/incomplete"),
-    ("get", "/quality/jobs/{}"),
     ("get", "/reports/dashboard-stats/history"),
     ("get", "/reports/{}"),
     ("get", "/roles"),

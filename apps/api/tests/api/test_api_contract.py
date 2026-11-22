@@ -51,7 +51,6 @@ REQUIRED_PATHS = [
     ("post", "/api/v1/imports/{batch_id}/confirm"),
     ("get", "/api/v1/imports/{batch_id}/log"),
     ("get", "/api/v1/quality/incomplete"),
-    ("get", "/api/v1/quality/duplicates"),
     ("get", "/api/v1/reports/{report_type}"),
     ("get", "/api/v1/exports/full"),
     ("post", "/api/v1/ai/suggest-cataloging"),
