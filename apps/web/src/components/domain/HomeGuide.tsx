@@ -27,9 +27,6 @@ const LOOK: Record<Exclude<TaskId, "search" | "register">, { icon: LucideIcon; t
   settings: { icon: SlidersHorizontal, tone: "piedra" },
 };
 
-/** Frases de ejemplo bajo el buscador: una por cada forma de pedir (lugar, régimen y faltantes, código). */
-export const HOME_SEARCH_EXAMPLES = ["retablos de Ayacucho", "comodato sin código I", "I-0236"] as const;
-
 export const HOME_SEARCH_HINT = "La IA convierte su frase en filtros y le lleva a Buscar, donde puede revisarlos o quitarlos.";
 
 /** Lo que devuelve la interpretación: adónde ir y, si reconoció filtros, cuáles (para el aviso). */
@@ -132,23 +129,8 @@ export function HomeSearch({
         onVoiceClick={onSearch && voice.supported ? voice.toggle : undefined}
         voiceListening={voice.listening}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-base">Pruebe:</span>
-        {HOME_SEARCH_EXAMPLES.map((example) => (
-          <button
-            key={example}
-            type="button"
-            disabled={thinking}
-            onClick={() => {
-              setValue(example);
-              void run(example);
-            }}
-            className="min-h-11 rounded-full border border-crema/40 bg-crema/10 px-4 text-base text-crema hover:bg-crema/20 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema disabled:opacity-60"
-          >
-            {example}
-          </button>
-        ))}
-      </div>
+      {/* Sin frases de ejemplo (codigo-unico-y-ajustes-pantallas): pedían cosas que el catálogo del
+          museo no tiene, como «retablos de Ayacucho» o el código «I-0236». */}
       <p id={hintId} role="status" className={cn("text-base", phase.kind !== "idle" && "font-bold")}>
         {statusText(phase)}
       </p>

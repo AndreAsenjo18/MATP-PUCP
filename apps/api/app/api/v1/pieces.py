@@ -65,6 +65,7 @@ from app.modules.identification.schemas import (
 from app.modules.identification.service import (
     add_identifier,
     correct_locked_identifier,
+    ensure_code_is_free,
     retire_identifier,
     set_inventory_code,
 )
@@ -765,6 +766,8 @@ def add_piece_identifier(
         if replaces is None:
             raise NotFound("El identificador que se reemplaza no existe en esta pieza.")
     origin = (body.split_from or "").strip()
+    if body.value:
+        ensure_code_is_free(session, piece, body.identifier_type_code, body.value)
     identifier = add_identifier(
         writer(session, user, f"Separado de «{origin}»" if origin else None),
         piece,

@@ -10,7 +10,7 @@
  * de los parámetros: un layout no se vuelve a pintar al navegar y no los recibe (tarea 1.1). Los
  * contadores se piden al montar y cuando una pestaña avisa con `refresh` (design D3).
  */
-import { ClipboardList, Copy, type LucideIcon } from "lucide-react";
+import { ClipboardList, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -36,7 +36,6 @@ export const NO_PENDING_TABS_NOTICE = "Su rol no tiene pendientes que revisar.";
 
 /** Aviso de cada pestaña cuando se abre por su dirección sin el permiso (escenario de la spec). */
 export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
-  duplicates: "Su rol no puede resolver posibles duplicados.",
   incomplete: "Su rol no puede ver el reporte de piezas incompletas.",
 };
 
@@ -46,7 +45,7 @@ export const TAB_PERMISSION_NOTICES: Record<PendingTabKey, string> = {
 
 /** Pestañas como enlaces: 16 px, 44 px de alto, la activa con `aria-current` y una marca gruesa. */
 /** Icono de cada pestaña (maqueta B); el nombre va siempre al lado. */
-const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { duplicates: Copy, incomplete: ClipboardList };
+const TAB_ICONS: Record<PendingTabKey, LucideIcon> = { incomplete: ClipboardList };
 
 export function PendingTabsNav({
   tabs,

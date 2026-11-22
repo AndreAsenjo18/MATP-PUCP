@@ -45,17 +45,46 @@ def test_a_collection_code_is_registered_normalized_and_manual(seeded_api: Seede
     client = seeded_api.login_as("CATALOGUER")
     piece_id = _new_piece(client)
 
-    response = _add(client, piece_id, {"identifier_type_code": "COLECCION", "value": "M.M.Z. 15"})
+    # A number no seeded piece has: two pieces never share a code.
+    response = _add(client, piece_id, {"identifier_type_code": "COLECCION", "value": "M.M.Z. 9715"})
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert (body["original_value"], body["is_current"], body["source"]) == (
-        "M.M.Z. 15",
+        "M.M.Z. 9715",
         True,
         "manual",
     )
-    assert body["normalized_value"].replace("-", " ") == "MMZ 15"
+    assert body["normalized_value"].replace("-", " ") == "MMZ 9715"
     _delete(seeded_api, piece_id)
+
+
+def test_a_code_another_piece_has_is_refused(seeded_api: SeededApi) -> None:
+    """Change codigo-unico-y-ajustes-pantallas, D1: a duplicate is never registered, whatever the
+    type of the code, written however it is written. Nothing is stored."""
+    client = seeded_api.login_as("CATALOGUER")
+    first = _new_piece(client)
+    second = _new_piece(client)
+    assert (
+        _add(client, first, {"identifier_type_code": "PUCP", "value": "PU-88123"}).status_code
+        == 201
+    )
+
+    response = _add(client, second, {"identifier_type_code": "PUCP", "value": "pu-88123"})
+
+    assert response.status_code == 409, response.text
+    error = response.json()
+    assert error["code"] == "code_in_use"
+    assert "Pieza con códigos (Propiedad, sintética)" in error["message"]
+    assert error["details"]["piece_id"] == first
+    assert not [i for i in _current(client, second) if i["identifier_type_code"] == "PUCP"]
+    # The piece that has it can still register the same value under another type.
+    assert (
+        _add(client, first, {"identifier_type_code": "OTRO", "value": "PU-88123"}).status_code
+        == 201
+    )
+    _delete(seeded_api, first)
+    _delete(seeded_api, second)
 
 
 def test_a_concatenated_value_answers_the_proposal_and_registers_nothing(

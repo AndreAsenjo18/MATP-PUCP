@@ -44,6 +44,7 @@ from app.seed.import_templates import (
     refresh_templates_on_startup,
     sync_predefined_templates,
 )
+from app.seed.reference import seed_reference_data
 from app.seed.synthetic import SeedOptions, SeedRefused, run_seed
 from tests.conftest import SYSTEM_CONTEXT
 
@@ -492,6 +493,21 @@ def test_the_api_start_updates_a_template_the_system_left_behind(
         c for c in _standard(session).mapping["columns"] if c["source"] == "Ubicación en inmueble"
     )
     assert location["target"] == {"kind": "field", "name": "location"}
+
+
+def test_the_api_start_creates_the_templates_of_an_emptied_installation(
+    session: Session, engine: Engine
+) -> None:
+    """An emptied test environment has no templates: the API creates them when it starts."""
+    with audit_context(session, SYSTEM_CONTEXT):
+        seed_reference_data(session)
+        session.commit()
+
+    updated, kept = refresh_templates_on_startup(make_session_factory(engine))
+
+    assert sorted(updated) == sorted(template.name for template in PREDEFINED_TEMPLATES)
+    assert kept == []
+    assert refresh_templates_on_startup(make_session_factory(engine)) == ([], [])
 
 
 def test_the_api_start_keeps_a_template_a_person_edited(

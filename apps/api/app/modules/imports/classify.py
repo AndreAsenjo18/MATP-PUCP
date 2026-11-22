@@ -6,7 +6,8 @@ Rules, applied in order and exposed to users as ``classification_rules``:
    code I or collection code in a temporary loan (RN-004), unreadable code I) set
    ``has_validation_errors``; the row is still classified so the user sees its candidates.
 2. Candidates in two or more pieces, an attempt to change the current code I of the matched
-   piece (RN-002), or another row of the batch with the same code I → ``CONFLICT``.
+   piece (RN-002), or another row of the batch with the same code, of any type → ``CONFLICT``
+   (since change ``codigo-unico-y-ajustes-pantallas``: two pieces never share a code).
 3. A single candidate piece → ``UPDATE`` with that piece as target.
 4. No candidate and a similarity score at or above the threshold → ``POSSIBLE_DUPLICATE``.
    Disabled since change ``duplicados-solo-por-codigo``: the pipeline passes no scorer, because
@@ -147,8 +148,9 @@ def classification_rules(scorer: SimilarityScorer | None) -> list[dict[str, Any]
             "order": 2,
             "result": RowClassification.CONFLICT.value,
             "description": "Sus códigos apuntan a piezas distintas, traería otro código I "
-            "para una pieza que ya tiene uno, o hay otra fila del lote con el mismo código I. "
-            "Hay que elegir a qué pieza corresponde.",
+            "para una pieza que ya tiene uno, o hay otra fila del lote con el mismo código (I, "
+            "PUCP o cualquier otro). Hay que elegir a qué pieza corresponde: dos piezas nunca "
+            "comparten un código.",
         },
         {
             "order": 3,
@@ -212,9 +214,9 @@ def classify_batch(
     session: Session, rows: Sequence[RowInput], scorer: SimilarityScorer | None = None
 ) -> list[ClassifiedRow]:
     matches = find_matches(session, {row.row_number: row.identifiers for row in rows})
-    rows_by_code: dict[str, list[int]] = defaultdict(list)
+    rows_by_code: dict[tuple[str, str], list[int]] = defaultdict(list)
     for row in rows:
-        for code in _inventory_codes(row):
+        for code in _row_codes(row):
             rows_by_code[code].append(row.row_number)
 
     classified: list[ClassifiedRow] = []
@@ -251,16 +253,29 @@ def _inventory_codes(row: RowInput) -> set[str]:
     }
 
 
-def _batch_conflicts(row: RowInput, rows_by_code: dict[str, list[int]]) -> list[dict[str, Any]]:
+def _row_codes(row: RowInput) -> set[tuple[str, str]]:
+    """Every code of the row that can be compared, as ``(type, normalized value)``."""
+    return {
+        (identifier.type_code, identifier.normalized_value)
+        for identifier in row.identifiers
+        if identifier.is_matchable and identifier.normalized_value
+    }
+
+
+def _batch_conflicts(
+    row: RowInput, rows_by_code: dict[tuple[str, str], list[int]]
+) -> list[dict[str, Any]]:
+    """Other rows of the batch with one of this row's codes, of any type: both cannot become
+    pieces, since two pieces never share a code (before, only the code I was compared)."""
     return [
         {
             "kind": "batch_row",
             "row_number": other,
-            "identifier_type": INVENTORY_CODE_TYPE,
-            "value": code,
+            "identifier_type": type_code,
+            "value": value,
         }
-        for code in sorted(_inventory_codes(row))
-        for other in rows_by_code[code]
+        for type_code, value in sorted(_row_codes(row))
+        for other in rows_by_code[(type_code, value)]
         if other != row.row_number
     ]
 

@@ -3,18 +3,18 @@
  * «Bandeja única de pendientes con pestañas»; RF-030, RF-035, RF-039).
  *
  * Reglas puras de las pestañas (qué ve cada rol y cuál se abre primero, design D2) y los
- * contadores (design D3), que salen solo del `total` de las consultas que ya existen, pidiendo
- * una sola fila: `GET /quality/duplicates` y `GET /quality/incomplete` (la pestaña de sugerencias
- * de IA se retiró en `retirar-pestana-sugerencias-ia`).
+ * contadores (design D3), que salen solo del `total` de `GET /quality/incomplete`, pidiendo una
+ * sola fila. La pestaña de sugerencias de IA se retiró en `retirar-pestana-sugerencias-ia`, y la de
+ * posibles duplicados en `codigo-unico-y-ajustes-pantallas`: dos piezas ya no pueden compartir un
+ * código, así que no hay duplicados que revisar.
  * Sin endpoint nuevo: un total que no se puede obtener queda como `null` y la pestaña se muestra
  * sin número.
  */
 
-import { fetchDuplicateQueue } from "./duplicates";
 import { fetchIncompleteReport } from "./quality";
 
-/** La pestaña «Sugerencias de IA» se retiró (change `retirar-pestana-sugerencias-ia`). */
-export type PendingTabKey = "duplicates" | "incomplete";
+/** Se retiraron «Sugerencias de IA» y «Posibles duplicados»: queda «Piezas incompletas». */
+export type PendingTabKey = "incomplete";
 
 export interface PendingTab {
   key: PendingTabKey;
@@ -24,9 +24,8 @@ export interface PendingTab {
   permission: string;
 }
 
-/** Orden fijo de las pestañas: duplicados e incompletas. */
+/** Las pestañas de la bandeja. */
 export const PENDING_TABS: readonly PendingTab[] = [
-  { key: "duplicates", href: "/pendientes/duplicados", label: "Posibles duplicados", permission: "duplicates.resolve" },
   { key: "incomplete", href: "/pendientes/incompletas", label: "Piezas incompletas", permission: "reports.view" },
 ];
 
@@ -35,7 +34,7 @@ export const PENDING_BASE_PATH = "/pendientes";
 /** Pendientes por pestaña; `null` cuando el total no se pudo obtener (o no se pidió). */
 export type PendingCounts = Record<PendingTabKey, number | null>;
 
-export const UNKNOWN_COUNTS: PendingCounts = { duplicates: null, incomplete: null };
+export const UNKNOWN_COUNTS: PendingCounts = { incomplete: null };
 
 /** Pestañas que el rol puede ver, en el orden fijo. */
 export function pendingTabs(hasPermission: (permission: string) => boolean): PendingTab[] {
@@ -66,14 +65,10 @@ export interface PendingCountsOptions {
   devUser?: string;
 }
 
-async function duplicatesTotal(devUser: string | undefined): Promise<number | null> {
-  const result = await fetchDuplicateQueue({ status: "PENDING", page: 1, pageSize: 1 }, devUser);
-  return result.status === "ok" ? result.page.total : null;
-}
-
-async function incompleteTotal(devUser: string | undefined): Promise<number | null> {
+/** Piezas a las que les faltan datos: el número de la bandeja y de la tarjeta de Inicio. */
+export async function incompleteTotal(devUser?: string): Promise<number | null> {
   const result = await fetchIncompleteReport({ page: 1, pageSize: 1 }, devUser);
-  return result.status === "ok" ? result.page.total : null;
+  return result.status === "ok" && typeof result.page.total === "number" ? result.page.total : null;
 }
 
 /** Un total que falla o lanza no rompe los demás. */
@@ -92,7 +87,6 @@ async function safely(load: () => Promise<number | null>): Promise<number | null
 export async function fetchPendingCounts(keys: readonly PendingTabKey[], options: PendingCountsOptions = {}): Promise<PendingCounts> {
   const { devUser } = options;
   const loaders: Record<PendingTabKey, () => Promise<number | null>> = {
-    duplicates: () => duplicatesTotal(devUser),
     incomplete: () => incompleteTotal(devUser),
   };
   const wanted = PENDING_TABS.map((tab) => tab.key).filter((key) => keys.includes(key));
@@ -106,7 +100,9 @@ export async function fetchPendingCounts(keys: readonly PendingTabKey[], options
 
 /** Direcciones antiguas que ahora son pestañas de la bandeja (spec: «Redirección de las direcciones antiguas a la bandeja»). */
 export const LEGACY_PENDING_ROUTES = {
-  "/duplicados": "/pendientes/duplicados",
+  // La pestaña de posibles duplicados se retiró (codigo-unico-y-ajustes-pantallas).
+  "/duplicados": "/pendientes",
+  "/pendientes/duplicados": "/pendientes",
   // La pestaña de sugerencias de IA se retiró: sus direcciones llevan a la bandeja.
   "/ia/sugerencias": "/pendientes",
   "/pendientes/sugerencias": "/pendientes",

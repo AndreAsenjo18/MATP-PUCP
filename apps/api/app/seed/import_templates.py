@@ -444,14 +444,16 @@ def refresh_templates_on_startup(factory: Any) -> tuple[list[str], list[str]]:
 
     Before, only ``python -m app.seed --templates`` did it, so an installation seeded before a
     template changed kept reading the files with the old mapping: in the revision, «Ubicación en
-    inmueble» and the conservation values were not read. A template a person edited in
-    Administración is left as it is. Returns ``(updated, kept)``."""
+    inmueble» and the conservation values were not read. A missing template is created (an
+    emptied test environment, change codigo-unico-y-ajustes-pantallas), and a template a person
+    edited in Administración is left as it is. Returns ``(created or updated, kept)``."""
     from app.modules.audit.context import AuditContext, audit_context
     from app.modules.audit.models import AuditOrigin
 
     context = AuditContext(origin=AuditOrigin.SYSTEM, actor_label=STARTUP_ACTOR)
     kept: list[str] = []
     with factory() as session, audit_context(session, context):
+        created, _retired = sync_predefined_templates(session)
         updated = refresh_predefined_templates(session, keep_edited=True, kept=kept)
         session.commit()
-    return updated, kept
+    return created + updated, kept

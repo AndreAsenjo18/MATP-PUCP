@@ -11,11 +11,12 @@
  * Las acciones son sobre la foto elegida, con botones de 44 px en cualquier ancho. El orden se cambia
  * con «Mover antes» y «Mover después»: arrastrar no funciona con el dedo en una tableta ni con teclado.
  */
-import { Archive, ArrowLeft, ArrowRight, ImageOff, Star, TriangleAlert } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, ImageOff, Star, TriangleAlert, ZoomIn } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Notice } from "@/components/domain/AdminShell";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
+import { PhotoZoomViewer } from "@/components/domain/PhotoZoomViewer";
 import { PiecePhotoUpload } from "@/components/domain/PiecePhotoUpload";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -185,6 +186,8 @@ export interface PieceGalleryViewProps {
 
 /** Vista sin estado de la galería (se prueba como HTML estático, ADR-012). */
 export function PieceGalleryView({ media, pieceTitle, selectedId, onSelect, actions, onImageFailed }: PieceGalleryViewProps) {
+  // La foto elegida, ampliada con zoom (codigo-unico-y-ajustes-pantallas, D4).
+  const [zoomed, setZoomed] = useState(false);
   if (media.length === 0) {
     return (
       <Card as="section" aria-label="Fotografías" className="flex items-center justify-center gap-2 border-dashed text-base text-gris-texto">
@@ -206,12 +209,33 @@ export function PieceGalleryView({ media, pieceTitle, selectedId, onSelect, acti
       <h2 className="text-lg font-semibold text-tinta">Fotografías</h2>
       <figure className="flex flex-col gap-2">
         {selected.download_url ? (
-          <GalleryImage src={selected.download_url} alt={`${pieceTitle} — ${viewLabel(selected)}`} className="max-h-[420px] w-full rounded-md bg-crema object-contain" fallback={noPreview} onFailed={onImageFailed} />
+          <>
+            <button
+              type="button"
+              aria-label={`Ampliar la foto: ${viewLabel(selected)}`}
+              onClick={() => setZoomed(true)}
+              className="cursor-zoom-in rounded-md focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota"
+            >
+              <GalleryImage src={selected.download_url} alt={`${pieceTitle} — ${viewLabel(selected)}`} className="max-h-[420px] w-full rounded-md bg-crema object-contain" fallback={noPreview} onFailed={onImageFailed} />
+            </button>
+            <PhotoZoomViewer
+              open={zoomed}
+              src={selected.download_url}
+              alt={`${pieceTitle} — ${viewLabel(selected)}`}
+              caption={restriction ?? undefined}
+              onClose={() => setZoomed(false)}
+            />
+          </>
         ) : (
           noPreview
         )}
         <figcaption className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-tinta">{viewLabel(selected)}</span>
+          {selected.download_url && (
+            <Button variant="secondary" icon={ZoomIn} onClick={() => setZoomed(true)}>
+              Ampliar
+            </Button>
+          )}
           {selected.is_primary && (
             <Badge icon={Star} className="self-start">
               Principal

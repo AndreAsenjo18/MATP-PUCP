@@ -244,7 +244,7 @@ export function ImportRowCard({
           ))}
         </ul>
       )}
-      {others.length > 0 && <p className="text-sm text-ambar-texto">El mismo código I aparece en la fila {others.join(", ")} de este lote.</p>}
+      {others.length > 0 && <p className="text-sm text-ambar-texto">Un código de esta fila aparece también en la fila {others.join(", ")} de este lote: solo una puede entrar como pieza nueva.</p>}
       {row.decision_reason && <p className="text-sm text-gris-texto">Motivo: {row.decision_reason}</p>}
 
       {row.diff.length > 0 && (

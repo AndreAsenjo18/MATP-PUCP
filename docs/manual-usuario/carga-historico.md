@@ -20,8 +20,8 @@ qué cargar primero, qué hace cada plantilla y qué revisar antes de aprobar.
 
 1. **Primero los archivos por colección** (BD estandarizada de cada colección y las fichas de catalogación): son los más
    completos.
-2. **Después el inventario general.** Sus filas que ya se cargaron por colección aparecen como **actualizaciones** o
-   **posibles duplicados**: revise el diff y decida qué valor queda [SUPUESTO FR6: manda el archivo de la colección].
+2. **Después el inventario general.** Sus filas que ya se cargaron por colección aparecen como **actualizaciones** (o
+   **conflictos**, si sus códigos apuntan a piezas distintas): revise el diff y decida qué valor queda [SUPUESTO FR6: manda el archivo de la colección].
 3. **Al final, las hojas «Errores identificados» y «Errores pendientes»**, como **observaciones**: no son piezas. Al
    elegir la hoja, el asistente marca solo «Cargar esta hoja como observaciones de piezas ya registradas»; cada fila
    agrega una nota a la pieza de sus códigos y las que no se encuentran quedan en la bitácora. Paso a paso: [Cargar
@@ -70,7 +70,7 @@ o con otro nombre equivalente. Las columnas que la plantilla no conoce se guarda
 
 - **Avisos amarillos** de cada fila: sigla tomada de la colección, régimen que contradice la forma de adquisición,
   medidas que no son números («Alto no es un número»), fecha de ingreso solo con año o ilegible.
-- **Posibles duplicados y conflictos**: sobre todo al cargar el inventario general después de los archivos por colección.
+- **Conflictos**: sobre todo al cargar el inventario general después de los archivos por colección. Dos piezas nunca comparten un código, así que una fila con el código de otra fila o de otra pieza no entra como pieza nueva.
 - **Filas omitidas**: el asistente indica cuántas filas no se cargaron porque repetían el encabezado; la bitácora del
   lote dice cuáles.
 

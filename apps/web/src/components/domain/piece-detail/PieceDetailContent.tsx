@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ConfirmButton } from "@/components/domain/ConfirmButton";
 import { MergeLinks } from "@/components/domain/MergedPieceLinks";
 import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
+import { GeneralDataWithPhoto, PiecePrimaryPhoto } from "@/components/domain/PiecePrimaryPhoto";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import {
   PieceGeneralData,
@@ -136,7 +137,11 @@ export function PieceDetailContent({ pieceId }: { pieceId: string }) {
         <>
           <PieceDetailTabs activeTab={tab} onChange={selectTab} />
 
-          <PieceDetailPanel tab="Datos generales" activeTab={tab} visited={visitedTabs.has("Datos generales")}><PieceGeneralData piece={piece} /></PieceDetailPanel>
+          <PieceDetailPanel tab="Datos generales" activeTab={tab} visited={visitedTabs.has("Datos generales")}>
+            <GeneralDataWithPhoto photo={<PiecePrimaryPhoto pieceId={pieceId} pieceTitle={piece.denomination} onShowAll={() => selectTab("Fotografías")} />}>
+              <PieceGeneralData piece={piece} />
+            </GeneralDataWithPhoto>
+          </PieceDetailPanel>
 
           <PieceDetailPanel tab="Identificadores" activeTab={tab} visited={visitedTabs.has("Identificadores")}>
             <IdentifierSection pieceId={pieceId} piece={piece} />

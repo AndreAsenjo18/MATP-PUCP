@@ -20,6 +20,7 @@ import { MergeLinks } from "@/components/domain/MergedPieceLinks";
 import { PieceAlertsPanel } from "@/components/domain/PieceAlertsPanel";
 import { PieceDeletedNotice } from "@/components/domain/PieceDeletedNotice";
 import { PieceGallery } from "@/components/domain/PieceGallery";
+import { GeneralDataWithPhoto, PiecePrimaryPhoto } from "@/components/domain/PiecePrimaryPhoto";
 import {
   PieceGeneralData,
   PieceIdentifiersTable,
@@ -58,6 +59,8 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
   const [alerts, setAlerts] = useState<PieceAlert[]>([]);
   // Vuelve a leer la ficha tras una acción sin pasar por «Cargando», que desmontaría sus formularios.
   const [reloads, setReloads] = useState(0);
+  // Cambia cuando la galería agrega, retira o cambia la foto principal: la de «Datos generales» se relee.
+  const [mediaVersion, setMediaVersion] = useState(0);
   const [tab, setTab] = useState<PieceDetailTab>("Datos generales");
   const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PieceDetailTab>>(() => new Set(["Datos generales"]));
   function selectTab(next: PieceDetailTab) {
@@ -176,7 +179,11 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
           />
           <PieceDetailTabs activeTab={tab} onChange={selectTab} />
           <PieceDetailPanel tab="Datos generales" activeTab={tab} visited={visitedTabs.has("Datos generales")}>
-            <PieceGeneralData piece={piece} />
+            <GeneralDataWithPhoto
+              photo={<PiecePrimaryPhoto pieceId={pieceId} pieceTitle={piece.denomination} version={mediaVersion} onShowAll={() => selectTab("Fotografías")} />}
+            >
+              <PieceGeneralData piece={piece} />
+            </GeneralDataWithPhoto>
           </PieceDetailPanel>
           <PieceDetailPanel tab="Identificadores" activeTab={tab} visited={visitedTabs.has("Identificadores")}>
             <PieceIdentifiersTable piece={history.status === "ok" ? { ...piece, identifiers: history.identifiers } : piece}>
@@ -196,6 +203,7 @@ export function LivePieceDetail({ pieceId }: { pieceId: string }) {
               pieceId={pieceId}
               pieceTitle={piece.denomination}
               onChanged={() => {
+                setMediaVersion((count) => count + 1);
                 fetchPieceAlerts(pieceId, devUser).then((result) => {
                   if (result.status === "ok") setAlerts(result.alerts);
                 });
