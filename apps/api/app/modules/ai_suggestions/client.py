@@ -119,6 +119,24 @@ class AiServiceClient:
             )
         return response.json()
 
+    def extract_ledger_page(self, image: dict[str, Any]) -> dict[str, Any]:
+        """RIA-07 (change `digitalizacion-libro-registros`). Degrada igual que las demás: sin
+        respuesta, ``ServiceUnavailable`` (503) y esa foto no genera filas; las demás fotos de la
+        misma carga se siguen intentando (D4)."""
+        try:
+            response = self._client.post("/v1/extract-ledger-page", json={"image": image})
+        except httpx.HTTPError as exc:
+            raise ServiceUnavailable(
+                "El servicio de IA no respondió a tiempo.", code="ai_unavailable"
+            ) from exc
+        if response.status_code >= 400:
+            raise ServiceUnavailable(
+                "El servicio de IA no está disponible en este momento.",
+                code="ai_unavailable",
+                details={"upstream_status": response.status_code},
+            )
+        return response.json()
+
     def judge_duplicates(self, body: dict[str, Any]) -> dict[str, Any]:
         """RIA-02 (change ia-juicio-duplicados). Raises ``ServiceUnavailable`` (503) on any
         failure or timeout; the run records the batch as failed and goes on (D7)."""

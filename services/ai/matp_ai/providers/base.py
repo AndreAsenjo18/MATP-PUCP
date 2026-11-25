@@ -10,6 +10,8 @@ from matp_ai.schemas import (
     ExtractionResult,
     JudgeDuplicatesRequest,
     JudgeDuplicatesResult,
+    LedgerPageExtraction,
+    LedgerPageImage,
     PieceContext,
     SearchInterpretation,
     SearchValidValues,
@@ -57,6 +59,13 @@ class AIProvider(ABC):
         """RIA-01 + RIA-03 (change ia-completar-ficha): proposals for the missing fields of one
         piece, read only from its own text and photo, each with its evidence. The caller runs
         ``finish_completion`` again on whatever comes back (D2)."""
+
+    @abstractmethod
+    def extract_ledger_page(self, image: LedgerPageImage) -> LedgerPageExtraction:
+        """RIA-07 (change digitalizacion-libro-registros): por cada fila que se distinga en la
+        foto de una página del libro de registros manuscrito, propone sus datos con su confianza.
+        Solo de lectura: no decide NUEVA/ACTUALIZACIÓN ni escribe nada — eso lo hace, como con
+        cualquier importación, la clasificación por código que ya existe sobre lo que devuelve."""
 
     @abstractmethod
     def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:

@@ -56,12 +56,15 @@
 | RF-045 | Carga masiva de fotografías asociada a la importación | Must | importacion-datos |
 | RF-046 | Carga masiva de fotografías a piezas existentes | Must | importacion-datos |
 | RF-048 | Carga masiva con asistencia de IA: mapeo de columnas sugerido sin plantilla y extracción de texto libre por fila, con revisión campo a campo antes de aplicar | Should | importacion-datos (apoya ia-asistiva) |
+| RF-050 | Lote de importación creado desde fotos del libro de registros manuscrito, leído por IA, con la misma clasificación, previsualización, aprobación y reversión que cualquier otro lote | Should | importacion-datos (apoya ia-asistiva) |
 
 > RF-045 no está en el Expediente original: lo pidió el museo en la validación del prototipo v3 (2026-10) y lo cubre el change `importacion-masiva-fotografias`. Debe incorporarse al Expediente.
 >
 > RF-046 tampoco está en el Expediente original: lo pidió el museo en la reunión del 2026-10-31, al mostrar su archivo fotográfico en Drive, y lo cubre el change `importacion-fotos-a-catalogo`. Debe incorporarse al Expediente.
 >
 > RF-048 tampoco está en el Expediente original: surge de una observación del equipo en la exposición del prototipo (que sugerir texto para editar a mano no escala a un lote grande) y lo cubre el change propuesto `carga-masiva-con-ia`. **[SUPUESTO]** Debe validarse con el museo y con la jefa de práctica antes de incorporarse al Expediente.
+>
+> RF-050 tampoco está en el Expediente original: la idea original (registrar por voz mientras se camina) quedó bloqueada porque el museo exige mantener su libro físico de registros para todo movimiento o pieza nueva, así que el equipo la cambió por fotografiar la página ya escrita a mano. Lo cubre el change propuesto `digitalizacion-libro-registros`. **[SUPUESTO]** Debe validarse con el museo y con la jefa de práctica antes de incorporarse al Expediente.
 
 ## 4. Consulta y reportes
 
@@ -124,6 +127,7 @@
 | RIA-04 | Descripción preliminar desde metadatos | 4 (por validar) | ia-asistiva |
 | RIA-05 | Asistente de consulta sobre catálogo autorizado | 5 (pendiente) | ia-asistiva |
 | RIA-06 | Traducción de una búsqueda en lenguaje natural o por voz a los filtros ya existentes | 1 (priorizada) | ia-asistiva (apoya busqueda-reportes) |
+| RIA-07 | Lectura de una foto de una página del libro de registros manuscrito: por cada fila, propone sus datos con su confianza, para una importación que una persona revisa y aprueba | 1 (priorizada) | ia-asistiva (apoya importacion-datos) |
 
 > RIA-06 no estaba en el catálogo original de funciones de IA (RIA-01..05 del prompt base): surge
 > de la propuesta de IA generativa del equipo, idea 1, marcada como prioridad. A diferencia de
@@ -131,13 +135,21 @@
 > ninguna respuesta: solo propone filtros ya existentes, de solo lectura. Change propuesto
 > `busqueda-lenguaje-natural`. **[SUPUESTO]**.
 
+> RIA-07 tampoco estaba en el catálogo original: surge de la idea 1 de la misma propuesta de IA
+> generativa, adaptada porque el museo exige mantener su libro físico (ver RF-050). A diferencia de
+> RIA-01 (que lee texto libre ya digitado), RIA-07 lee una imagen de una ficha manuscrita; nunca
+> escribe en el catálogo, solo alimenta un lote de importación que una persona revisa igual que
+> cualquier otro. Change propuesto `digitalizacion-libro-registros`. **[SUPUESTO]**.
+
 > RIA-01 ya no se ofrece desde la ficha individual de una pieza (el panel «Sugerencias de IA» se
 > quitó de esa pantalla tras evaluarlo en vivo: solo cubre medidas, estado de conservación y
 > marcas de revisión, y no aporta nada frente a las alertas reales de completitud de la ficha).
 > La capacidad sigue disponible vía `carga-masiva-con-ia` (una propuesta por fila del lote) y el
 > endpoint `POST /ai/suggest-cataloging` sin UI propia. Change `retirar-sugerencias-ia-ficha`.
 
-**Fuera de alcance**: visión por computadora sobre imágenes.
+**Fuera de alcance**: visión por computadora sobre imágenes, salvo RIA-07 (leer una ficha
+manuscrita del libro de registros, no reconocer el contenido visual de una fotografía de la
+pieza).
 
 ## 8. Reglas de negocio
 

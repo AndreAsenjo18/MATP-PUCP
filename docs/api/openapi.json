@@ -1702,6 +1702,24 @@
         "title": "BatchMovementResponse",
         "type": "object"
       },
+      "Body_createLedgerPhotoImportBatch": {
+        "properties": {
+          "files": {
+            "description": "Una o más fotos de páginas del libro.",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_createLedgerPhotoImportBatch",
+        "type": "object"
+      },
       "Body_uploadImportBatch": {
         "properties": {
           "file": {
@@ -19115,6 +19133,74 @@
           }
         ],
         "summary": "Listar lotes de importación",
+        "tags": [
+          "Importación"
+        ],
+        "x-status": "implemented"
+      }
+    },
+    "/api/v1/imports/ledger-photo-batches": {
+      "post": {
+        "description": "Cada foto se manda al servicio de IA (RIA-07); sus filas entran al lote ya con la plantilla fija «Foto del libro de registros» aplicada (el lote queda `MAPPED`). Desde ahí, `POST /imports/{batch_id}/validate` y el resto de la revisión son los mismos que cualquier otro lote. Una foto que el servicio de IA no pudo leer no genera filas, pero no detiene a las demás (change `digitalizacion-libro-registros`, D4).",
+        "operationId": "createLedgerPhotoImportBatch",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_createLedgerPhotoImportBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Falta identificar al usuario (RF-042)."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "El rol no tiene el permiso requerido."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Un archivo no es una imagen admitida."
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "summary": "Crear un lote desde fotos del libro de registros, leído por IA",
         "tags": [
           "Importación"
         ],

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { formatFileSize, isSpreadsheetFile } from "@/lib/data/imports";
 import { render, visibleText } from "@/test/render";
 
-import { DropZone, UploadPanel } from "./ImportUpload";
+import { DropZone, LedgerPhotoPanel, UploadPanel } from "./ImportUpload";
 
 // Spec importacion-datos — Subida mínima con detección automática del formato. Datos sintéticos (RNF-014).
 
@@ -66,13 +66,36 @@ describe("panel de subida", () => {
 
   it("la guía queda plegada bajo «¿Cómo preparo mi Excel?» con cinco líneas como máximo", () => {
     const html = render(<UploadPanel busy={false} onUpload={noop} />);
-    expect(html).toMatch(/<details(?![^>]*open)[^>]*>\s*<summary[^>]*>[^<]*¿Cómo preparo mi Excel\?/);
+    expect(html).toMatch(/<details(?![^>]*open)[^>]*>\s*<summary[^>]*>[^<]*¿Cómo preparo mi Excel\?/);
     expect(visibleText(html)).toContain("Una fila por pieza.");
     expect(html.match(/<li[ >]/g)?.length ?? 0).toBeLessThanOrEqual(5);
   });
 
   it("no menciona identificadores de requisitos", () => {
     const text = visibleText(render(<UploadPanel busy={false} onUpload={noop} />));
-    expect(text).not.toMatch(/(RF|RN|RNF|RIA)-\d+/);
+    expect(text).not.toMatch(/(RF|RN|RNF|RIA)-\d+/);
+  });
+});
+
+// Change digitalizacion-libro-registros: carga desde fotos del libro, leída por IA.
+describe("panel de fotos del libro de registros", () => {
+  it("sin fotos elegidas, invita a elegirlas y el botón queda desactivado", () => {
+    const html = render(<LedgerPhotoPanel busy={false} onUpload={noop} />);
+    const text = visibleText(html);
+    expect(text).toContain("Registrar desde fotos del libro de registros");
+    expect(text).toContain("Elegir fotos…");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Registrar desde estas fotos/);
+    expect(html).toContain('accept="image/jpeg,image/png,image/webp"');
+    expect(html).toContain("multiple");
+  });
+
+  it("ocupada, el botón dice «Leyendo…»", () => {
+    const text = visibleText(render(<LedgerPhotoPanel busy={true} onUpload={noop} />));
+    expect(text).toContain("Leyendo…");
+  });
+
+  it("no menciona identificadores de requisitos", () => {
+    const text = visibleText(render(<LedgerPhotoPanel busy={false} onUpload={noop} />));
+    expect(text).not.toMatch(/(RF|RN|RNF|RIA)-\d+/);
   });
 });

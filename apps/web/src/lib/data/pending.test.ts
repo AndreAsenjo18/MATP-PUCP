@@ -45,12 +45,17 @@ afterEach(() => {
 });
 
 describe("pestañas visibles por permiso (design D2)", () => {
-  it("solo «Piezas incompletas»: ya no hay posibles duplicados ni sugerencias de IA", () => {
-    expect(PENDING_TABS.map((t) => t.href)).toEqual(["/pendientes/incompletas"]);
-    expect(pendingTabs(permissions("duplicates.resolve", "ai.review", "reports.view")).map((t) => t.key)).toEqual(["incomplete"]);
+  it("«Piezas incompletas» e «Importaciones pendientes»: ya no hay posibles duplicados ni sugerencias de IA", () => {
+    expect(PENDING_TABS.map((t) => t.href)).toEqual(["/pendientes/incompletas", "/pendientes/importaciones"]);
+    expect(pendingTabs(permissions("duplicates.resolve", "ai.review", "reports.view", "imports.approve")).map((t) => t.key)).toEqual(["incomplete", "imports"]);
   });
 
-  it("sin permiso para ver reportes, ninguna", () => {
+  it("cada pestaña solo con su propio permiso", () => {
+    expect(pendingTabs(permissions("reports.view")).map((t) => t.key)).toEqual(["incomplete"]);
+    expect(pendingTabs(permissions("imports.approve")).map((t) => t.key)).toEqual(["imports"]);
+  });
+
+  it("sin ningún permiso, ninguna", () => {
     expect(pendingTabs(permissions("duplicates.resolve", "ai.review"))).toEqual([]);
     expect(pendingTabs(permissions())).toEqual([]);
   });
@@ -60,13 +65,13 @@ describe("pestaña inicial (design D2)", () => {
   const visible = pendingTabs(permissions("reports.view"));
 
   it("la pestaña visible, tenga o no pendientes", () => {
-    expect(initialTab(visible, { incomplete: 117 })?.key).toBe("incomplete");
-    expect(initialTab(visible, { incomplete: 0 })?.key).toBe("incomplete");
+    expect(initialTab(visible, { incomplete: 117, imports: null })?.key).toBe("incomplete");
+    expect(initialTab(visible, { incomplete: 0, imports: null })?.key).toBe("incomplete");
     expect(initialTab(visible, UNKNOWN_COUNTS)?.key).toBe("incomplete");
   });
 
   it("sin pestañas visibles, ninguna", () => {
-    expect(initialTab([], { incomplete: 9 })).toBeNull();
+    expect(initialTab([], { incomplete: 9, imports: null })).toBeNull();
   });
 });
 
@@ -81,6 +86,7 @@ describe("nombre y dirección de las pestañas", () => {
   it("reconoce la pestaña de una dirección y de sus subrutas", () => {
     expect(tabForPath("/pendientes/incompletas")?.key).toBe("incomplete");
     expect(tabForPath("/pendientes/incompletas/otra")?.key).toBe("incomplete");
+    expect(tabForPath("/pendientes/importaciones")?.key).toBe("imports");
     expect(tabForPath("/pendientes/duplicados")).toBeUndefined();
     expect(tabForPath("/pendientes/sugerencias")).toBeUndefined();
     expect(tabForPath("/pendientes")).toBeUndefined();
@@ -93,12 +99,24 @@ describe("contadores desde las consultas existentes (modo live, design D3)", () 
     const fetchMock = useLive(async (request) =>
       new URL(request.url).pathname === "/api/v1/quality/incomplete" ? json(200, page(117)) : json(404, { code: "not_found" }),
     );
-    expect(await fetchPendingCounts(["incomplete"], { devUser: DEV_USER })).toEqual({ incomplete: 117 });
+    expect(await fetchPendingCounts(["incomplete"], { devUser: DEV_USER })).toEqual({ incomplete: 117, imports: null });
 
     const urls = fetchMock.mock.calls.map(([request]) => new URL(request.url));
     expect(urls.map((u) => u.pathname)).toEqual(["/api/v1/quality/incomplete"]);
     expect(urls[0].searchParams.get("page_size")).toBe("1");
     expect(fetchMock.mock.calls[0][0].headers.get("X-MATP-User")).toBe(DEV_USER);
+  });
+
+  it("pide una sola fila de lotes en previsualización y lee su total (digitalizacion-libro-registros)", async () => {
+    const fetchMock = useLive(async (request) => {
+      const url = new URL(request.url);
+      if (url.pathname !== "/api/v1/imports") return json(404, { code: "not_found" });
+      expect(url.searchParams.get("status")).toBe("IN_PREVIEW");
+      expect(url.searchParams.get("page_size")).toBe("1");
+      return json(200, page(3));
+    });
+    expect(await fetchPendingCounts(["imports"], { devUser: DEV_USER })).toEqual({ incomplete: null, imports: 3 });
+    expect(fetchMock.mock.calls.map(([request]) => new URL(request.url).pathname)).toEqual(["/api/v1/imports"]);
   });
 
   it("ya no consulta la cola de duplicados", async () => {

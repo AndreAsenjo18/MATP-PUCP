@@ -18,9 +18,11 @@ from matp_ai.schemas import (
     DescriptionResult,
     ErrorResponse,
     ExtractionResult,
+    ExtractLedgerPageRequest,
     ExtractRequest,
     JudgeDuplicatesRequest,
     JudgeDuplicatesResult,
+    LedgerPageExtraction,
     PieceContext,
     SearchInterpretation,
     SearchInterpretRequest,
@@ -187,5 +189,15 @@ def create_app(settings: Settings | None = None, provider: AIProvider | None = N
     def interpret_search(body: SearchInterpretRequest) -> SearchInterpretation:
         # «pieza», «muéstrame las…» no son texto que buscar (busqueda-ia-sin-palabras-genericas).
         return clean_interpretation(provider.interpret_search(body.text, body.valid_values))
+
+    @app.post(
+        "/v1/extract-ledger-page",
+        response_model=LedgerPageExtraction,
+        responses=ERRORS,
+        tags=["IA asistiva"],
+        summary="RIA-07: leer las filas de una foto del libro de registros manuscrito",
+    )
+    def extract_ledger_page(body: ExtractLedgerPageRequest) -> LedgerPageExtraction:
+        return provider.extract_ledger_page(body.image)
 
     return app

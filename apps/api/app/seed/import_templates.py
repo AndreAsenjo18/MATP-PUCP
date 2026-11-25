@@ -312,7 +312,37 @@ FICHA_RN = PredefinedTemplate(
     ),
 )
 
-PREDEFINED_TEMPLATES: tuple[PredefinedTemplate, ...] = (BD_ESTANDARIZADA, FICHA_RN)
+# Encabezados sintéticos de la extracción de IA sobre una foto del libro de registros (change
+# `digitalizacion-libro-registros`, design D2): no los escribe el museo, los fija este mismo
+# proveedor (RIA-07), siempre iguales — por eso no hay nada que una persona tenga que mapear a
+# mano, a diferencia de un Excel real.
+LIBRO_REGISTROS = PredefinedTemplate(
+    name="Foto del libro de registros",
+    source_name="Lectura por IA de una foto del libro de registros manuscrito",
+    description="Plantilla fija de las seis columnas que siempre devuelve la lectura por IA de "
+    "una página del libro de registros (RIA-07): no la elige una persona, la fija el sistema.",
+    columns=(
+        column("Denominación sugerida", target("denomination"), TEXT),
+        column("Descripción", target("description"), TEXT),
+        column("Procedencia", target("provenance"), TEXT),
+        conservation_column("Estado de conservación"),
+        column("Fecha", target("entry_date"), TEXT),
+        column("Código de inventario", codes("I"), CODE_TRANSFORMS, required=True),
+        # Dato de origen, no identificador (ajuste tras prueba en vivo, LR3 de
+        # preguntas-contraparte.md): la IA a veces repite aquí el encabezado de la columna de la
+        # foto («M.I.F.O.») en vez del valor real de la fila. Como identificador, ese mismo texto
+        # repetido en varias filas choca entre sí y vuelve CONFLICT a todo el lote; como dato de
+        # origen queda visible para que el curador lo revise, sin arriesgar el resto del lote.
+        column("Código adicional", PAYLOAD),
+        # La foto nunca trae la colección (ajuste tras probar en vivo, LR5 de
+        # preguntas-contraparte.md): queda vacía a propósito, para que el curador la elija fila por
+        # fila en la revisión (misma corrección de celda que el resto de columnas, D8 de
+        # design.md) en vez de quedar «Sin registrar» hasta «Revisar pendientes».
+        column("Colección", target("collection"), TEXT),
+    ),
+)
+
+PREDEFINED_TEMPLATES: tuple[PredefinedTemplate, ...] = (BD_ESTANDARIZADA, FICHA_RN, LIBRO_REGISTROS)
 
 #: Illustrative templates seeded before the real files were reviewed [SUPUESTO A1].
 ILLUSTRATIVE_NAMES = (

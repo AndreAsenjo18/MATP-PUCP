@@ -4,6 +4,7 @@ import type { MappingTemplate } from "@/lib/data/import-templates";
 
 import {
   approvalSentence,
+  effectiveErrorRows,
   formatCause,
   formatCauseSentence,
   groupRepeatedErrors,
@@ -151,5 +152,26 @@ describe("formato como causa probable", () => {
     const other = { code: "invalid_inventory_code", rowIds: group.rowIds };
     expect(formatCause(other, template(["denomination"]), 30)).toBeNull();
     expect(formatCause(group, null, 30)).toBeNull();
+  });
+});
+
+// Bug confirmado al probar en vivo `digitalizacion-libro-registros`: el efecto que llena
+// `errorScan` deja de pedir nada en cuanto los errores bajan a cero, sin limpiarlo — sin este
+// corte, el aviso de «falta el régimen de tenencia» quedaba pegado después de corregirlo.
+describe("filas con error, sin quedarse con una lectura vieja", () => {
+  const stale = { rows: [{ id: "r1", source_row_number: 1, classification: "NEW", decision: "PENDING", validation_errors: [TENURE] }] as unknown as never };
+
+  it("con errores en 0, ignora el `errorScan` de antes de corregir, aunque no se haya limpiado", () => {
+    expect(effectiveErrorRows(0, stale)).toEqual([]);
+  });
+
+  it("con errores pendientes, sí usa las filas del `errorScan`", () => {
+    const result = effectiveErrorRows(1, stale);
+    expect(result).toHaveLength(1);
+    expect(result[0].errors).toEqual([TENURE]);
+  });
+
+  it("sin `errorScan` todavía (recién llegando a la pantalla), no revienta", () => {
+    expect(effectiveErrorRows(1, null)).toEqual([]);
   });
 });
