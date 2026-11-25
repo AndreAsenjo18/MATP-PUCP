@@ -21,7 +21,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: House },
-  { href: "/busqueda", label: "Buscar", icon: Search },
+  { href: "/busqueda", label: "Piezas", icon: Search },
   { href: "/importacion", label: "Cargar datos", icon: Upload, permissions: ["imports.prepare"] },
   { href: "/pendientes", label: "Revisar pendientes", icon: ClipboardCheck, permissions: ["duplicates.resolve", "ai.review", "reports.view", "imports.approve"] },
   { href: "/reportes", label: "Reportes", icon: ChartNoAxesColumn, permissions: ["reports.view"] },

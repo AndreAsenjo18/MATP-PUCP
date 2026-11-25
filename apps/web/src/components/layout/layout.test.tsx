@@ -23,7 +23,7 @@ describe("visibleNavItems", () => {
   });
 
   it("el menú tiene como máximo seis entradas, con nombre de tarea (remodelacion-visual, D5)", () => {
-    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Inicio", "Buscar", "Cargar datos", "Revisar pendientes", "Reportes", "Administración"]);
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Inicio", "Piezas", "Cargar datos", "Revisar pendientes", "Reportes", "Administración"]);
     expect(NAV_ITEMS.find((item) => item.label === "Revisar pendientes")?.href).toBe("/pendientes");
   });
 
@@ -35,10 +35,10 @@ describe("visibleNavItems", () => {
     expect(visibleNavItems(() => false).map((item) => item.label)).not.toContain("Revisar pendientes");
   });
 
-  it("el Personal auxiliar de depósito ve Inicio y Buscar, donde verifica y mueve, sin Administración", () => {
+  it("el Personal auxiliar de depósito ve Inicio y Piezas, donde verifica y mueve, sin Administración", () => {
     const labels = labelsFor("STORAGE_STAFF");
     expect(labels).toContain("Inicio");
-    expect(labels).toContain("Buscar");
+    expect(labels).toContain("Piezas");
     // La vista de depósito se fusionó con la búsqueda (fusion-busqueda-deposito 4.1).
     expect(labels).not.toContain("Vista de depósito");
     expect(NAV_ITEMS.some((item) => item.href === "/deposito")).toBe(false);
@@ -89,7 +89,7 @@ describe("Sidebar", () => {
     expect(html).toMatch(/aria-current="page"[^>]*class="[^"]*bg-crema text-tinta[^"]*"[^>]*href="\/busqueda"|href="\/busqueda"[^>]*aria-current="page"/);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html.match(/<svg[^>]*aria-hidden="true"/g)).toHaveLength(3);
-    expect(visibleText(html)).toBe("Inicio Buscar Cargar datos");
+    expect(visibleText(html)).toBe("Inicio Piezas Cargar datos");
     // Cada sección es una píldora de 44 px.
     expect(html.match(/rounded-full/g)).toHaveLength(3);
     expect(html.match(/min-h-11/g)).toHaveLength(3);
@@ -99,7 +99,7 @@ describe("Sidebar", () => {
 describe("Sidebar contraída", () => {
   it("deja solo los iconos, con el nombre de cada sección como ayuda y para el lector de pantalla", () => {
     const html = render(<Sidebar items={NAV_ITEMS.slice(0, 3)} pathname="/busqueda" collapsed />);
-    expect(html.match(/title="(Inicio|Buscar|Cargar datos)"/g)).toHaveLength(3);
+    expect(html.match(/title="(Inicio|Piezas|Cargar datos)"/g)).toHaveLength(3);
     expect(html.match(/class="sr-only"/g)).toHaveLength(3);
     expect(html).toContain("justify-center");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);

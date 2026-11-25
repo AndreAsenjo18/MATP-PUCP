@@ -33,6 +33,7 @@ export interface PageHeaderProps {
   eyebrow?: ReactNode;
   /** Acciones principales de la pantalla, dentro de la banda. */
   actions?: ReactNode;
+  actionsAtEdge?: boolean;
   /** «Volver a …» como píldora crema arriba de la banda (maqueta B de la ficha). */
   back?: { href: string; label: ReactNode };
   /** Insignias junto al título, en la misma línea si caben (el código y la tenencia de la ficha). */
@@ -55,7 +56,7 @@ export interface PageHeaderProps {
 export const headerActionClassName =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-crema px-5 py-2.5 text-center text-base font-bold text-tinta shadow-sm transition-[translate] duration-150 ease-out hover:bg-white focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-crema motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0";
 
-export function PageHeader({ title, description, eyebrow, actions, back, meta, children, size = "compacta", tramaPensando = false, tramaAnimada = false, debajo, titleId, className }: PageHeaderProps) {
+export function PageHeader({ title, description, eyebrow, actions, actionsAtEdge = false, back, meta, children, size = "compacta", tramaPensando = false, tramaAnimada = false, debajo, titleId, className }: PageHeaderProps) {
   const large = size === "grande";
   return (
     <header
@@ -76,7 +77,7 @@ export function PageHeader({ title, description, eyebrow, actions, back, meta, c
           className="trama-rombos pointer-events-none absolute inset-y-0 right-0 -z-10 hidden md:block w-[min(34%,20rem)] [--trama-tamano:3.5rem]"
         />
       )}
-      <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : "gap-4 md:flex-row md:items-center md:justify-between md:pr-[min(28%,16rem)]")}>
+      <div className={cn("flex flex-col", large ? "gap-6 md:pr-[36%]" : cn("gap-4 md:flex-row md:items-center md:justify-between", actionsAtEdge ? "md:pr-0" : "md:pr-[min(28%,16rem)]"))}>
         <div className="flex min-w-0 flex-col gap-1.5">
           {back && <BandBackLink href={back.href}>{back.label}</BandBackLink>}
           {eyebrow && <p className="text-base font-semibold">{eyebrow}</p>}
@@ -88,7 +89,7 @@ export function PageHeader({ title, description, eyebrow, actions, back, meta, c
           </div>
           {description && <p className="max-w-3xl text-base">{description}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className={cn("flex shrink-0 flex-wrap items-center gap-2", actionsAtEdge && "md:ml-auto")}>{actions}</div>}
         {children}
       </div>
       {debajo && !large && <div className="mt-3 md:pr-[36%]">{debajo}</div>}

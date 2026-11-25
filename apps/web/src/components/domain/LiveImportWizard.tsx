@@ -156,6 +156,7 @@ export function LiveImportWizard() {
   const params = useSearchParams();
   const batchId = params.get("lote");
   const origin = originFromParams(params);
+  const ledgerMode = !params.get("lote") && params.get("libro") === "1";
 
   const [batch, setBatch] = useState<ImportBatch | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -897,13 +898,13 @@ export function LiveImportWizard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Importar piezas" description="Suba un Excel o CSV, revise lo que cambiará y apruebe." />
+      <PageHeader title={ledgerMode ? "Registrar desde fotos del libro" : "Importar piezas"} description={ledgerMode ? "Suba fotos de páginas manuscritas, revise los datos y apruebe." : "Suba un Excel o CSV, revise lo que cambiará y apruebe."} />
       <ImportSteps current={progressStep(batch)} complete={batch?.status === "APPLIED"} />
       {batch && <BatchHeader batch={batch} />}
       <ErrorNotice message={error} />
 
-      {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
-      {!batchId && <LedgerPhotoPanel busy={busy} onUpload={handleLedgerPhotos} />}
+      {!batchId && !ledgerMode && <UploadPanel busy={busy} onUpload={handleUpload} />}
+      {!batchId && ledgerMode && <LedgerPhotoPanel busy={busy} onUpload={handleLedgerPhotos} />}
       {batch && processing && <ProgressPanel batch={batch} />}
       {batch && !processing && !adjusting && formatPanel && (
         <FormatProblemPanel

@@ -636,7 +636,8 @@ export function SearchLive({ initialFilters = EMPTY_FILTERS }: { initialFilters?
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Búsqueda"
+        title="Búsqueda de piezas"
+        actionsAtEdge
         tramaAnimada
         tramaPensando={aiThinking}
         actions={

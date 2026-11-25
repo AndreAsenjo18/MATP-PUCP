@@ -3,7 +3,7 @@
  * `importacion-elegir-origen`, D5/D7). Son enlaces, sin estado propio: la elección vive en la
  * dirección. Solo presentación.
  */
-import { ArrowRight, FileSpreadsheet, Images, Layers, type LucideIcon } from "lucide-react";
+import { ArrowRight, Camera, FileSpreadsheet, Images, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -48,6 +48,14 @@ export const IMPORT_ORIGIN_OPTIONS: OriginOption[] = [
     tone: "verde",
     tag: "Paso a paso",
   },
+  {
+    href: "/importacion?origen=excel&libro=1",
+    title: "Fotos del libro de registros",
+    description: "La IA lee fotos de páginas manuscritas. Revise los datos antes de registrarlos.",
+    icon: Camera,
+    tone: "ciruela",
+    tag: "Libro de registros",
+  },
 ];
 
 const TAG_TONES: Record<OriginOption["tone"], string> = {
@@ -65,7 +73,7 @@ export function ImportOriginPicker() {
   return (
     <section aria-labelledby="importar-que" className="flex flex-col gap-5">
       <PageHeader title="¿Qué desea importar?" titleId="importar-que" />
-      <ul className="grid gap-tarjetas md:grid-cols-3">
+      <ul className="grid gap-tarjetas md:grid-cols-2 2xl:grid-cols-4">
         {IMPORT_ORIGIN_OPTIONS.map(({ href, title, description, icon, tone, tag }) => (
           <li key={href} className="flex">
             <Link href={href} className={cardClassName({ interactive: true, padded: false, className: "group flex min-h-72 w-full flex-col gap-4 p-7" })}>

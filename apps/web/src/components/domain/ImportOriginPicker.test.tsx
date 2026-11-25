@@ -10,12 +10,12 @@ describe("elección del origen de la importación", () => {
   const html = render(<ImportOriginPicker />);
   const text = visibleText(html);
 
-  it("abre con la pregunta y las tres tarjetas", () => {
+  it("abre con la pregunta y las cuatro tarjetas", () => {
     expect(text).toContain("¿Qué desea importar?");
     expect(text).toContain("Solo Excel");
     expect(text).toContain("Solo imágenes");
     expect(text).toContain("Excel e imágenes");
-    expect(html.match(/<a /g)).toHaveLength(3);
+    expect(html.match(/<a /g)).toHaveLength(4);
   });
 
   it("cada tarjeta es un enlace a su flujo", () => {
@@ -33,6 +33,6 @@ describe("elección del origen de la importación", () => {
   it("no muestra formularios de subida ni identificadores de requisitos", () => {
     expect(html).not.toContain('type="file"');
     expect(text).not.toMatch(/\b(RF|RN|RNF|RIA)-\d+/);
-    expect(IMPORT_ORIGIN_OPTIONS).toHaveLength(3);
+    expect(IMPORT_ORIGIN_OPTIONS).toHaveLength(4);
   });
 });
