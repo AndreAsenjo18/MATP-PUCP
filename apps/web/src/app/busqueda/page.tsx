@@ -74,7 +74,8 @@ function BusquedaContent() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Búsqueda"
+        title="Búsqueda de piezas"
+        actionsAtEdge
         actions={
           hasPermission("pieces.create") && (
             <Link href="/piezas/nueva" className={headerActionClassName}>
