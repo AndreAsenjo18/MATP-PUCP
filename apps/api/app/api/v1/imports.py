@@ -5,6 +5,7 @@ preview (2.1, 3.1, 3.4), decisions, approval and log (4.1 to 4.3), embedded imag
 rollback on the revert engine of ``auditoria-y-soft-delete-transversal`` (5.2).
 """
 
+import base64
 import logging
 import uuid
 from typing import Annotated, Any
@@ -40,7 +41,13 @@ from app.api.stubs import (
 )
 from app.core import jobs
 from app.core.config import Settings
-from app.core.errors import ConflictError, NotFound, PermissionDenied, ValidationFailed
+from app.core.errors import (
+    ConflictError,
+    NotFound,
+    PermissionDenied,
+    ServiceUnavailable,
+    ValidationFailed,
+)
 from app.core.models_base import new_uuid
 from app.core.storage import ObjectStorage
 from app.modules.ai_suggestions.apply import validate_field_value
@@ -85,6 +92,11 @@ from app.modules.imports.decisions import (
 )
 from app.modules.imports.dry_run import dry_run_out, run_dry_run
 from app.modules.imports.images import associate_image, batch_images
+from app.modules.imports.ledger_photo import (
+    create_ledger_photo_batch,
+    ingest_ledger_rows,
+    row_raw_data,
+)
 from app.modules.imports.location_map import map_location, unresolved_locations
 from app.modules.imports.log import XLSX_CONTENT_TYPE, build_log, log_workbook
 from app.modules.imports.mapping import (
@@ -385,6 +397,58 @@ def create_import_photo_batch(
     batch = create_photo_batch(session, name=body.name, uploaded_by_id=user.id)
     session.commit()
     return ImportBatchOut.from_batch(batch)
+
+
+#: Únicos tipos que la IA sabe leer (mismo contrato que ``LedgerPageImage`` del servicio de IA).
+_LEDGER_IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+
+
+@router.post(
+    "/imports/ledger-photo-batches",
+    response_model=ImportBatchOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear un lote desde fotos del libro de registros, leído por IA",
+    description="Cada foto se manda al servicio de IA (RIA-07); sus filas entran al lote ya con "
+    "la plantilla fija «Foto del libro de registros» aplicada (el lote queda `MAPPED`). Desde "
+    "ahí, `POST /imports/{batch_id}/validate` y el resto de la revisión son los mismos que "
+    "cualquier otro lote. Una foto que el servicio de IA no pudo leer no genera filas, pero no "
+    "detiene a las demás (change `digitalizacion-libro-registros`, D4).",
+    responses={
+        422: {"model": ErrorResponse, "description": "Un archivo no es una imagen admitida."}
+    },
+    **implemented(),
+)
+def create_ledger_photo_import_batch(
+    request: Request,
+    session: SessionDep,
+    user: Preparer,
+    files: Annotated[list[UploadFile], File(description="Una o más fotos de páginas del libro.")],
+) -> ImportBatchOut:
+    settings = request.app.state.settings
+    client = AiServiceClient(request.app, settings.ai_mount_path)
+    rows: list[dict[str, Any]] = []
+    for file in files:
+        media_type = file.content_type
+        if media_type not in _LEDGER_IMAGE_TYPES:
+            raise ValidationFailed(
+                f"«{file.filename}» no es una imagen admitida (jpeg, png o webp).",
+                code="unsupported_image_type",
+            )
+        content = _read_upload(file, settings.import_max_bytes)
+        data_base64 = base64.b64encode(content).decode("ascii")
+        try:
+            result = client.extract_ledger_page(
+                {"media_type": media_type, "data_base64": data_base64}
+            )
+        except ServiceUnavailable:
+            continue  # esa foto no aporta filas; las demás se intentan igual (D4)
+        rows.extend(row_raw_data(row) for row in result.get("rows", []))
+    writer(session, user)
+    batch = create_ledger_photo_batch(session, uploaded_by_id=user.id, photo_count=len(files))
+    if rows:
+        ingest_ledger_rows(session, request.app.state.storage, batch, rows)
+    session.commit()
+    return batch_out(session, batch)
 
 
 @router.get(

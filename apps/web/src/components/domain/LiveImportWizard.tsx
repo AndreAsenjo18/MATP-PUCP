@@ -45,12 +45,12 @@ import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } fr
 import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
 import { getApiMode } from "@/lib/data/mode";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
-import { approvalSentence, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, toErrorRow, type ErrorGroup } from "@/lib/data/import-review";
+import { approvalSentence, effectiveErrorRows, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
-import { UploadPanel } from "@/components/domain/ImportUpload";
+import { LedgerPhotoPanel, UploadPanel } from "@/components/domain/ImportUpload";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -73,6 +73,7 @@ import {
 } from "@/lib/data/import-templates";
 import {
   IMPORT_PAGE_SIZE,
+  LEDGER_PHOTO_TEMPLATE_NAME,
   IMPORT_POLL_MS,
   associateImportImage,
   changedSummary,
@@ -101,6 +102,7 @@ import {
   skippedHeaderRowsNotice,
   startImportValidation,
   uploadImportFile,
+  uploadLedgerPhotos,
   wizardStep,
   type ImportBatch,
   type ImportRow,
@@ -485,6 +487,16 @@ export function LiveImportWizard() {
     router.replace(importHref({ batchId: result.value.batch_id, origin }));
   }
 
+  async function handleLedgerPhotos(files: File[]) {
+    setBusy(true);
+    const result = await uploadLedgerPhotos(files.map((file) => ({ blob: file, name: file.name })), devUser);
+    setBusy(false);
+    if (result.status !== "ok") return setError(result.message);
+    setError(null);
+    resetTemplates();
+    router.replace(importHref({ batchId: result.value.id, origin }));
+  }
+
   /** Guarda el mapeo y valida el lote; `onFailure` recibe el motivo si algo no se pudo. */
   async function applySourceAndValidate(source: BatchMappingSource, onFailure: (message: string) => void) {
     if (!batch) return;
@@ -788,7 +800,7 @@ export function LiveImportWizard() {
   }
 
   // Resumen exclusivo y errores repetidos de la revisión (change `importacion-revision-simplificada`).
-  const errorRowsData = (errorScan?.rows ?? []).map(toErrorRow);
+  const errorRowsData = effectiveErrorRows(errorCount, errorScan);
   const knownErrorRows = errorCount === 0 ? [] : errorScan?.complete ? errorRowsData : null;
   const summary = reviewSummary(counts, knownErrorRows);
   const pending = pendingWork(summary, knownErrorRows);
@@ -870,6 +882,7 @@ export function LiveImportWizard() {
   }
 
   const currentTemplate = templates?.find((template) => template.id === batch?.template_id) ?? null;
+  const isLedgerPhotoBatch = currentTemplate?.name === LEDGER_PHOTO_TEMPLATE_NAME;
   const adjusting = mappingMode === "edit" && editorDraft !== null;
   const formatPanel: FormatIssue | null = formatIssue ?? (changingFormat ? { kind: "change", current: templates?.find((template) => template.id === batch?.template_id) ?? null } : null);
   const applyingFormat = batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
@@ -890,6 +903,7 @@ export function LiveImportWizard() {
       <ErrorNotice message={error} />
 
       {!batchId && <UploadPanel busy={busy} onUpload={handleUpload} />}
+      {!batchId && <LedgerPhotoPanel busy={busy} onUpload={handleLedgerPhotos} />}
       {batch && processing && <ProgressPanel batch={batch} />}
       {batch && !processing && !adjusting && formatPanel && (
         <FormatProblemPanel
@@ -1131,6 +1145,7 @@ export function LiveImportWizard() {
                   onDecide={(input) => handleDecision(row.id, input)}
                 onCorrect={(column, value) => void handleCorrect(row, column, value)}
                 correctionNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
+                alwaysShowCorrection={isLedgerPhotoBatch}
                   photos={
                     <RowPhotoStrip
                       photos={rowPhotos[row.id] ?? []}

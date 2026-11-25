@@ -529,6 +529,19 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "ExtractLedgerPageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "image": {
+            "$ref": "#/components/schemas/LedgerPageImage"
+          }
+        },
+        "required": [
+          "image"
+        ],
+        "title": "ExtractLedgerPageRequest",
+        "type": "object"
+      },
       "ExtractRequest": {
         "examples": [
           {
@@ -677,6 +690,155 @@
           "verdicts"
         ],
         "title": "JudgeDuplicatesResult",
+        "type": "object"
+      },
+      "LedgerPageExtraction": {
+        "properties": {
+          "prompt_version": {
+            "default": "libro-registros-v1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerRowExtraction"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "title": "LedgerPageExtraction",
+        "type": "object"
+      },
+      "LedgerPageImage": {
+        "additionalProperties": false,
+        "description": "Foto de una página del libro de registros manuscrito (change `digitalizacion-libro-\nregistros`). Misma forma que `CompletionImage`: se declara aparte porque son contratos de\noperaciones distintas, aunque hoy coincidan campo a campo.",
+        "properties": {
+          "data_base64": {
+            "maxLength": 8000000,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "media_type": {
+            "enum": [
+              "image/webp",
+              "image/jpeg",
+              "image/png"
+            ],
+            "title": "Media Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_type",
+          "data_base64"
+        ],
+        "title": "LedgerPageImage",
+        "type": "object"
+      },
+      "LedgerRowExtraction": {
+        "description": "Una fila leída de la foto (design D2/D3 de `digitalizacion-libro-registros`): las mismas\nsiete claves que mapea la plantilla fija «Foto del libro de registros». Ningún campo es\nobligatorio: una celda vacía o ilegible se devuelve ``None`` en vez de adivinarse.",
+        "properties": {
+          "additional_code": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Code"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "conservation_state": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conservation State"
+          },
+          "denomination": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Denominación corta sugerida (p. ej. «Canasta»).",
+            "title": "Denomination"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tal como está escrita.",
+            "title": "Description"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tal como está escrita.",
+            "title": "Entry Date"
+          },
+          "inventory_code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Código I tal como está escrito (p. ej. «I-2161»).",
+            "title": "Inventory Code"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          }
+        },
+        "required": [
+          "confidence"
+        ],
+        "title": "LedgerRowExtraction",
         "type": "object"
       },
       "PairSide": {
@@ -1658,6 +1820,57 @@
           }
         },
         "summary": "RIA-04: descripción preliminar desde metadatos",
+        "tags": [
+          "IA asistiva"
+        ]
+      }
+    },
+    "/v1/extract-ledger-page": {
+      "post": {
+        "operationId": "extract_ledger_page",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractLedgerPageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerPageExtraction"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Entrada no válida."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Proveedor de IA no disponible."
+          }
+        },
+        "summary": "RIA-07: leer las filas de una foto del libro de registros manuscrito",
         "tags": [
           "IA asistiva"
         ]

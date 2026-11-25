@@ -408,6 +408,14 @@ describe("Corregir el valor (change importacion-corregir-celda)", () => {
     expect(visibleText(render(<ImportRowCard row={withError} canDecide busy={false} onDecide={() => {}} />))).not.toContain("¿Es una errata?");
   });
 
+  it("una fila sin errores no lo ofrece, salvo que se pida siempre (digitalizacion-libro-registros)", () => {
+    const clean = row({ classification: "NEW", has_validation_errors: false, raw_data: { Denominación: "Canasta" } });
+    expect(visibleText(render(<ImportRowCard row={clean} canDecide busy={false} onDecide={() => {}} onCorrect={() => {}} />))).not.toContain("¿Es una errata?");
+    const text = visibleText(render(<ImportRowCard row={clean} canDecide busy={false} onDecide={() => {}} onCorrect={() => {}} alwaysShowCorrection />));
+    expect(text).toContain("¿Es una errata?");
+    expect(text).toContain("En el archivo: «Canasta»");
+  });
+
   it("muestra lo que decía el archivo en una celda corregida", () => {
     const corrected = row({ raw_data: { "Código I": "I-1814", __corrections: { "Código I": { original: "I.-1814", value: "I-1814" } } } });
     expect(visibleText(render(<ImportRowCard row={corrected} canDecide busy={false} onDecide={() => {}} />))).toContain("Corregido en la revisión; en el archivo decía «I.-1814».");

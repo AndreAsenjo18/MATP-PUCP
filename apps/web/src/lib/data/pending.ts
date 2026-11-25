@@ -11,10 +11,14 @@
  * sin número.
  */
 
+import { pendingImportBatchesTotal } from "./imports";
 import { fetchIncompleteReport } from "./quality";
 
-/** Se retiraron «Sugerencias de IA» y «Posibles duplicados»: queda «Piezas incompletas». */
-export type PendingTabKey = "incomplete";
+/** Se retiraron «Sugerencias de IA» y «Posibles duplicados»: queda «Piezas incompletas». Se
+ * agrega «Importaciones pendientes» (change `digitalizacion-libro-registros`): sin esta pestaña,
+ * un lote que el catalogador dejó listo (p. ej. desde una foto del libro de registros) no tenía
+ * dónde aparecerle a quien lo aprueba, salvo que alguien le pasara la dirección a mano. */
+export type PendingTabKey = "incomplete" | "imports";
 
 export interface PendingTab {
   key: PendingTabKey;
@@ -27,6 +31,7 @@ export interface PendingTab {
 /** Las pestañas de la bandeja. */
 export const PENDING_TABS: readonly PendingTab[] = [
   { key: "incomplete", href: "/pendientes/incompletas", label: "Piezas incompletas", permission: "reports.view" },
+  { key: "imports", href: "/pendientes/importaciones", label: "Importaciones pendientes", permission: "imports.approve" },
 ];
 
 export const PENDING_BASE_PATH = "/pendientes";
@@ -34,7 +39,7 @@ export const PENDING_BASE_PATH = "/pendientes";
 /** Pendientes por pestaña; `null` cuando el total no se pudo obtener (o no se pidió). */
 export type PendingCounts = Record<PendingTabKey, number | null>;
 
-export const UNKNOWN_COUNTS: PendingCounts = { incomplete: null };
+export const UNKNOWN_COUNTS: PendingCounts = { incomplete: null, imports: null };
 
 /** Pestañas que el rol puede ver, en el orden fijo. */
 export function pendingTabs(hasPermission: (permission: string) => boolean): PendingTab[] {
@@ -88,6 +93,7 @@ export async function fetchPendingCounts(keys: readonly PendingTabKey[], options
   const { devUser } = options;
   const loaders: Record<PendingTabKey, () => Promise<number | null>> = {
     incomplete: () => incompleteTotal(devUser),
+    imports: () => pendingImportBatchesTotal(devUser),
   };
   const wanted = PENDING_TABS.map((tab) => tab.key).filter((key) => keys.includes(key));
   const totals = await Promise.all(wanted.map((key) => safely(loaders[key])));

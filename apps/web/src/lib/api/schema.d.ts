@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 39f52a1d4c917108119eb26ce9a683ba52b747164f39f9c39550d6fafbc2284c
+ * openapi-sha256: 78506ada777e691f9c650ea3fd2a34c975d902b11d17103e5c73d65dcd1569fc
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -1239,6 +1239,26 @@ export interface paths {
          * @description Lanza la validación en segundo plano y responde de inmediato; al terminar, el lote queda en previsualización con los conteos por clasificación (RF-026).
          */
         post: operations["validateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/ledger-photo-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear un lote desde fotos del libro de registros, leído por IA
+         * @description Cada foto se manda al servicio de IA (RIA-07); sus filas entran al lote ya con la plantilla fija «Foto del libro de registros» aplicada (el lote queda `MAPPED`). Desde ahí, `POST /imports/{batch_id}/validate` y el resto de la revisión son los mismos que cualquier otro lote. Una foto que el servicio de IA no pudo leer no genera filas, pero no detiene a las demás (change `digitalizacion-libro-registros`, D4).
+         */
+        post: operations["createLedgerPhotoImportBatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3261,6 +3281,14 @@ export interface components {
             failures?: components["schemas"]["BatchMovementFailureOut"][];
             /** Registered */
             registered?: components["schemas"]["MovementOut"][];
+        };
+        /** Body_createLedgerPhotoImportBatch */
+        Body_createLedgerPhotoImportBatch: {
+            /**
+             * Files
+             * @description Una o más fotos de páginas del libro.
+             */
+            files: string[];
         };
         /** Body_uploadImportBatch */
         Body_uploadImportBatch: {
@@ -13986,6 +14014,57 @@ export interface operations {
                 };
             };
             /** @description Datos no válidos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLedgerPhotoImportBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_createLedgerPhotoImportBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportBatchOut"];
+                };
+            };
+            /** @description Falta identificar al usuario (RF-042). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description El rol no tiene el permiso requerido. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Un archivo no es una imagen admitida. */
             422: {
                 headers: {
                     [name: string]: unknown;

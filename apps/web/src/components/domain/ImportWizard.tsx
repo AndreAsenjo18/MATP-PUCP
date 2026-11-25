@@ -162,6 +162,7 @@ export function ImportRowCard({
   compact = false,
   onCorrect,
   correctionNotice = null,
+  alwaysShowCorrection = false,
 }: {
   row: ImportRow;
   canDecide: boolean;
@@ -180,6 +181,13 @@ export function ImportRowCard({
    */
   onCorrect?: (column: string, value: string) => void;
   correctionNotice?: string | null;
+  /**
+   * Mostrar el formulario de corrección aunque la fila no tenga errores (change
+   * `digitalizacion-libro-registros`): para un lote leído por IA, cada dato merece poder
+   * corregirse antes de aprobar, no solo el que bloquea la fila. Un Excel normal no lo necesita
+   * (si no hay error, se confía en la fila), por eso no es el comportamiento por defecto.
+   */
+  alwaysShowCorrection?: boolean;
 }) {
   const candidates = candidatePieces(row);
   const corrections = cellCorrections(row);
@@ -234,7 +242,7 @@ export function ImportRowCard({
           ))}
         </ul>
       )}
-      {row.has_validation_errors && canDecide && onCorrect && (
+      {(row.has_validation_errors || alwaysShowCorrection) && canDecide && onCorrect && (
         <CellCorrectionForm columns={dataEntries.map(([key]) => key)} values={Object.fromEntries(dataEntries)} initialColumn={errorColumn(row)} busy={busy} notice={correctionNotice} onCorrect={onCorrect} />
       )}
       {warnings.length > 0 && (

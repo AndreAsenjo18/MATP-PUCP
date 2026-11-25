@@ -28,7 +28,7 @@ describe("visibleNavItems", () => {
   });
 
   it("«Revisar pendientes» se ve con cualquiera de sus permisos", () => {
-    for (const permission of ["duplicates.resolve", "ai.review", "reports.view"]) {
+    for (const permission of ["duplicates.resolve", "ai.review", "reports.view", "imports.approve"]) {
       const labels = visibleNavItems((p) => p === permission).map((item) => item.label);
       expect(labels).toContain("Revisar pendientes");
     }

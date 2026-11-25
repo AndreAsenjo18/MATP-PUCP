@@ -10,6 +10,7 @@ El asistente de importación carga en el catálogo las piezas de una hoja de cá
 - El archivo original se guarda sin cambios y cada decisión queda en la **bitácora** del lote, con su usuario y la fecha.
 - Para los Excel históricos del museo (BD estandarizada y fichas de catalogación), vea antes [Cargar el histórico del museo](carga-historico.md).
 - ¿Solo fotos de piezas que ya están en el catálogo, sin Excel? Elija **Solo imágenes** al abrir Importación: ver [Importar el archivo fotográfico](importacion-fotos.md).
+- ¿Tiene fotos del libro de registros manuscrito en vez de un Excel? Vea [Registrar desde fotos del libro de registros](#9-registrar-desde-fotos-del-libro-de-registros).
 
 ## 1. Preparar el archivo
 
@@ -311,6 +312,20 @@ Los Excel de la consultoría 2024/25 traen hojas «Errores identificados» y «E
    - Una fila cuyos códigos no están en el catálogo sale con el error **Pieza no encontrada** y no se aplica.
    - Si los códigos de la fila son de dos piezas, elija a cuál corresponde. Una observación nunca se marca como pieza nueva.
 6. Apruebe la carga. Las notas que ya tenía cada pieza no se borran; la observación se agrega al final. La bitácora lista cada fila no encontrada con sus códigos.
+
+## 9. Registrar desde fotos del libro de registros
+
+El museo exige mantener su libro físico de registros (ficha manuscrita) para toda pieza nueva o movimiento. En vez de transcribirlo a mano, puede fotografiar la página ya escrita y dejar que la IA la lea: el resultado entra al asistente de importación como un lote normal, con las mismas filas, clasificación, previsualización y aprobación que un Excel.
+
+1. En el paso **Archivo** (junto a la subida de Excel), abra **Registrar desde fotos del libro de registros**.
+2. Elija una o más fotos de páginas (JPEG, PNG o WEBP) y pulse **Registrar desde estas fotos**.
+3. Mientras la IA lee cada foto, el botón muestra **Leyendo…**. Al terminar, el lote se abre directamente en el paso **Revisión**, listo para pulsar **Validar**.
+4. Revise cada fila como cualquier otra: la IA propone denominación, descripción, procedencia, estado de conservación, fecha y código de inventario, pero **nada se guarda sin que usted lo revise** (RN-009). Corrija lo que la IA haya leído mal, igual que corregiría una celda de un Excel.
+5. La ficha física no tiene columna de régimen de tenencia: el asistente lo pedirá para todas las filas, igual que con cualquier Excel que no la traiga.
+6. La firma del registrador **no se transcribe** (es ilegible, un garabato). Quién hizo el registro en el sistema ya queda en la auditoría por su propio usuario; si quiere conservar el nombre que firma la ficha física, escríbalo a mano en el campo **Registrado por** de cada pieza, después de aprobar.
+7. Apruebe la carga como cualquier otro lote.
+
+> La columna «código adicional» que a veces trae la ficha física queda como dato de origen, visible en la revisión: revísela con cuidado, porque la lectura automática a veces repite el encabezado de esa columna en vez del valor real de la fila.
 
 ## Descartar un lote
 
