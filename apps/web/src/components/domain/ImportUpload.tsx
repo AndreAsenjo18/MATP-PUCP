@@ -11,7 +11,7 @@
  *
  * Son componentes de presentación; `LiveImportWizard` hace las llamadas.
  */
-import { CircleCheck, FileSpreadsheet, Upload } from "lucide-react";
+import { Camera, CircleCheck, FileSpreadsheet, Upload } from "lucide-react";
 import { useId, useRef, useState, type DragEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -129,6 +129,51 @@ export function UploadPanel({ busy, onUpload }: { busy: boolean; onUpload: (file
           ))}
         </ul>
       </details>
+    </Card>
+  );
+}
+
+/**
+ * Registrar desde fotos del libro de registros (change `digitalizacion-libro-registros`): una o
+ * más fotos, leídas por IA. El lote vuelve ya mapeado; la revisión que sigue es la misma de
+ * cualquier lote. Pantalla mínima a propósito (design D4): sin arrastrar-y-soltar ni vista previa
+ * de cada foto, solo elegir archivos y mandarlos.
+ */
+export function LedgerPhotoPanel({ busy, onUpload }: { busy: boolean; onUpload: (files: File[]) => void }) {
+  const [files, setFiles] = useState<File[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <Card as="section" className="flex flex-col gap-4" aria-label="Registrar desde fotos del libro de registros">
+      <div className="flex items-start gap-3">
+        <Camera size={28} aria-hidden="true" className="mt-1 shrink-0 text-terracota" />
+        <div>
+          <p className="font-medium text-tinta">Registrar desde fotos del libro de registros</p>
+          <p className="text-sm text-gris-texto">
+            Suba una o más fotos de páginas ya escritas a mano. La IA propone los datos de cada fila; usted los revisa y corrige antes de aprobar, igual que con un Excel.
+          </p>
+        </div>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        disabled={busy}
+        className="sr-only"
+        id="ledger-photo-input"
+        onChange={(event) => {
+          setFiles([...(event.target.files ?? [])]);
+        }}
+      />
+      <label htmlFor="ledger-photo-input" className="w-fit cursor-pointer text-base font-medium text-terracota underline">
+        {files.length > 0 ? `${files.length} foto${files.length === 1 ? "" : "s"} elegida${files.length === 1 ? "" : "s"} · cambiar` : "Elegir fotos…"}
+      </label>
+
+      <Button icon={Upload} className="self-start" disabled={files.length === 0 || busy} onClick={() => onUpload(files)}>
+        {busy ? "Leyendo…" : "Registrar desde estas fotos"}
+      </Button>
     </Card>
   );
 }

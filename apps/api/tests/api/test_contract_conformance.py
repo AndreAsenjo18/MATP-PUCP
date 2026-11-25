@@ -123,6 +123,8 @@ ANADIDOS: set[tuple[str, str]] = {
     ("post", "/imports/{}/photos/upload-urls"),
     # Lote de solo fotografías (change importacion-fotos-a-catalogo, diseño D1).
     ("post", "/imports/photo-batches"),
+    # Lote desde fotos del libro de registros (change digitalizacion-libro-registros, diseño D4).
+    ("post", "/imports/ledger-photo-batches"),
     ("get", "/imports/{}/photos/folders"),
     ("post", "/imports/{}/photos/reading-preview"),
     ("put", "/imports/{}/photos/reading"),

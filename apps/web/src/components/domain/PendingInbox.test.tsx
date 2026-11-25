@@ -18,7 +18,9 @@ import {
 // Change revisar-pendientes-unificado, tareas 2.3 a 2.5, y codigo-unico-y-ajustes-pantallas (se retira
 // la pestaña de posibles duplicados). HTML estático (ADR-012); datos sintéticos.
 const REQUIREMENT = /\b(RF-0\d{2}|RNF-0\d{2}|RN-0\d{2}|RIA-0\d)\b|\[SUPUESTO\]/;
-const COUNTS: PendingCounts = { incomplete: 117 };
+const COUNTS: PendingCounts = { incomplete: 117, imports: null };
+/** Una sola pestaña, para probar su forma en aislamiento (sin depender de cuántas haya en total). */
+const ONE_TAB = [PENDING_TABS[0]];
 
 /** Etiquetas `<a>` del HTML, en orden. */
 function links(html: string): string[] {
@@ -27,12 +29,19 @@ function links(html: string): string[] {
 
 describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañas)", () => {
   it("solo «Piezas incompletas», como enlace a su dirección y con su número", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={COUNTS} activeKey="incomplete" />);
+    const html = render(<PendingTabsNav tabs={ONE_TAB} counts={COUNTS} activeKey="incomplete" />);
     expect(html).toMatch(/^<nav aria-label="Pendientes"/);
     expect(links(html).map((a) => a.match(/href="([^"]+)"/)?.[1])).toEqual(["/pendientes/incompletas"]);
     // Las pestañas de sugerencias de IA y de posibles duplicados se retiraron.
     expect(visibleText(html)).toBe("Piezas incompletas (117)");
     expect(visibleText(html)).not.toMatch(/duplicados/i);
+  });
+
+  it("con permiso de aprobar importaciones, también «Importaciones pendientes»", () => {
+    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={{ incomplete: 117, imports: 3 }} activeKey="incomplete" />);
+    const text = visibleText(html);
+    expect(text).toContain("Piezas incompletas (117)");
+    expect(text).toContain("Importaciones pendientes (3)");
   });
 
   it("la activa lleva aria-current y una marca que no depende solo del color", () => {
@@ -42,7 +51,7 @@ describe("pestañas de la bandeja (Req: Bandeja única de pendientes con pestañ
   });
 
   it("sin total conocido, la pestaña va sin número y sin mensaje de error", () => {
-    const html = render(<PendingTabsNav tabs={PENDING_TABS} counts={UNKNOWN_COUNTS} />);
+    const html = render(<PendingTabsNav tabs={ONE_TAB} counts={UNKNOWN_COUNTS} />);
     expect(visibleText(html)).toBe("Piezas incompletas");
     expect(visibleText(html)).not.toMatch(/error|no se pudo/i);
   });

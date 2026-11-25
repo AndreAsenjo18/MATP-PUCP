@@ -530,6 +530,50 @@ def finish_judgments(raw: list[Any], request: JudgeDuplicatesRequest) -> JudgeDu
     return JudgeDuplicatesResult(verdicts=[kept[p] for p in sent if p in kept])
 
 
+LEDGER_PAGE_PROMPT_VERSION = "libro-registros-v1"
+
+
+class LedgerPageImage(BaseModel):
+    """Foto de una página del libro de registros manuscrito (change `digitalizacion-libro-
+    registros`). Misma forma que `CompletionImage`: se declara aparte porque son contratos de
+    operaciones distintas, aunque hoy coincidan campo a campo."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    media_type: Literal["image/webp", "image/jpeg", "image/png"]
+    data_base64: str = Field(min_length=1, max_length=8_000_000)
+
+
+class ExtractLedgerPageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    image: LedgerPageImage
+
+
+class LedgerRowExtraction(BaseModel):
+    """Una fila leída de la foto (design D2/D3 de `digitalizacion-libro-registros`): las mismas
+    siete claves que mapea la plantilla fija «Foto del libro de registros». Ningún campo es
+    obligatorio: una celda vacía o ilegible se devuelve ``None`` en vez de adivinarse."""
+
+    inventory_code: str | None = Field(
+        None, max_length=100, description="Código I tal como está escrito (p. ej. «I-2161»)."
+    )
+    denomination: str | None = Field(
+        None, max_length=300, description="Denominación corta sugerida (p. ej. «Canasta»)."
+    )
+    description: str | None = Field(None, max_length=5000, description="Tal como está escrita.")
+    provenance: str | None = Field(None, max_length=300)
+    conservation_state: str | None = Field(None, max_length=200)
+    entry_date: str | None = Field(None, max_length=100, description="Tal como está escrita.")
+    additional_code: str | None = Field(None, max_length=200)
+    confidence: float = Field(ge=0, le=1)
+
+
+class LedgerPageExtraction(BaseModel):
+    rows: list[LedgerRowExtraction] = Field(default_factory=list)
+    prompt_version: str = LEDGER_PAGE_PROMPT_VERSION
+
+
 class SuggestionEnvelope[T](BaseModel):
     function_code: Literal["RIA_01", "RIA_02", "RIA_03", "RIA_04"]
     provider: str

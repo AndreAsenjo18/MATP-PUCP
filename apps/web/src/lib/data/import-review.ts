@@ -42,6 +42,19 @@ export function toErrorRow(row: ImportRow): ErrorRow {
   return { id: row.id, rowNumber: row.source_row_number, classification: row.classification ?? null, decision: row.decision, errors };
 }
 
+/**
+ * Filas con error ya conocidas, a partir del último `scanErrorRows` (`errorScan`) y del conteo
+ * vigente del lote (`counts.ERRORS`, que sí se mantiene al día). El efecto que llena `errorScan`
+ * deja de pedirlo en cuanto los errores bajan a cero y no lo limpia solo — sin este corte, un
+ * `errorScan` de antes de corregir algo (p. ej. «falta el régimen de tenencia») seguiría contando
+ * filas que ya no tienen ningún error, y el aviso de errores repetidos quedaría pegado (bug
+ * confirmado al probar en vivo `digitalizacion-libro-registros`).
+ */
+export function effectiveErrorRows(errorCount: number, errorScan: { rows: readonly ImportRow[] } | null): ErrorRow[] {
+  if (errorCount === 0) return [];
+  return (errorScan?.rows ?? []).map(toErrorRow);
+}
+
 export interface ReviewSummary {
   total: number;
   /** Filas con error: cada fila se cuenta aquí y en ninguna otra situación. */

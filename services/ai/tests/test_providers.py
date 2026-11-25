@@ -7,7 +7,7 @@ import pytest
 
 from matp_ai.config import load_settings
 from matp_ai.providers import LLMProvider, MockProvider, ProviderUnavailable, get_provider
-from matp_ai.schemas import PieceContext, SearchValidValues
+from matp_ai.schemas import LedgerPageImage, PieceContext, SearchValidValues
 
 TEXT = "Alto 35 cm, ancho 20 cm. Exhibida en la muestra de retablos 1998. Regular estado."
 
@@ -445,3 +445,60 @@ def test_llm_column_mapping_keeps_the_reason_only_with_a_field(
     by_column = {m.column: m for m in result.mappings}
     assert by_column["Fecha"].reason == "Puede ser la época o la fecha de registro."
     assert by_column["FOTO"].reason is None
+
+
+# --- Lectura del libro de registros (change digitalizacion-libro-registros) --------------------
+_LEDGER_IMAGE = LedgerPageImage(media_type="image/jpeg", data_base64="Zm90bw==")
+
+
+def test_mock_extract_ledger_page_returns_a_fixed_row() -> None:
+    result = MockProvider().extract_ledger_page(_LEDGER_IMAGE)
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row.inventory_code
+    assert row.denomination
+    assert row.provenance == "Loreto"
+    assert 0 <= row.confidence <= 1
+
+
+def test_llm_extract_ledger_page_parses_several_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"rows": ['
+        '{"inventory_code": "I-2161", "denomination": "Canasta", '
+        '"description": "Cesteria. Canasta circular.", '
+        '"provenance": "Loreto", "conservation_state": "Bueno", "entry_date": "21-2-91", '
+        '"additional_code": null, "confidence": 0.9}, '
+        '{"inventory_code": "I-2166", "denomination": "Vasija", '
+        '"description": "Ceramica escultorica.", '
+        '"provenance": "Puno", "conservation_state": "Bueno", "entry_date": "21-2-91", '
+        '"additional_code": "M.I.F.O.", "confidence": 0.8}'
+        "]}"
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.extract_ledger_page(_LEDGER_IMAGE)
+    assert [row.inventory_code for row in result.rows] == ["I-2161", "I-2166"]
+    assert [row.denomination for row in result.rows] == ["Canasta", "Vasija"]
+    assert result.rows[0].additional_code is None
+    assert result.rows[1].additional_code == "M.I.F.O."
+
+
+def test_llm_extract_ledger_page_empty_cell_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = (
+        '{"rows": [{"inventory_code": null, "denomination": null, '
+        '"description": "Objeto sin mas datos.", '
+        '"provenance": null, "conservation_state": null, "entry_date": null, '
+        '"additional_code": null, "confidence": 0.4}]}'
+    )
+    provider = _llm_provider(monkeypatch, content)
+    result = provider.extract_ledger_page(_LEDGER_IMAGE)
+    row = result.rows[0]
+    assert row.inventory_code is None
+    assert row.denomination is None
+    assert row.provenance is None
+    assert row.description == "Objeto sin mas datos."
+
+
+def test_llm_extract_ledger_page_invalid_json_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _llm_provider(monkeypatch, "esto no es JSON")
+    with pytest.raises(ProviderUnavailable):
+        provider.extract_ledger_page(_LEDGER_IMAGE)

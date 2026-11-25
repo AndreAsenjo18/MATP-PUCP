@@ -377,6 +377,7 @@ def test_seed_has_the_templates_of_the_real_formats_of_the_museum(
     assert [template.name for template in PREDEFINED_TEMPLATES] == [
         "BD estandarizada 2025",
         "Ficha de catalogación RN",
+        "Foto del libro de registros",
     ]
     assert not set(ILLUSTRATIVE_NAMES) & set(stored)
     for predefined in PREDEFINED_TEMPLATES:
@@ -416,7 +417,7 @@ def test_syncing_the_templates_retires_the_illustrative_ones_and_is_idempotent(
         session.commit()
 
     assert first == (
-        ["BD estandarizada 2025", "Ficha de catalogación RN"],
+        ["BD estandarizada 2025", "Ficha de catalogación RN", "Foto del libro de registros"],
         [ILLUSTRATIVE_NAMES[0]],
     )
     assert second == ([], [])

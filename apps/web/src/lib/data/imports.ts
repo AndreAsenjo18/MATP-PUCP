@@ -90,6 +90,11 @@ export const TENURE_DEFAULT_OPTIONS = [
 
 /** Filas por página de la previsualización. */
 export const IMPORT_PAGE_SIZE = 25;
+
+/** Nombre de la plantilla fija del libro de registros (change `digitalizacion-libro-registros`),
+ * igual que `LIBRO_REGISTROS.name` en `apps/api/app/seed/import_templates.py`: el lote leído por
+ * IA se distingue de un Excel por el nombre de la plantilla que aplicó. */
+export const LEDGER_PHOTO_TEMPLATE_NAME = "Foto del libro de registros";
 /** Cada cuánto se consulta el avance de una etapa en segundo plano. */
 export const IMPORT_POLL_MS = 1500;
 
@@ -578,9 +583,40 @@ export async function uploadImportFile(file: Blob, fileName: string, devUser?: s
   );
 }
 
+/** `POST /imports/ledger-photo-batches`: lote leído por IA desde 1 o más fotos del libro de
+ * registros (change `digitalizacion-libro-registros`); el lote vuelve ya `MAPPED`, listo para
+ * `GET /imports/{batch_id}` y el resto de la revisión que ya existe. */
+export async function uploadLedgerPhotos(files: { blob: Blob; name: string }[], devUser?: string): Promise<ImportResult<ImportBatch>> {
+  return call(() =>
+    client(devUser).POST("/api/v1/imports/ledger-photo-batches", {
+      body: { files: files.map((item) => item.name) },
+      bodySerializer: () => {
+        const form = new FormData();
+        for (const { blob, name } of files) form.append("files", blob, name);
+        return form;
+      },
+    }),
+  );
+}
+
 /** `GET /imports/{batch_id}`: estado, etapa en curso y resumen para aprobar. */
 export async function fetchImportBatch(batchId: string, devUser?: string): Promise<ImportResult<ImportBatch>> {
   return call(() => client(devUser).GET("/api/v1/imports/{batch_id}", { params: { path: { batch_id: batchId } } }));
+}
+
+/** `GET /imports?status=IN_PREVIEW`: lotes a la espera de una decisión (change `pendientes-
+ * importaciones`), para que un Gestor de colecciones o un Administrador los encuentre sin que
+ * alguien le pase la dirección del lote a mano. */
+export async function fetchPendingImportBatches(devUser?: string, pageSize = 50): Promise<ImportResult<{ items: ImportBatch[]; total: number }>> {
+  const result = await call(() => client(devUser).GET("/api/v1/imports", { params: { query: { status: "IN_PREVIEW", page: 1, page_size: pageSize } } }));
+  if (result.status !== "ok") return result;
+  return { status: "ok", value: { items: result.value.items, total: result.value.total } };
+}
+
+/** Solo el total, para el número de la pestaña (una fila, igual que `incompleteTotal`). */
+export async function pendingImportBatchesTotal(devUser?: string): Promise<number | null> {
+  const result = await fetchPendingImportBatches(devUser, 1);
+  return result.status === "ok" ? result.value.total : null;
 }
 
 /** `PUT /imports/{batch_id}/mapping`: errores de mapeo llegan como `invalid_mapping` con su lista. */

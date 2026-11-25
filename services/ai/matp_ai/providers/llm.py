@@ -31,6 +31,9 @@ from matp_ai.schemas import (
     ExtractionResult,
     JudgeDuplicatesRequest,
     JudgeDuplicatesResult,
+    LedgerPageExtraction,
+    LedgerPageImage,
+    LedgerRowExtraction,
     PieceContext,
     ProposedField,
     SearchInterpretation,
@@ -117,6 +120,30 @@ def _completion_system_prompt(request: CompletePieceRequest) -> str:
     )
 
 
+#: Lectura del libro de registros (change digitalizacion-libro-registros, D2/D3).
+_LEDGER_SYSTEM_PROMPT = """Transcribes el libro de registros manuscrito de un museo peruano a \
+partir de la foto de una página. Cada fila visible trae, por lo general, un código y una \
+descripción libre a la izquierda, y procedencia, estado de conservación, fecha y un código \
+adicional a la derecha, a la misma altura. Devuelve SOLO un objeto JSON, sin explicación ni \
+markdown, con esta forma exacta:
+
+{"rows": [{"inventory_code": "<código I tal como está escrito, p. ej. \\"I-2161\\", o null>", \
+"denomination": "<denominación corta, p. ej. \\"Canasta\\", o null>", \
+"description": "<descripción tal como está escrita, sin corregir, o null>", \
+"provenance": "<o null>", "conservation_state": "<tal como está escrita, o null>", \
+"entry_date": "<tal como está escrita, o null>", "additional_code": "<o null>", \
+"confidence": <0 a 1, qué tan seguro estás de haber leído bien esta fila>}]}
+
+Reglas:
+- Una fila por cada fila que se distinga en la foto, en el mismo orden. No inventes filas que no \
+existan.
+- Si una celda está vacía o no se distingue con claridad, usa null en ese campo en vez de \
+adivinar.
+- "description" MUST ser una transcripción literal, sin corregir tildes ni ortografía.
+- "denomination" es tu mejor idea de un nombre corto para la pieza (el tipo de objeto), no una \
+copia de "description"; si no tienes ninguna idea razonable, usa null."""
+
+
 #: Juicio de duplicados (change ia-juicio-duplicados, D1). Versión: ``DUPLICATES_PROMPT_VERSION``.
 _JUDGE_SYSTEM_PROMPT = """Eres catalogador de un museo peruano. Para cada par de registros \
 decides si describen la misma pieza física. Usa SOLO los datos de cada registro: no uses \
@@ -148,6 +175,11 @@ RETRY_BUDGET_SECONDS = 25.0
 
 def _sleep(seconds: float) -> None:
     time.sleep(seconds)
+
+
+def _ledger_text(item: dict[str, Any], key: str) -> str | None:
+    value = item.get(key)
+    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 class LLMProvider(AIProvider):
@@ -311,6 +343,51 @@ class LLMProvider(AIProvider):
                 continue
         # ``not_found`` is recomputed by the service from what survives verification (D2).
         return CompletionResult(proposals=proposals, prompt_version=COMPLETION_PROMPT_VERSION)
+
+    def extract_ledger_page(self, image: LedgerPageImage) -> LedgerPageExtraction:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": _LEDGER_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Transcribe todas las filas visibles."},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{image.media_type};base64,{image.data_base64}"
+                            },
+                        },
+                    ],
+                },
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        data = self._json_object(self._chat_completion(payload))
+        raw_rows = data.get("rows", []) if isinstance(data, dict) else []
+        rows: list[LedgerRowExtraction] = []
+        for item in raw_rows if isinstance(raw_rows, list) else []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                confidence = min(max(float(item.get("confidence", 0)), 0.0), 1.0)
+            except (TypeError, ValueError):
+                confidence = 0.0
+            rows.append(
+                LedgerRowExtraction(
+                    inventory_code=_ledger_text(item, "inventory_code"),
+                    denomination=_ledger_text(item, "denomination"),
+                    description=_ledger_text(item, "description"),
+                    provenance=_ledger_text(item, "provenance"),
+                    conservation_state=_ledger_text(item, "conservation_state"),
+                    entry_date=_ledger_text(item, "entry_date"),
+                    additional_code=_ledger_text(item, "additional_code"),
+                    confidence=confidence,
+                )
+            )
+        return LedgerPageExtraction(rows=rows)
 
     def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
         pairs = [pair.model_dump(exclude_none=True) for pair in request.pairs]

@@ -20,6 +20,9 @@ from matp_ai.schemas import (
     ExtractionResult,
     JudgeDuplicatesRequest,
     JudgeDuplicatesResult,
+    LedgerPageExtraction,
+    LedgerPageImage,
+    LedgerRowExtraction,
     PieceContext,
     ProposedField,
     SearchInterpretation,
@@ -477,6 +480,26 @@ class MockProvider(AIProvider):
             value = " x ".join(p[2] for p in parts)
             return [_proposal("dimensions_text", value, value, text[start:end], 0.8)]
         return []
+
+    def extract_ledger_page(self, image: LedgerPageImage) -> LedgerPageExtraction:
+        """Sin red ni modelo real no hay nada que leer en la foto: una fila sintética fija, igual
+        de espíritu que el resto del mock (design D6 de `digitalizacion-libro-registros`)."""
+        del image  # el mock no mira la imagen, solo da una fila fija y coherente para la demo
+        return LedgerPageExtraction(
+            rows=[
+                LedgerRowExtraction(
+                    inventory_code="I-0100",
+                    denomination="Canasta (sintético)",
+                    description="Cestería. Canasta circular de 0.35 de diámetro x 0.56 de alto, "
+                    "no lleva asas (sintético, proveedor mock).",
+                    provenance="Loreto",
+                    conservation_state="Bueno",
+                    entry_date="21-2-91",
+                    additional_code=None,
+                    confidence=0.9,
+                )
+            ]
+        )
 
     def judge_duplicates(self, request: JudgeDuplicatesRequest) -> JudgeDuplicatesResult:
         """Deterministic rules [SUPUESTO], only to make demos coherent (D1): different code I ->

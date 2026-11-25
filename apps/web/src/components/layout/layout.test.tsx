@@ -27,8 +27,11 @@ describe("visibleNavItems", () => {
     expect(NAV_ITEMS.find((item) => item.label === "Revisar pendientes")?.href).toBe("/pendientes");
   });
 
-  it("«Revisar pendientes» se ve con el permiso de reportes (la bandeja solo tiene las piezas incompletas)", () => {
-    expect(visibleNavItems((p) => p === "reports.view").map((item) => item.label)).toContain("Revisar pendientes");
+  it("«Revisar pendientes» se ve con el permiso de alguna de sus pestañas (piezas incompletas o importaciones)", () => {
+    for (const permission of ["reports.view", "imports.approve"]) {
+      expect(visibleNavItems((p) => p === permission).map((item) => item.label)).toContain("Revisar pendientes");
+    }
+    // Las pestañas de duplicados y de sugerencias de IA se retiraron.
     for (const permission of ["duplicates.resolve", "ai.review"]) {
       expect(visibleNavItems((p) => p === permission).map((item) => item.label)).not.toContain("Revisar pendientes");
     }
