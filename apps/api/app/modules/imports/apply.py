@@ -51,6 +51,7 @@ from app.modules.identification.params import session_params
 from app.modules.identification.service import (
     add_identifier,
     current_identifiers,
+    ensure_code_is_free,
     get_identifier_type,
 )
 from app.modules.imports.decisions import RowAction, field_actions, row_action
@@ -76,8 +77,6 @@ from app.modules.imports.worker import Progress, StageWork
 from app.modules.locations.models import Location, LocationLevel
 from app.modules.locations.service import move_piece
 from app.modules.media.service import StoredCopy, register_from_import, unspecified_view_type_id
-from app.modules.quality.import_rows import OPEN_STATUSES
-from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +123,9 @@ def _add_identifiers(
     session: Session, piece: Piece, identifiers: list[tuple[str, str]], source: str
 ) -> None:
     for type_code, original in dict.fromkeys(identifiers):
+        # The last check before a duplicate exists: validation and the row decisions already stop
+        # a code of another piece, but the catalogue may have changed since (refuses the batch).
+        ensure_code_is_free(session, piece, type_code, original)
         if _repeats_current_code(session, piece, type_code, original):
             # Before, the second spelling tried to be a second current code I and its error
             # undid the whole batch. Every code is kept (RN-002, RN-005), this one as historical.
@@ -524,37 +526,6 @@ def _register_photos(
         session.flush()
 
 
-#: Note of an open duplicate pair of a row, once its batch is applied.
-PAIR_NOTE_CREATED = "Su lote se aplicó: la fila entró al catálogo como pieza nueva."
-PAIR_NOTE_UPDATED = "Su lote se aplicó: la fila actualizó una pieza del catálogo."
-PAIR_NOTE_SKIPPED = "Su lote se aplicó sin esta fila: no entró al catálogo."
-
-
-def _close_row_pairs(
-    session: Session, outcomes: dict[uuid.UUID, str], *, reviewer_id: uuid.UUID
-) -> None:
-    """The open pairs of the batch's rows leave the duplicate queue, saying what became of each
-    row. A row nobody decided on one by one used to keep its pairs pending forever: its batch no
-    longer accepts decisions, so the queue could not resolve them. Approving the batch is the
-    human decision on those rows (D6), the same as ``close_row_candidates`` for a decided row."""
-    if not outcomes:
-        return
-    now = utcnow()
-    row_ids = list(outcomes)
-    for start in range(0, len(row_ids), 500):
-        for candidate in session.scalars(
-            select(DuplicateCandidate).where(
-                DuplicateCandidate.import_row_id.in_(row_ids[start : start + 500]),
-                DuplicateCandidate.status.in_(OPEN_STATUSES),
-            )
-        ):
-            candidate.status = DuplicateStatus.SUPERSEDED
-            candidate.reviewed_by_id = reviewer_id
-            candidate.reviewed_at = now
-            candidate.resolution_note = outcomes[candidate.import_row_id]  # type: ignore[index]
-            candidate.postponed_until = None
-
-
 def apply_batch(
     session: Session,
     batch: ImportBatch,
@@ -595,7 +566,6 @@ def apply_batch(
     change_set_id = batch.change_set_id or new_uuid()
     counts = dict.fromkeys(APPLIED_COUNTS, 0)
     created: list[dict[str, Any]] = []
-    outcomes: dict[uuid.UUID, str] = {}
     observations = is_observations(batch)
     ai_suggestions_by_row = _pending_ai_suggestions_by_row(session, batch.id)
     total = len(rows)
@@ -604,7 +574,6 @@ def apply_batch(
             action, _reason = row_action(row)
             if action == RowAction.SKIP:
                 counts["APPLIED_SKIPPED"] += 1
-                outcomes[row.id] = PAIR_NOTE_SKIPPED
                 continue
             mapped = MappedRow.from_json(row.mapped_data or {})
             try:
@@ -641,9 +610,6 @@ def apply_batch(
                 # acá para que la bitácora no diga "Pendiente" de una fila que sí se aplicó.
                 if row.decision == RowDecision.PENDING:
                     row.decision = RowDecision.ACCEPTED
-                outcomes[row.id] = (
-                    PAIR_NOTE_CREATED if action == RowAction.CREATE else PAIR_NOTE_UPDATED
-                )
                 session.add(
                     PieceSourceRecord(
                         id=new_uuid(),
@@ -674,7 +640,6 @@ def apply_batch(
     for start in range(0, len(created), 500):
         session.execute(update(ImportRow), created[start : start + 500])
     batch.counts = {**(batch.counts or {}), **counts}
-    _close_row_pairs(session, outcomes, reviewer_id=batch.approved_by_id)  # type: ignore[arg-type]
     session.flush()
     transition(session, batch.id, S.APPLIED)
     if displays and storage is not None:

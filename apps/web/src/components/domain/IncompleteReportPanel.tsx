@@ -12,7 +12,7 @@ import { buttonClassName } from "@/components/ui/Button";
 import { TABLE_CLASS, TD_CLASS, TH_CLASS, THEAD_CLASS } from "@/components/ui/Table";
 import { TableScroller } from "@/components/ui/TableScroller";
 import type { ApiSchemas } from "@/lib/api/client";
-import { fetchDuplicateCollections } from "@/lib/data/duplicates";
+import { fetchCollectionOptions } from "@/lib/data/piece-sheet";
 import type { IncompleteUrlState } from "@/lib/data/reports";
 import {
   downloadIncompleteReport,
@@ -70,7 +70,7 @@ export function IncompleteReportPanel({
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDuplicateCollections(devUser).then(setCollections);
+    fetchCollectionOptions(devUser).then(setCollections);
   }, [devUser]);
 
   useEffect(() => {

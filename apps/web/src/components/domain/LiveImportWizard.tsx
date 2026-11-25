@@ -41,8 +41,8 @@ import { ImportMappingReview, type AiMappingState } from "@/components/domain/Im
 import { UnresolvedLocationsPanel, type UnresolvedLocation } from "@/components/domain/ImportLocationFix";
 import { UnresolvedTermsPanel, type UnresolvedTerm } from "@/components/domain/ImportTermFix";
 import { createLocation, describeLocationFailure, fetchLocationsTree, type LocationLevelLabel, type LocationNode } from "@/lib/data/locations";
-import { RowDecisionPanel, RowList, RowReviewNotice, type GeminiReviewState } from "@/components/domain/ImportRowReview";
-import { geminiOpinion, nextToDecide, toDecide } from "@/lib/data/import-row-review";
+import { RowDecisionPanel, RowList, RowReviewNotice } from "@/components/domain/ImportRowReview";
+import { nextToDecide, toDecide } from "@/lib/data/import-row-review";
 import { getApiMode } from "@/lib/data/mode";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
 import { approvalSentence, effectiveErrorRows, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, type ErrorGroup } from "@/lib/data/import-review";
@@ -85,14 +85,11 @@ import {
   abandonImportBatch,
   canAbandon,
   correctImportCell,
-  fetchImportAiJudgment,
   addImportTerm,
   fetchUnresolvedLocations,
   fetchUnresolvedTerms,
   mapImportLocation,
   fetchImportDiffs,
-  requestImportAiJudgment,
-  type ImportAiJudgment,
   fetchImportLog,
   isProcessing,
   progressStep,
@@ -163,8 +160,6 @@ export function LiveImportWizard() {
   // `null` = la persona no eligió filtro: se usa el de entrada («Por decidir» si hay filas que lo piden).
   const [chosenFilter, setFilters] = useState<{ classification: RowClassification | null; onlyErrors: boolean; toDecide?: boolean } | null>(null);
   // Revisión compacta con Gemini (importacion-revision-filas-compacta): opiniones por fila y el panel abierto.
-  const [aiJudgment, setAiJudgment] = useState<ImportAiJudgment | null>(null);
-  const [geminiState, setGeminiState] = useState<GeminiReviewState>("idle");
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   // Ubicaciones del archivo que no existen (importacion-aplicar-vocabularios, D4).
   const [unresolvedLocations, setUnresolvedLocations] = useState<UnresolvedLocation[]>([]);
@@ -403,28 +398,6 @@ export function LiveImportWizard() {
       active = false;
     };
   }, [batchId, showRows, devUser, reload]);
-
-  // Lo que opina Gemini de las filas del lote; mientras el análisis corre, se consulta cada 2 s.
-  const geminiRunning = geminiState === "running";
-  useEffect(() => {
-    if (!batchId || !showRows || getApiMode() === "mock") return;
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = () =>
-      fetchImportAiJudgment(batchId, devUser).then((result) => {
-        if (!active || result.status !== "ok") return;
-        setAiJudgment(result.value);
-        const running = result.value.run?.status === "RUNNING";
-        const judged = (result.value.verdicts ?? []).length > 0;
-        setGeminiState((current) => (running ? "running" : judged || current === "running" || current === "asking" ? "ready" : current));
-        if (running) timer = setTimeout(load, 2000);
-      });
-    void load();
-    return () => {
-      active = false;
-      if (timer) clearTimeout(timer);
-    };
-  }, [batchId, showRows, devUser, reload, geminiRunning]);
 
   useEffect(() => {
     let active = true;
@@ -787,18 +760,6 @@ export function LiveImportWizard() {
     setOpenRowId(following?.id ?? null);
   }
 
-  async function handleAskGemini() {
-    if (!batch) return;
-    setGeminiState("asking");
-    const result = await requestImportAiJudgment(batch.id, devUser);
-    if (result.status !== "ok") {
-      setGeminiState("unavailable");
-      return setError(result.message);
-    }
-    setAiJudgment(result.value);
-    setGeminiState(result.value.run?.status === "RUNNING" ? "running" : "ready");
-  }
-
   // Resumen exclusivo y errores repetidos de la revisión (change `importacion-revision-simplificada`).
   const errorRowsData = effectiveErrorRows(errorCount, errorScan);
   const knownErrorRows = errorCount === 0 ? [] : errorScan?.complete ? errorRowsData : null;
@@ -1089,12 +1050,6 @@ export function LiveImportWizard() {
             <RowReviewNotice
               importedAlone={summary.news + summary.updates}
               toDecideCount={pending.conflicts}
-              gemini={geminiState}
-              progress={aiJudgment?.run && aiJudgment.run.status === "RUNNING" ? { done: aiJudgment.run.processed_pairs, total: aiJudgment.run.total_pairs } : null}
-              // Gemini only judges rows proposed by similarity; since duplicados-solo-por-codigo
-              // validation proposes none, so the button only shows for older batches.
-              canAsk={hasPermission("ai.request") && getApiMode() !== "mock" && summary.duplicates > 0}
-              onAsk={() => void handleAskGemini()}
             />
           )}
           <details className="text-sm text-gris-texto">
@@ -1126,13 +1081,6 @@ export function LiveImportWizard() {
           {(() => {
             // Las filas de un error repetido se ven en su bloque, salvo que se pidan «Con errores».
             const visible = diffs.items.filter((row) => filters.onlyErrors || !isCompactRow(row, groups));
-            const verdicts = aiJudgment?.verdicts ?? [];
-            const opinions = new Map(
-              diffs.items.flatMap((row) => {
-                const opinion = geminiOpinion(row, verdicts, aiJudgment?.min_confidence ?? 0.85);
-                return opinion ? [[row.id, opinion] as const] : [];
-              }),
-            );
             const openRow = diffs.items.find((row) => row.id === openRowId) ?? null;
             const queue = diffs.items.filter((row) => toDecide(row));
             const renderCard = (row: ImportRow) => (
@@ -1167,7 +1115,6 @@ export function LiveImportWizard() {
               <>
                 <RowList
                   rows={visible}
-                  opinions={opinions}
                   onOpen={(row) => setOpenRowId(row.id)}
                   photos={
                     Object.keys(rowPhotos).length > 0
@@ -1183,7 +1130,6 @@ export function LiveImportWizard() {
                     key={openRow.id}
                     row={openRow}
                     position={toDecide(openRow) ? { index: queue.findIndex((row) => row.id === openRow.id) + 1, total: queue.length } : null}
-                    opinion={opinions.get(openRow.id) ?? null}
                     busy={busy}
                     canDecide={hasPermission("imports.prepare")}
                     devUser={devUser}

@@ -3,16 +3,14 @@
 Everything here is fictitious (RNF-014). Collection acronyms are the illustrative ones mentioned
 in the project documents (MMZ, RA/RAB, MBB, AJB, LRM) [SUPUESTO]; names, people, codes and
 numbers are generated. The data reproduces on purpose the real problems of the catalogue:
-dirty codes, pieces without inventory code, loans for use, probable duplicates, free-text
+dirty codes, pieces without inventory code, loans for use, look-alike pieces, free-text
 periods, partial locations and several photos per piece.
 """
 
-import difflib
 import random
 import uuid
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -54,7 +52,6 @@ from app.modules.imports.templates import header_signature
 from app.modules.locations.models import Location, LocationLevel, SpaceKind
 from app.modules.locations.service import create_location, move_piece
 from app.modules.media.models import MediaAsset
-from app.modules.quality.models import DuplicateCandidate
 from app.modules.users.models import AppUser, UserRole
 from app.seed.demo_batch import HEADERS as DEMO_BATCH_HEADERS
 from app.seed.fixtures import HEADERS as SABANA_HEADERS
@@ -188,7 +185,6 @@ class SeedSummary:
     located_pieces: int = 0
     media_assets: int = 0
     uploaded_media: int = 0
-    duplicate_candidates: int = 0
     soft_deleted_pieces: int = 0
     users: int = 0
     collections: int = 0
@@ -281,10 +277,6 @@ def _dirty_collection_code(rng: random.Random, acronym: str, number: int) -> str
     )
 
 
-def _similarity(a: str, b: str) -> float:
-    return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
 class SyntheticCatalogBuilder:
     def __init__(
         self,
@@ -305,6 +297,9 @@ class SyntheticCatalogBuilder:
         self.users: dict[str, AppUser] = {}
         self.piece_categories: dict[uuid.UUID, str] = {}
         self.collection_code_of: dict[uuid.UUID, str] = {}
+        # Drawn codes already given to a piece: two pieces never share a code (change
+        # retirar-cola-duplicados, D4).
+        self.drawn_codes: set[tuple[str, str]] = set()
 
     # ------------------------------------------------------------------ helpers
     def term_id(self, vocabulary: str, code: str) -> uuid.UUID:
@@ -315,6 +310,15 @@ class SyntheticCatalogBuilder:
         return self.collection_counters[acronym]
 
     # ------------------------------------------------------------------ steps
+    def _unique_code(self, type_code: str, value: str) -> str:
+        """The drawn code, or the same with a suffix if another piece already got it: the draw is
+        kept as it was, so the rest of the seed does not change."""
+        code = value
+        while (type_code, code.upper()) in self.drawn_codes:
+            code = f"{value}-B{len(self.drawn_codes)}"
+        self.drawn_codes.add((type_code, code.upper()))
+        return code
+
     def build(self) -> SeedSummary:
         self.reference = seed_reference_data(self.session)
         self._create_users()
@@ -534,12 +538,15 @@ class SyntheticCatalogBuilder:
         if rng.random() < 0.03:
             add_identifier(self.session, piece, TYPE_INC_RN, "???", source="Ficha Word")
         if tenure is TenureRegime.OWNED and rng.random() < 0.1:
-            add_identifier(
-                self.session, piece, TYPE_PUCP, f"PUCP-{rng.randint(1, 999):03d}", source="Access"
-            )
+            code = self._unique_code(TYPE_PUCP, f"PUCP-{rng.randint(1, 999):03d}")
+            add_identifier(self.session, piece, TYPE_PUCP, code, source="Access")
         if rng.random() < 0.05:
             add_identifier(
-                self.session, piece, TYPE_OTHER, f"Nº antiguo {rng.randint(1, 500)}", source="Libro"
+                self.session,
+                piece,
+                TYPE_OTHER,
+                self._unique_code(TYPE_OTHER, f"Nº antiguo {rng.randint(1, 500)}"),
+                source="Libro",
             )
 
         for material in rng.sample(
@@ -687,41 +694,25 @@ class SyntheticCatalogBuilder:
         for original in self.rng.sample(
             with_code, k=min(self.options.duplicate_pairs, len(with_code))
         ):
-            code = self.collection_code_of[original.id]
-            acronym, number = code.split(" ")
             variant_title = self.rng.choice(
                 [
-                    f"{original.denomination} (duplicado probable)",
+                    f"{original.denomination} (otra ficha)",
                     original.denomination.upper(),
                     f"{original.denomination} s/n",
                 ]
             )
-            duplicate = create_piece(
+            # A look-alike record, without the code of the original: two pieces never share
+            # a code (change retirar-cola-duplicados, D4). Same draws as before, so the rest of
+            # the seed stays the same.
+            create_piece(
                 self.session,
                 denomination=variant_title,
                 tenure_regime=original.tenure_regime,
                 collection_id=original.collection_id,
                 provenance=original.provenance,
                 category_id=original.category_id,
-                description="Ficha duplicada sintética (reproduce registros de Word/Excel).",
+                description="Ficha sintética parecida a otra, sin código en común.",
                 notes="Registrada desde otra fuente histórica.",
-            )
-            dirty = f"{'.'.join(acronym)}. {int(number):03d}"
-            add_identifier(self.session, duplicate, TYPE_COLLECTION, dirty, source="Ficha Word")
-            title_similarity = _similarity(original.denomination, variant_title)
-            score = Decimal(str(round(0.5 * title_similarity + 0.5, 4)))
-            self.session.add(
-                DuplicateCandidate(
-                    id=new_uuid(),
-                    piece_a_id=original.id,
-                    piece_b_id=duplicate.id,
-                    score=score,
-                    matched_fields=[
-                        {"field": "identifier:COLECCION", "similarity": 1.0},
-                        {"field": "denomination", "similarity": round(title_similarity, 4)},
-                        {"field": "collection_id", "similarity": 1.0},
-                    ],
-                )
             )
         self.session.flush()
 
@@ -906,9 +897,6 @@ class SyntheticCatalogBuilder:
             or 0
         )
         summary.media_assets = session.scalar(select(func.count()).select_from(MediaAsset)) or 0
-        summary.duplicate_candidates = (
-            session.scalar(select(func.count()).select_from(DuplicateCandidate)) or 0
-        )
         summary.users = len(self.users)
         summary.collections = len(self.collections)
 

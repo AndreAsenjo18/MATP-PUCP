@@ -52,7 +52,7 @@
 | RF-027 | Aprobación explícita de cargas masivas por rol autorizado | Must | importacion-datos |
 | RF-028 | Bitácora de carga con motivo de rechazo | Must | importacion-datos |
 | RF-029 | Extracción de fotos incrustadas en Excel con revisión manual | Should | importacion-datos |
-| RF-030 | Detección de duplicados por similitud con cola de revisión humana | Must | calidad-datos |
+| RF-030 | Prevención de duplicados: un código pertenece a una sola pieza; la ficha y la importación rechazan un código que ya tiene otra pieza (antes: detección por similitud con cola de revisión humana; cambio de alcance de `retirar-cola-duplicados`, pendiente de revisión del Líder de Proyecto) | Must | calidad-datos, identificacion-piezas |
 | RF-045 | Carga masiva de fotografías asociada a la importación | Must | importacion-datos |
 | RF-046 | Carga masiva de fotografías a piezas existentes | Must | importacion-datos |
 | RF-048 | Carga masiva con asistencia de IA: mapeo de columnas sugerido sin plantilla y extracción de texto libre por fila, con revisión campo a campo antes de aplicar | Should | importacion-datos (apoya ia-asistiva) |
@@ -122,7 +122,7 @@
 | ID | Funcionalidad | Prioridad cliente | Capacidad |
 |---|---|---|---|
 | RIA-01 | Extracción de datos estructurados desde texto libre (exposiciones, medidas, estado, marcas de revisión) | 1 | ia-asistiva |
-| RIA-02 | Detección de duplicados e inconsistencias por similitud | 2 | ia-asistiva (apoya calidad-datos) |
+| RIA-02 | Retirado (`retirar-cola-duplicados`): sin pares posibles, la IA ya no detecta duplicados por similitud. Antes: detección de duplicados e inconsistencias por similitud | 2 | ia-asistiva |
 | RIA-03 | Sugerencia de categorías / términos normalizados (camino a tesauro Getty AAT) | 3 | ia-asistiva |
 | RIA-04 | Descripción preliminar desde metadatos | 4 (por validar) | ia-asistiva |
 | RIA-05 | Asistente de consulta sobre catálogo autorizado | 5 (pendiente) | ia-asistiva |

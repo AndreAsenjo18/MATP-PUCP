@@ -14,4 +14,4 @@ La pestaña **Posibles duplicados**, donde Gemini ordenaba los pares, se retiró
 
 ## Qué datos ve Gemini
 
-Solo los datos de catálogo que necesita para la tarea. Para ordenar los duplicados, los datos que se comparan en la cola (denominación, colección, régimen, códigos, autor, procedencia, época y medidas) y la descripción; de una fila de Excel, solo sus datos de catálogo. Para completar una ficha, la denominación, la descripción y su foto principal; las observaciones no se envían, porque pueden tener datos personales. Nunca el comodante, el convenio, el propietario, quien registró la pieza ni el registro original del Excel. La foto no se envía si la pieza está en comodato o tiene una restricción de uso.
+Solo los datos de catálogo que necesita para la tarea. Para completar una ficha, la denominación, la descripción y su foto principal; las observaciones no se envían, porque pueden tener datos personales. Nunca el comodante, el convenio, el propietario, quien registró la pieza ni el registro original del Excel. La foto no se envía si la pieza está en comodato o tiene una restricción de uso.

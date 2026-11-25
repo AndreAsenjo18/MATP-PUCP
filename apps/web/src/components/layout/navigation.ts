@@ -23,7 +23,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: House },
   { href: "/busqueda", label: "Buscar", icon: Search },
   { href: "/importacion", label: "Cargar datos", icon: Upload, permissions: ["imports.prepare"] },
-  { href: "/pendientes", label: "Revisar pendientes", icon: ClipboardCheck, permissions: ["duplicates.resolve", "ai.review", "reports.view", "imports.approve"] },
+  // The inbox tabs: incomplete pieces and pending imports (the duplicate queue was retired).
+  { href: "/pendientes", label: "Revisar pendientes", icon: ClipboardCheck, permissions: ["reports.view", "imports.approve"] },
   { href: "/reportes", label: "Reportes", icon: ChartNoAxesColumn, permissions: ["reports.view"] },
   { href: "/administracion", label: "Administración", icon: SlidersHorizontal, permissions: ["users.manage"] },
 ];

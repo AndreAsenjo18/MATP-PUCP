@@ -26,7 +26,6 @@ from app.modules.identification.models import NormalizationStatus, PieceIdentifi
 from app.modules.imports.classify import (
     ClassifiedRow,
     classify_batch,
-    record_duplicate_candidates,
 )
 from app.modules.imports.images import store_images
 from app.modules.imports.ingest import (
@@ -551,8 +550,6 @@ def validate_stage() -> StageWork:
                 session.execute(update(ImportRow), values)
                 values = []
                 progress.advance(done, total=total)
-            if result.classification == RowClassification.POSSIBLE_DUPLICATE:
-                record_duplicate_candidates(session, row_id, result.similar)
 
         match_batch_photos(session, batch, ctx.identifier_rules)  # importacion-masiva-fotografias
         batch.counts = {**(batch.counts or {}), **counts}

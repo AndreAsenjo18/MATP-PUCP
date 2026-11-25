@@ -16,7 +16,6 @@ import type { ApiSchemas } from "@/lib/api/client";
 import {
   AI_SUGGESTIONS,
   AUDIT_LOG,
-  DUPLICATE_CANDIDATES,
   IMPORT_BATCHES,
   IMPORT_ROWS,
   PIECES,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/fixtures";
 
 type AiSuggestionOut = ApiSchemas["AiSuggestionOut"];
-type DuplicateCandidateOut = ApiSchemas["DuplicateCandidateOut"];
 type ImportBatchOut = ApiSchemas["ImportBatchOut"];
 type ImportRowOut = ApiSchemas["ImportRowOut"];
 type PieceDetail = ApiSchemas["PieceDetail"];
@@ -35,7 +33,6 @@ type IdentifierOut = ApiSchemas["IdentifierOut"];
 interface MockState {
   pieces: Record<string, PieceDetail>;
   aiSuggestions: AiSuggestionOut[];
-  duplicateCandidates: DuplicateCandidateOut[];
   importBatches: ImportBatchOut[];
   importRows: ImportRowOut[];
   auditLog: AuditEntryOut[];
@@ -47,7 +44,6 @@ function initialState(): MockState {
   return {
     pieces: Object.fromEntries(PIECES.map((p) => [p.id, p])),
     aiSuggestions: AI_SUGGESTIONS,
-    duplicateCandidates: DUPLICATE_CANDIDATES,
     importBatches: IMPORT_BATCHES,
     importRows: IMPORT_ROWS,
     auditLog: AUDIT_LOG,
@@ -59,7 +55,6 @@ function initialState(): MockState {
 type Action =
   | { type: "APPROVE_AI_SUGGESTION"; id: string; approvedData: Record<string, unknown>; actor: string; actorId: string }
   | { type: "REJECT_AI_SUGGESTION"; id: string; reason: string; actor: string; actorId: string }
-  | { type: "RESOLVE_DUPLICATE"; id: string; status: "MERGED" | "DISTINCT"; note: string; actor: string; actorId: string }
   | { type: "DECIDE_IMPORT_ROW"; rowId: string; decision: ImportRowOut["decision"]; reason: string | null; actor: string; actorId: string }
   | { type: "APPLY_IMPORT_BATCH"; batchId: string; actor: string; actorId: string }
   | { type: "REGISTER_MOVEMENT"; pieceId: string; toLocation: ApiSchemas["LocationRef"]; movementType: MovementOut["movement_type"]; reason: string; actor: string; actorId: string }
@@ -135,31 +130,6 @@ function reducer(state: MockState, action: Action): MockState {
           s.id === action.id
             ? { ...s, status: "REJECTED", rejection_reason: action.reason, reviewed_by_id: action.actorId, reviewed_at: new Date().toISOString() }
             : s,
-        ),
-      };
-    }
-    case "RESOLVE_DUPLICATE": {
-      const candidate = state.duplicateCandidates.find((d) => d.id === action.id);
-      if (!candidate) return state;
-      const { auditLog, seq } = pushAudit(state, {
-        entity_type: "duplicate_candidate",
-        entity_id: candidate.id,
-        action: action.status === "MERGED" ? "MERGE" : "UPDATE",
-        field: "status",
-        old_value: "PENDING",
-        new_value: action.status,
-        user_id: action.actorId,
-        actor_label: action.actor,
-        origin: "MANUAL",
-        origin_ref: null,
-        reason: action.note || (action.status === "MERGED" ? "Fusión de duplicados confirmada." : "Marcado como piezas distintas."),
-      });
-      return {
-        ...state,
-        nextSeq: seq,
-        auditLog,
-        duplicateCandidates: state.duplicateCandidates.map((d) =>
-          d.id === action.id ? { ...d, status: action.status, resolution_note: action.note || null, reviewed_at: new Date().toISOString() } : d,
         ),
       };
     }
@@ -356,7 +326,6 @@ function reducer(state: MockState, action: Action): MockState {
 interface MockStoreValue extends MockState {
   approveAiSuggestion: (id: string, approvedData: Record<string, unknown>, actor: string, actorId: string) => void;
   rejectAiSuggestion: (id: string, reason: string, actor: string, actorId: string) => void;
-  resolveDuplicate: (id: string, status: "MERGED" | "DISTINCT", note: string, actor: string, actorId: string) => void;
   decideImportRow: (rowId: string, decision: ImportRowOut["decision"], reason: string | null, actor: string, actorId: string) => void;
   applyImportBatch: (batchId: string, actor: string, actorId: string) => void;
   registerMovement: (pieceId: string, toLocation: ApiSchemas["LocationRef"], movementType: MovementOut["movement_type"], reason: string, actor: string, actorId: string) => void;
@@ -373,7 +342,6 @@ export function MockStoreProvider({ children }: { children: ReactNode }) {
 
   const approveAiSuggestion = useCallback((id: string, approvedData: Record<string, unknown>, actor: string, actorId: string) => dispatch({ type: "APPROVE_AI_SUGGESTION", id, approvedData, actor, actorId }), []);
   const rejectAiSuggestion = useCallback((id: string, reason: string, actor: string, actorId: string) => dispatch({ type: "REJECT_AI_SUGGESTION", id, reason, actor, actorId }), []);
-  const resolveDuplicate = useCallback((id: string, status: "MERGED" | "DISTINCT", note: string, actor: string, actorId: string) => dispatch({ type: "RESOLVE_DUPLICATE", id, status, note, actor, actorId }), []);
   const decideImportRow = useCallback((rowId: string, decision: ImportRowOut["decision"], reason: string | null, actor: string, actorId: string) => dispatch({ type: "DECIDE_IMPORT_ROW", rowId, decision, reason, actor, actorId }), []);
   const applyImportBatch = useCallback((batchId: string, actor: string, actorId: string) => dispatch({ type: "APPLY_IMPORT_BATCH", batchId, actor, actorId }), []);
   const registerMovement = useCallback((pieceId: string, toLocation: ApiSchemas["LocationRef"], movementType: MovementOut["movement_type"], reason: string, actor: string, actorId: string) => dispatch({ type: "REGISTER_MOVEMENT", pieceId, toLocation, movementType, reason, actor, actorId }), []);
@@ -383,8 +351,8 @@ export function MockStoreProvider({ children }: { children: ReactNode }) {
   const movementsFor = useCallback((pieceId: string, seeded: MovementOut[]) => [...seeded, ...(state.extraMovements[pieceId] ?? [])], [state.extraMovements]);
 
   const value = useMemo<MockStoreValue>(
-    () => ({ ...state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor }),
-    [state, approveAiSuggestion, rejectAiSuggestion, resolveDuplicate, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor],
+    () => ({ ...state, approveAiSuggestion, rejectAiSuggestion, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor }),
+    [state, approveAiSuggestion, rejectAiSuggestion, decideImportRow, applyImportBatch, registerMovement, correctInventoryCode, addIdentifiers, updatePiece, movementsFor],
   );
 
   return <MockStoreContext.Provider value={value}>{children}</MockStoreContext.Provider>;

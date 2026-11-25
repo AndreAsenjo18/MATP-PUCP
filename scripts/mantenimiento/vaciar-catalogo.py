@@ -15,8 +15,10 @@ protege contra el borrado (RN-005). Por eso:
 
 - sin ``--apply`` solo cuenta lo que borraría, y no toca nada;
 - con ``--apply`` exige ``--base <nombre de la base>``, el de la base a la que está conectado;
-- se detiene si encuentra una tabla que no conoce, o si una tabla que se conserva apunta a una que
-  se vacía (para no borrar nada por arrastre);
+- en el ensayo lista una tabla que no conoce como dudosa, y con ``--apply`` no vacía nada mientras
+  exista; tampoco si una tabla que se conserva apunta a una que se vacía (nada por arrastre);
+- ``--muestras`` agrega al ensayo filas de ejemplo (piezas, colecciones, ubicaciones, lotes y
+  fotos) para confirmar que los datos son sintéticos antes de vaciar;
 - vacía todo en una sola transacción: o se vacía todo, o nada;
 - las tablas de solo inserción (bitácora, movimientos…) tienen disparadores que impiden vaciarlas:
   se desactivan solo dentro de esa transacción y se vuelven a activar antes de confirmarla, así que
@@ -93,6 +95,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Vacía el catálogo de un ambiente de pruebas.")
     parser.add_argument("--apply", action="store_true", help="Vaciar de verdad.")
     parser.add_argument("--base", help="Nombre de la base a la que está conectado (con --apply).")
+    parser.add_argument(
+        "--muestras", action="store_true", help="En el ensayo, mostrar filas de ejemplo."
+    )
     args = parser.parse_args()
 
     url = os.environ.get("DATABASE_URL")
@@ -111,10 +116,6 @@ def main() -> int:
             ).scalars()
         )
         unknown = sorted(tables - KEEP - WIPE)
-        if unknown:
-            print(f"Tablas que el script no conoce: {', '.join(unknown)}.", file=sys.stderr)
-            print("No se borró nada. Agréguelas a KEEP o a WIPE y vuelva a correrlo.", file=sys.stderr)
-            return 3
         wipe = sorted(tables & WIPE)
         # A kept table that points to a wiped one would be emptied by the cascade, or would block.
         dragged = conn.execute(
@@ -146,7 +147,52 @@ def main() -> int:
         for table in sorted(tables & KEEP):
             count = conn.execute(text(f'select count(*) from "{table}"')).scalar_one()
             print(f"  {table:<28} {count:>8}")
+        if unknown:
+            print("DUDOSAS, el script no las conoce: no se vacía nada mientras existan (filas):")
+            for table in unknown:
+                count = conn.execute(text(f'select count(*) from "{table}"')).scalar_one()
+                print(f"  {table:<28} {count:>8}")
 
+        # How the append-only tables are handled, shown before anything is emptied.
+        guarded = conn.execute(
+            text(
+                "select c.relname, t.tgname from pg_trigger t "
+                "join pg_class c on c.oid = t.tgrelid "
+                "join pg_namespace n on n.oid = c.relnamespace "
+                "where n.nspname = 'public' and not t.tgisinternal order by 1, 2"
+            )
+        ).all()
+        print("Disparadores de solo inserción (RN-005) de las tablas que se vaciarían:")
+        for table, trigger in guarded:
+            if table in WIPE:
+                print(f"  {table:<28} {trigger}")
+        print(
+            "  Con --apply se desactivan solo dentro de la transacción del vaciado, se reactivan\n"
+            "  antes de confirmarla y se comprueba que ninguno quedó desactivado."
+        )
+
+        if args.muestras:
+            # A few rows to tell synthetic data from real data before emptying (no personal data:
+            # names of pieces, collections, places and files only).
+            samples = {
+                "piece": "select denomination, created_at from piece order by created_at limit 8",
+                "collection": "select name, acronym from collection order by name limit 8",
+                "location": "select name, level from location order by name limit 8",
+                "import_batch": "select file_name, status from import_batch order by created_at limit 8",
+                "media_asset": "select original_filename from media_asset order by created_at limit 8",
+            }
+            print("Muestras:")
+            for table, query in samples.items():
+                if table not in tables:
+                    continue
+                rows = conn.execute(text(query)).all()
+                print(f"  {table}:")
+                for row in rows:
+                    print("    " + " | ".join(str(value) for value in row))
+
+    if unknown and args.apply:
+        print(f"\nHay tablas dudosas ({', '.join(unknown)}). No se borró nada.", file=sys.stderr)
+        return 3
     if not args.apply:
         print("\nNo se borró nada (ensayo). Para vaciar, después del respaldo:")
         print(f"  ... python - --apply --base {database} < scripts/mantenimiento/vaciar-catalogo.py")

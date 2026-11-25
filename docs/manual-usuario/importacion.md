@@ -210,15 +210,15 @@ En una actualización, el recuadro **Cambios sobre la pieza del catálogo** list
 - Si la celda del archivo está vacía, el valor actual se conserva («Celda vacía: se conserva el valor actual»). Márquelo solo si quiere borrar ese dato.
 - Pulse **Aceptar** para guardar su elección.
 
-### Resolver un conflicto o un posible duplicado
+### Resolver un conflicto
 
-1. Pulse **Decidir** en la fila. El panel **¿A qué pieza corresponde?** muestra arriba lo que trae el archivo y, debajo, las piezas candidatas como tarjetas: denominación, colección, código I (o «Sin código I») y por qué coincide («Mismo código…» o «Se parece 82 %»).
+1. Pulse **Decidir** en la fila. El panel **¿A qué pieza corresponde?** muestra arriba lo que trae el archivo y, debajo, las piezas candidatas como tarjetas: denominación, colección, código I (o «Sin código I») y por qué coincide («Mismo código…»).
 2. Elija la pieza, **Ninguna: es una pieza nueva** o, si es otra, búsquela en **¿Es otra pieza? Búsquela por código o nombre**.
 3. Pulse **Aceptar y siguiente** (o Enter): la fila queda decidida y el panel pasa a la siguiente por decidir. **Dejar fuera** la deja sin importar.
 
-**Con Gemini.** El botón **Pedir a Gemini que revise estas N** del aviso le pide a Gemini que compare cada fila por decidir con sus candidatas, solo con los datos de catálogo (nunca comodantes, registradores ni observaciones). Mientras trabaja se ve su avance. Después, cada fila muestra lo que opina («Gemini: misma pieza», «pieza distinta» o «no está seguro») y, en el panel, su motivo. Cuando está seguro, la opción que sugiere viene **marcada** con «Sugerida por Gemini»: revísela y confirme con **Aceptar y siguiente**. Nada se guarda sin que usted acepte. Si Gemini no está seguro, no marca nada.
+No se puede elegir una pieza que tenga **otro código I** que el de la fila: el código I nunca cambia en una carga. Tampoco se puede crear como nueva una fila con un código (de cualquier tipo) que ya es de otra pieza, ni elegir una pieza si la fila trae el código de **otra** pieza: «El código … de la fila ya lo tiene la pieza «…», no la elegida». Dos piezas nunca comparten un código; corrija la celda o rechace la fila.
 
-No se puede elegir una pieza que tenga **otro código I** que el de la fila: el código I nunca cambia en una carga. Tampoco se puede crear como nueva una fila cuyo código I ya es de otra pieza.
+La antigua ayuda **Pedir a Gemini que revise estas filas** se retiró: solo comparaba filas parecidas a una pieza, y ahora una fila solo corresponde a una pieza por sus códigos.
 
 ### Aceptar, dejar fuera o rechazar
 
