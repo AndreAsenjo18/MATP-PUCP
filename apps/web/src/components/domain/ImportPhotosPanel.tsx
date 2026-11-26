@@ -120,10 +120,11 @@ export interface ImportPhotosViewProps {
   onResume?: () => void;
   /** Texto de ayuda; por defecto, el del lote con Excel (fotos a sus filas). */
   intro?: string;
+  allowFiles?: boolean;
 }
 
 /** Vista sin estado del panel (se prueba como HTML estático, ADR-012). */
-export function ImportPhotosView({ progress, ignored, running, message, error, onPick, onDrop, onResume, intro }: ImportPhotosViewProps) {
+export function ImportPhotosView({ progress, ignored, running, message, error, onPick, onDrop, onResume, intro, allowFiles = false }: ImportPhotosViewProps) {
   const ignoredText = ignored ? ignoredSentence(ignored) : null;
   // Primero lo que necesita atención: fallidas, rechazadas y en curso.
   const order = (item: PhotoProgress) => ({ failed: 0, rejected: 1, uploading: 2, hashing: 3, pending: 4, uploaded: 5, registered: 6 })[item.status];
@@ -154,6 +155,12 @@ export function ImportPhotosView({ progress, ignored, running, message, error, o
           onChange={(event) => event.target.files && onPick?.(event.target.files)}
         />
       </label>
+      {allowFiles && (
+        <label className="flex flex-col gap-1 text-sm font-medium text-tinta">
+          Elegir fotografías individuales (JPEG, PNG o TIFF)
+          <input type="file" multiple accept=".jpg,.jpeg,.png,.tif,.tiff" disabled={running} onChange={(event) => { if (event.target.files?.length) onPick?.(event.target.files); event.target.value = ""; }} />
+        </label>
+      )}
       {ignoredText && <p className="text-sm text-gris-texto">{ignoredText}</p>}
       {error && (
         <p role="alert" className="rounded-md bg-carmin-bg p-3 text-base text-carmin-texto">
@@ -195,12 +202,14 @@ export function ImportPhotosPanel({
   devUser,
   intro,
   onUploaded,
+  allowFiles = false,
 }: {
   batch: Pick<ImportBatch, "id" | "status"> & { kind?: ImportBatch["kind"] };
   devUser?: string;
   intro?: string;
   /** Se llama al terminar cada pasada de subida (para refrescar el lote). */
   onUploaded?: () => void;
+  allowFiles?: boolean;
 }) {
   const [files, setFiles] = useState<PhotoFile[]>([]);
   const [ignored, setIgnored] = useState<IgnoredFiles | null>(null);
@@ -246,6 +255,7 @@ export function ImportPhotosPanel({
       message={message}
       error={error}
       intro={intro}
+      allowFiles={allowFiles}
       onPick={(list) => start(entriesFromInput(list))}
       onDrop={(event) => {
         event.preventDefault();

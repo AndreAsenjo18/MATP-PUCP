@@ -28,12 +28,20 @@ from app.core.config import Settings
 from app.core.errors import ConflictError, ValidationFailed
 from app.core.models_base import new_uuid, utcnow
 from app.core.storage import ObjectStorage
-from app.modules.imports.models import ImportBatch, ImportPhoto
+from app.modules.imports.catalog_photos import mark_duplicates
+from app.modules.imports.models import (
+    ImportBatch,
+    ImportPhoto,
+    ImportRow,
+    PhotoMatchSource,
+    PhotoMatchStatus,
+)
 from app.modules.imports.models import ImportPhotoStatus as P
 from app.modules.imports.state import (
     PHOTO_STATES_BY_KIND,
     STATUS_LABELS,
     batch_kind,
+    is_ledger_batch,
     lock_batch,
 )
 
@@ -148,9 +156,42 @@ def request_upload_urls(
     limits: PhotoLimits,
     *,
     now: datetime | None = None,
+    ledger_row_id: uuid.UUID | None = None,
 ) -> list[UploadItem]:
     """One item per declared file, in the same order; the caller commits."""
     batch = admitting_batch(session, batch_id)
+    position = 0
+    if ledger_row_id is not None:
+        row = session.get(ImportRow, ledger_row_id)
+        if not is_ledger_batch(batch) or row is None or row.batch_id != batch.id:
+            raise ValidationFailed(
+                "La fila indicada no pertenece a este libro de registros.",
+                code="ledger_row_not_in_batch",
+            )
+        position = (
+            session.scalar(
+                select(func.max(ImportPhoto.sort_key)).where(
+                    ImportPhoto.batch_id == batch.id, ImportPhoto.row_id == ledger_row_id
+                )
+            )
+            or 0
+        )
+
+    def assign_ledger_row(photo: ImportPhoto) -> None:
+        nonlocal position
+        if ledger_row_id is None:
+            return
+        if photo.row_id != ledger_row_id or photo.sort_key is None:
+            position += 1
+            photo.sort_key = position
+        photo.row_id = ledger_row_id
+        photo.match_status = PhotoMatchStatus.MANUAL
+        photo.match_source = PhotoMatchSource.MANUAL
+        photo.candidate_row_ids = None
+        photo.match_reason = None
+        if photo.status is P.VERIFIED:
+            mark_duplicates(session, [photo])
+
     known = {
         photo.content_sha256: photo
         for photo in session.scalars(
@@ -186,9 +227,24 @@ def request_upload_urls(
     for file in files:
         item = UploadItem(file.relative_path, file.content_sha256, "already_registered")
         photo = known.get(file.content_sha256)
+        if (
+            ledger_row_id is not None
+            and photo is not None
+            and (photo.row_id not in (None, ledger_row_id) or photo.status is P.DISCARDED)
+        ):
+            items.append(
+                replace(
+                    item,
+                    result="rejected",
+                    reason="La foto ya está registrada en otra fila o fue descartada.",
+                )
+            )
+            continue
         if file.content_sha256 in seen or (
             photo is not None and photo.status not in {P.PENDING_UPLOAD, P.REJECTED}
         ):
+            if photo is not None:
+                assign_ledger_row(photo)
             items.append(replace(item, photo=photo))
             continue
         problem = _problem(file, limits)
@@ -199,6 +255,7 @@ def request_upload_urls(
             photo = known[file.content_sha256] = _register(session, batch.id, file)
         elif photo.status is P.REJECTED:
             _retry(photo, file)
+        assign_ledger_row(photo)
         seen.add(file.content_sha256)
         upload = storage.presign_put(upload_key(photo), photo.content_type, limits.url_ttl_seconds)
         items.append(

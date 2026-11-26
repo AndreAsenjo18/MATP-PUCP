@@ -1704,6 +1704,19 @@
       },
       "Body_createLedgerPhotoImportBatch": {
         "properties": {
+          "collection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Colección común elegida para todas las filas.",
+            "title": "Collection Id"
+          },
           "files": {
             "description": "Una o más fotos de páginas del libro.",
             "items": {
@@ -21318,6 +21331,25 @@
               "format": "uuid",
               "title": "Batch Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Fila elegida al cargar fotos de una pieza del libro.",
+            "in": "query",
+            "name": "ledger_row_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fila elegida al cargar fotos de una pieza del libro.",
+              "title": "Ledger Row Id"
             }
           }
         ],

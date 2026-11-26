@@ -586,13 +586,14 @@ export async function uploadImportFile(file: Blob, fileName: string, devUser?: s
 /** `POST /imports/ledger-photo-batches`: lote leído por IA desde 1 o más fotos del libro de
  * registros (change `digitalizacion-libro-registros`); el lote vuelve ya `MAPPED`, listo para
  * `GET /imports/{batch_id}` y el resto de la revisión que ya existe. */
-export async function uploadLedgerPhotos(files: { blob: Blob; name: string }[], devUser?: string): Promise<ImportResult<ImportBatch>> {
+export async function uploadLedgerPhotos(files: { blob: Blob; name: string }[], devUser?: string, collectionId?: string): Promise<ImportResult<ImportBatch>> {
   return call(() =>
     client(devUser).POST("/api/v1/imports/ledger-photo-batches", {
-      body: { files: files.map((item) => item.name) },
+      body: { files: files.map((item) => item.name), collection_id: collectionId },
       bodySerializer: () => {
         const form = new FormData();
         for (const { blob, name } of files) form.append("files", blob, name);
+        if (collectionId) form.append("collection_id", collectionId);
         return form;
       },
     }),

@@ -145,7 +145,12 @@ export function ImportPhotoTrayView({ photos: all, filter = "ALL", onFilter, row
 }
 
 /** Bandeja con estado: solo en la previsualización, cuando las fotos ya tienen su propuesta. */
-export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "id" | "status">; devUser?: string }) {
+export function ImportPhotoTray({ batch, devUser, refresh = 0, onAssigned }: {
+  batch: Pick<ImportBatch, "id" | "status">;
+  devUser?: string;
+  refresh?: number;
+  onAssigned?: () => void;
+}) {
   const [photos, setPhotos] = useState<TrayPhoto[]>([]);
   const [rows, setRows] = useState<TrayRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -167,7 +172,7 @@ export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "
     // Carga al mostrarse en la previsualización; la función actualiza el estado cuando responde la API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (visible) void load();
-  }, [visible, load]);
+  }, [visible, load, refresh]);
 
   if (!visible) return null;
   return (
@@ -197,6 +202,7 @@ export function ImportPhotoTray({ batch, devUser }: { batch: Pick<ImportBatch, "
         setMessage(`${result.value.length === 1 ? "1 foto asignada" : `${result.value.length} fotos asignadas`} a la ${target.label.toLowerCase()}.`);
         setSelected([]);
         await load();
+        onAssigned?.();
       }}
     />
   );

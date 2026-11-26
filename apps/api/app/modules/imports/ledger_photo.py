@@ -74,7 +74,9 @@ def _ledger_template_id(session: Session) -> uuid.UUID:
     return template_id
 
 
-def row_raw_data(extraction: dict[str, Any]) -> dict[str, Any]:
+def row_raw_data(
+    extraction: dict[str, Any], *, collection_id: uuid.UUID | None = None
+) -> dict[str, Any]:
     """Una fila de ``LedgerPageExtraction.rows`` (el servicio de IA) a ``raw_data`` con los
     encabezados sintéticos de la plantilla fija, en el mismo orden que declara sus columnas."""
     (
@@ -87,7 +89,7 @@ def row_raw_data(extraction: dict[str, Any]) -> dict[str, Any]:
         inventory,
         additional,
         collection,
-    ) = _HEADERS
+    ) = _HEADERS[:9]
     raw_description = extraction.get("description")
     creator = extraction.get("author")
     if not isinstance(creator, str) or not creator.strip():
@@ -136,9 +138,10 @@ def row_raw_data(extraction: dict[str, Any]) -> dict[str, Any]:
         entry_date: extraction.get("entry_date"),
         inventory: extraction.get("inventory_code"),
         additional: code,
-        # La colección la elige el curador en la revisión.
-        collection: None,
+        collection: f"id:{collection_id}" if collection_id else None,
     }
+    # Los datos no extraídos empiezan vacíos, nunca inventados por la IA.
+    result.update(dict.fromkeys(_HEADERS[9:]))
     if description_text != raw_description:
         result["__ledger_original_description"] = raw_description
     if is_state(extraction.get("additional_code")) and not is_state(

@@ -335,11 +335,23 @@ LIBRO_REGISTROS = PredefinedTemplate(
         # repetido en varias filas choca entre sí y vuelve CONFLICT a todo el lote; como dato de
         # origen queda visible para que el curador lo revise, sin arriesgar el resto del lote.
         column("Código adicional", PAYLOAD),
-        # La foto nunca trae la colección (ajuste tras probar en vivo, LR5 de
-        # preguntas-contraparte.md): queda vacía a propósito, para que el curador la elija fila por
-        # fila en la revisión (misma corrección de celda que el resto de columnas, D8 de
-        # design.md) en vez de quedar «Sin registrar» hasta «Revisar pendientes».
+        # La colección se elige antes de leer (común) o durante la revisión (individual).
         column("Colección", target("collection"), TEXT),
+        # Campos de la ficha que el curador puede completar aunque no figuren en el libro.
+        column("Régimen de tenencia", target("tenure_regime"), TEXT),
+        column("Tipo de bien", terms("OBJECT_TYPE"), TEXT),
+        column("Categoría", terms("CATEGORY"), TEXT),
+        column("Época (texto original)", target("epoch_original_text"), TEXT),
+        column("Forma de adquisición", terms("ACQUISITION_METHOD"), TEXT),
+        column("Materiales", terms("MATERIAL"), TEXT),
+        column("Medidas (texto original)", PAYLOAD),
+        TemplateColumn(
+            "Alto (cm)",
+            measures("alto", "ancho", "espesor", "diámetro", "peso"),
+            sources=("Alto (cm)", "Ancho (cm)", "Espesor (cm)", "Diámetro (cm)", "Peso (gr)"),
+        ),
+        column("Ubicación", target("location"), TEXT),
+        column("Observaciones", target("notes"), TEXT),
     ),
 )
 

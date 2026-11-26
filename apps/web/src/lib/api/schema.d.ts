@@ -1,7 +1,7 @@
 /**
  * Tipos generados desde docs/api/openapi.json. NO EDITAR A MANO.
  * Regenerar con: npm run openapi && npm run openapi:client
- * openapi-sha256: 78506ada777e691f9c650ea3fd2a34c975d902b11d17103e5c73d65dcd1569fc
+ * openapi-sha256: f7916927cde07df12c3df6f926516c780d950fcf0a1850967677c97d65e52096
  */
 export interface paths {
     "/api/v1/ai/batch-enrich": {
@@ -3284,6 +3284,11 @@ export interface components {
         };
         /** Body_createLedgerPhotoImportBatch */
         Body_createLedgerPhotoImportBatch: {
+            /**
+             * Collection Id
+             * @description Colección común elegida para todas las filas.
+             */
+            collection_id?: string | null;
             /**
              * Files
              * @description Una o más fotos de páginas del libro.
@@ -13404,7 +13409,10 @@ export interface operations {
     };
     requestImportPhotoUploadUrls: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Fila elegida al cargar fotos de una pieza del libro. */
+                ledger_row_id?: string | null;
+            };
             header?: never;
             path: {
                 batch_id: string;

@@ -10,6 +10,7 @@ it goes from ``UPLOADED`` to ``IN_PREVIEW`` once its photos are verified and mat
 on like a spreadsheet batch. ``ensure_transition`` picks the table by ``batch.kind``.
 """
 
+import re
 import uuid
 from datetime import datetime
 
@@ -87,6 +88,16 @@ ACTION_LABELS: dict[S, str] = {
     S.ABANDONED: "abandonar",
     S.REVERTED: "revertir",
 }
+
+
+def is_ledger_batch(batch: ImportBatch) -> bool:
+    """Identify ledger uploads independently of the chosen mapping template."""
+    return (
+        batch.kind == K.SPREADSHEET
+        and batch.file_sha256 is None
+        and re.fullmatch(r"(?:Foto|\d+ fotos) del libro de registros", batch.source_name)
+        is not None
+    )
 
 
 def allowed_transitions(status: S, kind: K = K.SPREADSHEET) -> list[S]:

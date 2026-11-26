@@ -216,6 +216,8 @@ export function RowDecisionPanel({
   canDecide,
   devUser,
   fallback,
+  correction,
+  ledgerEditor,
   onDecide,
   onClose,
 }: {
@@ -227,6 +229,9 @@ export function RowDecisionPanel({
   devUser?: string;
   /** La tarjeta de siempre, para las filas sin pieza que elegir. */
   fallback: ReactNode;
+  correction?: ReactNode;
+  /** Editor centrado de la pieza del libro; los demás orígenes conservan su panel lateral. */
+  ledgerEditor?: ReactNode;
   /** Guarda la decisión; `next` = pasar a la siguiente fila por decidir. */
   onDecide: (input: RowDecisionInput, next: boolean) => void;
   onClose: () => void;
@@ -272,13 +277,16 @@ export function RowDecisionPanel({
       ref={dialog}
       aria-labelledby={titleId}
       onClose={onClose}
+      onCancel={(event) => { if (ledgerEditor && busy) event.preventDefault(); }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) dialog.current?.close();
+        if (event.target === event.currentTarget && !(ledgerEditor && busy)) dialog.current?.close();
       }}
       onKeyDown={(event) => {
-        if (event.key === "Enter" && resolvable && pick !== null && !busy && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLButtonElement)) accept();
+        if (!ledgerEditor && event.key === "Enter" && resolvable && pick !== null && !busy && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLButtonElement)) accept();
       }}
-      className="fixed inset-y-2 right-2 left-auto m-0 h-auto max-h-none w-[calc(100vw-1rem)] max-w-none flex-col overflow-hidden rounded-panel bg-white p-0 text-tinta shadow-md backdrop:bg-tinta/30 open:flex sm:w-[38rem]"
+      className={cn("fixed flex-col overflow-hidden rounded-panel bg-white p-0 text-tinta shadow-md backdrop:bg-tinta/30 open:flex", ledgerEditor
+        ? "inset-0 m-auto h-auto max-h-[92dvh] w-[calc(100%-2rem)] max-w-5xl"
+        : "inset-y-2 right-2 left-auto m-0 h-auto max-h-none w-[calc(100vw-1rem)] max-w-none sm:w-[38rem]")}
     >
       <div className="flex flex-col gap-1 border-b border-borde px-6 py-4">
         <div className="flex items-center justify-between gap-3">
@@ -289,6 +297,7 @@ export function RowDecisionPanel({
           <button
             type="button"
             onClick={() => dialog.current?.close()}
+            disabled={Boolean(ledgerEditor && busy)}
             aria-label="Cerrar el panel"
             className="grid size-11 place-items-center rounded-full border border-borde hover:bg-crema-light focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terracota"
           >
@@ -302,8 +311,9 @@ export function RowDecisionPanel({
 
       {!resolvable ? (
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+          {ledgerEditor}
           {row.preview && (
-            <details open className="rounded-2xl border border-borde bg-white">
+            <details open={!ledgerEditor} className="rounded-2xl border border-borde bg-white">
               <summary className="cursor-pointer px-4 py-3 text-base font-extrabold text-tinta">Así quedaría la ficha</summary>
               <div className="px-4 pb-4">
                 <PiecePreview preview={row.preview} />
@@ -315,6 +325,7 @@ export function RowDecisionPanel({
       ) : (
         <>
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+            {ledgerEditor}
             <section aria-label="En el archivo" className="grid grid-cols-1 gap-x-4 gap-y-1 rounded-2xl bg-crema-light p-4 text-sm sm:grid-cols-2">
               <h3 className="font-extrabold text-tinta sm:col-span-2">En el archivo</h3>
               {fileData.map(([key, value]) => (
@@ -332,6 +343,10 @@ export function RowDecisionPanel({
               </details>
             )}
 
+            {row.raw_data.__ledger_columns_exchanged === true && (
+              <p className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">Revise el estado de conservación y el código adicional: se detectó un posible intercambio de columnas.</p>
+            )}
+            {correction}
             {opinion && (
               <section aria-label="Lo que opina Gemini" className="flex flex-col gap-1 rounded-2xl border border-gemini-violeta/30 bg-gemini-violeta/5 p-4 text-sm">
                 <p className="flex flex-wrap items-center gap-2 text-base font-extrabold">

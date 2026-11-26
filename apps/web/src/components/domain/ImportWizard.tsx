@@ -231,6 +231,9 @@ export function ImportRowCard({
       </div>
       <p className="text-sm text-gris-texto">{actionLabel(row.action)}</p>
       {photos}
+      {row.raw_data.__ledger_columns_exchanged === true && (
+        <p className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">Se detectó un posible intercambio entre estado de conservación y código adicional. Compare ambos campos con el libro.</p>
+      )}
 
       {errors.length > 0 && (
         <ul className="aviso-error flex flex-col gap-1.5 rounded-md bg-carmin-bg p-3 text-sm text-carmin-texto" aria-label="Errores de la fila">
@@ -609,6 +612,7 @@ export function ApprovalPanel({
   busy,
   onConfirm,
   pendingText,
+  blockedReason,
 }: {
   summary: ApprovalSummary | null;
   canApprove: boolean;
@@ -616,6 +620,7 @@ export function ApprovalPanel({
   onConfirm: (comment: string) => void;
   /** Qué falta decidir, en una frase (change `importacion-revision-simplificada`). */
   pendingText?: string;
+  blockedReason?: string;
 }) {
   // Barra pegada al pie durante la revisión: la acción de aprobar no queda a miles de píxeles (D4).
   return (
@@ -623,6 +628,7 @@ export function ApprovalPanel({
       <h2 className="sr-only">Aprobación de la carga</h2>
       {summary ? <p className="text-base font-medium text-tinta">{summarySentence(summary)}</p> : <p className="text-base text-gris-texto">Calculando el resumen…</p>}
       {pendingText && <p className="text-sm text-gris-texto">{pendingText}</p>}
+      {blockedReason && <p role="alert" className="text-sm text-carmin-texto">{blockedReason}</p>}
       {summary?.photo_quota_warning && (
         <p role="status" className="rounded-md bg-ambar-bg p-3 text-sm text-ambar-texto">
           {summary.photo_quota_warning}
@@ -641,7 +647,7 @@ export function ApprovalPanel({
           variant="primary"
           icon={Check}
           className="self-start"
-          disabled={!summary || busy || summary.create + summary.update === 0 || (summary.photos_processing ?? 0) > 0}
+          disabled={!summary || busy || Boolean(blockedReason) || summary.create + summary.update === 0 || (summary.photos_processing ?? 0) > 0}
           confirmTitle="Aprobar la carga masiva"
           confirmDescription={summary ? `${summarySentence(summary)} El cambio queda auditado con su usuario y el lote.` : ""}
           onConfirm={onConfirm}

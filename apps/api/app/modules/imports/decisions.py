@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ConflictError, NotFound, ValidationFailed
 from app.core.models_base import utcnow
 from app.modules.catalog.models import Piece
+from app.modules.collections.models import Collection
 from app.modules.identification.models import INVENTORY_CODE_TYPE, PieceIdentifier
 from app.modules.imports.catalog_photos import mark_duplicates, photo_approval_counts
 from app.modules.imports.mapping import MappedRow, MappingSpec
@@ -45,7 +46,13 @@ from app.modules.imports.models import (
 from app.modules.imports.models import ImportBatchStatus as S
 from app.modules.imports.observations import is_observations, observation_diff, observation_line
 from app.modules.imports.service import ensure_idle, field_diff
-from app.modules.imports.state import batch_kind, ensure_transition, lock_batch, transition
+from app.modules.imports.state import (
+    batch_kind,
+    ensure_transition,
+    is_ledger_batch,
+    lock_batch,
+    transition,
+)
 from app.modules.quality.import_rows import close_row_candidates
 
 FieldAction = Literal["accept", "exclude"]
@@ -440,6 +447,26 @@ def check_summary(session: Session, batch_id: uuid.UUID, summary_token: str) -> 
     return summary
 
 
+def ledger_missing_collections(session: Session, batch_id: uuid.UUID) -> int:
+    """Count missing or no longer active collections in a validated ledger batch."""
+    mapped_rows = list(
+        session.scalars(select(ImportRow.mapped_data).where(ImportRow.batch_id == batch_id))
+    )
+    ids = [(data or {}).get("collection_id") for data in mapped_rows]
+    collection_ids = {uuid.UUID(value) for value in ids if value}
+    active = {
+        str(value)
+        for value in session.scalars(
+            select(Collection.id).where(
+                Collection.id.in_(collection_ids),
+                Collection.is_active.is_(True),
+                Collection.deleted_at.is_(None),
+            )
+        )
+    }
+    return sum(value not in active for value in ids)
+
+
 def approve(
     session: Session, batch_id: uuid.UUID, summary_token: str, user_id: uuid.UUID
 ) -> ImportBatch:
@@ -456,6 +483,14 @@ def approve(
             code="photos_processing",
             details={"photos_processing": pending},
         )
+    if is_ledger_batch(batch):
+        missing = ledger_missing_collections(session, batch.id)
+        if missing:
+            raise ValidationFailed(
+                f"Seleccione una colección válida para las {missing} filas pendientes.",
+                code="ledger_collection_required",
+                details={"missing": missing},
+            )
     summary = check_summary(session, batch.id, summary_token)
     batch.approved_by_id = user_id
     batch.approved_at = utcnow()

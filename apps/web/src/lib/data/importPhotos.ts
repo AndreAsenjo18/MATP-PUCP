@@ -294,7 +294,7 @@ export async function uploadBatchPhotos(
   batchId: string,
   files: PhotoFile[],
   onUpdate: (progress: PhotoProgress[]) => void,
-  { previous = [], devUser, options = {} }: { previous?: PhotoProgress[]; devUser?: string; options?: UploadOptions } = {},
+  { previous = [], devUser, options = {}, ledgerRowId }: { previous?: PhotoProgress[]; devUser?: string; options?: UploadOptions; ledgerRowId?: string } = {},
 ): Promise<ImportResult<UploadSummary>> {
   const hash = options.hash ?? sha256;
   const put = options.put ?? xhrPut;
@@ -322,7 +322,7 @@ export async function uploadBatchPhotos(
     }
     const answer = await call(() =>
       client(devUser).POST("/api/v1/imports/{batch_id}/photos/upload-urls", {
-        params: { path: { batch_id: batchId } },
+        params: { path: { batch_id: batchId }, ...(ledgerRowId ? { query: { ledger_row_id: ledgerRowId } } : {}) },
         body: {
           files: group.map((index) => ({
             relative_path: files[index]!.relativePath,
@@ -504,6 +504,20 @@ export async function fetchRowPhotos(batchId: string, devUser?: string): Promise
     if (page * result.value.page_size >= result.value.total) break;
   }
   return { status: "ok", value: photosByRow(photos) };
+}
+
+/** Fotos de una pieza del libro, incluidas las que aún se están verificando. */
+export async function fetchLedgerRowPhotos(batchId: string, rowId: string, devUser?: string): Promise<ImportResult<TrayPhoto[]>> {
+  const photos: TrayPhoto[] = [];
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const result = await call(() => client(devUser).GET("/api/v1/imports/{batch_id}/photos", {
+      params: { path: { batch_id: batchId }, query: { row_id: rowId, page, limit: 100 } },
+    }));
+    if (result.status !== "ok") return result;
+    photos.push(...result.value.items);
+    if (page * result.value.page_size >= result.value.total) break;
+  }
+  return { status: "ok", value: photos };
 }
 
 /** `PATCH /imports/{batch_id}/photos` con `confirm_duplicate`: la foto repetida se aplica igual. */

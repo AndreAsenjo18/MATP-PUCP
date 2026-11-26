@@ -47,6 +47,7 @@ import { getApiMode } from "@/lib/data/mode";
 import { RepeatedErrorBlock, ReviewSummaryPanel } from "@/components/domain/ImportReview";
 import { approvalSentence, effectiveErrorRows, formatCause, groupRepeatedErrors, isCompactRow, pendingWork, reviewSummary, type ErrorGroup } from "@/lib/data/import-review";
 import { PHOTO_STEP_NOTE, importHref, type ImportOrigin, originFromParams, showsPhotoStep } from "@/lib/data/import-origin";
+import { LedgerPieceEditor, type LedgerFieldChange } from "@/components/domain/LedgerPieceEditor";
 import { ImportPhotosPanel } from "@/components/domain/ImportPhotosPanel";
 import { ImportPhotoTray, RowPhotoStrip } from "@/components/domain/ImportPhotoTray";
 import { DryRunPanel, FormatProblemPanel, type FormatIssue } from "@/components/domain/ImportTemplatePanels";
@@ -73,7 +74,6 @@ import {
 } from "@/lib/data/import-templates";
 import {
   IMPORT_PAGE_SIZE,
-  LEDGER_PHOTO_TEMPLATE_NAME,
   IMPORT_POLL_MS,
   associateImportImage,
   changedSummary,
@@ -144,7 +144,7 @@ function PhotoStep({ batch, origin, devUser }: { batch: ImportBatch; origin: Imp
     <>
       {origin === "excel-fotos" && <p className="text-base font-medium text-tinta">{PHOTO_STEP_NOTE}</p>}
       <ImportPhotosPanel batch={batch} devUser={devUser} />
-      <ImportPhotoTray batch={batch} devUser={devUser} />
+      <ImportPhotoTray batch={batch} devUser={devUser} refresh={batch.approval_summary?.photos_processing ?? 0} />
     </>
   );
 }
@@ -159,6 +159,7 @@ export function LiveImportWizard() {
   const ledgerMode = !params.get("lote") && params.get("libro") === "1";
 
   const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const isLedgerPhotoBatch = Boolean(batch && batch.kind === "SPREADSHEET" && batch.file_sha256 === null && /^(Foto|\d+ fotos) del libro de registros$/.test(batch.source_name));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // `null` = la persona no eligió filtro: se usa el de entrada («Por decidir» si hay filas que lo piden).
@@ -326,7 +327,7 @@ export function LiveImportWizard() {
   const showRows = batch != null && !processing && step >= 3 && batch.status !== "FAILED_INGESTION";
   // La revisión se abre en «Por decidir» cuando hay filas que lo piden (importacion-revision-filas-compacta, D1).
   const toDecideCount = (batch?.counts?.CONFLICT ?? 0) + (batch?.counts?.POSSIBLE_DUPLICATE ?? 0);
-  const filters = chosenFilter ?? (toDecideCount > 0 ? { classification: null, onlyErrors: false, toDecide: true } : { classification: null, onlyErrors: false });
+  const filters = chosenFilter ?? (!isLedgerPhotoBatch && toDecideCount > 0 ? { classification: null, onlyErrors: false, toDecide: true } : { classification: null, onlyErrors: false });
   const filtersKey = JSON.stringify(filters);
   useEffect(() => {
     let active = true;
@@ -466,9 +467,9 @@ export function LiveImportWizard() {
     router.replace(importHref({ batchId: result.value.batch_id, origin }));
   }
 
-  async function handleLedgerPhotos(files: File[]) {
+  async function handleLedgerPhotos(files: File[], collectionId?: string) {
     setBusy(true);
-    const result = await uploadLedgerPhotos(files.map((file) => ({ blob: file, name: file.name })), devUser);
+    const result = await uploadLedgerPhotos(files.map((file) => ({ blob: file, name: file.name })), devUser, collectionId);
     setBusy(false);
     if (result.status !== "ok") return setError(result.message);
     setError(null);
@@ -744,6 +745,31 @@ export function LiveImportWizard() {
     await loadBatch();
   }
 
+  async function handleLedgerFields(row: ImportRow, changes: LedgerFieldChange[]) {
+    if (!batch || busy || changes.length === 0) return;
+    setBusy(true);
+    setError(null);
+    let failure: string | null = null;
+    let saved = 0;
+    try {
+      for (const change of changes) {
+        const result = await correctImportCell(batch.id, row.id, change.column, change.value, devUser);
+        if (result.status !== "ok") { failure = result.message; break; }
+        saved += 1;
+      }
+      if (saved > 0) {
+        const started = await startImportValidation(batch.id, devUser);
+        if (started.status !== "ok") failure = started.message;
+        setOpenRowId(null);
+        await loadBatch();
+        setReload((n) => n + 1);
+      }
+      if (failure) setError(`Se guardaron ${saved} de ${changes.length} cambios. ${failure}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleDecision(rowId: string, input: RowDecisionInput): Promise<boolean> {
     if (!batch) return false;
     setBusy(true);
@@ -783,7 +809,7 @@ export function LiveImportWizard() {
   const knownErrorRows = errorCount === 0 ? [] : errorScan?.complete ? errorRowsData : null;
   const summary = reviewSummary(counts, knownErrorRows);
   const pending = pendingWork(summary, knownErrorRows);
-  const groups = groupRepeatedErrors(knownErrorRows ?? []);
+  const groups = isLedgerPhotoBatch ? [] : groupRepeatedErrors(knownErrorRows ?? []);
   const tenureGroup = groups.find((group) => group.code === "tenure_required");
   const tenureRows = errorRowsData.filter((row) => row.errors.some((error) => error.code === "tenure_required")).length;
 
@@ -885,11 +911,12 @@ export function LiveImportWizard() {
   }, [batch, processing, suggestions, templates]);
 
   const currentTemplate = templates?.find((template) => template.id === batch?.template_id) ?? null;
-  const isLedgerPhotoBatch = currentTemplate?.name === LEDGER_PHOTO_TEMPLATE_NAME;
+  const ledgerCollectionsMissing = batch?.counts?.LEDGER_COLLECTIONS_MISSING ?? 0;
   const showBatchPhotos = showsPhotoStep(origin) || isLedgerPhotoBatch;
   const adjusting = mappingMode === "edit" && editorDraft !== null;
   const formatPanel: FormatIssue | null = formatIssue ?? (changingFormat ? { kind: "change", current: templates?.find((template) => template.id === batch?.template_id) ?? null } : null);
-  const applyingFormat = batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
+  const emptyLedgerBatch = isLedgerPhotoBatch && !processing && batch?.status === "UPLOADED" && !batch.headers?.length;
+  const applyingFormat = !emptyLedgerBatch && batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
   const reviewing = showRows && step === 3 && !adjusting && !changingFormat;
   // `undefined` mientras se cargan los formatos: nunca «a mano» para un lote leído con uno guardado.
   const formatName = batch?.template_id
@@ -907,7 +934,7 @@ export function LiveImportWizard() {
       <ErrorNotice message={error} />
 
       {!batchId && !ledgerMode && <UploadPanel busy={busy} onUpload={handleUpload} />}
-      {!batchId && ledgerMode && <LedgerPhotoPanel busy={busy} onUpload={handleLedgerPhotos} />}
+      {!batchId && ledgerMode && <LedgerPhotoPanel busy={busy} onUpload={handleLedgerPhotos} devUser={devUser} />}
       {batch && processing && <ProgressPanel batch={batch} />}
       {batch && !processing && !adjusting && formatPanel && (
         <FormatProblemPanel
@@ -925,6 +952,11 @@ export function LiveImportWizard() {
             template && missingColumns(template, batch.headers ?? []).length < template.columns.length ? handleUseTemplate(template) : handleStartFromScratch()
           }
         />
+      )}
+      {emptyLedgerBatch && (
+        <Card as="section" aria-live="polite">
+          <p role="alert">No se identificaron piezas en las fotos del libro. Descarte este lote e intente nuevamente con una imagen más clara.</p>
+        </Card>
       )}
       {applyingFormat && !processing && !formatPanel && (
         <Card as="section" aria-live="polite">
@@ -1003,7 +1035,7 @@ export function LiveImportWizard() {
         </Card>
       )}
       {/* Fotos del lote: aquí antes de la revisión; durante la revisión van tras el resumen y los errores. */}
-      {batch && !reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
+      {batch && !reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && !isLedgerPhotoBatch && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && (
         <ReviewSummaryPanel
           summary={summary}
@@ -1084,7 +1116,13 @@ export function LiveImportWizard() {
       {reviewing && !tenureGroup && tenureRows > 0 ? (
         <TenureBanner count={tenureRows} complete decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} />
       ) : null}
-      {batch && reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
+      {batch && reviewing && isLedgerPhotoBatch && ledgerCollectionsMissing > 0 && (
+        <Card as="section" className="flex flex-col gap-2">
+          <h2 className="font-semibold text-tinta">Colecciones de las piezas</h2>
+          <p className="text-sm text-gris-texto">Falta seleccionar colección para {ledgerCollectionsMissing} piezas. Abra «Ver» en cada pieza para completarla antes de aprobar.</p>
+        </Card>
+      )}
+      {batch && reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && !isLedgerPhotoBatch && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && diffs && (
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Revise las filas</h2>
@@ -1147,10 +1185,9 @@ export function LiveImportWizard() {
                   canDecide={hasPermission("imports.prepare")}
                   busy={busy}
                   onDecide={(input) => handleDecision(row.id, input)}
-                onCorrect={(column, value) => void handleCorrect(row, column, value)}
-                correctionNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
-                alwaysShowCorrection={isLedgerPhotoBatch}
-                  photos={
+                  onCorrect={isLedgerPhotoBatch ? undefined : (column, value) => void handleCorrect(row, column, value)}
+                  correctionNotice={decisionsLostNotice(counts.DECIDED ?? 0)}
+                  photos={isLedgerPhotoBatch ? undefined : (
                     <RowPhotoStrip
                       photos={rowPhotos[row.id] ?? []}
                       busy={busy}
@@ -1164,7 +1201,7 @@ export function LiveImportWizard() {
                           : undefined
                       }
                     />
-                  }
+                  )}
                 />
             );
             return (
@@ -1174,7 +1211,7 @@ export function LiveImportWizard() {
                   opinions={opinions}
                   onOpen={(row) => setOpenRowId(row.id)}
                   photos={
-                    Object.keys(rowPhotos).length > 0
+                    isLedgerPhotoBatch || Object.keys(rowPhotos).length > 0
                       ? new Map(visible.map((row) => [row.id, { url: rowPhotos[row.id]?.[0]?.thumbnail_url ?? null, count: rowPhotos[row.id]?.length ?? 0 }]))
                       : undefined
                   }
@@ -1192,6 +1229,15 @@ export function LiveImportWizard() {
                     canDecide={hasPermission("imports.prepare")}
                     devUser={devUser}
                     fallback={renderCard(openRow)}
+                    ledgerEditor={isLedgerPhotoBatch && batch ? (
+                      <LedgerPieceEditor batchId={batch.id} row={openRow}
+                        headers={batch.headers ?? Object.keys(openRow.raw_data)} devUser={devUser}
+                        busy={busy} canEdit={hasPermission("imports.prepare")}
+                        notice={decisionsLostNotice(counts.DECIDED ?? 0)}
+                        onSave={(changes) => handleLedgerFields(openRow, changes)}
+                        onPhotoBusy={setBusy}
+                        onPhotosChanged={async () => { await loadBatch(); setReload((n) => n + 1); }} />
+                    ) : undefined}
                     onDecide={(input, next) => void handlePanelDecision(openRow, input, next)}
                     onClose={() => setOpenRowId(null)}
                   />
@@ -1218,6 +1264,7 @@ export function LiveImportWizard() {
           canApprove={hasPermission("imports.approve")}
           busy={busy}
           onConfirm={handleConfirm}
+          blockedReason={isLedgerPhotoBatch && ledgerCollectionsMissing > 0 ? `Falta seleccionar colección para ${ledgerCollectionsMissing} piezas.` : undefined}
           pendingText={approvalSentence(summary, pending)}
         />
       )}

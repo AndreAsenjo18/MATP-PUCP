@@ -12,10 +12,12 @@
  * Son componentes de presentación; `LiveImportWizard` hace las llamadas.
  */
 import { Camera, CircleCheck, FileSpreadsheet, Upload } from "lucide-react";
-import { useId, useRef, useState, type DragEvent } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Select";
+import { fetchCollectionList, type CollectionItem } from "@/lib/data/admin";
 import { cn } from "@/lib/cn";
 import { UPLOAD_TYPES_MESSAGE, formatFileSize, isSpreadsheetFile } from "@/lib/data/imports";
 
@@ -139,9 +141,26 @@ export function UploadPanel({ busy, onUpload }: { busy: boolean; onUpload: (file
  * cualquier lote. Pantalla mínima a propósito (design D4): sin arrastrar-y-soltar ni vista previa
  * de cada foto, solo elegir archivos y mandarlos.
  */
-export function LedgerPhotoPanel({ busy, onUpload }: { busy: boolean; onUpload: (files: File[]) => void }) {
+export function LedgerPhotoPanel({ busy, onUpload, devUser }: { busy: boolean; onUpload: (files: File[], collectionId?: string) => void; devUser?: string }) {
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<"common" | "individual" | "">("");
+  const [collectionId, setCollectionId] = useState("");
+  const [collections, setCollections] = useState<CollectionItem[]>([]);
+  const [collectionError, setCollectionError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    void fetchCollectionList(devUser).then((result) => {
+      if (!active) return;
+      if (result.status === "ok") {
+        setCollections(result.value.filter((item) => item.is_active));
+        setCollectionError(null);
+      } else setCollectionError(result.message);
+    });
+    return () => { active = false; };
+  }, [devUser, retry]);
+  const canUpload = mode === "individual" || (mode === "common" && !collectionError && collections.some((item) => item.id === collectionId));
 
   return (
     <Card as="section" className="flex flex-col gap-4" aria-label="Registrar desde fotos del libro de registros">
@@ -161,17 +180,42 @@ export function LedgerPhotoPanel({ busy, onUpload }: { busy: boolean; onUpload: 
         accept="image/jpeg,image/png,image/webp"
         multiple
         disabled={busy}
-        className="sr-only"
+        className="hidden"
         id="ledger-photo-input"
         onChange={(event) => {
-          setFiles([...(event.target.files ?? [])]);
+          const selected = [...(event.target.files ?? [])];
+          if (selected.length > 0) {
+            setFiles(selected);
+            setMode("");
+            setCollectionId("");
+          }
+          event.target.value = "";
         }}
       />
-      <label htmlFor="ledger-photo-input" className="w-fit cursor-pointer text-base font-medium text-terracota underline">
-        {files.length > 0 ? `${files.length} foto${files.length === 1 ? "" : "s"} elegida${files.length === 1 ? "" : "s"} · cambiar` : "Elegir fotos…"}
-      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="outline" icon={Camera} disabled={busy} onClick={() => inputRef.current?.click()}>
+          {files.length > 0 ? "Cambiar fotos" : "Elegir fotos…"}
+        </Button>
+        {files.length > 0 && <span className="text-sm text-gris-texto">{files.length} foto{files.length === 1 ? "" : "s"} elegida{files.length === 1 ? "" : "s"}</span>}
+      </div>
 
-      <Button icon={Upload} className="self-start" disabled={files.length === 0 || busy} onClick={() => onUpload(files)}>
+      <div className="flex flex-col gap-3 rounded-md border border-borde p-4">
+        <p className="font-semibold text-tinta">¿Todas las piezas pertenecen a una misma colección?</p>
+        {files.length === 0 && <p className="text-sm text-gris-texto">Primero elija las fotos del libro.</p>}
+        <div role="group" aria-label="Colección de las piezas" className="flex flex-wrap gap-2">
+          <Button variant={mode === "common" ? "primary" : "secondary"} aria-pressed={mode === "common"} disabled={busy || files.length === 0} onClick={() => setMode("common")}>Sí</Button>
+          <Button variant={mode === "individual" ? "primary" : "secondary"} aria-pressed={mode === "individual"} disabled={busy || files.length === 0} onClick={() => setMode("individual")}>No</Button>
+        </div>
+        {mode === "common" && <>
+          <Select label="Colección para todas las piezas" value={collectionId} disabled={busy || files.length === 0} onChange={(event) => setCollectionId(event.target.value)}>
+            <option value="">Seleccione una colección</option>
+            {collections.map((item) => <option key={item.id} value={item.id}>{item.name}{item.acronym ? ` (${item.acronym})` : ""}</option>)}
+          </Select>
+          {collectionError && <><p role="alert" className="text-carmin-texto">{collectionError}</p><Button variant="secondary" onClick={() => setRetry((n) => n + 1)}>Reintentar</Button></>}
+        </>}
+        {mode === "individual" && <p className="text-sm text-gris-texto">Podrá elegir la colección de cada pieza durante la revisión.</p>}
+      </div>
+      <Button icon={Upload} className="self-start" disabled={files.length === 0 || busy || !canUpload} onClick={() => onUpload(files, mode === "common" ? collectionId : undefined)}>
         {busy ? "Leyendo…" : "Registrar desde estas fotos"}
       </Button>
     </Card>
