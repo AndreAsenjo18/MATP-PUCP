@@ -465,7 +465,8 @@ def test_llm_extract_ledger_page_parses_several_rows(monkeypatch: pytest.MonkeyP
     content = (
         '{"rows": ['
         '{"inventory_code": "I-2161", "denomination": "Canasta", '
-        '"description": "Cesteria. Canasta circular.", '
+        '"description": "Cesteria. Canasta circular. Autor: Rosa Quesada.", '
+        '"author": "Rosa Quesada", '
         '"provenance": "Loreto", "conservation_state": "Bueno", "entry_date": "21-2-91", '
         '"additional_code": null, "confidence": 0.9}, '
         '{"inventory_code": "I-2166", "denomination": "Vasija", '
@@ -479,6 +480,8 @@ def test_llm_extract_ledger_page_parses_several_rows(monkeypatch: pytest.MonkeyP
     assert [row.inventory_code for row in result.rows] == ["I-2161", "I-2166"]
     assert [row.denomination for row in result.rows] == ["Canasta", "Vasija"]
     assert result.rows[0].additional_code is None
+    assert result.rows[0].author == "Rosa Quesada"
+    assert result.rows[1].author is None
     assert result.rows[1].additional_code == "M.I.F.O."
 
 

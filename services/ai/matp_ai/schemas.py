@@ -530,7 +530,7 @@ def finish_judgments(raw: list[Any], request: JudgeDuplicatesRequest) -> JudgeDu
     return JudgeDuplicatesResult(verdicts=[kept[p] for p in sent if p in kept])
 
 
-LEDGER_PAGE_PROMPT_VERSION = "libro-registros-v1"
+LEDGER_PAGE_PROMPT_VERSION = "libro-registros-v2"
 
 
 class LedgerPageImage(BaseModel):
@@ -561,7 +561,16 @@ class LedgerRowExtraction(BaseModel):
     denomination: str | None = Field(
         None, max_length=300, description="Denominación corta sugerida (p. ej. «Canasta»)."
     )
-    description: str | None = Field(None, max_length=5000, description="Tal como está escrita.")
+    description: str | None = Field(
+        None,
+        max_length=5000,
+        description="Transcripción de lo escrito; conservar la evidencia de la fuente.",
+    )
+    author: str | None = Field(
+        None,
+        max_length=300,
+        description="Autor declarado expresamente, no deducido del taller o estilo.",
+    )
     provenance: str | None = Field(None, max_length=300)
     conservation_state: str | None = Field(None, max_length=200)
     entry_date: str | None = Field(None, max_length=100, description="Tal como está escrita.")

@@ -8,6 +8,7 @@ libro de registros» y aplica esa plantilla con las mismas funciones (`store_ing
 clasificar, previsualizar, decidir, aprobar, aplicar) es el flujo de importación que ya existe.
 """
 
+import re
 import uuid
 from typing import Any
 
@@ -79,6 +80,7 @@ def row_raw_data(extraction: dict[str, Any]) -> dict[str, Any]:
     (
         denomination,
         description,
+        author,
         provenance,
         conservation,
         entry_date,
@@ -86,18 +88,64 @@ def row_raw_data(extraction: dict[str, Any]) -> dict[str, Any]:
         additional,
         collection,
     ) = _HEADERS
-    return {
+    raw_description = extraction.get("description")
+    creator = extraction.get("author")
+    if not isinstance(creator, str) or not creator.strip():
+        # Alternativa conservadora cuando el proveedor no llena «author»:
+        # solo se acepta una atribución escrita expresamente como «Autor: ...».
+        match = re.search(r"\bautor(?:a)?\s*[:\-]\s*([^\n.;]{3,120})", raw_description or "", re.I)
+        creator = match.group(1).strip() if match else None
+    creator = creator.strip() if isinstance(creator, str) and creator.strip() else None
+    description_text = raw_description
+    if creator and isinstance(raw_description, str):
+        # El texto fuente no se pierde: __ledger_original_description lo conserva.
+        explicit = re.compile(r"\bautor(?:a)?\s*[:\-]\s*" + re.escape(creator) + r"\.?\s*", re.I)
+        description_text = explicit.sub("", raw_description, count=1).strip()
+        if not description_text:
+            description_text = raw_description
+
+    state = extraction.get("conservation_state")
+    code = extraction.get("additional_code")
+
+    # Freno a una confusión frecuente cuando el orden de columnas cambia:
+    # «Buena» es estado y una sigla no lo es. Solo intercambiar si es inequívoco.
+    def is_state(value: Any) -> bool:
+        return isinstance(value, str) and value.strip().casefold() in {
+            "bueno",
+            "buena",
+            "buen estado",
+            "regular",
+            "deteriorado",
+            "deteriorada",
+            "restaurado",
+            "restaurada",
+            "malo",
+            "mala",
+            "mal estado",
+        }
+
+    if is_state(code) and not is_state(state):
+        state, code = code, state
+
+    result = {
         denomination: extraction.get("denomination"),
-        description: extraction.get("description"),
+        description: description_text,
+        author: creator,
         provenance: extraction.get("provenance"),
-        conservation: extraction.get("conservation_state"),
+        conservation: state,
         entry_date: extraction.get("entry_date"),
         inventory: extraction.get("inventory_code"),
-        additional: extraction.get("additional_code"),
-        # La foto nunca trae la colección: queda vacía para que el curador la elija en la
-        # revisión (design D2/LR5), no algo que la IA pueda leer de la ficha física.
+        additional: code,
+        # La colección la elige el curador en la revisión.
         collection: None,
     }
+    if description_text != raw_description:
+        result["__ledger_original_description"] = raw_description
+    if is_state(extraction.get("additional_code")) and not is_state(
+        extraction.get("conservation_state")
+    ):
+        result["__ledger_columns_exchanged"] = True
+    return result
 
 
 def ingest_ledger_rows(

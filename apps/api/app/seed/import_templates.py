@@ -319,11 +319,12 @@ FICHA_RN = PredefinedTemplate(
 LIBRO_REGISTROS = PredefinedTemplate(
     name="Foto del libro de registros",
     source_name="Lectura por IA de una foto del libro de registros manuscrito",
-    description="Plantilla fija de las seis columnas que siempre devuelve la lectura por IA de "
-    "una página del libro de registros (RIA-07): no la elige una persona, la fija el sistema.",
+    description="Plantilla fija de los campos que devuelve la lectura por IA de "
+    "una página del libro de registros (RIA-07): incluye autor y revisión humana.",
     columns=(
         column("Denominación sugerida", target("denomination"), TEXT),
         column("Descripción", target("description"), TEXT),
+        column("Autor", target("author"), TEXT),
         column("Procedencia", target("provenance"), TEXT),
         conservation_column("Estado de conservación"),
         column("Fecha", target("entry_date"), TEXT),

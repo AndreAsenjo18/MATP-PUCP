@@ -301,29 +301,7 @@ export function LiveImportWizard() {
     };
   }, [needsTemplates, templates, devUser]);
 
-  // Con el archivo leído, aplica el formato elegido (o el que mejor coincide) y valida el lote.
-  useEffect(() => {
-    if (!batch || batch.status !== "UPLOADED" || processing || suggestions === null || templates === null) return;
-    if (autoApplied.current === batch.id) return;
-    autoApplied.current = batch.id;
-    const suggestion = suggestions[0];
-    const candidate = suggestion?.template;
-    const missing = !candidate ? [] : suggestion ? suggestion.missing_columns : missingColumns(candidate, batch.headers ?? []);
-    void (async () => {
-      // Ninguna plantilla calza con confianza (sea porque no hay candidata o porque a la elegida
-      // le faltan columnas): se abre directo «Ajustar columnas» con el mapeo que sugiere la IA,
-      // sin mostrar antes la lista de candidatas por parecido (change carga-masiva-con-ia, D2).
-      // El régimen de tenencia ya no se elige al subir (importacion-elegir-origen): se decide
-      // después, desde el aviso de «Filas sin régimen de tenencia» (TenureBanner).
-      if (!candidate) return handleStartFromScratch();
-      if (missing.length > 0) {
-        return missing.length < candidate.columns.length ? handleUseTemplate(candidate) : handleStartFromScratch();
-      }
-      await applyFormat(candidate, "");
-    })();
-    // `applyFormat` depende de `batch`, que ya es una dependencia; se ejecuta una vez por lote.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch, processing, suggestions, templates]);
+
 
   function resetTemplates() {
     setFormatIssue(null);
@@ -882,8 +860,33 @@ export function LiveImportWizard() {
     setReload((n) => n + 1);
   }
 
+  // Con el archivo leído, aplica el formato elegido (o el que mejor coincide) y valida el lote.
+  useEffect(() => {
+    if (!batch || batch.status !== "UPLOADED" || processing || suggestions === null || templates === null) return;
+    if (autoApplied.current === batch.id) return;
+    autoApplied.current = batch.id;
+    const suggestion = suggestions[0];
+    const candidate = suggestion?.template;
+    const missing = !candidate ? [] : suggestion ? suggestion.missing_columns : missingColumns(candidate, batch.headers ?? []);
+    void (async () => {
+      // Ninguna plantilla calza con confianza (sea porque no hay candidata o porque a la elegida
+      // le faltan columnas): se abre directo «Ajustar columnas» con el mapeo que sugiere la IA,
+      // sin mostrar antes la lista de candidatas por parecido (change carga-masiva-con-ia, D2).
+      // El régimen de tenencia ya no se elige al subir (importacion-elegir-origen): se decide
+      // después, desde el aviso de «Filas sin régimen de tenencia» (TenureBanner).
+      if (!candidate) return handleStartFromScratch();
+      if (missing.length > 0) {
+        return missing.length < candidate.columns.length ? handleUseTemplate(candidate) : handleStartFromScratch();
+      }
+      await applyFormat(candidate, "");
+    })();
+    // `applyFormat` depende de `batch`, que ya es una dependencia; se ejecuta una vez por lote.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batch, processing, suggestions, templates]);
+
   const currentTemplate = templates?.find((template) => template.id === batch?.template_id) ?? null;
   const isLedgerPhotoBatch = currentTemplate?.name === LEDGER_PHOTO_TEMPLATE_NAME;
+  const showBatchPhotos = showsPhotoStep(origin) || isLedgerPhotoBatch;
   const adjusting = mappingMode === "edit" && editorDraft !== null;
   const formatPanel: FormatIssue | null = formatIssue ?? (changingFormat ? { kind: "change", current: templates?.find((template) => template.id === batch?.template_id) ?? null } : null);
   const applyingFormat = batch != null && !processing && batch.status === "UPLOADED" && formatIssue === null && !adjusting;
@@ -1000,7 +1003,7 @@ export function LiveImportWizard() {
         </Card>
       )}
       {/* Fotos del lote: aquí antes de la revisión; durante la revisión van tras el resumen y los errores. */}
-      {batch && !reviewing && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
+      {batch && !reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && (
         <ReviewSummaryPanel
           summary={summary}
@@ -1081,7 +1084,7 @@ export function LiveImportWizard() {
       {reviewing && !tenureGroup && tenureRows > 0 ? (
         <TenureBanner count={tenureRows} complete decided={counts.DECIDED ?? 0} busy={busy} canAdjust={canReapply} onApply={handleApplyTenure} />
       ) : null}
-      {batch && reviewing && !processing && !adjusting && !formatPanel && showsPhotoStep(origin) && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
+      {batch && reviewing && !processing && !adjusting && !formatPanel && showBatchPhotos && <PhotoStep batch={batch} origin={origin} devUser={devUser} />}
       {reviewing && diffs && (
         <Card as="section" className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-tinta">Revise las filas</h2>

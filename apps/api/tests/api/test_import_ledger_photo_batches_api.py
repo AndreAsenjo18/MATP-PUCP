@@ -46,6 +46,7 @@ def test_one_photo_creates_a_mapped_batch_with_one_row(pipeline: Pipeline) -> No
         raw = rows[0].raw_data
         assert raw["Código de inventario"]
         assert raw["Procedencia"] == "Loreto"
+        assert "Autor" in raw
 
 
 def test_tenure_regime_can_be_set_for_all_rows_from_the_review(pipeline: Pipeline) -> None:

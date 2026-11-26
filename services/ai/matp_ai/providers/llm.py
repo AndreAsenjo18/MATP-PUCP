@@ -121,27 +121,35 @@ def _completion_system_prompt(request: CompletePieceRequest) -> str:
 
 
 #: Lectura del libro de registros (change digitalizacion-libro-registros, D2/D3).
-_LEDGER_SYSTEM_PROMPT = """Transcribes el libro de registros manuscrito de un museo peruano a \
-partir de la foto de una página. Cada fila visible trae, por lo general, un código y una \
-descripción libre a la izquierda, y procedencia, estado de conservación, fecha y un código \
-adicional a la derecha, a la misma altura. Devuelve SOLO un objeto JSON, sin explicación ni \
-markdown, con esta forma exacta:
+_LEDGER_SYSTEM_PROMPT = """Transcribes fotos de libros de registros manuscritos de un museo peruano.
+Devuelve SOLO un objeto JSON válido, sin explicaciones ni markdown, con esta forma:
+{"rows": [{"inventory_code": null, "denomination": null, "description": null,
+"author": null, "provenance": null, "conservation_state": null,
+"entry_date": null, "additional_code": null, "confidence": 0.0}]}
 
-{"rows": [{"inventory_code": "<código I tal como está escrito, p. ej. \\"I-2161\\", o null>", \
-"denomination": "<denominación corta, p. ej. \\"Canasta\\", o null>", \
-"description": "<descripción tal como está escrita, sin corregir, o null>", \
-"provenance": "<o null>", "conservation_state": "<tal como está escrita, o null>", \
-"entry_date": "<tal como está escrita, o null>", "additional_code": "<o null>", \
-"confidence": <0 a 1, qué tan seguro estás de haber leído bien esta fila>}]}
-
-Reglas:
-- Una fila por cada fila que se distinga en la foto, en el mismo orden. No inventes filas que no \
-existan.
-- Si una celda está vacía o no se distingue con claridad, usa null en ese campo en vez de \
-adivinar.
-- "description" MUST ser una transcripción literal, sin corregir tildes ni ortografía.
-- "denomination" es tu mejor idea de un nombre corto para la pieza (el tipo de objeto), no una \
-copia de "description"; si no tienes ninguna idea razonable, usa null."""
+Reglas obligatorias:
+- EXAMINA LA ESTRUCTURA DE ESTA FOTO ANTES DE LEER LAS FILAS. Hay varios libros y las columnas
+  derechas CAMBIAN DE ORDEN: nunca presupongas que la columna 2, 3, 4 o 5 significa lo mismo.
+  Usa encabezados visibles, líneas verticales y el TIPO DE VALOR para reconocer cada campo.
+- Una foto puede mostrar DOS PÁGINAS ENFRENTADAS: cada registro empieza en la página izquierda
+  y continúa en la misma línea horizontal en la derecha. Une por alineación de fila, sin cruzar
+  registros vecinos. Si el encabezado no se ve, evalúa el contenido sin inventar datos.
+- Estado de conservación es un juicio como Bueno/Buena, Regular, Deteriorado/a, Restaurado/a.
+  Un código como ELA 250-CEL o una sigla como M.H.O. o M.B.V. NO es un estado de conservación.
+  Los códigos y siglas van en additional_code; no pongas «Buena» en additional_code.
+- La fecha va en entry_date, literalmente como está escrita (p. ej. 14.3.80 o 7-4-2002).
+  NO asumas el siglo ni la conviertas a ISO sin evidencia.
+- Extrae author cuando la descripción indique expresamente «Autor: Nombre» o «Autora: Nombre».
+  NO inventes autor a partir de «Taller Tineo», procedencia, personaje representado o estilo.
+  En description conserva la transcripción original, incluida la atribución; el sistema puede
+  separarla luego conservando el original como evidencia.
+- Una fila por registro visible en el orden original. Una foto de doble página no son dos listas
+  de piezas. No inventes filas ni dupliques registros entre las dos páginas.
+- Cuando una celda sea ilegible, vacía o no se pueda asociar con certeza a un encabezado, usa
+  null, nunca adivines. Baja confidence si hay dudas de alineación, autor o columnas.
+- inventory_code es el código I de la pieza tal como está escrito; denomination es una propuesta
+  breve del tipo de objeto, no una copia de description; description transcribe literalmente.
+- No deduzcas la colección: el usuario la asignará durante la revisión."""
 
 
 #: Juicio de duplicados (change ia-juicio-duplicados, D1). Versión: ``DUPLICATES_PROMPT_VERSION``.
@@ -380,6 +388,7 @@ class LLMProvider(AIProvider):
                     inventory_code=_ledger_text(item, "inventory_code"),
                     denomination=_ledger_text(item, "denomination"),
                     description=_ledger_text(item, "description"),
+                    author=_ledger_text(item, "author"),
                     provenance=_ledger_text(item, "provenance"),
                     conservation_state=_ledger_text(item, "conservation_state"),
                     entry_date=_ledger_text(item, "entry_date"),
