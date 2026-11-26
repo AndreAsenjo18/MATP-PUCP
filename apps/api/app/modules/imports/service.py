@@ -25,6 +25,7 @@ from app.modules.collections.models import Term, Vocabulary
 from app.modules.identification.models import NormalizationStatus, PieceIdentifier
 from app.modules.imports.classify import (
     ClassifiedRow,
+    RowError,
     classify_batch,
     record_duplicate_candidates,
 )
@@ -69,7 +70,7 @@ from app.modules.imports.photos import (
     match_batch_photos,
     reset_automatic_proposals,
 )
-from app.modules.imports.state import STATUS_LABELS, lock_batch, transition
+from app.modules.imports.state import STATUS_LABELS, is_ledger_batch, lock_batch, transition
 from app.modules.imports.worker import Progress, StageWork
 from app.modules.quality.models import DuplicateCandidate, DuplicateStatus
 
@@ -80,7 +81,12 @@ CONTENT_TYPES = {
     "csv": "text/csv",
 }
 # Keys of ``import_batch.counts`` written by validation (recomputed on every run).
-VALIDATION_COUNTS = (*(item.value for item in RowClassification), "ERRORS", "UNPARSEABLE_CODES")
+VALIDATION_COUNTS = (
+    *(item.value for item in RowClassification),
+    "ERRORS",
+    "UNPARSEABLE_CODES",
+    "LEDGER_COLLECTIONS_MISSING",
+)
 MAPPABLE_STATUSES = frozenset({S.UPLOADED, S.MAPPED, S.IN_PREVIEW})
 
 
@@ -494,7 +500,21 @@ def validate_stage() -> StageWork:
         reset_validation(session, batch, reset_counts=False)  # counts are replaced at the end
         acquisition_codes = _acquisition_codes(session)
 
-        mapped = {number: apply_mapping(raw or {}, spec, ctx) for _id, number, raw in rows}
+        ledger = is_ledger_batch(batch)
+        mapped = {
+            number: apply_mapping(raw or {}, spec, ctx, ledger_collections=ledger)
+            for _id, number, raw in rows
+        }
+        if ledger:
+            for row in mapped.values():
+                if row.collection_id is None:
+                    row.errors.append(
+                        RowError(
+                            "ledger_collection_required",
+                            "Seleccione una colección válida para esta pieza.",
+                            "collection",
+                        )
+                    )
         # Only codes find a piece: no similarity (change duplicados-solo-por-codigo).
         observations = is_observations(batch)
         classified = classify_batch(
@@ -519,6 +539,12 @@ def validate_stage() -> StageWork:
         )
 
         counts: dict[str, int] = dict.fromkeys(VALIDATION_COUNTS, 0)
+        if not ledger:
+            counts.pop("LEDGER_COLLECTIONS_MISSING")
+        if ledger:
+            counts["LEDGER_COLLECTIONS_MISSING"] = sum(
+                row.collection_id is None for row in mapped.values()
+            )
         values: list[dict[str, Any]] = []
         for done, (row_id, number, _raw) in enumerate(rows, start=1):
             result, row = by_number[number], mapped[number]

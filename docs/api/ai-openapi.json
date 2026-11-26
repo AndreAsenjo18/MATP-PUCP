@@ -695,7 +695,7 @@
       "LedgerPageExtraction": {
         "properties": {
           "prompt_version": {
-            "default": "libro-registros-v1",
+            "default": "libro-registros-v2",
             "title": "Prompt Version",
             "type": "string"
           },
@@ -752,6 +752,19 @@
             ],
             "title": "Additional Code"
           },
+          "author": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Autor declarado expresamente, no deducido del taller o estilo.",
+            "title": "Author"
+          },
           "confidence": {
             "maximum": 1.0,
             "minimum": 0.0,
@@ -793,7 +806,7 @@
                 "type": "null"
               }
             ],
-            "description": "Tal como está escrita.",
+            "description": "Transcripción de lo escrito; conservar la evidencia de la fuente.",
             "title": "Description"
           },
           "entry_date": {

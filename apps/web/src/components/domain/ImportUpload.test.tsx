@@ -84,9 +84,23 @@ describe("panel de fotos del libro de registros", () => {
     const text = visibleText(html);
     expect(text).toContain("Registrar desde fotos del libro de registros");
     expect(text).toContain("Elegir fotos…");
+    expect(text).toContain("¿Todas las piezas pertenecen a una misma colección?");
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Registrar desde estas fotos/);
     expect(html).toContain('accept="image/jpeg,image/png,image/webp"');
     expect(html).toContain("multiple");
+  });
+
+  it("exige elegir fotos antes de responder sobre la colección", () => {
+    const html = render(<LedgerPhotoPanel busy={false} onUpload={noop} />);
+    const buttons = html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) ?? [];
+    const choose = buttons.find((button) => visibleText(button).includes("Elegir fotos…"));
+    expect(choose).toBeDefined();
+    expect(choose).not.toMatch(/<button[^>]*\bdisabled=/);
+    for (const answer of ["Sí", "No"]) {
+      const button = buttons.find((candidate) => visibleText(candidate) === answer);
+      expect(button).toBeDefined();
+      expect(button).toMatch(/<button[^>]*\bdisabled=""/);
+    }
   });
 
   it("ocupada, el botón dice «Leyendo…»", () => {

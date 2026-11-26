@@ -642,6 +642,19 @@ class MappingContext:
             )
         return self._collections[key]
 
+    def active_collection_id(self, value: str) -> uuid.UUID | None:
+        try:
+            collection_id = uuid.UUID(value)
+        except ValueError:
+            return None
+        return self._session.scalar(
+            select(Collection.id).where(
+                Collection.id == collection_id,
+                Collection.is_active.is_(True),
+                Collection.deleted_at.is_(None),
+            )
+        )
+
     def collection_acronym(self, collection_id: uuid.UUID) -> str | None:
         """Normalized acronym of a collection (``MMZ``), or None if it has none."""
         if collection_id not in self._acronyms:
@@ -1192,7 +1205,11 @@ MAPPED_KINDS = frozenset({"field", "identifier", "identifiers"})
 
 
 def apply_mapping(
-    raw_row: dict[str, Any], spec: "MappingSpec | MappingSpecV1", ctx: MappingContext
+    raw_row: dict[str, Any],
+    spec: "MappingSpec | MappingSpecV1",
+    ctx: MappingContext,
+    *,
+    ledger_collections: bool = False,
 ) -> MappedRow:
     """Map one raw row (v0 or v1 spec). Values stored in ``mapped_data`` are always text:
     a transformed year (``1998``) or date (``1998-04-03``) is written as text, as Excel date
@@ -1241,6 +1258,11 @@ def apply_mapping(
         and value not in (None, "")
     }
     _resolve_location(mapped, ctx)
+    if ledger_collections:
+        # El libro permite conservar una transcripción libre y medidas detalladas a la vez.
+        original_measures = _text(raw_row.get("Medidas (texto original)"))
+        if original_measures:
+            mapped.fields["dimensions_text"] = original_measures
 
     denomination_default = _denomination_default(plan)
     if mapped.fields.get("denomination") is None and denomination_default:
@@ -1253,7 +1275,10 @@ def apply_mapping(
         collection = plan.defaults["collection"]
         mapped.defaulted.append("collection")
     if collection is not None:
-        mapped.collection_id = ctx.collection_id(collection)
+        if ledger_collections and collection.startswith("id:"):
+            mapped.collection_id = ctx.active_collection_id(collection[3:])
+        else:
+            mapped.collection_id = ctx.collection_id(collection)
         if mapped.collection_id is None and (same := ctx.collections_named(collection)) > 1:
             # Before, it said there was none: two collections with the same name were not told
             # apart, and the person looked for a collection that did exist.

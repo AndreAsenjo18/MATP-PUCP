@@ -16,6 +16,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    Form,
     Query,
     Request,
     Response,
@@ -87,6 +88,7 @@ from app.modules.imports.decisions import (
     approve,
     decide_row,
     editable_batch,
+    ledger_missing_collections,
     photos_processing,
     row_action,
 )
@@ -104,6 +106,7 @@ from app.modules.imports.mapping import (
     PAYLOAD_TARGET,
     TERMS_TARGET,
     ColumnSpec,
+    MappingContext,
     MappingConversionError,
     MappingSpec,
     free_text_values,
@@ -195,7 +198,13 @@ from app.modules.imports.service import (
     set_mapping,
     validate_stage,
 )
-from app.modules.imports.state import ROW_KINDS, STATUS_LABELS, lock_batch, require_kind
+from app.modules.imports.state import (
+    ROW_KINDS,
+    STATUS_LABELS,
+    is_ledger_batch,
+    lock_batch,
+    require_kind,
+)
 from app.modules.imports.term_fix import add_term, unresolved_terms
 from app.modules.imports.worker import Stage, launch_stage
 from app.modules.media import derivatives
@@ -275,6 +284,8 @@ def batch_out(
             .where(ImportRow.batch_id == batch.id, ImportRow.decision != RowDecision.PENDING)
         )
         out.counts = {**(out.counts or {}), "DECIDED": int(decided or 0)}
+        if is_ledger_batch(batch):
+            out.counts["LEDGER_COLLECTIONS_MISSING"] = ledger_missing_collections(session, batch.id)
     if batch.kind in ROW_KINDS:
         out.sample_rows = _sample_rows(session, batch.id)
     return out
@@ -423,10 +434,19 @@ def create_ledger_photo_import_batch(
     session: SessionDep,
     user: Preparer,
     files: Annotated[list[UploadFile], File(description="Una o más fotos de páginas del libro.")],
+    collection_id: Annotated[
+        uuid.UUID | None, Form(description="Colección común elegida para todas las filas.")
+    ] = None,
 ) -> ImportBatchOut:
+    if (
+        collection_id is not None
+        and MappingContext(session).active_collection_id(str(collection_id)) is None
+    ):
+        raise ValidationFailed("Seleccione una colección activa.", code="unknown_collection")
     settings = request.app.state.settings
     client = AiServiceClient(request.app, settings.ai_mount_path)
     rows: list[dict[str, Any]] = []
+    unavailable = 0
     for file in files:
         media_type = file.content_type
         if media_type not in _LEDGER_IMAGE_TYPES:
@@ -441,8 +461,19 @@ def create_ledger_photo_import_batch(
                 {"media_type": media_type, "data_base64": data_base64}
             )
         except ServiceUnavailable:
-            continue  # esa foto no aporta filas; las demás se intentan igual (D4)
-        rows.extend(row_raw_data(row) for row in result.get("rows", []))
+            unavailable += 1
+            continue  # las demás fotos se intentan igual (D4)
+        rows.extend(
+            row_raw_data(row, collection_id=collection_id) for row in result.get("rows", [])
+        )
+    if not rows:
+        if unavailable:
+            raise ServiceUnavailable("No se pudo completar la lectura con IA. Intente nuevamente.")
+        raise ValidationFailed(
+            "No se identificaron piezas en las fotos del libro. "
+            "Intente con una imagen más clara y con las filas completas.",
+            code="ledger_no_rows",
+        )
     writer(session, user)
     batch = create_ledger_photo_batch(session, uploaded_by_id=user.id, photo_count=len(files))
     if rows:
@@ -1261,6 +1292,9 @@ def request_import_photo_upload_urls(
     body: PhotoUploadUrlsRequest,
     session: SessionDep,
     user: Preparer,
+    ledger_row_id: Annotated[
+        uuid.UUID | None, Query(description="Fila elegida al cargar fotos de una pieza del libro.")
+    ] = None,
 ) -> PhotoUploadUrlsOut:
     writer(session, user)
     files = [DeclaredPhoto(**file.model_dump()) for file in body.files]
@@ -1270,6 +1304,7 @@ def request_import_photo_upload_urls(
         batch_id,
         files,
         PhotoLimits.from_settings(request.app.state.settings),
+        ledger_row_id=ledger_row_id,
     )
     session.commit()
     return PhotoUploadUrlsOut(
